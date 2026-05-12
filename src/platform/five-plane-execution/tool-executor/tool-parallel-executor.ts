@@ -293,7 +293,7 @@ export async function executeToolsInParallel<T>(
   }
 
   if (toolFunctions.length === 0) {
-    return { results: [], errors: [], allSucceeded: true, anyFailed: false };
+    return { results: [], resultsByIndex: [], errors: [], allSucceeded: true, anyFailed: false };
   }
 
   if (toolFunctions.length === 1) {
@@ -306,10 +306,11 @@ export async function executeToolsInParallel<T>(
         });
       }
       const result = await firstFn();
-      return { results: [result], errors: [], allSucceeded: true, anyFailed: false };
+      return { results: [result], resultsByIndex: [result], errors: [], allSucceeded: true, anyFailed: false };
     } catch (error) {
       return {
         results: [],
+        resultsByIndex: [null],
         errors: [{ index: 0, toolName: toolMetadatas[0]?.toolName ?? "unknown", error }],
         allSucceeded: false,
         anyFailed: true,

@@ -165,7 +165,7 @@ export class BillingRepository {
     const result = this.conn
       .prepare(`DELETE FROM cost_event_wal WHERE wal_status = 'pending'`)
       .run();
-    return result.changes;
+    return typeof result.changes === 'bigint' ? Number(result.changes) : result.changes;
   }
 
   public listCostEventsByTask(taskId: string, tenantId?: string | null): CostEventRecord[] {

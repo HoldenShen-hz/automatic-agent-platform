@@ -10,6 +10,7 @@ export interface RecoveryReportError {
   readonly code: string;
   readonly message: string;
   readonly details?: Readonly<Record<string, unknown>>;
+  readonly targetId?: string;
 }
 
 export interface RecoveryReport {

@@ -82,8 +82,10 @@ export interface TypedEventPayloadMap {
   "recovery:cancelled": RecoveryPayload;
   "domain:registered": DomainLifecyclePayload;
   "domain:activated": DomainLifecyclePayload;
+  "domain:canary": DomainLifecyclePayload;
   "domain:updating": DomainLifecyclePayload;
   "domain:updated": DomainLifecyclePayload;
+  "domain:deprecated": DomainLifecyclePayload;
   "domain:archived": DomainLifecyclePayload;
   "plugin:spi_registered": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;

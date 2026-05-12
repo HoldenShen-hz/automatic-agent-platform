@@ -165,7 +165,11 @@ function verifySecurePath(filePath: string, code: string): void {
   const pathSegments = (resolvedPath.split(sep).filter(Boolean) as string[]);
   let current = "";
   for (let i = 0; i < pathSegments.length - 1; i++) {
-    current = resolve(current, pathSegments[i]);
+    const segment = pathSegments[i];
+    if (segment == null) {
+      continue;
+    }
+    current = resolve(current, segment);
     try {
       const stat = lstatSync(current);
       if (stat.isSymbolicLink()) {

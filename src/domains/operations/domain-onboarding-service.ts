@@ -183,7 +183,7 @@ export class DomainOnboardingService {
     if (domain == null) {
       throw this.validationError("domain_onboarding.domain_not_found", `Domain ${domainId} is not registered.`);
     }
-    if (domain.status === "draft" || domain.status === "validated" || domain.status === "testing") {
+    if (domain.status === "draft" || domain.status === "validated") {
       this.registry.register({
         ...domain,
         status: "registered",

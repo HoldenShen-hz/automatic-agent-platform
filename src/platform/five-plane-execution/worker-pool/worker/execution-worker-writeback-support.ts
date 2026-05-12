@@ -60,7 +60,7 @@ export function buildAgentExecutionRecord(
     toolCallCount: number;
     progressMessage: string | null;
     lastErrorCode: string | null;
-    completedAt: string | null;
+    completedAt?: string | null;
   },
 ): AgentExecutionRecord {
   const existing = store.worker.getAgentExecutionRecord(executionId);
@@ -92,7 +92,7 @@ export function buildAgentExecutionRecord(
     startedAt: existing?.startedAt ?? execution.startedAt ?? occurredAt,
     createdAt: existing?.createdAt ?? occurredAt,
     updatedAt: occurredAt,
-    completedAt: updates.completedAt,
+    completedAt: updates.completedAt ?? null,
   };
 }
 

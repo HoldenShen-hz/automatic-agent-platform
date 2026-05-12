@@ -583,7 +583,7 @@ export class PackSecurityService {
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
     // Scan actual source code, not the URI string
-    const sourceContent = input.sourceCode;
+    const sourceContent = input.sourceCode ?? "";
 
     for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
       if (pattern.test(sourceContent)) {

@@ -43,6 +43,12 @@ export function normalizeAgentLifecycleState(state: AgentLifecycleState): Intern
 
 export function toDocumentedAgentLifecycleState(state: AgentLifecycleState): DocumentedAgentLifecycleState {
   switch (normalizeAgentLifecycleState(state)) {
+    case "draft":
+      return "draft";
+    case "testing":
+      return "testing";
+    case "staging":
+      return "staging";
     case "active":
     case "canary":
     case "paused":
@@ -50,8 +56,8 @@ export function toDocumentedAgentLifecycleState(state: AgentLifecycleState): Doc
     case "deprecated":
     case "archived":
       return "retired";
-    default:
-      return normalizeAgentLifecycleState(state);
+    case "removed":
+      return "removed";
   }
 }
 

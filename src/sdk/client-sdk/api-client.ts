@@ -459,7 +459,7 @@ export class RetryableApiClient {
       schemaVersion: "v4.3",
       ttl: 30000,
       metadata,
-      idempotencyKey: this.config.idempotencyKey,
+      ...(this.config.idempotencyKey !== undefined ? { idempotencyKey: this.config.idempotencyKey } : {}),
     });
   }
 

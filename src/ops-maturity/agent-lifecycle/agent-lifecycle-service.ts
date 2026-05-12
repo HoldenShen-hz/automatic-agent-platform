@@ -2,6 +2,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   listActiveAgents,
   isValidLifecycleTransition,
+  normalizeAgentLifecycleState,
   type AgentDefinition,
   type AgentLifecycleState,
 } from "./agent-registry/index.js";
@@ -103,7 +104,7 @@ export class AgentLifecycleService {
 
     const updated: ManagedAgentDefinition = {
       ...agent,
-      lifecycleState: toState,
+      lifecycleState: normalizeAgentLifecycleState(toState),
       updatedAt: changedAt,
     };
     this.agents.set(agentId, updated);

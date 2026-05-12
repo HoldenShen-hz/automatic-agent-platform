@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import { LearningObjectSchema } from "./learning-object-model.js";
+import { type LearningObject } from "./learning-object-model.js";
 
 /**
  * Artifact format — how the learned knowledge is serialized.
@@ -53,7 +53,7 @@ export type LearningArtifact = z.infer<typeof LearningArtifactSchema>;
  * Serializes the object content and computes a SHA-256 checksum.
  */
 export async function createLearningArtifact(
-  learningObject: z.infer<typeof LearningObjectSchema>,
+  learningObject: LearningObject,
   namespace: string,
   format: ArtifactFormat = "json",
 ): Promise<LearningArtifact> {
@@ -74,14 +74,18 @@ export async function createLearningArtifact(
     // using the objectId directly, which may contain underscores and lowercase
     // letters outside the [0-9a-f] range required for a SHA-256 hex checksum.
     const { createHash: fallbackHash } = await import("node:crypto");
-    checksum = fallbackHash("sha256").update(learningObject.learningObjectId).digest("hex");
+    const objectId = learningObject.learningObjectId ?? "";
+    checksum = fallbackHash("sha256").update(objectId).digest("hex");
   }
 
+  const objectId = learningObject.learningObjectId ?? "";
+  const title = learningObject.title ?? "";
+
   return {
-    artifactId: `artifact_${learningObject.learningObjectId}`,
-    sourceObjectId: learningObject.learningObjectId,
+    artifactId: `artifact_${objectId}`,
+    sourceObjectId: objectId,
     version: 1,
-    title: learningObject.title,
+    title,
     format,
     content,
     namespace,

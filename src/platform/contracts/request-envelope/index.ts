@@ -45,11 +45,13 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
   if (input.requestId.trim().length === 0) {
     throw new ValidationError("request_envelope.request_id_required", "Request envelope requires a request id.");
   }
+  const sourcePlane = normalizeOptionalPlane(input.sourcePlane);
+  const targetPlane = normalizeOptionalPlane(input.targetPlane);
   return {
     envelopeId: input.envelopeId ?? newId("envelope"),
     requestId: input.requestId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,
-    tenantId: normalizeNullable(input.tenantId),
+    tenantId: normalizeRequiredString(input.tenantId, "request_envelope.tenant_id_required"),
     principal: input.principal,
     traceId: input.traceId,
     idempotencyKey: input.idempotencyKey,
@@ -58,15 +60,23 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
     sessionId: normalizeNullable(input.sessionId),
     mode: input.mode,
     body: input.body,
-    sourcePlane: normalizeOptionalPlane(input.sourcePlane),
-    targetPlane: normalizeOptionalPlane(input.targetPlane),
     directives: input.directives ?? [],
+    ...(sourcePlane !== undefined ? { sourcePlane } : {}),
+    ...(targetPlane !== undefined ? { targetPlane } : {}),
     createdAt: input.createdAt ?? nowIso(),
   };
 }
 
 function normalizeNullable(value: string | null | undefined): string | null {
   return value == null || value.trim().length === 0 ? null : value;
+}
+
+function normalizeRequiredString(value: string, code: string): string {
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    throw new ValidationError(code, "Request envelope requires a tenant id.");
+  }
+  return normalized;
 }
 
 function normalizeOptionalPlane(value: string | undefined): string | undefined {

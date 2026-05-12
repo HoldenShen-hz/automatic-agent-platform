@@ -16,7 +16,7 @@ const RiskLevelActionSchema = z.object({
   autoExecute: z.boolean(),
   logLevel: z.enum(["info", "warn", "error", "critical"]),
   requiresApproval: z.boolean(),
-  approvalType: z.enum(["standard", "break_glass"]).optional(),
+  approvalType: z.enum(["standard", "break_glass"]),
   sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
   evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
 });
@@ -112,5 +112,5 @@ export function loadRiskConfig(
     );
   }
 
-  return validated.data satisfies RiskConfig;
+  return validated.data as RiskConfig;
 }

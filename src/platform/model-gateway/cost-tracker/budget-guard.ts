@@ -423,7 +423,7 @@ export class BudgetGuard {
       };
     }
 
-    const releasedLedger = this.sessionManager.settle(sessionId, 0);
+    const releasedLedger = await this.sessionManager.settle(sessionId, 0);
 
     const updatedSession: AtomicBudgetSession = {
       ...session,

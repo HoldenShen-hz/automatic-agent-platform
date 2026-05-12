@@ -257,7 +257,7 @@ export class BillingService {
    *
    * All three are created atomically within a transaction.
    */
-  public recordUsage(input: RecordUsageInput): RecordUsageResult {
+  public async recordUsage(input: RecordUsageInput): Promise<RecordUsageResult> {
     const account = this.requireActiveAccount(input.accountId);
     const capturedAt = input.capturedAt ?? nowIso();
     const metricType = assertIdentifier(input.metricType, "billing.invalid_metric_type") as BillingMetricType;
@@ -346,7 +346,7 @@ export class BillingService {
       | ReturnType<typeof createBudgetSettlement>
       | undefined;
     let settledBudget:
-      | ReturnType<BudgetAllocator["settle"]>
+      | Awaited<ReturnType<BudgetAllocator["settle"]>>
       | null = null;
 
     try {
@@ -368,7 +368,7 @@ export class BillingService {
         });
       settledBudget = reservedBudget == null
         ? null
-        : this.budgetAllocator.settle({
+        : await this.budgetAllocator.settle({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: ledgerEntry.amountUsd,

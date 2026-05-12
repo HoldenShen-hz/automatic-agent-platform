@@ -345,6 +345,12 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "domain_registry_service",
     consumers: ["inspect_projection", "feedback_projection"],
   },
+  "domain:canary": {
+    type: "domain:canary",
+    tier: "tier_2",
+    producer: "domain_registry_service",
+    consumers: ["inspect_projection", "feedback_projection"],
+  },
   "domain:updating": {
     type: "domain:updating",
     tier: "tier_2",
@@ -353,6 +359,12 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
   },
   "domain:updated": {
     type: "domain:updated",
+    tier: "tier_2",
+    producer: "domain_registry_service",
+    consumers: ["inspect_projection", "feedback_projection"],
+  },
+  "domain:deprecated": {
+    type: "domain:deprecated",
     tier: "tier_2",
     producer: "domain_registry_service",
     consumers: ["inspect_projection", "feedback_projection"],
@@ -825,8 +837,10 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<
   "cost:limit_reached": costLimitReachedPayloadSchema,
   "domain:registered": domainLifecyclePayloadSchema,
   "domain:activated": domainLifecyclePayloadSchema,
+  "domain:canary": domainLifecyclePayloadSchema,
   "domain:updating": domainLifecyclePayloadSchema,
   "domain:updated": domainLifecyclePayloadSchema,
+  "domain:deprecated": domainLifecyclePayloadSchema,
   "domain:archived": domainLifecyclePayloadSchema,
   "plugin:spi_registered": pluginLifecyclePayloadSchema,
   "plugin:activated": pluginLifecyclePayloadSchema,

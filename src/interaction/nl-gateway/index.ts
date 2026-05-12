@@ -501,6 +501,37 @@ function dedupeEntities(entities: readonly ExtractedEntity[]): ExtractedEntity[]
   return result;
 }
 
+function toJsonValue(value: unknown): JsonValue {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => toJsonValue(entry));
+  }
+  if (typeof value === "object") {
+    const normalized: Record<string, JsonValue> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      if (entry !== undefined) {
+        normalized[key] = toJsonValue(entry);
+      }
+    }
+    return normalized;
+  }
+  return String(value);
+}
+
+function serializeEntities(entities: readonly ExtractedEntity[]): readonly JsonValue[] {
+  return entities.map((entity) => ({
+    entityType: entity.entityType,
+    value: entity.value,
+    normalized: toJsonValue(entity.normalized),
+    sourceSpan: [entity.sourceSpan[0], entity.sourceSpan[1]],
+  }));
+}
+
 function collectRegexEntities(message: string, pattern: RegExp, entityType: string, normalizeValue?: (value: string) => unknown): ExtractedEntity[] {
   const regex = new RegExp(pattern.source, pattern.flags);
   const entities: ExtractedEntity[] = [];
@@ -1255,7 +1286,7 @@ export class NlEntryService implements NlEntryPort {
       source: "nl",
       domainId: canonicalDomainId,
       taskDraftId: taskDraft.draftId,
-      normalizedIntent: {
+      normalizedIntent: toJsonValue({
         intentType: primaryIntent.intentType,
         intent: primaryIntent.intentType,
         domainId: canonicalDomainId,
@@ -1263,7 +1294,7 @@ export class NlEntryService implements NlEntryPort {
         workflowId: detailed.suggestedWorkflowId,
         locale: detailed.locale,
         continuation: detailed.continuation,
-        entities: primaryIntent.entities,
+        entities: serializeEntities(primaryIntent.entities),
         context: {
           ...detailed.context,
           autonomyMode,
@@ -1271,7 +1302,7 @@ export class NlEntryService implements NlEntryPort {
           confirmationScope,
         },
         summary: humanSummary,
-      },
+      }),
       missingFields: detailed.context.missingSlots ?? [],
       riskPreview: {
         riskClass: riskPreview.overallRisk,

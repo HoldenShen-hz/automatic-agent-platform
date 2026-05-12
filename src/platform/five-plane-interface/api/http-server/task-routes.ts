@@ -228,7 +228,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           // Use canonical intake pipeline for proper task admission
           const result = deps.intakeAdmissionService.admit({
             tenantId: tenantId ?? "",
-            principal: { principalId: principal.actorId, tenantId: tenantId ?? "", roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
+            principal: { principalId: principal.actorId, type: "human", tenantId: tenantId ?? "", roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
             source: (payload.source ?? "ui") as TaskInputSource,
             domainId: payload.divisionId ?? "",
             goal: payload.title,

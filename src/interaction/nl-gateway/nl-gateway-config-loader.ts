@@ -144,7 +144,7 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
       throw new ValidationError(
         "nl_gateway.invalid_config_json",
         `Invalid NL gateway config JSON at ${resolvedPath}`,
-        { details: error instanceof Error ? error.message : String(error) },
+        { details: { cause: error instanceof Error ? error.message : String(error) } },
       );
     }
     const parsedResult = PartialNlGatewayConfigSchema.safeParse(rawParsed);
@@ -153,10 +153,12 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
         "nl_gateway.invalid_config_schema",
         `Invalid NL gateway config schema at ${resolvedPath}`,
         {
-          details: parsedResult.error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
+          details: {
+            issues: parsedResult.error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            })),
+          },
         },
       );
     }

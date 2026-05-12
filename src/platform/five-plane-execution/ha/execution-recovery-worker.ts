@@ -1,7 +1,7 @@
 import {
   buildRecoveryCadence,
   type RecoveryCadence,
-  type RecoveryError,
+  type RecoveryReportError,
   type RecoveryReport,
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
@@ -51,7 +51,7 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
     const startedMs = Date.now();
     const tenantId = this.options.tenantId;
     const staleBefore = new Date(Date.parse(startedAt) - this.staleThresholdMs).toISOString();
-    const errors: RecoveryError[] = [];
+    const errors: RecoveryReportError[] = [];
 
     try {
       const activeCandidates = this.options.recoveryService.listRecoverableExecutingRuns(startedAt, tenantId);
@@ -99,7 +99,7 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
 
   private async applyRecoveryActions(
     candidates: readonly RuntimeRecoveryCandidate[],
-    errors: RecoveryError[],
+    errors: RecoveryReportError[],
   ): Promise<number> {
     const applyRecoveryDecision = this.options.recoveryService.applyRecoveryDecision;
     if (candidates.length === 0) {

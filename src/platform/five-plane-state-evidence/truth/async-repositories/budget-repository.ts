@@ -39,6 +39,7 @@ export interface BudgetReservationRow {
   status: string;
   expiresAt: string;
   createdAt: string;
+  version: number;
 }
 
 export interface BudgetSettlementRow {
@@ -253,7 +254,8 @@ export class AsyncBudgetRepository {
         resource_kind AS "resourceKind",
         status,
         expires_at AS "expiresAt",
-        created_at AS "createdAt"
+        created_at AS "createdAt",
+        0 AS version
        FROM budget_reservations
        WHERE budget_reservation_id = $1`,
       budgetReservationId,
@@ -263,12 +265,13 @@ export class AsyncBudgetRepository {
       budgetReservationId: row.budgetReservationId,
       budgetLedgerId: row.budgetLedgerId,
       harnessRunId: row.harnessRunId,
-      nodeRunId: row.nodeRunId ?? undefined,
       amount: row.amount,
       resourceKind: row.resourceKind as BudgetReservation["resourceKind"],
       status: row.status as BudgetReservation["status"],
       expiresAt: row.expiresAt,
       createdAt: row.createdAt,
+      version: row.version,
+      ...(row.nodeRunId != null ? { nodeRunId: row.nodeRunId } : {}),
     };
   }
 

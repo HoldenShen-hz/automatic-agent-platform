@@ -34,8 +34,12 @@ export function toDocumentedOrgNodeType(nodeType: OrgNodeType): DocumentedOrgNod
       return "enterprise";
     case "division":
       return "business_unit";
-    default:
-      return normalizeOrgNodeType(nodeType);
+    case "department":
+      return "department";
+    case "team":
+      return "team";
+    case "seat":
+      return "seat";
   }
 }
 
