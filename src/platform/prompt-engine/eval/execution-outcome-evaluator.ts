@@ -433,6 +433,8 @@ export class ExecutionOutcomeEvaluator {
       nextAction = "complete";
     } else if (feedback.outcome === "repairable") {
       nextAction = "replan";
+    } else if (feedback.outcome === "partial") {
+      nextAction = "approve";
     } else if (failureSignals.some((signal) => String(signal.payload.reasonCode ?? "").includes("approval"))) {
       nextAction = "approve";
     } else if (failureSignals.length > retryMaxFailures) {

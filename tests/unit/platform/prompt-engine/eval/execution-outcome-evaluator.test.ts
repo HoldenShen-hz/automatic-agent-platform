@@ -170,6 +170,33 @@ test("ExecutionOutcomeEvaluator handles partial signals correctly", () => {
   assert.ok(evaluation.qualityScore < 1.0);
 });
 
+test("ExecutionOutcomeEvaluator routes partial outcomes to approve without escalating", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_partial_approve",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "partial",
+    signals: [
+      {
+        signalId: "sig_partial_approve",
+        source: "validation",
+        taskId: "task_1",
+        category: "partial",
+        severity: "warning",
+        payload: { summary: "partial output", reasonCode: "validation.partial_completion" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  assert.equal(evaluation.nextAction, "approve");
+  assert.equal(evaluation.verdict, "approve");
+});
+
 test("ExecutionOutcomeEvaluator routes to approve when approval signal is present", () => {
   const evaluator = new ExecutionOutcomeEvaluator();
   const evaluation = evaluator.evaluate(plan, {
