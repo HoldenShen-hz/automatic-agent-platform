@@ -41,3 +41,22 @@ export {
   createScopedExternalAccessPolicy,
   createWorkspaceWritePolicy,
 } from "./sandbox-policy.js";
+export {
+  capabilitiesForRole,
+  defaultRolesForPrincipalType,
+  evaluateAuthorizationContext,
+  inferCapabilitiesForAction,
+  listPlatformPrincipalTypes,
+  listPlatformRoles,
+  resolvePrincipalAccessProfile,
+  roleGrantsCapabilities,
+} from "./access-model.js";
+export type {
+  AuthorizationAction,
+  AuthorizationContext,
+  AuthorizationContextDecision,
+  PlatformCapability,
+  PlatformPrincipalType,
+  PlatformRole,
+  PrincipalAccessProfile,
+} from "./access-model.js";

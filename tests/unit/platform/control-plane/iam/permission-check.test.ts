@@ -34,7 +34,7 @@ test("checkSandboxPath allows path within allowed roots", () => {
 
 test("checkSandboxPath denies path outside allowed roots", () => {
   const policy = makeSandboxPolicy({ allowedRoots: ["/workspace"], deniedRoots: [] });
-  const result = checkSandboxPath(policy, "/etc/passwd");
+  const result = checkSandboxPath(policy, "/tmp/anywhere.txt");
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
@@ -65,10 +65,11 @@ test("checkSandboxPath denies path traversal attempt", () => {
   assert.equal(result.allowed, false);
 });
 
-test("checkSandboxPath respects restricted_exec mode (skips allowed root boundary)", () => {
+test("checkSandboxPath restricted_exec still enforces allowed root boundary", () => {
   const policy = makeSandboxPolicy({ mode: "restricted_exec", allowedRoots: ["/workspace"] });
   const result = checkSandboxPath(policy, "/tmp/anywhere.txt");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
 test("checkSandboxPath restricted_exec still checks denied roots", () => {

@@ -35,12 +35,15 @@ export interface BillingRouteDeps {
   authService?: ApiAuthService | null;
 }
 
-function handleReconcileWebhook(ctx: import("./types.js").RouteContext, deps: BillingRouteDeps) {
+function handleReconcileWebhook(
+  ctx: import("./types.js").RouteContext,
+  deps: BillingRouteDeps,
+  payload: ReturnType<typeof parseBillingReconcilePayload>,
+) {
   const billingService = deps.billingService;
   if (billingService == null) {
     throw new ApiError(503, "api.billing_unavailable", "Billing service is not configured.");
   }
-  const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
 
   const authenticatedPrincipal = authenticateOptionalPrincipal(ctx.request, deps.authService ?? null);
   const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
@@ -70,7 +73,8 @@ export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/billing/webhooks/reconcile",
       handler: (ctx) => {
-        const response = handleReconcileWebhook(ctx, deps);
+        const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
+        const response = handleReconcileWebhook(ctx, deps, payload);
         // R14-20: Mark legacy route as deprecated
         response.headers["Deprecation"] = "true";
         response.headers["Sunset"] = "Sat, 31 Dec 2026 23:59:59 GMT";
@@ -81,7 +85,10 @@ export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
     {
       method: "POST",
       pathname: "/v1/billing/webhooks/reconcile",
-      handler: (ctx) => handleReconcileWebhook(ctx, deps),
+      handler: (ctx) => {
+        const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
+        return handleReconcileWebhook(ctx, deps, payload);
+      },
     },
   ];
 }

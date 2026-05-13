@@ -25,13 +25,15 @@ test("workspace and scoped external access policies keep root boundaries", () =>
   assert.equal(checkSandboxPath(scoped, "/etc/passwd").allowed, false);
 });
 
-test("restricted_exec skips allowed-root checks but still respects denied roots", () => {
+test("restricted_exec still enforces allowed-root checks and denied roots", () => {
   const policy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/root"),
     deniedRoots: ["/etc"],
   };
 
-  assert.equal(checkSandboxPath(policy, "/tmp/ephemeral.txt").allowed, true);
+  const outside = checkSandboxPath(policy, "/tmp/ephemeral.txt");
+  assert.equal(outside.allowed, false);
+  assert.equal(outside.reasonCode, "sandbox.path_outside_allowed_roots");
   const denied = checkSandboxPath(policy, "/etc/passwd");
   assert.equal(denied.allowed, false);
   assert.equal(denied.reasonCode, "sandbox.path_in_denied_root");

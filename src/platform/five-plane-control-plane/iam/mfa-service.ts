@@ -5,7 +5,7 @@
  * Implements MFA challenge/enrollment/verification flow.
  */
 
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 
 // ============================================================================
@@ -108,18 +108,18 @@ function generateTotpSecret(): string {
 function generateTotpCode(secret: string, timestamp: number = Date.now()): string {
   // In production, use a proper TOTP library (RFC 6238)
   // This is a simplified implementation for structure
-  const { createHmac } = require("node:crypto");
   const counter = Math.floor(timestamp / 30000); // 30-second window
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigInt64BE(BigInt(counter));
   const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
   const hash = hmac.update(counterBuffer).digest();
-  const offset = hash[hash.length - 1] & 0x0f;
+  const hashLen = hash.length;
+  const offset = (hash[hashLen - 1] ?? 0) & 0x0f;
   const binary =
-    ((hash[offset] & 0x7f) << 24) |
-    ((hash[offset + 1] & 0xff) << 16) |
-    ((hash[offset + 2] & 0xff) << 8) |
-    (hash[offset + 3] & 0xff);
+    ((hash[offset]! & 0x7f) << 24) |
+    ((hash[offset + 1]! & 0xff) << 16) |
+    ((hash[offset + 2]! & 0xff) << 8) |
+    (hash[offset + 3]! & 0xff);
   const otp = binary % 10 ** MFA_CODE_LENGTH;
   return otp.toString().padStart(MFA_CODE_LENGTH, "0");
 }
@@ -230,7 +230,10 @@ export function completeMfaEnrollment(input: {
     status: "active",
     createdAt: now,
     lastUsedAt: now,
-    metadata: Object.freeze({ enrollmentId: session.enrollmentId }),
+    metadata: Object.freeze({
+      enrollmentId: session.enrollmentId,
+      secret: session.secret,
+    }),
   };
 
   // Store credential
@@ -295,7 +298,7 @@ export function createMfaChallenge(input: {
 
   if (input.method === "totp") {
     // Generate code to be sent (in production, this goes through notification channel)
-    code = generateTotpCode(credential.credential.metadata["secret"] as string ?? generateTotpSecret());
+    code = generateTotpCode(credential.credential.metadata["secret"] as string);
   }
   // For sms/email, code would be sent through notification service
 
@@ -344,9 +347,18 @@ export function verifyMfaChallenge(input: {
     throw new ValidationError("mfa.credential_inactive", "mfa.credential_inactive");
   }
 
+  if (entry.lockedUntil !== null && entry.lockedUntil > now) {
+    return {
+      verified: false,
+      status: "locked",
+      attemptsRemaining: 0,
+      lockoutExpiresAt: entry.lockedUntil,
+    };
+  }
+
   // For TOTP, verify the code
   const expectedCode = generateTotpCode(
-    entry.credential.metadata["secret"] as string ?? generateTotpSecret(),
+    entry.credential.metadata["secret"] as string,
   );
 
   if (expectedCode !== input.code) {
@@ -354,7 +366,6 @@ export function verifyMfaChallenge(input: {
 
     if (entry.verificationFailures >= DEFAULT_MFA_POLICY.maxVerificationAttempts) {
       entry.lockedUntil = now + DEFAULT_MFA_POLICY.lockoutDurationMs;
-      verificationChallenges.delete(input.challengeId);
       return {
         verified: false,
         status: "locked",

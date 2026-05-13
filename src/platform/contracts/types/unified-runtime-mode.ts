@@ -29,7 +29,10 @@ export type PolicyRuntimeMode =
   | "auto"
   | "full-auto"
   | "read-only"
-  | "incident-mode";
+  | "incident-mode"
+  | "maintenance"
+  | "degraded"
+  | "emergency";
 
 export type InteractionAutonomyMode = "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
 
@@ -43,6 +46,12 @@ export function mapPolicyModeToUnifiedRuntimeMode(mode: PolicyRuntimeMode): Unif
       return "read_only";
     case "incident-mode":
       return "incident_mode";
+    case "maintenance":
+      return "no_rollout";
+    case "degraded":
+      return "no_external_call";
+    case "emergency":
+      return "no_write";
     default:
       return "manual_only";
   }

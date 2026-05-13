@@ -242,6 +242,16 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
 
   protected spawnChild(): void {
     this.beginSpawnLifecycle();
+    const execArgv = [
+      ...buildPluginRuntimeExecArgv({
+        isolation: this.isolation,
+        workspaceRoot: this.workspaceRoot,
+        sandboxPolicy: this.sandboxPolicy,
+        sandboxRoot: this.sandboxRoot,
+        env: process.env,
+      }),
+      ...buildTypeScriptRuntimeLoaderArgs(this.childModulePath),
+    ];
     const child = fork(this.childModulePath, [], {
       cwd: this.sandboxRoot ?? this.workspaceRoot,
       env: buildPluginRuntimeEnvironment({
@@ -250,13 +260,7 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         sandboxPolicy: this.sandboxPolicy,
         sandboxRoot: this.sandboxRoot,
       }),
-      execArgv: buildPluginRuntimeExecArgv({
-        isolation: this.isolation,
-        workspaceRoot: this.workspaceRoot,
-        sandboxPolicy: this.sandboxPolicy,
-        sandboxRoot: this.sandboxRoot,
-        env: process.env,
-      }),
+      execArgv,
       stdio: ["ignore", "ignore", "ignore", "ipc"],
     });
     this.attachChild(child, process.execPath, [this.childModulePath]);
@@ -632,6 +636,10 @@ function dedupeArgs(args: readonly string[]): string[] {
   return Array.from(new Set(args));
 }
 
+function buildTypeScriptRuntimeLoaderArgs(childModulePath: string): string[] {
+  return childModulePath.endsWith(".ts") ? ["--import", "tsx"] : [];
+}
+
 export function buildContainerizedPluginRuntimeLaunchSpec(
   options: BuildContainerizedPluginRuntimeLaunchSpecOptions,
 ): ContainerizedPluginRuntimeLaunchSpec {
@@ -677,7 +685,10 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
   }
 
   validateContainerLaunchPluginId(options.pluginId);
-  const rendered = template.map((value) => renderContainerizedToken(value, options));
+  const rendered = maybeInjectTypeScriptRuntimeLoader(
+    template.map((value) => renderContainerizedToken(value, options)),
+    options.childModulePath,
+  );
   if (rendered.length === 0 || rendered[0]!.trim().length === 0) {
     throw new ValidationError(
       "plugin_spi.container_launcher_empty_command",
@@ -714,4 +725,20 @@ function renderContainerizedToken(
     rendered = rendered.split(placeholder).join(value);
   }
   return rendered;
+}
+
+function maybeInjectTypeScriptRuntimeLoader(rendered: string[], childModulePath: string): string[] {
+  if (!childModulePath.endsWith(".ts")) {
+    return rendered;
+  }
+  const nodeIndex = rendered.findIndex((value) => value === process.execPath);
+  if (nodeIndex === -1) {
+    return rendered;
+  }
+  return [
+    ...rendered.slice(0, nodeIndex + 1),
+    "--import",
+    "tsx",
+    ...rendered.slice(nodeIndex + 1),
+  ];
 }

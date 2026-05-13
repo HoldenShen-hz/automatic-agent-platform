@@ -302,8 +302,8 @@ test("IamService denies when tenant scope is required but missing", () => {
 test("IamService allows when tenant scope is provided", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
-      principalType: "user",
-      roles: ["viewer"],
+      principalType: "service",
+      roles: ["service_operator"],
       action: "org_change",
       context: makeMockContext({ requiresTenantScope: true, tenantId: "tenant-123" }),
     }),

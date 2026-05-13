@@ -16,6 +16,9 @@ test("mapPolicyModeToUnifiedRuntimeMode keeps only the current policy modes", ()
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("auto"), "supervised_auto");
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("read-only"), "read_only");
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("incident-mode"), "incident_mode");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("maintenance"), "no_rollout");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("degraded"), "no_external_call");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("emergency"), "no_write");
 });
 
 test("mapHealthDegradationModeToUnifiedRuntimeMode still covers degradation ladders", () => {

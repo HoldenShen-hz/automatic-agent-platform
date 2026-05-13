@@ -145,9 +145,9 @@ test("mapPolicyModeToUnifiedRuntimeMode maps read-only to read_only", () => {
   assert.equal(result, "read_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to manual_only", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to no_rollout", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("maintenance");
-  assert.equal(result, "manual_only");
+  assert.equal(result, "no_rollout");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode to incident_mode", () => {
@@ -155,14 +155,14 @@ test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode to incident_mode", ()
   assert.equal(result, "incident_mode");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps degraded to manual_only", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps degraded to no_external_call", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("degraded");
-  assert.equal(result, "manual_only");
+  assert.equal(result, "no_external_call");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps emergency to manual_only", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps emergency to no_write", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("emergency");
-  assert.equal(result, "manual_only");
+  assert.equal(result, "no_write");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode falls back to manual_only for unknown values", () => {
@@ -263,7 +263,7 @@ test("full-auto policy mode and full_auto autonomy mode both map to full_auto", 
 test("emergency policy mode no longer matches suggestion autonomy", () => {
   const fromPolicy = mapPolicyModeToUnifiedRuntimeMode("emergency");
   const fromAutonomy = mapAutonomyLevelToUnifiedRuntimeMode("suggestion");
-  assert.equal(fromPolicy, "manual_only");
+  assert.equal(fromPolicy, "no_write");
   assert.equal(fromAutonomy, "no_write");
 });
 

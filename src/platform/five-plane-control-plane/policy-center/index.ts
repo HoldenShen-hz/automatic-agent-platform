@@ -305,22 +305,29 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.no_external_call"],
           explainSummary: "No-external-call mode allows local execution only.",
         };
-      case "no_rollout":
-        if (input.action === "advance_rollout") {
-          return {
-            constraints: { mode: normalizedMode, rolloutAllowed: false },
-            denyReason: "policy.no_rollout_mode_denied",
-            requiresApproval: false,
-            matchedRuleRefs: ["mode.no_rollout"],
-            explainSummary: "No-rollout mode blocks rollout changes.",
-          };
-        }
+      case "maintenance":
         return {
-          constraints: { mode: normalizedMode, rolloutAllowed: false },
+          constraints: { mode: normalizedMode, maintenanceWindow: true, rollbackAllowed: false },
+          denyReason: input.action === "advance_rollout" ? "policy.maintenance_mode_denied" : null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.maintenance"],
+          explainSummary: "Maintenance mode restricts rollout changes and sets maintenance window.",
+        };
+      case "degraded":
+        return {
+          constraints: { mode: normalizedMode, fallbackOnly: true, maxParallelism: 1 },
           denyReason: null,
           requiresApproval: false,
-          matchedRuleRefs: ["mode.no_rollout"],
-          explainSummary: "No-rollout mode keeps release changes gated.",
+          matchedRuleRefs: ["mode.degraded"],
+          explainSummary: "Degraded mode restricts to fallback execution with limited parallelism.",
+        };
+      case "emergency":
+        return {
+          constraints: { mode: normalizedMode, breakGlass: true, operatorAckRequired: input.subjectType !== "system" },
+          denyReason: null,
+          requiresApproval: input.subjectType !== "system",
+          matchedRuleRefs: ["mode.emergency"],
+          explainSummary: "Emergency mode enables break-glass procedures with operator acknowledgment.",
         };
       case "manual_only":
         return {
@@ -409,6 +416,7 @@ function validateRequest(input: PolicyDecisionRequest): void {
 }
 
 function buildAuditPayload(input: PolicyDecisionRequest): Record<string, unknown> {
+  const normalizedMode = normalizePolicyCenterMode(input.mode);
   return {
     decisionId: input.decisionId,
     taskId: input.taskId,
@@ -419,7 +427,8 @@ function buildAuditPayload(input: PolicyDecisionRequest): Record<string, unknown
     action: input.action,
     resourceRef: input.resourceRef ?? null,
     riskCategory: input.riskCategory,
-    mode: normalizePolicyCenterMode(input.mode),
+    mode: input.mode,
+    normalizedMode,
     requestedMode: input.mode,
     stage: input.stage,
     estimatedCostUsd: input.estimatedCostUsd ?? 0,

@@ -285,7 +285,7 @@ test("evaluateAuthorizationContext denies when tenant scope required but missing
 test("evaluateAuthorizationContext allows when tenant scope provided", () => {
   const decision = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
+    roles: ["human_operator"],
     action: "invoke_model",
     context: { requiresTenantScope: true, tenantId: "tenant-123" },
   });
@@ -403,7 +403,7 @@ test("evaluateAuthorizationContext allows action when capability is granted", ()
   const decision = evaluateAuthorizationContext({
     principalType: "worker",
     roles: ["worker_runtime"],
-    action: "tool:invoke", // worker_runtime has tool:invoke
+    action: "invoke_tool",
   });
 
   assert.equal(decision.allowed, true);
@@ -412,11 +412,10 @@ test("evaluateAuthorizationContext allows action when capability is granted", ()
 test("evaluateAuthorizationContext allows when rules match", () => {
   const decision = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
-    action: "invoke_model", // viewer doesn't have model:invoke
+    roles: ["human_operator"],
+    action: "invoke_model",
   });
 
-  // Implementation returns allow by default
   assert.equal(decision.allowed, true);
 });
 
@@ -427,11 +426,10 @@ test("evaluateAuthorizationContext allows when rules match", () => {
 test("evaluateAuthorizationContext handles missing context", () => {
   const decision = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
+    roles: ["human_operator"],
     action: "invoke_model",
   });
 
-  // Implementation returns allow by default
   assert.equal(decision.allowed, true);
 });
 

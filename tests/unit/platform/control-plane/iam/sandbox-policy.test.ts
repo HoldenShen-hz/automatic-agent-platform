@@ -23,7 +23,7 @@ test("createWorkspaceWritePolicy creates valid policy", () => {
   assert.equal(policy.mode, "workspace_write");
   assert.equal(policy.policyId, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace/root"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -70,7 +70,7 @@ test("checkSandboxPath allows path within allowed root", () => {
 
 test("checkSandboxPath denies path outside allowed root", () => {
   const policy = createWorkspaceWritePolicy("/workspace/root");
-  const result = checkSandboxPath(policy, "/etc/passwd");
+  const result = checkSandboxPath(policy, "/var/tmp/outside.txt");
 
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
@@ -122,15 +122,15 @@ test("checkSandboxPath rejects null byte in path", () => {
   assert.equal(result.reasonCode, "sandbox.path_invalid_encoding");
 });
 
-test("checkSandboxPath restricted_exec mode ignores allowed root boundary", () => {
+test("checkSandboxPath restricted_exec mode still enforces allowed root boundary", () => {
   const policy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/root"),
     deniedRoots: ["/etc"],
   };
 
-  // Should be allowed even though outside /workspace/root
   const result = checkSandboxPath(policy, "/tmp/ephemeral.txt");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 
   // But denied roots still apply
   const deniedResult = checkSandboxPath(policy, "/etc/passwd");
@@ -225,7 +225,7 @@ test("checkSandboxPath returns correct reason codes", () => {
   assert.equal(deniedResult.reasonCode, "sandbox.path_in_denied_root");
 
   // Outside allowed roots
-  const outsideResult = checkSandboxPath(policy, "/etc/file");
+  const outsideResult = checkSandboxPath(policy, "/var/tmp/file");
   assert.equal(outsideResult.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 

@@ -247,8 +247,7 @@ test("createWorkspaceWritePolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "workspace_write");
   assert.equal(policy.mode, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  // deniedRoots is empty array in implementation
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");

@@ -21,7 +21,41 @@ const RiskLevelActionSchema = z.object({
   evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
 });
 
-const RiskConfigSchema = z.object({
+const LegacyRiskConfigSchema = z.object({
+  factorWeights: z.object({
+    stepTypeRisk: z.number(),
+    targetSystemRisk: z.number(),
+    dataClassRisk: z.number(),
+    blastRadius: z.number(),
+    priorFailureRate: z.number(),
+    confidence: z.number(),
+  }),
+  stepTypeRiskValues: z.record(z.string(), z.number()),
+  targetSystemRiskValues: z.record(z.string(), z.number()),
+  dataClassRiskValues: z.record(z.string(), z.number()),
+  blastRadiusValues: z.record(z.string(), z.number()),
+  priorFailureRateThresholds: z.object({
+    low: z.object({ maxPercent: z.number(), value: z.number() }),
+    medium: z.object({ maxPercent: z.number(), value: z.number() }),
+    high: z.object({ maxPercent: z.number(), value: z.number() }),
+    critical: z.object({ maxPercent: z.number(), value: z.number() }),
+  }),
+  confidenceValues: z.record(z.string(), z.number()),
+  riskLevelThresholds: z.object({
+    low: z.number(),
+    medium: z.number(),
+    high: z.number(),
+    critical: z.number(),
+  }),
+  riskLevelActions: z.object({
+    low: RiskLevelActionSchema,
+    medium: RiskLevelActionSchema,
+    high: RiskLevelActionSchema,
+    critical: RiskLevelActionSchema,
+  }),
+});
+
+const CanonicalRiskConfigSchema = z.object({
   factorWeights: z.object({
     impact: z.number(),
     irreversibility: z.number(),
@@ -58,6 +92,8 @@ const RiskConfigSchema = z.object({
     critical: RiskLevelActionSchema,
   }),
 });
+
+const RiskConfigSchema = z.union([CanonicalRiskConfigSchema, LegacyRiskConfigSchema]);
 
 /**
  * Loads the risk configuration from the JSON config file.

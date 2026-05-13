@@ -23,7 +23,7 @@ test("IncidentDetector detects incidents from fail_closed checks as P1", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0]!.severity, "p1");
+  assert.equal(incidents[0]!.severity, "SEV1");
   assert.equal(incidents[0]!.category, "data_integrity");
   assert.equal(incidents[0]!.status, "open");
   assert.equal(incidents[0]!.title, "Critical failure in db");
@@ -45,7 +45,7 @@ test("IncidentDetector detects incidents from degraded checks as P2", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0]!.severity, "p2");
+  assert.equal(incidents[0]!.severity, "SEV2");
   assert.equal(incidents[0]!.category, "availability");
 });
 
@@ -66,7 +66,7 @@ test("IncidentDetector creates incidents with correct structure", () => {
   assert.match(incident.incidentId, /^incident_/);
   assert.equal(incident.detectedAt.length, 24); // ISO timestamp
   assert.equal(incident.category, "performance");
-  assert.equal(incident.severity, "p3");
+  assert.equal(incident.severity, "SEV3");
   assert.equal(incident.status, "open");
   assert.equal(incident.title, "High latency detected");
   assert.deepEqual(incident.symptoms, ["queue_starvation_detected"]);
@@ -77,20 +77,20 @@ test("IncidentDetector creates incidents with correct structure", () => {
 test("IncidentDetector classifies urgency correctly for all severity levels", () => {
   const detector = new IncidentDetector();
 
-  assert.equal(detector.classifyUrgency("p1"), "critical");
-  assert.equal(detector.classifyUrgency("p2"), "high");
-  assert.equal(detector.classifyUrgency("p3"), "medium");
-  assert.equal(detector.classifyUrgency("p4"), "low");
+  assert.equal(detector.classifyUrgency("SEV1"), "critical");
+  assert.equal(detector.classifyUrgency("SEV2"), "high");
+  assert.equal(detector.classifyUrgency("SEV3"), "medium");
+  assert.equal(detector.classifyUrgency("SEV4"), "low");
 });
 
 test("IncidentDetector shouldAutoEscalate returns true for P1 after threshold", () => {
   const detector = new IncidentDetector({ autoEscalateP1AfterSeconds: 300 });
 
   const oldP1DetectedAt = new Date(Date.now() - 400 * 1000).toISOString();
-  assert.equal(detector.shouldAutoEscalate(oldP1DetectedAt, "p1"), true);
+  assert.equal(detector.shouldAutoEscalate(oldP1DetectedAt, "SEV1"), true);
 
   const recentP1DetectedAt = new Date(Date.now() - 100 * 1000).toISOString();
-  assert.equal(detector.shouldAutoEscalate(recentP1DetectedAt, "p1"), false);
+  assert.equal(detector.shouldAutoEscalate(recentP1DetectedAt, "SEV1"), false);
 });
 
 test("IncidentDetector shouldAutoEscalate returns false for non-P1 incidents", () => {
@@ -98,9 +98,9 @@ test("IncidentDetector shouldAutoEscalate returns false for non-P1 incidents", (
 
   const detectedAt = new Date(Date.now() - 1000 * 1000).toISOString();
 
-  assert.equal(detector.shouldAutoEscalate(detectedAt, "p2"), false);
-  assert.equal(detector.shouldAutoEscalate(detectedAt, "p3"), false);
-  assert.equal(detector.shouldAutoEscalate(detectedAt, "p4"), false);
+  assert.equal(detector.shouldAutoEscalate(detectedAt, "SEV2"), false);
+  assert.equal(detector.shouldAutoEscalate(detectedAt, "SEV3"), false);
+  assert.equal(detector.shouldAutoEscalate(detectedAt, "SEV4"), false);
 });
 
 test("IncidentDetector maps check IDs to correct categories", () => {
@@ -191,8 +191,8 @@ test("IncidentDetector detects multiple incidents from multiple checks", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 3);
-  assert.equal(incidents.filter((i) => i.severity === "p1").length, 2);
-  assert.equal(incidents.filter((i) => i.severity === "p2").length, 1);
+  assert.equal(incidents.filter((i) => i.severity === "SEV1").length, 2);
+  assert.equal(incidents.filter((i) => i.severity === "SEV2").length, 1);
 });
 
 test("IncidentDetector options are applied correctly", () => {
@@ -213,7 +213,7 @@ test("IncidentDetector options are applied correctly", () => {
 
   const incidents = detector.detectFromChecks(checks);
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0]!.severity, "p1");
+  assert.equal(incidents[0]!.severity, "SEV1");
 });
 
 test("IncidentDetector creates incident with default values", () => {
@@ -221,7 +221,7 @@ test("IncidentDetector creates incident with default values", () => {
 
   const incident = detector.createIncident({
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     title: "Test incident",
     description: "Test description",
   });

@@ -30,7 +30,7 @@ test("sandbox-policy createWorkspaceWritePolicy creates valid policy", () => {
   assert.equal(policy.policyId, "workspace_write");
   assert.equal(policy.mode, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -72,7 +72,7 @@ test("sandbox-policy checkSandboxPath allows path within workspace", () => {
 
 test("sandbox-policy checkSandboxPath denies path outside allowed roots", () => {
   const policy = createWorkspaceWritePolicy("/workspace");
-  const result = checkSandboxPath(policy, "/etc/passwd");
+  const result = checkSandboxPath(policy, "/var/tmp/outside.txt");
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
@@ -106,9 +106,9 @@ test("sandbox-policy checkSandboxPath handles relative paths", () => {
   assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
-test("sandbox-policy checkSandboxPath restricted_exec mode does not enforce path boundary", () => {
+test("sandbox-policy checkSandboxPath restricted_exec mode still enforces path boundary", () => {
   const policy = createRestrictedExecPolicy("/workspace");
-  // restricted_exec mode does NOT enforce allowedRoots boundary - executor controls paths
-  const result = checkSandboxPath(policy, "/etc/passwd");
-  assert.equal(result.allowed, true);
+  const result = checkSandboxPath(policy, "/var/tmp/outside.txt");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });

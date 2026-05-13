@@ -27,10 +27,17 @@ test("Issue 1946: iam.index exports RBAC capability enforcement functions", () =
 });
 
 test("Issue 1946: iam.index exports RBAC types", () => {
-  assert.ok(typeof iam.PlatformPrincipalType === "string", "PlatformPrincipalType should be exported");
-  assert.ok(typeof iam.PlatformRole === "string", "PlatformRole should be exported");
-  assert.ok(typeof iam.PlatformCapability === "string", "PlatformCapability should be exported");
-  assert.ok(typeof iam.AuthorizationAction === "string", "AuthorizationAction should be exported");
+  const principalType: PlatformPrincipalType = "service";
+  const role: PlatformRole = "service_operator";
+  const capability: PlatformCapability = "execution:dispatch";
+  const action: AuthorizationAction = "dispatch_execution";
+  const context: AuthorizationContext = { environment: "workspace" };
+
+  assert.equal(principalType, "service");
+  assert.equal(role, "service_operator");
+  assert.equal(capability, "execution:dispatch");
+  assert.equal(action, "dispatch_execution");
+  assert.deepEqual(context, { environment: "workspace" });
 });
 
 test("Issue 1946: roleGrantsCapabilities verifies dispatch_execution requires execution:dispatch", () => {
