@@ -39,7 +39,10 @@ export type PolicyMode =
   | "auto"
   | "full-auto"
   | "read-only"
-  | "incident-mode";
+  | "incident-mode"
+  | "maintenance"
+  | "degraded"
+  | "emergency";
 export type OapeflirStage = "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release";
 export type PolicyDecision = "allow" | "deny" | "allow_with_constraints" | "escalate_for_approval";
 
@@ -305,7 +308,7 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.no_external_call"],
           explainSummary: "No-external-call mode allows local execution only.",
         };
-      case "maintenance":
+      case "no_rollout":
         return {
           constraints: { mode: normalizedMode, maintenanceWindow: true, rollbackAllowed: false },
           denyReason: input.action === "advance_rollout" ? "policy.maintenance_mode_denied" : null,
@@ -313,7 +316,7 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.maintenance"],
           explainSummary: "Maintenance mode restricts rollout changes and sets maintenance window.",
         };
-      case "degraded":
+      case "no_external_call":
         return {
           constraints: { mode: normalizedMode, fallbackOnly: true, maxParallelism: 1 },
           denyReason: null,
@@ -321,7 +324,7 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.degraded"],
           explainSummary: "Degraded mode restricts to fallback execution with limited parallelism.",
         };
-      case "emergency":
+      case "no_write":
         return {
           constraints: { mode: normalizedMode, breakGlass: true, operatorAckRequired: input.subjectType !== "system" },
           denyReason: null,
@@ -464,6 +467,12 @@ function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {
       return "read_only";
     case "incident-mode":
       return "incident_mode";
+    case "maintenance":
+      return "no_rollout";
+    case "degraded":
+      return "no_external_call";
+    case "emergency":
+      return "no_write";
     default:
       return normalizeUnifiedRuntimeMode(mode as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
   }

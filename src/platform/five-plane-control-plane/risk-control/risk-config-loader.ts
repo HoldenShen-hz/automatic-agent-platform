@@ -16,7 +16,7 @@ const RiskLevelActionSchema = z.object({
   autoExecute: z.boolean(),
   logLevel: z.enum(["info", "warn", "error", "critical"]),
   requiresApproval: z.boolean(),
-  approvalType: z.enum(["standard", "break_glass"]),
+  approvalType: z.enum(["standard", "break_glass"]).optional(),
   sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
   evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
 });

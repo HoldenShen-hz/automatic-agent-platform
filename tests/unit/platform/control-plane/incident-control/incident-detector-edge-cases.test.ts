@@ -23,7 +23,7 @@ test("IncidentDetector handles unknown check ID mapping to system_health", () =>
 
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0]!.category, "system_health");
-  assert.equal(incidents[0]!.severity, "p1");
+  assert.equal(incidents[0]!.severity, "SEV1");
 });
 
 test("IncidentDetector handles check with mixed case checkId", () => {
@@ -62,7 +62,7 @@ test("IncidentDetector handles audit_integrity check correctly", () => {
 
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0]!.category, "security");
-  assert.equal(incidents[0]!.severity, "p1");
+  assert.equal(incidents[0]!.severity, "SEV1");
 });
 
 test("IncidentDetector handles event_backlog check correctly", () => {
@@ -82,7 +82,7 @@ test("IncidentDetector handles event_backlog check correctly", () => {
 
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0]!.category, "performance");
-  assert.equal(incidents[0]!.severity, "p2");
+  assert.equal(incidents[0]!.severity, "SEV2");
 });
 
 test("IncidentDetector createIncident generates unique incident IDs", () => {
@@ -90,14 +90,14 @@ test("IncidentDetector createIncident generates unique incident IDs", () => {
 
   const incident1 = detector.createIncident({
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     title: "Test 1",
     description: "Test description 1",
   });
 
   const incident2 = detector.createIncident({
     category: "availability",
-    severity: "p2",
+    severity: "SEV2",
     title: "Test 2",
     description: "Test description 2",
   });
@@ -113,7 +113,7 @@ test("IncidentDetector createIncident sets detectedAt to current time", () => {
 
   const incident = detector.createIncident({
     category: "availability",
-    severity: "p3",
+    severity: "SEV3",
     title: "Test",
     description: "Test",
   });
@@ -129,7 +129,7 @@ test("IncidentDetector createIncident with empty symptoms array", () => {
 
   const incident = detector.createIncident({
     category: "configuration",
-    severity: "p3",
+    severity: "SEV3",
     title: "Config issue",
     description: "Configuration problem",
     symptoms: [],
@@ -143,7 +143,7 @@ test("IncidentDetector createIncident with empty affectedEntities array", () => 
 
   const incident = detector.createIncident({
     category: "configuration",
-    severity: "p3",
+    severity: "SEV3",
     title: "Config issue",
     description: "Configuration problem",
     affectedEntities: [],
@@ -157,7 +157,7 @@ test("IncidentDetector createIncident with empty metrics", () => {
 
   const incident = detector.createIncident({
     category: "configuration",
-    severity: "p3",
+    severity: "SEV3",
     title: "Config issue",
     description: "Configuration problem",
     metrics: {},
@@ -171,7 +171,7 @@ test("IncidentDetector shouldAutoEscalate handles edge case at exact threshold",
 
   // Exactly at threshold
   const detectedAt = new Date(Date.now() - 300 * 1000).toISOString();
-  const result = detector.shouldAutoEscalate(detectedAt, "p1");
+  const result = detector.shouldAutoEscalate(detectedAt, "SEV1");
 
   // At exactly the threshold, it should return true (>= comparison)
   assert.equal(result, true);
@@ -182,7 +182,7 @@ test("IncidentDetector shouldAutoEscalate handles P1 just under threshold", () =
 
   // Just under threshold (299 seconds)
   const detectedAt = new Date(Date.now() - 299 * 1000).toISOString();
-  const result = detector.shouldAutoEscalate(detectedAt, "p1");
+  const result = detector.shouldAutoEscalate(detectedAt, "SEV1");
 
   assert.equal(result, false);
 });
@@ -192,7 +192,7 @@ test("IncidentDetector shouldAutoEscalate handles very old P1", () => {
 
   // Very old (1 hour)
   const detectedAt = new Date(Date.now() - 3600 * 1000).toISOString();
-  const result = detector.shouldAutoEscalate(detectedAt, "p1");
+  const result = detector.shouldAutoEscalate(detectedAt, "SEV1");
 
   assert.equal(result, true);
 });
@@ -200,10 +200,10 @@ test("IncidentDetector shouldAutoEscalate handles very old P1", () => {
 test("IncidentDetector classifyUrgency is exhaustive for all severity levels", () => {
   const detector = new IncidentDetector();
 
-  const p1Urgency = detector.classifyUrgency("p1");
-  const p2Urgency = detector.classifyUrgency("p2");
-  const p3Urgency = detector.classifyUrgency("p3");
-  const p4Urgency = detector.classifyUrgency("p4");
+  const p1Urgency = detector.classifyUrgency("SEV1");
+  const p2Urgency = detector.classifyUrgency("SEV2");
+  const p3Urgency = detector.classifyUrgency("SEV3");
+  const p4Urgency = detector.classifyUrgency("SEV4");
 
   assert.equal(p1Urgency, "critical");
   assert.equal(p2Urgency, "high");
@@ -223,7 +223,7 @@ test("IncidentDetector detectFromChecks handles multiple fail_closed checks", ()
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 3);
-  assert.ok(incidents.every(i => i.severity === "p1"));
+  assert.ok(incidents.every(i => i.severity === "SEV1"));
 });
 
 test("IncidentDetector detectFromChecks handles mixed status checks", () => {
@@ -238,8 +238,8 @@ test("IncidentDetector detectFromChecks handles mixed status checks", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 2);
-  assert.equal(incidents.filter(i => i.severity === "p1").length, 1);
-  assert.equal(incidents.filter(i => i.severity === "p2").length, 1);
+  assert.equal(incidents.filter(i => i.severity === "SEV1").length, 1);
+  assert.equal(incidents.filter(i => i.severity === "SEV2").length, 1);
 });
 
 test("IncidentDetector options default values are applied", () => {
@@ -248,7 +248,7 @@ test("IncidentDetector options default values are applied", () => {
   // Verify default options work by creating incidents
   const incident = detector.createIncident({
     category: "availability",
-    severity: "p1",
+    severity: "SEV1",
     title: "Test",
     description: "Test",
   });

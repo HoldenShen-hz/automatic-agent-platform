@@ -14,7 +14,7 @@ import {
   simplifyExplanation,
   formatAsMarkdown,
   formatAsNotification,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/ops-maturity/explainability/index.js";
+} from "../../../../src/ops-maturity/explainability/index.js";
 
 /**
  * Test that simplifyText produces consistent results across multiple calls.

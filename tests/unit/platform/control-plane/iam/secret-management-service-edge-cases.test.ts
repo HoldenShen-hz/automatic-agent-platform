@@ -155,6 +155,7 @@ test("secret management service throws ProviderError when provider is not regist
       scopeType: "system",
       scopeRef: "system.unknown-provider",
       rotationPolicy: { cadenceDays: 30, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
 
     await assert.rejects(
@@ -164,6 +165,9 @@ test("secret management service throws ProviderError when provider is not regist
           requestedBy: "test",
           grantedTo: "test",
           usagePurpose: "test",
+        }, {
+          callerScopeType: "system",
+          callerScopeRef: "system.unknown-provider",
         }),
       (err: any) => err.code === "secret.provider_not_registered:kms",
     );
@@ -256,6 +260,9 @@ test("secret management service buildAuditSummary returns complete audit trail",
       requestedBy: "ops.audit",
       grantedTo: "test-worker",
       usagePurpose: "audit_test",
+    }, {
+      callerScopeType: "system",
+      callerScopeRef: "system.audit",
     });
 
     const summary = service.buildAuditSummary("secret://system/audit/test", "2026-04-20T00:00:00.000Z");

@@ -429,12 +429,12 @@ export class DurableEventBus {
       },
     );
 
-    // Tier-1 events still use the polling fan-out mechanism (scheduleFanOut)
-    // which is intentionally decoupled for reliability at the cost of immediacy.
-    // Non-tier-1 events were already dispatched atomically inside the transaction above.
-    if (eventRecord.eventTier === "tier_1") {
-      this.scheduleFanOut();
-    }
+    // Tier-1 events use polling-based delivery; tier-2/3 events are dispatched
+    // atomically but still need scheduleFanOut to trigger processPartitionQueue.
+    // Previously scheduleFanOut was only called for tier-1, causing tier-2/3 volatile
+    // delivery to never actually deliver events to handlers (dispatchVolatileAtomic only
+    // enqueued to pendingPartitionEvents but never triggered processPartitionQueue).
+    this.scheduleFanOut();
 
     return eventRecord;
   }

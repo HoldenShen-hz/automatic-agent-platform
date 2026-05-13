@@ -18,7 +18,7 @@ import {
 // Detection Rule Tests - using actual implementation methods
 // ============================================================================
 
-test("IncidentDetector detectFromChecks detects fail_closed as p1 incident", () => {
+test("IncidentDetector detectFromChecks detects fail_closed as SEV1 incident", () => {
   const detector = new IncidentDetector();
   const checks = [{
     checkId: "db",
@@ -31,11 +31,11 @@ test("IncidentDetector detectFromChecks detects fail_closed as p1 incident", () 
   const incidents = detector.detectFromChecks(checks);
 
   assert.strictEqual(incidents.length, 1);
-  assert.strictEqual(incidents[0]?.severity, "p1");
+  assert.strictEqual(incidents[0]?.severity, "SEV1");
   assert.strictEqual(incidents[0]?.category, "data_integrity");
 });
 
-test("IncidentDetector detectFromChecks detects degraded as p2 incident", () => {
+test("IncidentDetector detectFromChecks detects degraded as SEV2 incident", () => {
   const detector = new IncidentDetector();
   const checks = [{
     checkId: "workers",
@@ -48,7 +48,7 @@ test("IncidentDetector detectFromChecks detects degraded as p2 incident", () => 
   const incidents = detector.detectFromChecks(checks);
 
   assert.strictEqual(incidents.length, 1);
-  assert.strictEqual(incidents[0]?.severity, "p2");
+  assert.strictEqual(incidents[0]?.severity, "SEV2");
   assert.strictEqual(incidents[0]?.category, "availability");
 });
 
@@ -91,24 +91,24 @@ test("IncidentDetector detectFromChecks includes metrics in incident", () => {
 // Severity Mapping Tests
 // ============================================================================
 
-test("IncidentDetector classifyUrgency for p1 returns critical", () => {
+test("IncidentDetector classifyUrgency for SEV1 returns critical", () => {
   const detector = new IncidentDetector();
-  assert.strictEqual(detector.classifyUrgency("p1"), "critical");
+  assert.strictEqual(detector.classifyUrgency("SEV1"), "critical");
 });
 
-test("IncidentDetector classifyUrgency for p2 returns high", () => {
+test("IncidentDetector classifyUrgency for SEV2 returns high", () => {
   const detector = new IncidentDetector();
-  assert.strictEqual(detector.classifyUrgency("p2"), "high");
+  assert.strictEqual(detector.classifyUrgency("SEV2"), "high");
 });
 
-test("IncidentDetector classifyUrgency for p3 returns medium", () => {
+test("IncidentDetector classifyUrgency for SEV3 returns medium", () => {
   const detector = new IncidentDetector();
-  assert.strictEqual(detector.classifyUrgency("p3"), "medium");
+  assert.strictEqual(detector.classifyUrgency("SEV3"), "medium");
 });
 
-test("IncidentDetector classifyUrgency for p4 returns low", () => {
+test("IncidentDetector classifyUrgency for SEV4 returns low", () => {
   const detector = new IncidentDetector();
-  assert.strictEqual(detector.classifyUrgency("p4"), "low");
+  assert.strictEqual(detector.classifyUrgency("SEV4"), "low");
 });
 
 // ============================================================================
@@ -121,19 +121,19 @@ test("IncidentDetector shouldAutoEscalate respects custom threshold", () => {
   const oldTime = new Date(Date.now() - 700 * 1000).toISOString(); // 700 seconds ago
   const recentTime = new Date(Date.now() - 300 * 1000).toISOString(); // 300 seconds ago
 
-  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "p1"), true);
-  assert.strictEqual(detector.shouldAutoEscalate(recentTime, "p1"), false);
+  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "SEV1"), true);
+  assert.strictEqual(detector.shouldAutoEscalate(recentTime, "SEV1"), false);
 });
 
-test("IncidentDetector shouldAutoEscalate only applies to p1", () => {
+test("IncidentDetector shouldAutoEscalate only applies to SEV1", () => {
   const detector = new IncidentDetector({ autoEscalateP1AfterSeconds: 300 });
 
   const oldTime = new Date(Date.now() - 400 * 1000).toISOString();
 
-  // Non-p1 incidents should never auto-escalate
-  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "p2"), false);
-  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "p3"), false);
-  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "p4"), false);
+  // Non-SEV1 incidents should never auto-escalate
+  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "SEV2"), false);
+  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "SEV3"), false);
+  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "SEV4"), false);
 });
 
 test("IncidentDetector shouldAutoEscalate calculates time correctly", () => {
@@ -143,7 +143,7 @@ test("IncidentDetector shouldAutoEscalate calculates time correctly", () => {
   const pastThreshold = new Date(Date.now() - 300001).toISOString();
 
   // Past threshold should escalate
-  assert.strictEqual(detector.shouldAutoEscalate(pastThreshold, "p1"), true);
+  assert.strictEqual(detector.shouldAutoEscalate(pastThreshold, "SEV1"), true);
 });
 
 // ============================================================================
@@ -155,7 +155,7 @@ test("IncidentDetector createIncident with all optional fields", () => {
 
   const incident = detector.createIncident({
     category: "security",
-    severity: "p1",
+    severity: "SEV1",
     title: "Security Breach",
     description: "Unauthorized access detected",
     sourceCheckId: "audit_integrity",
@@ -165,7 +165,7 @@ test("IncidentDetector createIncident with all optional fields", () => {
   });
 
   assert.strictEqual(incident.category, "security");
-  assert.strictEqual(incident.severity, "p1");
+  assert.strictEqual(incident.severity, "SEV1");
   assert.strictEqual(incident.title, "Security Breach");
   assert.strictEqual(incident.sourceCheckId, "audit_integrity");
   assert.strictEqual(incident.symptoms.length, 2);
@@ -178,7 +178,7 @@ test("IncidentDetector createIncident sets status to open", () => {
 
   const incident = detector.createIncident({
     category: "system_health",
-    severity: "p1",
+    severity: "SEV1",
     title: "Test",
     description: "Test",
   });
@@ -339,8 +339,8 @@ test("IncidentDetector uses custom autoEscalateP1AfterSeconds", () => {
   const oldTime = new Date(Date.now() - 700 * 1000).toISOString();
   const recentTime = new Date(Date.now() - 300 * 1000).toISOString();
 
-  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "p1"), true);
-  assert.strictEqual(detector.shouldAutoEscalate(recentTime, "p1"), false);
+  assert.strictEqual(detector.shouldAutoEscalate(oldTime, "SEV1"), true);
+  assert.strictEqual(detector.shouldAutoEscalate(recentTime, "SEV1"), false);
 });
 
 // ============================================================================
@@ -356,7 +356,7 @@ test("IncidentDetector detectFromChecks handles checks with multiple issues", ()
 
   const incidents = detector.detectFromChecks(checks);
 
-  // Should detect: db fail_closed -> p1, workers degraded -> p2
+  // Should detect: db fail_closed -> SEV1, workers degraded -> SEV2
   assert.strictEqual(incidents.length, 2);
 });
 

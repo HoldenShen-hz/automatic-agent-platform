@@ -98,12 +98,16 @@ test("HealthDegradationMode accepts read_only_operations_only", () => {
 
 test("PolicyRuntimeMode accepts all valid values", () => {
   const modes: PolicyRuntimeMode[] = [
+    "supervised",
     "auto",
     "full-auto",
     "read-only",
+    "maintenance",
     "incident-mode",
+    "degraded",
+    "emergency",
   ];
-  assert.equal(modes.length, 4);
+  assert.equal(modes.length, 8);
 });
 
 // ---------------------------------------------------------------------------
@@ -260,7 +264,7 @@ test("full-auto policy mode and full_auto autonomy mode both map to full_auto", 
   assert.equal(fromPolicy, fromAutonomy);
 });
 
-test("emergency policy mode no longer matches suggestion autonomy", () => {
+test("emergency policy mode maps to no_write (same as suggestion autonomy)", () => {
   const fromPolicy = mapPolicyModeToUnifiedRuntimeMode("emergency");
   const fromAutonomy = mapAutonomyLevelToUnifiedRuntimeMode("suggestion");
   assert.equal(fromPolicy, "no_write");

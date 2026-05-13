@@ -6,7 +6,10 @@ export type UnifiedRuntimeMode =
   | "no_external_call"
   | "no_rollout"
   | "manual_only"
-  | "incident_mode";
+  | "incident_mode"
+  | "maintenance"
+  | "degraded"
+  | "emergency";
 
 export type DocumentedUnifiedRuntimeMode =
   | "full-auto"
@@ -109,6 +112,12 @@ export function normalizeUnifiedRuntimeMode(mode: UnifiedRuntimeMode | Documente
       return "manual_only";
     case "incident-mode":
       return "incident_mode";
+    case "maintenance":
+      return "maintenance";
+    case "degraded":
+      return "degraded";
+    case "emergency":
+      return "emergency";
     default:
       return mode;
   }

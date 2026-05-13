@@ -631,8 +631,8 @@ test("mapPolicyModeToUnifiedRuntimeMode maps read-only", () => {
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("read-only"), "read_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to manual_only", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("maintenance"), "manual_only");
+test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to no_rollout", () => {
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("maintenance"), "no_rollout");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode", () => {
@@ -640,11 +640,11 @@ test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode", () => {
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps degraded", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("degraded"), "manual_only");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("degraded"), "no_external_call");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps emergency to manual_only", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("emergency"), "manual_only");
+test("mapPolicyModeToUnifiedRuntimeMode maps emergency to no_write", () => {
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("emergency"), "no_write");
 });
 
 test("mapHealthDegradationModeToUnifiedRuntimeMode maps none to full_auto", () => {

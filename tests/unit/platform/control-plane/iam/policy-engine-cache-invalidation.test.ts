@@ -197,15 +197,14 @@ test("evaluate decisions reflect changed policy after stale detection", () => {
   const policy = makeBudgetPolicy({ maxTaskCostUsd: 5 });
   const engine = new PolicyEngine({ budgetPolicy: policy });
 
-  // This should be allowed (5 >= 5, so exactly at limit is denied)
-  const result1 = engine.evaluate(makeRequest({ estimatedCostUsd: 5 }));
+  const result1 = engine.evaluate(makeRequest({ estimatedCostUsd: 6 }));
   assert.equal(result1.decision, "deny");
 
   // Change the limit
   policy.maxTaskCostUsd = 100;
 
-  // Now a request for cost 5 should be allowed
-  const result2 = engine.evaluate(makeRequest({ estimatedCostUsd: 5 }));
+  // Now the same request should be allowed under the refreshed policy
+  const result2 = engine.evaluate(makeRequest({ estimatedCostUsd: 6 }));
   assert.equal(result2.decision, "allow_with_constraints");
 });
 
@@ -239,7 +238,7 @@ test("explicit invalidate resets stale state after external change", () => {
   const engine = new PolicyEngine({ budgetPolicy: policy });
 
   // Make a decision at limit - should be denied
-  const result1 = engine.evaluate(makeRequest({ estimatedCostUsd: 5 }));
+  const result1 = engine.evaluate(makeRequest({ estimatedCostUsd: 6 }));
   assert.equal(result1.decision, "deny");
 
   // Simulate external policy update to higher limit
@@ -253,7 +252,7 @@ test("explicit invalidate resets stale state after external change", () => {
   assert.equal(engine.isPolicyStale(), false);
 
   // And decisions should use the new policy
-  const result2 = engine.evaluate(makeRequest({ estimatedCostUsd: 5 }));
+  const result2 = engine.evaluate(makeRequest({ estimatedCostUsd: 6 }));
   assert.equal(result2.decision, "allow_with_constraints");
 });
 

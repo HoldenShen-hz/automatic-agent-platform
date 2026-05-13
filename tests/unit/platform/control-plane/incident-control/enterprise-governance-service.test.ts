@@ -200,6 +200,9 @@ function createHarness(prefix: string) {
     manifestChecksum: "checksum",
     lifecycleState: "enabled",
     reviewRequired: 1,
+    sbomVerified: 0,
+    sandboxCertVerified: 0,
+    egressPolicyCompliant: 0,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   });
