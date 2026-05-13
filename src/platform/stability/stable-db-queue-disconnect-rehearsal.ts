@@ -187,7 +187,7 @@ function seedTaskExecutionWorkflowAndSession(
  * Seeds a worker with specific capabilities for dispatch scenarios.
  * The worker is registered with "bash" capability to match test requirements.
  */
-function seedWorker(store: AuthoritativeTaskStore): void {
+function seedWorker(store: AuthoritativeTaskStore, occurredAt = "2026-04-07T12:00:00.000Z"): void {
   const workers = new WorkerRegistryService(store);
   workers.recordHeartbeat({
     workerId: "worker-db-queue-disconnect",
@@ -197,7 +197,7 @@ function seedWorker(store: AuthoritativeTaskStore): void {
     maxConcurrency: 1,
     queueAffinity: "default",
     runtimeInstanceId: "runtime-db-queue-disconnect-1",
-    occurredAt: "2026-04-07T12:00:00.000Z",
+    occurredAt,
   });
 }
 
@@ -223,7 +223,7 @@ async function runQueueDisconnectDegradeScenario(outputDir: string): Promise<Sta
       executionId: "exec-queue-disconnect-degrade",
       traceId: "trace-queue-disconnect-degrade",
     });
-    seedWorker(store);
+    seedWorker(store, "2026-04-07T12:00:00.000Z");
 
     // Configure dispatch with unavailable queue to simulate disconnect
     const dispatch = new ExecutionDispatchService(
@@ -374,7 +374,7 @@ async function runAuthoritativeWritebackFailureScenario(
       executionId: "exec-queue-disconnect-writeback",
       traceId: "trace-queue-disconnect-writeback",
     });
-    seedWorker(store);
+    seedWorker(store, "2026-04-07T12:20:00.000Z");
 
     // Create and dispatch ticket
     const created = dispatch.createTicket({

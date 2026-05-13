@@ -6,10 +6,62 @@ import { validateBusinessPackManifest } from "../pack-sdk/index.js";
 import {
   PluginManifestSchema,
   type PluginManifest,
+  type PluginSpiType,
 } from "../../domains/registry/plugin-spi.js";
 
+const VALID_SPI_TYPES = new Set<PluginSpiType>(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
+const VALID_TRUST_LEVELS = new Set(["internal", "trusted", "community", "unverified"]);
+
+function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
+  const raw = manifest as PluginManifest & {
+    spiType?: string;
+    type?: string;
+    domainId?: string;
+  };
+  const pluginId = typeof raw.pluginId === "string" ? raw.pluginId : "";
+  const spiTypes = Array.isArray(raw.spiTypes)
+    ? raw.spiTypes.filter((spiType): spiType is PluginSpiType => VALID_SPI_TYPES.has(spiType))
+    : [];
+  const legacySpiType = typeof raw.spiType === "string" && VALID_SPI_TYPES.has(raw.spiType as PluginSpiType)
+    ? raw.spiType as PluginSpiType
+    : typeof raw.type === "string" && VALID_SPI_TYPES.has(raw.type as PluginSpiType)
+      ? raw.type as PluginSpiType
+      : null;
+
+  return {
+    pluginId,
+    name: typeof raw.name === "string" ? raw.name : "",
+    version: typeof raw.version === "string" ? raw.version : "",
+    owner: typeof raw.owner === "string" && raw.owner.trim().length > 0 ? raw.owner : "sdk-workbench",
+    domainIds: Array.isArray(raw.domainIds)
+      ? raw.domainIds.filter((domainId): domainId is string => typeof domainId === "string" && domainId.length > 0)
+      : typeof raw.domainId === "string" && raw.domainId.length > 0
+        ? [raw.domainId]
+        : [],
+    capabilityIds: Array.isArray(raw.capabilityIds)
+      ? raw.capabilityIds.filter((capabilityId): capabilityId is string => typeof capabilityId === "string" && capabilityId.length > 0)
+      : [],
+    spiTypes: spiTypes.length > 0
+      ? spiTypes
+      : legacySpiType != null
+        ? [legacySpiType]
+        : ["tool"],
+    extensionKind: raw.extensionKind === "external_adapter" ? "external_adapter" : "domain_plugin",
+    trustLevel: typeof raw.trustLevel === "string" && VALID_TRUST_LEVELS.has(raw.trustLevel)
+      ? raw.trustLevel
+      : "trusted",
+    publicSdkSurface: typeof raw.publicSdkSurface === "string" && raw.publicSdkSurface.trim().length > 0
+      ? raw.publicSdkSurface
+      : `${pluginId || "plugin"}.sdk`,
+    settingsSchema: raw.settingsSchema != null && typeof raw.settingsSchema === "object" && !Array.isArray(raw.settingsSchema)
+      ? raw.settingsSchema as Record<string, unknown>
+      : {},
+    sandbox: raw.sandbox,
+  };
+}
+
 function validatePluginManifest(manifest: PluginManifest): PluginManifest {
-  const parsed = PluginManifestSchema.safeParse(manifest);
+  const parsed = PluginManifestSchema.safeParse(normalizePluginManifest(manifest));
   if (!parsed.success) {
     throw new ValidationError(
       "sdk_workbench.invalid_plugin_manifest",

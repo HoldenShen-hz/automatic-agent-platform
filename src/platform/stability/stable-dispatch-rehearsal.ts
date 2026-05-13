@@ -372,7 +372,7 @@ async function runDispatchAfterScenario(outputDir: string): Promise<StableDispat
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-04T10:00:00.000Z",
+      occurredAt: "2026-04-04T10:04:45.000Z",
     });
 
     dispatch.createTicket({

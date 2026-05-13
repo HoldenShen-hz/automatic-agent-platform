@@ -19,16 +19,18 @@ export * from './project-memory-store.js';
 export * from './user-memory-store.js';
 export * from './memory-promotion-engine.js';
 export {
-  KnowledgePromotionTier,
-  PromotionStatus,
-  KnowledgeLineage,
-  KnowledgeLineageMetadata,
-  VerificationStatus,
-  PromotionCandidate,
-  PromotionRequest,
-  PromotionRule,
   DEFAULT_PROMOTION_RULES,
   KnowledgePromotionService,
+} from './knowledge-promotion-service.js';
+export type {
+  KnowledgePromotionTier,
+  PromotionStatus,
+  VerificationStatus,
+  PromotionRule,
+  KnowledgeLineage,
+  KnowledgeLineageMetadata,
+  PromotionCandidate,
+  PromotionRequest,
 } from './knowledge-promotion-service.js';
 export * from './memory-write-request.js';
 export * from './layer-transition-service.js';

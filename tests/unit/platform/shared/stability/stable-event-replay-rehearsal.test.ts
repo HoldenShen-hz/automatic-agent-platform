@@ -15,7 +15,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-event-replay-rehearsal.js";
 
 function createTempDir(): string {
-  return join("/tmp", `event-replay-test-${Date.now()}`);
+  return join("/tmp", `event-replay-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
 test("runStableEventReplayRehearsal executes the scenario successfully", async () => {

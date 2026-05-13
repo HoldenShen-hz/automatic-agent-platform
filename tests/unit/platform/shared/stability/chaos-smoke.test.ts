@@ -19,7 +19,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-chaos-smoke.js";
 
 function createTempDir(): string {
-  const dir = join("/tmp", `chaos-smoke-test-${Date.now()}`);
+  const dir = join("/tmp", `chaos-smoke-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   return dir;
 }
 

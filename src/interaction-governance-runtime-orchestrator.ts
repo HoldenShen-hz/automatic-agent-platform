@@ -62,7 +62,7 @@ function buildDependencyServiceIds(
 }
 
 export class InteractionGovernanceRuntimeOrchestrator {
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
   public prepare(): InteractionGovernanceStartupPlan {
     registerInteractionBootstrap(this.registry);
@@ -113,7 +113,7 @@ export class InteractionGovernanceRuntimeOrchestrator {
 }
 
 export function registerInteractionGovernanceRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): InteractionGovernanceRuntimeOrchestrator {
   registerInteractionBootstrap(registry);
   registerGovernanceBootstrap(registry);

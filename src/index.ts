@@ -15,6 +15,7 @@ import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
 import { StructuredLogger } from "./platform/shared/observability/structured-logger.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
@@ -390,8 +391,11 @@ export function buildPlatformRootSummary(
   };
 }
 
-export async function runPlatformStartupPlan(targetKind: Extract<PlatformStartupTargetKind, PlatformAppKind>): Promise<void> {
-  const kernel = getPlatformApplicationKernel();
+export async function runPlatformStartupPlan(
+  targetKind: Extract<PlatformStartupTargetKind, PlatformAppKind>,
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+): Promise<void> {
+  const kernel = getPlatformApplicationKernel(registry);
   const plan = kernel.buildStartupPlan(targetKind);
   console.log(JSON.stringify(plan, null, 2));
 }

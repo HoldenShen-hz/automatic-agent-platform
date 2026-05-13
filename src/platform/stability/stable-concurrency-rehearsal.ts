@@ -78,6 +78,12 @@ export interface StableConcurrencyRehearsalReport {
   scenarios: StableConcurrencyScenarioResult[];
 }
 
+function createRehearsalChecker(db: SqliteDatabase, store: AuthoritativeTaskStore): StartupConsistencyChecker {
+  return new StartupConsistencyChecker(db, store, {
+    toolMetadataValidator: () => [],
+  });
+}
+
 /**
  * Writes a value as formatted JSON to a file, creating parent directories as needed.
  * @param path - File path to write to
@@ -234,13 +240,22 @@ async function runExpiredLockReleased(outputDir: string): Promise<StableConcurre
       updatedAt: "2026-04-03T10:00:00.000Z",
     });
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({ now: "2026-04-03T10:10:00.000Z" });
-    const applied = await repair.apply(before);
-    const after = checker.run({ now: "2026-04-03T10:10:00.000Z" });
-    const remainingLocks = store.lock.listExpiredFileLocks("2026-04-03T10:10:00.000Z");
-    db.close();
+    let before;
+    let applied;
+    let after;
+    let remainingLocks;
+
+    try {
+      before = checker.run({ now: "2026-04-03T10:10:00.000Z" });
+      applied = await repair.apply(before);
+      after = checker.run({ now: "2026-04-03T10:10:00.000Z" });
+      remainingLocks = store.lock.listExpiredFileLocks("2026-04-03T10:10:00.000Z");
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:
@@ -291,7 +306,7 @@ async function runActiveExecutionConflictFailClosed(outputDir: string): Promise<
       attempt: 2,
     });
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const report = checker.run({ now: "2026-04-03T10:10:00.000Z" });
     db.close();
 

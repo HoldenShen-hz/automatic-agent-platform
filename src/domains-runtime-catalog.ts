@@ -28,7 +28,7 @@ export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
 }
 
 export function registerDomainsRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): DomainsRuntimeCatalog {
   const existing = catalogInstances.get(registry);
   if (existing != null) {

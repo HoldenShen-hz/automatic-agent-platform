@@ -767,6 +767,8 @@ export class OapeflirLoopService {
           return {
             decisionId: newId("harness_decision"),
             harnessDecisionId: newId("harness_decision"),
+            decisionKind: "abort" as const,
+            reasonCode: guardViolation,
             action: "abort" as const,
             reasonCodes: [guardViolation],
             confidence: 0,
@@ -774,13 +776,17 @@ export class OapeflirLoopService {
           };
         }
 
+        const reasonCodes = loopReplanDecision.shouldReplan
+          ? ["oapeflir.replan_decision", "harness.loop_continue"]
+          : ["oapeflir.accept_decision", "harness.loop_continue"];
+        const reasonCode = reasonCodes[0] ?? "harness.accepted";
         return {
           decisionId: newId("harness_decision"),
           harnessDecisionId: newId("harness_decision"),
+          decisionKind: loopReplanDecision.shouldReplan ? "replan" as const : "approve" as const,
+          reasonCode,
           action: loopReplanDecision.shouldReplan ? "replan" : "accept",
-          reasonCodes: loopReplanDecision.shouldReplan
-            ? ["oapeflir.replan_decision", "harness.loop_continue"]
-            : ["oapeflir.accept_decision", "harness.loop_continue"],
+          reasonCodes,
           confidence: 0.95,
           createdAt: nowIso(),
         };

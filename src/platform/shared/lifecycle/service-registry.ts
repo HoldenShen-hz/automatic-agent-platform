@@ -121,12 +121,6 @@ export class ServiceRegistry {
       instance,
       registration: this.services.get(name),
     }));
-    this.instances.clear();
-    this.services.clear();
-    this.initializing.clear();
-    ServiceRegistry.liveRegistries.delete(this);
-    ServiceRegistry._instance = null;
-
     const pending: Promise<void>[] = [];
     for (const { name, instance, registration } of teardownEntries) {
       if (registration?.teardown) {
@@ -143,6 +137,13 @@ export class ServiceRegistry {
       }
     }
     await Promise.all(pending);
+
+    this.instances.clear();
+    this.initializing.clear();
+    ServiceRegistry.liveRegistries.delete(this);
+    if (ServiceRegistry._instance === this) {
+      ServiceRegistry._instance = null;
+    }
   }
 
   /**
@@ -151,11 +152,11 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
-    if (this.services.has(name)) {
-      this.instances.delete(name);
-      this.initializing.delete(name);
-    }
     this.services.set(name, registration as ServiceRegistration<unknown>);
+  }
+
+  public has(name: string): boolean {
+    return this.services.has(name);
   }
 
   /**
@@ -325,7 +326,11 @@ export class ServiceRegistry {
         message: "ServiceRegistry: circular dependency detected in topological sort",
         data: { unsortedServices },
       });
-      throw new Error(`ServiceRegistry: circular dependency detected among services: ${unsortedServices.join(", ")}`);
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        `service_registry.circular_dependency: ServiceRegistry: circular dependency detected among services: ${unsortedServices.join(", ")}`,
+        { source: "internal", details: { unsortedServices } },
+      );
     }
 
     return result;

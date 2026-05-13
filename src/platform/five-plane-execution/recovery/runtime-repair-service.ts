@@ -116,6 +116,14 @@ export class RuntimeRepairService {
   }
 
   /**
+   * Releases the internal event operations service so callers can deterministically
+   * tear down the shared database without leaving background polling active.
+   */
+  public async dispose(): Promise<void> {
+    await this.eventOps.dispose();
+  }
+
+  /**
    * Routes an action to the appropriate handler method based on action type.
    * Each action type has a dedicated private method for execution.
    *

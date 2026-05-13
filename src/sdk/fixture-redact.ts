@@ -51,7 +51,11 @@ export class FixtureRedactor {
   private readonly piiPatterns: Array<{ pattern: RegExp; name: string }>;
 
   constructor(options: RedactionOptions = {}) {
-    this.options = { ...DEFAULT_OPTIONS, ...options, alwaysRedactFields: new Set(options.alwaysRedactFields ?? DEFAULT_OPTIONS.alwaysRedactFields) };
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...options,
+      alwaysRedactFields: normalizeAlwaysRedactFields(options.alwaysRedactFields ?? DEFAULT_OPTIONS.alwaysRedactFields),
+    };
     this.secretPatterns = [...SECRET_PATTERNS, ...this.options.customSecretPatterns];
     this.piiPatterns = [...PII_PATTERNS, ...this.options.customPiiPatterns];
   }
@@ -168,4 +172,8 @@ export class FixtureRedactor {
 
 export function generateTestId(prefix = "test"): string {
   return prefix + "_" + Math.random().toString(36).slice(2, 10);
+}
+
+function normalizeAlwaysRedactFields(fields: ReadonlySet<string>): Set<string> {
+  return new Set(Array.from(fields, (field) => field.toLowerCase()));
 }

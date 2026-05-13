@@ -16,7 +16,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-cross-division-recovery-drill.js";
 
 function createTempDir(): string {
-  return join("/tmp", `cross-division-test-${Date.now()}`);
+  return join("/tmp", `cross-division-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
 test("runStableCrossDivisionRecoveryDrill executes all two scenarios successfully", async () => {

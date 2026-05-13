@@ -346,10 +346,25 @@ test("PackScaffoldService.scaffold creates manifest with capabilities", () => {
   assert.ok(manifest.capabilities[0].maturity);
 });
 
-test("PackScaffoldService.scaffold rejects packId starting with number", () => {
+test("PackScaffoldService.scaffold allows packId starting with number", () => {
   const service = new PackScaffoldService();
   const config: ScaffoldConfig = {
     packId: "123test",
+    name: "Test Pack",
+    template: "minimal",
+    domain: "test-domain",
+    owner: "test-owner",
+    riskLevel: "low",
+  };
+
+  const result = service.scaffold(config);
+  assert.ok(result.files.length > 0);
+});
+
+test("PackScaffoldService.scaffold rejects packId with dots", () => {
+  const service = new PackScaffoldService();
+  const config: ScaffoldConfig = {
+    packId: "my.pack.id",
     name: "Test Pack",
     template: "minimal",
     domain: "test-domain",
@@ -361,21 +376,6 @@ test("PackScaffoldService.scaffold rejects packId starting with number", () => {
     () => service.scaffold(config),
     /Pack ID must match pattern/,
   );
-});
-
-test("PackScaffoldService.scaffold handles valid packId with dots", () => {
-  const service = new PackScaffoldService();
-  const config: ScaffoldConfig = {
-    packId: "my.pack.id",
-    name: "Test Pack",
-    template: "minimal",
-    domain: "test-domain",
-    owner: "test-owner",
-    riskLevel: "low",
-  };
-
-  const result = service.scaffold(config);
-  assert.ok(result.files.length > 0);
 });
 
 test("PackScaffoldService.scaffold handles valid packId with underscores", () => {

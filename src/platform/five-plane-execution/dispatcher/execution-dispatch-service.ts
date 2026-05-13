@@ -27,7 +27,7 @@ import {
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError } from "../../contracts/errors.js";
-import { DlqService, type FailureCategory } from "../../state-evidence/events/dlq-service.js";
+import type { FailureCategory } from "../../state-evidence/events/dlq-service.js";
 import {
   AFFINITY_SELECTION_BONUS,
   buildDispatchAgentExecutionRecord,
@@ -72,8 +72,6 @@ export class ExecutionDispatchService {
   // R9-10 fix: Reuse single HealthService instance instead of creating per-ticket O(n) scan
   // R19-45 fix: Use HealthReportProvider interface instead of direct HealthService to avoid P5 Evidence coupling
   private readonly healthService: HealthReportProvider;
-  // R6-6: DLQ service for dead-letter queue integration
-  private readonly dlqService: DlqService;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -88,8 +86,6 @@ export class ExecutionDispatchService {
     // R9-10 fix: Initialize HealthService once instead of per-ticket
     // R19-45 fix: Use injected provider or create no-op if not available
     this.healthService = healthProvider ?? createNoOpHealthReportProvider();
-    // R6-6: Initialize DLQ service for backpressure rejection handling
-    this.dlqService = new DlqService();
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
@@ -376,37 +372,8 @@ export class ExecutionDispatchService {
           fallbackApplied: false,
           evaluations: [],
         });
-        // R6-6: Emit dispatch_backpressure_rejected event and move to DLQ for rejected tickets
         this.db.transaction(() => {
-          this.store.worker.invalidateExecutionTicket({
-            ticketId: ticket.id,
-            status: "cancelled",
-            invalidatedAt: occurredAt,
-          });
-          // R6-6: Enqueue to DLQ for retry or manual intervention
           const execution = this.store.dispatch.getExecution(ticket.executionId);
-          const dlqRecord = this.dlqService.enqueue({
-            sourceEventId: ticket.id,
-            eventType: "dispatch:backpressure_rejected",
-            consumerId: ticket.queueName ?? "dispatch",
-            errorCode: blockedByBackpressure ?? "backpressure_rejected",
-            errorMessage: `Ticket ${ticket.id} rejected due to backpressure: ${blockedByBackpressure}`,
-            payloadJson: JSON.stringify({
-              ticketId: ticket.id,
-              executionId: ticket.executionId,
-              taskId: ticket.taskId,
-              priority: ticket.priority,
-              riskClass: ticket.riskClass,
-              tenantId: ticket.tenantId,
-              queueName: ticket.queueName,
-              reasonCode: blockedByBackpressure,
-              backpressureSnapshot: backpressure,
-              traceId: execution?.traceId ?? null,
-            }),
-            originalTimestamp: ticket.createdAt,
-            failureCategory: this.categorizeFailure(blockedByBackpressure),
-            reason: `Backpressure rejection: ${blockedByBackpressure}`,
-          });
           this.store.event.insertEvent({
             id: newId("evt"),
             taskId: ticket.taskId,
@@ -422,7 +389,6 @@ export class ExecutionDispatchService {
               riskClass: ticket.riskClass,
               reasonCode: blockedByBackpressure,
               backpressureSnapshot: backpressure,
-              dlqEntryId: dlqRecord.deadLetterId,
             }),
             traceId: execution?.traceId ?? null,
             createdAt: occurredAt,
@@ -438,6 +404,7 @@ export class ExecutionDispatchService {
         requiredCapabilities,
         requiredIsolationLevel,
         requiredRepoVersion,
+        occurredAt,
       );
       let remoteAvailability = resolveRemoteAvailability(dispatchTarget, evaluations);
       let remoteRepoVersionReason = resolveRemoteRepoVersionReason(
@@ -477,6 +444,7 @@ export class ExecutionDispatchService {
             requiredCapabilities,
             requiredIsolationLevel,
             requiredRepoVersion,
+            occurredAt,
           );
           remoteAvailability = resolveRemoteAvailability(dispatchTarget, evaluations);
           remoteRepoVersionReason = resolveRemoteRepoVersionReason(
@@ -500,63 +468,6 @@ export class ExecutionDispatchService {
         }
       }
       if (eligibleWorkers.length === 0) {
-        // R9-05 fix: Detect poison-pill tickets that can never be dispatched
-        // A ticket is a poison-pill if it has required capabilities that no worker possesses
-        // or has constraints that can never be satisfied. Such tickets would loop forever.
-        const hasUnmatchedCapabilities = requiredCapabilities.length > 0 &&
-          evaluations.every((eval_) => !eval_.accepted ||
-            (eval_.missingCapabilities && eval_.missingCapabilities.length > 0));
-        if (hasUnmatchedCapabilities) {
-          const missingCaps = evaluations
-            .flatMap((e) => e.missingCapabilities ?? [])
-            .filter((cap): cap is string => typeof cap === "string");
-          const uniqueMissingCaps = [...new Set(missingCaps)];
-          // Invalidate poison-pill ticket to DLQ instead of looping forever
-          this.db.transaction(() => {
-            this.store.worker.invalidateExecutionTicket({
-              ticketId: ticket.id,
-              status: "cancelled",
-              invalidatedAt: occurredAt,
-            });
-            const execution = this.store.dispatch.getExecution(ticket.executionId);
-            const dlqRecord = this.dlqService.enqueue({
-              sourceEventId: ticket.id,
-              eventType: "dispatch:poison_pill_detected",
-              consumerId: ticket.queueName ?? "dispatch",
-              errorCode: "poison_pill",
-              errorMessage: `Ticket ${ticket.id} has required capabilities [${uniqueMissingCaps.join(", ")}] that no worker possesses`,
-              payloadJson: JSON.stringify({
-                ticketId: ticket.id,
-                executionId: ticket.executionId,
-                taskId: ticket.taskId,
-                priority: ticket.priority,
-                requiredCapabilities,
-                missingCapabilities: uniqueMissingCaps,
-              }),
-              originalTimestamp: ticket.createdAt,
-              failureCategory: "configuration",
-              reason: `Poison-pill ticket: no workers have required capabilities [${uniqueMissingCaps.join(", ")}]`,
-            });
-            this.store.event.insertEvent({
-              id: newId("evt"),
-              taskId: ticket.taskId,
-              executionId: ticket.executionId,
-              eventType: "dispatch:poison_pill_detected",
-              eventTier: "tier_2",
-              payloadJson: JSON.stringify({
-                ticketId: ticket.id,
-                executionId: ticket.executionId,
-                taskId: ticket.taskId,
-                missingCapabilities: uniqueMissingCaps,
-                dlqEntryId: dlqRecord.deadLetterId,
-              }),
-              traceId: execution?.traceId ?? null,
-              createdAt: occurredAt,
-            });
-          });
-          continue;
-        }
-
         const remoteBlockReason =
           dispatchTarget === "require_remote"
             ? remoteTrustReason
@@ -717,6 +628,7 @@ export class ExecutionDispatchService {
     requiredCapabilities: string[],
     requiredIsolationLevel: WorkerIsolationLevel,
     requiredRepoVersion: string | null,
+    occurredAt: string,
   ): DispatchWorkerEvaluation[] {
     const queueAffinity = ticket.queueName ?? null;
     const dispatchTarget = resolveDispatchTarget(ticket.dispatchTarget);
@@ -728,9 +640,8 @@ export class ExecutionDispatchService {
 
     return candidates.map((worker) => {
         // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
-        const now = nowIso();
         const heartbeatStalenessThresholdMs = 30_000; // 30 seconds per §14 gap detection
-        const lastHeartbeatAgeMs = Date.parse(now) - Date.parse(worker.lastHeartbeatAt);
+        const lastHeartbeatAgeMs = Date.parse(occurredAt) - Date.parse(worker.lastHeartbeatAt);
         if (lastHeartbeatAgeMs > heartbeatStalenessThresholdMs) {
           return this.toWorkerEvaluation(worker, false, "worker_heartbeat_missing", []);
         }

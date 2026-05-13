@@ -386,17 +386,26 @@ async function runRuntimeRepairRehearsal(outputDir: string): Promise<StableRollb
 
     const checker = new StartupConsistencyChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({
-      now: "2026-04-03T10:10:00.000Z",
-      staleExecutionAfterMs: 5 * 60 * 1000,
-    });
-    const applied = await repair.apply(before);
-    const after = checker.run({
-      now: "2026-04-03T10:10:00.000Z",
-      staleExecutionAfterMs: 5 * 60 * 1000,
-    });
-    const snapshot = store.operations.loadTaskSnapshot("task-runtime-repair");
-    db.close();
+    let before;
+    let applied;
+    let after;
+    let snapshot;
+
+    try {
+      before = checker.run({
+        now: "2026-04-03T10:10:00.000Z",
+        staleExecutionAfterMs: 5 * 60 * 1000,
+      });
+      applied = await repair.apply(before);
+      after = checker.run({
+        now: "2026-04-03T10:10:00.000Z",
+        staleExecutionAfterMs: 5 * 60 * 1000,
+      });
+      snapshot = store.operations.loadTaskSnapshot("task-runtime-repair");
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:

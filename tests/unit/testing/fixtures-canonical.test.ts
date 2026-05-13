@@ -46,7 +46,7 @@ test("createMinimalHarnessRun accepts all optional fields", () => {
 
   assert.equal(hrun.tenantId, "my-tenant");
   assert.equal(hrun.confirmedTaskSpecId, "my-ctspec");
-  assert.equal(hrun.status, "executing");
+  assert.equal(hrun.status, "running");
   assert.equal(hrun.currentSeq, 5);
 });
 
@@ -65,7 +65,7 @@ test("createMinimalPlanNode supports different node types", () => {
   const routerNode = createMinimalPlanNode({ nodeType: "router" });
 
   assert.equal(llmNode.nodeType, "llm");
-  assert.equal(hitlNode.nodeType, "hitl");
+  assert.equal(hitlNode.nodeType, "hitl_wait");
   assert.equal(routerNode.nodeType, "router");
 });
 
@@ -275,7 +275,7 @@ test("createMinimalBudgetReservation supports different resource kinds", () => {
   const memory = createMinimalBudgetReservation({
     budgetLedgerId: "bledger-1",
     harnessRunId: "hrun-1",
-    resourceKind: "compute",
+    resourceKind: "tool",
     amount: 256,
   });
   const compute = createMinimalBudgetReservation({
@@ -285,7 +285,7 @@ test("createMinimalBudgetReservation supports different resource kinds", () => {
     amount: 100,
   });
 
-  assert.equal(memory.resourceKind, "memory");
+  assert.equal(memory.resourceKind, "tool");
   assert.equal(compute.resourceKind, "compute");
 });
 

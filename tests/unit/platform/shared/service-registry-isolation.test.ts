@@ -136,11 +136,9 @@ test("ServiceRegistry reset clears instances but keeps registrations", () => {
   // Reset
   registry.reset();
 
-  // Registration persists but instance is cleared
-  assert.throws(
-    () => registry.get("persist-registration"),
-    /service_registry.not_registered/,
-  );
+  // Registration persists but instance is cleared and re-created on demand.
+  const reinitialized = registry.get<{ value: number }>("persist-registration");
+  assert.equal(reinitialized.value, 1);
 });
 
 test("ServiceRegistry teardownAll handles missing teardown function", async () => {

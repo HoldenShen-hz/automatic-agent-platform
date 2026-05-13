@@ -25,7 +25,7 @@ export function buildInteractionGovernanceRuntimeCatalog(): InteractionGovernanc
 }
 
 export function registerInteractionGovernanceRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): InteractionGovernanceRuntimeCatalog {
   try {
     return registry.get<InteractionGovernanceRuntimeCatalog>(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID);

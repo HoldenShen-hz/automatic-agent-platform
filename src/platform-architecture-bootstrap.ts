@@ -180,7 +180,7 @@ export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectur
   };
 }
 
-export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
+export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
   if (!registeredArchitectureCatalogs.has(registry)) {
     registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
       init: () => PLATFORM_LAYER_MANIFESTS,
@@ -225,7 +225,7 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   };
 }
 
-export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
+export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
   if (!registeredArchitectureCatalogs.has(registry)) {
     registerPlatformArchitectureServices(registry);
   }

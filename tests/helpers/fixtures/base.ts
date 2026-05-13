@@ -122,6 +122,7 @@ export function createMinimalApproval(overrides: Partial<ApprovalRecord> = {}): 
 export function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return createCanonicalHarnessRun({
     tenantId: "tenant-test-001",
+    budgetLedgerId: overrides.budgetLedgerId ?? "bledger-test-001",
     overrides: {
       harnessRunId: "hrun-test-001",
       currentSeq: 0,
@@ -166,7 +167,7 @@ export function createMinimalPlanGraphBundle(
   ];
   return createCanonicalPlanGraphBundle({
     harnessRunId,
-    ...(overrides.planGraphBundleId != null ? { planGraphBundleId: overrides.planGraphBundleId } : {}),
+    planGraphBundleId: overrides.planGraphBundleId ?? "pgb-test-001",
     graphVersion: overrides.graphVersion ?? 1,
     graph: {
       graphId: overrides.graph?.graphId ?? "graph-test-001",
@@ -204,7 +205,7 @@ export function createMinimalBudgetLedger(
 ): BudgetLedger {
   return createCanonicalBudgetLedger({
     harnessRunId,
-    budgetLedgerId: overrides.budgetLedgerId ?? "ledger-test-001",
+    budgetLedgerId: overrides.budgetLedgerId ?? "bledger-test-001",
     hardCap: overrides.hardCap ?? 1000,
     reservedAmount: overrides.reservedAmount ?? 0,
     overrides,

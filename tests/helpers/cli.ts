@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
+export { reportSoftPerformanceMiss, failOnListenSocketDenied } from "./performance.js";
+
 export function runBuiltCliExpectFailure(
   scriptName: string,
   env: NodeJS.ProcessEnv,

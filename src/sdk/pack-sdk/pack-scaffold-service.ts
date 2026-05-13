@@ -307,8 +307,11 @@ function validatePlainTemplateValue(value: string, field: "name" | "owner"): str
   if (normalized.length === 0) {
     throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} is required.`);
   }
+  if (/[\r\n]/.test(normalized)) {
+    throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} cannot contain newlines or unsupported template control characters.`);
+  }
   if (containsTemplateInjection(normalized)) {
-    throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} contains unsupported template control characters.`);
+    throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} contains invalid characters and unsupported template control characters.`);
   }
   return normalized;
 }
@@ -318,10 +321,16 @@ function validateDomainValue(domain: string): string {
   if (normalized.length === 0) {
     throw new ValidationError("pack_scaffold.invalid_domain", "Pack domain is required.");
   }
+  if (/[\r\n]/.test(normalized)) {
+    throw new ValidationError(
+      "pack_scaffold.invalid_domain_format",
+      "Pack domain cannot contain newlines or template control characters.",
+    );
+  }
   if (!/^[a-z0-9][a-z0-9-_.]*$/.test(normalized) || containsTemplateInjection(normalized)) {
     throw new ValidationError(
       "pack_scaffold.invalid_domain_format",
-      "Pack domain must be lowercase and cannot contain template control characters.",
+      "Pack domain must be lowercase and contains invalid characters; template control characters are not allowed.",
     );
   }
   return normalized;

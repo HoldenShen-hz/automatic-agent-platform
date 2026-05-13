@@ -43,7 +43,7 @@ export function buildDomainsStartupPlan(): DomainsStartupPlan {
 }
 
 export function registerDomainsStartupPlan(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): DomainsStartupPlan {
   const plan = buildDomainsStartupPlan();
   for (const step of plan.steps) {

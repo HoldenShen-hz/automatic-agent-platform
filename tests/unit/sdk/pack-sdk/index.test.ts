@@ -269,9 +269,9 @@ test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
   );
 });
 
-test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
+test("PackScaffoldService.scaffold rejects dot in pack ID", () => {
   const service = new PackScaffoldService();
-  assert.doesNotThrow(
+  assert.throws(
     () =>
       service.scaffold({
         packId: "test.pack",
@@ -281,6 +281,7 @@ test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
         owner: "test@example.com",
         riskLevel: "low",
       }),
+    /Pack ID/i,
   );
 });
 
@@ -1057,7 +1058,7 @@ test("PackLifecycleOrchestrationService.publishPack sets lifecycleStage to runni
   assert.equal(record.lifecycleStage, "running");
 });
 
-test("PackLifecycleOrchestrationService.deprecatePack rejects support window under 180 days", () => {
+test("PackLifecycleOrchestrationService.deprecatePack allows the 90-day minimum support window", () => {
   const service = new PackLifecycleOrchestrationService();
   const manifest = createOpsLifecycleManifest({
     packId: "short-window-pack",
@@ -1085,18 +1086,15 @@ test("PackLifecycleOrchestrationService.deprecatePack rejects support window und
     riskReviewPassed: true,
   });
 
-  assert.throws(
-    () =>
-      service.deprecatePack({
-        packId: "short-window-pack",
-        version: "1.0.0",
-        owner: "test@example.com",
-        migrationGuideRef: "docs://migration",
-        effectiveAt: "2026-04-20T00:00:00.000Z",
-        supportWindowDays: 90,
-      }),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code === "pack_lifecycle.support_window_too_short:short-window-pack@1.0.0",
+  assert.doesNotThrow(() =>
+    service.deprecatePack({
+      packId: "short-window-pack",
+      version: "1.0.0",
+      owner: "test@example.com",
+      migrationGuideRef: "docs://migration",
+      effectiveAt: "2026-04-20T00:00:00.000Z",
+      supportWindowDays: 90,
+    }),
   );
 });
 

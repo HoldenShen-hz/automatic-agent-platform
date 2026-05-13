@@ -17,7 +17,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-db-queue-disconnect-rehearsal.js";
 
 function createTempDir(): string {
-  return join("/tmp", `db-queue-disconnect-test-${Date.now()}`);
+  return join("/tmp", `db-queue-disconnect-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
 test("runStableDbQueueDisconnectRehearsal executes all three scenarios successfully", async () => {

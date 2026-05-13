@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { generateKeyPairSync } from "node:crypto";
 
 import {
   getSigningKeyRegistry,
@@ -211,7 +212,6 @@ test("DefaultSbomScanner can be replaced with custom implementation", async () =
 test("plugin definition signature verification accepts valid ed25519 algorithm", () => {
   const registry = getSigningKeyRegistry();
   // Register a real Ed25519 key pair for testing
-  const { generateKeyPairSync } = require("node:crypto");
   const { privateKey } = generateKeyPairSync("ed25519");
 
   const registry2 = getSigningKeyRegistry();

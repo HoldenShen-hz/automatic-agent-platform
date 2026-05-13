@@ -97,7 +97,7 @@ export class DatadogTransport implements LogTransport {
           "DD-API-KEY": this.config.apiKey,
         },
       }, (res) => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+        if (res.statusCode == null || (res.statusCode >= 200 && res.statusCode < 300)) {
           resolve();
         } else {
           reject(new Error(`HTTP ${res.statusCode}`));

@@ -65,6 +65,12 @@ export interface StableChaosSmokeReport {
   scenarios: StableChaosScenarioResult[];
 }
 
+function createRehearsalChecker(db: SqliteDatabase, store: AuthoritativeTaskStore): StartupConsistencyChecker {
+  return new StartupConsistencyChecker(db, store, {
+    toolMetadataValidator: () => [],
+  });
+}
+
 function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2));
@@ -185,21 +191,31 @@ async function runStaleExecutionRepairScenario(outputDir: string): Promise<Stabl
       .prepare(`UPDATE workflow_state SET updated_at = ? WHERE task_id = ?`)
       .run("2026-04-03T10:00:00.000Z", "task-stale-chaos");
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({
-      now: "2026-04-03T10:10:00.000Z",
-      staleExecutionAfterMs: 5 * 60 * 1000,
-    });
+    let before;
+    let snapshotBefore;
+    let applied;
+    let after;
+    let snapshotAfter;
 
-    const snapshotBefore = store.operations.loadTaskSnapshot("task-stale-chaos");
-    const applied = await repair.apply(before);
-    const after = checker.run({
-      now: "2026-04-03T10:10:00.000Z",
-      staleExecutionAfterMs: 5 * 60 * 1000,
-    });
-    const snapshotAfter = store.operations.loadTaskSnapshot("task-stale-chaos");
-    db.close();
+    try {
+      before = checker.run({
+        now: "2026-04-03T10:10:00.000Z",
+        staleExecutionAfterMs: 5 * 60 * 1000,
+      });
+
+      snapshotBefore = store.operations.loadTaskSnapshot("task-stale-chaos");
+      applied = await repair.apply(before);
+      after = checker.run({
+        now: "2026-04-03T10:10:00.000Z",
+        staleExecutionAfterMs: 5 * 60 * 1000,
+      });
+      snapshotAfter = store.operations.loadTaskSnapshot("task-stale-chaos");
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:
@@ -259,14 +275,23 @@ async function runOrphanSessionRepairScenario(outputDir: string): Promise<Stable
       updatedAt: now,
     });
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({ now });
+    let before;
+    let applied;
+    let after;
+    let session;
 
-    const applied = await repair.apply(before);
-    const after = checker.run({ now });
-    const session = store.dispatch.getSession("sess-orphan-chaos");
-    db.close();
+    try {
+      before = checker.run({ now });
+
+      applied = await repair.apply(before);
+      after = checker.run({ now });
+      session = store.dispatch.getSession("sess-orphan-chaos");
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:
@@ -330,15 +355,26 @@ async function runOrphanQueueClaimRepairScenario(outputDir: string): Promise<Sta
       occurredAt: "2026-04-04T15:00:07.000Z",
     });
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({ now: "2026-04-04T15:00:08.000Z" });
-    const applied = await repair.apply(before);
-    const after = checker.run({ now: "2026-04-04T15:00:08.000Z" });
-    const tickets = store.worker.listExecutionTicketsByExecution("exec-dispatch-chaos");
-    const originalTicket = tickets.find((ticket) => ticket.id === created.ticket.id) ?? null;
-    const replacementTicket = tickets.find((ticket) => ticket.id !== created.ticket.id && ticket.status === "pending") ?? null;
-    db.close();
+    let before;
+    let applied;
+    let after;
+    let tickets;
+    let originalTicket;
+    let replacementTicket;
+
+    try {
+      before = checker.run({ now: "2026-04-04T15:00:08.000Z" });
+      applied = await repair.apply(before);
+      after = checker.run({ now: "2026-04-04T15:00:08.000Z" });
+      tickets = store.worker.listExecutionTicketsByExecution("exec-dispatch-chaos");
+      originalTicket = tickets.find((ticket) => ticket.id === created.ticket.id) ?? null;
+      replacementTicket = tickets.find((ticket) => ticket.id !== created.ticket.id && ticket.status === "pending") ?? null;
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:
@@ -440,15 +476,25 @@ async function runMissingAckReplayScenario(outputDir: string): Promise<StableCha
       .prepare(`DELETE FROM event_consumer_acks WHERE event_id = ? AND consumer_id = ?`)
       .run(event.id, "inspect_projection");
 
-    const checker = new StartupConsistencyChecker(db, store);
+    const checker = createRehearsalChecker(db, store);
     const repair = new RuntimeRepairService(db, store);
-    const before = checker.run({ now: nowIso() });
+    let before;
+    let applied;
+    let after;
+    let coverage;
+    let pendingAckBacklog;
 
-    const applied = await repair.apply(before);
-    const after = checker.run({ now: nowIso() });
-    const coverage = store.event.listTier1EventRegistryCoverage().find((item) => item.eventId === event.id);
-    const pendingAckBacklog = store.event.countPendingTier1Acks();
-    db.close();
+    try {
+      before = checker.run({ now: nowIso() });
+
+      applied = await repair.apply(before);
+      after = checker.run({ now: nowIso() });
+      coverage = store.event.listTier1EventRegistryCoverage().find((item) => item.eventId === event.id);
+      pendingAckBacklog = store.event.countPendingTier1Acks();
+    } finally {
+      await repair.dispose();
+      db.close();
+    }
 
     return {
       passed:

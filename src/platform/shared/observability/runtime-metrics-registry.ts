@@ -197,10 +197,18 @@ export class RuntimeMetricsRegistry {
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
+  public listCounterNames(): string[] {
+    return [...new Set([...this.counters.keys()].map((key) => key.split("|", 1)[0] ?? ""))].filter(Boolean).sort();
+  }
+
   public getGauges(name: string): GaugeSeries[] {
     return [...this.gauges.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
+  }
+
+  public listGaugeNames(): string[] {
+    return [...new Set([...this.gauges.keys()].map((key) => key.split("|", 1)[0] ?? ""))].filter(Boolean).sort();
   }
 
   public getHistograms(name: string): HistogramSeries[] {
@@ -213,6 +221,10 @@ export class RuntimeMetricsRegistry {
         count: series.count,
         sum: series.sum,
       }));
+  }
+
+  public listHistogramNames(): string[] {
+    return [...new Set([...this.histograms.keys()].map((key) => key.split("|", 1)[0] ?? ""))].filter(Boolean).sort();
   }
 
   public reset(): void {

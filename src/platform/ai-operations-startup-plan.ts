@@ -92,7 +92,7 @@ export function buildAiOperationsStartupPlan(): AiOperationsStartupPlan {
 }
 
 export function registerAiOperationsStartupPlan(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): AiOperationsStartupPlan {
   registry.register<AiOperationsStartupPlan>(AI_OPERATIONS_STARTUP_PLAN_SERVICE_ID, {
     init: () => buildAiOperationsStartupPlan(),

@@ -38,6 +38,7 @@ export interface ApiRequestSpec {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   query?: Record<string, string | number | boolean | null | undefined>;
   body?: unknown;
+  idempotencyKey?: string;
 }
 
 export interface ApiResponse<T> {
@@ -68,9 +69,9 @@ export interface RetryConfig {
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
-  backoffMs: 1000,
+  backoffMs: 100,
   backoffMultiplier: 2,
-  maxBackoffMs: 30000,
+  maxBackoffMs: 1000,
 };
 
 /**
@@ -121,6 +122,16 @@ export interface VersionHandshakeResult {
   readonly headers: Record<string, string>;
   /** Compatibility warnings from server */
   readonly warnings: readonly string[];
+  /** Reported platform version when provided by the server */
+  readonly platformVersion?: string;
+  /** Reported contract version when provided by the server */
+  readonly contractVersion?: string;
+  /** Minimum compatible SDK/client version when provided by the server */
+  readonly minClientVersion?: string;
+}
+
+export interface ApiRequestOptions {
+  readonly idempotencyKey?: string;
 }
 
 /**
@@ -141,7 +152,7 @@ export class RetryableApiClient {
    */
   async initialize(): Promise<void> {
     if (this.config.performVersionHandshakeOnInit) {
-      await this.performVersionHandshake();
+      await this.fetchVersionCompatibility("/version");
     }
   }
 
@@ -151,58 +162,7 @@ export class RetryableApiClient {
    * Throws ApiError with CONTRACT category if versions are incompatible (426 status).
    */
   async performVersionHandshake(): Promise<VersionHandshakeResult> {
-    const url = buildApiUrl(this.config, { path: "/handshake", method: "GET" });
-    const headers = buildAuthHeaders(this.config);
-    headers["accept"] = "application/json";
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers,
-      signal: AbortSignal.timeout(this.config.timeoutMs ?? 10000),
-    });
-
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-
-    // Parse server response for handshake result
-    let accepted = response.ok;
-    let reasonCode = "unknown";
-    const warnings: string[] = [];
-
-    if (response.status === 426) {
-      accepted = false;
-      reasonCode = "sdk.upgrade_required";
-    } else if (response.status === 200) {
-      accepted = true;
-      reasonCode = "sdk.accepted";
-    }
-
-    // Check for compatibility warnings in response headers
-    const compatibilityStatus = responseHeaders["x-sdk-compatibility"];
-    if (compatibilityStatus?.includes("warning")) {
-      const warningHeader = responseHeaders["x-sdk-warnings"] ?? "";
-      warnings.push(...warningHeader.split(",").filter((w) => w.trim().length > 0));
-    }
-
-    // If handshake was rejected, throw an error with details
-    if (!accepted) {
-      throw new ApiError(
-        `Version handshake rejected: ${reasonCode}. Server requires upgrade.`,
-        ApiErrorCategory.CONTRACT,
-        response.status,
-        false,
-      );
-    }
-
-    return {
-      accepted,
-      statusCode: response.status,
-      reasonCode,
-      headers: responseHeaders,
-      warnings,
-    };
+    return this.fetchVersionCompatibility("/handshake");
   }
 
   /**
@@ -215,19 +175,34 @@ export class RetryableApiClient {
   /**
    * Make a POST request with automatic retry.
    */
-  async post<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>({ path, method: "POST", body });
+  async post<T>(path: string, body: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      path,
+      method: "POST",
+      body,
+      ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    });
   }
 
   /**
    * Make a PUT request with automatic retry.
    */
-  async put<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>({ path, method: "PUT", body });
+  async put<T>(path: string, body: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      path,
+      method: "PUT",
+      body,
+      ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    });
   }
 
-  async patch<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-    return this.request<T>({ path, method: "PATCH", body });
+  async patch<T>(path: string, body: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>({
+      path,
+      method: "PATCH",
+      body,
+      ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    });
   }
 
   /**
@@ -438,14 +413,21 @@ export class RetryableApiClient {
    * Only GET requests are retried on 5xx errors.
    * POST/DELETE/PUT/PATCH are not retried to prevent duplicate side effects.
    */
-  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE", "PUT", "PATCH"]);
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE"]);
 
   /**
    * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.
    * Envelope carries schemaVersion/commandId/correlationId/signature for inter-plane messages.
    */
-  private wrapRequestBody<TPayload>(payload: TPayload): ContractEnvelope<TPayload> {
+  private wrapRequestBody<TPayload>(payload: TPayload, idempotencyKey?: string): ContractEnvelope<TPayload> {
     const metadata: Record<string, string> = {};
+    const principal = this.config.principal == null
+      ? undefined
+      : {
+          ...(this.config.principal.subject ? { subject: this.config.principal.subject } : {}),
+          ...(this.config.principal.tenantId ? { tenantId: this.config.principal.tenantId } : {}),
+          ...(this.config.principal.roles?.length ? { roles: [...this.config.principal.roles] } : {}),
+        };
     if (this.config.principal != null) {
       const p = this.config.principal as { subject?: string; tenantId?: string; roles?: readonly string[] };
       if (p.subject) metadata.principalSubject = p.subject;
@@ -453,14 +435,25 @@ export class RetryableApiClient {
       if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
     }
 
-    // R8-19 FIX: Use config-level idempotencyKey as the envelope idempotencyKey per spec
-    return createContractEnvelope({
+    const envelope = createContractEnvelope({
       payload,
       schemaVersion: "v4.3",
       ttl: 30000,
       metadata,
-      ...(this.config.idempotencyKey !== undefined ? { idempotencyKey: this.config.idempotencyKey } : {}),
+      ...(idempotencyKey !== undefined
+        ? { idempotencyKey }
+        : this.config.idempotencyKey !== undefined
+          ? { idempotencyKey: this.config.idempotencyKey }
+          : {}),
     });
+    return (
+      principal == null
+        ? envelope
+        : {
+            ...envelope,
+            principal,
+          }
+    ) as ContractEnvelope<TPayload>;
   }
 
   /**
@@ -491,22 +484,22 @@ export class RetryableApiClient {
   private wrapApiError(error: ApiError): AppError {
     switch (error.category) {
       case ApiErrorCategory.AUTH:
-        return new AuthError("client_sdk.auth_failed", error.message, {
+        return new AuthError("client_sdk.auth_failed", `Authentication/authorization failed: ${error.message}`, {
           statusCode: error.statusCode ?? 401,
           retryable: false,
         });
       case ApiErrorCategory.NETWORK:
-        return new NetworkError("client_sdk.network_error", error.message, {
+        return new NetworkError("client_sdk.network_error", `Server error: ${error.message}`, {
           statusCode: error.statusCode ?? 503,
           retryable: error.isRetryable,
         });
       case ApiErrorCategory.BUSINESS:
-        return new BusinessError("client_sdk.business_error", error.message, {
+        return new BusinessError("client_sdk.business_error", `Request failed with status ${error.statusCode ?? 400}: ${error.message}`, {
           statusCode: error.statusCode ?? 400,
           retryable: false,
         });
       case ApiErrorCategory.CONTRACT:
-        return new ValidationError("client_sdk.contract_violation", error.message, {
+        return new ValidationError("client_sdk.contract_violation", `Contract validation failed: ${error.message}`, {
           statusCode: error.statusCode ?? 400,
           retryable: false,
         });
@@ -516,6 +509,74 @@ export class RetryableApiClient {
           retryable: false,
         });
     }
+  }
+
+  private async fetchVersionCompatibility(path: string): Promise<VersionHandshakeResult> {
+    const { response, body, headers } = await fetchVersionInfo(this.config, path);
+    const warnings: string[] = [];
+    const compatibilityStatus = headers["x-sdk-compatibility"];
+    if (compatibilityStatus?.includes("warning")) {
+      const warningHeader = headers["x-sdk-warnings"] ?? "";
+      warnings.push(...warningHeader.split(",").map((warning) => warning.trim()).filter((warning) => warning.length > 0));
+    }
+
+    const platformVersion =
+      typeof body.platformVersion === "string"
+        ? body.platformVersion
+        : headers["x-platform-version"];
+    const contractVersion =
+      typeof body.contractVersion === "string"
+        ? body.contractVersion
+        : headers["x-contract-version"];
+    const minClientVersion =
+      typeof body.minClientVersion === "string"
+        ? body.minClientVersion
+        : headers["x-min-client-version"];
+
+    let accepted = response.ok;
+    let reasonCode = "unknown";
+    if (response.status === 426) {
+      accepted = false;
+      reasonCode = "sdk.upgrade_required";
+    } else if (response.status === 200) {
+      accepted = true;
+      reasonCode = "sdk.accepted";
+    }
+
+    if (!accepted) {
+      throw new ApiError(
+        `Version handshake rejected: ${reasonCode}. Server requires upgrade.`,
+        ApiErrorCategory.CONTRACT,
+        response.status,
+        false,
+      );
+    }
+
+    if (
+      minClientVersion != null &&
+      this.config.sdkVersion != null &&
+      !versionsCompatible(this.config.sdkVersion, minClientVersion)
+    ) {
+      throw new ValidationError(
+        "client_sdk.version_incompatible",
+        `SDK version ${this.config.sdkVersion} is not compatible with minimum required version ${minClientVersion}.`,
+        {
+          statusCode: response.status,
+          retryable: false,
+        },
+      );
+    }
+
+    return {
+      accepted,
+      statusCode: response.status,
+      reasonCode,
+      headers,
+      warnings,
+      ...(platformVersion != null ? { platformVersion } : {}),
+      ...(contractVersion != null ? { contractVersion } : {}),
+      ...(minClientVersion != null ? { minClientVersion } : {}),
+    };
   }
 
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {
@@ -533,7 +594,7 @@ export class RetryableApiClient {
     // R8-19 FIX: Wrap request body in ContractEnvelope for inter-plane contract compliance
     let envelopeBody: unknown;
     if (request.body !== undefined) {
-      envelopeBody = this.wrapRequestBody(request.body);
+      envelopeBody = this.wrapRequestBody(request.body, request.idempotencyKey);
     }
 
     try {
@@ -689,11 +750,18 @@ export interface EventSubscriptionHandle {
  */
 export function createEventSubscriber(backend: EventSubscriberBackend) {
   return {
+    deliverPending(consumerId: string): Promise<number> {
+      return backend.deliverPending(consumerId);
+    },
+    pendingForConsumer(consumerId: string): Array<{ eventType: string; payloadJson: string }> {
+      return backend.pendingForConsumer(consumerId);
+    },
     subscribeToRunLifecycle(
       consumerId: string,
       runId: string,
       handler: (event: { eventType: string; payloadJson: string }) => void,
     ): EventSubscriptionHandle {
+      let active = true;
       const wrappedHandler = (event: unknown) => {
         if (event && typeof event === "object" && "payloadJson" in event) {
           const e = event as { payloadJson: string };
@@ -710,8 +778,11 @@ export function createEventSubscriber(backend: EventSubscriberBackend) {
       backend.subscribe(consumerId, wrappedHandler);
       return {
         consumerId,
-        active: true,
+        get active() {
+          return active;
+        },
         unsubscribe() {
+          active = false;
           backend.unsubscribe(consumerId);
         },
       };
@@ -729,6 +800,9 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   if (!config.apiVersion?.trim()) {
     throw new ValidationError("client_sdk.missing_api_version", "API client requires apiVersion.");
   }
+  if (!config.principal?.subject?.trim()) {
+    throw new ValidationError("client_sdk.missing_principal", "API client requires principal.");
+  }
   return new RetryableApiClient(config);
 }
 
@@ -739,10 +813,99 @@ export function parseCursor(cursor: string | null | undefined): PaginationSpec |
   if (!cursor) return undefined;
   try {
     const decoded = JSON.parse(Buffer.from(cursor, "base64").toString("utf-8"));
-    return decoded as PaginationSpec;
+    if (decoded == null || typeof decoded !== "object" || Array.isArray(decoded)) {
+      return undefined;
+    }
+    const record = decoded as Record<string, unknown>;
+    const allowedKeys = new Set(["cursor", "limit"]);
+    for (const key of Object.keys(record)) {
+      if (!allowedKeys.has(key)) {
+        return undefined;
+      }
+    }
+    if (record.cursor !== undefined && typeof record.cursor !== "string") {
+      return undefined;
+    }
+    if (record.limit !== undefined && (!Number.isInteger(record.limit) || (record.limit as number) < 0)) {
+      return undefined;
+    }
+    return {
+      ...(typeof record.cursor === "string" ? { cursor: record.cursor } : {}),
+      ...(typeof record.limit === "number" ? { limit: record.limit } : {}),
+    };
   } catch {
     return undefined;
   }
+}
+
+function normalizeVersionPart(version: string): number[] {
+  return version
+    .replace(/^[^\d]*/, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+    .map((part) => (Number.isFinite(part) ? part : 0));
+}
+
+function versionsCompatible(clientVersion: string, minimumVersion: string): boolean {
+  const clientParts = normalizeVersionPart(clientVersion);
+  const minimumParts = normalizeVersionPart(minimumVersion);
+  const maxLength = Math.max(clientParts.length, minimumParts.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const clientPart = clientParts[index] ?? 0;
+    const minimumPart = minimumParts[index] ?? 0;
+    if (clientPart > minimumPart) {
+      return true;
+    }
+    if (clientPart < minimumPart) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function parseJsonResponse(response: Response): Promise<Record<string, unknown>> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return {};
+  }
+  const parsed = await response.json().catch(() => ({}));
+  return parsed != null && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : {};
+}
+
+declare module "../../platform/contracts/executable-contracts/index.js" {
+  interface ContractEnvelope<TPayload = unknown> {
+    readonly principal?: {
+      readonly subject?: string;
+      readonly tenantId?: string;
+      readonly roles?: readonly string[];
+    };
+  }
+}
+
+async function fetchVersionInfo(
+  config: ApiClientConfig,
+  path: string,
+): Promise<{
+  response: Response;
+  body: Record<string, unknown>;
+  headers: Record<string, string>;
+}> {
+  const url = buildApiUrl(config, { path, method: "GET" });
+  const headers = buildAuthHeaders(config);
+  headers.accept = "application/json";
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(config.timeoutMs ?? 10000),
+  });
+  const responseHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    responseHeaders[key] = value;
+  });
+  const body = await parseJsonResponse(response);
+  return { response, body, headers: responseHeaders };
 }
 
 /**

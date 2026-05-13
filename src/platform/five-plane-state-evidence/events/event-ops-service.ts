@@ -144,6 +144,14 @@ export class EventOpsService {
   }
 
   /**
+   * Disposes the underlying event bus and waits for in-flight polling/delivery
+   * work to settle before callers tear down the backing database.
+   */
+  public async dispose(): Promise<void> {
+    await this.bus.disposeAsync();
+  }
+
+  /**
    * Lists all default Tier 1 consumer IDs in sorted order.
    * @returns Array of consumer IDs
    */

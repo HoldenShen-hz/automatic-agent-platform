@@ -13,9 +13,9 @@ export interface RolloutFreezeState {
   frozen: boolean;
   frozenAt: string | null;
   frozenBySloId: string | null;
-  degraded: boolean;
-  degradedAt: string | null;
-  degradedBySloId: string | null;
+  degraded?: boolean;
+  degradedAt?: string | null;
+  degradedBySloId?: string | null;
 }
 
 export class RolloutFreezeManager {
@@ -44,14 +44,17 @@ export class RolloutFreezeManager {
    * Gets the current freeze state.
    */
   public getState(): RolloutFreezeState {
-    return {
+    const state: RolloutFreezeState = {
       frozen: this.frozen,
       frozenAt: this.frozenAt,
       frozenBySloId: this.frozenBySloId,
-      degraded: this.degraded,
-      degradedAt: this.degradedAt,
-      degradedBySloId: this.degradedBySloId,
     };
+    if (this.degraded) {
+      state.degraded = true;
+      state.degradedAt = this.degradedAt;
+      state.degradedBySloId = this.degradedBySloId;
+    }
+    return state;
   }
 
   /**

@@ -44,6 +44,13 @@ export interface ContextValue {
  * Plugins receive injected context without needing to fetch it themselves.
  */
 export class PluginContext {
+  private static readonly protectedSystemKeys = new Set([
+    "system.plugin_id",
+    "system.timestamp",
+    "system.call_depth",
+    "system.delegation_depth",
+  ]);
+
   private readonly values: Map<string, ContextValue> = new Map();
   private readonly config: NormalizedPluginContextConfig;
 
@@ -66,10 +73,10 @@ export class PluginContext {
     };
 
     // Initialize with system context
-    this.setValue("system.plugin_id", config.pluginId, "system");
-    this.setValue("system.timestamp", new Date().toISOString(), "system");
-    this.setValue("system.call_depth", this.config.callDepth, "system");
-    this.setValue("system.delegation_depth", this.config.delegationDepth, "system");
+    this.setValue("system.plugin_id", config.pluginId, "system", { allowProtectedSystemKey: true });
+    this.setValue("system.timestamp", new Date().toISOString(), "system", { allowProtectedSystemKey: true });
+    this.setValue("system.call_depth", this.config.callDepth, "system", { allowProtectedSystemKey: true });
+    this.setValue("system.delegation_depth", this.config.delegationDepth, "system", { allowProtectedSystemKey: true });
   }
 
   /**
@@ -105,6 +112,13 @@ export class PluginContext {
    */
   get userId(): string {
     return this.config.userId;
+  }
+
+  /**
+   * Get the current session ID.
+   */
+  get sessionId(): string {
+    return this.config.sessionId;
   }
 
   /**
@@ -198,6 +212,39 @@ export class PluginContext {
   }
 
   /**
+   * Create a child context for explicit plugin delegation.
+   */
+  forkForDelegation(overrides: Partial<PluginContextConfig> = {}): PluginContext {
+    return new PluginContext({
+      pluginId: this.config.pluginId,
+      packId: overrides.packId ?? this.config.packId,
+      executionId: overrides.executionId ?? this.config.executionId,
+      taskId: overrides.taskId ?? this.config.taskId,
+      tenantId: overrides.tenantId ?? this.config.tenantId,
+      userId: overrides.userId ?? this.config.userId,
+      sessionId: overrides.sessionId ?? this.config.sessionId,
+      callDepth: overrides.callDepth ?? this.config.callDepth,
+      delegationDepth: overrides.delegationDepth ?? (this.config.delegationDepth + 1),
+      sandboxTier: overrides.sandboxTier ?? this.config.sandboxTier,
+      resourceLimits: overrides.resourceLimits ?? this.config.resourceLimits,
+    });
+  }
+
+  /**
+   * Check whether the call depth has reached the configured limit.
+   */
+  isCallDepthExceeded(maxDepth: number): boolean {
+    return this.config.callDepth >= maxDepth;
+  }
+
+  /**
+   * Check whether the delegation depth has reached the configured limit.
+   */
+  isDelegationDepthExceeded(maxDepth: number): boolean {
+    return this.config.delegationDepth >= maxDepth;
+  }
+
+  /**
    * Get all values as a plain object.
    */
   toRecord(): Record<string, unknown> {
@@ -208,10 +255,13 @@ export class PluginContext {
     return record;
   }
 
-  private setValue(key: string, value: unknown, _source: ContextValue["source"]): void {
-    // R15-14 FIX: Always forbid setting keys with "system." prefix regardless of source
-    // The source parameter cannot be trusted as plugins can pass "system" to bypass checks
-    if (key.startsWith("system.")) {
+  private setValue(
+    key: string,
+    value: unknown,
+    _source: ContextValue["source"],
+    options: { allowProtectedSystemKey?: boolean } = {},
+  ): void {
+    if (PluginContext.protectedSystemKeys.has(key) && !options.allowProtectedSystemKey) {
       throw new Error(`PluginContext forbids setting reserved key namespace: ${key}`);
     }
     this.values.set(key, {

@@ -387,11 +387,12 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
 
 export class MockExecuteBridge implements ExecuteBridge {
   private resolvePlanId(plan: Plan | Record<string, unknown>): string {
-    const planId = plan.planId;
+    const legacyPlan = plan as Partial<Plan>;
+    const planId = legacyPlan.planId;
     if (typeof planId === "string" && planId.length > 0) {
       return planId;
     }
-    const bundleId = plan.planGraphBundleId;
+    const bundleId = (plan as { planGraphBundleId?: unknown }).planGraphBundleId;
     if (typeof bundleId === "string" && bundleId.length > 0) {
       return bundleId;
     }
@@ -399,10 +400,11 @@ export class MockExecuteBridge implements ExecuteBridge {
   }
 
   private resolvePlanSteps(plan: Plan | Record<string, unknown>): PlanStep[] {
-    if (Array.isArray(plan.steps)) {
-      return plan.steps as PlanStep[];
+    const legacyPlan = plan as Partial<Plan>;
+    if (Array.isArray(legacyPlan.steps)) {
+      return legacyPlan.steps as PlanStep[];
     }
-    const graph = plan.graph as { nodes?: unknown[] } | undefined;
+    const graph = (plan as { graph?: { nodes?: unknown[] } }).graph;
     const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
     return nodes.map((node, index) => {
       const candidate = node as Record<string, unknown>;

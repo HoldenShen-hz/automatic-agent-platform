@@ -45,7 +45,7 @@ test("createMinimalExecution creates valid execution", () => {
 
   assert.equal(exec.id, "exec-test-001");
   assert.equal(exec.taskId, "task-123");
-  assert.equal(exec.status, "running");
+  assert.equal(exec.status, "executing");
   assert.strictEqual(exec.finishedAt, null);
 });
 

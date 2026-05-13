@@ -7,6 +7,7 @@
 import type { PluginDefinition } from "./plugin-definition.js";
 import type { PluginContextConfig } from "./plugin-context.js";
 import { PluginContext } from "./plugin-context.js";
+import type { DomainToolPlugin } from "../../domains/registry/plugin-spi.js";
 
 // Local type definitions to avoid cross-module import issues
 export interface MockLlmConfig {
@@ -25,9 +26,12 @@ export interface MockToolResult {
 
 export interface TestHarnessConfig {
   plugin: PluginDefinition;
+  mode?: "mock" | "live";
   mockLlm?: MockLlmConfig;
   mockTools?: MockToolResult[];
   timeoutMs?: number;
+  livePlugin?: DomainToolPlugin;
+  liveRunner?: (input: Record<string, unknown>) => Promise<unknown> | unknown;
 }
 
 export interface TestCase {
@@ -67,14 +71,20 @@ export interface HarnessReport {
  */
 export class PluginTestHarness {
   private plugin: PluginDefinition;
+  private mode: "mock" | "live";
   private mockLlm: MockLlmConfig | null = null;
   private mockToolResults: Map<string, MockToolResult> = new Map();
   private timeoutMs: number;
+  private livePlugin: DomainToolPlugin | null;
+  private liveRunner: ((input: Record<string, unknown>) => Promise<unknown> | unknown) | null;
 
   constructor(config: TestHarnessConfig) {
     this.plugin = config.plugin;
+    this.mode = config.mode ?? "mock";
     this.mockLlm = config.mockLlm ?? null;
     this.timeoutMs = config.timeoutMs ?? 30000;
+    this.livePlugin = config.livePlugin ?? null;
+    this.liveRunner = config.liveRunner ?? null;
 
     if (config.mockTools) {
       for (const tool of config.mockTools) {
@@ -103,8 +113,7 @@ export class PluginTestHarness {
   async runCase(caseInput: Record<string, unknown>): Promise<TestResult> {
     const startTime = Date.now();
     try {
-      // Simulate plugin execution
-      const output = await this.executePlugin(caseInput);
+      const output = await this.executeWithTimeout(caseInput);
       return {
         caseName: "single-case",
         passed: true,
@@ -133,7 +142,7 @@ export class PluginTestHarness {
     for (const testCase of cases) {
       const startTime = Date.now();
       try {
-        const actualOutput = await this.executePlugin(testCase.input);
+        const actualOutput = await this.executeWithTimeout(testCase.input);
         const passed = testCase.expectedOutput
           ? JSON.stringify(actualOutput) === JSON.stringify(testCase.expectedOutput)
           : true;
@@ -197,9 +206,29 @@ export class PluginTestHarness {
   // Per §22.3, this should use MockModelGateway with record/replay capability.
   // The current implementation does not perform actual plugin execution.
   // TODO: Implement MockModelGateway interface with record/replay support
+  private async executeWithTimeout(input: Record<string, unknown>): Promise<unknown> {
+    const execution = this.executePlugin(input);
+    const timeout = new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Plugin execution timed out after ${this.timeoutMs}ms`));
+      }, this.timeoutMs);
+      execution.finally(() => clearTimeout(timer)).catch(() => undefined);
+    });
+    return Promise.race([execution, timeout]);
+  }
+
   private async executePlugin(input: Record<string, unknown>): Promise<unknown> {
-    // Simulate execution with mock delay
-    await delay(10);
+    if (this.mode === "live") {
+      if (this.liveRunner) {
+        return this.liveRunner(input);
+      }
+      if (this.livePlugin?.execute) {
+        return this.livePlugin.execute(input);
+      }
+      throw new Error("Live mode requires a bound liveRunner or livePlugin runtime");
+    }
+
+    await delay(this.mockLlm?.delayMs ?? 10);
 
     // Return mock output based on plugin type
     switch (this.plugin.type) {

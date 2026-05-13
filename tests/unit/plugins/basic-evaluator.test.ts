@@ -9,7 +9,7 @@ test("createBasicEvaluatorPlugin returns valid plugin structure", () => {
   assert.equal(plugin.pluginId, "plugin.core.basic-evaluator");
   assert.equal(plugin.domainId, "core");
   assert.equal(plugin.spiType, "validator");
-  assert.deepEqual(plugin.capabilityIds, ["output.validate"]);
+  assert.deepEqual(plugin.capabilityIds, ["output.validate", "output.evaluate", "output.harness-decision"]);
 });
 
 test("basic evaluator validates when all required fields present", async () => {
@@ -212,12 +212,15 @@ test("basic evaluator has initialize method", async () => {
   assert.equal(result, undefined);
 });
 
-test("basic evaluator has healthCheck method that returns true", async () => {
+test("basic evaluator healthCheck follows initialize lifecycle", async () => {
   const plugin = createBasicEvaluatorPlugin();
 
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck!();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck!(), false);
+  await plugin.initialize!();
+  assert.equal(await plugin.healthCheck!(), true);
+  await plugin.shutdown!();
+  assert.equal(await plugin.healthCheck!(), false);
 });
 
 test("basic evaluator has shutdown method", async () => {

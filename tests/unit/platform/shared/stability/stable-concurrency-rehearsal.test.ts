@@ -17,7 +17,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-concurrency-rehearsal.js";
 
 function createTempDir(): string {
-  return join("/tmp", `concurrency-test-${Date.now()}`);
+  return join("/tmp", `concurrency-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
 test("runStableConcurrencyRehearsal executes all three scenarios successfully", async () => {

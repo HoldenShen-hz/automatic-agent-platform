@@ -64,200 +64,243 @@ export class PrometheusMetricsExporter {
    */
   public export(): string {
     const lines: string[] = [];
+    const renderedCounters = new Set<string>();
+    const renderedHistograms = new Set<string>();
 
     // Add metric help and type headers
-    lines.push("# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.");
-    lines.push("# TYPE process_cpu_seconds_total counter");
-    lines.push(`process_cpu_seconds_total ${this.getCpuSeconds()}`);
+    lines.push(`# HELP ${this.metricName("process_cpu_seconds_total")} Total user and system CPU time spent in seconds.`);
+    lines.push(`# TYPE ${this.metricName("process_cpu_seconds_total")} counter`);
+    lines.push(`${this.metricName("process_cpu_seconds_total")} ${this.getCpuSeconds()}`);
 
     lines.push("");
-    lines.push("# HELP process_meminfo_bytes Process memory information in bytes.");
-    lines.push("# TYPE process_meminfo_bytes gauge");
+    lines.push(`# HELP ${this.metricName("process_meminfo_bytes")} Process memory information in bytes.`);
+    lines.push(`# TYPE ${this.metricName("process_meminfo_bytes")} gauge`);
     const memUsage = this.getMemoryUsage();
-    lines.push(`process_meminfo_bytes{type="rss"} ${memUsage.rss}`);
-    lines.push(`process_meminfo_bytes{type="heap_total"} ${memUsage.heapTotal}`);
-    lines.push(`process_meminfo_bytes{type="heap_used"} ${memUsage.heapUsed}`);
-    lines.push(`process_meminfo_bytes{type="external"} ${memUsage.external}`);
+    lines.push(`${this.metricName("process_meminfo_bytes")}{type="rss"} ${memUsage.rss}`);
+    lines.push(`${this.metricName("process_meminfo_bytes")}{type="heap_total"} ${memUsage.heapTotal}`);
+    lines.push(`${this.metricName("process_meminfo_bytes")}{type="heap_used"} ${memUsage.heapUsed}`);
+    lines.push(`${this.metricName("process_meminfo_bytes")}{type="external"} ${memUsage.external}`);
 
     lines.push("");
-    lines.push("# HELP http_requests_total Total number of HTTP requests.");
-    lines.push("# TYPE http_requests_total counter");
+    lines.push(`# HELP ${this.metricName("http_requests_total")} Total number of HTTP requests.`);
+    lines.push(`# TYPE ${this.metricName("http_requests_total")} counter`);
     for (const metric of this.getHttpRequestCounts()) {
       const path = sanitizeLabelValue(metric.path);
-      lines.push(`http_requests_total{method="${metric.method}",path="${path}",status="${metric.status}"} ${metric.count}`);
+      lines.push(`${this.metricName("http_requests_total")}{method="${metric.method}",path="${path}",status="${metric.status}"} ${metric.count}`);
     }
+    renderedCounters.add("http_requests_total");
 
     lines.push("");
-    lines.push("# HELP http_request_duration_ms HTTP request duration in milliseconds.");
-    lines.push("# TYPE http_request_duration_ms histogram");
+    lines.push(`# HELP ${this.metricName("http_request_duration_ms")} HTTP request duration in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("http_request_duration_ms")} histogram`);
     for (const line of this.renderHistogramSeries("http_request_duration_ms")) {
       lines.push(line);
     }
+    renderedHistograms.add("http_request_duration_ms");
 
     lines.push("");
-    lines.push("# HELP task_executions_total Total number of task executions by status.");
-    lines.push("# TYPE task_executions_total counter");
+    lines.push(`# HELP ${this.metricName("task_executions_total")} Total number of task executions by status.`);
+    lines.push(`# TYPE ${this.metricName("task_executions_total")} counter`);
     const executionMetrics = this.getExecutionMetrics();
     for (const [status, count] of Object.entries(executionMetrics)) {
-      lines.push(`task_executions_total{status="${status}"} ${count}`);
+      lines.push(`${this.metricName("task_executions_total")}{status="${status}"} ${count}`);
     }
 
     lines.push("");
-    lines.push("# HELP agent_rounds_total Total number of agent rounds (workflow step completions).");
-    lines.push("# TYPE agent_rounds_total counter");
-    lines.push(`agent_rounds_total ${this.getAgentRoundsCount()}`);
+    lines.push(`# HELP ${this.metricName("agent_rounds_total")} Total number of agent rounds (workflow step completions).`);
+    lines.push(`# TYPE ${this.metricName("agent_rounds_total")} counter`);
+    lines.push(`${this.metricName("agent_rounds_total")} ${this.getAgentRoundsCount()}`);
 
     lines.push("");
-    lines.push("# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.");
-    lines.push("# TYPE process_start_time_seconds gauge");
-    lines.push(`process_start_time_seconds ${Math.floor(this.processStartTime / 1000)}`);
+    lines.push(`# HELP ${this.metricName("process_start_time_seconds")} Start time of the process since unix epoch in seconds.`);
+    lines.push(`# TYPE ${this.metricName("process_start_time_seconds")} gauge`);
+    lines.push(`${this.metricName("process_start_time_seconds")} ${Math.floor(this.processStartTime / 1000)}`);
 
     lines.push("");
-    lines.push("# HELP process_uptime_seconds Process uptime in seconds.");
-    lines.push("# TYPE process_uptime_seconds gauge");
-    lines.push(`process_uptime_seconds ${Math.floor((Date.now() - this.processStartTime) / 1000)}`);
+    lines.push(`# HELP ${this.metricName("process_uptime_seconds")} Process uptime in seconds.`);
+    lines.push(`# TYPE ${this.metricName("process_uptime_seconds")} gauge`);
+    lines.push(`${this.metricName("process_uptime_seconds")} ${Math.floor((Date.now() - this.processStartTime) / 1000)}`);
 
     const summary = this.metricsService.buildSummary(nowIso());
 
     lines.push("");
-    lines.push("# HELP active_executions Current active executions.");
-    lines.push("# TYPE active_executions gauge");
-    lines.push(`active_executions ${summary.runtimeMetrics.activeExecutions}`);
+    lines.push(`# HELP ${this.metricName("active_executions")} Current active executions.`);
+    lines.push(`# TYPE ${this.metricName("active_executions")} gauge`);
+    lines.push(`${this.metricName("active_executions")} ${summary.runtimeMetrics.activeExecutions}`);
 
     lines.push("");
-    lines.push("# HELP queued_tasks Current queued tasks.");
-    lines.push("# TYPE queued_tasks gauge");
-    lines.push(`queued_tasks ${summary.runtimeMetrics.queuedTasks}`);
+    lines.push(`# HELP ${this.metricName("queued_tasks")} Current queued tasks.`);
+    lines.push(`# TYPE ${this.metricName("queued_tasks")} gauge`);
+    lines.push(`${this.metricName("queued_tasks")} ${summary.runtimeMetrics.queuedTasks}`);
 
     lines.push("");
-    lines.push("# HELP dead_letter_count Current dead letter count.");
-    lines.push("# TYPE dead_letter_count gauge");
-    lines.push(`dead_letter_count ${summary.recoveryMetrics.deadLetterCount}`);
+    lines.push(`# HELP ${this.metricName("dead_letter_count")} Current dead letter count.`);
+    lines.push(`# TYPE ${this.metricName("dead_letter_count")} gauge`);
+    lines.push(`${this.metricName("dead_letter_count")} ${summary.recoveryMetrics.deadLetterCount}`);
 
     lines.push("");
-    lines.push("# HELP provider_success_rate Rolling provider success rate.");
-    lines.push("# TYPE provider_success_rate gauge");
-    lines.push(`provider_success_rate ${summary.runtimeMetrics.providerSuccessRate}`);
+    lines.push(`# HELP ${this.metricName("provider_success_rate")} Rolling provider success rate.`);
+    lines.push(`# TYPE ${this.metricName("provider_success_rate")} gauge`);
+    lines.push(`${this.metricName("provider_success_rate")} ${summary.runtimeMetrics.providerSuccessRate}`);
 
     lines.push("");
-    lines.push("# HELP memory_rss_bytes Resident set size in bytes.");
-    lines.push("# TYPE memory_rss_bytes gauge");
-    lines.push(`memory_rss_bytes ${Math.round(summary.runtimeMetrics.memoryRssMb * 1024 * 1024)}`);
+    lines.push(`# HELP ${this.metricName("memory_rss_bytes")} Resident set size in bytes.`);
+    lines.push(`# TYPE ${this.metricName("memory_rss_bytes")} gauge`);
+    lines.push(`${this.metricName("memory_rss_bytes")} ${Math.round(summary.runtimeMetrics.memoryRssMb * 1024 * 1024)}`);
 
     lines.push("");
-    lines.push("# HELP memory_heap_used_bytes Heap used in bytes.");
-    lines.push("# TYPE memory_heap_used_bytes gauge");
-    lines.push(`memory_heap_used_bytes ${memUsage.heapUsed}`);
+    lines.push(`# HELP ${this.metricName("memory_heap_used_bytes")} Heap used in bytes.`);
+    lines.push(`# TYPE ${this.metricName("memory_heap_used_bytes")} gauge`);
+    lines.push(`${this.metricName("memory_heap_used_bytes")} ${memUsage.heapUsed}`);
 
     lines.push("");
-    lines.push("# HELP event_loop_lag_ms Event loop lag in milliseconds.");
-    lines.push("# TYPE event_loop_lag_ms gauge");
-    lines.push(`event_loop_lag_ms ${summary.runtimeMetrics.eventLoopLagMs ?? 0}`);
+    lines.push(`# HELP ${this.metricName("event_loop_lag_ms")} Event loop lag in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("event_loop_lag_ms")} gauge`);
+    lines.push(`${this.metricName("event_loop_lag_ms")} ${summary.runtimeMetrics.eventLoopLagMs ?? 0}`);
 
     lines.push("");
-    lines.push("# HELP redis_connection_errors Total Redis connection errors observed by runtime components.");
-    lines.push("# TYPE redis_connection_errors counter");
+    lines.push(`# HELP ${this.metricName("redis_connection_errors")} Total Redis connection errors observed by runtime components.`);
+    lines.push(`# TYPE ${this.metricName("redis_connection_errors")} counter`);
     for (const line of this.renderCounterSeries("redis_connection_errors")) {
       lines.push(line);
     }
+    renderedCounters.add("redis_connection_errors");
 
     lines.push("");
-    lines.push("# HELP queue_enqueue_failures_total Total queue enqueue write failures observed by backend and mode.");
-    lines.push("# TYPE queue_enqueue_failures_total counter");
+    lines.push(`# HELP ${this.metricName("queue_enqueue_failures_total")} Total queue enqueue write failures observed by backend and mode.`);
+    lines.push(`# TYPE ${this.metricName("queue_enqueue_failures_total")} counter`);
     for (const line of this.renderCounterSeries("queue_enqueue_failures_total")) {
       lines.push(line);
     }
+    renderedCounters.add("queue_enqueue_failures_total");
 
     lines.push("");
-    lines.push("# HELP alert_delivery_failures_total Total alert delivery failures observed by channel.");
-    lines.push("# TYPE alert_delivery_failures_total counter");
+    lines.push(`# HELP ${this.metricName("alert_delivery_failures_total")} Total alert delivery failures observed by channel.`);
+    lines.push(`# TYPE ${this.metricName("alert_delivery_failures_total")} counter`);
     for (const line of this.renderCounterSeries("alert_delivery_failures_total")) {
       lines.push(line);
     }
+    renderedCounters.add("alert_delivery_failures_total");
 
     lines.push("");
-    lines.push("# HELP healthy_workers Healthy workers available.");
-    lines.push("# TYPE healthy_workers gauge");
-    lines.push(`healthy_workers ${summary.runtimeMetrics.workerHealth.healthyWorkers}`);
+    lines.push(`# HELP ${this.metricName("healthy_workers")} Healthy workers available.`);
+    lines.push(`# TYPE ${this.metricName("healthy_workers")} gauge`);
+    lines.push(`${this.metricName("healthy_workers")} ${summary.runtimeMetrics.workerHealth.healthyWorkers}`);
 
     lines.push("");
-    lines.push("# HELP total_workers Total workers registered.");
-    lines.push("# TYPE total_workers gauge");
-    lines.push(`total_workers ${summary.runtimeMetrics.workerHealth.totalWorkers}`);
+    lines.push(`# HELP ${this.metricName("total_workers")} Total workers registered.`);
+    lines.push(`# TYPE ${this.metricName("total_workers")} gauge`);
+    lines.push(`${this.metricName("total_workers")} ${summary.runtimeMetrics.workerHealth.totalWorkers}`);
 
     const diskUsage = this.getDiskUsage();
     lines.push("");
-    lines.push("# HELP disk_total_bytes Total bytes available in the current workspace filesystem.");
-    lines.push("# TYPE disk_total_bytes gauge");
-    lines.push(`disk_total_bytes ${diskUsage.totalBytes}`);
+    lines.push(`# HELP ${this.metricName("disk_total_bytes")} Total bytes available in the current workspace filesystem.`);
+    lines.push(`# TYPE ${this.metricName("disk_total_bytes")} gauge`);
+    lines.push(`${this.metricName("disk_total_bytes")} ${diskUsage.totalBytes}`);
 
     lines.push("");
-    lines.push("# HELP disk_free_bytes Free bytes available in the current workspace filesystem.");
-    lines.push("# TYPE disk_free_bytes gauge");
-    lines.push(`disk_free_bytes ${diskUsage.freeBytes}`);
+    lines.push(`# HELP ${this.metricName("disk_free_bytes")} Free bytes available in the current workspace filesystem.`);
+    lines.push(`# TYPE ${this.metricName("disk_free_bytes")} gauge`);
+    lines.push(`${this.metricName("disk_free_bytes")} ${diskUsage.freeBytes}`);
 
     lines.push("");
-    lines.push("# HELP disk_used_ratio Used ratio of the current workspace filesystem.");
-    lines.push("# TYPE disk_used_ratio gauge");
-    lines.push(`disk_used_ratio ${diskUsage.usedRatio}`);
+    lines.push(`# HELP ${this.metricName("disk_used_ratio")} Used ratio of the current workspace filesystem.`);
+    lines.push(`# TYPE ${this.metricName("disk_used_ratio")} gauge`);
+    lines.push(`${this.metricName("disk_used_ratio")} ${diskUsage.usedRatio}`);
 
     lines.push("");
-    lines.push("# HELP oapeflir_loop_duration_ms OAPEFLIR stage duration in milliseconds.");
-    lines.push("# TYPE oapeflir_loop_duration_ms histogram");
+    lines.push(`# HELP ${this.metricName("oapeflir_loop_duration_ms")} OAPEFLIR stage duration in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("oapeflir_loop_duration_ms")} histogram`);
     for (const line of this.renderHistogramSeries("oapeflir_loop_duration_ms")) {
       lines.push(line);
     }
+    renderedHistograms.add("oapeflir_loop_duration_ms");
 
     lines.push("");
-    lines.push("# HELP oapeflir_stage_outcome_total OAPEFLIR stage outcomes by result.");
-    lines.push("# TYPE oapeflir_stage_outcome_total counter");
+    lines.push(`# HELP ${this.metricName("oapeflir_stage_outcome_total")} OAPEFLIR stage outcomes by result.`);
+    lines.push(`# TYPE ${this.metricName("oapeflir_stage_outcome_total")} counter`);
     for (const line of this.renderCounterSeries("oapeflir_stage_outcome_total")) {
       lines.push(line);
     }
+    renderedCounters.add("oapeflir_stage_outcome_total");
 
     lines.push("");
-    lines.push("# HELP oapeflir_stage_entry_total OAPEFLIR stage entry count.");
-    lines.push("# TYPE oapeflir_stage_entry_total counter");
+    lines.push(`# HELP ${this.metricName("oapeflir_stage_entry_total")} OAPEFLIR stage entry count.`);
+    lines.push(`# TYPE ${this.metricName("oapeflir_stage_entry_total")} counter`);
     for (const line of this.renderCounterSeries("oapeflir_stage_entry_total")) {
       lines.push(line);
     }
+    renderedCounters.add("oapeflir_stage_entry_total");
 
     lines.push("");
-    lines.push("# HELP stage_duration_seconds OAPEFLIR stage duration in seconds (entry to exit).");
-    lines.push("# TYPE stage_duration_seconds histogram");
+    lines.push(`# HELP ${this.metricName("stage_duration_seconds")} OAPEFLIR stage duration in seconds (entry to exit).`);
+    lines.push(`# TYPE ${this.metricName("stage_duration_seconds")} histogram`);
     for (const line of this.renderHistogramSeries("stage_duration_seconds")) {
       lines.push(line);
     }
+    renderedHistograms.add("stage_duration_seconds");
 
     lines.push("");
-    lines.push("# HELP llm_ttfb_seconds LLM time-to-first-token latency in seconds.");
-    lines.push("# TYPE llm_ttfb_seconds histogram");
+    lines.push(`# HELP ${this.metricName("llm_ttfb_seconds")} LLM time-to-first-token latency in seconds.`);
+    lines.push(`# TYPE ${this.metricName("llm_ttfb_seconds")} histogram`);
     for (const line of this.renderHistogramSeries("llm_ttfb_seconds")) {
       lines.push(line);
     }
+    renderedHistograms.add("llm_ttfb_seconds");
 
     lines.push("");
-    lines.push("# HELP llm_total_seconds LLM total request latency in seconds.");
-    lines.push("# TYPE llm_total_seconds histogram");
+    lines.push(`# HELP ${this.metricName("llm_total_seconds")} LLM total request latency in seconds.`);
+    lines.push(`# TYPE ${this.metricName("llm_total_seconds")} histogram`);
     for (const line of this.renderHistogramSeries("llm_total_seconds")) {
       lines.push(line);
     }
+    renderedHistograms.add("llm_total_seconds");
 
     lines.push("");
-    lines.push("# HELP knowledge_query_duration_ms Knowledge query duration in milliseconds.");
-    lines.push("# TYPE knowledge_query_duration_ms histogram");
+    lines.push(`# HELP ${this.metricName("knowledge_query_duration_ms")} Knowledge query duration in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("knowledge_query_duration_ms")} histogram`);
     for (const line of this.renderHistogramSeries("knowledge_query_duration_ms")) {
       lines.push(line);
     }
+    renderedHistograms.add("knowledge_query_duration_ms");
 
     lines.push("");
-    lines.push("# HELP knowledge_query_total Knowledge queries by operation and result.");
-    lines.push("# TYPE knowledge_query_total counter");
+    lines.push(`# HELP ${this.metricName("knowledge_query_total")} Knowledge queries by operation and result.`);
+    lines.push(`# TYPE ${this.metricName("knowledge_query_total")} counter`);
     for (const line of this.renderCounterSeries("knowledge_query_total")) {
       lines.push(line);
     }
+    renderedCounters.add("knowledge_query_total");
+
+    for (const name of runtimeMetricsRegistry.listCounterNames()) {
+      if (renderedCounters.has(name)) {
+        continue;
+      }
+      lines.push("");
+      lines.push(`# HELP ${this.metricName(name)} Runtime counter metric.`);
+      lines.push(`# TYPE ${this.metricName(name)} counter`);
+      for (const line of this.renderCounterSeries(name)) {
+        lines.push(line);
+      }
+    }
+
+    for (const name of runtimeMetricsRegistry.listHistogramNames()) {
+      if (renderedHistograms.has(name)) {
+        continue;
+      }
+      lines.push("");
+      lines.push(`# HELP ${this.metricName(name)} Runtime histogram metric.`);
+      lines.push(`# TYPE ${this.metricName(name)} histogram`);
+      for (const line of this.renderHistogramSeries(name)) {
+        lines.push(line);
+      }
+    }
 
     return lines.join("\n");
+  }
+
+  private metricName(name: string): string {
+    return `${this.metricPrefix}${name}`;
   }
 
   private getCpuSeconds(): number {
@@ -319,7 +362,7 @@ export class PrometheusMetricsExporter {
 
   private renderCounterSeries(name: string): string[] {
     return runtimeMetricsRegistry.getCounters(name).map((series) => (
-      `${name}${formatPrometheusLabels(series.labels)} ${series.value}`
+      `${this.metricName(name)}${formatPrometheusLabels(series.labels)} ${series.value}`
     ));
   }
 
@@ -329,11 +372,11 @@ export class PrometheusMetricsExporter {
       let cumulative = 0;
       for (let index = 0; index < series.buckets.length; index += 1) {
         cumulative += series.bucketCounts[index] ?? 0;
-        lines.push(`${name}_bucket${formatPrometheusLabels({ ...series.labels, le: String(series.buckets[index]) })} ${cumulative}`);
+        lines.push(`${this.metricName(name)}_bucket${formatPrometheusLabels({ ...series.labels, le: String(series.buckets[index]) })} ${cumulative}`);
       }
-      lines.push(`${name}_bucket${formatPrometheusLabels({ ...series.labels, le: "+Inf" })} ${series.count}`);
-      lines.push(`${name}_sum${formatPrometheusLabels(series.labels)} ${series.sum}`);
-      lines.push(`${name}_count${formatPrometheusLabels(series.labels)} ${series.count}`);
+      lines.push(`${this.metricName(name)}_bucket${formatPrometheusLabels({ ...series.labels, le: "+Inf" })} ${series.count}`);
+      lines.push(`${this.metricName(name)}_sum${formatPrometheusLabels(series.labels)} ${series.sum}`);
+      lines.push(`${this.metricName(name)}_count${formatPrometheusLabels(series.labels)} ${series.count}`);
     }
     return lines;
   }
@@ -351,7 +394,7 @@ function sanitizeLabelValue(value: string): string {
 }
 
 function formatPrometheusLabels(labels: Record<string, string>): string {
-  const entries = Object.entries(labels);
+  const entries = Object.entries(labels).sort(([left], [right]) => left.localeCompare(right));
   if (entries.length === 0) {
     return "";
   }

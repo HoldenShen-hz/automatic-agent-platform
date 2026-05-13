@@ -44,6 +44,40 @@ interface QualityEvaluationResult {
   };
 }
 
+interface BasicEvaluationContract extends BasicValidationContract {
+  targetValues?: Record<string, unknown>;
+  deviationThreshold?: number;
+}
+
+interface EvaluatorQualityScore {
+  overall: number;
+  completeness: number;
+  correctness: number;
+  deviation: number;
+  threshold: number;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  riskFactors: string[];
+}
+
+interface EvaluatorAssessment {
+  valid: boolean;
+  errors: Array<{ field: string; message: string; severity: "error" | "warning" }>;
+  suggestions: string[];
+  qualityScore: EvaluatorQualityScore;
+  deviationAnalysis: Array<{ field: string; expected: unknown; actual: unknown; severity: "low" | "medium" | "high" }>;
+  riskAssessment: Array<{ category: string; level: "low" | "medium" | "high" | "critical"; message: string }>;
+  recommendations: string[];
+  harnessDecision: {
+    action: "accept" | "repair" | "requires_human" | "reject";
+    reasonCodes: string[];
+  };
+}
+
+type ValidatorInput = {
+  machineOutput: { payload?: Record<string, unknown> };
+  contract?: BasicEvaluationContract;
+};
+
 const DEFAULT_QUALITY_SCORING_CONFIG: QualityScoringConfig = {
   completenessWeight: 0.4,
   typeAccuracyWeight: 0.4,
@@ -55,9 +89,26 @@ function describeValueType(value: unknown): string {
     return "array";
   }
   if (value === null) {
-    return "null";
+    return "object";
   }
   return typeof value;
+}
+
+function highestRiskLevel(levels: Array<"low" | "medium" | "high" | "critical">): "low" | "medium" | "high" | "critical" {
+  if (levels.includes("critical")) {
+    return "critical";
+  }
+  if (levels.includes("high")) {
+    return "high";
+  }
+  if (levels.includes("medium")) {
+    return "medium";
+  }
+  return "low";
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 /**
@@ -226,22 +277,125 @@ function validateWithQualityScoring(
   };
 }
 
-function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPlugin {
+function evaluateWithLegacyScoring(
+  input: unknown,
+  contract: BasicEvaluationContract,
+  scoringConfig: QualityScoringConfig = DEFAULT_QUALITY_SCORING_CONFIG,
+): EvaluatorAssessment {
+  const payload = (input as Record<string, unknown>) ?? {};
+  const validation = validateWithQualityScoring(payload, contract, scoringConfig);
+  const targetValues = contract.targetValues ?? {};
+  const deviationEntries = Object.entries(targetValues);
+  const deviationAnalysis = deviationEntries.map(([field, expected]) => ({
+      field,
+      expected,
+      actual: payload[field],
+      severity:
+        payload[field] === expected
+          ? "low" as const
+          : payload[field] == null
+            ? "high" as const
+            : "medium" as const,
+    }));
+  const deviation = deviationEntries.length === 0
+    ? 0
+    : Number((deviationAnalysis.filter((entry) => entry.actual !== entry.expected).length / deviationEntries.length).toFixed(2));
+
+  const riskAssessment: Array<{ category: string; level: "low" | "medium" | "high" | "critical"; message: string }> = [];
+  if (validation.errors.length > 0) {
+    riskAssessment.push({
+      category: "schema",
+      level: validation.errors.length >= 3 ? "high" : "medium",
+      message: `${validation.errors.length} validation issue(s) detected.`,
+    });
+  }
+  if (deviation > (contract.deviationThreshold ?? 0.1)) {
+    riskAssessment.push({
+      category: "quality",
+      level: deviation >= 0.5 ? "high" : "medium",
+      message: `Observed deviation ${deviation} exceeds threshold ${(contract.deviationThreshold ?? 0.1).toFixed(2)}.`,
+    });
+  }
+  const safetyFields = uniqueStrings([
+    ...(contract.highRiskFields ?? []),
+    ...Object.keys(payload).filter((field) => /safety|kill|security|danger|secret/i.test(field)),
+  ]);
+  for (const field of safetyFields) {
+    riskAssessment.push({
+      category: "safety",
+      level: "high",
+      message: `Field "${field}" is safety-sensitive and requires review.`,
+    });
+  }
+  if ((contract.requiredFields?.length ?? 0) >= 4 && validation.errors.length > 0) {
+    riskAssessment.push({
+      category: "completeness",
+      level: validation.errors.length >= 4 ? "critical" : "high",
+      message: "A large portion of required fields is missing or invalid.",
+    });
+  }
+  const riskLevel = highestRiskLevel(riskAssessment.map((risk) => risk.level));
+  const correctness = validation.scoreBreakdown.typeAccuracyScore;
+  const completeness = validation.scoreBreakdown.completenessScore;
+  const overall = Number(Math.max(
+    0,
+    Math.min(
+      1,
+      (completeness * 0.4) +
+      (correctness * 0.35) +
+      ((1 - deviation) * 0.25),
+    ),
+  ).toFixed(2));
+  const recommendations = uniqueStrings([
+    ...validation.suggestions,
+    ...riskAssessment.map((risk) => `Review ${risk.category} risk: ${risk.message}`),
+  ]);
+  const harnessDecision = riskLevel === "critical" || riskLevel === "high"
+    ? {
+        action: "requires_human" as const,
+        reasonCodes: uniqueStrings([...validation.harnessDecision.reasonCodes, "validator.high_risk_requires_human"]),
+      }
+    : validation.harnessDecision;
+
   return {
+    valid: validation.valid,
+    errors: validation.errors,
+    suggestions: validation.suggestions,
+    qualityScore: {
+      overall,
+      completeness,
+      correctness,
+      deviation,
+      threshold: contract.deviationThreshold ?? validation.qualityThreshold,
+      riskLevel,
+      riskFactors: uniqueStrings(riskAssessment.map((risk) => risk.category)),
+    },
+    deviationAnalysis,
+    riskAssessment,
+    recommendations,
+    harnessDecision,
+  };
+}
+
+function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPlugin {
+  let initialized = false;
+  const plugin = {
     pluginId,
     domainId: "core",
     spiType: "validator",
-    capabilityIds: ["output.validate"],
+    capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
     async initialize() {
+      initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return initialized;
     },
     async shutdown() {
+      initialized = false;
       return undefined;
     },
-    async validate(input) {
+    async validate(input: ValidatorInput) {
       const contract = (input.contract as BasicValidationContract | undefined) ?? {};
       const result = validateWithQualityScoring(input.machineOutput.payload ?? {}, contract);
 
@@ -258,7 +412,15 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
         },
       };
     },
+    async evaluate(input: ValidatorInput) {
+      return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, input.contract ?? {});
+    },
+    async produceHarnessDecision(input: ValidatorInput) {
+      return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, input.contract ?? {});
+    },
   };
+
+  return plugin as DomainValidatorPlugin;
 }
 
 export function createBasicValidatorPlugin(): DomainValidatorPlugin {

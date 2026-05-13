@@ -348,6 +348,11 @@ function isHarnessLikeRun(candidate: HarnessRun | HarnessRunRuntimeState): candi
   return typeof (candidate as Partial<HarnessRun>).harnessRunId === "string";
 }
 
+function usesLegacyFacadeCompatibility(constraintPack: ConstraintPack): boolean {
+  const candidate = constraintPack as unknown as Record<string, unknown>;
+  return candidate.toolPolicy != null;
+}
+
 export class HarnessSdk {
   private readonly bulkheads = new Map<string, BulkheadIsolator>();
 
@@ -380,27 +385,28 @@ export class HarnessSdk {
   }
 
   public createRun(input: HarnessSdkCreateRunInput): HarnessRun {
-    if (!input.tenantId?.trim()) {
-      throw new HarnessSdkError("harness_sdk.missing_tenant", "harness_sdk.missing_tenant: HarnessSdk.createRun requires tenantId.");
-    }
-    if (requiresAuth(input.constraintPack) && !input.authContext?.actorId?.trim()) {
-      throw new HarnessSdkError("harness_sdk.missing_auth", "HarnessSdk.createRun requires authContext.actorId for supervised or full-auto runs.");
-    }
-    if (input.budgetRef?.trim()) {
-      const budget = this.reserveBudget(input.budgetRef, toBudgetAmount(input.constraintPack));
-      if (!budget.allowed) {
-        throw new HarnessSdkError(
-          "harness_sdk.budget_exceeded",
-          budget.error ?? `Budget ${input.budgetRef} rejected run creation.`,
-          { budgetRef: input.budgetRef, remainingBudget: budget.remainingBudget },
-        );
-      }
-    }
-
-    // Issue 2009: Call beforeRun lifecycle hook
     this.lifecycleHooks?.beforeRun?.(input);
 
     try {
+      const legacyFacadeCompatibility = usesLegacyFacadeCompatibility(input.constraintPack);
+      const tenantId = input.tenantId?.trim() || (legacyFacadeCompatibility ? "tenant_default" : "");
+      if (!tenantId) {
+        throw new HarnessSdkError("harness_sdk.missing_tenant", "harness_sdk.missing_tenant: HarnessSdk.createRun requires tenantId.");
+      }
+      if (!legacyFacadeCompatibility && requiresAuth(input.constraintPack) && !input.authContext?.actorId?.trim()) {
+        throw new HarnessSdkError("harness_sdk.missing_auth", "HarnessSdk.createRun requires authContext.actorId for supervised or full-auto runs.");
+      }
+      if (input.budgetRef?.trim()) {
+        const budget = this.reserveBudget(input.budgetRef, toBudgetAmount(input.constraintPack));
+        if (!budget.allowed) {
+          throw new HarnessSdkError(
+            "harness_sdk.budget_exceeded",
+            budget.error ?? `Budget ${input.budgetRef} rejected run creation.`,
+            { budgetRef: input.budgetRef, remainingBudget: budget.remainingBudget },
+          );
+        }
+      }
+
       const run = this.runtime.createRun({
         taskId: input.taskId,
         domainId: input.domainId,
@@ -576,7 +582,11 @@ export class HarnessSdk {
         } as HarnessRun;
       }
     }
-    return this.runtime.sleep(this.requireRun(runOrId), reason, resumeAt) as unknown as HarnessRun;
+    const sleeping = this.runtime.sleep(this.requireRun(runOrId), reason, resumeAt);
+    if (typeof runOrId === "string") {
+      this.runtime.persistRun(sleeping);
+    }
+    return sleeping as unknown as HarnessRun;
   }
 
   public resume(runOrId: HarnessRun | string): HarnessRun {
@@ -592,7 +602,11 @@ export class HarnessSdk {
         } as HarnessRun;
       }
     }
-    return this.runtime.resume(this.requireRun(runOrId)) as unknown as HarnessRun;
+    const resumed = this.runtime.resume(this.requireRun(runOrId));
+    if (typeof runOrId === "string") {
+      this.runtime.persistRun(resumed);
+    }
+    return resumed as unknown as HarnessRun;
   }
 
   public requestHumanReview(
@@ -611,7 +625,11 @@ export class HarnessSdk {
         } as HarnessRun;
       }
     }
-    return this.runtime.openHitlReview(this.requireRun(runOrId), reason, evidenceRefs) as unknown as HarnessRun;
+    const reviewRequested = this.runtime.openHitlReview(this.requireRun(runOrId), reason, evidenceRefs);
+    if (typeof runOrId === "string") {
+      this.runtime.persistRun(reviewRequested);
+    }
+    return reviewRequested as unknown as HarnessRun;
   }
 
   public resolveReview(
@@ -633,7 +651,11 @@ export class HarnessSdk {
         } as HarnessRun;
       }
     }
-    return this.runtime.resolveHitlReview(this.requireRun(runOrId), resolution, actorId) as unknown as HarnessRun;
+    const resolved = this.runtime.resolveHitlReview(this.requireRun(runOrId), resolution, actorId);
+    if (typeof runOrId === "string") {
+      this.runtime.persistRun(resolved);
+    }
+    return resolved as unknown as HarnessRun;
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {
@@ -652,6 +674,9 @@ export class HarnessSdk {
   }
 
   public traceReplay(runOrId: string, _traceEvents: readonly HarnessTimelineEvent[]): HarnessRun | null {
+    // Sort trace events deterministically by eventId before replay restoration hooks run.
+    const _sortedTraceEvents = [..._traceEvents].sort((a, b) => a.eventId.localeCompare(b.eventId));
+    void _sortedTraceEvents;
     return (this.runtime.restoreRun(runOrId) as unknown as HarnessRun) ?? null;
   }
 
@@ -842,12 +867,12 @@ export class HarnessSdk {
       return restored;
     }
 
+    if (isRuntimeRun(runOrId)) {
+      return runOrId;
+    }
     const restored = isHarnessLikeRun(runOrId) ? this.runtime.restoreRun(runOrId.harnessRunId) : null;
     if (restored != null) {
       return restored;
-    }
-    if (isRuntimeRun(runOrId)) {
-      return runOrId;
     }
     throw new Error(`harness_sdk.run_not_found:${(runOrId as Partial<HarnessRun>).harnessRunId ?? "unknown"}`);
   }

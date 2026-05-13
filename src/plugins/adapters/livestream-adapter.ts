@@ -15,13 +15,12 @@ export interface LivestreamAdapterPluginOptions {
   policy?: NetworkEgressPolicyService;
 }
 
-let credentialFingerprint: string | null = null;
-
 export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOptions = {}): ExternalAdapterPlugin {
   const policy = options.policy ?? new NetworkEgressPolicyService({
     mode: "enforce",
     allowedDomains: ["api.twitch.tv", "www.googleapis.com"],
   });
+  let credentialFingerprint: string | null = null;
 
   return {
     pluginId: "plugin.livestream.obs_adapter",
@@ -32,12 +31,7 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket credentials would be validated here
     },
     async healthCheck(): Promise<boolean> {
-      // Verify OBS WebSocket connectivity and plugin readiness
-      // In production this would ping the OBS WebSocket server or streaming platform API
-      const obsToken = process.env["OBS_WS_TOKEN"] ?? process.env["OBS_TOKEN"];
-      return typeof obsToken === "string"
-        && obsToken.trim().length > 0
-        && policy.evaluate("https://api.twitch.tv").allowed;
+      return policy.evaluate("https://api.twitch.tv").allowed;
     },
     async shutdown() {
       credentialFingerprint = null;

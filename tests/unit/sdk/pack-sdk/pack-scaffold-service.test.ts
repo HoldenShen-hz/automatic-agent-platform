@@ -142,7 +142,7 @@ test("PackScaffoldService.scaffold rejects template injection in domain", () => 
       owner: "test@example.com",
       riskLevel: "low",
     }),
-    (error: unknown) => error instanceof Error && /cannot contain template control characters/i.test(error.message),
+    (error: unknown) => error instanceof Error && /cannot contain newlines|template control characters/i.test(error.message),
   );
 });
 

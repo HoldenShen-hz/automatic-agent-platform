@@ -1025,9 +1025,9 @@ export class SloAlertingService {
       }
     }
 
-    // If SLO is breached but not yet in gradient range, still track but don't freeze
+    // If we cannot compute burn percent but the SLO is already breached, fail closed.
     if (sloStatus === "breached" && gradientLevel === "none") {
-      gradientLevel = "degrade";
+      gradientLevel = "freeze";
     }
 
     // Apply gradient response

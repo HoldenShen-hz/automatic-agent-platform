@@ -215,7 +215,7 @@ export class PackTestLocalService {
     return evalDatasetId == null
       ? {
           ...result,
-          coveragePercent: Math.max(75, result.coveragePercent - 4),
+          coveragePercent: Math.max(60, result.coveragePercent - 18),
         }
       : result;
   }

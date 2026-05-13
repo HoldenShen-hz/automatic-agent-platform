@@ -211,6 +211,7 @@ export class DurableEventBus {
   private readonly deliveryChains = new Map<string, Promise<void>>();
   private readonly deliveryChainStates = new Map<string, DeliveryChainState>();
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly pendingDeliveryErrors = new Map<string, WorkflowStateError>();
   private readonly activeConsumerRefCounts: Map<string, number>;
   private readonly consumerGroups = new Map<string, ConsumerGroup>();
   private readonly adaptivePolling = new AdaptivePollingInterval();
@@ -338,9 +339,23 @@ export class DurableEventBus {
       this.cancelPolling(consumerId);
     }
     this.subscribers.clear();
-    this.deliveryChains.clear();
     this.deliveryChainStates.clear();
     this.partitionSubscribers.clear();
+    this.pendingPartitionEvents.clear();
+  }
+
+  /**
+   * Disposes the event bus and waits for in-flight delivery chains to settle.
+   * This is required when callers will close the underlying database immediately
+   * after teardown and need a deterministic no-more-queries boundary.
+   */
+  public async disposeAsync(): Promise<void> {
+    this.dispose();
+    const activeChains = [...new Set(this.deliveryChains.values())];
+    if (activeChains.length > 0) {
+      await Promise.allSettled(activeChains);
+    }
+    this.deliveryChains.clear();
   }
 
   /**
@@ -526,6 +541,9 @@ export class DurableEventBus {
    * @returns Array of pending events with their ack records
    */
   public pendingForConsumer(consumerId: string): PendingAckEvent[] {
+    if (this.disposed) {
+      return [];
+    }
     this.assertNotDisposed();
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     if (this.subscribers.has(consumerId) || this.activeConsumerRefCounts.has(consumerId)) {
@@ -540,6 +558,9 @@ export class DurableEventBus {
    * @returns The number of events delivered
    */
   private async deliverPendingNow(consumerId: string): Promise<number> {
+    if (this.disposed) {
+      return 0;
+    }
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     const handler = this.subscribers.get(consumerId);
     if (!handler) {
@@ -1000,6 +1021,9 @@ export class DurableEventBus {
    * @returns Promise resolving to number of events delivered
    */
   private async enqueueDelivery(consumerId: string, swallowErrors: boolean): Promise<number> {
+    if (this.disposed) {
+      return 0;
+    }
     this.assertNotDisposed();
     const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
     const next = prior
@@ -1011,7 +1035,15 @@ export class DurableEventBus {
         return undefined;
       })
       .then(() => {
+        if (this.disposed) {
+          return 0;
+        }
         this.assertNotDisposed();
+        const pendingError = this.pendingDeliveryErrors.get(consumerId);
+        if (pendingError) {
+          this.pendingDeliveryErrors.delete(consumerId);
+          throw pendingError;
+        }
         return this.deliverPendingNow(consumerId);
       });
     const chain = next.then(() => undefined, () => undefined);
@@ -1025,6 +1057,9 @@ export class DurableEventBus {
 
     if (swallowErrors) {
       return next.catch((err) => {
+        if (err instanceof WorkflowStateError) {
+          this.pendingDeliveryErrors.set(consumerId, err);
+        }
         eventBusLogger.warn("event_bus.delivery_enqueued_error", {
           consumerId,
           error: err instanceof Error ? err.message : String(err),

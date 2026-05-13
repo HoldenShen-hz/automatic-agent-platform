@@ -116,11 +116,10 @@ test("ServiceRegistry - circular dependency handling", () => {
     dependsOn: ["service-a"],
   });
 
-  // Topological sort detects cycle and logs warning
-  // Returns only services that can be sorted (may be partial)
-  const result = registry.topologicalSort();
-  // Cycle detection causes partial sort
-  assert.ok(Array.isArray(result));
+  assert.throws(
+    () => registry.topologicalSort(),
+    /circular_dependency/i,
+  );
 });
 
 test("ServiceRegistry - teardown is called on reset", async () => {

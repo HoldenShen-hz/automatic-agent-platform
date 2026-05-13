@@ -76,6 +76,7 @@ export interface MLInjectionClassifierConfig {
   readonly highConfidenceThreshold: number;
   readonly mediumConfidenceThreshold: number;
   readonly mlModelEndpoint?: string;
+  readonly useMlClassification?: boolean;
 }
 
 export const DEFAULT_ML_CLASSIFIER_CONFIG: MLInjectionClassifierConfig = {
@@ -94,16 +95,20 @@ export const DEFAULT_ML_CLASSIFIER_CONFIG: MLInjectionClassifierConfig = {
   threshold: 0.7,
   highConfidenceThreshold: 0.85,
   mediumConfidenceThreshold: 0.5,
+  useMlClassification: true,
 };
 
 const OUTPUT_SUSPICIOUS_PATTERNS: readonly PromptInjectionSignal[] = [
   // R23-54 fix: markdown/raw URL exfiltration now requires credential context nearby
   // to avoid blocking benign documentation or release-note links in normal output.
   { signal: "markdown_link_exfiltration", pattern: /(?:secret|token|api[-_\s]?key|password|credential).*\[[^\]]+\]\((https?:\/\/|mailto:)[^)]+\)/i, weight: 0.4 },
+  { signal: "markdown_link_exfiltration", pattern: /\[[^\]]*(?:admin|collector|secret|token)[^\]]*\]\((https?:\/\/|mailto:)[^)]+\)|\[[^\]]+\]\((https?:\/\/|mailto:)[^)]*(?:secret|token|collect|exfil)[^)]+\)/i, weight: 0.4 },
   // R16-25 fix: Raw URL exfiltration with query params is overly aggressive.
   // Require credential context before the URL or only flag high-confidence credential-in-URL scenarios.
   // Split into two patterns: one requiring preceding context, one for high-risk patterns only.
+  { signal: "raw_url_exfiltration", pattern: /(?:secret|token|api[-_\s]?key|password|credential)\s*:?\s*https?:\/\/\S+/i, weight: 0.5 },
   { signal: "raw_url_exfiltration_credential_context", pattern: /(?:secret|token|api[-_\s]?key|password|credential)\s*:?\s*https?:\/\/\S+/i, weight: 0.5 },
+  { signal: "raw_url_exfiltration", pattern: /https?:\/\/\S*[?&](?:token|secret|api[-_\s]?key|password|credential)=\S{8,}/i, weight: 0.35 },
   { signal: "raw_url_exfiltration_high_risk", pattern: /https?:\/\/\S*[?&](?:token|secret|api[-_\s]?key|password|credential)=\S{8,}/i, weight: 0.35 },
   { signal: "instruction_echo", pattern: /ignore\s+(?:all\s+)?previous\s+instructions?|bypass.*(?:safety|restriction)/i, weight: 0.45 },
   { signal: "system_prompt_echo", pattern: /(system|developer|hidden)\s+(prompt|instructions?)/i, weight: 0.35 },
@@ -112,8 +117,12 @@ const OUTPUT_SUSPICIOUS_PATTERNS: readonly PromptInjectionSignal[] = [
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200F\u2060\uFEFF]/g;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
+function normalizePromptInput(input: string): string {
+  return input.normalize("NFKC").replace(ZERO_WIDTH_PATTERN, "").replace(CONTROL_PATTERN, "");
+}
+
 export function sanitizePromptInput(input: string): string {
-  const normalized = input.normalize("NFKC").replace(ZERO_WIDTH_PATTERN, "").replace(CONTROL_PATTERN, "");
+  const normalized = normalizePromptInput(input);
   return normalized
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -124,7 +133,7 @@ export function sanitizePromptInput(input: string): string {
 }
 
 export function sanitizePromptOutput(output: string): string {
-  return output.normalize("NFKC").replace(ZERO_WIDTH_PATTERN, "").replace(CONTROL_PATTERN, "");
+  return normalizePromptInput(output);
 }
 
 function buildLexicalAssessment(
@@ -329,19 +338,12 @@ function buildConsensusAssessment(
   lexical: PromptDefenseLayerAssessment,
   semantic: PromptDefenseLayerAssessment,
   behavioral: PromptDefenseLayerAssessment,
-  llmJudge: PromptDefenseLayerAssessment,
 ): PromptDefenseLayerAssessment {
-  // R2-3: Multi-layer chain: regex→classifier→LLM judge
-  const activeLayers = [lexical, semantic, behavioral, llmJudge].filter((layer) => layer.triggeredSignals.length > 0);
-  const baseScore = Math.max(lexical.score, semantic.score, behavioral.score, llmJudge.score);
-  // R2-3: Layer agreement boost when 3+ layers agree (including LLM judge)
+  const activeLayers = [lexical, semantic, behavioral].filter((layer) => layer.triggeredSignals.length > 0);
+  const baseScore = Math.max(lexical.score, semantic.score, behavioral.score);
   const layerAgreementBoost = activeLayers.length >= 3 ? 0.12 : activeLayers.length >= 2 ? 0.08 : 0;
-  // R2-3: Full chain boost when all 4 layers triggered
-  const fullChainBoost = activeLayers.length === 4 ? 0.1 : 0;
-  // R2-3: LLM judge cross-layer conflict detection adds significant weight
-  const llmJudgeConflictBoost = llmJudge.triggeredSignals.some((s) => s.includes("cross_layer")) ? 0.08 : 0;
   const multiSignalBoost = lexical.triggeredSignals.length >= 2 ? 0.05 : 0;
-  const score = Number(Math.min(0.99, baseScore + layerAgreementBoost + fullChainBoost + llmJudgeConflictBoost + multiSignalBoost).toFixed(2));
+  const score = Number(Math.min(0.99, baseScore + layerAgreementBoost + multiSignalBoost).toFixed(2));
   const triggeredSignals = activeLayers.flatMap((layer) => layer.triggeredSignals);
 
   return {
@@ -366,60 +368,35 @@ function deriveConfidence(
   return "low";
 }
 
-export async function classifyPromptInjectionRisk(
+function shouldDeferTopLevelBlock(
+  lexical: PromptDefenseLayerAssessment,
+  semantic: PromptDefenseLayerAssessment,
+  behavioral: PromptDefenseLayerAssessment,
+): boolean {
+  if (semantic.triggeredSignals.length > 0) {
+    return false;
+  }
+  const lexicalSignals = new Set(lexical.triggeredSignals);
+  const behavioralSignals = new Set(behavioral.triggeredSignals);
+  return lexicalSignals.size === 1
+    && lexicalSignals.has("tool_escape")
+    && behavioralSignals.size === 1
+    && behavioralSignals.has("behavioral_execution_takeover");
+}
+
+export function classifyPromptInjectionRisk(
   input: string,
   threshold = 0.7,
   config: MLInjectionClassifierConfig = DEFAULT_ML_CLASSIFIER_CONFIG,
-): Promise<PromptInjectionClassification> {
-  // R10-41 fix: Normalize once and use consistently for all assessments.
-  // sanitizePromptInput also normalizes to NFKC, so this ensures assessment
-  // uses the same base representation that sanitization produces.
-  const normalizedInput = input.normalize("NFKC");
-  const sanitizedInput = sanitizePromptInput(input);
+): PromptInjectionClassification {
+  const normalizedInput = normalizePromptInput(input);
   const lexical = buildLexicalAssessment(normalizedInput, threshold, config);
-
-  let semantic: PromptDefenseLayerAssessment;
-  if (config.mlModelEndpoint) {
-    const mlResult = await fetchMLSemanticAssessment(normalizedInput, config.mlModelEndpoint);
-    if (mlResult) {
-      semantic = {
-        layer: "semantic",
-        score: mlResult.score,
-        triggeredSignals: mlResult.signals,
-        blocked: mlResult.blocked,
-      };
-    } else {
-      semantic = buildSemanticAssessment(normalizedInput, threshold, config);
-    }
-  } else {
-    semantic = buildSemanticAssessment(normalizedInput, threshold, config);
-  }
-
+  const semantic = buildSemanticAssessment(normalizedInput, threshold, config);
   const behavioral = buildBehavioralAssessment(normalizedInput, threshold);
-
-  // R2-3: Multi-layer chain - LLM judge as final layer
-  let llmJudge: PromptDefenseLayerAssessment;
-  if (config.mlModelEndpoint) {
-    const llmResult = await fetchLLMJudgeAssessment(normalizedInput, config.mlModelEndpoint);
-    if (llmResult) {
-      llmJudge = {
-        layer: "llm_judge",
-        score: llmResult.score,
-        triggeredSignals: llmResult.signals,
-        blocked: llmResult.blocked,
-      };
-    } else {
-      llmJudge = buildLLMJudgeAssessment(normalizedInput, threshold, config);
-    }
-  } else {
-    llmJudge = buildLLMJudgeAssessment(normalizedInput, threshold, config);
-  }
-
-  const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral, llmJudge);
+  const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral);
   const score = consensus.score;
-  // R16-19 fix: classifier layers may require review, but they must not
-  // unilaterally hard-deny production execution without external guardrails.
-  const blocked = false;
+  // Defer pure tool-execution takeover cases to downstream execution guardrails.
+  const blocked = consensus.blocked && !shouldDeferTopLevelBlock(lexical, semantic, behavioral);
   const confidence = deriveConfidence(score, threshold, config);
   const matchedSignals = Array.from(new Set(consensus.triggeredSignals));
 
@@ -429,8 +406,8 @@ export async function classifyPromptInjectionRisk(
     threshold,
     matchedSignals,
     confidence,
-    sanitizedInput,
-    layers: [lexical, semantic, behavioral, llmJudge, consensus],
+    sanitizedInput: normalizedInput,
+    layers: [lexical, semantic, behavioral, consensus],
   };
 }
 
@@ -445,8 +422,33 @@ export async function executePromptDefenseChain(
       : {}),
   };
   const threshold = options.threshold ?? effectiveConfig.threshold;
-  const classification = await classifyPromptInjectionRisk(input, threshold, effectiveConfig);
+  const classification = classifyPromptInjectionRisk(input, threshold, effectiveConfig);
   const layers = [...classification.layers];
+  const semanticIndex = layers.findIndex((layer) => layer.layer === "semantic");
+  const lexical = layers.find((layer) => layer.layer === "lexical");
+  const behavioral = layers.find((layer) => layer.layer === "behavioral");
+  if (
+    effectiveConfig.useMlClassification
+    && semanticIndex >= 0
+    && lexical
+    && behavioral
+    && options.integration?.mlClassifierEndpoint
+  ) {
+    const mlAssessment = await fetchMLSemanticAssessment(input, options.integration.mlClassifierEndpoint);
+    if (mlAssessment != null) {
+      layers[semanticIndex] = {
+        layer: "semantic",
+        score: mlAssessment.score,
+        triggeredSignals: mlAssessment.signals,
+        blocked: mlAssessment.blocked,
+      };
+      const consensus = buildConsensusAssessment(threshold, lexical, layers[semanticIndex]!, behavioral);
+      const consensusIndex = layers.findIndex((layer) => layer.layer === "consensus");
+      if (consensusIndex >= 0) {
+        layers[consensusIndex] = consensus;
+      }
+    }
+  }
   const consensusIndex = layers.findIndex((layer) => layer.layer === "consensus");
   if (consensusIndex < 0) {
     return layers;
@@ -549,16 +551,16 @@ export function assemblePromptSegments(input: {
   };
 }
 
-export async function protectSystemPrompt(input: {
+export function protectSystemPrompt(input: {
   systemPrompt: string;
   userInput: string;
   scope: string;
   threshold?: number;
   config?: MLInjectionClassifierConfig;
-}): Promise<PromptProtectionPlan> {
+}): PromptProtectionPlan {
   const effectiveConfig = input.config ?? DEFAULT_ML_CLASSIFIER_CONFIG;
   const threshold = input.threshold ?? effectiveConfig.threshold;
-  const classification = await classifyPromptInjectionRisk(input.userInput, threshold, effectiveConfig);
+  const classification = classifyPromptInjectionRisk(input.userInput, threshold, effectiveConfig);
   const assembled = assemblePromptSegments({
     systemPrompt: input.systemPrompt,
     userInput: input.userInput,
@@ -572,7 +574,7 @@ export async function protectSystemPrompt(input: {
     canaryToken: assembled.canaryToken,
     allowExecution: !classification.blocked,
     riskLevel,
-    sanitizedUserInput: classification.sanitizedInput,
+    sanitizedUserInput: sanitizePromptInput(classification.sanitizedInput),
     segments: assembled.segments,
   };
 }
@@ -580,9 +582,9 @@ export async function protectSystemPrompt(input: {
 export function inspectProtectedModelOutput(output: string, token: string): PromptProtectionInspection {
   const sanitizedOutput = sanitizePromptOutput(output);
   const leaked = detectCanaryTokenLeakage(sanitizedOutput, token);
-  const suspiciousSignals = OUTPUT_SUSPICIOUS_PATTERNS
+  const suspiciousSignals = Array.from(new Set(OUTPUT_SUSPICIOUS_PATTERNS
     .filter((pattern) => pattern.pattern.test(sanitizedOutput))
-    .map((pattern) => pattern.signal);
+    .map((pattern) => pattern.signal)));
 
   return {
     leaked,

@@ -127,30 +127,41 @@ async function runFailedConsumerAckReplay(outputDir: string): Promise<StableEven
     });
 
     const ops = new EventOpsService(db, store);
-    ops.subscribe("task_projection", async () => {
-      throw new WorkflowStateError(
-        "projection replay rehearsal failure",
-        "projection replay rehearsal failure",
-        {
-          retryable: false,
-        },
-      );
-    });
+    let firstAttempt;
+    let secondAttempt;
+    let inspectReplay;
+    let failedAfterReplay;
+    let pendingAfterReplay;
 
-    const firstAttempt = await ops.replayConsumer("task_projection");
-    ops.subscribe("task_projection", async () => {
-      // Successful replay clears the failed ack.
-    });
-    const secondAttempt = await ops.replayConsumer("task_projection");
-    const inspectReplay = await ops.replayConsumer("inspect_projection");
-    const failedAfterReplay = store.event.countFailedTier1Acks();
-    const pendingAfterReplay = store.event.countPendingTier1Acks();
-    db.close();
+    try {
+      ops.subscribe("task_projection", async () => {
+        throw new WorkflowStateError(
+          "projection replay rehearsal failure",
+          "projection replay rehearsal failure",
+          {
+            retryable: false,
+          },
+        );
+      });
+
+      firstAttempt = await ops.replayConsumer("task_projection");
+      ops.subscribe("task_projection", async () => {
+        // Successful replay clears the failed ack.
+      });
+      secondAttempt = await ops.replayConsumer("task_projection");
+      inspectReplay = await ops.replayConsumer("inspect_projection");
+      failedAfterReplay = store.event.countFailedTier1Acks();
+      pendingAfterReplay = store.event.countPendingTier1Acks();
+    } finally {
+      await ops.dispose();
+      db.close();
+    }
 
     return {
       passed:
         firstAttempt.outcome === "failed" &&
-        firstAttempt.failedAfter >= 1 &&
+        typeof firstAttempt.errorCode === "string" &&
+        firstAttempt.errorCode.includes("dead_lettered") &&
         secondAttempt.outcome === "delivered" &&
         secondAttempt.pendingAfter === 0 &&
         secondAttempt.failedAfter === 0 &&

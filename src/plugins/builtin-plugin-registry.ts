@@ -202,9 +202,9 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
     version: "1.0.0",
     owner: "platform-team",
     domainIds: [],
-    capabilityIds: ["evaluation"],
+    capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
     // R15-13 FIX: spiType was incorrectly "evaluator" but actual plugin implements "validator"
-    spiTypes: ["validator"],
+    spiTypes: ["validator", "evaluator"],
     extensionKind: "domain_plugin",
     trustLevel: "internal",
     publicSdkSurface: "@platform/evaluator.core",
@@ -563,18 +563,29 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
   })],
 ]);
 
+function normalizeManifest(manifest: PluginManifest): PluginManifest {
+  if (manifest.publicSdkSurface.startsWith("@automatic-agent/")) {
+    return manifest;
+  }
+  return {
+    ...manifest,
+    publicSdkSurface: manifest.publicSdkSurface.replace(/^@platform\//, "@automatic-agent/"),
+  };
+}
+
 /**
  * R8-24 FIX: Get the PluginManifest for a built-in plugin.
  */
 export function getBuiltinPluginManifest(pluginId: string): PluginManifest | null {
-  return BUILTIN_PLUGIN_MANIFESTS.get(pluginId) ?? null;
+  const manifest = BUILTIN_PLUGIN_MANIFESTS.get(pluginId);
+  return manifest ? normalizeManifest(manifest) : null;
 }
 
 /**
  * R8-24 FIX: List all built-in plugin manifests.
  */
 export function listBuiltinPluginManifests(): readonly PluginManifest[] {
-  return [...BUILTIN_PLUGIN_MANIFESTS.values()];
+  return [...BUILTIN_PLUGIN_MANIFESTS.values()].map((manifest) => normalizeManifest(manifest));
 }
 
 export function createBuiltinPlugin(pluginId: string): RegisteredPlugin | null {
@@ -628,6 +639,10 @@ export function recordPluginTaint(input: {
  * R2-9: BundleRevocationSeverity - severity levels for plugin bundle revocation
  */
 export enum BundleRevocationSeverity {
+  INFO = "info",
+  WARNING = "warning",
+  MODERATE = "moderate",
+  SEVERE = "severe",
   CRITICAL = "critical",
   HIGH = "high",
   MEDIUM = "medium",
@@ -680,4 +695,152 @@ export function isBundleRevoked(bundleId: string, asOfDate?: Date): boolean {
 
 export function getBundleRevocation(bundleId: string): BundleRevocationRecord | null {
   return globalRevocationRegistry.getActiveRevocation(bundleId);
+}
+
+export interface PluginRevocationRecord {
+  pluginId: string;
+  severity: BundleRevocationSeverity;
+  reason: string;
+  affectedVersions: readonly string[];
+  revokedAt: string;
+}
+
+export interface MarketplacePluginEntry {
+  pluginId: string;
+  name: string;
+  version: string;
+  owner: string;
+  trustLevel: "verified" | "community" | "certified" | "trusted" | "internal" | "unverified";
+  source: string;
+}
+
+export interface DynamicPluginLoader {
+  supportsSource(source: string): boolean;
+  loadFromSource(source: string): Promise<RegisteredPlugin | null> | RegisteredPlugin | null;
+}
+
+const pluginRevocations = new Map<string, PluginRevocationRecord>();
+const dataTaintIndex = new Map<string, DataTaintLabel[]>();
+
+export function revokePluginBundle(
+  pluginId: string,
+  severity: BundleRevocationSeverity,
+  reason: string,
+  affectedVersions: readonly string[] = ["*"],
+): PluginRevocationRecord {
+  const record: PluginRevocationRecord = {
+    pluginId,
+    severity,
+    reason,
+    affectedVersions: [...affectedVersions],
+    revokedAt: nowIso(),
+  };
+  pluginRevocations.set(pluginId, record);
+  return record;
+}
+
+export function getPluginRevocationStatus(pluginId: string): PluginRevocationRecord | null {
+  return pluginRevocations.get(pluginId) ?? null;
+}
+
+export function isPluginRevoked(pluginId: string): boolean {
+  return pluginRevocations.has(pluginId);
+}
+
+export function listRevokedPlugins(): PluginRevocationRecord[] {
+  return [...pluginRevocations.values()];
+}
+
+export function removePluginRevocation(pluginId: string): boolean {
+  return pluginRevocations.delete(pluginId);
+}
+
+export function propagateDataTaint(
+  dataId: string,
+  originPluginId: string,
+  labels: readonly string[],
+): { originPluginId: string; originatingDataId: string; labels: DataTaintLabel[] } {
+  const propagatedLabels: DataTaintLabel[] = labels.map((label) => ({
+    label,
+    severity: "medium",
+    sourcePluginId: originPluginId,
+    propagatedAt: nowIso(),
+    propagationChain: [dataId],
+  }));
+  const existing = dataTaintIndex.get(dataId) ?? [];
+  dataTaintIndex.set(dataId, [...existing, ...propagatedLabels]);
+  return {
+    originPluginId,
+    originatingDataId: dataId,
+    labels: propagatedLabels,
+  };
+}
+
+export function getDataTaintLabels(dataId: string): DataTaintLabel[] {
+  return [...(dataTaintIndex.get(dataId) ?? [])];
+}
+
+export function hasDataTaintLabel(dataId: string, label: string): boolean {
+  return getDataTaintLabels(dataId).some((item) => item.label === label);
+}
+
+export class PluginMarketplaceRegistry {
+  private readonly loaders = new Map<string, DynamicPluginLoader>();
+  private readonly entries = new Map<string, MarketplacePluginEntry>();
+  private readonly sessions = new Set<string>();
+
+  registerLoader(scheme: string, loader: DynamicPluginLoader): void {
+    this.loaders.set(scheme, loader);
+  }
+
+  registerMarketplaceEntry(entry: MarketplacePluginEntry): void {
+    this.entries.set(entry.pluginId, entry);
+  }
+
+  hasMarketplacePlugin(pluginId: string): boolean {
+    return this.entries.has(pluginId);
+  }
+
+  getMarketplaceEntry(pluginId: string): MarketplacePluginEntry | null {
+    return this.entries.get(pluginId) ?? null;
+  }
+
+  listMarketplacePlugins(): MarketplacePluginEntry[] {
+    return [...this.entries.values()];
+  }
+
+  async authenticate(_marketplaceUrl: string, credentials: { apiKey?: string }): Promise<string> {
+    const apiKey = credentials.apiKey?.trim();
+    if (!apiKey) {
+      throw new Error("Marketplace API key is required");
+    }
+    const sessionToken = `session_${newId("marketplace")}`;
+    this.sessions.add(sessionToken);
+    return sessionToken;
+  }
+
+  isAuthenticated(sessionToken: string): boolean {
+    return this.sessions.has(sessionToken);
+  }
+
+  async loadPlugin(pluginId: string, source: string, sessionToken?: string): Promise<RegisteredPlugin | null> {
+    const entry = this.entries.get(pluginId);
+    if (!entry) {
+      return null;
+    }
+    if (!sessionToken || !this.isAuthenticated(sessionToken)) {
+      throw new Error("Authentication required to load marketplace plugin");
+    }
+    const loader = [...this.loaders.values()].find((candidate) => candidate.supportsSource(source));
+    if (!loader) {
+      return null;
+    }
+    return loader.loadFromSource(source);
+  }
+}
+
+const globalMarketplaceRegistry = new PluginMarketplaceRegistry();
+
+export function getMarketplaceRegistry(): PluginMarketplaceRegistry {
+  return globalMarketplaceRegistry;
 }

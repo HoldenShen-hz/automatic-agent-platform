@@ -254,7 +254,7 @@ test("OapeflirLoopService bypasses execute bridge when explicit step outputs are
   assert.deepEqual(result.stepOutputs, explicitStepOutputs);
 });
 
-test("OapeflirLoopService completes learn improve and release stages when failure evidence is present", async () => {
+test("OapeflirLoopService learns from failure evidence and gates release after improve", async () => {
   runtimeMetricsRegistry.reset();
   const service = new OapeflirLoopService({
     executeBridge: new DeterministicExecuteBridge(),
@@ -303,8 +303,8 @@ test("OapeflirLoopService completes learn improve and release stages when failur
   assert.equal(result.learningObjects.length > 0, true);
   assert.equal(result.timeline.find((entry) => entry.stage === "learn")?.status, "completed");
   assert.equal(result.timeline.find((entry) => entry.stage === "improve")?.status, "completed");
-  assert.equal(result.timeline.find((entry) => entry.stage === "release")?.status, "completed");
-  assert.equal(result.rolloutRecord?.status, "shadow");
+  assert.equal(result.timeline.find((entry) => entry.stage === "release")?.status, "skipped");
+  assert.equal(result.rolloutRecord, null);
   assert.equal(result.qualityGate.accepted, false);
   assert.equal(result.replanDecision.shouldReplan, true);
 });
