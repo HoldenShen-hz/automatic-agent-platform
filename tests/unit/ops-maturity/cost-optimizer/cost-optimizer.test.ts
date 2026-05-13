@@ -113,11 +113,11 @@ test("cost thresholds - recommendations generated at threshold", () => {
   assert.strictEqual(result.estimatedSavingsUsd, 1.5);
 });
 
-test("cost thresholds - low risk for costs under 100", () => {
+test("cost thresholds - medium risk for costs at or above 50", () => {
   const result = buildCostOptimizationRecommendation("moderate-subject", 50);
   assert.ok(result != null);
-  assert.strictEqual(result.riskLevel, "low");
-  assert.strictEqual(result.action, "increase_cache_hit");
+  assert.strictEqual(result.riskLevel, "medium");
+  assert.strictEqual(result.action, "right_size");
 });
 
 test("cost thresholds - medium risk for costs over 100", () => {

@@ -39,14 +39,14 @@ test("buildCostOptimizationRecommendation returns null for cost between 0 and 10
 });
 
 test("buildCostOptimizationRecommendation schedule_shift action is unreachable with current logic", () => {
-  // The code sets action to schedule_shift when downgradePath is false AND currentCostUsd <= 100
-  // But downgradePath requires currentCostUsd >= 100
+  // The code sets action to schedule_shift when downgradePath is false AND currentCostUsd < 50
+  // But currentCostUsd < 50 maps to increase_cache_hit, while downgradePath requires currentCostUsd >= 100
   // These conditions are mutually exclusive, so schedule_shift can never be returned
   // This test documents the current behavior: schedule_shift is unreachable
   const result = buildCostOptimizationRecommendation("subj", 50);
   assert.ok(result != null);
   assert.notEqual(result.action, "schedule_shift",
-    "schedule_shift should be unreachable with current logic (downgradePath requires cost >= 100 which conflicts with cost <= 100)");
+    "schedule_shift should be unreachable with current logic (downgradePath requires cost >= 100 while non-downgrade recommendations use right_size or increase_cache_hit)");
 });
 
 test("buildCostOptimizationRecommendation without modelRef never uses downgrade_model", () => {
@@ -120,24 +120,22 @@ test("buildCostOptimizationRecommendation with very large cost values", () => {
 });
 
 test("buildCostOptimizationRecommendation with exactly 100 cost without modelRef", () => {
-  // At cost = 100: currentCostUsd < 10 is false, but currentCostUsd > 100 is also false
-  // So riskLevel = "low", action = "increase_cache_hit" (not right_size)
+  // At cost = 100 without modelRef, downgradePath is false and the >= 50 threshold selects right_size/medium.
   const result = buildCostOptimizationRecommendation("subj", 100);
   assert.ok(result != null);
   assert.equal(result.estimatedSavingsUsd, 15); // 100 * 0.15
-  assert.equal(result.riskLevel, "low");
-  assert.equal(result.action, "increase_cache_hit");
+  assert.equal(result.riskLevel, "medium");
+  assert.equal(result.action, "right_size");
 });
 
 test("buildCostOptimizationRecommendation with exactly 100 cost with modelRef but no cheaper peer", () => {
-  // With modelRef at cost = 100: downgradePath requires costUsd >= 100 (true) AND recommendedProfile cheaper
-  // If no cheaper peer: downgradePath = false
-  // Since currentCostUsd > 100 is false, action = "increase_cache_hit"
+  // With modelRef at cost = 100, downgradePath still depends on having a cheaper peer profile.
+  // If downgradePath is false, the >= 50 threshold still selects right_size/medium.
   const result = buildCostOptimizationRecommendation("subj", 100, { modelRef: "claude-3-7" });
   assert.ok(result != null);
   assert.equal(result.estimatedSavingsUsd, 15); // 100 * 0.15
-  // riskLevel depends on whether downgradePath is true
-  assert.ok(["low", "medium", "high"].includes(result.riskLevel));
+  assert.ok(["medium", "high"].includes(result.riskLevel));
+  assert.ok(["right_size", "downgrade_model"].includes(result.action));
 });
 
 test("buildCostOptimizationRecommendation recommendedModelRef format includes provider and modelId", () => {

@@ -139,7 +139,7 @@ test("buildCostOptimizationRecommendation returns recommendation when cost >= 10
   assert.ok(result != null);
   assert.equal(result.subjectId, "normal_task");
   assert.equal(result.estimatedSavingsUsd, 7.5);
-  assert.equal(result.riskLevel, "low");
+  assert.equal(result.riskLevel, "medium");
 });
 
 test("buildCostOptimizationRecommendation uses medium risk when cost > 100", () => {

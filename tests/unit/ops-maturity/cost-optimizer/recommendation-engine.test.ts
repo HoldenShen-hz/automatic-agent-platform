@@ -20,11 +20,11 @@ test("buildCostOptimizationRecommendation returns recommendation when cost >= 10
   assert.equal(result.recommendationId, "rec_subj");
 });
 
-test("buildCostOptimizationRecommendation uses increase_cache_hit action for low cost", () => {
+test("buildCostOptimizationRecommendation uses right_size action at the 50 USD threshold", () => {
   const result = buildCostOptimizationRecommendation("subj", 50);
   assert.ok(result != null);
-  assert.equal(result.action, "increase_cache_hit");
-  assert.equal(result.riskLevel, "low");
+  assert.equal(result.action, "right_size");
+  assert.equal(result.riskLevel, "medium");
 });
 
 test("buildCostOptimizationRecommendation uses right_size for cost > 100", () => {
@@ -45,10 +45,10 @@ test("buildCostOptimizationRecommendation calculates higher savings for high cos
   // Cost exactly 100: downgradePath requires currentCostUsd >= 100 but also needs modelRef with available downgrade
   const result = buildCostOptimizationRecommendation("subj", 100);
   assert.ok(result != null);
-  // Without modelRef for downgrade path: 100 * 0.15 = 15, riskLevel "low" (100 is not > 100)
+  // Without modelRef for downgrade path: 100 * 0.15 = 15, riskLevel stays medium due to the >= 50 threshold
   assert.equal(result.estimatedSavingsUsd, 15);
-  assert.equal(result.riskLevel, "low");
-  assert.equal(result.action, "increase_cache_hit");
+  assert.equal(result.riskLevel, "medium");
+  assert.equal(result.action, "right_size");
 });
 
 test("buildCostOptimizationRecommendation includes currentModelRef when modelRef provided", () => {

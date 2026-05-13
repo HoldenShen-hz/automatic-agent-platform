@@ -91,8 +91,8 @@ test("cost: build recommendation for moderate cost", () => {
 
   assert.ok(result != null);
   assert.strictEqual(result.subjectId, "task-moderate");
-  assert.strictEqual(result.riskLevel, "low");
-  assert.strictEqual(result.action, "increase_cache_hit");
+  assert.strictEqual(result.riskLevel, "medium");
+  assert.strictEqual(result.action, "right_size");
   assert.ok(result.estimatedSavingsUsd > 0);
 });
 
