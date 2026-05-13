@@ -15,6 +15,7 @@ import type {
   ArtifactRecord,
 } from "../../../state-evidence/artifacts/artifact-model.js";
 import { AppError } from "../../../contracts/errors.js";
+import { MissionRefSchema, type MissionRef } from "../../../contracts/mission/index.js";
 import { z, ZodError } from "zod";
 
 class ApiError extends AppError {
@@ -359,6 +360,8 @@ const createTaskPayloadSchema = z.object({
   inputJson: z.string().optional(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   source: z.enum(["user", "perception", "system"]).optional(),
+  missionRef: MissionRefSchema.optional(),
+  riskClass: z.enum(["low", "medium", "high", "critical"]).optional(),
 }).strict();
 
 const updateTaskPayloadSchema = z.object({
@@ -378,6 +381,8 @@ export interface CreateTaskPayload {
   inputJson?: string;
   priority?: "low" | "normal" | "high" | "urgent";
   source?: "user" | "perception" | "system";
+  missionRef?: MissionRef;
+  riskClass?: "low" | "medium" | "high" | "critical";
 }
 
 export interface UpdateTaskPayload {
@@ -403,6 +408,8 @@ export function parseCreateTaskPayload(body: unknown): CreateTaskPayload {
     ...(payload.inputJson != null ? { inputJson: payload.inputJson } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
     ...(payload.source != null ? { source: payload.source } : {}),
+    ...(payload.missionRef != null ? { missionRef: payload.missionRef } : {}),
+    ...(payload.riskClass != null ? { riskClass: payload.riskClass } : {}),
   };
 }
 

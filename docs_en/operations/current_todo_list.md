@@ -529,3 +529,45 @@
 | #30 | unit/platform/interface/api | 52 | Archived |
 
 **Total**: 354 test failures, distributed across 16 main directories
+
+---
+
+## Mission v1.4 Architecture Implementation Active Todo
+
+> Source: `docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`. This track runs in the order of documentation status write-back, contract freeze, truth/event foundation, control plane, API/runtime binding, P1/P2 capabilities, and test closure. Mission is the long-lived governance context root only; it must not become an execution object or replace `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
+
+| Wave | Covered tasks | Status | Acceptance |
+|---|---|---|---|
+| M0 Documentation and ledger | T-MIS-001 to T-MIS-019 status, evidence paths, test paths | [x] Done | Review doc appends status and evidence without deleting the original contract |
+| M1 Contract Freeze | T-MIS-001 | [x] Done | Mission schemas/types/errors/events are exported and strict schema tests pass |
+| M2 Truth/Event Foundation | T-MIS-002, T-MIS-003 | [x] Done | mission truth tables, repository, event sequence, and platform.mission.* transaction tests pass |
+| M3 Control Plane | T-MIS-004, T-MIS-005 | [x] Done | lifecycle CAS, resolver, governance, budget, and live guard targeted tests pass |
+| M4 Interface/API | T-MIS-006 | [x] Done | `/api/v1/missions` create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, and `/api/v1/mission-resolutions:dry-run` contract tests pass |
+| M5 Runtime Binding | T-MIS-007, T-MIS-008, T-MIS-009, T-MIS-010 | [x] Done | Task create -> Mission resolution -> MissionSnapshot -> PlanGraphBundle -> HarnessRun -> NodeRun guard chain passes |
+| M6 P1 Capabilities | T-MIS-011, T-MIS-012, T-MIS-013, T-MIS-014, T-MIS-015 | [x] Done | Mission Console backend data plane, observability, learning promotion, legacy backfill, and ADR docs are consistent |
+| M7 P2 Repository Baseline | T-MIS-016, T-MIS-017, T-MIS-018, T-MIS-019 | [x] Done | handoff, home-region/fencing, outcome analytics, and template/package integration have tested service baselines |
+| M8 Tests and Closure | Contract/Unit/Integration/E2E/Governance | [x] Done | Mission targeted tests, `npm run build:test`, and OpenAPI contract tests pass |
+
+### T-MIS Mapping
+
+| Task | This-round landing area | Status |
+|---|---|---|
+| T-MIS-001 | Mission Zod schemas and type exports | [x] Done |
+| T-MIS-002 | mission_records / memberships / snapshots / event_sequences migration | [x] Done |
+| T-MIS-003 | `platform.mission.*` event schemas | [x] Done |
+| T-MIS-004 | MissionLifecycleService + CAS transition | [x] Done |
+| T-MIS-005 | MissionResolver + MissionGovernanceService | [x] Done |
+| T-MIS-006 | Mission API + ErrorEnvelope, including patch, members, tasks/runs/evidence/budget | [x] Done |
+| T-MIS-007 | PlanGraphBundle missionSnapshotRef required | [x] Done |
+| T-MIS-008 | HarnessRun missionBinding required | [x] Done |
+| T-MIS-009 | NodeRun MissionLiveGuard | [x] Done |
+| T-MIS-010 | canonical Mission E2E coverage | [x] Done |
+| T-MIS-011 | Mission Console Overview / Members / Tasks / Runs / Budget / Evidence backend data plane | [x] Done |
+| T-MIS-012 | Mission trace/log correlation + metrics cardinality guard | [x] Done |
+| T-MIS-013 | Mission scoped LearningObject promotion gate | [x] Done |
+| T-MIS-014 | legacy Task/Session missionRef backfill | [x] Done |
+| T-MIS-015 | ADR update and superseded markers | [x] Done |
+| T-MIS-016 | Mission handoff across org/tenant | [x] Done |
+| T-MIS-017 | Mission home region + read replica routing/fencing | [x] Done |
+| T-MIS-018 | Mission outcome analytics | [x] Done |
+| T-MIS-019 | Mission template/package integration | [x] Done |

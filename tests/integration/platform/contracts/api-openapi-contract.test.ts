@@ -139,8 +139,8 @@ test("contract: all routes have required fields", () => {
 
   for (const route of routes) {
     assert.ok(
-      route.method === "GET" || route.method === "POST",
-      `Route ${route.path} should have GET or POST method`,
+      ["GET", "POST", "PATCH", "DELETE"].includes(route.method),
+      `Route ${route.path} should have a supported HTTP method`,
     );
     assert.ok(
       route.path.startsWith("/"),

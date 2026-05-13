@@ -26,6 +26,7 @@ import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifa
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
+import type { MissionRepository } from "../../state-evidence/truth/mission-repository.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,
@@ -72,6 +73,8 @@ import {
   createPromptRoutes,
   createHarnessRunsRoutes,
   createReplaySessionRoutes,
+  createMissionRoutes,
+  createYonoRoutes,
 } from "./http-server/index.js";
 import {
   buildPreflightHeaders,
@@ -106,6 +109,7 @@ export interface HttpApiServerOptions {
   adminConfigService?: AdminConfigService | null;
   adminRuntimeDirectiveService?: AdminRuntimeDirectiveService | null;
   promptRegistryService?: HierarchicalPromptRegistryService | null;
+  missionRepository?: MissionRepository | null;
   knowledgePlaneService?: KnowledgePlaneService | null;
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
@@ -671,6 +675,13 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         missionControlService: this.options.missionControlService,
       }),
+      ...createMissionRoutes({
+        authService: this.options.authService ?? null,
+        missionRepository: this.options.missionRepository ?? null,
+      }),
+      ...createYonoRoutes({
+        authService: this.options.authService ?? null,
+      }),
       ...createGatewayRoutes({
         authService: this.options.authService ?? null,
         gatewayTargetDirectoryService: this.options.gatewayTargetDirectoryService ?? null,
@@ -682,6 +693,7 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
+        missionRepository: this.options.missionRepository ?? null,
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({

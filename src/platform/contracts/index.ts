@@ -22,6 +22,8 @@ export * from "./model-request/index.js";
 export * from "./projection-update/index.js";
 export * from "./prompt-bundle/index.js";
 export * from "./result-envelope/index.js";
+export * as missionContracts from "./mission/index.js";
+export * from "./mission/index.js";
 export * from "./types/ids.js";
 export * from "./types/anomaly-event-classification.js";
 export * from "./types/recovery-cadence.js";

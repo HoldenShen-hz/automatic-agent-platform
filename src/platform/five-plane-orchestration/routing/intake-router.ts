@@ -280,6 +280,8 @@ export interface IntakeRouteDecision {
   requiresOrchestration: boolean;
   /** Structured intake classification used to drive downstream routing/evaluation */
   classification: IntakeIntentClassification;
+  /** Optional canonical task spec reference carried from admission/runtime callers. */
+  confirmedTaskSpecId?: string;
 }
 
 /**
@@ -292,6 +294,23 @@ export interface IntakeRouteInput {
   request: string;
   /** Optional capabilities required for this request (used for capability matching) */
   requiredCapabilities?: readonly string[];
+  /** Optional tenant scope used for traceability and downstream policy routing. */
+  tenantId?: string;
+  /** Optional trace ID used by callers to correlate routing decisions. */
+  traceId?: string;
+  /** Optional canonical task spec reference to carry through the route decision. */
+  confirmedTaskSpecId?: string;
+  /** Optional risk preview; high/critical requests must use orchestration. */
+  riskPreview?: {
+    readonly riskClass: "low" | "medium" | "high" | "critical";
+    readonly reasons?: readonly string[];
+  };
+  /** Optional upstream intent hint; adopted only when confidence is high. */
+  preferredIntent?: {
+    readonly intent: IntakeIntent;
+    readonly confidence: number;
+    readonly reasoning?: string;
+  };
 }
 
 /**
@@ -504,6 +523,21 @@ export class IntakeRouter {
       .filter((segment) => segment.length > 0)
       .join(" ");
     const routeTrace: string[] = [];
+    if (input.tenantId != null && input.tenantId.length > 0) {
+      routeTrace.push(`tenantId:${input.tenantId}`);
+    }
+    if (input.traceId != null && input.traceId.length > 0) {
+      routeTrace.push(`traceId:${input.traceId}`);
+    }
+    if (input.confirmedTaskSpecId != null && input.confirmedTaskSpecId.length > 0) {
+      routeTrace.push(`confirmedTaskSpecId:${input.confirmedTaskSpecId}`);
+    }
+    if (input.riskPreview != null) {
+      routeTrace.push(`risk_class:${input.riskPreview.riskClass}`);
+      if ((input.riskPreview.reasons ?? []).length > 0) {
+        routeTrace.push(`risk_reasons:${input.riskPreview.reasons!.join(",")}`);
+      }
+    }
 
     // Find all orchestration hints present in the normalized input
     const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
@@ -521,7 +555,16 @@ export class IntakeRouter {
     // R6-11: If confidence is below threshold, use LLM-based intent extraction
     // This improves routing accuracy for ambiguous requests
     let finalClassification = classification;
-    if (classification.confidence < CONFIDENCE_THRESHOLD) {
+    if (input.preferredIntent != null && input.preferredIntent.confidence >= CONFIDENCE_THRESHOLD) {
+      finalClassification = {
+        intent: input.preferredIntent.intent,
+        continuation: classification.continuation,
+        confidence: Number(Math.min(0.99, input.preferredIntent.confidence).toFixed(2)),
+        matchedRules: classification.matchedRules,
+      };
+      routeTrace.push(`preferred_intent:${input.preferredIntent.intent}:${input.preferredIntent.confidence.toFixed(2)}`);
+    }
+    if (finalClassification === classification && classification.confidence < CONFIDENCE_THRESHOLD) {
       // Use LLM extraction for low-confidence classification
       const llmExtraction = extractIntentWithConfidence(normalized);
       routeTrace.push(`llm_extraction:attempted`);
@@ -558,26 +601,26 @@ export class IntakeRouter {
 
     // R6-11: Use finalClassification (possibly LLM-enhanced) for routing decision
     // Determine if orchestration is required based on complexity signals
-    if (shouldRequireOrchestration(normalized, matchedHints, finalClassification)) {
+    if (shouldRequireOrchestration(normalized, matchedHints, finalClassification, input.riskPreview?.riskClass)) {
       // Use orchestration workflow (specific or fallback)
       const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
       routeTrace.push(`route:selected:${workflowId}`);
       routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
-      return {
+      return withOptionalConfirmedTaskSpecId({
         workflowId,
         divisionId: division?.id ?? "general_ops",
         routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.multi_step_or_high_context",
         routeTrace,
         requiresOrchestration: true,
         classification: finalClassification,
-      };
+      }, input.confirmedTaskSpecId);
     }
 
     // Simple request - use the division's default workflow
     const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
     routeTrace.push(`route:selected:${workflowId}`);
     routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
-    return {
+    return withOptionalConfirmedTaskSpecId({
       workflowId,
       divisionId: division?.id ?? "general_ops",
       agentId: `${division?.id ?? "general_ops"}_agent`,
@@ -585,7 +628,7 @@ export class IntakeRouter {
       routeTrace,
       requiresOrchestration: false,
       classification: finalClassification,
-    };
+    }, input.confirmedTaskSpecId);
   }
 
   /**
@@ -1182,10 +1225,14 @@ function shouldRequireOrchestration(
   normalizedInput: string,
   matchedHints: readonly string[],
   classification: IntakeIntentClassification,
+  riskClass?: "low" | "medium" | "high" | "critical",
 ): boolean {
   const containsHighComplexityChineseCue =
     /(分析|研究|设计|对比|方案)/u.test(normalizedInput);
 
+  if (riskClass === "high" || riskClass === "critical") {
+    return true;
+  }
   if (matchedHints.length >= 2 || normalizedInput.length >= 120) {
     return true;
   }
@@ -1202,6 +1249,15 @@ function shouldRequireOrchestration(
     return true;
   }
   return false;
+}
+
+function withOptionalConfirmedTaskSpecId(
+  decision: Omit<IntakeRouteDecision, "confirmedTaskSpecId">,
+  confirmedTaskSpecId: string | undefined,
+): IntakeRouteDecision {
+  return confirmedTaskSpecId == null || confirmedTaskSpecId.length === 0
+    ? decision
+    : { ...decision, confirmedTaskSpecId };
 }
 
 /**

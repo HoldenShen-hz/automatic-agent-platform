@@ -26,26 +26,42 @@ export interface AdmissionPolicy {
   maxActiveExecutions: number;
   maxTier1AckBacklog: number;
   urgentQueueHeadroom: number;
+  riskClassIsolationEnabled?: boolean;
+  maxRiskClassTasks?: Partial<Record<"low" | "medium" | "high" | "critical", number>>;
+  tenantQuotaEnabled?: boolean;
+  tenantTaskQuota?: number;
+  sandboxMatchingEnabled?: boolean;
+  sandboxAvailability?: Record<string, number>;
+  capabilityClassGateEnabled?: boolean;
+  capabilityClassCapacity?: Record<string, number>;
 }
 
 export interface AdmissionSnapshot {
   queuedTasks: number;
   activeExecutions: number;
   tier1AckBacklog: number;
+  riskClassDistribution: Record<string, number>;
+  tenantUsage: Record<string, number>;
+  sandboxAvailability: Record<string, number>;
+  capabilityClassCapacity: Record<string, number>;
 }
 
 export interface AdmissionRequest {
   priority: TaskPriority;
   estimatedCostUsd?: number | null;
   budgetRemainingUsd?: number | null;
+  budgetReservationId?: string | null;
+  tenantId?: string | null;
   // R6-3: Risk class for isolation routing per §39.6
   riskClass?: "low" | "medium" | "high" | "critical" | null;
   // R6-3: Required sandbox type for this execution
   requiredSandboxType?: string | null;
+  sandboxType?: string | null;
   // R6-3: Tenant quota reference for resource governance
   tenantQuotaRef?: string | null;
   // R6-3: Required capability class for worker matching
   capabilityClass?: string | null;
+  requiredCapabilities?: readonly string[] | null;
   // R6-3: Risk class derived from task - for scheduling factor evaluation
   taskRiskClass?: "low" | "medium" | "high" | "critical" | null;
 }
@@ -68,7 +84,11 @@ export interface AdmissionDecision {
     | "admission.reject_starvation_protection"
     | "admission.reject_queue_saturated"
     | "admission.reject_tier1_backlog"
-    | "admission.reject_budget_exceeded";
+    | "admission.reject_budget_exceeded"
+    | "admission.reject_risk_class_isolation"
+    | "admission.reject_tenant_quota"
+    | "admission.reject_sandbox_matching"
+    | "admission.reject_capability_class";
   snapshot: AdmissionSnapshot;
   backpressure: AdmissionBackpressureSnapshot | null;
 }
@@ -81,8 +101,36 @@ const DEFAULT_POLICY: AdmissionPolicy = {
 };
 
 function isPriorityElevated(priority: TaskPriority): boolean {
-  // R6-8 fix: Use "critical" per §5.3 canonical priority levels, not "urgent"
-  return priority === "high" || priority === "critical";
+  return priority === "high" || priority === "urgent" || priority === "critical";
+}
+
+function buildDistribution(values: readonly string[]): Record<string, number> {
+  const distribution: Record<string, number> = {};
+  for (const value of values) {
+    distribution[value] = (distribution[value] ?? 0) + 1;
+  }
+  return distribution;
+}
+
+function readTaskRiskClass(task: unknown): string | null {
+  if (task == null || typeof task !== "object") {
+    return null;
+  }
+  const direct = (task as { readonly riskClass?: unknown }).riskClass;
+  if (typeof direct === "string" && direct.length > 0) {
+    return direct;
+  }
+  const inputJson = (task as { readonly inputJson?: unknown }).inputJson;
+  if (typeof inputJson !== "string" || inputJson.length === 0) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(inputJson) as { readonly riskClass?: unknown; readonly riskPreview?: { readonly riskClass?: unknown } };
+    const nested = parsed.riskClass ?? parsed.riskPreview?.riskClass;
+    return typeof nested === "string" && nested.length > 0 ? nested : null;
+  } catch {
+    return null;
+  }
 }
 
 export class AdmissionController {
@@ -93,10 +141,25 @@ export class AdmissionController {
   ) {}
 
   public snapshot(): AdmissionSnapshot {
+    const tasks = this.store.task.listTasks?.() ?? [];
+    const riskClassDistribution = buildDistribution(
+      tasks
+        .map((task) => readTaskRiskClass(task))
+        .filter((value): value is string => value != null),
+    );
+    const tenantUsage = buildDistribution(
+      tasks
+        .map((task) => typeof task?.tenantId === "string" ? task.tenantId : null)
+        .filter((value): value is string => value != null),
+    );
     return {
       queuedTasks: this.store.task.countQueuedTasks(),
       activeExecutions: this.store.execution.countActiveExecutions(),
       tier1AckBacklog: this.store.event.countPendingTier1Acks(),
+      riskClassDistribution,
+      tenantUsage,
+      sandboxAvailability: { ...(this.policy.sandboxAvailability ?? { standard: 10, strict: 2, sandboxed: 5 }) },
+      capabilityClassCapacity: { ...(this.policy.capabilityClassCapacity ?? { default: 10, privileged: 5, sandboxed: 3 }) },
     };
   }
 
@@ -104,12 +167,66 @@ export class AdmissionController {
     const snapshot = this.snapshot();
     const backpressure = this.backpressureSnapshot?.() ?? null;
 
-    // R6-3: Check risk-class isolation constraint
-    // High/critical risk tasks should not be queued behind low-risk tasks
     const effectiveRiskClass = request.riskClass ?? request.taskRiskClass ?? "low";
-    if (effectiveRiskClass === "critical" && snapshot.queuedTasks > 0) {
-      // Critical risk tasks get priority queuing - reject lower risk queued tasks
-      // This is a simplified check; full implementation would evict/reorder
+    if (this.policy.riskClassIsolationEnabled !== false) {
+      const maxRiskClassTasks = {
+        critical: 2,
+        high: 5,
+        medium: 10,
+        low: Number.POSITIVE_INFINITY,
+        ...(this.policy.maxRiskClassTasks ?? {}),
+      };
+      const currentRiskClassCount = snapshot.riskClassDistribution[effectiveRiskClass] ?? 0;
+      if (currentRiskClassCount >= (maxRiskClassTasks[effectiveRiskClass] ?? Number.POSITIVE_INFINITY)) {
+        return {
+          decision: "reject",
+          reasonCode: "admission.reject_risk_class_isolation",
+          snapshot,
+          backpressure,
+        };
+      }
+    }
+
+    const effectiveTenantId = request.tenantId ?? request.tenantQuotaRef ?? null;
+    if (
+      this.policy.tenantQuotaEnabled !== false
+      && effectiveTenantId != null
+      && (snapshot.tenantUsage[effectiveTenantId] ?? 0) >= (this.policy.tenantTaskQuota ?? 50)
+    ) {
+      return {
+        decision: "reject",
+        reasonCode: "admission.reject_tenant_quota",
+        snapshot,
+        backpressure,
+      };
+    }
+
+    const requestedSandboxType = request.sandboxType ?? request.requiredSandboxType ?? null;
+    if (this.policy.sandboxMatchingEnabled !== false && requestedSandboxType != null) {
+      const sandboxAvailability = snapshot.sandboxAvailability;
+      if ((sandboxAvailability[requestedSandboxType] ?? 0) <= 0) {
+        return {
+          decision: "reject",
+          reasonCode: "admission.reject_sandbox_matching",
+          snapshot,
+          backpressure,
+        };
+      }
+    }
+
+    if (this.policy.capabilityClassGateEnabled !== false) {
+      const requiredCapabilities = request.requiredCapabilities
+        ?? (request.capabilityClass != null ? [request.capabilityClass] : []);
+      for (const capability of requiredCapabilities) {
+        if ((snapshot.capabilityClassCapacity[capability] ?? 0) <= 0) {
+          return {
+            decision: "reject",
+            reasonCode: "admission.reject_capability_class",
+            snapshot,
+            backpressure,
+          };
+        }
+      }
     }
 
     if (
@@ -163,18 +280,6 @@ export class AdmissionController {
         snapshot,
         backpressure,
       };
-    }
-
-    // R6-3: Sandbox type matching check - verify required sandbox is available
-    // This is a placeholder check; full implementation would check worker pool
-    if (request.requiredSandboxType != null) {
-      // Sandbox type is noted for dispatch scheduling; admission allows if capacity exists
-    }
-
-    // R6-3: Tenant quota check placeholder
-    // Full implementation would check tenant-specific resource limits
-    if (request.tenantQuotaRef != null) {
-      // Tenant quota reference is tracked for resource governance
     }
 
     if (snapshot.tier1AckBacklog >= this.policy.maxTier1AckBacklog) {

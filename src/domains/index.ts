@@ -21,3 +21,4 @@ export * from "./recipes/index.js";
 export * from "./risk-profile/index.js";
 export * from "./registry/index.js";
 export * from "./roadmap/index.js";
+export * from "./yono/index.js";

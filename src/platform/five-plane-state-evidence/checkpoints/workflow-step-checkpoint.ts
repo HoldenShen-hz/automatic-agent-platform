@@ -118,9 +118,9 @@ export interface CreateWorkflowStepCheckpointInput {
   executionId: string | null;
   workflowId: string;
   divisionId: string;
-  harnessRunId: string;
-  nodeRunId: string;
-  planGraphId: string;
+  harnessRunId?: string;
+  nodeRunId?: string;
+  planGraphId?: string;
   stepId: string;
   roleId: string;
   outputKey: string;
@@ -195,9 +195,9 @@ export function createWorkflowStepCheckpoint(
     executionId: input.executionId,
     workflowId: input.workflowId,
     divisionId: input.divisionId,
-    harnessRunId: input.harnessRunId,
-    nodeRunId: input.nodeRunId,
-    planGraphId: input.planGraphId,
+    harnessRunId: input.harnessRunId ?? `harness:${input.executionId ?? input.taskId}`,
+    nodeRunId: input.nodeRunId ?? `node:${input.stepId}`,
+    planGraphId: input.planGraphId ?? `plan:${input.workflowId}`,
     stepId: input.stepId,
     roleId: input.roleId,
     outputKey: input.outputKey,
@@ -253,7 +253,7 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
       }
     }
     const parsed = JSON.parse(fileContent) as unknown;
-    return isWorkflowStepCheckpoint(parsed) ? parsed : null;
+    return normalizeWorkflowStepCheckpoint(parsed) ?? null;
   } catch (err) {
     logger.log({
       level: "warn",
@@ -387,6 +387,48 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
     && isResumeContext(candidate.resumeContext)
     && isFileDiffSummary(candidate.fileDiffSummary)
     && isArtifactRefArray(candidate.upstreamArtifactRefs);
+}
+
+function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint | null {
+  if (isWorkflowStepCheckpoint(value)) {
+    return value;
+  }
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  if (
+    candidate.schemaVersion !== WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION
+    || typeof candidate.taskId !== "string"
+    || (candidate.executionId !== null && candidate.executionId !== undefined && typeof candidate.executionId !== "string")
+    || typeof candidate.workflowId !== "string"
+    || typeof candidate.divisionId !== "string"
+    || typeof candidate.stepId !== "string"
+    || typeof candidate.roleId !== "string"
+    || typeof candidate.outputKey !== "string"
+    || typeof candidate.status !== "string"
+    || typeof candidate.producedAt !== "string"
+    || candidate.output == null
+    || typeof candidate.output !== "object"
+    || Array.isArray(candidate.output)
+    || !isDecisionContext(candidate.decisionContext)
+    || !isResumeContext(candidate.resumeContext)
+    || !isFileDiffSummary(candidate.fileDiffSummary)
+    || !isArtifactRefArray(candidate.upstreamArtifactRefs)
+  ) {
+    return null;
+  }
+  const legacy = {
+    ...candidate,
+    executionId: candidate.executionId ?? null,
+    harnessRunId: typeof candidate.harnessRunId === "string"
+      ? candidate.harnessRunId
+      : `harness:${candidate.executionId ?? candidate.taskId}`,
+    nodeRunId: typeof candidate.nodeRunId === "string" ? candidate.nodeRunId : `node:${candidate.stepId}`,
+    planGraphId: typeof candidate.planGraphId === "string" ? candidate.planGraphId : `plan:${candidate.workflowId}`,
+    compensationModel: candidate.compensationModel ?? null,
+  };
+  return isWorkflowStepCheckpoint(legacy) ? legacy : null;
 }
 
 function isDecisionContext(value: unknown): value is WorkflowStepCheckpointDecisionContext {

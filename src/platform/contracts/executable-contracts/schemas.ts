@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ValidationError } from "../errors.js";
 import type { CanonicalContractName } from "./index.js";
+import { MissionBindingSchema, MissionRefSchema } from "../mission/index.js";
 
 export const EXECUTABLE_CONTRACT_NAMES = [
   "TaskDraft",
@@ -120,6 +121,8 @@ export const ConfirmedTaskSpecSchema = z.object({
   idempotencyKey: z.string().min(1),
   traceId: z.string().min(1),
   createdAt: z.string().min(1),
+  missionRef: MissionRefSchema.optional(),
+  missionSnapshotRef: z.string().min(1).optional(),
 });
 
 export const RequestEnvelopeSchema = z.object({
@@ -141,6 +144,8 @@ export const RequestEnvelopeSchema = z.object({
   targetPlane: z.string().min(1).optional(),
   // R27-17 FIX: ADR-021 directives field for runtime control across planes.
   directives: z.any().optional(),
+  missionRef: MissionRefSchema.optional(),
+  missionSnapshotRef: z.string().min(1).optional(),
 });
 
 export const HarnessBudgetEnvelopeSchema = z.object({
@@ -207,6 +212,7 @@ export const HarnessRunSchema = z.object({
   terminalReason: z.string().optional(),
   leaseId: z.string().optional(),
   fencingToken: z.string().min(1),
+  missionBinding: MissionBindingSchema.optional(),
 });
 
 export const PlanNodeTypeSchema = z.enum(["tool", "llm", "hitl_wait", "subgraph", "evaluator", "router", "compensation"]);
@@ -280,6 +286,7 @@ export const PlanGraphBundleSchema = z.object({
   validationReport: GraphValidationReportSchema,
   artifactRefs: z.array(ArtifactRefSchema),
   createdAt: z.string().min(1),
+  missionSnapshotRef: z.string().min(1).optional(),
 });
 
 export const GraphPatchOperationTypeSchema = z.enum([
@@ -351,6 +358,7 @@ export const NodeRunSchema = z.object({
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
   terminalReason: z.string().optional(),
+  missionSnapshotRef: z.string().min(1).optional(),
 });
 
 export const NodeAttemptSchema = z.object({

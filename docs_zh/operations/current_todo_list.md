@@ -530,3 +530,45 @@
 | #30 | unit/platform/interface/api | 52 | 已归档 |
 
 **总计**: 354 个测试失败，分布在 16 个主要目录
+
+---
+
+## Mission v1.4 架构落地活动待办
+
+> 来源：`docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`。本主线按“文档状态回写 -> 契约冻结 -> Truth/Event -> Control Plane -> API/Runtime Binding -> P1/P2 能力 -> 测试收口”的顺序执行。Mission 只作为长期目标与治理上下文根对象，不成为执行对象，不替代 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
+
+| 波次 | 覆盖任务 | 状态 | 验收口径 |
+|---|---|---|---|
+| M0 文档与任务台账 | T-MIS-001 至 T-MIS-019 状态表、证据路径、测试路径 | [x] 已完成 | Review 文档只追加状态与依据，不删除原始契约内容 |
+| M1 Contract Freeze | T-MIS-001 | [x] 已完成 | Mission schemas/types/errors/events 可导出，严格 schema 测试通过 |
+| M2 Truth/Event Foundation | T-MIS-002, T-MIS-003 | [x] 已完成 | mission truth tables、repository、event sequence、platform.mission.* 同事务测试通过 |
+| M3 Control Plane | T-MIS-004, T-MIS-005 | [x] 已完成 | lifecycle CAS、resolver、governance、budget、live guard 定向测试通过 |
+| M4 Interface/API | T-MIS-006 | [x] 已完成 | `/api/v1/missions` create/list/read/patch、状态转换、members、tasks/runs/evidence/budget 与 `/api/v1/mission-resolutions:dry-run` contract 测试通过 |
+| M5 Runtime Binding | T-MIS-007, T-MIS-008, T-MIS-009, T-MIS-010 | [x] 已完成 | Task create -> Mission resolution -> MissionSnapshot -> PlanGraphBundle -> HarnessRun -> NodeRun guard 链路测试通过 |
+| M6 P1 能力 | T-MIS-011, T-MIS-012, T-MIS-013, T-MIS-014, T-MIS-015 | [x] 已完成 | Mission Console 后端数据面、观测、学习提升、legacy backfill、ADR 文档状态一致 |
+| M7 P2 仓内基线 | T-MIS-016, T-MIS-017, T-MIS-018, T-MIS-019 | [x] 已完成 | handoff、home region/fencing、outcome analytics、template/package integration 有可测试服务基线 |
+| M8 测试与收口 | Contract/Unit/Integration/E2E/Governance | [x] 已完成 | Mission 定向测试、`npm run build:test` 与 OpenAPI contract 测试通过 |
+
+### T-MIS 映射
+
+| 任务 | 本轮落点 | 状态 |
+|---|---|---|
+| T-MIS-001 | Mission Zod schemas 与 type exports | [x] 已完成 |
+| T-MIS-002 | mission_records / memberships / snapshots / event_sequences migration | [x] 已完成 |
+| T-MIS-003 | `platform.mission.*` event schemas | [x] 已完成 |
+| T-MIS-004 | MissionLifecycleService + CAS transition | [x] 已完成 |
+| T-MIS-005 | MissionResolver + MissionGovernanceService | [x] 已完成 |
+| T-MIS-006 | Mission API + ErrorEnvelope（含 patch、members、tasks/runs/evidence/budget） | [x] 已完成 |
+| T-MIS-007 | PlanGraphBundle missionSnapshotRef required | [x] 已完成 |
+| T-MIS-008 | HarnessRun missionBinding required | [x] 已完成 |
+| T-MIS-009 | NodeRun MissionLiveGuard | [x] 已完成 |
+| T-MIS-010 | canonical Mission E2E 覆盖 | [x] 已完成 |
+| T-MIS-011 | Mission Console Overview / Members / Tasks / Runs / Budget / Evidence 后端数据面 | [x] 已完成 |
+| T-MIS-012 | Mission trace/log correlation + metrics cardinality guard | [x] 已完成 |
+| T-MIS-013 | Mission scoped LearningObject promotion gate | [x] 已完成 |
+| T-MIS-014 | legacy Task/Session missionRef backfill | [x] 已完成 |
+| T-MIS-015 | ADR 更新与 superseded 标记 | [x] 已完成 |
+| T-MIS-016 | Mission handoff across org/tenant | [x] 已完成 |
+| T-MIS-017 | Mission home region + read replica routing/fencing | [x] 已完成 |
+| T-MIS-018 | Mission outcome analytics | [x] 已完成 |
+| T-MIS-019 | Mission template/package integration | [x] 已完成 |

@@ -145,6 +145,93 @@ CREATE TABLE IF NOT EXISTS budget_settlements (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mission_records (
+  mission_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  org_id TEXT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NULL,
+  objective TEXT NOT NULL,
+  success_criteria_json TEXT NOT NULL,
+  owner_principal_id TEXT NOT NULL,
+  accountable_principal_id TEXT NULL,
+  domain_id TEXT NULL,
+  policy_refs_json TEXT NOT NULL,
+  risk_profile_ref TEXT NULL,
+  budget_envelope_ref TEXT NULL,
+  knowledge_boundary_ref TEXT NULL,
+  default_workflow_template_refs_json TEXT NOT NULL,
+  metadata_json TEXT NOT NULL,
+  freeze_reason TEXT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by TEXT NOT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  version INTEGER NOT NULL,
+  etag TEXT NOT NULL,
+  CHECK (version >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mission_records_tenant_status
+  ON mission_records(tenant_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_mission_records_owner
+  ON mission_records(tenant_id, owner_principal_id);
+
+CREATE TABLE IF NOT EXISTS mission_memberships (
+  membership_id TEXT PRIMARY KEY,
+  mission_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  principal_type TEXT NOT NULL,
+  principal_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  permissions_json TEXT NOT NULL,
+  denied_permissions_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  granted_by TEXT NOT NULL,
+  granted_at TEXT NOT NULL,
+  expires_at TEXT NULL,
+  metadata_json TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  UNIQUE (mission_id, principal_type, principal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mission_memberships_principal
+  ON mission_memberships(tenant_id, principal_type, principal_id, status);
+
+CREATE TABLE IF NOT EXISTS mission_context_snapshots (
+  mission_snapshot_id TEXT PRIMARY KEY,
+  mission_id TEXT NOT NULL,
+  mission_version INTEGER NOT NULL,
+  tenant_id TEXT NOT NULL,
+  org_id TEXT NULL,
+  task_id TEXT NOT NULL,
+  confirmed_task_spec_id TEXT NOT NULL,
+  snapshot_json TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  signature TEXT NULL,
+  trace_id TEXT NOT NULL,
+  correlation_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mission_snapshots_task
+  ON mission_context_snapshots(tenant_id, task_id);
+
+CREATE TABLE IF NOT EXISTS mission_event_sequences (
+  tenant_id TEXT NOT NULL,
+  aggregate_type TEXT NOT NULL,
+  aggregate_id TEXT NOT NULL,
+  next_sequence INTEGER NOT NULL,
+  PRIMARY KEY (tenant_id, aggregate_type, aggregate_id)
+);
+
 CREATE TABLE IF NOT EXISTS run_version_locks (
   run_version_lock_id TEXT PRIMARY KEY,
   harness_run_id TEXT NOT NULL,

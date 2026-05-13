@@ -25,5 +25,7 @@ export { createCostRoutes, type CostRouteDeps } from "./cost-routes.js";
 export { createPromptRoutes, type PromptRouteDeps } from "./prompt-routes.js";
 export { createHarnessRunsRoutes, type HarnessRunsRouteDeps } from "./harness-runs-routes.js";
 export { createReplaySessionRoutes, type ReplaySessionRouteDeps } from "./replay-sessions-routes.js";
+export { createMissionRoutes, type MissionRouteDeps } from "./mission-routes.js";
+export { createYonoRoutes, type YonoRouteDeps } from "./yono-routes.js";
 
 export type { RouteContext, RouteDefinition, RouteMatch, ApiRequestLike, ApiResponsePayload, RouteHandler } from "./types.js";

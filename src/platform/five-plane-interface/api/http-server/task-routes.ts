@@ -33,9 +33,14 @@ import type { ApiAuthService } from "../api-auth-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import type { MissionRepository } from "../../../state-evidence/truth/mission-repository.js";
 import type { IntakeAdmissionService } from "../../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { TaskInputSource } from "../../../contracts/executable-contracts/index.js";
+import {
+  MissionGovernanceService,
+  MissionResolver,
+} from "../../../five-plane-control-plane/mission/index.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -54,6 +59,7 @@ export interface TaskRouteDeps {
   inspectService: InspectService;
   missionControlService: MissionControlService;
   taskStore?: AuthoritativeTaskStore;
+  missionRepository?: MissionRepository | null;
   // R6-16 FIX: IntakeAdmissionService for §5.3 intake pipeline routing
   intakeAdmissionService?: IntakeAdmissionService;
 }
@@ -220,6 +226,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
         const tenantId = principal.tenantId ?? null;
+        const missionResolution = resolveMissionForTask({
+          repository: deps.missionRepository ?? null,
+          payload,
+          principal,
+          tenantId,
+          requestId: ctx.requestId,
+          traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
+          correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
+          confirmedTaskSpecId: `ctspec:${ctx.requestId}`,
+        });
 
         // R6-16 FIX: Route through intake pipeline when available per §5.3
         if (deps.intakeAdmissionService) {
@@ -239,6 +255,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           });
 
           const taskId = result.harnessRun.confirmedTaskSpecId;
+          bindMissionSnapshotForTask({
+            repository: deps.missionRepository ?? null,
+            missionId: missionResolution?.missionId ?? null,
+            taskId,
+            confirmedTaskSpecId: result.harnessRun.confirmedTaskSpecId,
+            runtimeConstraints: missionResolution?.effectiveConstraintsPreview,
+            actorId: principal.actorId,
+            traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
+            correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
+          });
           const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
           return buildJsonResponse(ctx.requestId, 201, cockpit);
         }
@@ -271,6 +297,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           completedAt: null,
         });
 
+        bindMissionSnapshotForTask({
+          repository: deps.missionRepository ?? null,
+          missionId: missionResolution?.missionId ?? null,
+          taskId,
+          confirmedTaskSpecId: `ctspec:${taskId}`,
+          runtimeConstraints: missionResolution?.effectiveConstraintsPreview,
+          actorId: principal.actorId,
+          traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
+          correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
+        });
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
         return buildJsonResponse(ctx.requestId, 201, cockpit);
       },
@@ -340,6 +376,84 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       },
     },
   ];
+}
+
+function resolveMissionForTask(input: {
+  repository: MissionRepository | null;
+  payload: ReturnType<typeof parseCreateTaskPayload>;
+  principal: ReturnType<typeof requirePrincipal>;
+  tenantId: string | null;
+  requestId: string;
+  traceId: string;
+  correlationId: string;
+  confirmedTaskSpecId: string;
+}) {
+  if (input.repository == null) {
+    return null;
+  }
+  const riskClass = input.payload.riskClass ?? priorityToRiskClass(input.payload.priority);
+  const tenantId = input.tenantId ?? `tenant:${input.principal.actorId}`;
+  const resolver = new MissionResolver(input.repository, new MissionGovernanceService(input.repository));
+  const resolution = resolver.resolve({
+    tenantId,
+    confirmedTaskSpecId: input.confirmedTaskSpecId,
+    principal: {
+      principalId: input.principal.actorId,
+      type: "human",
+      tenantId,
+      roles: input.principal.roles ?? [],
+    },
+    ...(input.payload.missionRef != null ? { missionRef: input.payload.missionRef } : {}),
+    createIfMissing: input.payload.missionRef == null && (riskClass === "low" || riskClass === "medium"),
+    goal: input.payload.title,
+    domainId: input.payload.divisionId ?? null,
+    riskClass,
+    traceId: input.traceId,
+    correlationId: input.correlationId,
+  });
+  if (resolution.resolution === "rejected" || resolution.requiresUserChoice || resolution.missionId == null) {
+    throw new ApiError(
+      409,
+      "api.mission_resolution_failed",
+      `Task creation requires a resolvable Mission: ${resolution.reasonCode}.`,
+    );
+  }
+  return resolution;
+}
+
+function bindMissionSnapshotForTask(input: {
+  repository: MissionRepository | null;
+  missionId: string | null;
+  taskId: string;
+  confirmedTaskSpecId: string;
+  runtimeConstraints?: Parameters<MissionRepository["createSnapshot"]>[0]["runtimeConstraints"];
+  actorId: string;
+  traceId: string;
+  correlationId: string;
+}): void {
+  if (input.repository == null || input.missionId == null) {
+    return;
+  }
+  input.repository.createSnapshot({
+    missionId: input.missionId,
+    taskId: input.taskId,
+    confirmedTaskSpecId: input.confirmedTaskSpecId,
+    ...(input.runtimeConstraints != null ? { runtimeConstraints: input.runtimeConstraints } : {}),
+    traceId: input.traceId,
+    correlationId: input.correlationId,
+    createdBy: input.actorId,
+  });
+}
+
+function priorityToRiskClass(priority: ReturnType<typeof parseCreateTaskPayload>["priority"]): "low" | "medium" | "high" | "critical" {
+  switch (priority) {
+    case "urgent":
+      return "high";
+    case "high":
+      return "medium";
+    default:
+      return "low";
+  }
 }
 
 function paginateByCursor<T extends { updatedAt: string; taskId: string }>(

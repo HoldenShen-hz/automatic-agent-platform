@@ -148,10 +148,12 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
     {
       stepId: "intake_triage",
       roleId: "intake_router",
+      inputKeys: [],
       outputKey: "triage",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
       timeoutMs: 60_000,
       maxAttempts: 1,
+      dependsOnStepIds: [],
       compensationModel: "idempotent_replay",
     },
     {

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { OperationalDirective, DecisionDirective } from "../control-directive/index.js";
+import type { MissionBinding, MissionRef } from "../mission/index.js";
 
 export * from "./schemas.js";
 
@@ -237,6 +238,8 @@ export interface ConfirmedTaskSpec {
   readonly idempotencyKey: string;
   readonly traceId: string;
   readonly createdAt: string;
+  readonly missionRef?: MissionRef;
+  readonly missionSnapshotRef?: string;
 }
 
 export interface BudgetIntent {
@@ -266,6 +269,8 @@ export interface RequestEnvelope {
   readonly targetPlane?: string;
   // R27-17 FIX: ADR-021 directives field for runtime control across planes.
   readonly directives?: readonly (OperationalDirective | DecisionDirective)[];
+  readonly missionRef?: MissionRef;
+  readonly missionSnapshotRef?: string;
 }
 
 export interface HarnessBudgetEnvelope {
@@ -333,6 +338,7 @@ export interface HarnessRun {
   readonly terminalReason?: string;
   readonly leaseId?: string;
   readonly fencingToken: string;
+  readonly missionBinding?: MissionBinding;
 }
 
 export type PlanNodeType =
@@ -396,6 +402,7 @@ export interface PlanGraphBundle {
   readonly validationReport: GraphValidationReport;
   readonly artifactRefs: readonly ArtifactRef[];
   readonly createdAt: string;
+  readonly missionSnapshotRef?: string;
 }
 
 export interface GraphValidationReport {
@@ -495,6 +502,7 @@ export interface NodeRun {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly terminalReason?: string;
+  readonly missionSnapshotRef?: string;
 }
 
 export type NodeAttemptKind = "initial" | "retry" | "redrive" | "recovery";
@@ -1051,6 +1059,8 @@ export function createConfirmedTaskSpec(input: {
   confirmedTaskSpecId?: string;
   confirmationReceipt?: UserConfirmationReceipt;
   createdAt?: string;
+  missionRef?: MissionRef;
+  missionSnapshotRef?: string;
 }): ConfirmedTaskSpec {
   requireNonEmpty(input.goal, "confirmed_task_spec.goal_required");
   requireNonEmpty(input.constraintPackRef, "confirmed_task_spec.constraint_pack_required");
@@ -1082,6 +1092,8 @@ export function createConfirmedTaskSpec(input: {
     idempotencyKey: input.idempotencyKey,
     traceId: input.traceId,
     createdAt: input.createdAt ?? nowIso(),
+    ...(input.missionRef != null ? { missionRef: input.missionRef } : {}),
+    ...(input.missionSnapshotRef != null ? { missionSnapshotRef: input.missionSnapshotRef } : {}),
   };
 }
 
@@ -1096,7 +1108,11 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
   submittedAt?: string;
   sourcePlane?: string;
   targetPlane?: string;
+  missionRef?: MissionRef;
+  missionSnapshotRef?: string;
 }): RequestEnvelope {
+  const missionRef = input.missionRef ?? input.confirmedTaskSpec.missionRef;
+  const missionSnapshotRef = input.missionSnapshotRef ?? input.confirmedTaskSpec.missionSnapshotRef;
   return {
     requestId: input.requestId ?? newId("request"),
     confirmedTaskSpecId: input.confirmedTaskSpec.confirmedTaskSpecId,
@@ -1114,6 +1130,8 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
     submittedAt: input.submittedAt ?? nowIso(),
     ...(input.sourcePlane != null ? { sourcePlane: input.sourcePlane } : {}),
     ...(input.targetPlane != null ? { targetPlane: input.targetPlane } : {}),
+    ...(missionRef != null ? { missionRef } : {}),
+    ...(missionSnapshotRef != null ? { missionSnapshotRef } : {}),
   };
 }
 
@@ -1147,6 +1165,7 @@ export function createHarnessRun(input: {
   updatedAt?: string;
   terminalAt?: string;
   terminalReason?: string;
+  missionBinding?: MissionBinding;
 }): HarnessRun {
   const timestamp = input.createdAt ?? nowIso();
   const harnessRunId = input.harnessRunId ?? newId("hrun");
@@ -1188,6 +1207,7 @@ export function createHarnessRun(input: {
     },
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
     fencingToken: input.fencingToken ?? `fence:${harnessRunId}:${input.currentSeq ?? 0}`,
+    ...(input.missionBinding != null ? { missionBinding: input.missionBinding } : {}),
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
@@ -1207,6 +1227,7 @@ export function createPlanGraphBundle(input: {
   graphVersion?: number;
   artifactRefs?: readonly ArtifactRef[];
   createdAt?: string;
+  missionSnapshotRef?: string;
 }): PlanGraphBundle {
   if (input.graph.nodes.length === 0) {
     throw new ValidationError("plan_graph.nodes_required", "plan_graph.nodes_required: PlanGraphBundle requires at least one node.");
@@ -1222,6 +1243,7 @@ export function createPlanGraphBundle(input: {
     validationReport: input.validationReport ?? { valid: true, findings: [] },
     artifactRefs: input.artifactRefs ?? [],
     createdAt: input.createdAt ?? nowIso(),
+    ...(input.missionSnapshotRef != null ? { missionSnapshotRef: input.missionSnapshotRef } : {}),
   };
 }
 
@@ -1305,6 +1327,7 @@ export function createNodeRun(input: {
   currentSeq?: number;
   createdAt?: string;
   updatedAt?: string;
+  missionSnapshotRef?: string;
 }): NodeRun {
   const timestamp = input.createdAt ?? nowIso();
   const nodeRunId = input.nodeRunId ?? newId("nrun");
@@ -1326,6 +1349,7 @@ export function createNodeRun(input: {
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
+    ...(input.missionSnapshotRef != null ? { missionSnapshotRef: input.missionSnapshotRef } : {}),
   };
 }
 
