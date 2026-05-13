@@ -30,11 +30,13 @@ type LegacyMethod<
   : never;
 
 export abstract class AuthoritativeTaskStoreDelegatingBase extends AuthoritativeTaskStoreLegacyCompat {
+  public override readonly db: AuthoritativeSqlDatabase;
   protected readonly repositorySet: AuthoritativeTaskStoreRepositories;
 
-  public constructor(public readonly db: AuthoritativeSqlDatabase) {
+  public constructor(dbOrOptions: AuthoritativeSqlDatabase | { readonly database: AuthoritativeSqlDatabase }) {
     super();
-    this.repositorySet = createAuthoritativeTaskStoreRepositories(db);
+    this.db = "database" in dbOrOptions ? dbOrOptions.database : dbOrOptions;
+    this.repositorySet = createAuthoritativeTaskStoreRepositories(this.db);
   }
 
   public repositories(): AuthoritativeTaskStoreRepositories {

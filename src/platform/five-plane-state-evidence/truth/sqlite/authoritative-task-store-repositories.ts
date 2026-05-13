@@ -83,7 +83,7 @@ export function createAuthoritativeTaskStoreRepositories(
 }
 
 function resolveSessionDualStorage(db: AuthoritativeSqlDatabase): SessionDualStorageService | null {
-  if (db.filePath === ":memory:") {
+  if (db.filePath == null || db.filePath === ":memory:") {
     return null;
   }
   return new SessionDualStorageService({

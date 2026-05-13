@@ -124,11 +124,7 @@ export function loadRiskConfig(
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new ValidationError(
-      "risk_config.invalid_json",
-      `Invalid risk config JSON at ${effectivePath}`,
-      { details: { path: effectivePath, cause: error instanceof Error ? error.message : String(error) } },
-    );
+    throw error;
   }
 
   const validated = RiskConfigSchema.safeParse(parsed);

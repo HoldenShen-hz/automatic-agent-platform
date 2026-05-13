@@ -323,7 +323,7 @@ test("Reserve and settle sequence preserves correct amounts", () => {
 
   ledger = {
     ...ledger,
-    reservedAmount: ledger.reservedAmount - reservation.amount,
+    reservedAmount: ledger.reservedAmount - settlement.actualAmount,
     settledAmount: ledger.settledAmount + settlement.actualAmount,
     version: ledger.version + 1,
   };

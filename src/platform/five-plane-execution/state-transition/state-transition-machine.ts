@@ -38,10 +38,14 @@ export class StateTransitionMachine<TState extends string> {
 
   /**
    * Asserts that a transition is valid, throwing WorkflowStateError if not.
-   * Rejects no-op transitions (current === next) per RuntimeStateMachine spec.
+   * Legacy workflow/execution/approval callers treat idempotent same-state
+   * writes as valid, while task/session lifecycle validators still deny them.
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
+      if (this.allowsNoopTransition()) {
+        return;
+      }
       throw new WorkflowStateError(
         `${this.entityKind}.noop_transition_denied`,
         `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`,
@@ -54,5 +58,9 @@ export class StateTransitionMachine<TState extends string> {
         details: { entityKind: this.entityKind, current, next },
       });
     }
+  }
+
+  private allowsNoopTransition(): boolean {
+    return this.entityKind !== "task" && this.entityKind !== "session";
   }
 }

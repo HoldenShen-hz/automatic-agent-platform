@@ -128,7 +128,7 @@ export class IncidentDetector {
       incidentId: this.generateIncidentId(),
       detectedAt: nowIso(),
       category: input.category,
-      severity: input.severity,
+      severity: normalizeIncidentSeverity(input.severity),
       status: "open",
       title: input.title,
       description: input.description,
@@ -143,7 +143,7 @@ export class IncidentDetector {
    * Classifies the urgency level based on severity.
    */
   public classifyUrgency(severity: IncidentSeverity): "critical" | "high" | "medium" | "low" {
-    switch (severity) {
+    switch (normalizeIncidentSeverity(severity)) {
       case "SEV1":
         return "critical";
       case "SEV2":
@@ -160,7 +160,7 @@ export class IncidentDetector {
    * SEV1 incidents auto-escalate after configured threshold.
    */
   public shouldAutoEscalate(detectedAt: string, severity: IncidentSeverity): boolean {
-    if (severity !== "SEV1") {
+    if (normalizeIncidentSeverity(severity) !== "SEV1") {
       return false;
     }
     const elapsedSeconds = (Date.now() - Date.parse(detectedAt)) / 1000;
@@ -189,6 +189,21 @@ export class IncidentDetector {
    */
   private generateIncidentId(): string {
     return `incident_${crypto.randomUUID()}`;
+  }
+}
+
+export function normalizeIncidentSeverity(severity: IncidentSeverity | string): IncidentSeverity {
+  switch (severity) {
+    case "p1":
+      return "SEV1";
+    case "p2":
+      return "SEV2";
+    case "p3":
+      return "SEV3";
+    case "p4":
+      return "SEV4";
+    default:
+      return severity as IncidentSeverity;
   }
 }
 

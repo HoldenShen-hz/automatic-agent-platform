@@ -413,7 +413,7 @@ export class RetryableApiClient {
    * Only GET requests are retried on 5xx errors.
    * POST/DELETE/PUT/PATCH are not retried to prevent duplicate side effects.
    */
-  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE"]);
 
   /**
    * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.
@@ -727,6 +727,10 @@ export function classifyApiError(statusCode: number | null, message: string): Ap
  * Event subscription handle for unsubscribe.
  */
 export interface EventSubscription<TEvent> {
+  subscriptionId?: string;
+  consumerId?: string;
+  eventTypes?: readonly string[];
+  active?: boolean;
   unsubscribe(): void;
   closed: boolean;
 }
@@ -741,7 +745,9 @@ export interface EventSubscriberBackend {
 }
 
 export interface EventSubscriptionHandle {
+  subscriptionId?: string;
   consumerId: string;
+  eventTypes?: readonly string[];
   active: boolean;
   unsubscribe(): void;
 }
@@ -751,6 +757,42 @@ export interface EventSubscriptionHandle {
  */
 export function createEventSubscriber(backend: EventSubscriberBackend) {
   return {
+    subscribe(
+      consumerId: string,
+      eventTypes: readonly string[],
+      handler: (event: unknown) => void,
+    ): EventSubscriptionHandle {
+      let active = true;
+      const eventTypeSet = new Set(eventTypes);
+      const wrappedHandler = (event: unknown) => {
+        if (!active || !isPendingEvent(event) || !eventTypeSet.has(event.eventType)) {
+          return;
+        }
+        handler(parseEventPayload(event.payloadJson));
+      };
+      backend.subscribe(consumerId, wrappedHandler);
+      return {
+        subscriptionId: `sub:${consumerId}:${Date.now()}`,
+        consumerId,
+        eventTypes,
+        get active() {
+          return active;
+        },
+        unsubscribe() {
+          active = false;
+          backend.unsubscribe(consumerId);
+        },
+      };
+    },
+    unsubscribe(consumerId: string): void {
+      backend.unsubscribe(consumerId);
+    },
+    getPendingEvents(consumerId: string): Array<{ eventType: string; payloadJson: string; payload: unknown }> {
+      return backend.pendingForConsumer(consumerId).map((event) => ({
+        ...event,
+        payload: parseEventPayload(event.payloadJson),
+      }));
+    },
     deliverPending(consumerId: string): Promise<number> {
       return backend.deliverPending(consumerId);
     },
@@ -760,25 +802,27 @@ export function createEventSubscriber(backend: EventSubscriberBackend) {
     subscribeToRunLifecycle(
       consumerId: string,
       runId: string,
-      handler: (event: { eventType: string; payloadJson: string }) => void,
+      handler: (event: unknown) => void,
     ): EventSubscriptionHandle {
       let active = true;
       const wrappedHandler = (event: unknown) => {
-        if (event && typeof event === "object" && "payloadJson" in event) {
-          const e = event as { payloadJson: string };
-          try {
-            const parsed = JSON.parse(e.payloadJson) as { runId?: string };
-            if (parsed.runId === runId) {
-              handler(e as unknown as { eventType: string; payloadJson: string });
-            }
-          } catch {
-            // Skip malformed payload
-          }
+        if (!active || !isPendingEvent(event)) {
+          return;
+        }
+        const parsed = parseEventPayload(event.payloadJson);
+        if (hasRunId(parsed, runId)) {
+          handler(parsed);
         }
       };
       backend.subscribe(consumerId, wrappedHandler);
       return {
+        subscriptionId: `sub:run:${consumerId}:${runId}:${Date.now()}`,
         consumerId,
+        eventTypes: [
+          "platform.harness_run.status_changed",
+          "platform.node_run.status_changed",
+          "platform.side_effect.status_changed",
+        ],
         get active() {
           return active;
         },
@@ -789,6 +833,27 @@ export function createEventSubscriber(backend: EventSubscriberBackend) {
       };
     },
   };
+}
+
+function isPendingEvent(event: unknown): event is { eventType: string; payloadJson: string } {
+  return event != null
+    && typeof event === "object"
+    && typeof (event as { eventType?: unknown }).eventType === "string"
+    && typeof (event as { payloadJson?: unknown }).payloadJson === "string";
+}
+
+function parseEventPayload(payloadJson: string): unknown {
+  try {
+    return JSON.parse(payloadJson) as unknown;
+  } catch {
+    return {};
+  }
+}
+
+function hasRunId(payload: unknown, runId: string): boolean {
+  return payload != null
+    && typeof payload === "object"
+    && (payload as { runId?: unknown }).runId === runId;
 }
 
 /**

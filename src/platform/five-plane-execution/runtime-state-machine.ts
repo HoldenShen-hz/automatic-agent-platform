@@ -226,6 +226,11 @@ export class RuntimeStateMachine {
 
     return { aggregate, event };
   }
+
+  public emitFactEvent(event: PlatformFactEvent): void {
+    assertEventPersistenceConfigured(this.persistEvent);
+    this.persistEvent(event);
+  }
 }
 
 export function isTruthConsumerEvent(event: EventEnvelope): boolean {
@@ -375,6 +380,11 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
     command.aggregateType === "SideEffectRecord" ||
     command.toStatus === "succeeded" ||
     command.toStatus === "failed";
+  if (requiresAudit && "commandId" in command && command.auditRef == null) {
+    throw new WorkflowStateError("runtime_state_machine.audit_ref_required", "Audit ref is required for audited transitions.", {
+      details: { aggregateType: command.aggregateType },
+    });
+  }
   if (requiresAudit && command.auditRef != null && command.auditRef.trim().length === 0) {
     throw new WorkflowStateError("runtime_state_machine.audit_ref_invalid", "Audit ref cannot be empty.", {
       details: { aggregateType: command.aggregateType },
@@ -392,7 +402,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   const requiresFencingCheck =
     command.aggregateType === "NodeRun" ||
     command.aggregateType === "HarnessRun" ||
-    command.aggregateType === "SideEffectRecord";
+    command.aggregateType === "SideEffectRecord" ||
+    command.aggregateType === "BudgetLedger";
 
   if (!requiresFencingCheck) {
     return;
@@ -408,8 +419,6 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
       "reconciling",
       "succeeded",
       "failed",
-      "cancelled",
-      "aborted",
     ];
     if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(
@@ -436,7 +445,11 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     const harnessRun = command.aggregate as HarnessRun;
     // R4-30: HarnessRun planning/running transitions require fencing token
     const criticalStatuses: readonly string[] = ["planning", "ready", "running", "pausing", "paused", "resuming", "replanning"];
-    if (criticalStatuses.includes(command.toStatus as string)) {
+    const commandMeta = command as { commandId?: string; auditRef?: string };
+    if (
+      criticalStatuses.includes(command.toStatus as string) &&
+      (commandMeta.commandId != null || commandMeta.auditRef?.startsWith("audit://"))
+    ) {
       if (command.fencingToken == null) {
         throw new WorkflowStateError(
           "runtime_state_machine.harness_fencing_required",
@@ -454,11 +467,28 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     }
   }
 
+  if (command.aggregateType === "BudgetLedger") {
+    const budgetLedger = command.aggregate as BudgetLedger;
+    const commandMeta = command as { commandId?: string };
+    const requiresFencing = commandMeta.commandId != null && ["soft_cap_reached", "hard_cap_reached", "closed"].includes(command.toStatus as string);
+    if (requiresFencing && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.budget_ledger_fencing_required",
+        "BudgetLedger modifying transitions require an active lease and fencing token.",
+        { details: { budgetLedgerId: budgetLedger.budgetLedgerId } },
+      );
+    }
+  }
+
   if (command.aggregateType === "SideEffectRecord") {
     const sideEffect = command.aggregate as SideEffectRecord;
     // R4-30: SideEffectRecord commit path transitions require fencing token
     const commitStatuses: readonly string[] = ["approved", "reserved", "committing", "committed", "confirming", "confirmed"];
-    if (commitStatuses.includes(command.toStatus as string)) {
+    const commandMeta = command as { commandId?: string; auditRef?: string };
+    if (
+      commitStatuses.includes(command.toStatus as string) &&
+      (sideEffect.leaseId != null || sideEffect.fencingToken != null || commandMeta.commandId != null || commandMeta.auditRef?.startsWith("audit://"))
+    ) {
       if (command.leaseId == null || command.fencingToken == null) {
         throw new WorkflowStateError(
           "runtime_state_machine.side_effect_fencing_required",

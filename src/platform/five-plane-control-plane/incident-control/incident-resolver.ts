@@ -16,6 +16,7 @@ import type {
   IncidentSeverity,
   IncidentStatus,
 } from "./incident-detector.js";
+import { normalizeIncidentSeverity } from "./incident-detector.js";
 
 /**
  * Post-mortem report generation result.
@@ -134,7 +135,7 @@ export class IncidentResolver {
    */
   public determineStrategy(incident: IncidentDetection): ResolutionStrategy {
     // SEV1 incidents require immediate manual intervention
-    if (incident.severity === "SEV1") {
+    if (normalizeIncidentSeverity(incident.severity) === "SEV1") {
       return "manual";
     }
 

@@ -36,6 +36,7 @@ export type PolicyRiskCategory =
 export type PolicyMode =
   | UnifiedRuntimeMode
   | DocumentedUnifiedRuntimeMode
+  | "supervised"
   | "auto"
   | "full-auto"
   | "read-only"
@@ -255,6 +256,15 @@ export class PolicyCenterService {
     matchedRuleRefs: string[];
     explainSummary: string;
   } {
+    if (input.mode === "supervised") {
+      return {
+        constraints: {},
+        denyReason: null,
+        requiresApproval: false,
+        matchedRuleRefs: [],
+        explainSummary: "Supervised mode allows policy-constrained execution without automatic approval escalation.",
+      };
+    }
     if (input.mode === "maintenance") {
       const blockedActions: readonly PolicyAction[] = ["advance_rollout", "org_change", "install_extension"];
       return {
@@ -267,11 +277,20 @@ export class PolicyCenterService {
     }
     if (input.mode === "emergency") {
       return {
-        constraints: { mode: "no_write", breakGlass: true, operatorAckRequired: input.subjectType !== "system" },
+        constraints: { mode: "no_write", breakGlass: true, operatorAckRequired: true },
         denyReason: null,
         requiresApproval: input.subjectType !== "system",
         matchedRuleRefs: ["mode.emergency"],
         explainSummary: "Emergency mode enables break-glass procedures with operator acknowledgment.",
+      };
+    }
+    if (input.mode === "degraded") {
+      return {
+        constraints: { mode: "no_external_call", fallbackOnly: true, maxParallelism: 1 },
+        denyReason: null,
+        requiresApproval: false,
+        matchedRuleRefs: ["mode.degraded"],
+        explainSummary: "Degraded mode restricts to fallback execution with limited parallelism.",
       };
     }
     const normalizedMode = normalizePolicyCenterMode(input.mode);
@@ -396,6 +415,9 @@ export class PolicyCenterService {
   }
 
   private mustEscalate(input: PolicyDecisionRequest, constraintRequiresApproval: boolean): boolean {
+    if (input.mode === "emergency") {
+      return constraintRequiresApproval;
+    }
     const normalizedMode = normalizePolicyCenterMode(input.mode);
     if (normalizedMode === "incident_mode") {
       return constraintRequiresApproval;

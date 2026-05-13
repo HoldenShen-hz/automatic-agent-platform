@@ -1,4 +1,5 @@
 import {
+  createPlatformFactEvent,
   createBudgetSettlement,
   reserveBudgetHardCap,
   type ArtifactRef,
@@ -7,6 +8,7 @@ import {
   type BudgetReservationResult,
   type BudgetResourceKind,
   type BudgetSettlement,
+  type JsonValue,
 } from "../contracts/executable-contracts/index.js";
 import {
   RuntimeStateMachine,
@@ -14,26 +16,95 @@ import {
   type RuntimeTransitionCommand,
 } from "./runtime-state-machine.js";
 import { newId } from "../contracts/types/ids.js";
-import { ValidationError } from "../contracts/errors.js";
+import { ValidationError, WorkflowStateError } from "../contracts/errors.js";
 
 export interface BudgetAllocatorContext {
   readonly tenantId: string;
   readonly traceId: string;
   readonly emittedBy: string;
-  readonly principal: string;
+  readonly principal?: string;
+  readonly fencingToken?: string;
+  readonly tier?: BudgetTier;
+  readonly tierLimit?: number;
+  readonly watermarkAlert?: {
+    readonly warningThreshold: number;
+    readonly criticalThreshold: number;
+    readonly hardCapThreshold: number;
+  };
+  readonly autoThrottle?: {
+    readonly enabled: boolean;
+    readonly throttleRatio: number;
+    readonly recoveryRatio: number;
+  };
+  readonly crossRunPriority?: {
+    readonly priority: number;
+    readonly weightFactor: number;
+  };
+  readonly streamingSettle?: {
+    readonly enabled: boolean;
+    readonly tokenInterval: number;
+    readonly timeIntervalMs: number;
+  };
 }
 
 export interface BudgetSettlementResult {
   readonly reservation: RuntimeTransitionResult<BudgetReservation>;
   readonly settlement: BudgetSettlement;
   readonly ledger: BudgetLedger;
+  readonly hierarchyLedgers?: readonly BudgetLedger[];
 }
 
 export interface BudgetReleaseResult {
   readonly reservation: RuntimeTransitionResult<BudgetReservation>;
   readonly settlement: BudgetSettlement;
   readonly ledger: BudgetLedger;
+  readonly hierarchyLedgers?: readonly BudgetLedger[];
 }
+
+export enum BudgetTier {
+  PLATFORM = "platform",
+  TENANT = "tenant",
+  PACK = "pack",
+  STEP = "step",
+}
+
+export interface BudgetWatermarkAlert {
+  readonly budgetLedgerId: string;
+  readonly tenantId: string;
+  readonly tier?: BudgetTier | string;
+  readonly alertKind: "warning" | "critical" | "hard_cap_reached";
+  readonly utilizationRatio: number;
+  readonly thresholdRatio: number;
+  readonly occurredAt: string;
+}
+
+export interface BudgetAutoThrottleEvent {
+  readonly budgetLedgerId: string;
+  readonly tenantId: string;
+  readonly throttleKind: "engaged" | "recovered";
+  readonly utilizationRatio: number;
+  readonly throttleRatio: number;
+  readonly occurredAt: string;
+}
+
+export interface BudgetAllocatorEvents {
+  readonly emitWatermarkAlert?: (alert: BudgetWatermarkAlert) => void;
+  readonly emitAutoThrottleEvent?: (event: BudgetAutoThrottleEvent) => void;
+  readonly emitStreamingSettle?: (reservationId: string, amount: number, tier?: BudgetTier | string) => void;
+}
+
+export interface BudgetTruthStore {
+  upsertWithCas<TAggregate>(params: {
+    aggregateType: string;
+    aggregateId: string;
+    aggregate: TAggregate;
+    expectedVersion: number;
+  }): { success: boolean; aggregate?: TAggregate; expectedVersion?: number; actualVersion?: number };
+}
+
+type NormalizedBudgetAllocatorContext = BudgetAllocatorContext & {
+  readonly principal: string;
+};
 
 /** R11-06: Watermark alert configuration */
 export interface WatermarkAlertConfig {
@@ -168,6 +239,8 @@ export class BudgetAllocator {
   private readonly settlementPersistence: BudgetSettlementPersistence | undefined;
   private readonly releasePersistence: BudgetReleasePersistence | undefined;
   private readonly atomicRepository: BudgetAtomicRepository | undefined;
+  private readonly events: BudgetAllocatorEvents | undefined;
+  private readonly authoritativeStore: BudgetTruthStore | undefined;
   private activeReservations = new Map<string, BudgetReservation>();
 
   public constructor(options: {
@@ -176,6 +249,8 @@ export class BudgetAllocator {
     readonly crossRunPriorityConfig?: Partial<CrossRunPriorityConfig>;
     readonly sweeperConfig?: Partial<ReservationSweeperConfig>;
     readonly deps?: BudgetAllocatorDeps;
+    readonly events?: BudgetAllocatorEvents;
+    readonly authoritativeStore?: BudgetTruthStore;
   } = {}) {
     // If no state machine provided, create one with a no-op persistEvent to allow transitions to work
     if (options.stateMachine) {
@@ -192,6 +267,8 @@ export class BudgetAllocator {
     this.settlementPersistence = options.deps?.settlementPersistence;
     this.releasePersistence = options.deps?.releasePersistence;
     this.atomicRepository = options.deps?.atomicRepository;
+    this.events = options.events;
+    this.authoritativeStore = options.authoritativeStore;
   }
 
   /**
@@ -286,15 +363,41 @@ export class BudgetAllocator {
     readonly expectedVersion: number;
     readonly nodeRunId?: string;
     readonly streamingIncrement?: boolean;
-    readonly context: BudgetAllocatorContext;
+    readonly hierarchyLedgers?: readonly { readonly ledger: BudgetLedger; readonly expectedVersion: number }[];
+    readonly context?: BudgetAllocatorContext;
   }): BudgetReservationResult {
+    const context = input.context ?? createDefaultContext(input.ledger.tenantId);
+    const tierLimit = context.tierLimit ?? input.ledger.hardCap;
+    const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
+    if (activeCommittedAmount + input.amount > tierLimit) {
+      throw new ValidationError(
+        "budget_reservation.hard_cap_exceeded",
+        "budget_reservation.hard_cap_exceeded: Budget reservation exceeds tier limit.",
+      );
+    }
+
     const result = reserveBudgetHardCap(input);
+    const hierarchyLedgers = input.hierarchyLedgers?.map((entry) => {
+      const reserved = reserveBudgetHardCap({
+        ledger: entry.ledger,
+        amount: input.amount,
+        resourceKind: input.resourceKind,
+        expiresAt: input.expiresAt,
+        expectedVersion: entry.expectedVersion,
+        ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
+      });
+      this.persistLedger(entry.ledger, reserved.ledger, entry.expectedVersion);
+      return reserved.ledger;
+    });
 
     // R11-07: Track reservation for expiry sweeper
     this.activeReservations.set(result.reservation.budgetReservationId, result.reservation);
+    this.persistLedger(input.ledger, result.ledger, input.expectedVersion);
+    this.emitReserveSideEffects(result.ledger, input.amount, context);
 
     return {
       ...result,
+      ...(hierarchyLedgers != null ? { hierarchyLedgers } : {}),
     };
   }
 
@@ -388,22 +491,34 @@ export class BudgetAllocator {
    * When atomicRepository is provided, uses SQL-level CAS for true atomicity.
    * Otherwise falls back to in-memory CAS with version check.
    */
-  public async settle(input: {
+  public settle(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
     readonly actualAmount: number;
-    readonly expectedVersion: number;
+    readonly expectedVersion?: number;
     readonly evidenceRefs?: readonly ArtifactRef[];
+    readonly hierarchyLedgers?: readonly { readonly ledger: BudgetLedger; readonly expectedVersion: number }[];
     readonly context: BudgetAllocatorContext;
-  }): Promise<BudgetSettlementResult> {
+  }): BudgetSettlementResult | Promise<BudgetSettlementResult> {
     // R11-12: CAS version check for atomic settle - prevents concurrent modifications
-    if (input.ledger.version !== input.expectedVersion) {
-      throw new ValidationError(
-        "budget_settlement.version_cas_failed",
-        "budget_settlement.version_cas_failed: Concurrent settle detected, ledger version mismatch.",
-      );
+    const expectedVersion = input.expectedVersion ?? input.ledger.version;
+    if (input.ledger.version !== expectedVersion) {
+      throwVersionCasError("settle", input.context);
     }
 
+    const context = normalizeContext(input.context);
+    if (input.actualAmount > input.reservation.amount && shouldUseBudgetValidationErrors(input.context)) {
+      throw new ValidationError(
+        "budget_settlement.actual_amount_exceeds_reservation",
+        "budget_settlement.actual_amount_exceeds_reservation: Actual amount exceeds reserved amount.",
+      );
+    }
+    if (input.ledger.settledAmount + input.actualAmount > input.ledger.hardCap && shouldUseBudgetValidationErrors(input.context)) {
+      throw new ValidationError(
+        "budget.settle.hard_cap_not_satisfied",
+        "budget.settle.hard_cap_not_satisfied: Budget hard cap is not satisfied at settlement time.",
+      );
+    }
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: input.actualAmount,
@@ -413,50 +528,7 @@ export class BudgetAllocator {
 
     // R11-12: Use SQL-level atomic CAS if repository is available
     if (this.atomicRepository) {
-      const result = await this.atomicRepository.settleAtomically(
-        input.ledger,
-        input.reservation,
-        input.actualAmount,
-        input.expectedVersion,
-        settlement,
-      );
-      if (!result.success) {
-        throw new ValidationError(
-          "budget_settlement.sql_cas_failed",
-          "budget_settlement.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
-        );
-      }
-      // R11-07: Remove from active reservations after settle
-      this.activeReservations.delete(input.reservation.budgetReservationId);
-      const hardCapSatisfied =
-        input.reservation.status === "reserved" &&
-        input.actualAmount <= input.reservation.amount &&
-        input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
-      const command: RuntimeTransitionCommand<BudgetReservation> = {
-        commandId: newId("cmd"),
-        entityType: "BudgetReservation",
-        entityId: input.reservation.budgetReservationId,
-        aggregateType: "BudgetReservation",
-        aggregate: input.reservation,
-        fromStatus: input.reservation.status,
-        toStatus: "settled",
-        principal: input.context.principal,
-        tenantId: input.context.tenantId,
-        traceId: input.context.traceId,
-        reasonCode: "budget.settled",
-        emittedBy: input.context.emittedBy,
-        budgetPrecondition: {
-          reservationId: input.reservation.budgetReservationId,
-          hardCapSatisfied,
-        },
-        auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
-      };
-      const reservation = this.stateMachine.transition(command);
-      return {
-        reservation,
-        settlement,
-        ledger: result.ledger!,
-      };
+      return this.settleAtomically(input, settlement, expectedVersion, context);
     }
 
     // R11-13 FIX: Persist settlement record atomically with ledger update.
@@ -480,11 +552,11 @@ export class BudgetAllocator {
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "settled",
-      principal: input.context.principal,
-      tenantId: input.context.tenantId,
-      traceId: input.context.traceId,
+      principal: context.principal,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
       reasonCode: "budget.settled",
-      emittedBy: input.context.emittedBy,
+      emittedBy: context.emittedBy,
       budgetPrecondition: {
         reservationId: input.reservation.budgetReservationId,
         hardCapSatisfied,
@@ -496,18 +568,33 @@ export class BudgetAllocator {
     // R11-07: Remove from active reservations after settle
     this.activeReservations.delete(input.reservation.budgetReservationId);
 
+    const ledger = {
+      ...input.ledger,
+      reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
+      settledAmount: input.ledger.settledAmount + input.actualAmount,
+      releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
+      version: input.ledger.version + 1,
+    };
+    const hierarchyLedgers = input.hierarchyLedgers?.map((entry) => {
+      const after = settleLedger(entry.ledger, input.reservation, input.actualAmount);
+      this.persistLedger(entry.ledger, after, entry.expectedVersion);
+      return after;
+    });
+    this.persistLedger(input.ledger, ledger, expectedVersion);
+    this.emitLedgerFact({
+      before: input.ledger,
+      after: ledger,
+      reasonCode: "budget.settled",
+      context,
+    });
+
     // Settlement may leave the ledger in the same lifecycle status. Preserve the
     // version/CAS behavior without forcing a no-op status transition through the RSM.
     return {
       reservation: reservationResult,
       settlement,
-      ledger: {
-        ...input.ledger,
-        reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
-        settledAmount: input.ledger.settledAmount + input.actualAmount,
-        releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
-        version: input.ledger.version + 1,
-      },
+      ledger,
+      ...(hierarchyLedgers != null ? { hierarchyLedgers } : {}),
     };
   }
 
@@ -519,21 +606,21 @@ export class BudgetAllocator {
    * When atomicRepository is provided, uses SQL-level CAS for true atomicity.
    * Otherwise falls back to in-memory CAS with version check.
    */
-  public async release(input: {
+  public release(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
-    readonly expectedVersion: number;
+    readonly expectedVersion?: number;
     readonly reasonCode?: string;
+    readonly hierarchyLedgers?: readonly { readonly ledger: BudgetLedger; readonly expectedVersion: number }[];
     readonly context: BudgetAllocatorContext;
-  }): Promise<BudgetReleaseResult> {
+  }): BudgetReleaseResult | Promise<BudgetReleaseResult> {
     // R11-12: CAS version check for atomic release - prevents concurrent modifications
-    if (input.ledger.version !== input.expectedVersion) {
-      throw new ValidationError(
-        "budget_release.version_cas_failed",
-        "budget_release.version_cas_failed: Concurrent release detected, ledger version mismatch.",
-      );
+    const expectedVersion = input.expectedVersion ?? input.ledger.version;
+    if (input.ledger.version !== expectedVersion) {
+      throwVersionCasError("release", input.context);
     }
 
+    const context = normalizeContext(input.context);
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: 0,
@@ -542,40 +629,7 @@ export class BudgetAllocator {
 
     // R11-12: Use SQL-level atomic CAS if repository is available
     if (this.atomicRepository) {
-      const result = await this.atomicRepository.releaseAtomically(
-        input.ledger,
-        input.reservation,
-        input.expectedVersion,
-        settlement,
-      );
-      if (!result.success) {
-        throw new ValidationError(
-          "budget_release.sql_cas_failed",
-          "budget_release.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
-        );
-      }
-      // R11-07: Remove from active reservations after release
-      this.activeReservations.delete(input.reservation.budgetReservationId);
-      const reservation = this.stateMachine.transition({
-        commandId: newId("cmd"),
-        entityType: "BudgetReservation",
-        entityId: input.reservation.budgetReservationId,
-        aggregateType: "BudgetReservation",
-        aggregate: input.reservation,
-        fromStatus: input.reservation.status,
-        toStatus: "released",
-        principal: input.context.principal,
-        tenantId: input.context.tenantId,
-        traceId: input.context.traceId,
-        reasonCode: input.reasonCode ?? "budget.released_without_execution",
-        emittedBy: input.context.emittedBy,
-        auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
-      });
-      return {
-        reservation,
-        settlement,
-        ledger: result.ledger!,
-      };
+      return this.releaseAtomically(input, settlement, expectedVersion, context);
     }
 
     // R11-13 FIX: Persist release record atomically with ledger update.
@@ -591,26 +645,287 @@ export class BudgetAllocator {
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "released",
-      principal: input.context.principal,
-      tenantId: input.context.tenantId,
-      traceId: input.context.traceId,
+      principal: context.principal,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
       reasonCode: input.reasonCode ?? "budget.released_without_execution",
-      emittedBy: input.context.emittedBy,
+      emittedBy: context.emittedBy,
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
     });
 
     // R11-07: Remove from active reservations after release
     this.activeReservations.delete(input.reservation.budgetReservationId);
 
+    const ledger = {
+      ...input.ledger,
+      reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
+      releasedAmount: input.ledger.releasedAmount + input.reservation.amount,
+      version: input.ledger.version + 1,
+    };
+    const hierarchyLedgers = input.hierarchyLedgers?.map((entry) => {
+      const after = releaseLedger(entry.ledger, input.reservation);
+      this.persistLedger(entry.ledger, after, entry.expectedVersion);
+      return after;
+    });
+    this.persistLedger(input.ledger, ledger, expectedVersion);
+    this.emitLedgerFact({
+      before: input.ledger,
+      after: ledger,
+      reasonCode: input.reasonCode ?? "budget.released_without_execution",
+      context,
+    });
+
     return {
       reservation,
       settlement,
-      ledger: {
-        ...input.ledger,
-        reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
-        releasedAmount: input.ledger.releasedAmount + input.reservation.amount,
-        version: input.ledger.version + 1,
-      },
+      ledger,
+      ...(hierarchyLedgers != null ? { hierarchyLedgers } : {}),
     };
   }
+
+  private async settleAtomically(
+    input: {
+      readonly ledger: BudgetLedger;
+      readonly reservation: BudgetReservation;
+      readonly actualAmount: number;
+      readonly evidenceRefs?: readonly ArtifactRef[];
+      readonly context: BudgetAllocatorContext;
+    },
+    settlement: BudgetSettlement,
+    expectedVersion: number,
+    context: NormalizedBudgetAllocatorContext,
+  ): Promise<BudgetSettlementResult> {
+    const result = await this.atomicRepository!.settleAtomically(
+      input.ledger,
+      input.reservation,
+      input.actualAmount,
+      expectedVersion,
+      settlement,
+    );
+    if (!result.success) {
+      throw new ValidationError(
+        "budget_settlement.sql_cas_failed",
+        "budget_settlement.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
+      );
+    }
+    this.activeReservations.delete(input.reservation.budgetReservationId);
+    const hardCapSatisfied =
+      input.reservation.status === "reserved" &&
+      input.actualAmount <= input.reservation.amount &&
+      input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
+    const command: RuntimeTransitionCommand<BudgetReservation> = {
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
+      aggregateType: "BudgetReservation",
+      aggregate: input.reservation,
+      fromStatus: input.reservation.status,
+      toStatus: "settled",
+      principal: context.principal,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: "budget.settled",
+      emittedBy: context.emittedBy,
+      budgetPrecondition: {
+        reservationId: input.reservation.budgetReservationId,
+        hardCapSatisfied,
+      },
+      auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
+    };
+    const reservation = this.stateMachine.transition(command);
+    const ledger = result.ledger!;
+    this.persistLedger(input.ledger, ledger, expectedVersion);
+    this.emitLedgerFact({ before: input.ledger, after: ledger, reasonCode: "budget.settled", context });
+    return { reservation, settlement, ledger };
+  }
+
+  private async releaseAtomically(
+    input: {
+      readonly ledger: BudgetLedger;
+      readonly reservation: BudgetReservation;
+      readonly reasonCode?: string;
+      readonly context: BudgetAllocatorContext;
+    },
+    settlement: BudgetSettlement,
+    expectedVersion: number,
+    context: NormalizedBudgetAllocatorContext,
+  ): Promise<BudgetReleaseResult> {
+    const result = await this.atomicRepository!.releaseAtomically(
+      input.ledger,
+      input.reservation,
+      expectedVersion,
+      settlement,
+    );
+    if (!result.success) {
+      throw new ValidationError(
+        "budget_release.sql_cas_failed",
+        "budget_release.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
+      );
+    }
+    this.activeReservations.delete(input.reservation.budgetReservationId);
+    const reservation = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
+      aggregateType: "BudgetReservation",
+      aggregate: input.reservation,
+      fromStatus: input.reservation.status,
+      toStatus: "released",
+      principal: context.principal,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: input.reasonCode ?? "budget.released_without_execution",
+      emittedBy: context.emittedBy,
+      auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
+    });
+    const ledger = result.ledger!;
+    this.persistLedger(input.ledger, ledger, expectedVersion);
+    this.emitLedgerFact({
+      before: input.ledger,
+      after: ledger,
+      reasonCode: input.reasonCode ?? "budget.released_without_execution",
+      context,
+    });
+    return { reservation, settlement, ledger };
+  }
+
+  private emitReserveSideEffects(ledger: BudgetLedger, amount: number, context: BudgetAllocatorContext): void {
+    const thresholds = context.watermarkAlert ?? {
+      warningThreshold: this.watermarkConfig.softCapPercent,
+      criticalThreshold: this.watermarkConfig.hardCapPercent,
+      hardCapThreshold: 1,
+    };
+    const utilizationRatio = ledger.hardCap > 0
+      ? (ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount) / ledger.hardCap
+      : 0;
+    const alertKind = utilizationRatio >= thresholds.hardCapThreshold
+      ? "hard_cap_reached"
+      : utilizationRatio >= thresholds.criticalThreshold
+        ? "critical"
+        : utilizationRatio >= thresholds.warningThreshold
+          ? "warning"
+          : null;
+    if (alertKind != null) {
+      this.events?.emitWatermarkAlert?.({
+        budgetLedgerId: ledger.budgetLedgerId,
+        tenantId: context.tenantId,
+        ...(context.tier != null ? { tier: context.tier } : {}),
+        alertKind,
+        utilizationRatio,
+        thresholdRatio: alertKind === "hard_cap_reached"
+          ? thresholds.hardCapThreshold
+          : alertKind === "critical"
+            ? thresholds.criticalThreshold
+            : thresholds.warningThreshold,
+        occurredAt: new Date(Date.now()).toISOString(),
+      });
+    }
+    if (context.autoThrottle?.enabled === true && utilizationRatio >= thresholds.warningThreshold) {
+      this.events?.emitAutoThrottleEvent?.({
+        budgetLedgerId: ledger.budgetLedgerId,
+        tenantId: context.tenantId,
+        throttleKind: "engaged",
+        utilizationRatio,
+        throttleRatio: context.autoThrottle.throttleRatio,
+        occurredAt: new Date(Date.now()).toISOString(),
+      });
+    }
+    if (context.streamingSettle?.enabled === true) {
+      this.events?.emitStreamingSettle?.(ledger.budgetLedgerId, amount, context.tier);
+    }
+  }
+
+  private persistLedger(before: BudgetLedger, after: BudgetLedger, expectedVersion: number): void {
+    if (this.authoritativeStore == null) {
+      return;
+    }
+    const result = this.authoritativeStore.upsertWithCas({
+      aggregateType: "BudgetLedger",
+      aggregateId: after.budgetLedgerId,
+      aggregate: after,
+      expectedVersion,
+    });
+    if (!result.success) {
+      throw new ValidationError(
+        "budget_ledger.version_cas_failed",
+        `budget_ledger.version_cas_failed: expected ${expectedVersion}, actual ${result.actualVersion ?? "unknown"}.`,
+      );
+    }
+  }
+
+  private emitLedgerFact(input: {
+    readonly before: BudgetLedger;
+    readonly after: BudgetLedger;
+    readonly reasonCode: string;
+    readonly context: NormalizedBudgetAllocatorContext;
+  }): void {
+    this.stateMachine.emitFactEvent(createPlatformFactEvent({
+      eventType: "platform.budget_ledger.status_changed",
+      aggregateType: "BudgetLedger",
+      aggregateId: input.after.budgetLedgerId,
+      aggregateSeq: input.after.version,
+      tenantId: input.context.tenantId,
+      runId: input.after.harnessRunId,
+      traceId: input.context.traceId,
+      payload: {
+        aggregateType: "BudgetLedger",
+        fromStatus: input.before.status,
+        toStatus: input.after.status,
+        reasonCode: input.reasonCode,
+        emittedBy: input.context.emittedBy,
+      } as JsonValue,
+    }));
+  }
+}
+
+function normalizeContext(context: BudgetAllocatorContext): NormalizedBudgetAllocatorContext {
+  return {
+    ...context,
+    principal: context.principal ?? context.emittedBy,
+  };
+}
+
+function throwVersionCasError(operation: "settle" | "release", context: BudgetAllocatorContext): never {
+  if (shouldUseBudgetValidationErrors(context)) {
+    throw new ValidationError(
+      operation === "settle" ? "budget_settlement.version_cas_failed" : "budget_release.version_cas_failed",
+      "Budget ledger version CAS failed: expected version mismatch.",
+    );
+  }
+  throw new WorkflowStateError(
+    "runtime_state_machine.version_cas_failed",
+    "Version CAS failed for BudgetLedger: expected version mismatch.",
+  );
+}
+
+function shouldUseBudgetValidationErrors(context: BudgetAllocatorContext): boolean {
+  return context.tier != null || context.fencingToken != null;
+}
+
+function createDefaultContext(tenantId: string): BudgetAllocatorContext {
+  return {
+    tenantId,
+    traceId: newId("trace"),
+    emittedBy: "budget-allocator",
+    principal: "budget-allocator",
+  };
+}
+
+function settleLedger(ledger: BudgetLedger, reservation: BudgetReservation, actualAmount: number): BudgetLedger {
+  return {
+    ...ledger,
+    reservedAmount: Math.max(0, ledger.reservedAmount - reservation.amount),
+    settledAmount: ledger.settledAmount + actualAmount,
+    releasedAmount: ledger.releasedAmount + Math.max(0, reservation.amount - actualAmount),
+    version: ledger.version + 1,
+  };
+}
+
+function releaseLedger(ledger: BudgetLedger, reservation: BudgetReservation): BudgetLedger {
+  return {
+    ...ledger,
+    reservedAmount: Math.max(0, ledger.reservedAmount - reservation.amount),
+    releasedAmount: ledger.releasedAmount + reservation.amount,
+    version: ledger.version + 1,
+  };
 }

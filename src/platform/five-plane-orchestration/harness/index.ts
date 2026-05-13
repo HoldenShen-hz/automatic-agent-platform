@@ -763,7 +763,7 @@ export class HarnessRuntimeService {
     this.evalRunService = options.evalRunService ?? new EvalRunService();
     this.durableService = options.durableService ?? new DurableHarnessService();
     this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
-    this.stateMachine = new RuntimeStateMachine();
+    this.stateMachine = new RuntimeStateMachine({ persistEvent: () => undefined });
     this.runtimeTruthRepository = options.runtimeTruthRepository;
     this.directiveSink = options.directiveSink ?? null;
     this.recoveryController = new RecoveryController(this.durableService, this);
