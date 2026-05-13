@@ -5,7 +5,7 @@
 
 ## Context
 
-Agents cannot only passively respond to requests; they also need to proactively perceive environmental changes and take action.
+Agents must not only passively respond to requests, but also proactively perceive environmental changes and take actions.
 
 ## Decision
 
@@ -29,16 +29,16 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 | Action Type | Description |
 |-------------|-------------|
-| create_task | Create a task |
-| create_goal | Create a goal |
+| create_task | Create task (must go through intake pipeline) |
+| create_goal | Create goal |
 | suggest_to_user | Suggest to user |
 | update_dashboard | Update dashboard |
 
 ### Trigger Storm Protection (4 Layers)
 
 | Layer | Mechanism |
-|-------|-----------|
-| Per-trigger rate limiting | Default 10 times/hour |
+|------|-----------|
+| Per-trigger rate limit | Default 10 times/hour |
 | Cooldown period | Default 5 minutes |
 | Circuit breaker | 3 consecutive failures = disabled |
 | Per-domain daily budget | dailyTriggerBudgetByDomain |
@@ -52,22 +52,22 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Proactive perception improves platform intelligence
 - Multi-layer protection prevents trigger storms
 - Multiple trigger types cover common scenarios
 
-Negative:
+Cons:
 
 - Proactive behavior may disturb users
-- Trigger logic complexity is relatively high
+- Trigger logic complexity is high
 
-## Cross-References
+## Cross References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)
 
-## Source Sections
+## Source Section
 
 - `§41` Proactive Agent Framework

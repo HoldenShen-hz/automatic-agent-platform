@@ -5,7 +5,7 @@
 
 ## Context
 
-Compliance audits require large amounts of evidence materials, and manual organization is inefficient and error-prone.
+Compliance audits require large amounts of evidence materials, and manual compilation is inefficient and error-prone.
 
 ## Decision
 
@@ -13,10 +13,10 @@ Compliance audits require large amounts of evidence materials, and manual organi
 
 | Type | Frequency | Audience |
 |------|-----------|----------|
-| Audit Log Report | Real-time | Auditors |
-| Compliance Summary | Monthly | Compliance Team |
-| Risk Assessment Report | Quarterly | Management |
-| Incident Report | Event-driven | Regulatory Bodies |
+| Audit log report | Real-time | Auditor |
+| Compliance summary | Monthly | Compliance team |
+| Risk assessment report | Quarterly | Management |
+| Incident report | Event-driven | Regulatory body |
 
 ### Evidence Collection
 
@@ -43,18 +43,18 @@ type EvidenceType =
 1. Trigger condition met
 2. Evidence collection
 3. Data validation
-4. Template population
-5. Signing and sealing
+4. Template filling
+5. Signature and stamping
 6. Distribution and archiving
 
 ### Report Content
 
 | Content | Description |
 |---------|-------------|
-| Executive Summary | Key findings |
-| Evidence Inventory | Detailed evidence |
-| Compliance Assessment | Clause-by-clause evaluation |
-| Anomaly Records | Deviations and remediation |
+| Executive summary | Key findings |
+| Evidence list | Detailed evidence |
+| Compliance assessment | Each clause evaluation |
+| Exception records | Deviations and remediation |
 | Signatures | Responsible party signatures |
 
 ### Compliance Framework Mapping
@@ -67,7 +67,7 @@ type EvidenceType =
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Automation improves efficiency
 - Reduces human error
@@ -76,9 +76,9 @@ Benefits:
 Costs:
 
 - Evidence collection adds system overhead
-- Report templates require maintenance
+- Report templates need maintenance
 
-## Cross-References
+## Cross References
 
 - [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
 - [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
@@ -90,4 +90,4 @@ Costs:
 
 ## v4.3 ADR Remediation
 
-- R5-65: This ADR originally referenced non-existent Appendix `§B`/`§G`, which have been removed. The compliance framework mapping content is retained, but reference paths have been corrected to point to actually existing documents.
+- R5-65: This ADR originally referenced non-existent `§B`/`§G` appendices, which have been removed. Compliance framework mapping content is preserved, but reference paths have been corrected to actually existing documents.

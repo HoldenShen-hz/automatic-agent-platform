@@ -1,14 +1,14 @@
-# ADR-108 Legal Output Attorney Review Mandatory
+# ADR-108: Legal Output Attorney Review Mandatory
 
 ---
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect legal issues, evidence, and draft outputs
-- **Assess**: Determine whether the attorney review threshold has been met
-- **Plan**: Formulate review requests and approval paths
-- **Execute**: Route outgoing pre-release outputs to human review
-- **Feedback**: Record attorney review conclusions
+- **Observe**: Collect legal issues, evidence, and draft output
+- **Assess**: Determine whether attorney review threshold is met
+- **Plan**: Form review request and approval path
+- **Execute**: Transfer pre-release output to human review
+- **Feedback**: Record attorney review conclusion
 - **Learn**: Archive high-risk legal scenarios
 - **Improve**: Optimize legal domain guardrails and templates
 - **Release**: Legal domain must retain attorney review closed loop
@@ -20,13 +20,13 @@
 
 ## Context
 
-Legal domain outputs carry high risk. Agents can only provide legal information and cannot directly form unreviewed legal opinions.
+Legal domain output has high risk; Agent can only provide legal information and cannot directly form unreviewed legal opinions.
 
 ## Decision
 
-- All outgoing or executable outputs from the `legal` domain must undergo review by a licensed attorney
-- Agent outputs must remain in draft form and serve as informational supporting materials
+- All external or executable output from `legal` domain must be reviewed by a practicing attorney
+- Agent output must be retained as draft and information support material
 
 ## Consequences
 
-- The human-machine collaboration boundary for the legal domain is formally written into architectural governance
+- Human-machine collaboration boundary in legal domain is formally written into architecture governance

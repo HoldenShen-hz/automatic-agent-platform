@@ -5,7 +5,7 @@
 
 ## Context
 
-Approval requests need to be dynamically routed to the correct approvers based on organizational structure, rather than using hardcoded approval chains.
+Approval requests need to be dynamically routed to the correct approver based on organization structure, rather than hardcoded approval chains.
 
 ## Decision
 
@@ -28,25 +28,25 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 | Type | Description |
 |------|-------------|
 | single | Single approver |
-| multi_party | Multi-party countersignature |
+| multi_party | Multi-party co-signing |
 | delegated | Delegated approval |
 | sequential_chain | Sequential approval chain |
 
-### ApprovalTimeout Strategies
+### ApprovalTimeout Strategy
 
 | Strategy | Description |
 |----------|-------------|
 | warn | Warning before timeout |
 | escalate | Escalate after timeout |
-| break_glass | Triggers break-glass flow, requiring dual approval to proceed |
+| break_glass | Trigger break-glass process, requiring dual approval to continue |
 
-Note: The `auto_action` strategy has been removed. After timeout, the break-glass + dual approval flow must be followed; automated execution of preset actions is prohibited.
+Note: The `auto_action` strategy has been removed. After timeout, must go through break-glass + dual approval process. Automated preset actions are prohibited.
 
 ### Routing Rules Engine
 
-- Dynamic routing based on organizational hierarchy, roles, and risk levels
-- Supports approval delegation
-- Supports approval escalation
+- Dynamic routing based on organization hierarchy, roles, risk levels
+- Support for approval delegation
+- Support for approval expedited processing
 
 ## Consequences
 

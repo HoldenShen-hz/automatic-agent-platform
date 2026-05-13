@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-The platform's overarching goal includes "profitable operations," but if we only design the technical architecture without defining the commercialization path in advance, subsequent billing, permissions, marketplace, and tenant capabilities will be difficult to integrate.
+The platform's overarching goal includes profitable operations, but if we only design the technical architecture without defining the commercialization path in advance, subsequent billing, permissions, marketplace, and tenant capabilities will be difficult to integrate.
 
 ## Decision
 
@@ -34,7 +34,7 @@ Incorporate commercial design into the target architecture, but with a clear imp
 
 ## Commercial Positioning
 
-The core positioning is not an "AI programming tool," but rather:
+The core positioning is not an AI programming tool, but rather:
 
 - An AI-driven general-purpose automation company runtime.
 - Programming is only one business unit.
@@ -46,7 +46,7 @@ Commercialization revolves around several types of units:
 
 - Business Unit: Revenue unit.
 - Usage: Billing metering unit.
-- Skill / Plugin: Ecosystem distribution unit.
+- Skill and Plugin: Ecosystem distribution unit.
 - Deployment Mode: Community, Professional, and Enterprise editions as differentiated units.
 
 ## Pricing and Cadence
@@ -54,7 +54,7 @@ Commercialization revolves around several types of units:
 The principle is to adopt a three-tier structure:
 
 - Community: Low-barrier trial or BYOK.
-- Pro: Small/medium teams and individual entrepreneurs.
+- Pro: Small and medium teams and individual entrepreneurs.
 - Enterprise: Private deployment, compliance, SSO, audit, and stronger quota control.
 
 But constraints are important:
@@ -96,16 +96,16 @@ Constraints:
 
 ## Source Sections
 
-- `§11`
-- `§11.1`
-- `§11.2`
-- `§11.3`
-- `§11.4`
-- `§11.5`
-- `§11.6`
-- `§11.7`
-- `§11.8`
-- `§11.9`
-- `§11.10`
-- `§11.11`
-- `§11.12`
+- Section 11
+- Section 11.1
+- Section 11.2
+- Section 11.3
+- Section 11.4
+- Section 11.5
+- Section 11.6
+- Section 11.7
+- Section 11.8
+- Section 11.9
+- Section 11.10
+- Section 11.11
+- Section 11.12

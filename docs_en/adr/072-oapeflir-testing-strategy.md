@@ -40,7 +40,7 @@ The OAPEFLIR eight-stage architecture adds 7 core modules (agent-loop/planning/f
 | `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | ingestion→retrieval E2E | retrieval accuracy golden | source pollution | ~150 |
 | `domain-registry/` | plugin-spi-registry, plugin-runtime-host, domain-registry-service | plugin load→execute | — | config injection | ~100 |
 | `plugins/` | github-adapter, basic-planner, coding-retriever | plugin registration→invoke | — | — | ~40 |
-| **Total** | | | | | **~730** |
+| **Total** | | | | | | **~730** |
 
 ### 3. E2E Test Design (5 Core Tests)
 

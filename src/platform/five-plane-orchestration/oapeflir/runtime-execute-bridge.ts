@@ -76,8 +76,12 @@ export function mapToDualChannelStepOutputs(
 }
 
 export function extractStepOutputRecords(result: { snapshot?: unknown }): StepOutputRecord[] {
-  const snapshot = result.snapshot as { executionRecord?: { stepOutputs?: StepOutputRecord[] } } | undefined;
-  return snapshot?.executionRecord?.stepOutputs ?? [];
+  const snapshot = result.snapshot as { executionRecord?: { stepOutputs?: unknown } } | undefined;
+  const stepOutputs = snapshot?.executionRecord?.stepOutputs;
+  if (!Array.isArray(stepOutputs)) {
+    return [];
+  }
+  return stepOutputs.filter(isStepOutputRecord);
 }
 
 export function serialiseOapeflirPlan(steps: PlanStep[] | PlanNode[], parentContext?: Record<string, unknown>): string {
@@ -123,7 +127,7 @@ export function minimalWorkflowToPlanGraphBundle(
       fromNodeId: dep,
       toNodeId: step.stepId,
       condition: { type: "dependency_satisfied" },
-      dependencyType: "data",
+      dependencyType: "hard",
     })),
   );
   const dependedOn = new Set(edges.map((edge) => edge.fromNodeId));
@@ -186,13 +190,19 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
   }
 
   public async executePlan(plan: Plan, context: ExecutionContext): Promise<ExecutionResult> {
+    const normalizedPlan = normalizeExecutablePlan(plan, context);
     if (this.executor != null) {
-      const executed = await this.executor(plan, context);
+      const executed = await this.executor({
+        ...normalizedPlan,
+        dbPath: this.dbPath,
+        contextBudgetTokens: context.tokenBudget,
+        parentContext: (context as { parentContext?: unknown }).parentContext,
+      } as Plan, context);
       const records = extractStepOutputRecords(executed);
       const results = records.map(mapStepOutputRecord);
-      return buildExecutionResult(plan.planId, results);
+      return buildExecutionResult(normalizedPlan.planId, results);
     }
-    const results = plan.steps.map((step, index) => ({
+    const results = normalizedPlan.steps.map((step, index) => ({
       stepId: step.stepId,
       status: "succeeded" as const,
       durationMs: 100 + index * 50,
@@ -204,7 +214,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       retryCount: 0,
       validationPassed: true,
     }));
-    return buildExecutionResult(plan.planId, results);
+    return buildExecutionResult(normalizedPlan.planId, results);
   }
 
   public toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
@@ -258,5 +268,49 @@ function buildExecutionResult(planId: string, results: StepResult[]): ExecutionR
     allSucceeded: results.every((item) => item.status === "succeeded" || item.status === "skipped"),
     skippedStepIds: results.filter((item) => item.status === "skipped").map((item) => item.stepId),
     failedStepIds: results.filter((item) => item.status === "failed").map((item) => item.stepId),
+  };
+}
+
+function isStepOutputRecord(value: unknown): value is StepOutputRecord {
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Partial<StepOutputRecord>;
+  return typeof (record.stepId ?? record.nodeRunId) === "string"
+    && typeof record.status === "string"
+    && typeof record.dataJson === "string"
+    && typeof record.durationMs === "number"
+    && typeof record.tokenCost === "number";
+}
+
+function normalizeExecutablePlan(plan: Plan | PlanGraphBundle, context: ExecutionContext): Plan {
+  if (isPlanGraphBundle(plan)) {
+    return {
+      planId: plan.planGraphBundleId,
+      taskId: context.taskId,
+      version: plan.graphVersion,
+      assessmentRef: plan.validationReport.valid ? `assessment:${plan.planGraphBundleId}` : `assessment:invalid:${plan.planGraphBundleId}`,
+      strategy: "linear",
+      steps: plan.graph.nodes.map(planNodeToPlanStep),
+      createdAt: Date.parse(plan.createdAt) || Date.now(),
+    };
+  }
+  return plan;
+}
+
+function isPlanGraphBundle(plan: Plan | PlanGraphBundle): plan is PlanGraphBundle {
+  return "planGraphBundleId" in plan && "graph" in plan && Array.isArray((plan as PlanGraphBundle).graph.nodes);
+}
+
+function planNodeToPlanStep(node: PlanNode): PlanStep {
+  return {
+    stepId: node.nodeId,
+    action: node.nodeType,
+    inputs: {},
+    outputs: [node.outputSchemaRef],
+    dependencies: [...node.inputRefs],
+    status: "pending",
+    timeout: node.timeoutMs,
+    retryPolicy: { maxRetries: 0, backoffMs: 0 },
   };
 }

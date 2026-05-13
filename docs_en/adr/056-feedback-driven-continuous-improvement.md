@@ -13,7 +13,7 @@ The platform needs to continuously learn and improve from user feedback, forming
 
 | Type | Source | Processing Method |
 |------|--------|-------------------|
-| explicit | User ratings/reviews | Manual review |
+| explicit | User ratings/reviews | Human review |
 | implicit | Usage behavior analysis | Automatic learning |
 | corrective | User corrections | Pattern extraction |
 | failure | Execution failures | Root cause analysis |
@@ -27,8 +27,8 @@ Feedback Collection → Preprocessing → Classification → Pattern Recognition
 ### FeedbackHub
 
 - `FeedbackHub` collects 7 types of signals
-- `FeedbackCollector` preprocesses
-- `StrategyLearningService` detects patterns
+- `FeedbackCollector` preprocessing
+- `StrategyLearningService` pattern detection
 
 ### Learning Objects
 
@@ -48,13 +48,13 @@ interface LearningObject {
 LearnHub → ImproveHub → P2 Release Governance Gate → Six-Level Release
      ↓           ↓                ↓                  ↓
  LearningObject  Improvement   Gate Review         Rollout
-                 Candidate    (Must Pass)
+                 Candidate    (Must pass)
 ```
 
 - LearnHub generates LearningObject
 - ImproveHub evaluates ImprovementCandidate
-- P2 Release Governance gate reviews (must pass to enter Release)
-- Release six-tier rollout (alpha/beta/stable/ga/lts/archived)
+- P2 Release Governance gate review (must pass to enter Release)
+- Release six-level publishing (alpha/beta/stable/ga/lts/archived)
 
 ## Consequences
 
@@ -71,7 +71,7 @@ Cons:
 
 ## Cross References
 
-- [ADR-079 Feedback Hub and Seven Signal Preprocessing](./079-feedback-hub-signals.md)
+- [ADR-079 Feedback Hub and Seven Signal Types Preprocessing](./079-feedback-hub-signals.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
 ## Source Section

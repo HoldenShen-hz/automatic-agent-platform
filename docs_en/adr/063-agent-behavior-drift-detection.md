@@ -13,10 +13,10 @@ Agent behavior may drift over time, gradually exceeding quality thresholds, requ
 
 | Type | Description | Detection Method |
 |------|-------------|------------------|
-| input_drift | Input distribution change | Statistical test |
-| output_drift | Output distribution change | Threshold monitoring |
-| behavioral_drift | Behavior pattern change | Sequence comparison |
-| quality_drift | Quality metric decline | Sliding window |
+| input_drift | Input distribution changes | Statistical test |
+| output_drift | Output distribution changes | Threshold monitoring |
+| behavioral_drift | Behavior pattern changes | Sequence comparison |
+| quality_drift | Quality metric degradation | Sliding window |
 
 ### Detection Algorithm
 
@@ -39,8 +39,8 @@ type DriftMethod =
 
 | Rule | Window | Threshold | Event |
 |------|--------|-----------|-------|
-| Input distribution | 24h | -10% shift | SEV3 |
-| Output distribution | 24h | -10% shift | SEV3 |
+| Input distribution | 24h | -10% deviation | SEV3 |
+| Output distribution | 24h | -10% deviation | SEV3 |
 | Error rate | 5 min | > 5% | SEV2 |
 | Latency | 5 min | > 2x baseline | SEV2 |
 
@@ -54,13 +54,13 @@ type DriftMethod =
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Early problem detection
-- Prevent quality degradation
+- Prevents quality degradation
 - Automated response
 
-Negative:
+Costs:
 
 - False positives may disrupt business
 - Detection algorithm requires tuning

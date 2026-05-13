@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 This ADR summarizes the key decisions and design principles of the platform's overall architecture.
 

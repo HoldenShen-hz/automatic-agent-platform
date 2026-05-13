@@ -10,12 +10,12 @@ Accepted
 
 ## Context
 
-`docs_zh/architecture/00-platform-architecture.md` has consolidated v4.1 deep review, v4.2 pre-freeze corrections, and OAPEFLIR v4.4 executable spec into the v4.3 executable specification freeze scope. Previous ADRs and contracts still contain multiple sets of legacy naming conventions, including `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, `StateCommand`, `workflow_run`, and linear `step` semantics. If these names continue to serve as implementation entry points, the runtime will form a second set of truth sources.
+`docs_zh/architecture/00-platform-architecture.md` has converged v4.1 deep review, v4.2 pre-freeze correction, and OAPEFLIR v4.4 executable spec into v4.3 executable spec freeze caliber. Past ADRs and contracts still contain multiple sets of historical naming, including `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, `StateCommand`, `workflow_run`, and linear `step` semantics. If these names continue to serve as implementation entry points, the runtime will form a second truth source.
 
 ## Decision
 
-1. v4.3 uses `§1.5 v4.3 Contract Freeze Scope` from `00-platform-architecture.md` as the freeze scope.
-2. The first batch of implementations will only use the following 12 groups of contracts as canonical entry points:
+1. v4.3 uses `00-platform-architecture.md` `§1.5 v4.3 Contract Freeze Scope` as the freeze scope.
+2. The first batch of implementation only uses the following 12 groups of contracts as canonical entry points:
    - `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`
    - `HarnessRun`
    - `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge`
@@ -28,21 +28,21 @@ Accepted
    - `DecisionInputBundle` / `HarnessDecision`
    - `HumanResponsibilityRecord`
    - `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent`
-3. Legacy names such as `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, and `StateCommand` are only permitted to appear as legacy adapters, deprecated aliases, projections, or migration notes, and must not serve as public contracts for new modules.
-4. Chinese documentation takes priority for freezing: first update `docs_zh/operations/current_todo_list.md`, then update `docs_zh/adr/` and `docs_zh/contracts/`, before entering code implementation.
-5. Previously Accepted historical ADRs will not have their main text rewritten; this ADR consolidates historical semantics through supersession relationships.
+3. Old names such as `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, `StateCommand` are only allowed to appear as legacy adapter, deprecated alias, projection, or migration description, and must not serve as public contract for new modules.
+4. Chinese documentation is frozen first: update `docs_zh/operations/current_todo_list.md` first, then `docs_zh/adr/` and `docs_zh/contracts/`, finally enter code implementation.
+5. Historically Accepted ADRs are not rewritten; this ADR collects historical semantics through supersede relationship.
 
-## Historical Semantics Superseded or Constrained
+## Superseded or Constrained Historical Semantics
 
-- ADR-021's inter-plane communication semantics continue to be preserved, but cross-plane execution objects must use v4.3 canonical contracts.
-- ADR-029's OAPEFLIR semantics continue to be preserved, but OAPEFLIR does not own independent execution authority.
-- ADR-030's runtime execution plane continues to be preserved, but the state transition entry point is defined by ADR-110 as `RuntimeStateMachine.transition(command)`.
+- ADR-021 inter-plane communication semantics continue to be retained, but cross-plane execution objects must use v4.3 canonical contract.
+- ADR-029 OAPEFLIR semantics continue to be retained, but OAPEFLIR does not own independent execution authority.
+- ADR-030 runtime execution plane continues to be retained, but the status transition entry is defined by ADR-110 as `RuntimeStateMachine.transition(command)`.
 
 ## Consequences
 
-- New implementations can establish contract naming consistency tests that directly prevent old names from becoming canonical types again.
-- Contract documentation becomes a pre-entry gate for code implementation; runtime objects without contracts must not enter the MVP main chain.
-- Legacy APIs and legacy query tables may retain compatibility layers, but must be clearly marked as projection / deprecated / legacy.
+- New implementation can establish contract naming consistency test, directly preventing old names from becoming canonical types again.
+- Contract documents become pre-release gate for code implementation; runtime objects without contract must not enter MVP main chain.
+- Old API and old query tables can retain compatibility layer but must clearly label projection / deprecated / legacy.
 
 ## Related Documents
 

@@ -188,7 +188,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     const contextCompaction = new ContextCompactionService(db, store);
     const streamBridge = new StreamBridge();
 
-    const taskId = newId("task");
+    const taskId = input.taskId ?? newId("task");
     const sessionId = newId("sess");
     const traceId = newId("trace");
     const traceContext = createRootTraceContext({ traceId, correlationId: taskId });

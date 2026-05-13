@@ -1,17 +1,17 @@
-# ADR-103 Four Phase Domain Onboarding
+# ADR-103: Four Phase Domain Onboarding
 
 ---
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect domain modeling and dependency inputs
+- **Observe**: Collect domain modeling and dependency input
 - **Assess**: Check readiness and certification requirements
-- **Plan**: Plan the four phases: modeling, development, certification, and rollout
-- **Execute**: Progress through phases sequentially
-- **Feedback**: Accumulate structured evidence at each phase
-- **Learn**: Review onboarding patterns
-- **Improve**: Optimize onboarding gates
-- **Release**: Cannot enter active until rollout passes
+- **Plan**: Plan modeling, development, certification, and staged rollout four phases
+- **Execute**: Advance onboarding phase by phase
+- **Feedback**: Accumulate structured evidence each phase
+- **Learn**: Post-mortem onboarding patterns
+- **Improve**: Optimize onboarding gate
+- **Release**: Only become active after staged rollout passes
 
 ---
 
@@ -20,18 +20,18 @@
 
 ## Context
 
-Without fixed phases, domain onboarding tends to skip governance, testing, or rollout verification.
+If domain onboarding does not have fixed phases, it will skip governance, testing, or staged rollout verification.
 
 ## Decision
 
-Domain onboarding is fixed to four phases:
+Domain onboarding is fixed as four phases:
 
 1. Modeling
 2. Development
 3. Certification
-4. Rollout
+4. Staged Rollout
 
 ## Consequences
 
-- Onboarding no longer relies on verbal processes
+- Onboarding no longer relies on verbal process
 - Domain readiness and rollout have consistent gates

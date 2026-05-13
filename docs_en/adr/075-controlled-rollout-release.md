@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model, ADR-018 Rollout 11 State Machine
+- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-018 Rollout 11 State Machine
 
 ## Context
 
@@ -181,7 +181,7 @@ Cons: Higher implementation complexity (~500 lines of code + monitoring integrat
 
 ## Cross References
 
-- [ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 - `src/core/improvement/` module

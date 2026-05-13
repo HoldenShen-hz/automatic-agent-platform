@@ -17,7 +17,7 @@ Operations personnel need a unified view to understand the overall platform stat
 | Task Board | Real-time task status and progress |
 | Event Center | Alerts and event lists |
 | Cost Report | Resource consumption and costs |
-| Performance Monitoring | P99/latency/error rate |
+| Performance Monitoring | P99/latency/error rates |
 | Security Posture | Authentication/authorization/audit |
 
 ### WebSocket Real-time Push
@@ -29,10 +29,10 @@ Operations personnel need a unified view to understand the overall platform stat
 ### View Layers
 
 | Layer | Audience | Content |
-|-------|----------|---------|
+|------|---------|---------|
 | Management Layer | Executives | Business metrics, health status |
 | Operations Layer | SRE | System metrics, alerts, capacity |
-| Development Layer | Developers | Task details, logs, trace |
+| Development Layer | Developers | Task details, logs, traces |
 
 ### Alert Aggregation
 
@@ -42,22 +42,22 @@ Operations personnel need a unified view to understand the overall platform stat
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Unified view improves operational efficiency
 - Real-time push ensures timely response
 - Layered views serve different audiences
 
-Negative:
+Cons:
 
 - Dashboard maintenance costs
 - Real-time data pipeline complexity
 
-## Cross-References
+## Cross References
 
 - [ADR-028 Incident and Event Handling Architecture](./028-incident-and-event-handling-architecture.md)
-- [ADR-084 Operator Dashboard and User Experience](./084-operator-dashboard-and-user-experience.md)
+- [ADR-084 Operations Dashboard and Non-Technical User Experience](./084-operator-dashboard-and-user-experience.md)
 
-## Source Sections
+## Source Section
 
 - `§43` Unified Operations Dashboard Architecture

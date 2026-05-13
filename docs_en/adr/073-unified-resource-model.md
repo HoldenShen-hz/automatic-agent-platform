@@ -4,7 +4,7 @@ Status: Accepted (phased)
 Date: 2026-04-13
 Updated: 2026-04-16
 
-## Background
+## Context
 
 `reviews/opeli_detailed_design.md §K` requires unifying OAPEFLIR, feedback learning improvement loop, knowledge and memory references, and artifact and rollout evidence chains into a single shared resource model.
 

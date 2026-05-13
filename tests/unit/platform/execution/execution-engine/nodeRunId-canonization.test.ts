@@ -8,13 +8,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { newId } from "../../../../src/platform/contracts/types/ids.js";
+import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 import type {
   StepOutputRecord,
   ArtifactRecord,
-} from "../../../../src/platform/contracts/types/domain.js";
-import { buildStepResultEnvelope, buildTaskResultEnvelope } from "../../../../src/platform/contracts/result-envelope/result-envelope.js";
-import type { TaskRecord, WorkflowStateRecord } from "../../../../src/platform/contracts/types/domain.js";
+} from "../../../../../src/platform/contracts/types/domain.js";
+import { buildStepResultEnvelope, buildTaskResultEnvelope } from "../../../../../src/platform/contracts/result-envelope/result-envelope.js";
+import type { TaskRecord, WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockTaskRecord(overrides?: Partial<TaskRecord>): TaskRecord {
   return {
@@ -216,7 +216,7 @@ function resolveArtifactRefsFromModule(
 // =============================================================================
 
 test("R6-19: CompensationStep uses nodeRunId for canonical identity", async () => {
-  const { CompensationStep } = await import("../../../../src/platform/execution/compensation-manager.js");
+  const { CompensationStep } = await import("../../../../../src/platform/execution/compensation-manager.js");
 
   // R6-19: CompensationStep should have nodeRunId as canonical field
   // This tests the interface definition
@@ -266,7 +266,7 @@ test("R6-19: buildTaskResultEnvelope uses nodeRunId for step correlation", () =>
 // =============================================================================
 
 test("R6-19: UsageEventRecord has nodeRunId as canonical field", async () => {
-  const { UsageEventRecord } = await import("../../../../src/platform/contracts/types/domain/billing-types.js");
+  const { UsageEventRecord } = await import("../../../../../src/platform/contracts/types/domain/billing-types.js");
 
   // nodeRunId is the canonical field for execution correlation
   // executionId and stepId are deprecated legacy projections

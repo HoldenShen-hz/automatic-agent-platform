@@ -62,22 +62,22 @@ Input → Preprocessing → Modality Router → Specialized Processor → Fusion
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Expands applicable scope
 - Improves user experience
 - Supports more scenarios
 
-Negative:
+Costs:
 
 - Provider integration complex
 - Multimodal understanding cost high
 
-## Cross-References
+## Cross References
 
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [Platform Architecture §16 Prompt Management and Versioning](../architecture/00-platform-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§68` Multimodal Capability Architecture

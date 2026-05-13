@@ -3,8 +3,9 @@
  * Verifies PlanEvaluator checks parallelism vs worker pool capacity
  */
 
-import { describe, it, expect } from 'node:test';
-import { estimateMaxConcurrency } from '../../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { estimateMaxConcurrency } from '../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js';
 
 describe('R20-05: Parallelism limit check', () => {
   it('should calculate max concurrency for linear plan (all steps sequential)', () => {
@@ -24,7 +25,7 @@ describe('R20-05: Parallelism limit check', () => {
     };
 
     const maxConcurrency = estimateMaxConcurrency(plan);
-    expect(maxConcurrency).toBe(1); // Only one step runs at a time
+    assert.equal(maxConcurrency, 1); // Only one step runs at a time
   });
 
   it('should calculate max concurrency for parallel plan (independent steps)', () => {
@@ -44,7 +45,7 @@ describe('R20-05: Parallelism limit check', () => {
     };
 
     const maxConcurrency = estimateMaxConcurrency(plan);
-    expect(maxConcurrency).toBe(3); // All 3 steps can run in parallel
+    assert.equal(maxConcurrency, 3); // All 3 steps can run in parallel
   });
 
   it('should calculate max concurrency for diamond plan (join after parallel branches)', () => {
@@ -65,6 +66,6 @@ describe('R20-05: Parallelism limit check', () => {
     };
 
     const maxConcurrency = estimateMaxConcurrency(plan);
-    expect(maxConcurrency).toBe(2); // step2 and step3 can run in parallel
+    assert.equal(maxConcurrency, 2); // step2 and step3 can run in parallel
   });
 });

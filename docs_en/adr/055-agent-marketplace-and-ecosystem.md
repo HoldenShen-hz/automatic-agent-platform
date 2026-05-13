@@ -5,7 +5,7 @@
 
 ## Context
 
-The platform needs an open Agent marketplace where partners and the community can contribute and share Agent Packs.
+The platform needs an open Agent marketplace where partners and community can contribute and share Agent Packs.
 
 ## Decision
 
@@ -35,10 +35,10 @@ type ListingCategory =
 
 ### Publishing Process
 
-1. Developer builds Pack
+1. Developer develops Pack
 2. Local testing (coverage >= 80%)
 3. Submit for review
-4. Certification evaluation (Prompt Injection checks, code signature verification, SBOM review, vulnerability scanning)
+4. Certification evaluation (Prompt Injection check, code signature verification, SBOM review, vulnerability scan)
 5. List on marketplace
 
 ### Pricing Models
@@ -53,19 +53,19 @@ type ListingCategory =
 ### Ratings and Rankings
 
 - User ratings (1-5 stars)
-- Download rankings
-- Trending list
+- Download count ranking
+- Trends ranking
 - Editor's picks
 
 ## Consequences
 
-Advantages:
+Pros:
 
 - Open ecosystem attracts partners
 - Market mechanism incentivizes high-quality Packs
 - Certification process ensures quality
 
-Costs:
+Cons:
 
 - Platform governance complexity
 - Quality inconsistency risk

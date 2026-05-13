@@ -5,14 +5,14 @@
 
 ## Context
 
-Different businesses have varying SLA requirements, and the platform needs to support tiered SLA guarantees.
+Different businesses have different SLA requirements. The platform needs to support SLA tiered guarantees.
 
 ## Decision
 
-### SLA Tiers
+### SLA Levels
 
-| Tier | Name | Availability | Response Time | Concurrency | Prerequisites |
-|------|------|--------------|---------------|-------------|---------------|
+| Level | Name | Availability | Response Time | Concurrency | Prerequisites |
+|-------|------|--------------|---------------|-------------|---------------|
 | platinum | Platinum | 99.99% | < 100ms | 1000+ | Required: automatic failover + quorum + capacity reservation + drill evidence |
 | gold | Gold | 99.9% | < 500ms | 500 | - |
 | silver | Silver | 99.5% | < 1s | 100 | - |
@@ -23,7 +23,7 @@ Different businesses have varying SLA requirements, and the platform needs to su
 ```typescript
 interface SLARequirement {
   tier: SLATier;
-  availability: number;      // percentage
+  availability: number;      // Percentage
   latency_p99_ms: number;
   throughput_rpm: number;
   error_rate_max: number;
@@ -32,7 +32,7 @@ interface SLARequirement {
 
 ### SLA Monitoring
 
-- Real-time SLA metric collection
+- Real-time SLA metrics collection
 - SLA violation early warning
 - SLA report generation
 
@@ -44,19 +44,19 @@ interface SLARequirement {
 | Latency exceeded | Partial refund |
 | Error rate exceeded | Credit compensation |
 
-All SLA commitments must be traceable back to `HarnessRun / NodeRun / NodeAttemptReceipt` evidence.
+All SLA commitments must be traceable to `HarnessRun / NodeRun / NodeAttemptReceipt` evidence.
 
 ## Consequences
 
-Advantages:
+Pros:
 
-- Tiered services meet different business needs
+- Tiered service meets different business needs
 - SLA compensation enhances user trust
-- Monitoring metrics facilitate issue identification
+- Monitoring metrics facilitate problem identification
 
-Costs:
+Cons:
 
-- Multi-tier SLA increases operational complexity
+- Multi-level SLA increases operational complexity
 - Compensation calculation requires precision
 
 ## Cross References

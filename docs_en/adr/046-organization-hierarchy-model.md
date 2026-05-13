@@ -5,11 +5,11 @@
 
 ## Context
 
-Enterprises have deep organizational hierarchies of business groups → departments → teams, and the platform needs to express this hierarchical relationship to support multi-level governance.
+Enterprises have deep organizational hierarchies from business group to department to team. The platform needs to express this hierarchical relationship and support tiered governance.
 
 ## Decision
 
-### Organizational Hierarchy Structure
+### Organization Hierarchy Structure
 
 ```typescript
 interface OrganizationHierarchy {
@@ -33,47 +33,47 @@ interface OrgNode {
 interface OrgTreeSaga {
   prepare(): Compensatable[];        // Collect all pending cascade changes
   commit(): void;                     // Atomically commit all changes
-  compensate(operations: Compensatable[]): Compensatable[];  // Roll back on failure, return unrecovered operations
-  audit(): void;                      // Record the complete change trajectory
+  compensate(operations: Compensatable[]): Compensatable[];  // Reverse rollback on failure, return unrecovered operations
+  audit(): void;                      // Record complete change trajectory
 }
 ```
 
-### Hierarchy Governance Policy (v4.3 OrgNode hierarchy)
+### Tiered Governance Strategy (v4.3 OrgNode hierarchy)
 
-> Note: R5-66 Fix - v4.3 has replaced CEO/VP governance hierarchy with OrgNode hierarchy.
+> Note: R5-66 Fix - v4.3 uses OrgNode hierarchy to replace CEO/VP governance levels.
 
 | Level | Governance Autonomy | Approval Chain (OrgNode) |
-|-------|---------------------|--------------------------|
-| Company-level | Platform managed | OrgNode(root)/Governance Committee |
-| Business Group-level | Business Group managed | OrgNode(business_group) |
-| Department-level | Department managed | OrgNode(department) |
-| Team-level | Team managed | OrgNode(team) |
-| Individual-level | Self managed | OrgNode(individual) |
+|-------|--------------------|--------------------------|
+| Company Level | Platform management | OrgNode(root)/Governance Committee |
+| Business Group Level | Business group management | OrgNode(business_group) |
+| Department Level | Department management | OrgNode(department) |
+| Team Level | Team management | OrgNode(team) |
+| Individual Level | Individual management | OrgNode(individual) |
 
 ### Relationship with Tenants
 
 - Tenant is the top-level isolation unit
-- Organizational hierarchy is subdivided within tenant
-- No organizational relationships across tenants
+- Organization hierarchy subdivides within tenant
+- No organizational relationship across tenants
 
 ### OrgTree Cascade Change Compensation Semantics
 
-Organizational changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga guarantees:
+Organization structure changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga ensures:
 
 1. **Prepare Phase**: Collect all affected nodes, child nodes, associated permissions, and associated approval chains
 2. **Commit Phase**: Atomically execute all changes
-3. **Compensate Phase**: On any change failure, roll back all committed changes in reverse order, and return the list of unrecovered operations
-4. **Audit Phase**: Record the complete change trajectory, including compensation execution results
+3. **Compensate Phase**: If any change fails, reverse rollback all committed changes and return the list of unrecovered operations
+4. **Audit Phase**: Record complete change trajectory, including compensation execution results
 
 ## Consequences
 
-Advantages:
+Pros:
 
 - Hierarchy model matches enterprise reality
-- Multi-level governance improves management efficiency
-- Approval chains are clear
+- Tiered governance improves management efficiency
+- Clear approval chains
 
-Drawbacks:
+Cons:
 
 - Hierarchy maintenance complexity
 - Cross-level collaboration requires additional design

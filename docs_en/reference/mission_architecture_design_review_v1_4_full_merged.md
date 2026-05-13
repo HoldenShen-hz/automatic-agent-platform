@@ -1,15 +1,15 @@
-# Automatic Agent Platform — Mission Architecture Integration Contract v1.4
+# Automatic Agent Platform — Mission Architecture Integration Implementation Contract v1.4
 
 > **Document Version**: v1.4
 > **Baseline Document**: `mission_architecture_design_review_v1_3.md`
-> **Review Objective**: On the basis of v1.3 architecture implementation contract, merge Step degradation rules, complete naming boundaries, interface constraints, test governance and migration requirements for Mission and Graph/Node-centric runtime, forming a complete merged version that can directly enter implementation phase.
-> **Final Conclusion**: Mission should join the system, but must serve as **long-term goal and governance context root object**, cannot become a new execution object, cannot replace PlanGraph, cannot resurrect legacy WorkflowState, cannot generate a fourth set of RequestEnvelope/ExecutionPlan/StateCommand; Step concept must be weakened, system canonical runtime uniformly adopts `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
+> **Review Objective**: On the basis of v1.3 architecture implementation contract, merge Step degradation rules, complete the naming boundaries, interface constraints, testing governance, and migration requirements for Mission and Graph/Node-centric runtime, forming a complete merged version ready for implementation phase.
+> **Final Conclusion**: Mission should be incorporated into the system, but must serve as a **long-term goal and governance context root object**, must not become a new execution object, must not replace PlanGraph, must not resurrect legacy WorkflowState, and must not generate a fourth set of RequestEnvelope / ExecutionPlan / StateCommand; at the same time, the Step concept must be weakened, and the system canonical runtime uniformly adopts `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
 
 ---
 
 ## 0. Final Review Conclusion
 
-Mission's correct positioning is:
+The correct positioning of Mission is:
 
 ```text
 Mission = Agent ecosystem-level long-term goal + governance boundary + budget boundary + knowledge boundary + learning attribution boundary + audit attribution boundary
@@ -18,52 +18,52 @@ Mission = Agent ecosystem-level long-term goal + governance boundary + budget bo
 It is NOT:
 
 ```text
-Not Agent Session
-Not WorkflowState
-Not ExecutionPlan
-Not PlanGraphBundle
-Not HarnessRun
-Not NodeRun
-Not UI Project Folder
-Not Domain
-Not Agent Team
+NOT an Agent Session
+NOT a WorkflowState
+NOT an ExecutionPlan
+NOT a PlanGraphBundle
+NOT a HarnessRun
+NOT a NodeRun
+NOT a UI Project Folder
+NOT a Domain
+NOT an Agent Team
 ```
 
-After the system adds Mission, the recommended canonical layers are:
+After the system incorporates Mission, the recommended canonical hierarchy is:
 
 ```text
 Tenant / Org
   └── Mission
-        ├── Session              # Human-machine interaction context, can enter same Mission multiple times
+        ├── Session              # Human-machine interaction context, can enter the same Mission multiple times
         ├── Task                 # A formal work request, must be bound to MissionContext
-        ├── WorkflowTemplate    # Reusable process template, does not belong to execution state
+        ├── WorkflowTemplate     # Reusable process template, does not belong to execution state
         ├── PlanGraphBundle      # DAG execution plan for this task
-        ├── HarnessRun           # This execution instance, only binds one MissionSnapshot
-        ├── NodeRun              # Single graph node run
+        ├── HarnessRun           # This execution instance, bound to only one MissionSnapshot
+        ├── NodeRun              # Single graph node execution
         ├── NodeAttempt          # Single model/tool/human attempt
         ├── EvidenceBundle       # Evidence and audit chain
-        └── LearningObject       # Can optionally remain in Mission, or be promoted to Domain/Platform after approval
+        └── LearningObject       # Can optionally remain within Mission, or be promoted to Domain/Platform upon approval
 ```
 
-Core invariants:
+The most critical invariants:
 
 | Invariant | Description |
 |---|---|
-| INV-MISSION-001 | Every executable Task must resolve a `missionRef` before dispatch, but not every dispatch creates a new Mission. |
-| INV-MISSION-002 | A HarnessRun can only bind one MissionContextSnapshot; cross-Mission collaboration must split child tasks or use MissionHandoff. |
-| INV-MISSION-003 | Mission only saves goals, boundaries, strategies, budget, members, knowledge/learning attribution; must NOT save running node state. |
-| INV-MISSION-004 | RuntimeMode does not do linear ordering, must be converted to RuntimeConstraintSet and then do constraint intersection. |
-| INV-MISSION-005 | MissionSnapshot guarantees audit reproducibility; live revocation check guarantees timely effect for revocation/freeze/budget exhaustion. |
-| INV-MISSION-006 | All state changes to Mission must be appended via PlatformFactEvent, direct overwrite of truth is not allowed. |
-| INV-MISSION-007 | MissionId can enter log/trace/event, but by default cannot be used as metrics label to avoid high cardinality explosion. |
-| INV-MISSION-008 | Mission does not add a fourth core contract, only extends existing canonical contracts. |
-| INV-MISSION-009 | `Step` is not a canonical object; Mission, Task, Plan, Harness, Event, Budget, Evidence, API must not add Step-centric fields, can only be used as natural language labels in UI/documentation display layer. |
+| INV-MISSION-001 | Every executable Task must resolve a `missionRef` before dispatch, but does not necessarily create a new Mission each time. |
+| INV-MISSION-002 | A HarnessRun can only bind to one MissionContextSnapshot; cross-Mission collaboration must split child tasks or use MissionHandoff. |
+| INV-MISSION-003 | Mission only stores goals, boundaries, strategies, budget, members, knowledge/learning attribution; must not store running node state. |
+| INV-MISSION-004 | RuntimeMode does not do linear ordering; must be converted to RuntimeConstraintSet for constraint intersection. |
+| INV-MISSION-005 | MissionSnapshot guarantees audit reproducibility; live revocation check ensures revocation/freeze/budget exhaustion takes effect in a timely manner. |
+| INV-MISSION-006 | All state changes of Mission must be appended via PlatformFactEvent; direct overwrite of truth is not allowed. |
+| INV-MISSION-007 | MissionId can enter log/trace/event, but should not be used as a metrics label by default, avoiding high cardinality explosion. |
+| INV-MISSION-008 | Mission does not add a fourth set of core contracts; only extends existing canonical contracts. |
+| INV-MISSION-009 | `Step` is not a canonical object; Mission, Task, Plan, Harness, Event, Budget, Evidence, API must not add Step-centric fields, and can only be used as natural language labels in UI/documentation display layer. |
 
 ---
 
-## 1. Overall Architecture Diagram: Mission Integration into Five Planes
+## 1. Overall Architecture Diagram: Mission Integration with Five Planes
 
-> Mission is not the sixth plane, but governance context that runs through Control Plane, Orchestration Plane, Execution Plane, and State & Evidence Plane.
+> Mission is not the sixth plane, but a governance context that runs through Control Plane, Orchestration Plane, Execution Plane, and State & Evidence Plane.
 
 ```mermaid
 flowchart TB
@@ -145,15 +145,15 @@ flowchart TB
     Learn --> Evidence
 ```
 
-### 1.1 Architecture Diagram Explanation
+### 1.1 Architecture Diagram Interpretation
 
 Mission runs through the chain but does not take over execution:
 
 1. **P1 Interface** receives user input, can only provide Mission hint, cannot directly authorize Mission.
-2. **P2 Control** decides whether Mission exists, is available, user has permissions, budget is available, risk is acceptable.
+2. **P2 Control** determines whether Mission exists, is available, whether user has permissions, whether budget is available, whether risk is acceptable.
 3. **P3 Orchestration** generates PlanGraphBundle under Mission constraints.
 4. **P4 Execution** each NodeRun executes under MissionSnapshot + live guard.
-5. **P5 State & Evidence** records fact events, evidence, projections and audit chain for Mission/Task/Run/Node/SideEffect.
+5. **P5 State & Evidence** records fact events, evidence, projections, and audit chains for Mission/Task/Run/Node/SideEffect.
 
 ---
 
@@ -185,17 +185,17 @@ erDiagram
 
 ### 2.1 Core Relationships
 
-| Object | Lifecycle Length | Primary Responsibility | Is Execution Object | Can Cross Session | Can Cross Task |
-|---|---:|---|---:|---:|---:|
+| Object | Lifecycle Length | Main Responsibility | Is Execution Object | Can Cross Session | Can Cross Task |
+|---|---:|---|---|---:|---:|
 | Mission | Long-term | Goals, governance, budget, knowledge, learning, attribution | No | Yes | Yes |
-| Session | Short/Medium | Multi-turn conversation context, clarification, preferences, temporary state | No | No | Can produce multiple Tasks |
+| Session | Short/medium | Multi-turn dialogue context, clarification, preferences, temporary state | No | No | Can produce multiple Tasks |
 | Task | Medium | A formal work request and acceptance goal | No | Can reference Session | No |
 | WorkflowTemplate | Long-term | Reusable process template | No | Yes | Yes |
 | PlanGraphBundle | Single | DAG execution plan for this Task | No | No | No |
-| HarnessRun | Single | This plan run instance | Yes | No | No |
-| NodeRun | Single | Single node run in DAG | Yes | No | No |
+| HarnessRun | Single | This plan execution instance | Yes | No | No |
+| NodeRun | Single | Single node execution in DAG | Yes | No | No |
 | NodeAttempt | Very short | Single attempt, model/tool call, error, evidence | Yes | No | No |
-| Agent | Long/Medium | Capability provider or execution role | No | Yes | Yes |
+| Agent | Long/medium | Capability provider or execution role | No | Yes | Yes |
 | Runtime | System-level | Scheduling, execution, recovery, isolation | Yes | Yes | Yes |
 | Step | Non-authoritative display term | Natural language name for NodeRun in UI/documentation; must not be used as truth/contract/runtime field | No | No | No |
 
@@ -205,25 +205,25 @@ erDiagram
 
 ### 3.1 When to Create Session
 
-Session is an interaction context, created only when user or external channel starts a context.
+Session is an interaction context, created only when a user or external channel starts a context.
 
 Typical scenarios for creating Session:
 
-| Scenario | Create Session | Description |
+| Scenario | Create Session? | Description |
 |---|---:|---|
 | User opens Web Chat / NL panel | Yes | Save multi-turn context, clarification state, user preferences |
 | Slack/Telegram webhook inbound | Yes or reuse | Reuse by channel thread / conversation id |
-| Background scheduled task | No | No human-machine conversation context, can be directly driven by Mission/Task |
-| API directly submits Task | Optional | Can skip Session if no multi-turn context |
-| Proactive Agent triggers suggestion | Optional | Create operator session if interaction with user needed |
+| Backend scheduled task | No | No human-machine dialogue context, can be driven directly by Mission/Task |
+| API directly submits Task | Optional | If no multi-turn context, Session may be skipped |
+| Proactive Agent triggers suggestion | Optional | Create operator session when interaction with user is needed |
 
-Session does not mean the task formally starts. Formal execution must enter Task.
+Session does not mean the task has officially started. Formal execution must enter Task.
 
 ### 3.2 When to Create Task
 
-Task is a formal work request. Created only after intake, clarification, confirmation or risk waiver.
+Task is a formal work request. Created only after intake, clarification, confirmation, or risk waiver.
 
-Creating Task conditions:
+Task creation conditions:
 
 ```text
 RawInput
@@ -253,33 +253,33 @@ Task must have:
 
 ### 3.3 When to Create Mission
 
-Not every conversation creates a new Mission, not every Task creates a new Mission.
+Not every dialogue creates a new Mission, and not every Task creates a new Mission.
 
 Mission creation rules:
 
-| Trigger Condition | Create New Mission | Example |
+| Trigger Condition | Create New Mission? | Example |
 |---|---:|---|
-| User explicitly creates long-term goal | Yes | "Establish company-level Agent platform production special project" |
-| Multiple Tasks share long-term goal, budget, knowledge, approval | Yes | R&D project, continuous operation, compliance audit, investment research topic |
+| User explicitly creates long-term goal | Yes | "Establish company-level Agent platform production hardening initiative" |
+| Multiple Tasks share long-term goal, budget, knowledge, approval | Yes | R&D project, continuous operations, compliance audit, investment research topic |
 | Proactive / Scheduled / Autonomous work | Yes | Daily monitoring, auto-repair, continuous evaluation |
 | Cross-team / cross-Agent / cross-Domain collaboration | Yes | Legal + Finance + Engineering joint process |
 | Single low-risk Q&A | No, bind AdHocMission | "Explain what DAG is" |
-| Single high-risk operation | Not necessarily new, but must explicitly select or create Mission | "Deploy production configuration" |
-| API low-risk no-context request | Bind system default Mission | Read-only query API |
+| Single high-risk operation | Not necessarily create new, but must explicitly choose or create Mission | "Deploy production configuration" |
+| API low-risk request without context | Bind system default Mission | Read-only query API |
 
 ### 3.4 Does Every Task Need to Go Through Mission
 
-**Must bind MissionContext before execution, but not necessarily user-visible, not necessarily create new Mission.**
+**MissionContext must be bound before execution, but it is not necessarily user-visible, and does not necessarily create a new Mission.**
 
 Recommended three types of Mission:
 
 | Type | Visibility | Purpose | TTL |
 |---|---|---|---|
 | ExplicitMission | User/team visible | Long-term goals, projects, automation ecosystem | Long-term |
-| SystemMission | System visible | incident/recovery/maintenance/bootstrap | Medium-long term |
-| AdHocMission | Default collapsed | Governance context for single low-risk task | Short-term auto archive |
+| SystemMission | System visible | incident/recovery/maintenance/bootstrap | Medium to long-term |
+| AdHocMission | Collapsed by default | Governance context for single low-risk task | Short-term auto-archive |
 
-Core principle:
+Key principles:
 
 ```text
 Every executable Task must bind to one MissionContext.
@@ -328,18 +328,18 @@ sequenceDiagram
 
 ### 4.1 MissionResolver Two-Stage Design
 
-To avoid circular dependency of "need Domain to select Mission, but Mission limits Domain", use two stages:
+To avoid the circular dependency of "needing Domain to select Mission, but Mission restricts Domain", two stages are adopted:
 
 ```text
 Stage 1: PreRouteClassifier
-  Input RawInput / ConfirmedTaskSpec
-  Output domainHints / riskHints / workflowHints / candidateMissionIds
+  Input: RawInput / ConfirmedTaskSpec
+  Output: domainHints / riskHints / workflowHints / candidateMissionIds
 
 Stage 2: MissionResolver
-  Get MissionContextSnapshot based on hints + membership + recent missions + explicit selection
+  Obtain MissionContextSnapshot based on hints + membership + recent missions + explicit selection
 
 Stage 3: FinalRouteValidator
-  Do final routing within domain/tool/workflow/runtimeConstraints allowed by Mission
+  Perform final routing within domains/tools/workflows/runtimeConstraints allowed by Mission
 ```
 
 ### 4.2 Mission Selection Priority
@@ -353,7 +353,7 @@ explicit missionId from user/API
 > reject and ask user to choose/create mission
 ```
 
-High-risk write operations cannot silently use recent mission, must explicitly confirm.
+High-risk write operations cannot silently use recent mission; must be explicitly confirmed.
 
 ---
 
@@ -426,7 +426,7 @@ export interface MissionRecord {
 
 ### 5.2 MissionContextSnapshot
 
-Snapshot is used for execution reproducibility, cannot be modified in-place during run.
+Snapshot is used for execution reproducibility and must not be modified in-place during execution.
 
 ```ts
 export interface MissionContextSnapshot {
@@ -478,7 +478,7 @@ export interface MissionMembership {
 }
 ```
 
-Permission calculation must be intersection:
+Permission calculation must be an intersection:
 
 ```text
 EffectivePermission =
@@ -570,10 +570,10 @@ stateDiagram-v2
 |---|---:|---:|---:|---:|---:|
 | draft | No | No | No | No | No |
 | reviewing | No | No | No | No | No |
-| active | Yes | Yes | Yes | Restricted by strategy | No |
-| paused | No | drain only | Yes | No | No |
-| completing | No | drain only | Yes | Requires owner approval | No |
-| completed | No | No | Read-only | Can be restricted promotion | Yes |
+| active | Yes | Yes | Yes | Policy-limited | No |
+| paused | No | Drain only | Yes | No | No |
+| completing | No | Drain only | Yes | Requires owner approval | No |
+| completed | No | No | Read-only | Can promote with restrictions | Yes |
 | cancelled | No | No | Read-only | No | Yes |
 | archived | No | No | No | No | Already archived |
 
@@ -583,16 +583,16 @@ stateDiagram-v2
 |---|---|
 | draft → reviewing | Generate MissionReviewRequest; freeze review snapshot |
 | reviewing → active | Emit `platform.mission.activated`; enable budget and member permissions |
-| active → paused | Block new Task; mark queued tasks as blocked; running HarnessRun enters drain/cancel strategy |
-| paused → active | Re-do policy/budget/member live check; do not reuse old snapshot |
-| active → completing | Prohibit new Task; allow completing existing runs; lock new budget additions |
+| active → paused | Block new Tasks; mark queued tasks as blocked; running HarnessRun enters drain/cancel strategy |
+| paused → active | Re-perform policy/budget/member live check; do not reuse old snapshot |
+| active → completing | Prohibit new Tasks; allow existing runs to complete; lock additional budget |
 | completing → completed | Generate FinalMissionReport; freeze MissionSummaryEvidenceBundle |
 | active/paused → cancelled | Cancel queued tasks; running runs terminate according to recovery policy; release budget reservation |
 | completed/cancelled → archived | Move to read-only archive; retain audit, evidence, learning object references |
 
 ---
 
-## 7. Relationship Between Mission and OAPEFLIR / Harness
+## 7. Mission and OAPEFLIR / Harness Relationship
 
 ```mermaid
 flowchart LR
@@ -617,11 +617,11 @@ flowchart LR
 
 ### 7.1 Mission Constraints at Each Stage
 
-| OAPEFLIR Stage | Mission Participation Point |
+| OAPEFLIR Stage | Mission Participation Points |
 |---|---|
 | Observe | Use Mission knowledge boundary and session context to filter input |
 | Assess | Calculate risk, budget feasibility, domain eligibility, mission fit |
-| Plan | PlanGraphBuilder can only choose workflow/tool/domain allowed by Mission |
+| Plan | PlanGraphBuilder can only select workflows/tools/domains allowed by Mission |
 | Execute | NodeRun pre live check: Mission active, budget not exhausted, permissions not revoked |
 | Feedback | Feedback attributed by Mission, enters mission-level evidence |
 | Learn | LearningObject stays in Mission scope by default, not auto-promoted |
@@ -652,7 +652,7 @@ NodeAttempt changes Mission by itself
 Allowed:
 
 ```text
-Parent Mission creates child Task, child Task binds another Mission.
+Parent Mission creates child Task, child Task binds to another Mission.
 Parent Mission and child Mission establish audit relationship through MissionHandoffRequest.
 ```
 
@@ -693,13 +693,13 @@ export interface MissionHandoffRequest {
 }
 ```
 
-### 8.2 Forbidden Cross-Mission Implicit Behaviors
+### 8.2 Prohibited Cross-Mission Implicit Behaviors
 
-| Forbidden Behavior | Reason |
+| Prohibited Behavior | Reason |
 |---|---|
-| One Task binds multiple Missions simultaneously | Budget, approval, evidence attribution confusion |
+| One Task binds to multiple Missions simultaneously | Budget, approval, evidence attribution confusion |
 | HarnessRun switches Mission during execution | Audit not reproducible |
-| ToolCall crosses Mission knowledge boundary by itself | Data boundary violation |
+| ToolCall crosses Mission knowledge boundary by itself | Data boundary broken |
 | LearningObject auto-promotes from Mission to Platform | Knowledge pollution risk |
 | Proactive Agent auto-executes without Mission | No owner, no budget, no responsibility attribution |
 
@@ -722,7 +722,7 @@ flowchart TB
 
 ### 9.2 Budget Execution Sequence
 
-Before each model/tool/external call, must:
+Before each model/tool/external call:
 
 ```text
 1. live Mission status check
@@ -781,11 +781,11 @@ flowchart LR
 | Action | viewer | contributor | operator | approver | owner | auditor |
 |---|---:|---:|---:|---:|---:|---:|
 | View Mission | Yes | Yes | Yes | Yes | Yes | Yes |
-| Create low-risk Task | No | Yes | Yes | No | Yes | No |
-| Start HarnessRun | No | Restricted | Yes | No | Yes | No |
-| Approve high-risk operation | No | No | No | Yes | Yes | No |
+| Create Low-risk Task | No | Yes | Yes | No | Yes | No |
+| Start HarnessRun | No | Limited | Yes | No | Yes | No |
+| Approve High-risk Operation | No | No | No | Yes | Yes | No |
 | Modify Mission Policy | No | No | No | No | Yes | No |
-| View audit chain | Restricted | Restricted | Restricted | Yes | Yes | Yes |
+| View Audit Chain | Limited | Limited | Limited | Yes | Yes | Yes |
 | Archive Mission | No | No | No | No | Yes | No |
 
 ### 10.3 Risk Gate
@@ -794,7 +794,7 @@ flowchart LR
 |---|---|
 | low | Can auto-execute according to RuntimeConstraintSet |
 | medium | Default suggestion or semi_auto + approval |
-| high | Must HITL approval, auto side-effect commit not allowed |
+| high | Must have HITL approval, auto side-effect commit not allowed |
 | critical | Can only be proposal, auto execution not allowed; requires owner + domain owner + platform policy gate |
 
 ---
@@ -803,7 +803,7 @@ flowchart LR
 
 ### 11.1 Mission Knowledge Boundary
 
-Mission can limit knowledge search scope:
+Mission can limit knowledge retrieval scope:
 
 ```ts
 export interface MissionKnowledgeBoundary {
@@ -817,7 +817,7 @@ export interface MissionKnowledgeBoundary {
 }
 ```
 
-### 11.2 LearningObject Stays in Mission by Default
+### 11.2 LearningObject Defaults to Staying Within Mission
 
 ```text
 NodeAttempt evidence
@@ -835,11 +835,11 @@ NodeAttempt evidence
 | Mission → Domain | Domain owner approval + no taint + regression eval |
 | Domain → Platform | Platform team approval + cross-domain eval + rollout gate |
 
-Forbidden:
+Prohibited:
 
 ```text
 Single successful NodeAttempt auto-promotes to Platform knowledge.
-Polluted data in Mission enters global prompt/policy/knowledge.
+Mission-polluted data enters global prompt/policy/knowledge.
 ```
 
 ---
@@ -902,7 +902,7 @@ export interface PlatformFactEvent<TPayload> {
 
 ---
 
-## 13. UI Product形态
+## 13. UI Product Form
 
 ### 13.1 Mission Console
 
@@ -917,18 +917,18 @@ Must provide:
 | Evidence Panel | evidence refs, audit chain, final report |
 | Knowledge Panel | Mission memory, LearningObject, promotion requests |
 | Approval Panel | Pending HITL / approval requests |
-| Incident Panel | blocked, degraded, panic, policy violation |
-| Settings | membership, policy, runtime constraints, data boundary |
+| Incident Panel | Blocked, degraded, panic, policy violation |
+| Settings | Membership, policy, runtime constraints, data boundary |
 
 ### 13.2 Things UI Cannot Do
 
-| Prohibition | Reason |
+| Prohibited | Reason |
 |---|---|
-| Frontend directly decides Mission permission | Must be backend IAM/Policy judgment |
-| Recent Mission auto-used for high-risk write operation | Privilege escalation and misoperation risk |
+| Frontend directly determines Mission permissions | Must go through backend IAM/Policy judgment |
+| Recent Mission auto-used for high-risk write operations | Privilege escalation and misuse risk |
 | localStorage saves Mission token/secret | XSS leak |
-| UI locally simulates execute | Bypass P1→P2→P3→P4 chain |
-| MissionId as all frontend metrics label | High cardinality risk |
+| UI locally simulates execute | Bypasses P1→P2→P3→P4 chain |
+| MissionId used as all frontend metrics label | High cardinality risk |
 
 ---
 
@@ -965,7 +965,7 @@ runtime_mode_preset
 status
 ```
 
-Default forbidden as metrics labels:
+Default prohibited as metrics labels:
 
 ```text
 missionId
@@ -976,7 +976,7 @@ userId
 promptBundleId
 ```
 
-These can only appear in exemplars, trace, logs or sampled diagnostic events.
+These can only appear in exemplars, trace, logs, or sampled diagnostic events.
 
 ---
 
@@ -996,19 +996,19 @@ export interface MissionRegionPolicy {
 }
 ```
 
-### 15.2 Multi-Region Principles
+### 15.2 Multi-region Principles
 
 | Rule | Description |
 |---|---|
 | Mission truth home region is unique | Prevent split-brain |
 | Projection can be replicated across regions | Read-only/near-real-time display |
-| Budget reservation is atomic in home region | Prevent over-allocation |
+| Budget reservation is atomic in home region | Prevent over-spending |
 | Failover must produce new fencing epoch | Prevent stale leader writes |
-| MissionSnapshot needs region/epoch | Guarantee audit and recovery |
+| MissionSnapshot needs region/epoch | Ensure audit and recovery |
 
 ### 15.3 Federation
 
-Cross-org Mission collaboration cannot share raw data, must through:
+Cross-org Mission collaboration cannot share raw data, must go through:
 
 ```text
 FederatedMissionLink
@@ -1027,13 +1027,13 @@ FederatedMissionLink
 Must complete first:
 
 1. Confirm unique RequestEnvelope definition.
-2. Confirm PlanGraphBundle is the only execution plan contract.
-3. Confirm HarnessRun / NodeRun / NodeAttempt is the only runtime object.
+2. Confirm PlanGraphBundle is the unique execution plan contract.
+3. Confirm HarnessRun / NodeRun / NodeAttempt is the unique runtime object.
 4. Deprecate legacy ExecutionPlan / WorkflowState / ControlDirective as first-class contracts.
 
-### Phase 1: Introduce Mission tables and events, do not change execution path
+### Phase 1: Introduce Mission Tables and Events, Do Not Change Execution Path
 
-Add:
+New additions:
 
 ```text
 mission_records
@@ -1050,15 +1050,15 @@ All old Tasks automatically bind:
 system.ad_hoc.default_mission
 ```
 
-### Phase 2: MissionResolver connects to intake
+### Phase 2: MissionResolver Connected to Intake
 
 ```text
 ConfirmedTaskSpec -> MissionResolver -> RequestEnvelope.missionRef
 ```
 
-Low-risk tasks can auto-bind AdHocMission; high-risk must explicitly confirm.
+Low-risk tasks can automatically bind AdHocMission; high-risk must be explicitly confirmed.
 
-### Phase 3: HarnessRun binds MissionSnapshot
+### Phase 3: HarnessRun Binds MissionSnapshot
 
 HarnessRun creation must have:
 
@@ -1069,9 +1069,9 @@ effectiveRuntimeConstraints
 budgetEnvelopeRef
 ```
 
-### Phase 4: NodeRun live guard
+### Phase 4: NodeRun Live Guard
 
-Before each NodeRun, check:
+Pre-check before each NodeRun:
 
 ```text
 Mission active?
@@ -1085,50 +1085,50 @@ Incident/Panic state?
 
 Launch Mission Console, Mission Task Board, Budget Panel, Evidence Panel, Learning Panel.
 
-### Phase 6: Learning / Knowledge promotion
+### Phase 6: Learning / Knowledge Promotion
 
-Connect Mission-scoped learning last to avoid early pollution of platform-level knowledge.
+Finally connect Mission-scoped learning to avoid early pollution of platform-level knowledge.
 
 ---
 
 ## 17. Regression Tests and Acceptance Criteria
 
-### 17.1 Must Add New Tests
+### 17.1 Required New Tests
 
-| Test | Acceptance Point |
+| Test | Acceptance Points |
 |---|---|
-| MissionResolver E2E | Clear missionId, session default, ad hoc, rejection choices all correct |
+| MissionResolver E2E | explicit missionId, session default, ad hoc, reject selection all correct |
 | High-risk Task Mission confirmation | High-risk cannot silently bind recent mission |
 | HarnessRun single mission invariant | One run cannot have multiple missions |
-| Mission paused side effect | Paused does not accept new tasks, running runs handled by drain strategy |
-| Budget reservation | Must reserve before NodeRun, settle failure cannot silently pass |
-| Live revocation | Member revoked blocks subsequent NodeRun |
+| Mission paused side effect | After paused, no new tasks; running runs handled per drain strategy |
+| Budget reservation | NodeRun must reserve before execution, settle failure must not silently pass |
+| Live revocation | After member is revoked, subsequent NodeRun is blocked |
 | Snapshot reproducibility | Same snapshot replay gets same policy view |
 | Cross-mission handoff | Must have approval/audit/budget transfer |
-| Learning quarantine | Mission learning does not auto-promote Domain/Platform |
-| Metrics high-cardinality guard | missionId does not enter default metric labels |
-| Multi-region fencing | Old epoch writes rejected after failover |
+| Learning quarantine | Mission learning not auto-promoted to Domain/Platform |
+| Metrics high-cardinality guard | missionId not entering default metric labels |
+| Multi-region fencing | After failover, old epoch writes are rejected |
 | UI no local execute | UI action must go through API / Control Plane |
 
-### 17.2 Forbidden Test Patterns
+### 17.2 Prohibited Test Patterns
 
-From existing audit, must forbid these invalid tests:
+From existing audit, must prohibit the following invalid tests:
 
 ```text
 assert.ok(true) in catch
 allowed === true || allowed === false
 keys.length >= 0
-Only test mock shape, do not import production service
+only test mock shape, do not import production services
 E2E bypasses HarnessRun / PlanGraphBundle / RSM
 ```
 
 ---
 
-## 18. Remaining Outstanding Items
+## 18. Outstanding Points to Fill
 
-### 18.1 Relationship Between Mission and Agent Team
+### 18.1 Mission and Agent Team Relationship
 
-Agent Team is execution collaboration structure, not governance boundary. Mission can define which Agents/AgentTeams are allowed to participate, but AgentTeam cannot replace Mission.
+Agent Team is an execution collaboration structure, not a governance boundary. Mission can define which Agents/AgentTeams are allowed to participate, but AgentTeam cannot replace Mission.
 
 ```text
 Mission owns governance.
@@ -1136,9 +1136,9 @@ AgentTeam owns collaboration topology.
 PlanGraph owns execution topology.
 ```
 
-### 18.2 Relationship Between Mission and Domain
+### 18.2 Mission and Domain Relationship
 
-Domain is capability/strategy template, Mission is goal instance.
+Domain is capability/policy template; Mission is goal instance.
 
 Example:
 
@@ -1149,11 +1149,11 @@ Mission = Automatic Agent Platform Production Hardening
 
 One Mission can use multiple Domains; one Domain can serve multiple Missions.
 
-### 18.3 Relationship Between Mission and WorkflowTemplate
+### 18.3 Mission and WorkflowTemplate Relationship
 
-WorkflowTemplate is reusable process; Mission can restrict which workflows are allowed, but workflow does not own Mission.
+WorkflowTemplate is a reusable process; Mission can restrict which workflows are allowed, but workflow does not own Mission.
 
-### 18.4 Relationship Between Mission and Release / Rollout
+### 18.4 Mission and Release / Rollout Relationship
 
 Mission can initiate rollout, but rollout must still go through release gate:
 
@@ -1166,9 +1166,9 @@ Mission owner approval
 + Budget / risk / incident check
 ```
 
-### 18.5 Relationship Between Mission and Proactive Agent
+### 18.5 Mission and Proactive Agent Relationship
 
-Proactive Agent must bind Mission to act.
+Proactive Agent must bind Mission before acting.
 
 ```text
 No Mission -> suggestion only
@@ -1177,7 +1177,7 @@ Mission active + allowed constraints + approval -> may execute
 medium/high/critical -> never silent auto execute
 ```
 
-### 18.6 Relationship Between Mission and Incident/Panic
+### 18.6 Mission and Incident/Panic Relationship
 
 Incident and Panic can create SystemMission:
 
@@ -1187,7 +1187,7 @@ panic.mission.<scopeId>
 recovery.mission.<runId>
 ```
 
-Used to centralize recovery actions, budget, audit and runbook evidence.
+Used to centralize recovery actions, budget, audit, and runbook evidence.
 
 ---
 
@@ -1237,25 +1237,25 @@ ui/packages/features/mission-console/
 
 ### 20.1 Should Do
 
-1. Treat Mission as **goal governance root object**.
+1. Treat Mission as a **goal governance root object**.
 2. All executable Tasks bind MissionContext before dispatch.
 3. HarnessRun fixed binds MissionSnapshot.
-4. NodeRun does live guard before execution.
-5. Budget / IAM / Risk / Policy unified do constraint intersection.
-6. Learning stays in Mission scope by default.
+4. Live guard before NodeRun.
+5. Budget / IAM / Risk / Policy unified as constraint intersection.
+6. Learning defaults to staying in Mission scope.
 7. All Mission state changes are event-driven.
-8. UI only displays and submits requests, does not execute locally.
+8. UI only displays and submits requests, no local execution.
 9. Observability carries Mission context, but metrics control high cardinality.
-10. During migration, first be compatible with legacy, then gradually force missionRef.
+10. During migration, first be compatible with legacy, then gradually enforce missionRef.
 
-### 20.2 Should Not Do
+### 20.2 Should NOT Do
 
 1. Do not add `steps[] / currentStep / currentNode / toolCalls` to Mission; Mission progress can only come from Task/HarnessRun/NodeRun/NodeAttempt projections.
 2. Do not let one HarnessRun bind multiple Missions simultaneously.
 3. Do not use RuntimeMode enum ordering for permission judgment.
 4. Do not let UI mission hint become authorization basis.
 5. Do not auto-promote Mission memory to platform knowledge.
-6. Do not add fourth set of RequestEnvelope / ExecutionPlan / WorkflowState.
+6. Do not add a fourth set of RequestEnvelope / ExecutionPlan / WorkflowState.
 7. Do not let Proactive Agent auto-execute without Mission.
 8. Do not put missionId into all metrics labels.
 
@@ -1263,9 +1263,9 @@ ui/packages/features/mission-console/
 
 ## 21. Final Judgment
 
-Mission should join Automatic Agent Platform as a core governance object. After joining, the system upgrades from "single Agent Session / single Task execution platform" to "long-term goal-driven Agent ecosystem".
+Mission should be incorporated into the Automatic Agent Platform as a core governance object. After incorporation, the system upgrades from "single Agent Session / single Task execution platform" to "long-term goal-driven Agent ecosystem".
 
-But Mission implementation must strictly follow three bottom lines:
+However, Mission implementation must strictly follow three bottom lines:
 
 ```text
 1. Mission governs, PlanGraph executes.
@@ -1273,15 +1273,15 @@ But Mission implementation must strictly follow three bottom lines:
 3. Mission extends canonical contracts, never forks them.
 ```
 
-This way the system can gain:
+This way the system can obtain:
 
 | Capability | Improvement |
 |---|---|
-| Long-term goal management | Multiple Tasks, multiple Agents, multiple Workflows belong to same goal |
-| Governance consistency | Budget, permissions, knowledge, approval, learning unified boundary |
-| Automation safety | High-risk tasks do not leave Mission owner and Mission policy |
+| Long-term goal management | Multiple Tasks, Agents, Workflows attributed to the same goal |
+| Governance consistency | Unified boundary for budget, permissions, knowledge, approval, learning |
+| Automation safety | High-risk tasks will not escape Mission owner and Mission policy |
 | Observability | All runs, nodes, events, evidence can be aggregated by Mission |
-| Learning loop | Experience in Mission can be沉淀, but will not pollute platform knowledge |
+| Learning loop | Experience within Mission can be accumulated but will not pollute platform knowledge |
 | Product experience | Users see goal progress, not scattered task/run/session |
 
 **Final recommendation: Can enter design freeze and implementation phase, but implementation order must be Contract Freeze → Mission Truth/Event → Resolver → Harness Binding → Runtime Guard → UI Console → Learning Promotion.**
@@ -1290,65 +1290,66 @@ This way the system can gain:
 
 ## 40. Implementation Status and Evidence Append Record
 
-> Update time: 2026-05-13. The following status only appends implementation evidence, does not delete original contract text of this document. Mission still maintains "long-term goal and governance context root object" positioning; execution surface continues to use `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as canonical runtime.
+> Last Updated: 2026-05-13. The following status only appends implementation evidence, does not delete the original contract text of this document. Mission still maintains the positioning of "long-term goal and governance context root object"; execution surface continues to use `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as canonical runtime.
 
 | Task | Status | Implementation Evidence | Test Evidence |
 |---|---|---|---|
-| T-MIS-001 Mission schemas/types | ✅ Implemented | `src/platform/contracts/mission/index.ts`; `src/platform/contracts/index.ts` exports | `tests/unit/platform/contracts/mission-contracts.test.ts` |
-| T-MIS-002 Mission truth tables/repository | ✅ Implemented | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`; `src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
-| T-MIS-003 `platform.mission.*` event schemas | ✅ Implemented | `MissionEventTypeSchema`, `MissionEventEnvelopeSchema`, repository sequence allocator | `mission-contracts.test.ts`, `mission-services.test.ts` |
-| T-MIS-004 MissionLifecycleService + CAS | ✅ Implemented | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
-| T-MIS-005 MissionResolver + Governance | ✅ Implemented | `MissionResolver`, `MissionGovernanceService` | `mission-services.test.ts` |
-| T-MIS-006 Mission API + ErrorEnvelope | ✅ Implemented | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`; OpenAPI route list; coverage of create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`, `tests/integration/platform/contracts/api-openapi-contract.test.ts` |
-| T-MIS-007 PlanGraphBundle missionSnapshotRef | ✅ Implemented | `PlanGraphBundle` contract/schema/factory extension; `MissionRuntimeBindingService`; `POST /v1/tasks` connects Mission resolution/snapshot binding | `mission-services.test.ts`, `mission-task-binding.test.ts` |
-| T-MIS-008 HarnessRun missionBinding | ✅ Implemented | `HarnessRun` contract/schema/factory extension; single-binding guard | `mission-services.test.ts` |
-| T-MIS-009 NodeRun MissionLiveGuard | ✅ Implemented | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
-| T-MIS-010 canonical Mission E2E baseline | ✅ Implemented as directional integration baseline | API create + dry-run resolution + task create mission binding + runtime binding tests | `mission-routes.test.ts`, `mission-task-binding.test.ts`, `mission-services.test.ts` |
-| T-MIS-011 Mission Console data baseline | ✅ Implemented as backend baseline | Mission API exposes Overview / Members / Tasks / Runs / Budget / Evidence data seams; existing Mission Control remains dashboard surface | `mission-routes.test.ts` |
-| T-MIS-012 Trace/log correlation + metrics cardinality guard | ✅ Implemented | `MissionObservabilityPolicy` allows trace attributes and strips Mission IDs from metric labels | `mission-services.test.ts` |
-| T-MIS-013 Mission scoped LearningObject promotion gate | ✅ Implemented | `MissionLearningPromotionGate` keeps default learning local and requires approval/evidence for promotion | `mission-services.test.ts` |
-| T-MIS-014 legacy Task/Session missionRef backfill | ✅ Implemented as warehouse baseline | `LegacyMissionBackfillService` | `mission-services.test.ts` |
-| T-MIS-015 ADR/superseded marker | ✅ Written back to document status | This section as v1.4 implementation evidence index | Document consistency verified by this round of directional tests and build |
-| T-MIS-016 Mission handoff | ✅ Implemented as warehouse baseline | `MissionHandoffService` | `mission-services.test.ts` covers service exports and capability baseline |
-| T-MIS-017 home region/fencing | ✅ Implemented as warehouse baseline | `MissionHomeRegionService` epoch guard | `mission-services.test.ts` |
-| T-MIS-018 outcome analytics | ✅ Implemented as warehouse baseline | `MissionOutcomeAnalyticsService` | `mission-services.test.ts` |
-| T-MIS-019 template/package integration | ✅ Implemented as warehouse baseline | `MissionTemplateIntegrationService` | `mission-services.test.ts` |
+| T-MIS-001 Mission schemas/types | Implemented | `src/platform/contracts/mission/index.ts`; `src/platform/contracts/index.ts` export | `tests/unit/platform/contracts/mission-contracts.test.ts` |
+| T-MIS-002 Mission truth tables/repository | Implemented | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`; `src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
+| T-MIS-003 `platform.mission.*` event schemas | Implemented | `MissionEventTypeSchema`, `MissionEventEnvelopeSchema`, repository sequence allocator | `mission-contracts.test.ts`, `mission-services.test.ts` |
+| T-MIS-004 MissionLifecycleService + CAS | Implemented | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
+| T-MIS-005 MissionResolver + Governance | Implemented | `MissionResolver`, `MissionGovernanceService` | `mission-services.test.ts` |
+| T-MIS-006 Mission API + ErrorEnvelope | Implemented | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`; OpenAPI route list; coverage of create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`, `tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| T-MIS-007 PlanGraphBundle missionSnapshotRef | Implemented | `PlanGraphBundle` contract/schema/factory extension; `MissionRuntimeBindingService`; `POST /v1/tasks` connects Mission resolution/snapshot binding | `mission-services.test.ts`, `mission-task-binding.test.ts` |
+| T-MIS-008 HarnessRun missionBinding | Implemented | `HarnessRun` contract/schema/factory extension; single-binding guard | `mission-services.test.ts` |
+| T-MIS-009 NodeRun MissionLiveGuard | Implemented | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
+| T-MIS-010 canonical Mission E2E baseline | Implemented as targeted integration baseline | API create + dry-run resolution + task create mission binding + runtime binding tests | `mission-routes.test.ts`, `mission-task-binding.test.ts`, `mission-services.test.ts` |
+| T-MIS-011 Mission Console data baseline | Implemented as backend baseline | Mission API exposes Overview / Members / Tasks / Runs / Budget / Evidence data seams; existing Mission Control remains dashboard surface | `mission-routes.test.ts` |
+| T-MIS-012 Trace/log correlation + metrics cardinality guard | Implemented | `MissionObservabilityPolicy` allows trace attributes and strips Mission IDs from metric labels | `mission-services.test.ts` |
+| T-MIS-013 Mission scoped LearningObject promotion gate | Implemented | `MissionLearningPromotionGate` keeps default learning local and requires approval/evidence for promotion | `mission-services.test.ts` |
+| T-MIS-014 legacy Task/Session missionRef backfill | Implemented as in-repo baseline | `LegacyMissionBackfillService` | `mission-services.test.ts` |
+| T-MIS-015 ADR/superseded marker | Written back to document status | This section serves as v1.4 implementation evidence index | Document consistency verified by this round of targeted tests and build |
+| T-MIS-016 Mission handoff | Implemented as in-repo baseline | `MissionHandoffService` | `mission-services.test.ts` covers service exports and capability baseline |
+| T-MIS-017 home region/fencing | Implemented as in-repo baseline | `MissionHomeRegionService` epoch guard | `mission-services.test.ts` |
+| T-MIS-018 outcome analytics | Implemented as in-repo baseline | `MissionOutcomeAnalyticsService` | `mission-services.test.ts` |
+| T-MIS-019 template/package integration | Implemented as in-repo baseline | `MissionTemplateIntegrationService` | `mission-services.test.ts` |
 
 ### 40.1 Residual Risk
 
-The following content belongs to external deployment or cross-system wiring evolution items, do not fake as single warehouse code closed loop: real multi-region database replication, cross-enterprise federation trust wiring, real UI release and permission operation process. Current warehouse has provided testable contracts, service baseline, Mission Console backend API, API routes and runtime binding guard. Subsequent external system integration must reuse these common interfaces.
+The following are external deployment or cross-system wiring evolution items, and should not be pretended as single-repo code closure: real multi-region database replication, cross-enterprise federation trust wiring, real UI release and permission operations process. The current repo has provided testable contracts, service baseline, Mission Console backend API, API routes, and runtime binding guard. Subsequent external system integration must reuse these common interfaces.
 
 ### 40.2 This Round Verification
 
 | Verification Item | Result |
 |---|---|
-| Mission directional contract/unit/integration/invariant tests | ✅ `node --import tsx --test tests/integration/platform/interface/api/mission-routes.test.ts tests/integration/platform/interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
-| TypeScript build test | ✅ `npm run build:test` |
-| OpenAPI contract directional test | ✅ `node --import tsx --test tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| Mission-targeted contract/unit/integration/invariant tests | `node --import tsx --test tests/integration/platform/interface/api/mission-routes.test.ts tests/integration/platform/interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| TypeScript build test | `npm run build:test` |
+| OpenAPI contract targeted tests | `node --import tsx --test tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+
 
 ---
 
-## Part II — v1.3 Implementation Contract Reinforcement
+# Part II — v1.3 Implementation Contract Reinforcement
 
-> This part is new content added in v1.3 compared to v1.2. The goal is not to redefine Mission architecture, but to solidify Mission from "architecture concept" into encodable, testable, migratable, auditable implementation contract.
+> This part is the new content added in v1.3 compared to v1.2. The goal is not to redefine Mission architecture, but to solidify Mission from "architectural concept" into an implementable, testable, migratable, auditable implementation contract.
 
 ## 22. v1.3 Change Summary
 
 | Change Domain | v1.2 Status | v1.3 Reinforcement |
 |---|---|---|
-| Canonical Types | Object boundaries defined | Complete TypeScript/Zod schema, ID rules, field requiredness |
-| State Machine | State semantics given | Complete legal transition table, guard, side effects |
-| Event Contract | Event naming listed | Complete PlatformFactEvent envelope, payload schema, sequence rules |
-| API Contract | Only design description | Complete REST API, headers, error codes, idempotency rules, ETag/If-Match |
-| Storage | Only directory suggestion | Complete Mission truth tables, membership, snapshot, event sequence tables |
-| Runtime Binding | HarnessRun binding clarified | Complete strict flow of Task→MissionContextSnapshot→HarnessRun→NodeRun |
-| Migration | Phases listed | Complete data backfill, compatibility flags, acceptance gates, rollback strategies |
-| Tests | Test directions listed | Complete contract/unit/integration/e2e/chaos/golden level test matrix |
+| Canonical Types | Object boundaries already defined | Filled in TypeScript/Zod schema, ID rules, field requiredness |
+| State Machine | State semantics already given | Filled in legal transition table, guard, side effects |
+| Event Contract | Event naming already listed | Filled in PlatformFactEvent envelope, payload schema, sequence rules |
+| API Contract | Only design notes | Filled in REST API, headers, error codes, idempotency rules, ETag/If-Match |
+| Storage | Only directory recommendations | Filled in Mission truth tables, membership, snapshot, event sequence tables |
+| Runtime Binding | HarnessRun binding already clarified | Filled in strict process of Task→MissionContextSnapshot→HarnessRun→NodeRun |
+| Migration | Stages already listed | Filled in data backfill, compatibility flags, acceptance gates, rollback strategies |
+| Tests | Test directions already listed | Filled in contract/unit/integration/e2e/chaos/golden level test matrix |
 
 v1.3 freeze goal:
 
 ```text
-Mission's addition only extends canonical runtime graph, does not introduce new execution path, does not resurrect legacy WorkflowState, does not produce fourth set of core objects.
+Mission's incorporation only extends canonical runtime graph, does not introduce new execution paths, does not resurrect legacy WorkflowState, does not produce a fourth set of core objects.
 ```
 
 ---
@@ -1379,19 +1380,19 @@ created_at
 updated_at
 ```
 
-Forbidden to mix snake_case and camelCase in same runtime contract. Cross-language export must use mapper explicit conversion.
+Mixing snake_case and camelCase in the same runtime contract is prohibited. Cross-language exports must use mapper for explicit conversion.
 
 ### 23.2 ID Rules
 
 | ID | Format | Example | Description |
 |---|---|---|---|
-| MissionId | `mis_[a-zA-Z0-9_-]{16,64}` | `mis_product_launch_2026` | Human-readable but cannot contain `/`, `.`, space |
+| MissionId | `mis_[a-zA-Z0-9_-]{16,64}` | `mis_product_launch_2026` | Human-readable but must not contain `/`, `.`, spaces |
 | MissionSnapshotId | `msnap_[a-zA-Z0-9_-]{16,80}` | `msnap_01H...` | Generated before each HarnessRun binding |
 | MissionEventId | `evt_[a-zA-Z0-9_-]{16,80}` | `evt_01H...` | Globally unique |
 | MembershipId | `mmbr_[a-zA-Z0-9_-]{16,80}` | `mmbr_01H...` | Principal and mission binding |
 | MissionHandoffId | `mho_[a-zA-Z0-9_-]{16,80}` | `mho_01H...` | Cross-Mission handoff |
 
-Forbidden to use `Date.now()+Math.random()` to generate ID. Recommend ULID/UUIDv7 or platform unified `IdGenerator`.
+Using `Date.now()+Math.random()` to generate IDs is prohibited. ULID/UUIDv7 or platform-unified `IdGenerator` is recommended.
 
 ### 23.3 Time Rules
 
@@ -1401,7 +1402,7 @@ All contract time fields use UTC ISO-8601 strings:
 2026-05-13T02:40:00.000Z
 ```
 
-Must parse to epoch milliseconds before comparing times, forbidden to directly compare ISO strings.
+Before comparing times, must parse to epoch milliseconds; direct ISO string comparison is prohibited.
 
 ---
 
@@ -1569,11 +1570,11 @@ effectivePermissions =
   - missionPolicy.deniedPermissions
 ```
 
-Forbidden to directly use caller-provided `permissions` or `capabilities` as effective permissions. All permissions must be obtained from IAM, MissionMembership, PolicyDecision three-way intersection.
+It is prohibited to directly use caller-provided `permissions` or `capabilities` as effective permissions. All permissions must be obtained from the three-way intersection of IAM, MissionMembership, PolicyDecision.
 
 ### 24.3 RuntimeConstraintSet
 
-Mission does not directly use `RuntimeMode` enum ordering, but normalizes runtime mode, risk, policy, domain, budget all into constraint sets.
+Mission does not directly use `RuntimeMode` enum ordering, but normalizes runtime mode, risk, policy, domain, budget all into a constraint set.
 
 ```ts
 export const RuntimeConstraintSetSchema = z.object({
@@ -1598,14 +1599,14 @@ export const RuntimeConstraintSetSchema = z.object({
 }).strict();
 ```
 
-Constraint merging rules:
+Constraint merge rules:
 
 ```text
-boolean allow type fields: AND
-boolean require type fields: OR
-max type fields: MIN
-denied type fields: UNION
-allowed list type fields: INTERSECTION
+boolean allow fields: AND
+boolean require fields: OR
+max fields: MIN
+denied fields: UNION
+allowed list fields: INTERSECTION
 ```
 
 ### 24.4 MissionBudgetEnvelope
@@ -1653,14 +1654,14 @@ Budget invariants:
 
 | Invariant | Description |
 |---|---|
-| INV-BUDGET-MISSION-001 | Must have BudgetReservation before LLM/tool/side-effect execution. |
+| INV-BUDGET-MISSION-001 | BudgetReservation must exist before LLM/tool/side-effect execution. |
 | INV-BUDGET-MISSION-002 | reserve / settle / release must use CAS + transaction. |
-| INV-BUDGET-MISSION-003 | Mission budget does not replace tenant/domain budget, must do hierarchical deduction. |
-| INV-BUDGET-MISSION-004 | `maxCostUsd` cannot be the only constraint, token/node/tool/duration must be independently configurable. |
+| INV-BUDGET-MISSION-003 | Mission budget does not replace tenant/domain budget; must do hierarchical deduction. |
+| INV-BUDGET-MISSION-004 | `maxCostUsd` must not be the only constraint; token/node/tool/duration must be independently configurable. |
 
 ### 24.5 MissionContextSnapshot
 
-MissionSnapshot is the key for audit reproducibility. HarnessRun binds snapshot, not live MissionRecord.
+MissionSnapshot is the key for audit reproducibility. HarnessRun binds to a snapshot, not the live MissionRecord.
 
 ```ts
 export const MissionContextSnapshotSchema = z.object({
@@ -1695,10 +1696,10 @@ export const MissionContextSnapshotSchema = z.object({
 Snapshot rules:
 
 ```text
-1. Generate MissionContextSnapshot before Task dispatch.
+1. MissionContextSnapshot generated before Task dispatch.
 2. HarnessRun can only reference one MissionContextSnapshot.
 3. Snapshot does not change with subsequent Mission changes.
-4. NodeRun still needs live guard check before execution to verify Mission not frozen/archived, permissions not revoked, budget not exhausted.
+4. NodeRun still requires live guard check before execution to verify Mission is not frozen/archived, permissions not revoked, budget not exhausted.
 ```
 
 ---
@@ -1707,13 +1708,13 @@ Snapshot rules:
 
 ### 25.1 State Definitions
 
-| State | Meaning | Can Execute Task | Can Create Task | Can Update Config | Can Learn Promote |
+| State | Meaning | Can Execute Task | Can Create Task | Can Update Config | Can Learn/Promote |
 |---|---|---:|---:|---:|---:|
 | draft | Draft, not yet passed activation gate | No | No | Yes | No |
 | active | Normal operation | Yes | Yes | Yes | Yes |
-| paused | Paused new execution, can resume | No, new dispatch prohibited; running follows strategy drain | Can create but cannot dispatch | Yes | No |
-| frozen | Security freeze, usually triggered by incident/panic | No, must stop/drain | No | Only owner/admin freeze-related operations allowed | No |
-| completed | Goal completed, read-only precipitation | No | No | No | Can read, cannot add new |
+| paused | Pause new execution, can resume | No, new dispatch prohibited; running per strategy drain | Can create but cannot dispatch | Yes | No |
+| frozen | Security freeze, usually triggered by incident/panic | No, must stop/drain | No | Owner/admin only for freeze-related operations | No |
+| completed | Goal completed, read-only accumulation | No | No | No | Can read, cannot add |
 | archived | Archived, read-only | No | No | No | No |
 
 ### 25.2 Legal Transition Table
@@ -1732,7 +1733,7 @@ Snapshot rules:
 | paused | archived | ArchiveMission | no active runs + retention guard | `platform.mission.archived` |
 | frozen | archived | ArchiveMission | incident closure + no active runs | `platform.mission.archived` |
 
-Forbidden transitions:
+Prohibited transitions:
 
 ```text
 completed -> active
@@ -1775,7 +1776,7 @@ CAS(expectedVersion)
 + write audit evidence
 ```
 
-Forbidden to directly `UPDATE missions SET status = ...`.
+Direct `UPDATE missions SET status = ...` is prohibited.
 
 ---
 
@@ -1828,14 +1829,14 @@ export const PlatformFactEventEnvelopeSchema = z.object({
 | `platform.mission.member_removed` | 1 | membership | MissionMemberChangedPayload | Member removed |
 | `platform.mission.member_role_changed` | 1 | membership | MissionMemberChangedPayload | Role changed |
 | `platform.mission.bound_to_task` | 1 | task | MissionTaskBoundPayload | Task bound Mission |
-| `platform.mission.snapshot_created` | 1 | mission | MissionSnapshotCreatedPayload | Snapshot created |
+| `platform.mission.snapshot_created` | 1 | mission | MissionSnapshotCreatedPayload | Snapshot generated |
 | `platform.mission.budget_reserved` | 1 | budget | MissionBudgetReservedPayload | Budget reserved |
 | `platform.mission.budget_settled` | 1 | budget | MissionBudgetSettledPayload | Budget settled |
 | `platform.mission.budget_released` | 1 | budget | MissionBudgetReleasedPayload | Budget released |
 | `platform.mission.budget_exhausted` | 1 | budget | MissionBudgetExhaustedPayload | Budget exhausted |
 | `platform.mission.handoff_requested` | 2 | mission | MissionHandoffRequestedPayload | Cross-Mission handoff |
-| `platform.mission.handoff_accepted` | 2 | mission | MissionHandoffDecisionPayload | Accept handoff |
-| `platform.mission.handoff_rejected` | 2 | mission | MissionHandoffDecisionPayload | Reject handoff |
+| `platform.mission.handoff_accepted` | 2 | mission | MissionHandoffDecisionPayload | Handoff accepted |
+| `platform.mission.handoff_rejected` | 2 | mission | MissionHandoffDecisionPayload | Handoff rejected |
 | `platform.mission.learning_attached` | 2 | mission | MissionLearningAttachedPayload | Learning object retained |
 | `platform.mission.learning_promoted` | 2 | mission | MissionLearningPromotedPayload | Learning promoted |
 
@@ -1914,8 +1915,8 @@ X-Contract-Version: v1
 | POST | `/api/v1/missions/{missionId}:unfreeze` | Unfreeze to paused | owner/admin + approval | Required + If-Match |
 | POST | `/api/v1/missions/{missionId}:complete` | Complete | owner/admin | Required + If-Match |
 | POST | `/api/v1/missions/{missionId}:archive` | Archive | owner/admin | Required + If-Match |
-| GET | `/api/v1/missions/{missionId}/tasks` | Mission Tasks | `mission:read` | Not required |
-| GET | `/api/v1/missions/{missionId}/runs` | Mission HarnessRuns | `mission:read` | Not required |
+| GET | `/api/v1/missions/{missionId}/tasks` | Tasks under Mission | `mission:read` | Not required |
+| GET | `/api/v1/missions/{missionId}/runs` | HarnessRuns under Mission | `mission:read` | Not required |
 | GET | `/api/v1/missions/{missionId}/evidence` | Evidence | `mission:view_evidence` | Not required |
 | GET | `/api/v1/missions/{missionId}/budget` | Budget | `mission:view_budget` | Not required |
 | POST | `/api/v1/missions/{missionId}/members` | Add member | `mission:manage_members` | Required |
@@ -1976,7 +1977,7 @@ Response:
 POST /api/v1/tasks
 ```
 
-Request must contain one of two:
+Request must contain one of the following:
 
 ```json
 {
@@ -1999,7 +2000,7 @@ Or:
 }
 ```
 
-High-risk, write operations, cross-system side effects, long-term goals, multi-Agent collaboration tasks are forbidden to dispatch without Mission.
+High-risk, write operations, cross-system side effects, long-term goals, multi-Agent collaboration tasks are prohibited from dispatching without Mission.
 
 ### 27.5 ErrorEnvelope
 
@@ -2148,9 +2149,9 @@ CREATE TABLE mission_event_sequences (
 );
 ```
 
-### 28.5 Transaction Boundary
+### 28.5 Transaction Boundaries
 
-Mission truth update and event append must be in same transaction:
+Mission truth update and event append must be in the same transaction:
 
 ```text
 BEGIN
@@ -2164,7 +2165,7 @@ BEGIN
 COMMIT
 ```
 
-Forbidden:
+Prohibited:
 
 ```text
 update mission table first, then publish event asynchronously
@@ -2204,7 +2205,7 @@ sequenceDiagram
 
 ### 29.2 NodeRun Live Guard
 
-Before each NodeRun execution must check:
+Before each NodeRun execution, must check:
 
 ```text
 Mission status not frozen/archived/completed
@@ -2220,11 +2221,11 @@ Failure handling:
 
 | Failure Reason | NodeRun Behavior | Mission Behavior |
 |---|---|---|
-| Mission frozen | block + emit blocker | unchanged |
-| Mission archived/completed | safe terminate | unchanged |
-| Permission revoked | await HITL or fail closed | unchanged |
+| Mission frozen | block + emit blocker | Unchanged |
+| Mission archived/completed | safe terminate | Unchanged |
+| Permission revoked | await HITL or fail closed | Unchanged |
 | Budget exhausted | safe terminate | emit budget_exhausted |
-| Policy denied | block | can trigger incident |
+| Policy denied | block | Can trigger incident |
 | Panic active | abort/drain | Mission can become frozen |
 
 ### 29.3 MissionResolver Priority
@@ -2245,7 +2246,7 @@ Failure handling:
 
 ### 30.1 RequestEnvelope Extension
 
-Do not build new fourth set of RequestEnvelope. Only add to canonical RequestEnvelope:
+Do not create a new fourth set of RequestEnvelope. Only add to canonical RequestEnvelope:
 
 ```ts
 missionRef?: {
@@ -2276,7 +2277,7 @@ missionContextSnapshotRef: {
 };
 ```
 
-PlanGraphBundle is still the only plan object. Mission cannot add `steps[] / currentStep / stepOutputs`, cannot re-wrap PlanNode/NodeRun as MissionStep.
+PlanGraphBundle is still the unique plan object. Mission cannot add `steps[] / currentStep / stepOutputs`, and cannot re-wrap PlanNode/NodeRun as MissionStep.
 
 ### 30.4 HarnessRun Extension
 
@@ -2350,14 +2351,14 @@ Mission Console
 
 ### 31.2 UI Prohibitions
 
-| Prohibition | Reason |
+| Prohibited Item | Reason |
 |---|---|
-| UI locally generates effective permissions | Permissions must come from server MissionGovernance |
+| UI locally generates effective permissions | Permissions must come from server-side MissionGovernance |
 | UI locally executes task/run | Violates P1→P2→P3→P4 control chain |
-| UI uses mission hint as authorization | hint is just candidate, not decision |
+| UI treats mission hint as authorization | Hint is only a candidate, not a decision |
 | UI stores token in localStorage | XSS readable |
-| UI has no confirmation for freeze/complete/archive | High-risk operations need second confirmation and audit |
-| UI uses missionId as high-cardinality metrics label | cardinality explosion |
+| UI has no confirmation for freeze/complete/archive | High-risk operations require secondary confirmation and audit |
+| UI uses missionId as high-cardinality metrics label | Cardinality explosion |
 
 ---
 
@@ -2365,7 +2366,7 @@ Mission Console
 
 ### Phase 0 — Contract Freeze Gate
 
-Goal: Freeze Mission types, events, API, no parallel definitions allowed.
+Goal: Freeze Mission types, events, API; no parallel definitions allowed.
 
 Must complete:
 
@@ -2384,7 +2385,7 @@ npm run test:golden -- mission
 
 ### Phase 1 — Storage + Event Foundation
 
-Goal: Create Mission truth tables and event projections, do not connect to execution path.
+Goal: Create Mission truth tables and event projections; do not connect to execution path.
 
 Must complete:
 
@@ -2402,12 +2403,12 @@ Acceptance:
 ```text
 create/update/status transition can write truth + event in same transaction
 replay event can rebuild Mission projection
-sequence missing/duplicate startup checker P0 fail-closed
+sequence missing/duplicate: startup checker P0 fail-closed
 ```
 
-### Phase 2 — MissionResolver Connects to Intake
+### Phase 2 — MissionResolver Connected to Intake
 
-Goal: Force resolve Mission before Task creation, but allow compatibility flag.
+Goal: Enforce Mission resolution before Task creation, but allow compatibility flag.
 
 Feature flags:
 
@@ -2435,14 +2436,14 @@ Goal: All new HarnessRun must have missionSnapshotId.
 Acceptance:
 
 ```text
-HarnessRuntime.start(planGraphBundle) without missionSnapshotId directly rejects
-MissionSnapshot payloadHash can be recalculated
+HarnessRuntime.start(planGraphBundle) without missionSnapshotId directly rejected
+MissionSnapshot payloadHash can be recomputed
 Task / PlanGraph / HarnessRun three-way traceId/correlationId consistent
 ```
 
 ### Phase 4 — NodeRun Live Guard
 
-Goal: Force check live Mission status before each NodeRun execution.
+Goal: Enforce live Mission status check before each NodeRun execution.
 
 Acceptance:
 
@@ -2469,14 +2470,14 @@ Feature flags:
 Acceptance:
 
 ```text
-legacy task direct dispatch path all fails
+legacy task direct dispatch path all fail
 /api/v1/tasks creation all produce mission.bound_to_task event
 HarnessRun without missionSnapshot cannot enter running
 ```
 
 ### Phase 6 — UI Console + Observability
 
-Goal: Mission Console launches, dashboard can aggregate by Mission.
+Goal: Mission Console goes live, dashboard can aggregate by Mission.
 
 Acceptance:
 
@@ -2488,14 +2489,14 @@ Trace/log can search missionId, but metrics do not use missionId as default labe
 
 ### Phase 7 — Learning Promotion
 
-Goal: LearningObject defaults to mission scoped, promoted to domain/platform after approval.
+Goal: LearningObject defaults to mission scoped, promoted to domain/platform upon approval.
 
 Acceptance:
 
 ```text
 LearningObject without evidenceRefs -> quarantine
 mission scoped learning does not enter platform knowledge search
-promotion needs trust gate + approval + rollout evidence
+promotion requires trust gate + approval + rollout evidence
 ```
 
 ---
@@ -2508,7 +2509,7 @@ promotion needs trust gate + approval + rollout evidence
 |---|---|
 | MissionRecord strict schema | Extra field rejection, required field missing rejection |
 | MissionStatus transition | Illegal transition rejection |
-| MissionSnapshot hash | payloadHash can be recalculated |
+| MissionSnapshot hash | payloadHash can be recomputed |
 | EventEnvelope sequence | sequence monotonically increasing |
 | ErrorEnvelope | traceId/correlationId required |
 
@@ -2517,10 +2518,10 @@ promotion needs trust gate + approval + rollout evidence
 | Module | Use Cases |
 |---|---|
 | MissionResolver | explicit/session/auto/ad_hoc/fail-closed |
-| MissionGovernance | permission intersection, policy deny, risk approval |
-| MissionBudgetService | reserve/settle/release CAS and concurrent over-allocation protection |
+| MissionGovernance | Permission intersection, policy deny, risk approval |
+| MissionBudgetService | reserve/settle/release CAS and concurrent over-spending protection |
 | MissionLifecycleService | version conflict, If-Match, idempotency replay |
-| RuntimeConstraintSet | AND/OR/MIN/UNION/INTERSECTION merging rules |
+| RuntimeConstraintSet | AND/OR/MIN/UNION/INTERSECTION merge rules |
 
 ### 33.3 Integration Tests
 
@@ -2529,17 +2530,17 @@ promotion needs trust gate + approval + rollout evidence
 | Create Mission | API → service → truth → event → projection |
 | Bind Task | Task create → mission resolution → snapshot |
 | Dispatch | PlanGraphBundle → HarnessRun with missionSnapshot |
-| Live Guard | freeze/revoke/budget-exhausted block NodeRun |
-| Replay | mission events replay after projection completely consistent |
+| Live Guard | freeze/revoke/budget-exhausted blocks NodeRun |
+| Replay | mission events replay then projection exactly consistent |
 
 ### 33.4 E2E Tests
 
 | Scenario | Acceptance |
 |---|---|
-| Low-risk one-shot | Auto create ad_hoc Mission and complete Task |
+| Low-risk one-shot | Auto-create ad_hoc Mission and complete Task |
 | High-risk write action | Without Mission rejects; with Mission but without approval enters HITL |
 | Mission freeze mid-run | Subsequent NodeRun blocked, existing side-effect enters reconciliation |
-| Membership revoked mid-run | Next node refuses execution |
+| Membership revoked mid-run | Next node rejects execution |
 | Budget exhausted | provider/tool call not issued, run safe terminate |
 | Mission complete | Subsequent new task dispatch rejects |
 
@@ -2547,19 +2548,19 @@ promotion needs trust gate + approval + rollout evidence
 
 | Scenario | Acceptance |
 |---|---|
-| Concurrent activate/pause | only one CAS succeeds |
-| Concurrent budget reserve | does not exceed hard cap |
-| crash between truth/event | not allowed; same transaction verification |
+| Concurrent activate/pause | Only one CAS succeeds |
+| Concurrent budget reserve | Does not exceed hard cap |
+| crash between truth/event | Not allowed; same-transaction verification |
 | projection rebuild | shadow rebuild + compare + cutover |
 | event duplicate delivery | projection idempotent |
 
-### 33.6 Forbidden Test Writing
+### 33.6 Prohibited Test Writing
 
 ```text
 assert.ok(true) in catch
 assert.ok(x === true || x === false)
 directly operate legacy WorkflowState to prove canonical path correct
-only mock service do not import production code yet name integration
+only mock service do not import production code yet name it integration
 test illegal shape but production code does not schema parse
 ```
 
@@ -2571,35 +2572,35 @@ test illegal shape but production code does not schema parse
 
 | Task | Owner Module | Description | Current Conclusion |
 |---|---|---|---|
-| T-MIS-001 | contracts | Add Mission Zod schemas and type exports | ✅ Implemented |
-| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | ✅ Implemented |
-| T-MIS-003 | events | Register platform.mission.* event schemas | ✅ Implemented |
-| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | ✅ Implemented |
-| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | ✅ Implemented |
-| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | ✅ Implemented, includes Mission Console backend sub-resource API |
-| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | ✅ Implemented as compatible contract extension, binding guard, and Task create Mission snapshot binding |
-| T-MIS-008 | execution | HarnessRun missionBinding required | ✅ Implemented as compatible contract extension and single-binding guard |
-| T-MIS-009 | execution | NodeRun MissionLiveGuard | ✅ Implemented as testable guard service |
-| T-MIS-010 | tests | canonical Mission E2E coverage | ✅ Implemented as directional integration/contract baseline |
+| T-MIS-001 | contracts | Add Mission Zod schemas and type exports | Implemented |
+| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | Implemented |
+| T-MIS-003 | events | Register platform.mission.* event schemas | Implemented |
+| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | Implemented |
+| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | Implemented |
+| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | Implemented, includes Mission Console backend sub-resource APIs |
+| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | Implemented as compatible contract extension, binding guard, and Task create Mission snapshot binding |
+| T-MIS-008 | execution | HarnessRun missionBinding required | Implemented as compatible contract extension and single-binding guard |
+| T-MIS-009 | execution | NodeRun MissionLiveGuard | Implemented as testable guard service |
+| T-MIS-010 | tests | canonical Mission E2E coverage | Implemented as targeted integration/contract baseline |
 
 ### 34.2 P1 Implementation Tasks
 
 | Task | Owner Module | Description | Current Conclusion |
 |---|---|---|---|
-| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | ✅ Warehouse backend data surface implemented; real independent frontend release belongs to external integration evolution |
-| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | ✅ Implemented as policy/service baseline |
-| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | ✅ Implemented as promotion gate baseline |
-| T-MIS-014 | migration | legacy Task/Session missionRef backfill | ✅ Implemented as backfill service baseline |
-| T-MIS-015 | docs | ADR update and superseded marker | ✅ Written back to document status and evidence |
+| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | In-repo backend data surface implemented; real independent frontend release belongs to external integration evolution |
+| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | Implemented as policy/service baseline |
+| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | Implemented as promotion gate baseline |
+| T-MIS-014 | migration | legacy Task/Session missionRef backfill | Implemented as backfill service baseline |
+| T-MIS-015 | docs | ADR update and superseded markers | Written back to document status and evidence |
 
 ### 34.3 P2 Implementation Tasks
 
 | Task | Owner Module | Description | Current Conclusion |
 |---|---|---|---|
-| T-MIS-016 | federation | Mission handoff across org/tenant | ✅ Warehouse handoff request service baseline implemented; real cross-enterprise trust wiring is external evolution |
-| T-MIS-017 | multi-region | Mission home region + read replica routing | ✅ Warehouse home-region/fencing baseline implemented; real multi-region replication is deployment evolution |
-| T-MIS-018 | analytics | Mission outcome analytics | ✅ Warehouse outcome analytics service baseline implemented |
-| T-MIS-019 | marketplace | Mission template/package integration | ✅ Warehouse template/package integration baseline implemented |
+| T-MIS-016 | federation | Mission handoff across org/tenant | In-repo handoff request service baseline implemented; real cross-enterprise trust wiring is external evolution |
+| T-MIS-017 | multi-region | Mission home region + read replica routing | In-repo home-region/fencing baseline implemented; real multi-region replication is deployment evolution |
+| T-MIS-018 | analytics | Mission outcome analytics | In-repo outcome analytics service baseline implemented |
+| T-MIS-019 | marketplace | Mission template/package integration | In-repo template/package integration baseline implemented |
 
 ---
 
@@ -2607,13 +2608,13 @@ test illegal shape but production code does not schema parse
 
 ### 35.1 Legacy Object Handling
 
-| Legacy Object | Handling Method |
+| Legacy Object | Handling |
 |---|---|
 | WorkflowState | Only as projection/compat view, cannot be used as execution truth |
-| TaskRecord | Can keep, but must add missionRef projection field |
-| ExecutionPlan | deprecated alias, no new call sites allowed |
-| ControlDirective | deprecated alias, migrate to OperationalDirective/DecisionDirective |
-| StateCommand | deprecated alias, migrate to RuntimeTransitionCommand |
+| TaskRecord | Can be retained, but must add missionRef projection field |
+| ExecutionPlan | Deprecated alias, prohibited for new call sites |
+| ControlDirective | Deprecated alias, migrate to OperationalDirective/DecisionDirective |
+| StateCommand | Deprecated alias, migrate to RuntimeTransitionCommand |
 
 ### 35.2 Compatibility Flags
 
@@ -2645,33 +2646,33 @@ Final production state:
 
 | Risk | v1.3 Mitigation |
 |---|---|
-| Mission becomes another Workflow | Clearly forbidden `steps[] / currentStep / currentNode / toolCalls`; Mission only saves goals, boundaries, budget, strategy, members, evidence and projections |
-| Mission and Session redundancy | Session only handles interaction context, Mission handles long-term governance goals |
-| Mission and Domain redundancy | Domain is capability/policy classification, Mission is specific goal instance |
-| Mission and Project Folder confusion | Folder is UI organization, Mission is governance truth |
-| Mission permission bypass | effectivePermissions can only be computed by server intersection |
-| MissionSnapshot staleness causes revocationineffectiveness | Snapshot guarantees reproducibility, NodeRun live guard guarantees safety |
+| Mission becomes another Workflow | Clearly prohibit `steps[] / currentStep / currentNode / toolCalls`; Mission only stores goals, boundaries, budget, strategy, members, evidence, and projections |
+| Mission and Session redundancy | Session only handles interaction context; Mission handles long-term governance goals |
+| Mission and Domain redundancy | Domain is capability/policy classification; Mission is specific goal instance |
+| Mission and Project Folder confusion | Folder is UI organization; Mission is governance truth |
+| Mission permission bypass | effectivePermissions can only be calculated by server-side intersection |
+| MissionSnapshot stale causing revocation not taking effect | Snapshot ensures reproducibility; NodeRun live guard ensures safety |
 | Event and truth inconsistency | Same transaction append truth + event |
-| metrics cardinality explosion | missionId not as default label |
-| Low-risk task cost too high | ad_hoc Mission auto-created, transparent to user |
+| Metrics cardinality explosion | missionId not used as default label |
+| Low-risk task cost too high | ad_hoc Mission auto-created, imperceptible to user |
 
 ---
 
 ## 37. v1.4 Final Freeze Conclusion
 
-Mission can formally enter implementation phase, but must be landed in the following order:
+Mission can officially enter implementation phase, but must be rolled out in the following order:
 
 ```text
 1. Contract + Schema Freeze
 2. Storage + Event Foundation
-3. MissionResolver connects to Task Intake
-4. HarnessRun enforces MissionSnapshot binding
+3. MissionResolver connected to Task Intake
+4. HarnessRun mandatory MissionSnapshot binding
 5. NodeRun Live Guard
-6. API/UI/Observability fully connected
+6. API/UI/Observability full connection
 7. Learning Promotion and Federation expansion
 ```
 
-Final architecture principles remain unchanged:
+Final architectural principles remain unchanged:
 
 ```text
 Mission governs.
@@ -2682,55 +2683,51 @@ Event/Truth proves.
 Projection/UI observes.
 ```
 
-This design can upgrade the system from "single Agent Task execution platform" to "long-term goal-driven, governance-capable, auditable, recoverable, learnable Agent ecosystem" without breaking existing five-plane architecture and canonical runtime object model.
-
----
+This design can upgrade the system from "single Agent Task execution platform" to "long-term goal-driven, governable, auditable, recoverable, learnable Agent ecosystem", while not breaking the existing five-plane architecture and canonical runtime object model.
 
 ## 38. v1.4 Change Summary
 
-Core changes in v1.4 compared to v1.3:
+Core changes compared to v1.3:
 
 | Change Item | Content |
 |---|---|
-| Step degradation | Degrade Step from possibly misused execution concept to UI/documentation display word |
-| Graph/Node unification | Clarify `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as the only canonical execution chain |
-| Mission boundary reinforcement | Mission forbidden to save `steps[] / currentStep / stepOutputs / toolCalls / nodeRuntimeState` |
-| API constraints | API response forbidden to add Step-centric shape, uniformly return graph/node/run/attempt refs |
-| Event constraints | Forbidden to add `step.started / step.completed` etc events, use `node_run.* / node_attempt.*` |
-| Budget constraints | Forbidden `max_steps / stepCost`, use `maxNodeRuns / maxNodeAttempts / nodeBudget / attemptCost` |
-| Test governance | Contract/E2E/Golden add Step-centric field scanning and canonical runtime path coverage |
-| Migration path | Clarify legacy `PlanStep / WorkflowStep / HarnessStep` can only be used for migration adapter, cannot be used as new implementation dependency |
-
----
+| Step degradation | Demoted Step from potentially misused execution concept to UI/documentation display term |
+| Graph/Node unification | Clarified `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as the unique canonical execution chain |
+| Mission boundary reinforcement | Mission prohibited from storing `steps[] / currentStep / stepOutputs / toolCalls / nodeRuntimeState` |
+| API constraints | API responses prohibited from adding Step-centric shapes; uniformly return graph/node/run/attempt refs |
+| Event constraints | Prohibited from adding `step.started / step.completed` events; use `node_run.* / node_attempt.*` instead |
+| Budget constraints | Prohibited `max_steps / stepCost`; use `maxNodeRuns / maxNodeAttempts / nodeBudget / attemptCost` instead |
+| Testing governance | Contract/E2E/Golden add Step-centric field scanning and canonical runtime path coverage |
+| Migration path | Clarified legacy `PlanStep / WorkflowStep / HarnessStep` can only be used for migration adapter, not as new implementation dependency |
 
 ## 39. v1.4 Merged Supplement: Step Degradation and Graph/Node-centric Unification Rules
 
 > **Scope**: Automatic Agent Platform / Mission Architecture Integration Plan
-> **Update Objective**: Degrade `Step` from platform-level canonical object to UI/documentation display word, avoid Mission introduction from reactivating legacy `WorkflowState / PlanStep / HarnessStep` system.
-> **Core Conclusion**: After Mission introduction, system must further migrate from Step-centric to Graph/Node-centric. `Step` can only be used as user-readable display word or legacy migration term; all canonical contracts, runtime state, events, budget, evidence, API must use `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
+> **Update Objective**: Degrade `Step` from platform-level canonical object to UI/documentation display term, avoid after Mission introduction reactivating legacy `WorkflowState / PlanStep / HarnessStep` system.
+> **Core Conclusion**: After Mission introduction, system must further migrate from Step-centric to Graph/Node-centric. `Step` can only be used as user-readable display term or legacy migration terminology; all canonical contracts, runtime state, events, budget, evidence, API must use `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
 
 ---
 
 ### 1. Why Step Must Be Weakened
 
-Past system simultaneously appeared `WorkflowStep`, `PlanStep`, `HarnessStep`, `stepId`, `currentStep`, `max_steps` concepts, causing three structural problems:
+In the past, the system simultaneously appeared `WorkflowStep`, `PlanStep`, `HarnessStep`, `stepId`, `currentStep`, `max_steps` and other concepts, leading to three structural problems:
 
-1. **Execution model degrades to linear process**
-   `steps[]` naturally implies sequential execution, difficult to express DAG, parallel branches, conditional jumps, retries, compensation and replan.
+1. **Execution model degrades to linear flow**
+   `steps[]` inherently implies sequential execution, difficult to express DAG, parallel branches, conditional jumps, retries, compensation, and replan.
 
-2. **Evidence chain cannot precisely bind**
-   Step granularity too coarse, cannot distinguish multiple attempts of one Node, failure retries, partial side effects, HITL modifications and final receipts.
+2. **Evidence chain cannot be precisely bound**
+   Step granularity is too coarse; cannot distinguish between multiple attempts of one Node, failure retries, partial side effects, HITL modifications, and final receipts.
 
 3. **Mission / Task / Workflow / Harness boundaries easily confused**
-   If Mission also saves steps, system returns to legacy WorkflowState mode, breaking PlanGraphBundle as the only execution plan contract principle.
+   If Mission also stores steps, the system will return to legacy WorkflowState mode, breaking the principle that PlanGraphBundle is the unique execution plan contract.
 
-Therefore, `Step` is no longer a platform-level authoritative object, can only be a non-authoritative display word.
+Therefore, `Step` is no longer a platform-level authoritative object; can only be used as a non-authoritative display term.
 
 ---
 
-### 2. Canonical Layer Relationships
+### 2. Canonical Hierarchy
 
-System execution layers unified as:
+The execution hierarchy in the system is unified as:
 
 ```text
 Mission
@@ -2742,34 +2739,34 @@ Mission
                                 └── NodeAttemptReceipt / EvidenceRef / SideEffectRecord
 ```
 
-| Object | Is Canonical | Role | Step Allowed |
-|---|---:|---|---|
+| Object | Canonical | Role | Allowed to Contain Step |
+|---|---:|---|---:|
 | Mission | Yes | Long-cycle goals, task composition, strategy context, cross-task governance | No |
 | Task | Yes | Single executable request after user confirmation | No |
-| PlanGraphBundle | Yes | Only plan contract, carries DAG, budget, risk, constraints, version lock | No |
-| PlanNode | Yes | Plan node in DAG, does not represent actual execution attempt | No |
+| PlanGraphBundle | Yes | Unique plan contract, carries DAG, budget, risk, constraints, version lock | No |
+| PlanNode | Yes | Planned node in DAG, does not represent actual execution attempt | No |
 | HarnessRun | Yes | One controlled execution run, bound to Task and PlanGraphBundle | No |
-| NodeRun | Yes | Running instance of single PlanNode | No |
+| NodeRun | Yes | Single PlanNode execution instance | No |
 | NodeAttempt | Yes | Single execution attempt, carries retry, tool call, latency, cost, error | No |
-| Step | No | Only natural language display word in UI/documentation | Display layer only |
+| Step | No | Only a natural language display term in UI/documentation | Only usable in display layer |
 
 ---
 
-### 3. Allowed Positions for Using Step
+### 3. Allowed Positions for Step
 
 | Scenario | Allowed | Constraint |
 |---|---:|---|
-| UI text | Cautiously allowed | Can display "step", but underlying must map to `PlanNode / NodeRun / NodeAttempt` |
-| User help documentation | Allowed | Can only be used as natural language explanation, cannot define interface fields |
+| UI copy | Cautiously allowed | Can display "step", but underlying must map to `PlanNode / NodeRun / NodeAttempt` |
+| User help docs | Allowed | Can only be used as natural language explanation; cannot define interface fields |
 | Legacy migration | Temporarily allowed | Only for old `WorkflowState / PlanStep / HarnessStep` migration |
-| Test fixtures | Temporarily allowed | Can only be used for legacy tests, cannot enter canonical E2E |
+| Test fixtures | Temporarily allowed | Only for legacy tests; cannot enter canonical E2E |
 | Ops report display | Cautiously allowed | Display field can be called step, but data source must be NodeRun aggregation |
 
 ---
 
-### 4. Forbidden Positions for Using Step
+### 4. Prohibited Positions for Step
 
-| Position | Forbidden Items | Alternative |
+| Position | Prohibited Items | Alternative |
 |---|---|---|
 | Contract | `steps[]`, `currentStep`, `stepId` | `PlanGraphBundle.nodes/edges`, `nodeId` |
 | Runtime | Using Step as execution scheduling unit | `NodeRun` |
@@ -2788,7 +2785,7 @@ Mission
 
 | Legacy Term | Canonical Term |
 |---|---|
-| Step | Node / NodeRun; can be translated as "step" in display layer |
+| Step | Node / NodeRun; display layer can translate as "step" |
 | PlanStep | PlanNode |
 | WorkflowStep | PlanNode / NodeRun |
 | HarnessStep | NodeRun / NodeAttempt |
@@ -2806,9 +2803,9 @@ Mission
 
 ### 6. Boundary Rules After Mission Introduction
 
-Mission is Agent ecosystem-level object, not Agent Session, not a large Workflow.
+Mission is an Agent ecosystem-level object, not an Agent Session, nor a large Workflow.
 
-#### 6.1 What Mission is Allowed to Save
+#### 6.1 Mission Allowed to Store
 
 - `missionId`
 - `tenantId / orgId / ownerRef`
@@ -2824,7 +2821,7 @@ Mission is Agent ecosystem-level object, not Agent Session, not a large Workflow
 - `versionLockRefs`
 - `auditRefs`
 
-#### 6.2 What Mission is Forbidden to Save
+#### 6.2 Mission Prohibited from Storing
 
 - `steps[]`
 - `currentStep`
@@ -2856,7 +2853,7 @@ Mission does not directly drive tool calls, does not directly hold worker lease,
 
 ### 7. API Design Rules
 
-External API should avoid returning Step-centric structure.
+External API should avoid returning Step-centric structures.
 
 #### 7.1 Wrong Example
 
@@ -2892,7 +2889,7 @@ UI can display `NodeRun` as "Step", but API field names must remain canonical.
 
 ### 8. Event Naming Rules
 
-#### 8.1 Forbidden to Add
+#### 8.1 Prohibited from Adding
 
 ```text
 step.started
@@ -2914,95 +2911,95 @@ platform.harness_run.completed
 platform.mission.progress_projected
 ```
 
-Mission events must be facts or projections, cannot carry alternative status of underlying execution details.
+Mission events must be facts or projections; must not carry alternative states of underlying execution details.
 
 ---
 
-### 9. Test Governance Rules
+### 9. Testing Governance Rules
 
 | Test Type | Requirement |
 |---|---|
-| Contract tests | Forbidden to appear `steps[]` as canonical field |
+| Contract tests | Prohibited from appearing `steps[]` as canonical field |
 | E2E tests | Must cover `Task → PlanGraphBundle → HarnessRun → NodeRun → NodeAttempt` |
-| Golden tests | Response snapshots must not contain `currentStep / stepId / steps` |
-| Migration tests | Can appear Step, but must label legacy |
-| UI tests | Can assert display text "step", but data source must be NodeRun fixture |
+| Golden tests | Response snapshots must not include `currentStep / stepId / steps` |
+| Migration tests | Can appear Step, but must mark legacy |
+| UI tests | Can assert display copy "step", but data source must be NodeRun fixture |
 
-Recommend adding static scanning rules:
+Recommended to add static scanning rules:
 
 ```text
-Forbidden to add stepId / currentStep / steps[] in src/platform/contracts/**
-Forbidden to add StepStatus / WorkflowStep in src/platform/execution/**
-Forbidden to output PlanStep[] as plan contract in src/platform/orchestration/**
-Forbidden to expose Step-centric response in src/platform/interface/api/**
+Prohibited from adding stepId / currentStep / steps[] in src/platform/contracts/**
+Prohibited from adding StepStatus / WorkflowStep in src/platform/execution/**
+Prohibited from outputting PlanStep[] as plan contract in src/platform/orchestration/**
+Prohibited from exposing Step-centric response in src/platform/interface/api/**
 ```
 
 ---
 
 ### 10. Migration Path
 
-#### Phase 1: Freeze Step Addition
+#### Phase 1: Freeze Step New Addition
 
-- Forbidden to add `Step` as contract/runtime/event field.
+- Prohibited from adding `Step` as contract/runtime/event field.
 - Mark old `PlanStep / WorkflowStep / HarnessStep` as deprecated.
 - Add Step-centric field scanning in lint or contract test.
 
-#### Phase 2: Adapt Legacy to Node
+#### Phase 2: Legacy Adapter to Node
 
 - `PlanStep` migrates to `PlanNode`.
 - `HarnessStep` splits into `NodeRun + NodeAttempt`.
-- `WorkflowState.currentStep` changes to projection field, no longer as truth.
+- `WorkflowState.currentStep` becomes projection field; no longer truth.
 
 #### Phase 3: API Output Switch
 
 - API returns `planGraphBundleRef / activeNodeRunRefs / evidenceRefs`.
-- UI uses adapter to aggregate NodeRun display as "step".
+- UI uses adapter to aggregate and display NodeRun as "step".
 - Old `steps[]` response enters compatibility endpoint.
 
 #### Phase 4: Delete Legacy Step Truth
 
 - Delete or isolate legacy `WorkflowState / PlanStep / HarnessStep` write paths.
-- All E2E change to canonical runtime path.
-- Step only retained in UI labels, user documentation and legacy migration adapter.
+- All E2E changed to canonical runtime path.
+- Step retained only in UI labels, user docs, and legacy migration adapter.
 
 ---
 
 ### 11. Acceptance Criteria
 
-After completing Step degradation, should satisfy:
+After completing Step degradation, the following conditions should be met:
 
-- `PlanGraphBundle` is the only plan contract.
-- `NodeRun / NodeAttempt` is the only execution granularity.
+- `PlanGraphBundle` is the unique plan contract.
+- `NodeRun / NodeAttempt` is the unique execution granularity.
 - `Step` no longer appears in canonical contracts, runtime state, budget, events, evidence, API responses.
 - Mission does not contain `steps[] / currentStep / stepOutputs`.
 - UI can display "step", but must be obtained from `NodeRun` aggregation.
-- All new E2E no longer go through `WorkflowState / PlanStep / HarnessStep` legacy path.
+- All new E2E no longer goes through `WorkflowState / PlanStep / HarnessStep` legacy path.
 - All budget limits use `maxNodeRuns / maxNodeAttempts / maxToolCalls / maxDurationMs / maxModelTokens`.
-- All evidence, audit, side effects bind `nodeRunId / nodeAttemptId / evidenceRefs`.
+- All evidence, audit, side effects are bound to `nodeRunId / nodeAttemptId / evidenceRefs`.
 
 ---
 
 ### 12. Final Consistency Constraints with Mission Plan
 
-After Mission introduction, cannot form new execution layer inflation.
+After Mission introduction, new execution hierarchy inflation must not form.
 
 Correct relationship:
 
 ```text
-Mission = long-term goal and task composition governance layer
-Task = single executable request after user confirmation
-Session = interaction context and continuous conversation context
-PlanGraphBundle = only plan graph
-HarnessRun = one controlled run
-NodeRun = graph node running instance
-NodeAttempt = single execution attempt
-Runtime = execution environment and scheduling system
-Agent = capability subject, not state container
-Workflow = reusable process template or UI projection, not truth
-Step = non-authoritative display word
+Mission = Long-term goal and task composition governance layer
+Task = Single executable request after user confirmation
+Session = Interaction context and continuous dialogue context
+PlanGraphBundle = Unique plan graph
+HarnessRun = One controlled run
+NodeRun = Graph node execution instance
+NodeAttempt = Single execution attempt
+Runtime = Execution environment and scheduling system
+Agent = Capability subject, not state container
+Workflow = Reusable process template or UI projection, not truth
+Step = Non-authoritative display term
 ```
 
-Therefore, Mission should not introduce `MissionStep`, Task should not save `TaskStep`, Workflow should not become execution truth again. The authoritative chain of system operation must remain:
+Therefore, Mission should not introduce `MissionStep`, Task should not store `TaskStep`, Workflow should not become execution truth again. The authoritative chain for system operation must remain:
 
 ```text
 ConfirmedTaskSpec

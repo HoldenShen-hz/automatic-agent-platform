@@ -5,7 +5,7 @@
 
 ## Context
 
-An Agent is composed of multiple loosely coupled components, lacking unified version and lifecycle management.
+Agents are composed of multiple loosely coupled components, lacking unified version and lifecycle management.
 
 ## Decision
 
@@ -34,7 +34,7 @@ interface AgentComponent {
 ### Lifecycle States (§61.3 reconciliation)
 
 | State | Description |
-|-------|-------------|
+|------|-------------|
 | draft | Draft |
 | requirements_locked | Requirements Locked |
 | testing | Testing |
@@ -47,17 +47,17 @@ interface AgentComponent {
 
 Constraints:
 - State transition order: draft → requirements_locked → testing → staging → production → deprecated → retired → archived → superseded
-- After requirements_locked, frivolous requirement changes are no longer accepted; changes must go through the change committee process
-- Archived state preserves audit history and cannot be reverted to active state
-- Superseded is the terminal state, indicating complete replacement by a new version
+- After requirements_locked, trivial requirement changes are not accepted; must go through change board process
+- archived state preserves audit history, cannot be reverted to active
+- superseded is terminal state, indicating fully replaced by new version
 
 ## v4.3 ADR Remediation
 
-- R3-52: This ADR originally defined an 8-state lifecycle (draft/requirements_locked/testing/staging/production/deprecated/retired/archived). The root cause was that the lifecycle ADR omitted the superseded terminal state. Fix: The main text now adds the superseded terminal state, forming a complete 9-state state machine, aligned with §61.3 architectural requirements.
+- R3-52: This ADR originally defined 8-state lifecycle (draft/requirements_locked/testing/staging/production/deprecated/retired/archived), root cause being the lifecycle ADR omitted the superseded terminal state. Fix: The main text now adds superseded terminal state, forming a 9-state complete state machine, aligned with §61.3 architecture requirements.
 
 - Semantic versioning (major.minor.patch)
-- Version compatibility checks
-- Downgrade support
+- Version compatibility checking
+- Rollback support
 
 ### Deployment Management
 
@@ -73,7 +73,7 @@ Constraints:
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Unified management improves maintainability
 - Versioning supports rollback
@@ -82,7 +82,7 @@ Benefits:
 Costs:
 
 - Component version coordination is complex
-- Lifecycle state machine maintenance overhead
+- Lifecycle state machine maintenance cost
 
 ## Cross References
 

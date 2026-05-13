@@ -5,7 +5,7 @@
 
 ## Context
 
-The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.) and requires a unified integration framework.
+The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.), requiring a unified integration framework.
 
 ## Decision
 
@@ -37,13 +37,13 @@ interface ExternalAdapter {
 |------|-------------|
 | api_key | API Key |
 | oauth2 | OAuth 2.0 |
-| basic_auth | Username and password |
+| basic_auth | Username/password |
 | jwt | JWT Token |
 
 ### Error Handling
 
 | Strategy | Description |
-|----------|-------------|
+|-----------|-------------|
 | retry | Retry |
 | circuit_break | Circuit breaker |
 | fallback | Fallback |
@@ -53,25 +53,25 @@ interface ExternalAdapter {
 
 - Connector registration and discovery
 - Authentication credential management
-- Rate limiting
-- Audit logging
+- Traffic control
+- Audit logs
 
 ## Consequences
 
-Advantages:
+Pros:
 
 - Unified framework reduces integration costs
-- Standardized error handling
+- Standardized error processing
 - Governance capabilities ensure security
 
-Costs:
+Cons:
 
 - Adapter development takes time
 - Maintaining multiple integrations increases complexity
 
-## Cross-References
+## Cross References
 
-- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
 ## Source Section

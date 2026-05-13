@@ -37,7 +37,7 @@ Unified rules:
 
 - External presentations, product materials, and onboarding documents may continue using business aliases.
 - Configuration, contracts, APIs, state tables, events, and implementation code prioritize canonical id.
-- Documents may use `canonical id + business alias` dual-layer naming.
+- Documents may use canonical id plus business alias dual-layer naming.
 
 ## Alternative Solutions
 
@@ -62,19 +62,19 @@ Advantages:
 Costs:
 
 - Unfriendly to business communication, roadmap expression, and role understanding.
-- Weakens the system's product narrative of "organized agent collaboration."
+- Weakens the system's product narrative of organized agent collaboration.
 
 ### Option C: Current Decision
 
-- Engineering layer canonical id is authoritative
-- Business alias is preserved as the narrative layer
-- Documents allow dual-layer naming, but contracts/schemas use only canonical id as the standard
+- Engineering layer canonical id is authoritative.
+- Business alias is preserved as the narrative layer.
+- Documents allow dual-layer naming, but contracts and schemas use only canonical id as the standard.
 
 ## Reasons for Selecting This Option
 
 - Balances product expression and engineering maintainability.
 - Facilitates decoupling of organizational layer narrative from scheduling layer implementation.
-- Reduces the amplifying effect of "CEO/VP/Lead" naming on code complexity.
+- Reduces the amplifying effect of CEO, VP, Lead naming on code complexity.
 
 ## Key Invariants
 
@@ -85,24 +85,24 @@ Costs:
 
 ## Adoption Trigger Conditions
 
-All current HQ/division/role naming should adhere to this rule, especially:
+All current HQ, division, role naming should adhere to this rule, especially:
 
-- `intake_router`
-- `workflow_planner`
-- `division_lead`
-- `strategic_governor`
+- intake_router.
+- workflow_planner.
+- division_lead.
+- strategic_governor.
 
 ## Exit Conditions
 
-This decision does not have a "complete exit" goal, but if the product narrative undergoes major changes in the future, the canonical id layer should remain stable and there is no need to reintroduce business aliases into implementation primary keys.
+This decision does not have a complete exit goal, but if the product narrative undergoes major changes in the future, the canonical id layer should remain stable and there is no need to reintroduce business aliases into implementation primary keys.
 
 ## Implementation Impact
 
 Current implementation and documentation requirements:
 
-- Configuration files, events, and API return fields prioritize canonical id
-- Documents may write `canonical id (business alias)` on first occurrence
-- Runtime dispatch models should be named by responsibility, not by organizational title
+- Configuration files, events, and API return fields prioritize canonical id.
+- Documents may write canonical id and business alias on first occurrence.
+- Runtime dispatch models should be named by responsibility, not by organizational title.
 
 ## Results
 
@@ -125,5 +125,5 @@ Costs:
 
 ## Source Sections
 
-- `01_architecture_and_technical_design.md`
-- `02_agents_governance_and_security.md`
+- 01_architecture_and_technical_design.md
+- 02_agents_governance_and_security.md

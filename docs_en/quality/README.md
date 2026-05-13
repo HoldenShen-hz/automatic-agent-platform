@@ -1,6 +1,6 @@
 # Quality
 
-`quality/` consolidates testing and release quality documentation, preventing them from being scattered across the root directory.
+`quality/` consolidates testing and release quality documentation, preventing it from being scattered across the root directory.
 
 ## File Order
 

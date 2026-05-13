@@ -101,7 +101,7 @@ Cons: Increased runtime overhead (~5-10ms per invoke), requires isolation mechan
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 
-## Source Sections
+## Source Section
 
 - `§B` Plugin SPI Interface Definition
 - `§B.2-B.5` 4 Core Interfaces

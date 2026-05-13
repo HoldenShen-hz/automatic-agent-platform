@@ -906,7 +906,7 @@ src/org-governance/
 
 ## 8. scale-ecosystem/ — Scale Operations Layer + Ecosystem Layer
 
-`scale-ecosystem/` corresponds to architecture Layer 6 (§52-§57). `feedback-loop/` migrated from `core/feedback/`, `marketplace/` partially migrated from `core/product/`, and the rest are **newly created modules**.
+`scale-ecosystem/` corresponds to architecture Layer 6 (§52-§57). `feedback_loop/` migrated from `core/feedback/`, `marketplace/` partially migrated from `core/product/`, and the rest are **newly created modules**.
 
 ```
 src/scale-ecosystem/

@@ -5,7 +5,7 @@
 
 ## Context
 
-Regulations such as the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
+Regulations like EU AI Act require AI decisions to be explainable. The platform needs to provide decision transparency mechanisms.
 
 ## Decision
 
@@ -38,40 +38,40 @@ interface DecisionRecord {
 
 | Technique | Description |
 |-----------|-------------|
-| Decision Tree Extraction | Extract rules from neural networks |
-| Attention Visualization | Show key inputs |
-| Counterfactual Analysis | "What if..." |
-| Case-Based Reasoning | Similar decision references |
+| Decision tree extraction | Extract rules from neural networks |
+| Attention visualization | Show key inputs |
+| Counterfactual analysis | "What if..." |
+| Case-based reasoning | Similar decision reference |
 
 ### Audit Logs
 
-- All high-risk decisions are recorded
+- All high-risk decisions recorded
 - Tamper-proof storage
-- Supports querying and exporting
+- Support querying and exporting
 
-### Compliance Reporting
+### Compliance Reports
 
-- Automatically generated compliance reports
-- Supports regulatory agency review
-- Periodically published transparency reports
+- Automatically generate compliance reports
+- Support regulatory agency review
+- Regularly publish transparency reports
 
 ## Consequences
 
-Advantages:
+Pros:
 
-- Meets EU AI Act and other regulatory requirements
+- Meets EU AI Act and other regulations
 - Improves user trust
 - Facilitates problem identification and resolution
 
-Costs:
+Cons:
 
 - Explanation generation adds latency
-- Increased storage costs
+- Storage costs increase
 
-## Cross-References
+## Cross References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
-- [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)
+- [ADR-066 Compliance Report Auto Generation Engine](./066-compliance-report-auto-generation.md)
 
 ## Source Section
 

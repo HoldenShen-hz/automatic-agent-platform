@@ -5,7 +5,7 @@
 
 ## Context
 
-Edge scenarios such as factories, retail stores, and mobile devices cannot access the cloud and require offline deployment support.
+Edge scenarios such as factories, stores, and mobile devices cannot access the cloud, requiring offline deployment support.
 
 ## Decision
 
@@ -16,7 +16,7 @@ Edge scenarios such as factories, retail stores, and mobile devices cannot acces
 | cloud | Full cloud deployment | Data center |
 | hybrid | Cloud + edge collaboration | Branch offices |
 | edge | Pure edge deployment | Factory/store |
-| mobile | Mobile devices | Field operations |
+| mobile | Mobile device | On-site operations |
 
 ### Edge Runtime
 
@@ -30,10 +30,10 @@ interface EdgeRuntime {
 }
 ```
 
-### Data Synchronization Strategies
+### Data Sync Strategies
 
 | Sync Mode | Description | Network Requirements |
-|-----------|-------------|----------------------|
+|----------|-------------|---------------------|
 | realtime | Real-time sync | Stable connection |
 | batch | Batch sync | Intermittent connection |
 | delay_tolerant | Delay tolerant | Low bandwidth |
@@ -51,7 +51,7 @@ interface EdgeRuntime {
 | Strategy | Description |
 |----------|-------------|
 | last_write_wins | Last write wins |
-| server_wins | Server wins |
+| server_wins | Server priority |
 | merge | Merge conflicts |
 | manual | Manual resolution |
 
@@ -61,11 +61,11 @@ Advantages:
 
 - Supports offline scenarios
 - Reduces network dependency
-- Expands scope of applicability
+- Expands applicable scope
 
-Trade-offs:
+Costs:
 
-- Synchronization complexity
+- Sync complexity
 - Conflict handling complexity
 
 ## Cross References
@@ -79,4 +79,4 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- R3-60: This ADR defines `last_write_wins` as one of the conflict resolution strategies, which does not contradict the truth data requirements in §25.11. The root cause is that offline data synchronization in edge deployment scenarios (factories, stores, etc.) has different constraints from centralized truth data systems. Fix: The main text explicitly states that `last_write_wins` applies only to edge temporary data synchronization scenarios and does not apply to core state data that requires truth consistency; the latter must use `server_wins` or `merge` strategies.
+- R3-60: This ADR defines `last_write_wins` as one of the conflict resolution strategies, which does not conflict with §25.11 truth data requirements. Root cause is that edge deployment scenarios (factories, stores, etc.) have different constraints for offline data sync versus centralized truth data systems. Fix: The main text now clarifies that `last_write_wins` applies only to edge temporary data sync scenarios, not to core state data requiring truth consistency; the latter must use `server_wins` or `merge` strategies.

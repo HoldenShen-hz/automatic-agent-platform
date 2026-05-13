@@ -5,7 +5,7 @@
 
 ## Context
 
-Non-technical users (business operators, operations staff) need simplified interaction patterns without requiring understanding of underlying APIs and technical details.
+Non-technical users (business operators, operations personnel) need simplified interaction methods without understanding underlying APIs and technical details.
 
 ## Decision
 
@@ -13,10 +13,10 @@ Non-technical users (business operators, operations staff) need simplified inter
 
 | Role | Description | Interface |
 |------|-------------|-----------|
-| business_operator | Business Operator | Simplified Interface |
-| team_lead | Team Lead | Management View |
-| executive | Executive | Report View |
-| admin | Administrator | Full-Feature Interface |
+| business_operator | Business operator | Simplified interface |
+| team_lead | Team lead | Management view |
+| executive | Executive | Report view |
+| admin | Administrator | Full-featured interface |
 
 ### Simplified Interaction Patterns
 
@@ -29,29 +29,29 @@ Non-technical users (business operators, operations staff) need simplified inter
 
 - Push notifications
 - Email notifications
-- In-system messaging
+- In-app messaging
 - Real-time status updates
 
-### Auxiliary Features
+### Assistive Features
 
 | Feature | Description |
 |---------|-------------|
-| Task Templates | Pre-defined templates for common tasks |
-| Quick Actions | One-click execution for frequent operations |
-| History | Traceable operation history |
+| Task Templates | Predefined templates for common tasks |
+| Quick Actions | One-click execution for common operations |
+| History | Operable audit trail |
 | Export Reports | Data export support |
 
 ## Consequences
 
-Benefits:
+Pros:
 
-- Lower barrier to entry for non-technical users
+- Reduces barriers for non-technical users
 - Templating improves efficiency
-- Real-time feedback enhances user experience
+- Real-time feedback enhances experience
 
-Tradeoffs:
+Cons:
 
-- Multi-role interface increases complexity
+- Multi-role interfaces increase complexity
 - Template maintenance requires ongoing investment
 
 ## Cross References

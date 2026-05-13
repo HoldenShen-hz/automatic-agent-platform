@@ -5,13 +5,13 @@
 
 ## Context
 
-Multi-business-line concurrent runtime can lead to resource competition, requiring a fair and effective resource allocation mechanism.
+When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
 
 ## Decision
 
 ### Resource Pool Model
 
-ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation to uniformly manage resource allocation and budget billing. Together, these three constitute the atomic unit of resource allocation:
+ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation to uniformly manage resource allocation and budget deduction. Together, they constitute the atomic unit of resource allocation:
 
 ```typescript
 interface ResourcePool {
@@ -26,7 +26,7 @@ interface ResourceAllocation {
   reserved: number;
   used: number;
   priority: number;
-  budgetLedgerEntry: string;  // References BudgetLedger record
+  budgetLedgerEntry: string;  // Associated BudgetLedger record
 }
 ```
 
@@ -37,8 +37,8 @@ interface ResourceAllocation {
 | compute | Compute resources |
 | memory | Memory resources |
 | storage | Storage resources |
-| api_quota | API call quota |
-| llm_token | LLM Token quota |
+| api_quota | API call quotas |
+| llm_token | LLM Token quotas |
 
 ### Scheduling Strategies
 
@@ -46,25 +46,25 @@ interface ResourceAllocation {
 |----------|-------------|
 | priority | Priority first |
 | fair_share | Fair sharing |
-| fifo | First in, first out |
+| fifo | First in first out |
 | weighted_fair | Weighted fair queue |
 
 ### Resource Quotas
 
-- Platform-level quota
-- Tenant-level quota
-- Business domain-level quota
+- Platform-level quotas
+- Tenant-level quotas
+- Business domain-level quotas
 - Dynamic adjustment
 
 ## Consequences
 
-Advantages:
+Pros:
 
-- Fair resource allocation prevents resource starvation
-- Priority mechanism ensures critical business needs are met
+- Fair resource allocation prevents starvation
+- Priority mechanism ensures critical business
 - Dynamic adjustment adapts to load changes
 
-Costs:
+Cons:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead

@@ -768,7 +768,7 @@ This document provides a comprehensive Chinese-English bilingual reference for a
 | OIDC | 开放身份连接 | OpenID Connect, used for identity authentication federation |
 | SSO | 单点登录 | Single Sign-On, one authentication for entire链路 |
 | SCIM | 身份同步协议 | System for Cross-domain Identity Management, user and organization identity sync |
-| RLS | 行级安全 | Row-Level Security, row-level isolation at data access layer |
+| RLS | 行级安全 | Row-Level Security, data access layer row-level isolation |
 | SBOM | 软件物料清单 | Software Bill of Materials, dependency component list |
 | RBAC | 基于角色的访问控制 | Role-Based Access Control, permission management model |
 | PKCE | 代码交换证明 | Proof Key for Code Exchange, OAuth extension security mechanism |

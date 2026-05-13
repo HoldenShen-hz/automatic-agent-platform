@@ -1,14 +1,14 @@
 # Architecture Decision Records (ADR)
 
-> This directory contains the project's Architecture Decision Records (ADRs). Each ADR records the context, considerations, and conclusions of significant technical decisions.
+> This directory contains the project's architecture decision records (ADRs). Each ADR records the context, considerations, and conclusions of significant technical decisions.
 
 ## ADR Index
 
 | ID | Title | Status | Decision Date |
 |----|-------|--------|--------------|
-| [001](./001-three-layer-architecture.md) | Three-Layer Separation of Powers Architecture | Accepted | 2026-04-02 |
+| [001](./001-three-layer-architecture.md) | Three-Layer Architecture | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
-| [003A](./003-memory-six-layers.md) | Six-Layer Memory Model and KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
+| [003A](./003-memory-six-layers.md) | Six-Layer Memory Model with KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
 | [003B](./003-memory-seven-layers.md) | Seven-Layer Memory Model (Historical Alias / Redirect Page) | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | Workflow and Routing | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | Security Model | Accepted | 2026-04-02 |
@@ -19,21 +19,21 @@
 | [010](./010-commercial-model.md) | Commercial Model | Accepted | 2026-04-02 |
 | [011](./011-effect-ts-adoption.md) | Effect-TS as Core Runtime Foundation | Accepted | 2026-04-03 |
 | [012](./012-sqlite-phase-1-2-primary-store.md) | SQLite as Phase 1-2 Primary Store | Accepted | 2026-04-03 |
-| [013](./013-eventemitter-phase-2-boundary.md) | EventEmitter Usage Through Phase 2 | Accepted | 2026-04-03 |
-| [014](./014-org-model-code-boundary.md) | Organization Model Mapping to Code Objects | Accepted | 2026-04-03 |
-| [015](./015-unified-extension-marketplace.md) | Skill and Plugin Consolidation into Single Marketplace | Accepted | 2026-04-03 |
+| [013](./013-eventemitter-phase-2-boundary.md) | EventEmitter Continue to Phase 2 | Accepted | 2026-04-03 |
+| [014](./014-org-model-code-boundary.md) | Organization Model Directly Maps to Code Objects | Accepted | 2026-04-03 |
+| [015](./015-unified-extension-marketplace.md) | Skill and Plugin Converge to Single Marketplace | Accepted | 2026-04-03 |
 | [016](./016-oapeflir-loop-model.md) | OAPEFLIR Eight-Stage Cognitive Loop Model | Accepted | 2026-04-17 |
 | [017](./017-knowledge-architecture-refactor.md) | Knowledge Three-Index Architecture Refactor | Accepted | 2026-04-17 |
 | [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State Machine and Six-Stage Release | Superseded by ADR-075 | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff Four-Layer Serialization Protocol | Accepted | 2026-04-17 |
-| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model and Auto-Promotion Rules | Accepted | 2026-04-17 |
+| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model with Auto-Promotion Rules | Accepted | 2026-04-17 |
 | [021](./021-inter-plane-communication-contract.md) | Inter-Plane Communication Contract | Accepted | 2026-04-03 |
 | [022](./022-api-contract-and-versioning.md) | API Contract and Versioning Architecture | Accepted | 2026-04-03 |
 | [023](./023-service-communication-architecture.md) | Service Communication Architecture | Accepted | 2026-04-03 |
 | [024](./024-scalability-architecture.md) | Scalability Architecture | Accepted | 2026-04-03 |
 | [025](./025-stability-architecture-seven-layers.md) | Stability Architecture | Accepted | 2026-04-03 |
 | [026](./026-risk-control-architecture.md) | Risk Control Architecture | Accepted | 2026-04-03 |
-| [027](./027-security-architecture.md) | Security and Reliability Architecture | Accepted | 2026-04-03 |
+| [027](./027-security-architecture.md) | Security Architecture | Accepted | 2026-04-03 |
 | [028](./028-incident-and-event-handling-architecture.md) | Incident and Event Handling Architecture | Accepted | 2026-04-03 |
 | [029](./029-oapeflir-controlled-cognition-kernel.md) | OAPEFLIR Controlled Cognition Kernel | Accepted | 2026-04-17 |
 | [030](./030-runtime-execution-plane.md) | Runtime Execution Plane | Accepted | 2026-04-03 |
@@ -41,7 +41,7 @@
 | [032](./032-deployment-architecture.md) | Deployment Architecture | Accepted | 2026-04-03 |
 | [033](./033-phased-roadmap.md) | Phased Roadmap | Accepted | 2026-04-17 |
 | [034](./034-adr-freeze-recommendation.md) | ADR Freeze Recommendation | Accepted | 2026-04-17 |
-| [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory Structure | Accepted | 2026-04-17 |
+| [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | Risk, Constraints, and Success Criteria | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | Business Domain Modeling and Onboarding Architecture | Accepted | 2026-04-20 |
 | [038](./038-business-domain-onboarding-runbook.md) | Business Domain Onboarding Runbook | Accepted | 2026-04-20 |
@@ -54,7 +54,7 @@
 | [046](./046-organization-hierarchy-model.md) | Organization Hierarchy Model | Accepted | 2026-04-20 |
 | [047](./047-organization-approval-routing.md) | Organization Approval Routing | Accepted | 2026-04-20 |
 | [048](./048-enterprise-sso-scim-integration.md) | Enterprise SSO/SCIM Integration Architecture | Accepted | 2026-04-20 |
-| [049](./049-department-compliance-policy-engine.md) | Per-Department Compliance Policy Engine | Accepted | 2026-04-20 |
+| [049](./049-department-compliance-policy-engine.md) | Department Compliance Policy Engine | Accepted | 2026-04-20 |
 | [050](./050-knowledge-domain-isolation.md) | Knowledge Domain Isolation and Controlled Sharing | Accepted | 2026-04-20 |
 | [051](./051-tiered-governance-delegation.md) | Tiered Governance Delegation | Accepted | 2026-04-20 |
 | [052](./052-multi-region-deployment-architecture.md) | Multi-Region Deployment Architecture | Accepted | 2026-04-20 |
@@ -73,17 +73,17 @@
 | [065](./065-workflow-visual-debugger.md) | Workflow Visual Debugger Architecture | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | Compliance Report Auto-Generation Engine | Accepted | 2026-04-20 |
 | [066](./066-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
-| [071](./071-plugin-spi-framework.md) | Plugin SPI Framework (Renumbered Preserve) | Accepted | 2026-04-17 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI Framework (Renumbered Preservation) | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Accepted | 2026-04-20 |
 | [070](./070-conclusion.md) | Conclusion | Accepted | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Testing Matrix | Accepted | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Accepted | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Accepted | 2026-04-17 |
-| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven-Class Signal Preprocessing | Accepted | 2026-04-17 |
-| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four-Pattern Detector | Accepted | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing Types | Accepted | 2026-04-17 |
+| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
 | [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
 | [083](./083-proactive-agent-and-progressive-autonomy.md) | Proactive Agent And Progressive Autonomy | Accepted | 2026-04-20 |

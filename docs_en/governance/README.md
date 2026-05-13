@@ -27,7 +27,6 @@ This governance document governs the following content in the OAPEFLIR eight-sta
 - [glossary_and_terminology.md](./glossary_and_terminology.md)
 - [autonomy_boundary_policy.md](./autonomy_boundary_policy.md) — AI autonomy permission boundaries (L0-L5)
 - [rollout_release_policy.md](./rollout_release_policy.md) — Controlled release and rollback strategy
-- [terminology-bilingual.md](./terminology-bilingual.md) — Chinese-English terminology reference
 
 ## Purpose
 

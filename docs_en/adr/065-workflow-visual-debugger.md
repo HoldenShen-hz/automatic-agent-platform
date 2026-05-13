@@ -5,7 +5,7 @@
 
 ## Context
 
-Developers need visual tools to understand the execution process and locate issues when Workflows fail.
+When Workflow fails, developers need visual tools to understand execution flow and locate issues.
 
 ## Decision
 
@@ -14,7 +14,7 @@ Developers need visual tools to understand the execution process and locate issu
 | Component | Description |
 |-----------|-------------|
 | Visualizer | DAG visualization |
-| NodeInspector | Node detail viewer |
+| NodeInspector | Node detail view |
 | StateExplorer | State browser |
 | TraceViewer | Trace viewer |
 | BreakpointManager | Breakpoint management |
@@ -35,11 +35,11 @@ interface WorkflowDAGView {
 
 ## v4.3 ADR Remediation
 
-- A-62: This ADR originally anchored the debugger on `workflow_id / current_step / StepInspector`. The root cause was that the document inherited the old workflow debugger prototype and did not switch to the `HarnessRun / NodeRun` debugging model. Fix: The main text now uses harness/node semantics as the debugging anchor point.
+- A-62: This ADR originally anchored the debugger to `workflow_id / current_step / StepInspector`, root cause being the document inherited the old workflow debugger prototype without switching to the `HarnessRun / NodeRun` debugging model. Fix: The main text now changes the debugging anchor to harness/node semantics.
 
 ### Debugging Features
 
-> **Step concept deprecated**: The debugging model is based on `HarnessRun / NodeRun` and does not support linear step-by-step debugging operations such as `step_over/step_into/step_out`.
+> **Step concept deprecated**: Debugging model is based on `HarnessRun / NodeRun`, does not support linear step debugging operations like `step_over/step_into/step_out`.
 
 | Feature | Description |
 |---------|-------------|
@@ -52,7 +52,7 @@ interface WorkflowDAGView {
 
 ### State Viewing
 
-- WorkflowState complete state
+- Complete WorkflowState
 - Step input/output
 - Intermediate variables
 - Error messages
@@ -61,8 +61,8 @@ interface WorkflowDAGView {
 
 | Type | Description |
 |------|-------------|
-| node_start | Node start |
-| node_complete | Node complete |
+| node_start | Node started |
+| node_complete | Node completed |
 | error | Error occurred |
 | condition | Condition met |
 
@@ -71,15 +71,15 @@ interface WorkflowDAGView {
 - Full trace chain
 - Span details
 - Performance profiling
-- Error chain
+- Error traces
 
 ## Consequences
 
 Advantages:
 
 - Visual debugging improves efficiency
-- Complete state facilitates problem identification
-- Breakpoint support enables fine-grained debugging
+- Complete state facilitates problem location
+- Breakpoint support for fine-grained debugging
 
 Costs:
 
@@ -89,7 +89,7 @@ Costs:
 ## Cross References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
-- [ADR-090 Runtime, Data Reliability, and Operations Governance](./090-runtime-data-reliability-and-operations.md)
+- [ADR-090 Runtime, Data Reliability and Operations](./090-runtime-data-reliability-and-operations.md)
 
 ## Source Section
 

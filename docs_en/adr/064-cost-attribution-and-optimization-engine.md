@@ -5,7 +5,7 @@
 
 ## Context
 
-LLM cost is a major component of OPEX and requires precise cost attribution and optimization guidance.
+LLM cost is the main component of OPEX, requiring precise cost attribution and optimization guidance.
 
 ## Decision
 
@@ -43,9 +43,9 @@ interface CostDimension {
 ### Optimization Recommendations
 
 | Recommendation Type | Description | Expected Savings |
-|----------|------|----------|
+|---------------------|-------------|------------------|
 | prompt_compression | Reduce Token consumption | 20-40% |
-| model_downgrade | Use cheaper models | 30-60% |
+| model_downgrade | Use cheaper model | 30-60% |
 | cache_reuse | Cache similar requests | 50-80% |
 | batch_processing | Batch request merging | 20-30% |
 
@@ -60,8 +60,8 @@ interface CostDimension {
 
 - Real-time cost dashboard
 - Historical trend analysis
-- Budget execution reports
-- Optimization effectiveness tracking
+- Budget execution report
+- Optimization effect tracking
 
 ## Consequences
 
@@ -69,13 +69,13 @@ Advantages:
 
 - Precise attribution guides optimization
 - Budget control prevents overruns
-- Reports facilitate management decision-making
+- Reports facilitate management decisions
 
-Trade-offs:
+Costs:
 
-- Metering adds overhead
+- Metering increases overhead
 - Optimization recommendations
 
 ## v4.3 ADR Remediation
 
-- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions. The root cause was that the cost engine ADR inherited linear workflow granularity and did not transition with the v4.3 execution truth object to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.
+- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions, root cause being the cost engine ADR followed the linear workflow granularity, not migrating with v4.3 execution truth objects to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.

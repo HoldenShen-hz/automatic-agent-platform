@@ -134,7 +134,7 @@ function collectTaskWarnings(task: TaskRecord, stepOutputs: StepOutputRecord[]):
   }
   for (const stepOutput of stepOutputs) {
     // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
-    warnings.push(...collectStepWarnings(stepOutput).map((warning) => `${stepOutput.nodeRunId}:${warning}`));
+    warnings.push(...collectStepWarnings(stepOutput));
   }
   return warnings;
 }
@@ -145,18 +145,18 @@ function collectTaskWarnings(task: TaskRecord, stepOutputs: StepOutputRecord[]):
 function collectStepWarnings(stepOutput: StepOutputRecord): string[] {
   const warnings: string[] = [];
   if (stepOutput.status === "partial_success") {
-    warnings.push("partial_success");
+    warnings.push(`${stepOutput.nodeRunId}:partial_success`);
   }
 
   const validation = safeParseRecord(stepOutput.validationJson);
   if (validation?.valid === false) {
-    warnings.push("validation_failed");
+    warnings.push(`${stepOutput.nodeRunId}:validation_failed`);
   }
   const validationWarnings = validation?.warnings;
   if (Array.isArray(validationWarnings)) {
     for (const warning of validationWarnings) {
       if (typeof warning === "string" && warning.length > 0) {
-        warnings.push(`validation:${warning}`);
+        warnings.push(`${stepOutput.nodeRunId}:validation:${warning}`);
       }
     }
   }

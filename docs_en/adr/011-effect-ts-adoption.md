@@ -24,7 +24,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 The system has clearly identified the need for state machines, unified error models, recovery chains, context propagation, resource lifecycle management, and subsequent execution plane evolution. Effect-TS can provide a relatively complete set of effect, resource, layer, and typed error abstractions, but it would also significantly increase team learning costs and initial implementation burden.
 
-The real problem at the current stage is not "whether we like Effect-TS", but:
+The real problem at the current stage is not whether we like Effect-TS, but:
 
 - Whether Ring 1 is worth introducing a heavier runtime abstraction early for future capabilities.
 - If not introducing it now, when should we re-evaluate.
@@ -56,7 +56,7 @@ Costs:
 
 - Steep learning curve.
 - Significantly higher initial implementation, testing, debugging, and onboarding costs.
-- The team is still closing platform boundaries; premature abstraction layer changes would amplify documentation-to-code translation costs.
+- The team is still closing platform boundaries. Premature abstraction layer changes would amplify documentation-to-code translation costs.
 
 ### Option B: Completely Exclude Effect-TS
 
@@ -72,47 +72,47 @@ Costs:
 
 ### Option C: Current Decision
 
-- No mandatory adoption currently
-- Preserve structural space for future introduction
-- Use contract and boundary design instead of premature runtime framework lock-in
+- No mandatory adoption currently.
+- Preserve structural space for future introduction.
+- Use contract and boundary design instead of premature runtime framework lock-in.
 
 ## Reasons for This Choice
 
 - The most important thing now is to tighten the five foundations: state, error, events, recovery, and security.
 - These are primarily boundary and contract issues, not runtime framework issues.
-- Prematurely introducing Effect-TS would push "implementation complexity" forward to Ring 1, which is not the current primary risk.
+- Prematurely introducing Effect-TS would push implementation complexity forward to Ring 1, which is not the current primary risk.
 - Preserving space for future re-evaluation is more prudent than locking in now.
 
 ## Key Invariants
 
 - Current code must not assume Effect-TS will definitely be introduced in the future.
-- Current code must also not be written in a form that makes it "absolutely impossible" to introduce Effect-TS.
+- Current code must also not be written in a form that makes it absolutely impossible to introduce Effect-TS.
 - Error model, repository boundaries, context propagation, and state machine entry points must hold independently of any specific runtime framework.
 
 ## Adoption Triggers
 
 If any of the following occurs, evaluation should be reopened:
 
-- Execution plane enters multi-worker / queue / lease / handover implementation phase.
+- Execution plane enters multi-worker, queue, lease, or handover implementation phase.
 - Resource lifecycle management extensively involves sandbox, provider, gateway, worker registry.
-- Existing async/await + service organization clearly leads to uncontrolled error propagation, resource cleanup, or dependency injection.
+- Existing async/await plus service organization clearly leads to uncontrolled error propagation, resource cleanup, or dependency injection.
 
 ## Exit Conditions
 
 If after Phase 2 evaluation it is still found that:
 
-- Complexity is not sufficient to justify introduction benefits
-- Team maintenance costs are higher than expected
-- Contracts and services are sufficient to support evolution
+- Complexity is not sufficient to justify introduction benefits.
+- Team maintenance costs are higher than expected.
+- Contracts and services are sufficient to support evolution.
 
-Then continue to maintain non-adoption and do not treat it as "postponement failure".
+Then continue to maintain non-adoption and do not treat it as postponement failure.
 
 ## Implementation Impact
 
 Requirements for current implementation:
 
-- Continue converging core capabilities as service + repository + contract.
-- Use `AppError`, transition service, policy engine, context propagation, etc. as contract replacements for framework coupling.
+- Continue converging core capabilities as service plus repository plus contract.
+- Use AppError, transition service, policy engine, context propagation as contract replacements for framework coupling.
 - Avoid forming hard-to-replace implicit global dependencies in code.
 
 Requirements for future evolution:
@@ -140,5 +140,5 @@ Costs:
 
 ## Source Sections
 
-- `System Improvement Roadmap / P0-10`
-- `reference/16-competitive-differentiation.md`
+- System Improvement Roadmap and P0-10
+- reference/16-competitive-differentiation.md

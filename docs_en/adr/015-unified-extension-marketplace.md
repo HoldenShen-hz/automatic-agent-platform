@@ -24,22 +24,22 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 Historical materials in the system have referenced multiple extension entry points such as Skill Marketplace, Plugin Marketplace, and Template Marketplace. If these concepts coexist long-term, it would lead to:
 
-- Scattered installation and permission governance entry points
-- Redundant development of review, signing, version compatibility, and disable policies
-- Users struggling to understand "where to actually find extensions"
+- Scattered installation and permission governance entry points.
+- Redundant development of review, signing, version compatibility, and disable policies.
+- Users struggling to understand where to actually find extensions.
 
 The current phase will not actually implement a marketplace, but the direction needs to be frozen first to prevent documentation from continuing to diverge along different marketplace models.
 
 ## Decision
 
-Phase 1a / 1b will not implement a marketplace.
+Phase 1a and 1b will not implement a marketplace.
 
 In the long-term direction, Skills, Plugins, Templates and other extension capabilities will converge into a unified governance entry point, rather than maintaining multiple marketplace models.
 
 This means:
 
-- Currently, only the extension object model and governance contract will be preserved
-- When truly entering Phase 4, priority will be given to building a unified extension marketplace
+- Currently, only the extension object model and governance contract will be preserved.
+- When truly entering Phase 4, priority will be given to building a unified extension marketplace.
 
 ## Alternatives
 
@@ -47,7 +47,7 @@ This means:
 
 Pros:
 
-- Each extension type appears more "tailored to its own semantics."
+- Each extension type appears more tailored to its own semantics.
 
 Costs:
 
@@ -64,13 +64,13 @@ Pros:
 Costs:
 
 - Clearly beyond the current phase.
-- Internal extension governance has not yet entered implementation; doing marketplace now would only weigh down the platform.
+- Internal extension governance has not yet entered implementation. Doing marketplace now would only weigh down the platform.
 
-### Option C: Current Decision (Chosen)
+### Option C: Current Decision
 
-- Do not implement marketplace now
-- Long-term direction converges to unified entry point
-- First unify extension object, permission, and lifecycle at the contract layer
+- Do not implement marketplace now.
+- Long-term direction converges to unified entry point.
+- First unify extension object, permission, and lifecycle at the contract layer.
 
 ## Reasons for Choosing This Option
 
@@ -88,26 +88,26 @@ Costs:
 
 This direction should continue to be followed before formally entering the following topics:
 
-- ecosystem extension plane
-- monetization metering plane
-- enterprise operations plane
+- ecosystem extension plane.
+- monetization metering plane.
+- enterprise operations plane.
 
 ## Exit Conditions
 
 If future evidence shows:
 
-- Skills and Plugins have completely different lifecycles, risk models, and business models
-- Unified governance introduces higher complexity instead
+- Skills and Plugins have completely different lifecycles, risk models, and business models.
+- Unified governance introduces higher complexity instead.
 
-Then a new ADR may be opened to discuss splitting, but returning to "multiple marketplaces evolving in parallel" without a new decision is not permitted.
+Then a new ADR may be opened to discuss splitting, but returning to multiple marketplaces evolving in parallel without a new decision is not permitted.
 
 ## Implementation Impact
 
 Current documentation and subsequent implementation requirements:
 
-- Use unified extension / installable / capability registry language in contracts and documentation
-- Phase 1a / 1b only handles registry, permissions, and installation boundaries; no marketplace UI or commercial distribution
-- If Phase 4 begins marketplace work, design directly from the unified governance entry point rather than building multiple marketplace sets first then merging
+- Use unified extension or installable or capability registry language in contracts and documentation.
+- Phase 1a and 1b only handles registry, permissions, and installation boundaries. No marketplace UI or commercial distribution.
+- If Phase 4 begins marketplace work, design directly from the unified governance entry point rather than building multiple marketplace sets first then merging.
 
 ## Results
 
@@ -130,5 +130,5 @@ Costs:
 
 ## Source Sections
 
-- `tool_skill_plugin_contract.md`
-- `ecosystem_extension_plane_contract.md`
+- tool_skill_plugin_contract.md
+- ecosystem_extension_plane_contract.md

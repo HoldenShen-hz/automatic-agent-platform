@@ -1,4 +1,4 @@
-# ADR-107 Financial Services Explainable Decisions
+# ADR-107: Financial Services Explainable Decisions
 
 ---
 
@@ -11,7 +11,7 @@
 - **Feedback**: Receive fairness and compliance feedback
 - **Learn**: Identify bad decision patterns
 - **Improve**: Adjust scoring and explanation templates
-- **Release**: Financial domain explanation obligation incorporated into acceptance gate
+- **Release**: Financial domain explanation obligation enters acceptance gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Automated decisions in the financial services domain must meet explainability and fair lending requirements.
+Automated decisions in financial services domain must meet explainable and fair lending requirements.
 
 ## Decision
 
-- Adverse decisions must be accompanied by a structured explanation
+- Adverse decisions must carry structured explanation
 - Explanation must be traceable to evidence and rules
 
 ## Consequences
 
-- `financial-services` domain output is no longer just a result; it must also carry reasoning
+- `financial-services` domain output not only carries results, but also reasons

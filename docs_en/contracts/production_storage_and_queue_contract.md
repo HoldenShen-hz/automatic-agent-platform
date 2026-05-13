@@ -2,9 +2,9 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -117,7 +117,6 @@ Knowledge semantic infra migration route:
 
 - When Redis/BullMQ is unavailable, system should enter admission control or degrade; must not silently drop tasks.
 - When PG is unwritable, must not continue accepting tasks requiring authoritative state.
-- When `AA_STORAGE_DRIVER=postgres`, startup preflight / doctor must first perform fail-close validation on DSN, SSL, pool sizing, dual-run switch and shadow SQLite path; if validation fails, cannot enable postgres driver.
 - Queue and DB write inconsistency should prioritize trusting DB truth and triggering repair job.
 
 ## 11. Phase Boundaries

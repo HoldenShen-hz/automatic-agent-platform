@@ -30,7 +30,7 @@ Adopt TypeScript full-stack with phased infrastructure evolution:
 
 - Core service layer uniformly placed in `src/core/`.
 - Access layer includes CLI, TUI, HTTP Server, Gateway, and Embedded Client.
-- Early persistence uses SQLite + WAL.
+- Early persistence uses SQLite plus WAL.
 - Support crash recovery via structured events, workflow state, artifact storage, and recovery algorithms.
 - Use Feature Flags to control phased capability enablement, avoiding premature coupling of immature capabilities to main path.
 
@@ -60,7 +60,7 @@ To support recovery, at minimum need:
 - Task table.
 - workflow_state.
 - workflow_step_outputs.
-- sessions/messages.
+- sessions / messages.
 - events.
 - artifacts index.
 
@@ -72,7 +72,7 @@ Platform access layer includes at minimum:
 - HTTP API.
 - SSE streaming events.
 - Embedded Client.
-- Gateway bridging Telegram; Slack/Feishu expansion later.
+- Gateway bridging Telegram; Slack and Feishu expansion later.
 
 These entry points should share the same service layer, not duplicate business logic.
 
@@ -93,14 +93,14 @@ In production builds, Feature Flags can further enable compile-time DCE to reduc
 Operations design must include testing and observability:
 
 - Testing pyramid and LLM mock.
-- VCR/record-replay testing.
+- VCR and record-replay testing.
 - Structured logging.
 - Core KPI and debug logging infrastructure.
 - Boundary testing, verifying architecture and permission layers are not bypassed.
 
 ## Evolution Roadmap
 
-- Phase 1-2: SQLite single-machine architecture; explicit concurrency limits.
+- Phase 1-2: SQLite single-machine architecture with explicit concurrency limits.
 - Phase 3: Enhanced channels, authentication, Web, and commercialization infrastructure.
 - Phase 4: Migrate to PostgreSQL, multi-tenant, queue system, and stronger enterprise capabilities.
 
@@ -108,14 +108,14 @@ Operations design must include testing and observability:
 
 Benefits:
 
-- Fast development speed; suitable for early solo + AI team progress.
+- Fast development speed, suitable for early solo plus AI team progress.
 - Unified service layer reuses CLI, HTTP, Embedded Client.
-- Migration path is explicit; avoids early over-engineering.
+- Migration path is explicit, avoids early over-engineering.
 
 Costs:
 
 - SQLite concurrency upper limit must be hard-acknowledged in documentation and runtime.
-- Phase migration needs strong testing and compatibility constraints; otherwise subsequent upgrade costs will be high.
+- Phase migration needs strong testing and compatibility constraints, otherwise subsequent upgrade costs will be high.
 - Premature addition of Web, multi-tenant, and commercialization capabilities significantly slows infrastructure maturity.
 
 ## Cross-References
@@ -126,13 +126,13 @@ Costs:
 
 ## Source Sections
 
-- `§3`
-- `§3.2`
-- `§3.3`
-- `§3.4`
-- `§3.5`
-- `§3.6`
-- `§3.7`
-- `§3.8`
-- `§9`
-- `§12`
+- Section 3
+- Section 3.2
+- Section 3.3
+- Section 3.4
+- Section 3.5
+- Section 3.6
+- Section 3.7
+- Section 3.8
+- Section 9
+- Section 12

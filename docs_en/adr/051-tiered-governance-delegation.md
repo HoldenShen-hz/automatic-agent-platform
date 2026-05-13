@@ -5,7 +5,7 @@
 
 ## Context
 
-Platform administrators cannot manage all affairs, and governance authority needs to be delegated to subordinate organizations.
+Platform administrators cannot manage all affairs. Governance authority needs to be delegated to subordinate organizations.
 
 ## Decision
 
@@ -35,19 +35,19 @@ interface DelegationScope {
 
 | Level | Delegable Permissions | Constraints |
 |-------|----------------------|-------------|
-| Platform Level | Permissions outside NonOverridableInvariant only | Must comply with non-overridable constraints such as security boundaries and audit requirements |
+| Platform Level | Permissions only outside NonOverridableInvariant | Must comply with non-overridable constraints such as security boundaries, audit requirements |
 | Business Group Level | Permissions within business group | Subject to upper-level delegation constraints |
 | Department Level | Permissions within department | Subject to upper-level delegation constraints |
 | Team Level | Limited permissions | Subject to upper-level delegation constraints |
 
-Note: NonOverridableInvariant represents platform-level security invariants that no delegation can override (such as security boundaries, audit requirements, etc.). Platform-level delegation is not "all permissions" but rather restricted all permissions after excluding NonOverridableInvariant.
+Note: NonOverridableInvariant is a platform-level security invariant. No delegation can override such constraints (e.g., security boundaries, audit requirements). Platform-level delegation is not "all permissions", but restricted all permissions after excluding NonOverridableInvariant.
 
 ### Constraint Types
 
 | Constraint Type | Description |
-|----------------|-------------|
-| budget_limit | Budget upper limit |
-| risk_threshold | Risk upper limit |
+|-----------------|-------------|
+| budget_limit | Budget cap |
+| risk_threshold | Risk cap |
 | approval_required | Requires upper-level approval |
 | time_window | Valid time window |
 
@@ -55,20 +55,20 @@ Note: NonOverridableInvariant represents platform-level security invariants that
 
 - All delegation operations recorded in audit logs
 - Delegation relationship changes notify both parties
-- Periodic review of delegation validity
+- Regular review of delegation validity
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Distributed governance improves efficiency
 - Constraint mechanism prevents permission abuse
-- Audit tracking ensures compliance
+- Audit trail ensures compliance
 
-Negative:
+Cons:
 
 - Delegation relationships are complex
-- Permission revocation requires complete process
+- Permission recovery requires complete process
 
 ## Cross References
 
