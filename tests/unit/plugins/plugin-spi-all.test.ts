@@ -10,6 +10,7 @@ import test from "node:test";
 import { createBasicPlannerPlugin } from "../../../src/plugins/planners/basic-planner.js";
 import { createBasicEvaluatorPlugin } from "../../../src/plugins/validators/basic-evaluator.js";
 import { createCodingPresenterPlugin } from "../../../src/plugins/presenters/coding-presenter.js";
+import { createCodingRetrieverPlugin } from "../../../src/plugins/retrievers/coding-retriever.js";
 import { createGithubAdapterPlugin } from "../../../src/plugins/adapters/github-adapter.js";
 import { createCrmAdapterPlugin } from "../../../src/plugins/adapters/crm-adapter.js";
 import { createGameDevAdapterPlugin } from "../../../src/plugins/adapters/game-dev-adapter.js";
@@ -17,6 +18,7 @@ import { createAssetProductionAdapterPlugin } from "../../../src/plugins/adapter
 import { createLivestreamAdapterPlugin } from "../../../src/plugins/adapters/livestream-adapter.js";
 import { createGrowthPresenterPlugin } from "../../../src/plugins/presenters/growth-presenter.js";
 import { createOperationsPresenterPlugin } from "../../../src/plugins/presenters/operations-presenter.js";
+import { NetworkEgressPolicyService } from "../../../src/platform/control-plane/iam/network-egress-policy.js";
 import type { DomainPlannerPlugin, DomainEvaluatorPlugin, DomainPresenterPlugin, ExternalAdapterPlugin } from "../../../src/domains/registry/plugin-spi.js";
 
 // ---------------------------------------------------------------------------
@@ -311,13 +313,18 @@ test("CrmAdapter authenticate handles token and managedSecretRef", async () => {
 });
 
 test("CrmAdapter execute respects egress policy", async () => {
-  const adapter = createCrmAdapterPlugin();
+  const adapter = createCrmAdapterPlugin({
+    policy: new NetworkEgressPolicyService({
+      mode: "enforce",
+      allowedDomains: ["example.invalid"],
+    }),
+  });
 
   await adapter.authenticate({ token: "test_token" });
-  const result = await adapter.execute("contacts", { query: "test" });
-
-  assert.equal(result.ok, true);
-  assert.equal(result.data.action, "contacts");
+  await assert.rejects(
+    adapter.execute("contacts", { query: "test" }),
+    /denied by egress policy/i,
+  );
 });
 
 test("CrmAdapter plugin has correct metadata", () => {
@@ -331,7 +338,7 @@ test("CrmAdapter plugin has correct metadata", () => {
 test("GameDevAdapter execute returns expected structure", async () => {
   const adapter = createGameDevAdapterPlugin();
 
-  await adapter.authenticate({ credentials: "unity_creds" });
+  await adapter.authenticate({ token: "unity_creds_token" });
   const result = await adapter.execute("build_status", {
     projectSlug: "my-project",
     buildTarget: "Standalone",
@@ -353,7 +360,7 @@ test("GameDevAdapter plugin has correct metadata", () => {
 test("AssetProductionAdapter execute returns expected structure", async () => {
   const adapter = createAssetProductionAdapterPlugin();
 
-  await adapter.authenticate({ apiKey: "figma_key" });
+  await adapter.authenticate({ token: "figma_key_token" });
   const result = await adapter.execute("get_file", {
     fileKey: "abc123",
     nodeId: "1:2",
@@ -366,7 +373,7 @@ test("AssetProductionAdapter execute returns expected structure", async () => {
 test("LivestreamAdapter execute returns expected structure", async () => {
   const adapter = createLivestreamAdapterPlugin();
 
-  await adapter.authenticate({ obsToken: "obs_password" });
+  await adapter.authenticate({ obsToken: "obsToken1234567890" });
   const result = await adapter.execute("get_scene", {
     streamId: "live-123",
   });
@@ -407,8 +414,6 @@ test("All presenter plugins implement DomainPresenterPlugin interface", () => {
 });
 
 test("All retriever plugins implement DomainRetrieverPlugin interface", () => {
-  // Retriever plugins require options, just verify the interface
-  const { createCodingRetrieverPlugin } = require("../../../src/plugins/retrievers/coding-retriever.js");
   const retriever = createCodingRetrieverPlugin();
 
   assert.equal(typeof retriever.pluginId, "string");

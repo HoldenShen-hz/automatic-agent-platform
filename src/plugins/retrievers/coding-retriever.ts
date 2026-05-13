@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { relative } from "node:path";
 import { cwd } from "node:process";
 
@@ -29,11 +30,9 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
     domainId: "coding",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "repo.search"],
-    async initialize() {
-      repoMapService.buildMap();
-    },
+    async initialize() {},
     async healthCheck() {
-      return repoMapService.getStatistics().totalFiles >= 0;
+      return existsSync(rootPath);
     },
     async shutdown() {
       repoMapService.invalidateCache();

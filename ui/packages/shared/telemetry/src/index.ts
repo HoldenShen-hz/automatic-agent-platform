@@ -26,6 +26,12 @@ export interface DeadLetterTelemetryEvent {
   readonly failedAt: string;
 }
 
+function detachTimer(timer: ReturnType<typeof setInterval>): void {
+  if (typeof timer === "object" && timer !== null && "unref" in timer && typeof timer.unref === "function") {
+    timer.unref();
+  }
+}
+
 interface BufferedTelemetryEvent {
   readonly event: TelemetryEvent;
   readonly pendingExporters: Set<number>;
@@ -55,6 +61,9 @@ export class TelemetrySink {
       : setInterval(() => {
         void this.flush().catch(() => undefined);
       }, options.flushIntervalMs);
+    if (this.flushTimer != null) {
+      detachTimer(this.flushTimer);
+    }
   }
 
   public record(name: string, attributes: Readonly<Record<string, unknown>> = {}): void {

@@ -1,15 +1,63 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { createCodingRetrieverPlugin } from "../../../../src/plugins/retrievers/coding-retriever.js";
 
+const fixtureRoot = mkdtempSync(join(tmpdir(), "coding-retriever-fixture-"));
+
+function writeFixture(relativePath: string, content: string): void {
+  const absolutePath = join(fixtureRoot, relativePath);
+  mkdirSync(dirname(absolutePath), { recursive: true });
+  writeFileSync(absolutePath, content, "utf8");
+}
+
+writeFixture(
+  "src/search-code.ts",
+  [
+    "import { authenticationHelper } from \"./authentication-code\";",
+    "",
+    "export function searchCodebase(): string {",
+    "  return authenticationHelper();",
+    "}",
+  ].join("\n"),
+);
+writeFixture(
+  "src/authentication-code.ts",
+  [
+    "export function authenticationHelper(): string {",
+    "  return \"authentication\";",
+    "}",
+    "",
+    "export class AuthenticationController {}",
+  ].join("\n"),
+);
+writeFixture(
+  "src/function-class.ts",
+  [
+    "export interface FunctionClassContract {",
+    "  readonly id: string;",
+    "}",
+    "",
+    "export function findFunctionClass(): string {",
+    "  return \"class\";",
+    "}",
+  ].join("\n"),
+);
+
+test.after(() => {
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
+
 test("CodingRetriever type exports are correct", () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
   assert.ok(plugin !== undefined);
 });
 
 test("CodingRetriever has correct plugin metadata", () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   assert.equal(plugin.pluginId, "plugin.coding.retriever");
   assert.equal(plugin.domainId, "coding");
@@ -17,33 +65,33 @@ test("CodingRetriever has correct plugin metadata", () => {
 });
 
 test("CodingRetriever has correct capabilityIds", () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   assert.deepEqual(plugin.capabilityIds, ["knowledge.retrieve", "domain.observe", "repo.search"]);
 });
 
 test("CodingRetriever.initialize is no-op", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
   assert.ok(plugin.initialize !== undefined);
   await plugin.initialize();
 });
 
 test("CodingRetriever.healthCheck returns true", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
   assert.ok(plugin.healthCheck !== undefined);
   const result = await plugin.healthCheck();
   assert.equal(result, true);
 });
 
 test("CodingRetriever.shutdown returns undefined", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
   assert.ok(plugin.shutdown !== undefined);
   const result = await plugin.shutdown();
   assert.equal(result, undefined);
 });
 
 test("CodingRetriever.retrieve returns results with default tokenBudget", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const results = await plugin.retrieve({
     taskId: "task_123",
@@ -58,7 +106,7 @@ test("CodingRetriever.retrieve returns results with default tokenBudget", async 
 });
 
 test("CodingRetriever.retrieve respects tokenBudget", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const smallBudget = await plugin.retrieve({
     taskId: "task_456",
@@ -79,7 +127,7 @@ test("CodingRetriever.retrieve respects tokenBudget", async () => {
 });
 
 test("CodingRetriever.retrieve includes context in search", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const results = await plugin.retrieve({
     taskId: "task_ctx",
@@ -93,7 +141,7 @@ test("CodingRetriever.retrieve includes context in search", async () => {
 });
 
 test("CodingRetriever.retrieve returns valid knowledge references", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const results = await plugin.retrieve({
     taskId: "task_struct",
@@ -109,7 +157,7 @@ test("CodingRetriever.retrieve returns valid knowledge references", async () => 
 });
 
 test("CodingRetriever.retrieve returns at least 2 results even with low budget", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const results = await plugin.retrieve({
     taskId: "task_min",
@@ -122,7 +170,7 @@ test("CodingRetriever.retrieve returns at least 2 results even with low budget",
 });
 
 test("CodingRetriever.retrieve handles focus from context", async () => {
-  const plugin = createCodingRetrieverPlugin();
+  const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
 
   const results = await plugin.retrieve({
     taskId: "task_focus",

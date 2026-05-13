@@ -38,6 +38,12 @@ type WorkerMessage =
   | { readonly type: "status"; readonly status: WSStatus }
   | { readonly type: "event"; readonly event: WSEventEnvelope };
 
+function detachTimer(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
+  if (typeof timer === "object" && timer !== null && "unref" in timer && typeof timer.unref === "function") {
+    timer.unref();
+  }
+}
+
 export class InMemoryWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
@@ -246,7 +252,9 @@ export class BrowserWSClient implements WSClient {
       this.heartbeatDeadlineTimer = setTimeout(() => {
         this.socket?.close();
       }, timeoutMs);
+      detachTimer(this.heartbeatDeadlineTimer);
     }, intervalMs);
+    detachTimer(this.heartbeatTimer);
   }
 
   private stopHeartbeat(): void {
@@ -285,6 +293,7 @@ export class BrowserWSClient implements WSClient {
         this.establishConnection(this.currentUrl, this.currentToken);
       }
     }, delay);
+    detachTimer(this.reconnectTimer);
   }
 
   private clearReconnectTimer(): void {

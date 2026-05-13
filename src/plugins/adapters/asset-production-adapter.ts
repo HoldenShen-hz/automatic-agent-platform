@@ -10,14 +10,13 @@ import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
 
-// R28-14 fix: add auth check and egress policy to asset-production-adapter
-let credentialFingerprint: string | null = null;
 const assetProductionPolicy = new NetworkEgressPolicyService({
   mode: "enforce",
   allowedDomains: ["api.figma.com", "cdn.figma.com"],
 });
 
 export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
+  let credentialFingerprint: string | null = null;
   return {
     pluginId: "plugin.assetproduction.figma_adapter",
     spiType: "adapter",
