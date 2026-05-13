@@ -17,6 +17,8 @@ export interface MultiStepToolExecutionInput {
   request: string;
   /** Optional deterministic task id for harness/runtime contract tests. */
   taskId?: string;
+  /** Optional canonical harness run id when executing a pre-built P3 plan graph bundle. */
+  harnessRunId?: string;
   /** Optional tenant scope for the created task (R4-27 fix) */
   tenantId?: string | null;
   contextBudgetTokens?: number;

@@ -398,6 +398,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         constraintPackRef: `constraint_pack:${plannedWorkflow.workflow.divisionId}`,
         versionLockId: newId("version_lock"),
         budgetLedgerId: input.budgetLedgerId ?? newId("bledger"),
+        ...(input.harnessRunId == null ? {} : { harnessRunId: input.harnessRunId }),
         status: "created",
       });
       const harnessRunId = harnessRun.harnessRunId;
@@ -431,6 +432,32 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           harnessRun.updatedAt,
           harnessRun.fencingToken,
         );
+      store.event.insertEvent({
+        id: newId("evt"),
+        taskId,
+        executionId: null,
+        eventType: "platform.harness_run.status_changed",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          harnessRunId,
+          fromStatus: null,
+          toStatus: "created",
+          planGraphBundleId: input.harnessRunId ?? null,
+        }),
+        traceId,
+        createdAt: nowIso(),
+        schemaVersion: "1.0",
+        aggregateId: harnessRunId,
+        runId: harnessRunId,
+        sequence: null,
+        causationId: null,
+        correlationId: taskId,
+        payloadHash: null,
+        idempotencyKey: `harness_run_created:${harnessRunId}`,
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
+      });
 
       if (harnessRun.budgetLedgerId) {
         const ledgerRow = db.connection.prepare(

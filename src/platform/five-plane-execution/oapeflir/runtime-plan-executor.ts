@@ -18,6 +18,7 @@ export async function executeOapeflirRuntimePlan(
   return runMultiStepOrchestration({
     dbPath: input.dbPath,
     taskId: input.planGraphBundle.planGraphBundleId,
+    harnessRunId: input.planGraphBundle.harnessRunId,
     title: input.planGraphBundle.planGraphBundleId,
     request: serialisePlanGraphBundle(input.planGraphBundle),
     ...(input.contextBudgetTokens == null ? {} : { contextBudgetTokens: input.contextBudgetTokens }),

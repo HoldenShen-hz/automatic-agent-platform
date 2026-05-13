@@ -807,10 +807,17 @@ export class DurableEventBus {
         return;
       }
       void this.enqueueDelivery(consumerId, true).finally(() => {
-        if (!this.disposed && this.subscribers.has(consumerId)) {
-          const queueDepth = this.pendingForConsumer(consumerId).length;
-          const interval = this.calculatePollingInterval(consumerId, queueDepth);
-          this.schedulePollingTick(consumerId, interval);
+        try {
+          if (!this.disposed && this.subscribers.has(consumerId)) {
+            const queueDepth = this.pendingForConsumer(consumerId).length;
+            const interval = this.calculatePollingInterval(consumerId, queueDepth);
+            this.schedulePollingTick(consumerId, interval);
+          }
+        } catch (err) {
+          eventBusLogger.warn("event_bus.polling_tick_error", {
+            consumerId,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       });
     }, delayMs);
