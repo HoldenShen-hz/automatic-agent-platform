@@ -28,7 +28,7 @@ function buildCompatibilityResult(
       writable: false,
     },
   });
-  return flattenedPolicy as PolicyResolutionResult & Record<string, unknown>;
+  return flattenedPolicy as unknown as PolicyResolutionResult & Record<string, unknown>;
 }
 
 export function resolveCompliancePolicyForNode(

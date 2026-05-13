@@ -151,11 +151,11 @@ test("PromptVersionManager.compareVersions handles patch versions", () => {
   assert.equal(manager.compareVersions("v1.0.10", "v1.0.9"), 1);
 });
 
-test("PromptVersionManager.compareVersions treats version without patch as less than with patch", () => {
+test("PromptVersionManager.compareVersions treats missing patch as equivalent to .0", () => {
   const manager = new PromptVersionManager();
 
   assert.ok(manager.compareVersions("v1.0", "v1.0.1") < 0);
-  assert.ok(manager.compareVersions("v1.0.0", "v1.0") > 0);
+  assert.equal(manager.compareVersions("v1.0.0", "v1.0"), 0);
 });
 
 // =============================================================================
@@ -399,13 +399,15 @@ test("PromptVersionManager.listBundleVersions returns version metadata", () => {
 
   assert.equal(versions.length, 2);
 
-  const v1 = versions.find((v) => v.version === "v1.0");
-  const v2 = versions.find((v) => v.version === "v2.0");
+  const v1 = versions.find((v) => v.version === 100);
+  const v2 = versions.find((v) => v.version === 200);
 
   assert.ok(v1 !== undefined);
   assert.ok(v2 !== undefined);
+  assert.equal(v1!.displayVersion, undefined);
   assert.equal(v1!.isCurrent, false);
   assert.equal(v1!.trafficWeight, 100);
+  assert.equal(v2!.displayVersion, undefined);
   assert.equal(v2!.isCurrent, true);
   assert.equal(v2!.trafficWeight, 75);
 });

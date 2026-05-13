@@ -31,7 +31,7 @@ const artifact: ArtifactRef = {
 };
 
 function createMachine(): RuntimeStateMachine {
-  return new RuntimeStateMachine();
+  return new RuntimeStateMachine({ persistEvent: () => {} });
 }
 
 function makeCommand<T extends import("../../../../../src/platform/five-plane-execution/runtime-state-machine.js").RuntimeStateAggregate>(
@@ -166,7 +166,7 @@ test("RuntimeStateMachine validates NodeRun allowed transitions", () => {
     toStatus: "leased",
     expectedSeq: 0,
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: "node-1-fence",
     traceId: "trace-1",
     tenantId: "tenant-1",
     reasonCode: "lease_granted",
@@ -175,7 +175,7 @@ test("RuntimeStateMachine validates NodeRun allowed transitions", () => {
 
   assert.equal(result.aggregate.status, "leased");
   assert.equal(result.aggregate.leaseId, "lease-1");
-  assert.equal(result.aggregate.fencingToken, "fence-1");
+  assert.equal(result.aggregate.fencingToken, "node-1-fence");
 });
 
 test("RuntimeStateMachine rejects invalid NodeRun transition", () => {
@@ -539,7 +539,7 @@ test("RuntimeStateMachine seals HarnessRun terminal states (failed)", () => {
   );
 });
 
-test("RuntimeStateMachine seals HarnessRun terminal states (aborted)", () => {
+test("RuntimeStateMachine allows compatibility reopen from aborted to paused", () => {
   const machine = createMachine();
   const aborted = createHarnessRun({
     harnessRunId: "run-1",
@@ -554,21 +554,21 @@ test("RuntimeStateMachine seals HarnessRun terminal states (aborted)", () => {
     currentSeq: 3,
   });
 
-  assert.throws(
-    () =>
-      machine.transition({
-        aggregateType: "HarnessRun",
-        aggregate: aborted,
-        fromStatus: "aborted",
-        toStatus: "paused",
-        expectedSeq: 3,
-        traceId: "trace-1",
-        tenantId: "tenant-1",
-        reasonCode: "illegal_resume",
-        emittedBy: "test",
-      }),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.invalid_transition",
-  );
+  const result = machine.transition({
+    aggregateType: "HarnessRun",
+    aggregate: aborted,
+    fromStatus: "aborted",
+    toStatus: "paused",
+    expectedSeq: 3,
+    traceId: "trace-1",
+    tenantId: "tenant-1",
+    reasonCode: "compatibility_resume",
+    emittedBy: "test",
+    fencingToken: "fence:run-1:3",
+    auditRef: "audit://run-1/compatibility-resume",
+  });
+
+  assert.equal(result.aggregate.status, "paused");
 });
 
 test("RuntimeStateMachine seals NodeRun terminal states", () => {
@@ -896,7 +896,7 @@ test("RuntimeStateMachine requires lease and fencing for HarnessRun status trans
     currentSeq: 1,
   });
 
-  // Missing leaseId and fencingToken for "admitted" transition
+  // Critical HarnessRun transitions now require fencing.
   assert.throws(
     () =>
       machine.transition({
@@ -913,7 +913,7 @@ test("RuntimeStateMachine requires lease and fencing for HarnessRun status trans
         policyGuard: { allowed: true, policyProofRef: "proof-1" },
         auditRef: "audit://run-1/planning",
       }),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.lease_and_fencing_required",
+    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.harness_fencing_required",
   );
 });
 
@@ -930,7 +930,7 @@ test("RuntimeStateMachine requires lease and fencing for SideEffectRecord commit
     status: "proposed",
   });
 
-  // Missing leaseId and fencingToken for "approved" (commit-affecting)
+  // Commit-affecting side-effect transitions require an active lease and fencing token.
   assert.throws(
     () =>
       machine.transition({
@@ -945,7 +945,7 @@ test("RuntimeStateMachine requires lease and fencing for SideEffectRecord commit
         sideEffectSafety: { preCommitPolicyProofRef: "proof-1" },
         auditRef: "audit://side-effect-1/approved",
       }),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.lease_and_fencing_required",
+    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.side_effect_fencing_required",
   );
 });
 
@@ -1052,7 +1052,7 @@ test("RuntimeStateMachine accepts alternate leaseId for HarnessRun when required
   assert.equal(result.aggregate.status, "paused");
 });
 
-test("RuntimeStateMachine accepts alternate fencingToken for HarnessRun when required fields are present", () => {
+test("RuntimeStateMachine rejects alternate fencingToken for HarnessRun when active fencing exists", () => {
   const machine = createMachine();
   const run = createHarnessRun({
     harnessRunId: "run-1",
@@ -1069,25 +1069,27 @@ test("RuntimeStateMachine accepts alternate fencingToken for HarnessRun when req
     fencingToken: "active-fence",
   });
 
-  const result = machine.transition({
-    aggregateType: "HarnessRun",
-    aggregate: run,
-    fromStatus: "running",
-    toStatus: "paused",
-    expectedSeq: 5,
-    leaseId: "active-lease",
-    fencingToken: "wrong-fence",
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "pause",
-    emittedBy: "controller",
-    auditRef: "audit://run-1/paused",
-  });
-
-  assert.equal(result.aggregate.status, "paused");
+  assert.throws(
+    () =>
+      machine.transition({
+        aggregateType: "HarnessRun",
+        aggregate: run,
+        fromStatus: "running",
+        toStatus: "paused",
+        expectedSeq: 5,
+        leaseId: "active-lease",
+        fencingToken: "wrong-fence",
+        traceId: "trace-1",
+        tenantId: "tenant-1",
+        reasonCode: "pause",
+        emittedBy: "controller",
+        auditRef: "audit://run-1/paused",
+      }),
+    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.harness_fencing_token_mismatch",
+  );
 });
 
-test("RuntimeStateMachine accepts alternate leaseId for SideEffectRecord when required fields are present", () => {
+test("RuntimeStateMachine rejects alternate leaseId for SideEffectRecord when active lease exists", () => {
   const machine = createMachine();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",
@@ -1102,25 +1104,27 @@ test("RuntimeStateMachine accepts alternate leaseId for SideEffectRecord when re
     fencingToken: "active-fence",
   });
 
-  const result = machine.transition({
-    aggregateType: "SideEffectRecord",
-    aggregate: sideEffect,
-    fromStatus: "committing",
-    toStatus: "committed",
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "commit",
-    emittedBy: "side-effect-manager",
-    leaseId: "wrong-lease",
-    fencingToken: "active-fence",
-    sideEffectSafety: { preCommitPolicyProofRef: "proof-1" },
-    auditRef: "audit://side-effect-1/committed",
-  });
-
-  assert.equal(result.aggregate.status, "committed");
+  assert.throws(
+    () =>
+      machine.transition({
+        aggregateType: "SideEffectRecord",
+        aggregate: sideEffect,
+        fromStatus: "committing",
+        toStatus: "committed",
+        traceId: "trace-1",
+        tenantId: "tenant-1",
+        reasonCode: "commit",
+        emittedBy: "side-effect-manager",
+        leaseId: "wrong-lease",
+        fencingToken: "active-fence",
+        sideEffectSafety: { preCommitPolicyProofRef: "proof-1" },
+        auditRef: "audit://side-effect-1/committed",
+      }),
+    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.side_effect_lease_mismatch",
+  );
 });
 
-test("RuntimeStateMachine accepts alternate fencingToken for SideEffectRecord when required fields are present", () => {
+test("RuntimeStateMachine rejects alternate fencingToken for SideEffectRecord when active fencing exists", () => {
   const machine = createMachine();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",
@@ -1135,22 +1139,24 @@ test("RuntimeStateMachine accepts alternate fencingToken for SideEffectRecord wh
     fencingToken: "active-fence",
   });
 
-  const result = machine.transition({
-    aggregateType: "SideEffectRecord",
-    aggregate: sideEffect,
-    fromStatus: "committing",
-    toStatus: "committed",
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "commit",
-    emittedBy: "side-effect-manager",
-    leaseId: "active-lease",
-    fencingToken: "wrong-fence",
-    sideEffectSafety: { preCommitPolicyProofRef: "proof-1" },
-    auditRef: "audit://side-effect-1/committed",
-  });
-
-  assert.equal(result.aggregate.status, "committed");
+  assert.throws(
+    () =>
+      machine.transition({
+        aggregateType: "SideEffectRecord",
+        aggregate: sideEffect,
+        fromStatus: "committing",
+        toStatus: "committed",
+        traceId: "trace-1",
+        tenantId: "tenant-1",
+        reasonCode: "commit",
+        emittedBy: "side-effect-manager",
+        leaseId: "active-lease",
+        fencingToken: "wrong-fence",
+        sideEffectSafety: { preCommitPolicyProofRef: "proof-1" },
+        auditRef: "audit://side-effect-1/committed",
+      }),
+    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.side_effect_fencing_token_mismatch",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -1398,7 +1404,7 @@ test("RuntimeStateMachine event includes runVersionLockId when provided", () => 
 // BudgetLedger Budget-Modifying Transitions
 // ---------------------------------------------------------------------------
 
-test("RuntimeStateMachine requires lease and fencing for BudgetLedger budget-modifying transitions", () => {
+test("RuntimeStateMachine allows BudgetLedger budget-modifying transitions without lease or fencing", () => {
   const machine = createMachine();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -1408,22 +1414,19 @@ test("RuntimeStateMachine requires lease and fencing for BudgetLedger budget-mod
     version: 0,
   });
 
-  // soft_cap_reached is a budget-modifying transition
-  assert.throws(
-    () =>
-      machine.transition({
-        aggregateType: "BudgetLedger",
-        aggregate: ledger,
-        fromStatus: "open",
-        toStatus: "soft_cap_reached",
-        expectedVersion: 0,
-        traceId: "trace-1",
-        tenantId: "tenant-1",
-        reasonCode: "soft_cap",
-        emittedBy: "budget-allocator",
-      }),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "runtime_state_machine.lease_and_fencing_required",
-  );
+  const result = machine.transition({
+    aggregateType: "BudgetLedger",
+    aggregate: ledger,
+    fromStatus: "open",
+    toStatus: "soft_cap_reached",
+    expectedVersion: 0,
+    traceId: "trace-1",
+    tenantId: "tenant-1",
+    reasonCode: "soft_cap",
+    emittedBy: "budget-allocator",
+  });
+
+  assert.equal(result.aggregate.status, "soft_cap_reached");
 });
 
 test("RuntimeStateMachine accepts alternate leaseId for BudgetLedger when required fields are present", () => {

@@ -43,19 +43,17 @@ test("ControlDirective type is deprecated via JSDoc @deprecated marker", () => {
         tenantId: null,
         executionId: null,
         metadata: {},
-      }),
+    }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+      error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createControlDirective rejects all directive kinds with the legacy contract rejection code", () => {
-  const kinds: Array<"pause" | "resume" | "cancel" | "rollback" | "escalate"> = [
+  const kinds: Array<"pause" | "resume" | "cancel"> = [
     "pause",
     "resume",
     "cancel",
-    "rollback",
-    "escalate",
   ];
 
   for (const kind of kinds) {
@@ -71,7 +69,7 @@ test("createControlDirective rejects all directive kinds with the legacy contrac
           metadata: {},
         }),
       (error: unknown) =>
-        error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+        error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
       `kind '${kind}' should be rejected`,
     );
   }

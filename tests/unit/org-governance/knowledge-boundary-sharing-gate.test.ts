@@ -158,7 +158,7 @@ test("evaluateKnowledgeShare allows valid non-expired grant via date comparison"
   assert.strictEqual(result?.matchedGrantId, "grant_valid");
 });
 
-test("evaluateKnowledgeShare allows grant when expiresAt is null/undefined", () => {
+test("evaluateKnowledgeShare rejects grant when expiresAt is an empty string", () => {
   const boundary: KnowledgeBoundary = {
     boundaryId: "kb_1",
     ownerOrgNodeId: "org_owner",
@@ -170,11 +170,11 @@ test("evaluateKnowledgeShare allows grant when expiresAt is null/undefined", () 
       boundaryId: "kb_1",
       requesterOrgNodeId: "org_requester",
       purpose: "research",
-      expiresAt: "", // empty string - falsy, should be treated as no expiry
+      expiresAt: "",
     },
   ];
 
   const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.deepStrictEqual(result, { mode: "summary" });
+  assert.strictEqual(result, null);
 });

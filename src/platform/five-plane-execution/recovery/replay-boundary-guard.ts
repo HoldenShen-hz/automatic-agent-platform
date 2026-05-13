@@ -18,19 +18,14 @@ export interface ReplayBoundaryDecision {
 
 export class ReplayBoundaryGuard {
   public evaluate(mode: ReplayMode, operations: readonly ReplayOperation[]): ReplayBoundaryDecision {
-    // trace_replay blocks real side effects; projection_replay allows them only for projections.
+    // Replay modes must not trigger real side effects. Projection replay is the
+    // only exception, and only for projection resources.
     const realSideEffectIds = operations
       .filter((operation) => {
         if (!operation.hasRealSideEffect) {
           return false;
         }
-        if (mode === "trace_replay") {
-          return true;
-        }
-        if (mode === "projection_replay") {
-          return operation.resourceKind !== "projection";
-        }
-        return false;
+        return mode !== "projection_replay" || operation.resourceKind !== "projection";
       })
       .map((operation) => operation.operationId);
     if (realSideEffectIds.length > 0) {

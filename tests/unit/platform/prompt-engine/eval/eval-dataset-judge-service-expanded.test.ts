@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EvalDatasetJudgeService } from "../../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
-import type { EvalDatasetCase, EvalCasePriority } from "../../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
+import type {
+  EvalCasePriority,
+  EvalCaseSubmission,
+  EvalDatasetCase,
+} from "../../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
 
 function generateCasesByPriority(
   priority: EvalCasePriority,
@@ -50,12 +54,44 @@ function generateCasesByPriority(
   return cases;
 }
 
-function createMinimalDataset(service: EvalDatasetJudgeService): void {
+function buildPassingResults(
+  cases: readonly EvalDatasetCase[],
+  customize?: (input: { testCase: EvalDatasetCase; index: number; submission: EvalCaseSubmission }) => EvalCaseSubmission,
+): EvalCaseSubmission[] {
+  return cases.map((testCase, index) => {
+    const criterion = testCase.qualityCriteria[0];
+    let output = testCase.expectedOutput ?? "ok";
+    let criterionSignals: Record<string, number> | undefined;
+
+    switch (criterion?.type) {
+      case "contains":
+        output = String((criterion.config.substring as string | undefined) ?? "ok");
+        break;
+      case "json_schema":
+        output = { ...(typeof testCase.expectedOutput === "object" && testCase.expectedOutput != null ? testCase.expectedOutput as Record<string, unknown> : {}), extra: "data" };
+        break;
+      case "llm_judge":
+        output = "ok";
+        criterionSignals = { [criterion.criterionId]: 0.9 };
+        break;
+      default:
+        break;
+    }
+
+    const submission: EvalCaseSubmission = {
+      caseId: testCase.caseId,
+      output,
+      criterionSignals,
+    };
+    return customize?.({ testCase, index, submission }) ?? submission;
+  });
+}
+
+function createMinimalDataset(service: EvalDatasetJudgeService): EvalDatasetCase[] {
   const cases: EvalDatasetCase[] = [
     ...generateCasesByPriority("critical", 200, "ds1-", "exact_match"),
-    ...generateCasesByPriority("critical", 100, "ds1-", "contains"),
-    ...generateCasesByPriority("standard", 50, "ds1-", "json_schema"),
-    ...generateCasesByPriority("standard", 20, "ds1-", "llm_judge"),
+    ...generateCasesByPriority("standard", 50, "ds1-json-", "json_schema"),
+    ...generateCasesByPriority("standard", 50, "ds1-judge-", "llm_judge"),
   ];
 
   service.registerDataset({
@@ -67,11 +103,20 @@ function createMinimalDataset(service: EvalDatasetJudgeService): void {
     cases,
   });
   service.activateDataset("test-dataset");
+  service.registerJudge({
+    judgeId: "minimal-dataset-judge",
+    provider: "anthropic",
+    providerFamily: "anthropic",
+    modelId: "claude-judge",
+    maxCostUsd: 0.01,
+    status: "ready",
+  });
+  return cases;
 }
 
-function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string): void {
+function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string): EvalDatasetCase[] {
   const cases: EvalDatasetCase[] = [
-    ...generateCasesByPriority("standard", 20, `${datasetId}-`, "exact_match"),
+    ...generateCasesByPriority("standard", 50, `${datasetId}-`, "exact_match"),
   ];
 
   service.registerDataset({
@@ -83,6 +128,7 @@ function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string)
     cases,
   });
   service.activateDataset(datasetId);
+  return cases;
 }
 
 test("EvalDatasetJudgeService registerDataset throws on duplicate datasetId", () => {
@@ -107,7 +153,7 @@ test("EvalDatasetJudgeService registerDataset throws on insufficient samples per
         createdBy: "quality",
         cases: generateCasesByPriority("critical", 10, "insuff-", "exact_match"),
       }),
-    /at least 200 critical priority cases/,
+    /requires at least 200 samples/,
   );
 });
 
@@ -122,7 +168,7 @@ test("EvalDatasetJudgeService registerDataset throws on duplicate caseId", () =>
         stage: "assess",
         createdBy: "quality",
         cases: [
-          ...generateCasesByPriority("standard", 20, "dup-", "exact_match"),
+          ...generateCasesByPriority("standard", 50, "dup-", "exact_match"),
           {
             caseId: "dup-standard-0",
             input: {},
@@ -163,22 +209,18 @@ test("EvalDatasetJudgeService evaluateDataset throws on inactive dataset", () =>
 
 test("EvalDatasetJudgeService evaluateDataset succeeds with full dataset", () => {
   const service = new EvalDatasetJudgeService();
-  createMinimalDataset(service);
+  const cases = createMinimalDataset(service);
 
   const report = service.evaluateDataset({
     datasetId: "test-dataset",
     candidateProvider: "openai",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-test",
-    results: [
-      { caseId: "ds1-critical-0", output: "ok" },
-      { caseId: "ds1-high-0", output: "ok" },
-      { caseId: "ds1-medium-0", output: { status: "ok" } },
-      { caseId: "ds1-standard-0", output: "ok", criterionSignals: { "llm-ds1-standard-0": 0.9 } },
-    ],
+    results: buildPassingResults(cases),
   });
 
-  assert.ok(report.caseResults.length > 0);
+  assert.equal(report.gateDecision, "promote");
+  assert.equal(report.caseResults.length, cases.length);
 });
 
 test("EvalDatasetJudgeService evaluateDataset exact_match criterion", () => {
@@ -213,7 +255,7 @@ test("EvalDatasetJudgeService evaluateDataset exact_match criterion fails", () =
 
 test("EvalDatasetJudgeService evaluateDataset contains criterion", () => {
   const service = new EvalDatasetJudgeService();
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "contains-", "contains");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "contains-", "contains");
   service.registerDataset({
     datasetId: "contains-test",
     name: "Contains Test",
@@ -237,7 +279,7 @@ test("EvalDatasetJudgeService evaluateDataset contains criterion", () => {
 
 test("EvalDatasetJudgeService evaluateDataset contains criterion fails", () => {
   const service = new EvalDatasetJudgeService();
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "contains-fail-", "contains");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "contains-fail-", "contains");
   service.registerDataset({
     datasetId: "contains-fail-test",
     name: "Contains Fail Test",
@@ -261,7 +303,7 @@ test("EvalDatasetJudgeService evaluateDataset contains criterion fails", () => {
 
 test("EvalDatasetJudgeService evaluateDataset json_schema criterion", () => {
   const service = new EvalDatasetJudgeService();
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "json-", "json_schema");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "json-", "json_schema");
   service.registerDataset({
     datasetId: "json-test",
     name: "JSON Test",
@@ -285,7 +327,7 @@ test("EvalDatasetJudgeService evaluateDataset json_schema criterion", () => {
 
 test("EvalDatasetJudgeService evaluateDataset json_schema criterion fails when key missing", () => {
   const service = new EvalDatasetJudgeService();
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "json-fail-", "json_schema");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "json-fail-", "json_schema");
   service.registerDataset({
     datasetId: "json-fail-test",
     name: "JSON Fail Test",
@@ -325,14 +367,14 @@ test("EvalDatasetJudgeService evaluateDataset adds missing_case_result blocking 
 
 test("EvalDatasetJudgeService evaluateDataset applies custom gate policy", () => {
   const service = new EvalDatasetJudgeService();
-  createSmallDataset(service, "gate-policy-test");
+  const cases = createSmallDataset(service, "gate-policy-test");
 
   const report = service.evaluateDataset({
     datasetId: "gate-policy-test",
     candidateProvider: "openai",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-test",
-    results: [{ caseId: "gate-policy-test-standard-0", output: "ok" }],
+    results: buildPassingResults(cases),
     gatePolicy: {
       minPassRate: 1,
       requireCriticalPass: true,
@@ -347,7 +389,7 @@ test("EvalDatasetJudgeService evaluateDataset applies custom gate policy", () =>
 
 test("EvalDatasetJudgeService evaluateDataset applies baseline regression checks", () => {
   const service = new EvalDatasetJudgeService();
-  createSmallDataset(service, "baseline-test");
+  const cases = createSmallDataset(service, "baseline-test");
 
   const report = service.evaluateDataset({
     datasetId: "baseline-test",
@@ -359,7 +401,12 @@ test("EvalDatasetJudgeService evaluateDataset applies baseline regression checks
       averageCostUsd: 0.001,
       weightedQualityScore: 1.0,
     },
-    results: [{ caseId: "baseline-test-standard-0", output: "ok", latencyMs: 100, costUsd: 0.01 }],
+    results: buildPassingResults(cases, ({ index, submission }) => ({
+      ...submission,
+      output: index < 3 ? "wrong" : submission.output,
+      latencyMs: 100,
+      costUsd: 0.01,
+    })),
   });
 
   assert.ok(report.blockingFindings.some((f) => f.startsWith("latency_regressed")));
@@ -512,7 +559,7 @@ test("EvalDatasetJudgeService suggestJudges excludes non-ready judges", () => {
 
 test("EvalDatasetJudgeService evaluateDataset with llm_judge criterion uses judge signals", () => {
   const service = new EvalDatasetJudgeService();
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "llm-", "llm_judge");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "llm-", "llm_judge");
   service.registerDataset({
     datasetId: "llm-judge-ds",
     name: "LLM Judge DS",
@@ -536,7 +583,7 @@ test("EvalDatasetJudgeService evaluateDataset with llm_judge criterion uses judg
     candidateProvider: "openai",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-test",
-    results: [{ caseId: "llm-standard-0", output: "answer", criterionSignals: { "llm-llm-standard-0": 0.9 } }],
+    results: buildPassingResults(cases),
   });
 
   assert.equal(report.caseResults[0]?.criterionResults[0]?.score, 0.9);

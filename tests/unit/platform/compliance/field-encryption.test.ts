@@ -44,8 +44,8 @@ test("FieldEncryptionService uses AES-256-GCM encryption format", () => {
   const parts = protectedSecret.split(":");
   assert.equal(parts.length, 5, "AES-256-GCM format should have 5 parts: fingerprint:iv:authTag:ciphertext");
 
-  // IV should be 24 hex chars (96 bits / 4 = 24)
-  assert.equal(parts[1].length, 12, "fingerprint should be 12 hex chars");
+  // Fingerprint defaults to a 32-hex-character prefix of the keyRef digest.
+  assert.equal(parts[1].length, 32, "fingerprint should be 32 hex chars");
 
   // IV should be 24 hex chars (96 bits / 4 = 24)
   assert.equal(parts[2].length, 24, "IV should be 24 hex chars for 96-bit GCM IV");

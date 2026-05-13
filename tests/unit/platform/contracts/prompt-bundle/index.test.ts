@@ -135,17 +135,17 @@ test("validatePromptBundleRegistrationInput rejects empty required fields", () =
   );
 });
 
-test("validatePromptBundleRegistrationInput rejects non-positive integer version", () => {
+test("createPromptBundle rejects non-positive integer version during normalization", () => {
   assert.throws(
     () =>
-      validatePromptBundleRegistrationInput(
+      createPromptBundle(
         createRegistrationInput({ version: 0 }),
       ),
     ValidationError,
   );
   assert.throws(
     () =>
-      validatePromptBundleRegistrationInput(
+      createPromptBundle(
         createRegistrationInput({ version: 1.5 }),
       ),
     ValidationError,

@@ -28,7 +28,7 @@ test("resolveCompliancePolicyForNode returns denyByDefault=true for unknown node
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "unknown_node", policies);
-  assert.deepEqual(result.policy, {});
+  assert.deepEqual(result.policy, { _denyByDefault: true });
   assert.equal(result.denyByDefault, true);
 });
 
@@ -42,7 +42,7 @@ test("resolveCompliancePolicyForNode returns denyByDefault=true for node with no
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "team", policies);
-  assert.deepEqual(result.policy, {});
+  assert.deepEqual(result.policy, { _denyByDefault: true });
   assert.equal(result.denyByDefault, true);
 });
 
@@ -55,7 +55,7 @@ test("resolveCompliancePolicyForNode returns policy for single node without pare
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "company", policies);
-  assert.deepEqual(result.policy, { accessLevel: "admin" });
+  assert.deepEqual(result.policy, { accessLevel: "admin", _denyByDefault: false });
   assert.equal(result.denyByDefault, false);
 });
 
@@ -88,7 +88,7 @@ test("resolveCompliancePolicyForNode uses fallback when node has no policy", () 
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "team", policies);
-  assert.deepEqual(result.policy, { inherited: "yes" });
+  assert.deepEqual(result.policy, { inherited: "yes", _denyByDefault: false });
   assert.equal(result.denyByDefault, false);
 });
 
@@ -101,7 +101,7 @@ test("resolveCompliancePolicyForNode handles missing parent gracefully", () => {
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "child", policies);
-  assert.deepEqual(result.policy, { value: 42 });
+  assert.deepEqual(result.policy, { value: 42, _denyByDefault: false });
   assert.equal(result.denyByDefault, false);
 });
 
@@ -110,6 +110,6 @@ test("resolveCompliancePolicyForNode handles empty nodes array", () => {
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "any_node", policies);
-  assert.deepEqual(result.policy, {});
+  assert.deepEqual(result.policy, { _denyByDefault: true });
   assert.equal(result.denyByDefault, true);
 });

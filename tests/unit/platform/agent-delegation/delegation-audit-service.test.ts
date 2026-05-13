@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { DelegationAuditService } from "../../../../src/platform/orchestration/agent-delegation/delegation-audit-service.js";
 
+function createService(): DelegationAuditService {
+  return new DelegationAuditService(mkdtempSync(join(tmpdir(), "delegation-audit-test-")));
+}
+
 test("DelegationAuditService.record creates audit event with id and timestamp", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.record({
     eventType: "delegation.created",
@@ -24,7 +31,7 @@ test("DelegationAuditService.record creates audit event with id and timestamp", 
 });
 
 test("DelegationAuditService.recordGovernanceEvaluation records governance.denied for deny decision", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordGovernanceEvaluation({
     delegationId: null,
@@ -42,7 +49,7 @@ test("DelegationAuditService.recordGovernanceEvaluation records governance.denie
 });
 
 test("DelegationAuditService.recordGovernanceEvaluation records governance.evaluated for require_approval decision", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordGovernanceEvaluation({
     delegationId: null,
@@ -60,7 +67,7 @@ test("DelegationAuditService.recordGovernanceEvaluation records governance.evalu
 });
 
 test("DelegationAuditService.recordGovernanceEvaluation records governance.approved for allow decision", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordGovernanceEvaluation({
     delegationId: null,
@@ -78,7 +85,7 @@ test("DelegationAuditService.recordGovernanceEvaluation records governance.appro
 });
 
 test("DelegationAuditService.recordDelegationCreated records delegation.created event", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordDelegationCreated({
     delegationId: "dlg-1",
@@ -95,7 +102,7 @@ test("DelegationAuditService.recordDelegationCreated records delegation.created 
 });
 
 test("DelegationAuditService.recordDelegationCompleted records delegation.completed event", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordDelegationCompleted({
     delegationId: "dlg-1",
@@ -111,7 +118,7 @@ test("DelegationAuditService.recordDelegationCompleted records delegation.comple
 });
 
 test("DelegationAuditService.recordDelegationFailed records delegation.failed event", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordDelegationFailed({
     delegationId: "dlg-1",
@@ -127,7 +134,7 @@ test("DelegationAuditService.recordDelegationFailed records delegation.failed ev
 });
 
 test("DelegationAuditService.recordPermissionNarrowed records delegation.permission_narrowed event", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   const event = service.recordPermissionNarrowed({
     delegationId: "dlg-1",
@@ -145,7 +152,7 @@ test("DelegationAuditService.recordPermissionNarrowed records delegation.permiss
 });
 
 test("DelegationAuditService.getByDelegation returns events for specific delegation", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   service.recordDelegationCreated({
     delegationId: "dlg-1",
@@ -180,7 +187,7 @@ test("DelegationAuditService.getByDelegation returns events for specific delegat
 });
 
 test("DelegationAuditService.getByAgent returns events for specific agent", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   service.record({
     eventType: "delegation.created",
@@ -212,7 +219,7 @@ test("DelegationAuditService.getByAgent returns events for specific agent", () =
 });
 
 test("DelegationAuditService.getRecentEvents returns events sorted by createdAt descending", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   // Create events with slight delay
   service.record({
@@ -244,7 +251,7 @@ test("DelegationAuditService.getRecentEvents returns events sorted by createdAt 
 });
 
 test("DelegationAuditService.getRecentEvents respects limit parameter", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   for (let i = 0; i < 5; i++) {
     service.record({
@@ -265,7 +272,7 @@ test("DelegationAuditService.getRecentEvents respects limit parameter", () => {
 });
 
 test("DelegationAuditService.getSummary returns correct counts", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   service.recordDelegationCreated({
     delegationId: "dlg-1",
@@ -304,7 +311,7 @@ test("DelegationAuditService.getSummary returns correct counts", () => {
 });
 
 test("DelegationAuditService.getSummary includes lastEventAt", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   assert.equal(service.getSummary().lastEventAt, null);
 
@@ -325,7 +332,7 @@ test("DelegationAuditService.getSummary includes lastEventAt", () => {
 });
 
 test("DelegationAuditService.listEvents returns all events", () => {
-  const service = new DelegationAuditService();
+  const service = createService();
 
   service.record({
     eventType: "delegation.created",

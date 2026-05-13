@@ -72,8 +72,13 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
 
 export function listAncestorNodeIds(nodes: readonly OrgNode[], nodeId: string): string[] {
   const ancestors: string[] = [];
+  const visited = new Set<string>();
   let current = nodes.find((item) => item.orgNodeId === nodeId) ?? null;
   while (current?.parentOrgNodeId != null) {
+    if (visited.has(current.orgNodeId)) {
+      throw new Error(`org_hierarchy.circular_reference:${current.orgNodeId}`);
+    }
+    visited.add(current.orgNodeId);
     ancestors.push(current.parentOrgNodeId);
     current = nodes.find((item) => item.orgNodeId === current?.parentOrgNodeId) ?? null;
   }

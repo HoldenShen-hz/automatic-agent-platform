@@ -24,6 +24,7 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", "http://www.w3.org/2000/09/xmldsig#rsa-sha1"] as const;
 export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
+const ASSERTION_REPLAY_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Validates XML signature using xml-crypto library
@@ -150,6 +151,15 @@ export class SamlService {
   private readonly providers = new Map<string, NormalizedSamlProviderConfig>();
   private readonly consumedAssertionIds = new Map<string, string>();
 
+  private pruneConsumedAssertionIds(now: Date): void {
+    const cutoff = now.getTime() - ASSERTION_REPLAY_TTL_MS;
+    for (const [replayKey, consumedAt] of this.consumedAssertionIds.entries()) {
+      if (new Date(consumedAt).getTime() <= cutoff) {
+        this.consumedAssertionIds.delete(replayKey);
+      }
+    }
+  }
+
   public registerProvider(config: SamlProviderConfig): void {
     this.providers.set(config.providerId, SamlProviderConfigSchema.parse(config));
   }
@@ -230,6 +240,7 @@ export class SamlService {
       }
     }
     if (assertion.assertionId) {
+      this.pruneConsumedAssertionIds(now);
       const replayKey = `${providerId}:${assertion.assertionId}`;
       if (this.consumedAssertionIds.has(replayKey)) {
         throw new Error(`saml.assertion_replayed:${providerId}`);

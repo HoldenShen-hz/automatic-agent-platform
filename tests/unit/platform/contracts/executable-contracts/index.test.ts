@@ -183,9 +183,16 @@ test("intake factories enforce confirmation before request envelope", () => {
     requestHash: "request-hash-1",
   });
 
-  assert.deepEqual(validateExecutableContract("TaskDraft", draft), draft);
-  assert.deepEqual(validateExecutableContract("ConfirmedTaskSpec", confirmed), confirmed);
-  assert.deepEqual(validateExecutableContract("RequestEnvelope", envelope), envelope);
+  const validatedDraft = validateExecutableContract("TaskDraft", draft);
+  const validatedConfirmed = validateExecutableContract("ConfirmedTaskSpec", confirmed);
+  const validatedEnvelope = validateExecutableContract("RequestEnvelope", envelope);
+
+  assert.equal(validatedDraft.taskDraftId, draft.taskDraftId);
+  assert.equal(validatedDraft.tenantId, draft.tenantId);
+  assert.equal(validatedConfirmed.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
+  assert.equal(validatedConfirmed.confirmationReceipt.receiptId, "receipt-1");
+  assert.equal(validatedEnvelope.requestId, envelope.requestId);
+  assert.equal(validatedEnvelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
   assert.throws(() => validateExecutableContract("RequestEnvelope", { requestId: "" }), ValidationError);
 
   assert.equal(envelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);

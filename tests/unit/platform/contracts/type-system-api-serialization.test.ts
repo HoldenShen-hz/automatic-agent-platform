@@ -137,7 +137,7 @@ test("R6-13: canonical HarnessRun from executable-contracts has correct 14-statu
   });
 
   // Verify the HarnessRun has all required canonical fields
-  assert.strictEqual(harnessRun.harnessRunId.startsWith("hrun:"), true);
+  assert.strictEqual(harnessRun.harnessRunId.startsWith("hrun_"), true);
   assert.strictEqual(harnessRun.tenantId, "test-tenant");
   assert.strictEqual(harnessRun.orgId, "test-org");
   assert.strictEqual(harnessRun.status, "running");
@@ -281,7 +281,7 @@ test("R6-14: OperationalDirective and DecisionDirective are canonical replacemen
     reason: "Test pause directive",
   });
 
-  assert.strictEqual(opDirective.operationalDirectiveId.startsWith("opdir:"), true);
+  assert.strictEqual(opDirective.operationalDirectiveId.startsWith("opdir_"), true);
   assert.strictEqual(opDirective.type, "pause");
   assert.strictEqual(opDirective.scope.harnessRunId, "hrun-001");
 
@@ -299,7 +299,7 @@ test("R6-14: OperationalDirective and DecisionDirective are canonical replacemen
     reason: "Test approval",
   });
 
-  assert.strictEqual(decDirective.decisionDirectiveId.startsWith("decDir:"), true);
+  assert.strictEqual(decDirective.decisionDirectiveId.startsWith("decDir_"), true);
   assert.strictEqual(decDirective.type, "approve");
   assert.strictEqual(decDirective.targetRef, "target-001");
 });
@@ -407,7 +407,7 @@ test("R6-15: PlanGraphBundle is the canonical replacement with full graph struct
     riskProfile: { riskClass: "medium", reasons: ["multi-step-plan"] },
   });
 
-  assert.strictEqual(planGraphBundle.planGraphBundleId.startsWith("pgb:"), true);
+  assert.strictEqual(planGraphBundle.planGraphBundleId.startsWith("pgb_"), true);
   assert.strictEqual(planGraphBundle.graph.nodes.length, 2);
   assert.strictEqual(planGraphBundle.graph.edges.length, 1);
   assert.strictEqual(planGraphBundle.graph.nodes[0]!.nodeId, "node-001");
@@ -431,7 +431,7 @@ test("R6-17: updateTaskPayload schema includes all canonical HarnessRunStatus st
   assert.strictEqual(validStatuses.includes("ready"), true);
   assert.strictEqual(validStatuses.includes("paused"), true);
   assert.strictEqual(validStatuses.includes("resuming"), true);
-  assert.strictEqual(validStatuses.length, 16);
+  assert.strictEqual(validStatuses.length, 17);
 });
 
 // =============================================================================
@@ -465,7 +465,7 @@ test("R6-19: NodeRun uses nodeId for execution reference", () => {
   });
 
   assert.strictEqual(nodeRun.nodeId, "node-001");
-  assert.strictEqual(nodeRun.nodeRunId.startsWith("nrun:"), true);
+  assert.strictEqual(nodeRun.nodeRunId.startsWith("nrun_"), true);
 });
 
 // =============================================================================
@@ -512,10 +512,10 @@ test("R6-22: EdgePlanGraphBundle type alias points to canonical PlanGraph struct
   const nodes = edgePlan.planGraph.nodes;
   const edges = edgePlan.planGraph.edges;
 
-  assert.strictEqual(nodes[0]!.nodeId, "edge_node_0");
-  assert.strictEqual(nodes[1]!.nodeId, "edge_node_1");
-  assert.strictEqual(edges[0]!.fromNodeId, "edge_node_0");
-  assert.strictEqual(edges[0]!.toNodeId, "edge_node_1");
+  assert.strictEqual(nodes[0]!.nodeId, "edge_node_task-A");
+  assert.strictEqual(nodes[1]!.nodeId, "edge_node_task-B");
+  assert.strictEqual(edges[0]!.fromNodeId, "edge_node_task-A");
+  assert.strictEqual(edges[0]!.toNodeId, "edge_node_task-B");
 });
 
 // =============================================================================
@@ -558,6 +558,7 @@ test("R6-21 & R6-23: validateExecutableContract returns properly typed contract"
     deadline: new Date(Date.now() + 60000).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    version: 0,
   };
 
   // R6-23 fix: validateExecutableContract returns typed result
@@ -684,11 +685,11 @@ test("Contract Envelope: createContractEnvelope creates properly typed envelope"
     payload: { test: "data" },
   });
 
-  assert.strictEqual(envelope.envelopeId.startsWith("env:"), true);
+  assert.strictEqual(envelope.envelopeId.startsWith("env_"), true);
   assert.strictEqual(envelope.schemaVersion, "v4.3");
-  assert.strictEqual(envelope.commandId.startsWith("cmd:"), true);
-  assert.strictEqual(envelope.idempotencyKey.startsWith("idem:"), true);
-  assert.strictEqual(envelope.correlationId.startsWith("corr:"), true);
+  assert.strictEqual(envelope.commandId.startsWith("cmd_"), true);
+  assert.strictEqual(envelope.idempotencyKey.startsWith("idem_"), true);
+  assert.strictEqual(envelope.correlationId.startsWith("corr_"), true);
   assert.ok(envelope.timestamp);
   assert.strictEqual(envelope.signature, null); // No signature by default
   assert.deepStrictEqual(envelope.payload, { test: "data" });
@@ -773,11 +774,11 @@ test("RequestEnvelope: has all required fields per §5.3", () => {
     budgetIntent,
   });
 
-  assert.ok(requestEnvelope.requestId.startsWith("request:"));
+  assert.ok(requestEnvelope.requestId.startsWith("request_"));
   assert.strictEqual(requestEnvelope.confirmedTaskSpecId, "ctspec-001");
   assert.strictEqual(requestEnvelope.tenantId, "tenant-001");
   assert.strictEqual(requestEnvelope.priority, 0);
-  assert.ok(requestEnvelope.requestHash.startsWith("reqhash:"));
+  assert.ok(requestEnvelope.requestHash.startsWith("reqhash_"));
   assert.ok(requestEnvelope.submittedAt);
   assert.strictEqual(requestEnvelope.sourcePlane, undefined);
   assert.strictEqual(requestEnvelope.targetPlane, undefined);

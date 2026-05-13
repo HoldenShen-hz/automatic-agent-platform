@@ -121,7 +121,7 @@ test("ExecutionDeviationDetector.detect does not return deviation for non-timeou
   assert.equal(deviations.length, 0);
 });
 
-test("ExecutionDeviationDetector.detect handles multiple timeout signals", () => {
+test("ExecutionDeviationDetector.detect collapses multiple timeout signals into one deviation", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
@@ -134,7 +134,8 @@ test("ExecutionDeviationDetector.detect handles multiple timeout signals", () =>
 
   const deviations = detector.detect(plan, feedback);
 
-  assert.equal(deviations.length, 2);
+  assert.equal(deviations.length, 1);
+  assert.equal(deviations[0]!.reasonCode, "execution.timeout");
 });
 
 test("ExecutionDeviationDetector.detect includes correct detectedAt timestamp", () => {

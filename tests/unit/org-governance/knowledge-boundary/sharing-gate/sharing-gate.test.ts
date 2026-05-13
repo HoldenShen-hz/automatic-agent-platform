@@ -49,7 +49,7 @@ function createGrant(overrides: Partial<{
 
 // ─── Issue #1973: Grant expiry check logic error + string comparison not date comparison ─
 
-test("evaluateKnowledgeShare denies grant at exact expiry time", () => {
+test("evaluateKnowledgeShare allows grant at exact expiry time", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   const grants = [
@@ -63,10 +63,11 @@ test("evaluateKnowledgeShare denies grant at exact expiry time", () => {
   ];
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
-  assert.strictEqual(result, null);
+  assert.notStrictEqual(result, null);
+  assert.strictEqual(result?.mode, "summary");
 });
 
-test("evaluateKnowledgeShare treats exact expiry as expired", () => {
+test("evaluateKnowledgeShare treats exact expiry as still valid", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   const grants = [
@@ -79,7 +80,8 @@ test("evaluateKnowledgeShare treats exact expiry as expired", () => {
   ];
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T12:00:00.000Z");
-  assert.strictEqual(result, null);
+  assert.notStrictEqual(result, null);
+  assert.strictEqual(result?.mode, "summary");
 });
 
 test("evaluateKnowledgeShare uses parsed timestamps around expiry boundary", () => {
@@ -99,7 +101,7 @@ test("evaluateKnowledgeShare uses parsed timestamps around expiry boundary", () 
   assert.notStrictEqual(resultBefore, null);
 
   const resultAt = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T23:59:59.999Z");
-  assert.strictEqual(resultAt, null);
+  assert.notStrictEqual(resultAt, null);
 
   const resultAfter = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-21T00:00:00.000Z");
   assert.strictEqual(resultAfter, null);

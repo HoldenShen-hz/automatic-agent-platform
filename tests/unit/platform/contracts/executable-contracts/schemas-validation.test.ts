@@ -1564,6 +1564,7 @@ test("BudgetReservationSchema accepts valid reservation", () => {
     status: "reserved",
     expiresAt: "2026-04-02T00:00:00.000Z",
     createdAt: "2026-04-01T00:00:00.000Z",
+    version: 0,
   };
   const result = BudgetReservationSchema.safeParse(valid);
   assert.equal(result.success, true);
@@ -1581,6 +1582,7 @@ test("BudgetReservationSchema accepts all resource kinds", () => {
       status: "reserved",
       expiresAt: "2026-04-02T00:00:00.000Z",
       createdAt: "2026-04-01T00:00:00.000Z",
+      version: 0,
     };
     const result = BudgetReservationSchema.safeParse(valid);
     assert.equal(result.success, true, `ResourceKind '${kind}' should be valid`);
@@ -1599,6 +1601,7 @@ test("BudgetReservationSchema accepts all status values", () => {
       status,
       expiresAt: "2026-04-02T00:00:00.000Z",
       createdAt: "2026-04-01T00:00:00.000Z",
+      version: 0,
     };
     const result = BudgetReservationSchema.safeParse(valid);
     assert.equal(result.success, true, `Status '${status}' should be valid`);
@@ -2259,6 +2262,7 @@ test("SideEffectRecordSchema accepts valid side effect record", () => {
     deadline: "2026-04-02T00:00:00.000Z",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    version: 0,
   };
   const result = SideEffectRecordSchema.safeParse(valid);
   assert.equal(result.success, true);
@@ -2280,6 +2284,7 @@ test("SideEffectRecordSchema accepts all effect kinds", () => {
       deadline: "2026-04-02T00:00:00.000Z",
       createdAt: "2026-04-01T00:00:00.000Z",
       updatedAt: "2026-04-01T00:00:00.000Z",
+      version: 0,
     };
     const result = SideEffectRecordSchema.safeParse(valid);
     assert.equal(result.success, true, `EffectKind '${kind}' should be valid`);
@@ -2319,6 +2324,7 @@ test("SideEffectRecordSchema accepts all side effect statuses", () => {
       deadline: "2026-04-02T00:00:00.000Z",
       createdAt: "2026-04-01T00:00:00.000Z",
       updatedAt: "2026-04-01T00:00:00.000Z",
+      version: 0,
     };
     const result = SideEffectRecordSchema.safeParse(valid);
     assert.equal(result.success, true, `Status '${status}' should be valid`);

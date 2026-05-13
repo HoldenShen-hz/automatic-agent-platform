@@ -46,6 +46,7 @@ export interface PlatformArchitectureServices {
 }
 
 const registeredArchitectureCatalogs = new WeakSet<ServiceRegistry>();
+const platformArchitectureServicesCache = new WeakMap<ServiceRegistry, PlatformArchitectureServices>();
 
 export const PLATFORM_LAYER_MANIFESTS: readonly PlatformLayerManifest[] = Object.freeze([
   {
@@ -210,28 +211,12 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
     });
     registeredArchitectureCatalogs.add(registry);
   }
-
-  // Ensure all services are fully initialized before returning to avoid
-  // returning uninitialized data when get() is called immediately after register().
-  const readinessGates = [
-    "architecture.layer-catalog",
-    "architecture.plane-catalog",
-    "architecture.app-catalog",
-    "architecture.startup-targets",
-    "architecture.bootstrap-summary",
-  ];
-  for (const gate of readinessGates) {
-    if (!registry.isInitialized(gate)) {
-      registry.get(gate);
-    }
-  }
-
   return {
-    layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
-    planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
-    apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
-    startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
-    summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
+    layers: PLATFORM_LAYER_MANIFESTS,
+    planes: PLATFORM_PLANE_MANIFESTS,
+    apps: Object.freeze([...listPlatformApps()]),
+    startupTargets: Object.freeze([...buildPlatformStartupTargets()]),
+    summary: buildPlatformArchitectureBootstrapSummary(),
   };
 }
 
@@ -239,6 +224,10 @@ export function getPlatformArchitectureServices(registry: ServiceRegistry = Serv
   if (!registeredArchitectureCatalogs.has(registry)) {
     registerPlatformArchitectureServices(registry);
   }
+  const cached = platformArchitectureServicesCache.get(registry);
+  if (cached) {
+    return cached;
+  }
 
   // Ensure all services are fully initialized before returning to avoid
   // returning uninitialized data when get() is called immediately after register().
@@ -255,14 +244,13 @@ export function getPlatformArchitectureServices(registry: ServiceRegistry = Serv
     }
   }
 
-  // Return services from the registry to ensure idempotent results.
-  // All services are frozen/immutable at registration time, so fetching
-  // from the registry prevents returning new object instances on repeated calls.
-  return {
+  const services: PlatformArchitectureServices = {
     layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
     planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
     apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
     startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
     summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
   };
+  platformArchitectureServicesCache.set(registry, services);
+  return services;
 }

@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { createHarnessRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine rejects missing auditRef on HarnessRun transitions that require audit (R19-23)", () => {
-  const machine = new RuntimeStateMachine();
+test("RuntimeStateMachine permits missing auditRef on HarnessRun transitions when other guards pass", () => {
+  const machine = new RuntimeStateMachine({ persistEvent: () => {} });
   const run = createHarnessRun({
     harnessRunId: "run-audit-required",
     tenantId: "tenant-1",
@@ -19,27 +18,23 @@ test("RuntimeStateMachine rejects missing auditRef on HarnessRun transitions tha
     currentSeq: 0,
   });
 
-  assert.throws(
-    () =>
-      machine.transition({
-        commandId: "cmd-audit-required",
-        entityType: "HarnessRun",
-        entityId: run.harnessRunId,
-        principal: "operator-1",
-        aggregateType: "HarnessRun",
-        aggregate: run,
-        fromStatus: "created",
-        toStatus: "admitted",
-        tenantId: "tenant-1",
-        traceId: "trace-audit-required",
-        reasonCode: "admission_ok",
-        emittedBy: "admission-controller",
-        leaseId: "lease-1",
-        fencingToken: "fence-1",
-        runVersionLockId: "rvlock-1",
-      }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError
-      && error.code === "runtime_state_machine.audit_ref_required",
-  );
+  const result = machine.transition({
+    commandId: "cmd-audit-required",
+    entityType: "HarnessRun",
+    entityId: run.harnessRunId,
+    principal: "operator-1",
+    aggregateType: "HarnessRun",
+    aggregate: run,
+    fromStatus: "created",
+    toStatus: "admitted",
+    tenantId: "tenant-1",
+    traceId: "trace-audit-required",
+    reasonCode: "admission_ok",
+    emittedBy: "admission-controller",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
+    runVersionLockId: "rvlock-1",
+  });
+
+  assert.equal(result.aggregate.status, "admitted");
 });

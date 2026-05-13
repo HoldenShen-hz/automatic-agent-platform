@@ -32,10 +32,10 @@ test("contracts barrel re-exports canonical namespaced core contract modules onl
   assert.equal("legacyStateCommandContract" in mod, false);
 });
 
-test("contracts barrel exposes canonical request factory without first-class legacy execution factories", async () => {
+test("contracts barrel exposes canonical request factory under executableContracts without first-class legacy execution factories", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
-  assert.equal(typeof mod.createPlaneRequestEnvelope, "function");
+  assert.equal(typeof mod.executableContracts.createRequestEnvelopeFromConfirmedTask, "function");
   assert.equal("createPlaneControlDirective" in mod, false);
   assert.equal("createPlaneExecutionPlan" in mod, false);
   assert.equal("createPlaneExecutionReceipt" in mod, false);
@@ -45,7 +45,7 @@ test("contracts barrel exposes canonical request factory without first-class leg
 test("contracts barrel does not export legacy execution factories as direct canonical entries", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
-  assert.equal(typeof mod.createRequestEnvelope, "function");
+  assert.equal("createRequestEnvelope" in mod, false);
   assert.equal("createControlDirective" in mod, false);
   assert.equal("createExecutionPlan" in mod, false);
   assert.equal("createExecutionReceipt" in mod, false);
@@ -277,45 +277,43 @@ test("createRequestEnvelope factory accepts custom IDs", async () => {
 });
 
 test("createControlDirective accepts all directive types", async () => {
-  const { createControlDirective, createPlatformPrincipal } = await import("../../../../src/platform/contracts/types/index.js");
+  const { createControlDirective } = await import("../../../../src/platform/contracts/types/index.js");
 
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
-
-  const directiveTypes = ["mode_switch", "pause", "resume", "rollback", "quota_adjust", "kill"] as const;
+  const directiveTypes = ["pause", "resume", "cancel", "rollback", "escalate"] as const;
 
   for (const type of directiveTypes) {
     assert.throws(
       () =>
         createControlDirective({
-          type,
-          issuedBy: principal,
-          reason: `testing ${type}`,
+          kind: type,
+          targetRef: "task_123",
+          reasonCode: `testing_${type}`,
+          issuedBy: "operator_1",
+          tenantId: null,
+          executionId: null,
+          metadata: {},
         }),
       (error: unknown) =>
         error instanceof Error
         && "code" in error
-        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+        && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
     );
   }
 });
 
 test("createControlDirective with targetScope", async () => {
-  const { createControlDirective, createPlatformPrincipal } = await import("../../../../src/platform/contracts/types/index.js");
-
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
+  const { createControlDirective } = await import("../../../../src/platform/contracts/types/index.js");
 
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "maintenance window",
+        kind: "pause",
+        targetRef: "task_123",
+        reasonCode: "maintenance_window",
+        issuedBy: "operator_1",
+        tenantId: null,
+        executionId: null,
+        metadata: {},
         targetScope: {
           tenantId: "tenant_abc",
           workflowId: "workflow_xyz",
@@ -325,34 +323,25 @@ test("createControlDirective with targetScope", async () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createExecutionPlan with all options", async () => {
-  const { createExecutionPlan, createPlatformPrincipal } = await import("../../../../src/platform/contracts/types/index.js");
-
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
+  const { createExecutionPlan } = await import("../../../../src/platform/contracts/types/index.js");
 
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace_abc",
-        principal,
-        workflowRunId: "workflow_xyz",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        version: 1,
         steps: [],
-        budget: { maxSteps: 100, maxDurationMs: 3600000, maxCost: 1000 },
-        fallbackStrategy: "escalate",
-        approvalGates: ["gate_1", "gate_2"],
-        planId: "plan_custom",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -375,7 +364,7 @@ test("createExecutionReceipt with error detail", async () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 

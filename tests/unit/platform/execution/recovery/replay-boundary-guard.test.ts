@@ -130,7 +130,7 @@ test("evaluate allows trace_replay without real side effect", () => {
   assert.deepEqual(result.blockedOperationIds, []);
 });
 
-test("evaluate allows reexecution_replay with real side effect", () => {
+test("evaluate blocks reexecution_replay with real side effect", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -141,9 +141,9 @@ test("evaluate allows reexecution_replay with real side effect", () => {
     },
   ];
   const result = guard.evaluate("reexecution_replay", operations);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "replay.allowed");
-  assert.deepEqual(result.blockedOperationIds, []);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "replay.real_side_effect_blocked");
+  assert.deepEqual(result.blockedOperationIds, ["op-1"]);
 });
 
 test("evaluate blocks projection_replay with non-projection real side effect", () => {
@@ -178,7 +178,7 @@ test("evaluate blocks tombstoneReplay on non-projection resource", () => {
   assert.deepEqual(result.blockedOperationIds, ["op-1"]);
 });
 
-test("evaluate allows tombstoneReplay on projection resource", () => {
+test("evaluate blocks tombstoneReplay on projection resource outside reexecution replay", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -189,9 +189,9 @@ test("evaluate allows tombstoneReplay on projection resource", () => {
     },
   ];
   const result = guard.evaluate("trace_replay", operations);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "replay.allowed");
-  assert.deepEqual(result.blockedOperationIds, []);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "replay.tombstone_boundary_violation");
+  assert.deepEqual(result.blockedOperationIds, ["op-1"]);
 });
 
 test("evaluate allows tombstoneReplay on llm resource kind", () => {
@@ -276,7 +276,7 @@ test("evaluate handles mixed operations - some blocked, some allowed", () => {
   assert.deepEqual(result.blockedOperationIds, ["op-1"]);
 });
 
-test("evaluate returns allowed when only projection with tombstoneReplay", () => {
+test("evaluate blocks projection tombstones outside reexecution replay", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -293,9 +293,9 @@ test("evaluate returns allowed when only projection with tombstoneReplay", () =>
     },
   ];
   const result = guard.evaluate("trace_replay", operations);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "replay.allowed");
-  assert.deepEqual(result.blockedOperationIds, []);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "replay.tombstone_boundary_violation");
+  assert.deepEqual(result.blockedOperationIds, ["op-1", "op-2"]);
 });
 
 test("evaluate checks real side effect before tombstone violation", () => {
@@ -358,7 +358,7 @@ test("resourceKind connector is blocked with tombstoneReplay", () => {
   assert.equal(result.reasonCode, "replay.tombstone_boundary_violation");
 });
 
-test("resourceKind projection is allowed with tombstoneReplay", () => {
+test("resourceKind projection is blocked with tombstoneReplay outside reexecution replay", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -369,11 +369,11 @@ test("resourceKind projection is allowed with tombstoneReplay", () => {
     },
   ];
   const result = guard.evaluate("trace_replay", operations);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "replay.allowed");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "replay.tombstone_boundary_violation");
 });
 
-test("reexecution_replay ignores real side effect", () => {
+test("reexecution_replay blocks real side effect", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -390,8 +390,8 @@ test("reexecution_replay ignores real side effect", () => {
     },
   ];
   const result = guard.evaluate("reexecution_replay", operations);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "replay.allowed");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "replay.real_side_effect_blocked");
 });
 
 test("projection_replay blocks real side effect on non-projection resource", () => {
@@ -424,7 +424,7 @@ test("reexecution_replay blocks tombstone boundary violation", () => {
   assert.equal(result.reasonCode, "replay.tombstone_boundary_violation");
 });
 
-test("projection_replay allows tombstone on projection", () => {
+test("reexecution_replay allows tombstone on projection", () => {
   const guard = new ReplayBoundaryGuard();
   const operations: ReplayOperation[] = [
     {
@@ -434,7 +434,7 @@ test("projection_replay allows tombstone on projection", () => {
       tombstoneReplay: true,
     },
   ];
-  const result = guard.evaluate("projection_replay", operations);
+  const result = guard.evaluate("reexecution_replay", operations);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, "replay.allowed");
 });

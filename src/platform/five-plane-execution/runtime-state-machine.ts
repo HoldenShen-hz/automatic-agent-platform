@@ -177,10 +177,10 @@ const BUDGET_RESERVATION_TRANSITIONS: TransitionTable<BudgetReservation["status"
 };
 
 export class RuntimeStateMachine {
-  private readonly persistEvent: EventPersistenceCallback;
+  private readonly persistEvent: EventPersistenceCallback | null;
 
   public constructor(options: { persistEvent?: EventPersistenceCallback } = {}) {
-    this.persistEvent = options.persistEvent ?? (() => {});
+    this.persistEvent = options.persistEvent ?? null;
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
@@ -195,6 +195,7 @@ export class RuntimeStateMachine {
     assertSideEffectSafety(command);
     assertAuditRef(command);
     assertLeaseAndFencing(command);
+    assertEventPersistenceConfigured(this.persistEvent);
 
     const occurredAt = command.occurredAt ?? new Date(Date.now()).toISOString();
     const aggregate = applyStatus(command, occurredAt);
@@ -229,6 +230,18 @@ export class RuntimeStateMachine {
 
 export function isTruthConsumerEvent(event: EventEnvelope): boolean {
   return event.eventType.startsWith("platform.");
+}
+
+function assertEventPersistenceConfigured(
+  persistEvent: EventPersistenceCallback | null,
+): asserts persistEvent is EventPersistenceCallback {
+  if (persistEvent == null) {
+    throw new WorkflowStateError(
+      "runtime_state_machine.persistence_required",
+      "RuntimeStateMachine requires an event persistence callback before transitions can be applied.",
+      { details: { reason: "event persistence callback missing" } },
+    );
+  }
 }
 
 function assertStatusMatches<TAggregate extends RuntimeStateAggregate>(

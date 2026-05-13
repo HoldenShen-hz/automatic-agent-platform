@@ -53,6 +53,51 @@ import {
   type BundleRevocationRecord,
 } from "../../../../src/plugins/builtin-plugin-registry.js";
 
+function buildCriticalExactMatchCases(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    caseId: `critical_case_${index}`,
+    input: { prompt: `test_${index}` },
+    expectedOutput: { result: `expected_${index}` },
+    tags: [],
+    priority: "critical" as const,
+    qualityCriteria: [
+      { criterionId: "c1", type: "exact_match" as const, config: {}, weight: 1, threshold: 1 },
+    ],
+  }));
+}
+
+function buildCriticalExactMatchResults(count: number, outputFactory?: (index: number) => unknown) {
+  return Array.from({ length: count }, (_, index) => ({
+    caseId: `critical_case_${index}`,
+    output: outputFactory ? outputFactory(index) : { result: `expected_${index}` },
+    latencyMs: 100,
+    costUsd: 0.01,
+  }));
+}
+
+function buildCriticalJudgeCases(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    caseId: `critical_judge_case_${index}`,
+    input: { prompt: `judge_test_${index}` },
+    expectedOutput: "expected",
+    tags: [],
+    priority: "critical" as const,
+    qualityCriteria: [
+      { criterionId: "judge_signal", type: "llm_judge" as const, config: {}, weight: 1, threshold: 0.8 },
+    ],
+  }));
+}
+
+function buildCriticalJudgeResults(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    caseId: `critical_judge_case_${index}`,
+    output: "result",
+    latencyMs: 100,
+    costUsd: 0.01,
+    criterionSignals: { judge_signal: 0.9 },
+  }));
+}
+
 // ============================================================================
 // R2-1: ChatCompletionRequest required fields (traceId/tenantId/costTag)
 // ============================================================================
@@ -145,7 +190,7 @@ test("R2-2: createStreamingChatCompletion validates abort signal at start", asyn
       request,
       (chunk, isFinal) => {},
     ),
-    /streaming\.aborted/,
+    /aborted before execution/,
   );
 });
 
@@ -177,7 +222,7 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient critical s
         },
       ],
     }),
-    /insufficient_critical_samples/,
+    /requires at least 200 samples/,
   );
 });
 
@@ -205,7 +250,7 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient standard s
         },
       ],
     }),
-    /insufficient.*medium.*samples/,
+    /requires at least 50 samples/,
   );
 });
 
@@ -249,7 +294,9 @@ test("R2-5: recordPluginTaint creates propagation record", () => {
   });
 
   assert.ok(record.id);
-  assert.ok(record.taintLabels.length > 0);
+  assert.equal(record.sourceObjectType, "ToolOutput");
+  assert.equal(record.outputDataClass, "confidential");
+  assert.ok(Array.isArray(record.taintLabels));
 });
 
 test("R2-5: getPluginTaintTracker returns singleton tracker", () => {
@@ -474,7 +521,8 @@ test("R2-9: registerBundleRevocation creates revocation record", () => {
 
   registerBundleRevocation(record);
 
-  assert.equal(isBundleRevoked("plugin.test.bundle"), true);
+  assert.equal(isBundleRevoked("plugin.test.bundle"), false);
+  assert.equal(isBundleRevoked("plugin.test.bundle", new Date(Date.parse(record.deadline) + 1)), true);
 });
 
 test("R2-9: getBundleRevocation returns active revocation", () => {
@@ -514,18 +562,7 @@ test("R2-10: EvalDatasetJudgeService enforces independence for high-risk cases",
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "critical_case_1",
-        input: { prompt: "test" },
-        expectedOutput: "expected",
-        tags: [],
-        priority: "critical",
-        qualityCriteria: [
-          { criterionId: "c1", type: "llm_judge", config: {}, weight: 1, threshold: 0.8 },
-        ],
-      },
-    ],
+    cases: buildCriticalJudgeCases(200),
   });
   service.activateDataset("dataset_high_risk");
 
@@ -544,18 +581,12 @@ test("R2-10: EvalDatasetJudgeService enforces independence for high-risk cases",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-4",
     enforceIndependenceForHighRisk: true,
-    results: [
-      {
-        caseId: "critical_case_1",
-        output: "result",
-        latencyMs: 100,
-        costUsd: 0.01,
-        criterionSignals: { c1: 0.9 },
-      },
-    ],
+    results: buildCriticalJudgeResults(200),
   });
 
-  assert.ok(report.blockingFindings.length === 0 || report.gateDecision !== "hold");
+  assert.equal(report.judgeId, "judge_anthropic");
+  assert.equal(report.gateDecision, "promote");
+  assert.equal(report.blockingFindings.length, 0);
 });
 
 test("R2-10: JudgeProfileRecord has supportedRiskLevels field", () => {
@@ -588,18 +619,7 @@ test("R2-12: EvalDatasetJudgeService blocks release when critical pass rate < 10
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "critical_fail",
-        input: { prompt: "test" },
-        expectedOutput: "expected",
-        tags: [],
-        priority: "critical",
-        qualityCriteria: [
-          { criterionId: "c1", type: "exact_match", config: {}, weight: 1, threshold: 1 },
-        ],
-      },
-    ],
+    cases: buildCriticalExactMatchCases(200),
   });
   service.activateDataset("dataset_critical_gate");
 
@@ -608,14 +628,8 @@ test("R2-12: EvalDatasetJudgeService blocks release when critical pass rate < 10
     candidateProvider: "openai",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-4",
-    results: [
-      {
-        caseId: "critical_fail",
-        output: "wrong_output",
-        latencyMs: 100,
-        costUsd: 0.01,
-      },
-    ],
+    results: buildCriticalExactMatchResults(200, (index) =>
+      index === 0 ? { result: "wrong_output" } : { result: `expected_${index}` }),
   });
 
   assert.ok(report.blockingFindings.some((f) => f.includes("critical_case_failed")));
@@ -631,18 +645,7 @@ test("R2-12: EvalDatasetJudgeService passes when critical pass rate === 100%", (
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "critical_pass",
-        input: { prompt: "test" },
-        expectedOutput: { result: "expected" },
-        tags: [],
-        priority: "critical",
-        qualityCriteria: [
-          { criterionId: "c1", type: "exact_match", config: {}, weight: 1, threshold: 1 },
-        ],
-      },
-    ],
+    cases: buildCriticalExactMatchCases(200),
   });
   service.activateDataset("dataset_critical_pass");
 
@@ -651,14 +654,7 @@ test("R2-12: EvalDatasetJudgeService passes when critical pass rate === 100%", (
     candidateProvider: "openai",
     candidateProviderFamily: "openai",
     candidateModel: "gpt-4",
-    results: [
-      {
-        caseId: "critical_pass",
-        output: { result: "expected" },
-        latencyMs: 100,
-        costUsd: 0.01,
-      },
-    ],
+    results: buildCriticalExactMatchResults(200),
   });
 
   assert.equal(report.criticalPassRate, 1);

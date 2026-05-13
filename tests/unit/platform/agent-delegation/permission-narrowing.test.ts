@@ -214,7 +214,7 @@ test("delegation child cannot request actions parent does not have", async () =>
   assert.deepEqual(delegation.permissions.actions, ["action-read"]);
 });
 
-test("delegation constraints merge via spread (child overrides parent)", async () => {
+test("delegation allowedDomains narrows to the parent-child intersection", async () => {
   const service = createDelegationManager();
   const parent = createParentContext({
     permissions: {
@@ -239,8 +239,8 @@ test("delegation constraints merge via spread (child overrides parent)", async (
   const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
-  // Child constraints override parent via spread merge
-  assert.deepEqual(delegation.permissions.constraints.allowedDomains, ["domain-b.com", "domain-c.com"]);
+  // Domain constraints are narrowed to the overlap the parent already allows.
+  assert.deepEqual(delegation.permissions.constraints.allowedDomains, ["domain-b.com"]);
 });
 
 test("delegation keeps actions but not resources when no specific resources are requested", async () => {

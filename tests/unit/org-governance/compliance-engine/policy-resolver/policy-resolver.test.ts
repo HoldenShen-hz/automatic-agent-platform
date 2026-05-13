@@ -387,9 +387,9 @@ describe("resolveCompliancePolicyForNode", () => {
 
     const result = resolveCompliancePolicyForNode(nodes, "non-existent", policiesByNodeId);
 
-    assert.deepStrictEqual(result, {});
+    assert.deepStrictEqual(result, { _denyByDefault: true });
     assert.strictEqual(result.denyByDefault, true);
-    assert.deepStrictEqual(result.policy, {});
+    assert.deepStrictEqual(result.policy, { _denyByDefault: true });
   });
 
   it("should build lineage from root to leaf", () => {
@@ -439,8 +439,8 @@ describe("Deny-by-Default Behavior", () => {
 
     const result = resolveCompliancePolicyForNode(nodes, "isolated-node", policiesByNodeId);
 
-    // Empty rules + no allow = implicit deny
-    assert.strictEqual(Object.keys(result).length, 0);
+    assert.deepStrictEqual(result, { _denyByDefault: false });
+    assert.strictEqual(result.denyByDefault, false);
   });
 
   it("should allow explicitly allowed actions", () => {

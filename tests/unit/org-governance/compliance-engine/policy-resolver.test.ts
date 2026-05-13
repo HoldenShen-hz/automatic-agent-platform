@@ -65,7 +65,8 @@ test("resolveCompliancePolicyForNode returns empty object when node has no polic
 
   const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
 
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
+  assert.strictEqual(result.denyByDefault, true);
 });
 
 test("resolveCompliancePolicyForNode handles node with no parent", () => {
@@ -127,7 +128,7 @@ test("resolveCompliancePolicyForNode returns denyByDefault=true when no policies
   const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
 
   assert.strictEqual(result.denyByDefault, true);
-  assert.deepStrictEqual(result.policy, {});
+  assert.deepStrictEqual(result.policy, { _denyByDefault: true });
 });
 
 test("resolveCompliancePolicyForNode returns denyByDefault=true for node with empty policy array", () => {
@@ -144,5 +145,5 @@ test("resolveCompliancePolicyForNode returns denyByDefault=true for node with em
   const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
 
   assert.strictEqual(result.denyByDefault, true);
-  assert.deepStrictEqual(result.policy, {});
+  assert.deepStrictEqual(result.policy, { _denyByDefault: true });
 });

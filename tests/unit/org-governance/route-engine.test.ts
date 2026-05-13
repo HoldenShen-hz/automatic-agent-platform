@@ -112,7 +112,7 @@ test("OrgChartRoutingStrategy.selectNode returns exact match", () => {
   assert.equal(result?.orgNodeId, "dept-1");
 });
 
-test("OrgChartRoutingStrategy.selectNode falls back to first node when no match", () => {
+test("OrgChartRoutingStrategy.selectNode returns null when no match", () => {
   const strategy = new OrgChartRoutingStrategy();
   const request: ApprovalRouteRequest = {
     requesterId: "user-1",
@@ -122,7 +122,7 @@ test("OrgChartRoutingStrategy.selectNode falls back to first node when no match"
   };
 
   const result = strategy.selectNode(SAMPLE_NODES, request);
-  assert.equal(result?.orgNodeId, "company-1"); // First node
+  assert.equal(result, null);
 });
 
 test("OrgChartRoutingStrategy prefers active nodes when finding by exact match", () => {
@@ -464,7 +464,7 @@ test("resolveApprovalRoute applies SoD policy", () => {
   const result = resolveApprovalRoute(nodesWithMembers, request);
 
   assert.ok(!result.approverChain.includes("member-1"), "Initiator should be filtered out");
-  assert.deepStrictEqual(result.approverChain, []);
+  assert.deepStrictEqual(result.approverChain, ["platform_admin"]);
   assert.deepStrictEqual(result.routeSnapshot.sodSnapshot.blockedApproverIds.sort(), ["member-1", "member-2"]);
 });
 

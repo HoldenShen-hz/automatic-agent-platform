@@ -43,7 +43,8 @@ test("resolveCompliancePolicyForNode returns empty when target node not found", 
 
   const result = resolveCompliancePolicyForNode(nodes, "nonexistent_node", policiesByNodeId);
 
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
+  assert.strictEqual(result.denyByDefault, true);
 });
 
 test("resolveCompliancePolicyForNode handles nodes with null parent", () => {
@@ -86,7 +87,8 @@ test("resolveCompliancePolicyForNode handles empty policiesByNodeId", () => {
 
   const result = resolveCompliancePolicyForNode(nodes, "root", {});
 
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
+  assert.strictEqual(result.denyByDefault, true);
 });
 
 test("resolveCompliancePolicyForNode handles intermediate node without policies", () => {

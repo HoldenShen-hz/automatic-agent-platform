@@ -159,7 +159,7 @@ function createBaseCommand(overrides: Partial<Parameters<RuntimeStateMachine["tr
 // ---------------------------------------------------------------------------
 
 test("RuntimeStateMachine can be instantiated", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   assert.ok(sm instanceof RuntimeStateMachine);
 });
 
@@ -168,7 +168,7 @@ test("RuntimeStateMachine can be instantiated", () => {
 // ---------------------------------------------------------------------------
 
 test("HarnessRun valid transition: created -> admitted", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   const result = sm.transition(createBaseCommand({
@@ -187,7 +187,7 @@ test("HarnessRun valid transition: created -> admitted", () => {
 });
 
 test("HarnessRun valid transition: running -> paused", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("running");
 
   const result = sm.transition(createBaseCommand({
@@ -204,7 +204,7 @@ test("HarnessRun valid transition: running -> paused", () => {
 });
 
 test("HarnessRun invalid transition: created -> running (missing admitted)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(
@@ -221,7 +221,7 @@ test("HarnessRun invalid transition: created -> running (missing admitted)", () 
 });
 
 test("HarnessRun noop transition throws", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(
@@ -237,7 +237,7 @@ test("HarnessRun noop transition throws", () => {
 });
 
 test("HarnessRun terminal state has no outgoing transitions", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("completed");
 
   assert.throws(
@@ -252,7 +252,7 @@ test("HarnessRun terminal state has no outgoing transitions", () => {
 });
 
 test("HarnessRun admission requires runVersionLockId", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(
@@ -271,7 +271,7 @@ test("HarnessRun admission requires runVersionLockId", () => {
 // ---------------------------------------------------------------------------
 
 test("NodeRun valid transition: created -> ready", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("created");
 
   const result = sm.transition({
@@ -295,7 +295,7 @@ test("NodeRun valid transition: created -> ready", () => {
 });
 
 test("NodeRun valid transition: ready -> leased", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("ready");
 
   const result = sm.transition({
@@ -319,7 +319,7 @@ test("NodeRun valid transition: ready -> leased", () => {
 });
 
 test("NodeRun valid transition: leased -> running", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("leased");
 
   const result = sm.transition({
@@ -343,7 +343,7 @@ test("NodeRun valid transition: leased -> running", () => {
 });
 
 test("NodeRun invalid transition: created -> running (skipping ready)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("created");
 
   assert.throws(
@@ -366,7 +366,7 @@ test("NodeRun invalid transition: created -> running (skipping ready)", () => {
 });
 
 test("NodeRun execution transition requires leaseId and fencingToken", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("leased");
 
   assert.throws(
@@ -389,7 +389,7 @@ test("NodeRun execution transition requires leaseId and fencingToken", () => {
 });
 
 test("NodeRun terminal state has no outgoing transitions", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createMockNodeRun("succeeded");
 
   assert.throws(
@@ -416,7 +416,7 @@ test("NodeRun terminal state has no outgoing transitions", () => {
 // ---------------------------------------------------------------------------
 
 test("SideEffectRecord valid transition: proposed -> approved", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const sideEffect = createMockSideEffectRecord("proposed");
 
   const result = sm.transition({
@@ -445,7 +445,7 @@ test("SideEffectRecord valid transition: proposed -> approved", () => {
 });
 
 test("SideEffectRecord commit path requires preCommitPolicyProofRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const sideEffect = createMockSideEffectRecord("approved");
 
   assert.throws(
@@ -470,7 +470,7 @@ test("SideEffectRecord commit path requires preCommitPolicyProofRef", () => {
 });
 
 test("SideEffectRecord high-risk requires humanApprovalRef for commit", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const sideEffect = createMockSideEffectRecord("approved");
   sideEffect.riskClass = "high";
 
@@ -500,7 +500,7 @@ test("SideEffectRecord high-risk requires humanApprovalRef for commit", () => {
 });
 
 test("SideEffectRecord critical-risk requires humanApprovalRef for commit", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const sideEffect = createMockSideEffectRecord("approved");
   sideEffect.riskClass = "critical";
 
@@ -534,7 +534,7 @@ test("SideEffectRecord critical-risk requires humanApprovalRef for commit", () =
 // ---------------------------------------------------------------------------
 
 test("BudgetLedger valid transition: open -> soft_cap_reached", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const ledger = createMockBudgetLedger("open");
 
   const result = sm.transition({
@@ -558,7 +558,7 @@ test("BudgetLedger valid transition: open -> soft_cap_reached", () => {
 });
 
 test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const ledger = createMockBudgetLedger("soft_cap_reached");
 
   const result = sm.transition({
@@ -582,7 +582,7 @@ test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () =
 });
 
 test("BudgetLedger valid transition: open -> closed", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const ledger = createMockBudgetLedger("open");
 
   const result = sm.transition({
@@ -609,7 +609,7 @@ test("BudgetLedger valid transition: open -> closed", () => {
 // ---------------------------------------------------------------------------
 
 test("BudgetReservation valid transition: reserved -> settled", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const reservation = createMockBudgetReservation("reserved");
 
   const result = sm.transition({
@@ -632,7 +632,7 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
 });
 
 test("BudgetReservation valid transition: reserved -> released", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const reservation = createMockBudgetReservation("reserved");
 
   const result = sm.transition({
@@ -655,7 +655,7 @@ test("BudgetReservation valid transition: reserved -> released", () => {
 });
 
 test("BudgetReservation terminal state has no outgoing transitions", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const reservation = createMockBudgetReservation("settled");
 
   assert.throws(
@@ -682,7 +682,7 @@ test("BudgetReservation terminal state has no outgoing transitions", () => {
 // ---------------------------------------------------------------------------
 
 test("HarnessRun CAS validation with correct seq", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
   harnessRun.currentSeq = 5;
 
@@ -702,7 +702,7 @@ test("HarnessRun CAS validation with correct seq", () => {
 });
 
 test("HarnessRun CAS validation fails with incorrect seq", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
   harnessRun.currentSeq = 5;
 
@@ -720,7 +720,7 @@ test("HarnessRun CAS validation fails with incorrect seq", () => {
 });
 
 test("BudgetLedger CAS validation with correct version", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const ledger = createMockBudgetLedger("open");
   ledger.version = 10;
 
@@ -750,7 +750,7 @@ test("BudgetLedger CAS validation with correct version", () => {
 // ---------------------------------------------------------------------------
 
 test("HarnessRun transition with allowed policy guard", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   const result = sm.transition(createBaseCommand({
@@ -772,7 +772,7 @@ test("HarnessRun transition with allowed policy guard", () => {
 });
 
 test("HarnessRun transition denied by policy guard", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(
@@ -792,7 +792,7 @@ test("HarnessRun transition denied by policy guard", () => {
 });
 
 test("HarnessRun transition requires non-empty policyProofRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(
@@ -816,7 +816,7 @@ test("HarnessRun transition requires non-empty policyProofRef", () => {
 // ---------------------------------------------------------------------------
 
 test("HarnessRun transition with satisfied budget precondition", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   const result = sm.transition(createBaseCommand({
@@ -838,7 +838,7 @@ test("HarnessRun transition with satisfied budget precondition", () => {
 });
 
 test("HarnessRun transition denied when budget hard cap not satisfied", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = new RuntimeStateMachine({ persistEvent: () => {} });
   const harnessRun = createMockHarnessRun("created");
 
   assert.throws(

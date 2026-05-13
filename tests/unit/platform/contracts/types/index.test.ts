@@ -131,13 +131,29 @@ test("SESSION_STATUSES is readonly tuple", () => {
 
 // EXECUTION_STATUSES tests
 test("EXECUTION_STATUSES contains all expected states", () => {
-  const expected = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = [
+    "created",
+    "prechecking",
+    "ready",
+    "queued",
+    "dispatching",
+    "executing",
+    "blocked",
+    "paused",
+    "resuming",
+    "recovering",
+    "timed_out",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "superseded",
+  ];
   assert.deepEqual(EXECUTION_STATUSES, expected);
 });
 
 test("EXECUTION_STATUSES is readonly tuple", () => {
   assert.ok(Array.isArray(EXECUTION_STATUSES));
-  assert.equal(EXECUTION_STATUSES.length, 8);
+  assert.equal(EXECUTION_STATUSES.length, 15);
 });
 
 // APPROVAL_STATUSES tests
@@ -382,84 +398,79 @@ test("createRequestEnvelope accepts custom values", () => {
 });
 
 test("createControlDirective creates directive with minimal input", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "maintenance",
+        kind: "pause",
+        targetRef: "task_123",
+        reasonCode: "maintenance",
+        issuedBy: "operator_1",
+        tenantId: null,
+        executionId: null,
+        metadata: {},
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createControlDirective accepts all directive types", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
-  const types = ["mode_switch", "pause", "resume", "rollback", "quota_adjust", "kill"] as const;
+  const types = ["pause", "resume", "cancel", "rollback", "escalate"] as const;
   for (const type of types) {
     assert.throws(
       () =>
         createControlDirective({
-          type,
-          issuedBy: principal,
-          reason: `testing ${type}`,
+          kind: type,
+          targetRef: "task_123",
+          reasonCode: `testing_${type}`,
+          issuedBy: "operator_1",
+          tenantId: null,
+          executionId: null,
+          metadata: {},
         }),
       (error: unknown) =>
         error instanceof Error
         && "code" in error
-        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+        && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
     );
   }
 });
 
 test("createControlDirective accepts target scope", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "targeted pause",
+        kind: "pause",
+        targetRef: "task_123",
+        reasonCode: "targeted_pause",
+        issuedBy: "operator_1",
+        tenantId: null,
+        executionId: null,
+        metadata: {},
         targetScope: { tenantId: "tenant_abc", workflowId: "workflow_123" },
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createExecutionPlan creates plan with minimal input", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace_123",
-        principal,
-        workflowRunId: "workflow_abc",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        version: 1,
         steps: [],
-        budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 100 },
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -475,7 +486,7 @@ test("createExecutionReceipt creates receipt with minimal input", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -492,7 +503,7 @@ test("createExecutionReceipt accepts error detail", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -620,8 +631,8 @@ test("mapPolicyModeToUnifiedRuntimeMode maps read-only", () => {
   assert.equal(mapPolicyModeToUnifiedRuntimeMode("read-only"), "read_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to no_rollout", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("maintenance"), "no_rollout");
+test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to manual_only", () => {
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("maintenance"), "manual_only");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode", () => {
@@ -629,11 +640,11 @@ test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode", () => {
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps degraded", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("degraded"), "no_external_call");
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("degraded"), "manual_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps emergency to no_write", () => {
-  assert.equal(mapPolicyModeToUnifiedRuntimeMode("emergency"), "no_write");
+test("mapPolicyModeToUnifiedRuntimeMode maps emergency to manual_only", () => {
+  assert.equal(mapPolicyModeToUnifiedRuntimeMode("emergency"), "manual_only");
 });
 
 test("mapHealthDegradationModeToUnifiedRuntimeMode maps none to full_auto", () => {

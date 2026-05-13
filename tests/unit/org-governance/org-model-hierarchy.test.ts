@@ -13,7 +13,7 @@ import type { OrgNode, OrgPrincipalAssignment } from "../../../src/org-governanc
 
 const tenantNode: OrgNode = {
   orgNodeId: "tenant_1",
-  nodeType: "tenant",
+  nodeType: "company",
   displayName: "Acme Corp",
   parentOrgNodeId: null,
   ownerUserIds: ["ceo_user"],

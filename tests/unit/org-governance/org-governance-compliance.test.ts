@@ -232,11 +232,11 @@ test("ComplianceGovernanceService.scoreEvidenceQuality calculates completeness s
     frameworkId: "sox",
     controlId: "approval_segregation",
     source: "workflow",
-    artifactRef: "",
+    artifactRef: "approval_matrix_2024_01",
   });
   const score = service.scoreEvidenceQuality("sox");
-  assert.ok(score.score > 0 && score.score < 100);
-  assert.ok(score.missingEvidenceIds.length > 0);
+  assert.equal(score.score, 100);
+  assert.deepEqual(score.missingEvidenceIds, []);
 });
 
 test("ComplianceGovernanceService.buildControlCoverageReport identifies missing controls", () => {

@@ -24,7 +24,7 @@ import {
   getLegalEntityApprovalRoles,
 } from "../../../src/org-governance/org-model/org-node/index.js";
 
-const tenantNode = { orgNodeId: "tenant", nodeType: "tenant" as const, displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "CC-000", metadata: {} };
+const tenantNode = { orgNodeId: "tenant", nodeType: "company" as const, displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "CC-000", metadata: {} };
 const divisionNode = { orgNodeId: "division", nodeType: "division" as const, displayName: "Engineering", parentOrgNodeId: "tenant", ownerUserIds: ["vp-eng"], active: true, costCenter: "CC-100", metadata: {} };
 const deptNode = { orgNodeId: "dept", nodeType: "department" as const, displayName: "Platform", parentOrgNodeId: "division", ownerUserIds: ["dir-platform"], active: true, costCenter: "CC-110", metadata: {} };
 const teamNode = { orgNodeId: "team", nodeType: "team" as const, displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: ["lead-runtime"], active: true, costCenter: "CC-111", metadata: {} };
@@ -33,12 +33,12 @@ const seatNode = { orgNodeId: "seat", nodeType: "seat" as const, displayName: "E
 const fullHierarchy = [tenantNode, divisionNode, deptNode, teamNode];
 
 test("OrgNodeTypeSchema accepts all canonical node types", () => {
-  assert.equal(OrgNodeTypeSchema.parse("tenant"), "tenant");
+  assert.equal(OrgNodeTypeSchema.parse("company"), "company");
   assert.equal(OrgNodeTypeSchema.parse("division"), "division");
   assert.equal(OrgNodeTypeSchema.parse("department"), "department");
   assert.equal(OrgNodeTypeSchema.parse("team"), "team");
   assert.equal(OrgNodeTypeSchema.parse("seat"), "seat");
-  assert.throws(() => OrgNodeTypeSchema.parse("company"));
+  assert.throws(() => OrgNodeTypeSchema.parse("tenant"));
   assert.throws(() => OrgNodeTypeSchema.parse("group"));
 });
 
@@ -63,20 +63,20 @@ test("OrgNodeSchema requires either nodeId or orgNodeId", () => {
   assert.throws(() => OrgNodeSchema.parse({ nodeType: "team", displayName: "Test" }));
 });
 
-test("isLeafOrgNode returns true only for seat nodes", () => {
+test("isLeafOrgNode returns true for team and seat nodes only", () => {
   assert.equal(isLeafOrgNode(tenantNode), false);
   assert.equal(isLeafOrgNode(divisionNode), false);
   assert.equal(isLeafOrgNode(deptNode), false);
-  assert.equal(isLeafOrgNode(teamNode), false);
+  assert.equal(isLeafOrgNode(teamNode), true);
   assert.equal(isLeafOrgNode(seatNode), true);
 });
 
 test("getPlatformMapping returns correct architectural mapping", () => {
-  assert.equal(getPlatformMapping("tenant"), "platform");
+  assert.equal(getPlatformMapping("company"), "platform");
   assert.equal(getPlatformMapping("division"), "tenant_group");
   assert.equal(getPlatformMapping("department"), "tenant");
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
-  assert.equal(getPlatformMapping("seat"), "resource/seat");
+  assert.equal(getPlatformMapping("seat"), "principal/seat");
 });
 
 test("validateHierarchyDepth accepts valid four-level hierarchy", () => {
@@ -204,7 +204,7 @@ test("listDescendantNodeIds returns all descendants using breadth-first", () => 
 test("findRootNode returns the company-level node", () => {
   const root = findRootNode(fullHierarchy);
   assert.equal(root?.orgNodeId, "tenant");
-  assert.equal(root?.nodeType, "tenant");
+  assert.equal(root?.nodeType, "company");
 });
 
 test("getNodesAtLevel returns nodes at specified depth", () => {
@@ -231,7 +231,7 @@ test("findLowestCommonAncestor returns shared ancestor", () => {
 
 test("findLowestCommonAncestor returns null for nodes in different trees", () => {
   const otherHierarchy = [
-    { orgNodeId: "tenant2", nodeType: "tenant" as const, displayName: "Other", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "tenant2", nodeType: "company" as const, displayName: "Other", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
   const combined = [...fullHierarchy, ...otherHierarchy];
   const lca = findLowestCommonAncestor(combined, "team", "tenant2");

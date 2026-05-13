@@ -52,6 +52,11 @@ export interface CasRepository {
   compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult;
 }
 
+interface CasDistributedLockAdapter {
+  acquire(input: { lockKey: string; owner: string; ttlMs?: number }): { acquired: boolean };
+  release(lockKey: string, owner: string): boolean;
+}
+
 class InMemoryCasRepository implements CasRepository {
   private readonly store = new Map<string, CasRecord>();
   private readonly locks = new Map<string, number>();
@@ -193,7 +198,7 @@ class InMemoryCasRepository implements CasRepository {
 class DistributedLockCasRepository implements CasRepository {
   public constructor(
     private readonly inner: CasRepository,
-    private readonly lockAdapter: DistributedLockAdapter,
+    private readonly lockAdapter: CasDistributedLockAdapter,
   ) {}
 
   public get(key: string): CasRecord | undefined {
@@ -277,7 +282,7 @@ class DistributedLockCasRepository implements CasRepository {
 export class CasService {
   public constructor(
     private readonly repository: CasRepository = new InMemoryCasRepository(),
-    private readonly lockAdapter?: DistributedLockAdapter,
+    private readonly lockAdapter?: CasDistributedLockAdapter,
   ) {}
 
   /**
@@ -391,10 +396,7 @@ export function createInMemoryCasService(): CasService {
  */
 export function createDistributedCasService(
   repository: CasRepository,
-  lockAdapter: DistributedLockAdapter,
+  lockAdapter: CasDistributedLockAdapter,
 ): CasService {
   return new CasService(repository, lockAdapter);
 }
-
-// Type for distributed lock adapter - imported from execution layer
-import type { DistributedLockAdapter } from "../../../execution/distributed-lock/distributed-lock-types.js";

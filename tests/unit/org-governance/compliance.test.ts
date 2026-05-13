@@ -460,7 +460,7 @@ test("ComplianceGovernanceService handles empty policy layers", () => {
   });
 
   assert.strictEqual(result.allowed, true);
-  assert.deepStrictEqual(result.effectivePolicy, {});
+  assert.deepStrictEqual(result.effectivePolicy, { _denyByDefault: true });
 });
 
 test("ComplianceGovernanceService evaluate with multiple required keys missing", () => {
@@ -547,7 +547,7 @@ test("resolveCompliancePolicyForNode builds lineage correctly", () => {
 
 test("resolveCompliancePolicyForNode returns empty for node without policies", () => {
   const result = resolveCompliancePolicyForNode(HIERARCHY, "member-1", {});
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
 });
 
 test("buildGovernanceAuditRecord creates valid audit record", () => {

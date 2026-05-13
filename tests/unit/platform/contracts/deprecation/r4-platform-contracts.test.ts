@@ -359,20 +359,20 @@ test("R4-7: canonical RequestEnvelope has all required fields", () => {
 // R4-8: StateCommand legacy contract throws
 // =============================================================================
 
-test("R4-8: createStateCommand throws UnimplementedError", () => {
-  assert.throws(
-    () =>
-      createStateCommand({
-        entityKind: "task",
-        entityId: "task-123",
-        action: "upsert",
-        payload: {},
-        emittedBy: "test",
-      }),
-    (error: unknown): boolean =>
-      error instanceof Error &&
-      error.message.includes("deprecated"),
-  );
+test("R4-8: createStateCommand builds the canonical compatibility command shape", () => {
+  const command = createStateCommand({
+    entityKind: "task",
+    entityId: "task-123",
+    action: "upsert",
+    payload: {},
+    emittedBy: "test",
+  });
+
+  assert.equal(command.entityKind, "task");
+  assert.equal(command.entityId, "task-123");
+  assert.equal(command.action, "upsert");
+  assert.equal(command.emittedBy, "test");
+  assert.ok(command.commandId);
 });
 
 // =============================================================================

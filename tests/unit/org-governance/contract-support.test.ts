@@ -95,7 +95,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
       ent_1: [{ policyId: "root", rules: { residency: "cn" } }],
       dept_1: [{ policyId: "dept", rules: { retention: 7 } }],
     }),
-    { residency: "cn", retention: 7 },
+    { residency: "cn", retention: 7, _denyByDefault: false },
   );
 
   const activeDelegations = listActiveGovernanceDelegations([
