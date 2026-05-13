@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'node:test';
-import { estimateMaxConcurrency } from '../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js';
+import { estimateMaxConcurrency } from '../../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js';
 
 describe('R20-05: Parallelism limit check', () => {
   it('should calculate max concurrency for linear plan (all steps sequential)', () => {

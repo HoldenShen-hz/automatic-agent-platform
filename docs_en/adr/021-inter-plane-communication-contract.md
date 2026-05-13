@@ -5,7 +5,7 @@
 
 ## Context
 
-The platform's five planes (P1 Interface Plane, P2 Control Plane, P3 Orchestration Plane, P4 Execution Plane, P5 State & Evidence Plane) require a standardized communication protocol. If each plane defines contracts independently, it leads to fragile integration, blurred boundaries, and difficult auditing.
+Standardized communication protocols are needed between the platform's five planes (P1 Interface, P2 Control, P3 Orchestration, P4 Execution, P5 State & Evidence). If each plane defines contracts independently, it leads to fragile integration, blurred boundaries, and difficult auditing.
 
 ## Decision
 
@@ -15,7 +15,7 @@ All cross-plane calls must be wrapped in a RequestEnvelope:
 
 ```typescript
 interface RequestEnvelope {
-  trace_id: string;           // Full-chain trace ID
+  trace_id: string;           // Full-chain tracing ID
   idempotency_key?: string;   // Idempotency key, prevents duplicate calls
   principal: Principal;       // Caller identity
   source_plane: PlaneId;      // Source plane
@@ -74,9 +74,9 @@ interface NodeAttemptReceipt {
 ### Plane Isolation Rules
 
 - P1 must not bypass P2 to directly call P4: All P1 requests must go through PolicyCenterService.evaluate() for approval
-- P5 must not send directives to P4: The state-evidence layer is read-only and does not write to execution/
-- All contract objects must include principal + trace_id: Enforced through factory functions
-- `ControlDirective`, `ExecutionPlan`, and `ExecutionReceipt` are only permitted as legacy terms in migration or historical compatibility layers, and are no longer canonical P2→P3/P4 contracts.
+- P5 must not send directives to P4: state-evidence layer is read-only, does not write to execution/
+- All contract objects include principal + trace_id: Enforced through factory functions
+- `ControlDirective`, `ExecutionPlan`, `ExecutionReceipt` are only allowed as legacy nouns in migration or historical compatibility layers, and are no longer canonical P2→P3/P4 contracts.
 
 ## Consequences
 
@@ -88,12 +88,12 @@ Benefits:
 
 Trade-offs:
 
-- All cross-plane calls add envelope wrapping overhead
+- All cross-plane calls add envelope wrapper overhead
 - Contract changes require coordination across all planes
 
-## Cross References
+## Cross-references
 
-- [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 
 ## Source Section
@@ -102,6 +102,6 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- A-13: This ADR originally converged P2→P3 control objects into a single `ControlDirective`. The root cause was that early design mixed "operational control" and "approval/decision results" into one cross-plane message. Fix: The body now splits this into `OperationalDirective` and `DecisionDirective`.
-- A-14: This ADR originally described P3→P4 handoff as a linear `ExecutionPlan.steps[]`. The root cause was that the execution model was still at linear workflow semantics when the ADR was formed, and had not upgraded with the v4.3 graph handoff. Fix: The body now uses `PlanGraphBundle`.
-- A-15: This ADR originally described P4→P3 results as an aggregated `ExecutionReceipt`. The root cause was that the node attempt and append-only receipt model had not yet been refined into independent truth objects. Fix: The body now uses `NodeAttemptReceipt` with `nodeAttemptId + nodeRunId`.
+- A-13: This ADR originally converged P2→P3 control objects into a single `ControlDirective`. The root cause was that early design mixed "operational control" and "approval/decision results" into one cross-plane message type. Fix: The main text now separates them into `OperationalDirective` and `DecisionDirective`.
+- A-14: This ADR originally wrote P3→P4 handoff as a linear `ExecutionPlan.steps[]`. The root cause was that the execution model still used linear workflow semantics when the ADR was formed, and did not upgrade with v4.3 graph handoff. Fix: The main text now uses `PlanGraphBundle`.
+- A-15: This ADR originally wrote P4→P3 results as an aggregated `ExecutionReceipt`. The root cause was that the node attempt and append-only receipt model had not yet been refined into independent truth objects. Fix: The main text now uses `NodeAttemptReceipt` with `nodeAttemptId + nodeRunId`.

@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/advertising/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | Advertising Lead |
+| accountable_role | Advertising Campaign Lead |
 
 ## Hard Constraints
 
 - Daily/hourly budgets must be protected by platform hard limits.
-- Bidding and audience changes must record reason, budget impact, and rollback strategy.
-- Low-quality traffic, abnormal consumption, and compliance risks must trigger degradation or manual review.
+- Bid and audience changes must record reason, budget impact, and rollback strategy.
+- Low-quality traffic, abnormal spending, and compliance risks must trigger degradation or human review.
 
 ## Acceptance Criteria
 
-- GA pre-release must provide evidence of budget hard limits, ROAS evaluation, campaign audit, and abnormal consumption alerts.
+- Prior to GA, must provide budget hard limits, ROAS evaluation, campaign audit, and abnormal spending alerts evidence.

@@ -47,12 +47,12 @@ Benefits:
 - Worker pool isolation improves stability
 - IaC approach facilitates environment consistency
 
-Costs:
+Trade-offs:
 
 - Multi-environment increases operational complexity
 - Deployment process requires standardization
 
-## Cross References
+## Cross-references
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)

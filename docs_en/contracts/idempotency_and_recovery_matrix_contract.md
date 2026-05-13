@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the idempotency matrix for tool calls and `NodeRun / NodeAttempt`, as well as handling strategies during crash recovery.
+This contract defines idempotency matrix for tool calls and `NodeRun / NodeAttempt`, as well as handling strategies during crash recovery.
 
 ## 2. Core Principles
 
@@ -35,7 +35,7 @@ This contract defines the idempotency matrix for tool calls and `NodeRun / NodeA
 | File read | Yes | Path exists and not written | Can retry directly |
 | File write (overwrite) | Implementation-dependent | Content checksum / write marker | Verify then skip or rewrite |
 | File append | No | Append marker / transaction log | Default to manual confirmation or explicit idempotency key |
-| External API query | Usually yes | Request fingerprint | Can retry limitedly |
+| External API query | Usually | Request fingerprint | Can retry limitedly |
 | External API write | No | External resource id / idempotency key | Must not auto-retry by default |
 | LLM inference | Yes | Response cache or execution lineage | Can retry, but cost must be recalculated |
 | Artifact write | Policy-dependent | Artifact checksum / path | If exists and verified, can skip |

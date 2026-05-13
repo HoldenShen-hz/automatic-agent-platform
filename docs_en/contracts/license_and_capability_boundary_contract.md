@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -30,13 +30,13 @@ Related documents:
 
 ## 2. Objectives
 
-- Proactively engineer features, quotas, concurrency, audit, and multi-tenant capabilities as controllable switches.
+- Proactively engineering features, quotas, concurrency, audit, and multi-tenant capabilities as controllable switches.
 - Avoid hard-cutting code paths after commercialization.
-- Bring entitlement judgment into the formal policy / metering closed loop.
+- Bring entitlement judgment into the formal policy/metering closed loop.
 
 ## 3. Capability Boundaries
 
-Future at minimum should be controllable by the following dimensions:
+At minimum, the following dimensions should be controllable in the future:
 
 - feature gate
 - quota gate
@@ -46,7 +46,7 @@ Future at minimum should be controllable by the following dimensions:
 - remote worker gate
 - enterprise security gate
 
-## 4. Core Objects
+## 4. Canonical Objects
 
 - `LicenseTier`
 - `CapabilityBundle`
@@ -58,26 +58,26 @@ Future at minimum should be controllable by the following dimensions:
 
 - All commercial capabilities should go through capability checks, rather than being scattered across UI or routing.
 - Capability check results must be auditable.
-- Trial, downgrade, overdue, and freeze must all have clear system behaviors.
+- Trial periods, downgrades, overdue payments, and freezes must all have clear system behaviors.
 - Product tiering must not break the unified contract truth.
 - Capability checks must not be enforced only at the frontend or gateway layer; runtime, API, and admin console must all reuse the same judgment results.
-- Overdue, freeze, and downgrade should not silently relax existing isolation and audit boundaries.
+- Overdue payments, freezes, and downgrades should not silently relax existing isolation and audit boundaries.
 
 ## 6. Typical Tiers
 
 | Tier | Typical Capabilities |
 | --- | --- |
 | `community` | Single-tenant, local capabilities, basic tools |
-| `professional` | More concurrency, more quotas, basic audit |
+| `professional` | Higher concurrency, higher quotas, basic audit |
 | `enterprise` | Multi-tenant, SSO, audit export, private models, private network deployment |
 
-## 7. Conclusion
+## 7. Closure Conclusion
 
 Commercial capability boundaries must be engineered early.
 
-Otherwise the following will occur:
+Otherwise, the following issues will arise later:
 
 - Code forking
 - Permission drift
 - Scattered quota rules
-- Enterprise capabilities difficult to safely deploy
+- Enterprise capabilities difficult to deploy safely

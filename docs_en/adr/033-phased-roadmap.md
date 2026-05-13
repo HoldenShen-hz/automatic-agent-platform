@@ -42,12 +42,12 @@ Benefits:
 - Phase gates ensure quality
 - Feature flags support incremental release
 
-Costs:
+Trade-offs:
 
 - Roadmap maintenance requires ongoing investment
 - Phase boundaries may need adjustment
 
-## Cross References
+## Cross-references
 
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 - [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)

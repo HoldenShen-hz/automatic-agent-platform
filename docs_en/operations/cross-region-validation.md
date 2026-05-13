@@ -85,7 +85,7 @@ psql -h secondary.db.internal -c \
 
 | Criteria | Threshold | Verification |
 | --- | --- | --- |
-| Secondary serves traffic after primary failure | ≤ 5 minutes | Time from `kubectl scale` to successful curl |
+| Secondary serves traffic after primary failure | <= 5 minutes | Time from `kubectl scale` to successful curl |
 | Replication lag | < 30 seconds | `pg_last_xact_replay_timestamp()` |
 | No conflicting lease owners | 0 conflicts | SQL query check |
 | Data consistency after failback | 100% match | Row count comparison |

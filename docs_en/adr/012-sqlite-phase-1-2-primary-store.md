@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
 The platform is currently in the Phase 1a/1b basic closed-loop stage. The priority is to stabilize task, workflow, execution, approval, event, session, and recovery paths—not to build a layered data plane or multi-tenant transaction infrastructure from the start.
 
@@ -33,7 +33,7 @@ Pros:
 - Stronger concurrency.
 - Closer to future multi-tenant/multi-worker shape.
 
-Cons:
+Costs:
 
 - Significantly increased complexity for local development, testing, release, and operations.
 - The primary risk now is not the database ceiling, but that contracts are not yet fully mapped to code.
@@ -45,12 +45,12 @@ Pros:
 
 - Can partially relieve write pressure.
 
-Cons:
+Costs:
 
 - Increases system complexity, but the real problem boundaries may still not be tightened.
 - Prematurely introduces multiple authoritative sources.
 
-### Option C: Current Decision (Chosen Option)
+### Option C: Current Decision
 
 - SQLite continues as the sole primary transaction store.
 - Clarify concurrency, backpressure, and phase boundaries.
@@ -103,15 +103,15 @@ Future upgrade requirements:
 
 - If migrating to PostgreSQL, business contracts must not drift; priority should be given to replacing the storage adapter/migration/queue layer rather than rewriting the main business chain.
 
-## Consequences
+## Results
 
-Pros:
+Benefits:
 
 - Lowest local development and testing cost.
 - Best suited for rapidly establishing a recoverable, auditable minimal platform closed-loop in the current phase.
 - Naturally aligned with the current single-machine contract system.
 
-Cons:
+Costs:
 
 - Concurrency and scalability have clear upper limits.
 - If capabilities continue to expand after Phase 2, migration must be seriously planned; it cannot be indefinitely delayed.
@@ -128,7 +128,7 @@ As of the current phase1-4 delivery, the practical implications of this ADR beco
 
 - A-4: This ADR originally continued the task/workflow/execution-centric storage narrative. The root cause was that when the SQLite decision was formed, runtime truth still used the old object naming; subsequent migration to `NodeRun` / `NodeAttemptReceipt` main chain was not completed. Fix: The body now explicitly states that SQLite authoritative truth subject is `harness_runs / node_runs / node_attempt_receipts`, with old task/workflow/execution retained only for compatibility narrative.
 
-## Cross References
+## Cross-References
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 - [ADR-013 EventEmitter Continued Use to Phase 2](./013-eventemitter-phase-2-boundary.md)

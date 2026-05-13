@@ -118,9 +118,19 @@ export function isInternalUrl(url: URL): boolean {
   return isInternalNetworkUrl(url);
 }
 
-async function resolvesToBlockedAddress(hostname: string): Promise<boolean> {
+export type WebFetchDnsLookup = (hostname: string) => Promise<readonly { readonly address: string; readonly family?: number }[]>;
+
+export interface WebFetchToolOptions {
+  readonly dnsLookup?: WebFetchDnsLookup;
+  readonly fetchImplementation?: typeof fetch;
+}
+
+export async function resolvesToBlockedAddress(
+  hostname: string,
+  dnsLookup: WebFetchDnsLookup = async (target) => lookup(target, { all: true, verbatim: true }),
+): Promise<boolean> {
   try {
-    const addresses = await lookup(hostname, { all: true, verbatim: true });
+    const addresses = await dnsLookup(hostname);
     return addresses.some((entry) => isBlockedIpOrHostname(entry.address));
   } catch {
     return true;
@@ -132,7 +142,7 @@ const webFetchLogger = new StructuredLogger({ retentionLimit: 100 });
 /**
  * Creates a web fetch tool for retrieving remote content.
  */
-export function createWebFetchTool() {
+export function createWebFetchTool(options: WebFetchToolOptions = {}) {
   return {
     name: "web_fetch" as const,
 
@@ -191,7 +201,7 @@ export function createWebFetchTool() {
         };
       }
 
-      if (await resolvesToBlockedAddress(url.hostname)) {
+      if (await resolvesToBlockedAddress(url.hostname, options.dnsLookup)) {
         return {
           success: false,
           status: "blocked",
@@ -220,7 +230,7 @@ export function createWebFetchTool() {
           (fetchOptions as { duplex?: string }).duplex = "half";
         }
 
-        response = await fetch(url.toString(), fetchOptions);
+        response = await (options.fetchImplementation ?? fetch)(url.toString(), fetchOptions);
       } catch (err) {
         clearTimeout(timeoutId);
         const errorMessage = err instanceof Error ? err.message : "Unknown error";

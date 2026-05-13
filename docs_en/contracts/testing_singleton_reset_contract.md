@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the reset rules for global singletons, caches, registries, and long-lived runtime objects in test environments.
+This contract defines reset rules for global singletons, caches, registries, and long-lived runtime objects in test environments.
 
 Related documents:
 

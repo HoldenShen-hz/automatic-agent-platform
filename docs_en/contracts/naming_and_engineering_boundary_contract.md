@@ -64,7 +64,7 @@ The following objects should use canonical engineering naming in contracts / sch
 
 ## 3. `ActorModel`
 
-Unified audit subjects include at least:
+Unified audit subjects include at minimum:
 
 - `user`
 - `agent`
@@ -96,7 +96,7 @@ Minimum abstraction for runtime environment capabilities:
 
 ## 6. `ResourceLease`
 
-Direction for future unified resource abstraction includes at least:
+Direction for future unified resource abstraction includes at minimum:
 
 - token budget
 - file lock

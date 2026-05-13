@@ -62,12 +62,12 @@ Benefits:
 - Zod validation ensures type safety
 - StageRationale facilitates problem tracing
 
-Costs:
+Trade-offs:
 
 - Stages add execution latency
 - State management complexity increases
 
-## Cross References
+## Cross-references
 
 - [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)

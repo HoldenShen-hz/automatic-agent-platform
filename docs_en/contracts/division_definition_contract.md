@@ -7,7 +7,7 @@
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution evaluation and risk assessment
+- **Assess**: Pre-execution assessment and risk judgment
 - **Plan**: Task decomposition and DAG construction
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing

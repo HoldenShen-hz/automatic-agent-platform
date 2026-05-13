@@ -18,7 +18,7 @@ Source: `pre_launch_top20_hard_checklist.md`
 | 5 | `authService` rejects startup when empty, does not default to trusting request headers | Code review |
 | 6 | All secret comparisons use `timingSafeEqual` | `grep` search |
 | 7 | All POST routes have Zod schema validation | Code review |
-| 8 | HTTP body size is limited (≤1MB for public APIs) | Code review |
+| 8 | HTTP body size is limited (<=1MB for public APIs) | Code review |
 | 9 | No SQL injection risk (parameterized queries) | Code review |
 | 10 | Fork bomb / shell injection protection activated | Security testing |
 | 11 | SSRF guard applies to all outbound URLs | Code review |

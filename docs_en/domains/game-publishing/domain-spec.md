@@ -11,9 +11,9 @@
 ## Hard Constraints
 
 - Each target platform must independently pass content, age rating, payment, and privacy compliance checks.
-- Audit results must not be reused across platforms as final conclusions.
-- Publishing failures, rectifications, and re-reviews must retain evidence.
+- Cross-platform reuse of review results as final conclusions is prohibited.
+- Publishing failures, remediation, and re-review must retain evidence.
 
-## Acceptance Entry Criteria
+## Acceptance Criteria
 
-- Prior to GA, platform-specific audit, age rating, privacy compliance, and publishing records must be provided.
+- Prior to GA, must provide platform-independent review, age rating, privacy compliance, and publishing records.

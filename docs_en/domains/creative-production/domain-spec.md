@@ -1,4 +1,4 @@
-# Advertising Creative Production Domain Spec
+# Creative Production Domain Spec
 
 | Field | Value |
 | --- | --- |
@@ -16,4 +16,4 @@
 
 ## Acceptance Criteria
 
-- GA pre-release must provide evidence of IP checks, content sourcing, brand review, and manual sign-off.
+- Prior to GA, must provide IP check, content source, brand review, and human sign-off evidence.

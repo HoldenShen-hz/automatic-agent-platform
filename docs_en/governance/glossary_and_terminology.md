@@ -72,7 +72,7 @@ Related documents:
 | `stalled` | Process may not be dead, but no effective progress within specified time | `offline` |
 | `dead-letter` | Dead-letter record for failures that cannot be auto-recovered or should not continue retrying | ordinary error log |
 | `checkpoint` | State snapshot at recoverable boundary | arbitrary temporary variable |
-| `partial result` | Task not yet整体 completed, but has retainable and auditable phased results | `completed` |
+| `partial result` | Task not yet entirely completed, but has retainable and auditable phased results | `completed` |
 | `compensation` | Action to roll back, reconcile, or manually repair steps that have already occurred side effects | ordinary retry |
 
 ## 5. State and Lifecycle Terminology

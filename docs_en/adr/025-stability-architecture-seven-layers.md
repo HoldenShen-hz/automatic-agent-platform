@@ -63,12 +63,12 @@ Benefits:
 - Automatic degradation ensures core service availability
 - 6 recovery workers implement self-healing capabilities
 
-Costs:
+Trade-offs:
 
 - Multi-layer mechanisms increase system complexity
 - Requires comprehensive monitoring and alerting infrastructure
 
-## Cross References
+## Cross-references
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)

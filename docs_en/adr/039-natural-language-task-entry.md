@@ -76,12 +76,20 @@ interface RiskPreview {
 
 ## Consequences
 
-Positive:
+Benefits:
 
 - NL entry lowers usage barrier
 - Ambiguity detection improves accuracy
 - Multi-language support expands scope
 
-Negative:
+Trade-offs:
 
 - NLU model requires training and maintenance
+
+## Cross-references
+
+- [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)
+
+## Source Section
+
+- `§39` Natural Language Task Entry Architecture

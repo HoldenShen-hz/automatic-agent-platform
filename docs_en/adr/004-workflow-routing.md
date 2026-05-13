@@ -4,13 +4,13 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components within the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post-execution assessment and risk judgment
+- **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
 - **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -20,7 +20,7 @@ This document defines the following components within the OAPEFLIR eight-stage c
 - Status: Accepted
 - Decision Date: 2026-04-02
 
-## Context
+## Background
 
 The platform needs to simultaneously support simple single tasks, standard workflows, multi-role collaboration, and cross-division composite tasks. If all tasks go through the same heavy-weight process, it will significantly slow down performance and increase costs, while also imposing unnecessary coordination overhead on simple scenarios.
 
@@ -30,16 +30,16 @@ Adopt a five-plane-driven routing with multi-path execution:
 
 - P1 Interface Plane is responsible for receiving messages, triage, and entry normalization.
 - P2 Control Plane is responsible for policy evaluation, routing decisions, and governance constraint injection.
-- P3 Orchestration Plane is responsible for cross-domain decomposition, dependency management, and `PlanGraphBundle` generation.
-- `HarnessRuntime` serves as the sole execution runtime handling P3→P4 handoff.
-- Domain agents / workers only execute local responsibilities within the `NodeRun` boundaries assigned by `HarnessRuntime`.
+- P3 Orchestration Plane is responsible for cross-domain decomposition, dependency management, and PlanGraphBundle generation.
+- HarnessRuntime serves as the sole execution runtime handling P3-to-P4 handoff.
+- Domain agents and workers only execute local responsibilities within the NodeRun boundaries assigned by HarnessRuntime.
 
 The system defines four execution paths:
 
-- `passthrough`: Shortest path, suitable for low-complexity tasks.
-- `fast`: Emphasizes low latency and low cost.
-- `standard`: Introduces testing, validation, or lightweight review.
-- `full`: Full role collaboration and stronger quality assurance.
+- passthrough: Shortest path, suitable for low-complexity tasks.
+- fast: Emphasizes low latency and low cost.
+- standard: Introduces testing, validation, or lightweight review.
+- full: Full role collaboration and stronger quality assurance.
 
 ## Task Lifecycle
 
@@ -47,19 +47,19 @@ A typical flow is as follows:
 
 1. P1 receives messages and filters out non-task conversations.
 2. P2 completes rule matching, risk assessment, and routing decisions.
-3. Single-domain tasks directly generate a minimal `PlanGraphBundle`.
+3. Single-domain tasks directly generate a minimal PlanGraphBundle.
 4. Cross-domain tasks are handed to P3 for decomposition, dependency graph management, and graph patch.
-5. `HarnessRuntime` executes `NodeRun / NodeAttempt` and returns `NodeAttemptReceipt`.
+5. HarnessRuntime executes NodeRun, NodeAttempt and returns NodeAttemptReceipt.
 6. P1/P2 consume projected results and return to the original channel.
 
-## Workflow Data Passing (§5.5 deprecates WorkflowState/StepOutput)
+## Workflow Data Passing (Section 5.5 deprecates WorkflowState/StepOutput)
 
-> Note: §5.5 has deprecated `WorkflowState` and `StepOutput`; please use PlanGraphBundle/NodeAttemptReceipt instead.
+> Note: Section 5.5 has deprecated WorkflowState and StepOutput. Please use PlanGraphBundle/NodeAttemptReceipt instead.
 
 Workflow data passing (v4.3 canonical):
 
-- `PlanGraphBundle` preserves node outputs and the current execution index.
-- Each node produces a structured `NodeAttemptReceipt` upon completion.
+- PlanGraphBundle preserves node outputs and the current execution index.
+- Each node produces a structured NodeAttemptReceipt upon completion.
 - Downstream nodes read upstream results via output keys.
 - Large results enter the artifact store, with only references stored in state.
 
@@ -74,7 +74,7 @@ Key requirements:
 P2 Control Plane routing rules:
 
 - Rules take priority; LLM fallback is secondary.
-- Simple tasks should first match `passthrough` or `fast`.
+- Simple tasks should first match passthrough or fast.
 - Only enter P3 orchestration flow when explicit cross-domain dependencies exist.
 
 P3 Orchestration responsibilities:
@@ -82,11 +82,11 @@ P3 Orchestration responsibilities:
 - Decompose composite tasks.
 - Build dependency graphs.
 - Perform schema compatibility pre-checks.
-- After upstream nodes complete, inject results into downstream context via `PlanGraphBundle` / `GraphPatch`.
+- After upstream nodes complete, inject results into downstream context via PlanGraphBundle or GraphPatch.
 
 ## Self-Healing and Escalation
 
-After workflow failure, do not exit directly; instead, handle in the following order:
+After workflow failure, do not exit directly. Instead, handle in the following order:
 
 - Limited retry attempts.
 - Loop detection to avoid repeatedly executing the same failed action.
@@ -124,24 +124,24 @@ Constraints:
 - Workflow DSL needs strict complexity control to avoid premature support for excessive branching syntax.
 - Routing, cost, and recovery logic need to be designed collaboratively, not scattered throughout.
 
-## Cross References
+## Cross-References
 
-- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation of Powers Architecture](./001-three-layer-architecture.md)
 - [ADR-002 Division System](./002-division-system.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 
 ## Source Sections
 
-- §4.1
-- §4.1.1
-- §4.1.2
-- §4.1.3
-- §4.2
-- §4.3
-- §4.4
-- §4.5
-- §4.6
+- Section 4.1
+- Section 4.1.1
+- Section 4.1.2
+- Section 4.1.3
+- Section 4.2
+- Section 4.3
+- Section 4.4
+- Section 4.5
+- Section 4.6
 
 ## v4.3 ADR Remediation
 
-- A-21: This ADR originally continued to use the v3 agent hierarchy of `VP Operations / VP Orchestration / Division / Lead Agent / CEO`; the root cause was that the Workflow and Routing ADR had long served as the organizational narrative and was not rewritten alongside the v4.3 five-plane and `HarnessRuntime` becoming the runtime backbone. Fix: The main text now uses the P1/P2/P3 and `HarnessRuntime`-driven routing and execution model.
+- A-21: This ADR originally continued using the v3 agent hierarchy of VP Operations, VP Orchestration, Division, Lead Agent, CEO. The root cause was that the Workflow and Routing ADR had long served as the organizational narrative and was not rewritten alongside the v4.3 five-plane and HarnessRuntime becoming the runtime backbone. Fix: The main text now uses the P1/P2/P3 and HarnessRuntime-driven routing and execution model.

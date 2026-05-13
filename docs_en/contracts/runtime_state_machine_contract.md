@@ -1,22 +1,22 @@
 # Runtime State Machine Contract
 
-> **v4.3 Compatibility Note**: This file is preserved as historical OAPEFLIR / task / workflow state machine documentation. v4.3 state advancement authority is based on [ADR-110](../adr/110-runtime-state-machine-authority.md), [harness-run-contract.md](./harness-run-contract.md), [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md), [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md), and [budget-ledger-contract.md](./budget-ledger-contract.md); new modules must advance truth through `RuntimeStateMachine.transition(command)`.
+> **v4.3 Compatibility Note**: This file is preserved as historical task / workflow / OAPEFLIR view state documentation. v4.3 state advancement authority is based on [ADR-110](../adr/110-runtime-state-machine-authority.md), [harness-run-contract.md](./harness-run-contract.md), [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md), [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md), and [budget-ledger-contract.md](./budget-ledger-contract.md); new modules must advance truth through `RuntimeStateMachine.transition(command)`.
 
-> **OAPEFLIR Related**: This contract defines the OAPEFLIR 8-stage state machine, corresponding to ADR-016.
+> **OAPEFLIR Related**: The OAPEFLIR paragraphs in this document only express stage projection order and do not define any truth-grade run / node state machine.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the task, workflow, approval, and execution state machines that must be stable in Phase 1a, and the allowed state transitions.
+This contract documents historical task, workflow, and OAPEFLIR projection view states that still need compatibility after Ring 1, and the mapping constraints between them and v4.3 truth state machine.
 
 Supplementary notes:
 
 - This document answers "how can states change".
 - `runtime_execution_contract.md` answers "how are runtime runs checked, executed, retried, and terminated".
 
-## 1A. OAPEFLIR Top-Level Stage State Machine
+## 1A. OAPEFLIR Top-Level Stage Projection View
 
-Workflow top-level stages in Phase 1-4 advance in the following order:
+The eight stages of OAPEFLIR are only used for explaining closed-loop semantic views, recommended display order:
 
 ```text
 observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
@@ -51,7 +51,7 @@ Constraints:
 
 - Canonical writing for `stage` must use the above enums; synonyms like `perceive`, `analyze`, `deploy` must not be used.
 - `skipped` can only be used for explicit controlled skips, and must not be used as a failure degradation alias.
-- `release` is the current closed-loop stage, not equivalent to a real external release necessarily occurring; within the current Phase 1-4 authoritative boundary, it can only advance to `off / suggest / shadow`.
+- `release` is the current closed-loop stage, not equivalent to a real external release necessarily occurring; real release actions are still controlled by HarnessRuntime / Release Gate.
 
 ## 2. TaskStatus
 
@@ -78,35 +78,115 @@ Constraints:
 - `awaiting_decision` is only used for waiting for external approval / human input, and does not replace normal pause.
 - `done`, `failed`, `cancelled` are terminal states; after terminal state, new lifecycle can only be entered by creating a new recovery task.
 
-## 3. WorkflowStatus
+## 3. HarnessRunStatus (v4.3 canonical run status, 14 states)
 
-Enum:
+> Note: This document originally used `WorkflowStatus` as the run status enum. v4.3 canonical run status is based on `HarnessRun.status` (14 states). `WorkflowStatus` is retained only as old workflow projection view and should no longer be used as authoritative run status.
 
+`HarnessRunStatus` enum (14 states):
+
+- `created`
+- `admitted`
+- `planning`
+- `ready`
 - `running`
+- `pausing`
 - `paused`
+- `resuming`
+- `replanning`
+- `compensating`
 - `completed`
 - `failed`
-- `resuming`
-- `cancelling`
 - `cancelled`
+- `aborted`
+
+Terminal states: `completed`, `failed`, `cancelled`, `aborted`. Terminal states cannot transition out.
 
 Allowed transitions:
 
+- `created -> admitted`
+- `created -> failed`
+- `created -> cancelled`
+- `created -> aborted`
+- `admitted -> planning`
+- `admitted -> ready`
+- `admitted -> failed`
+- `admitted -> cancelled`
+- `admitted -> aborted`
+- `planning -> ready`
+- `planning -> replanning`
+- `planning -> failed`
+- `planning -> cancelled`
+- `planning -> aborted`
+- `ready -> running`
+- `ready -> paused`
+- `ready -> failed`
+- `ready -> cancelled`
+- `ready -> aborted`
+- `running -> pausing`
 - `running -> paused`
+- `running -> replanning`
+- `running -> compensating`
 - `running -> completed`
 - `running -> failed`
-- `running -> cancelling`
+- `running -> cancelled`
+- `running -> aborted`
+- `pausing -> paused`
+- `pausing -> failed`
+- `pausing -> cancelled`
+- `pausing -> aborted`
 - `paused -> resuming`
+- `paused -> replanning`
+- `paused -> failed`
+- `paused -> cancelled`
+- `paused -> aborted`
 - `resuming -> running`
 - `resuming -> failed`
-- `cancelling -> cancelled`
+- `resuming -> cancelled`
+- `resuming -> aborted`
+- `replanning -> ready`
+- `replanning -> running`
+- `replanning -> failed`
+- `replanning -> cancelled`
+- `replanning -> aborted`
+- `compensating -> completed`
+- `compensating -> failed`
+- `compensating -> cancelled`
+- `compensating -> aborted`
 
 Constraints:
 
-- `completed` and `failed` are terminal states.
 - `paused` must be accompanied by a recoverable reason, such as approval wait, human input wait, or external dependency wait.
 - `resuming` is only a brief intermediate state, used for state repair and preflight checks before recovery.
-- `WorkflowStatus` represents the workflow overall lifecycle; specific closed-loop stage progress is expressed by `current_stage + StageStatus`, and the two must not be mixed into one field.
+- `replanning` / `compensating` are active running states during OAPEFLIR, not independent terminal states.
+- `HarnessRunStatus` is v4.3 truth run status; old `WorkflowStatus` / `TaskStatus` are retained only as legacy projections.
+- Specific closed-loop stage progress is expressed by `current_stage + StageStatus`; the two must not be mixed into one field.
+
+### 3A. Legacy WorkflowStatus (deprecated projection)
+
+The following enum is retained only as historical workflow read model projection and should not be used in new implementation entry points:
+
+- `created`
+- `admitted`
+- `planning`
+- `ready`
+- `running`
+- `pausing`
+- `paused`
+- `resuming`
+- `replanning`
+- `compensating`
+- `completing`
+- `completed`
+- `failed`
+- `cancelling`
+- `cancelled`
+- `timed_out`
+- `aborted`
+
+Rules:
+
+- `completing / cancelling / timed_out` are states unique to old workflow and have no corresponding state in v4.3 HarnessRun.
+- All legacy states are only used as read model / migration input, and must not be used as authoritative state for new implementations.
 
 ## 4. SessionStatus
 
@@ -164,47 +244,63 @@ Constraints:
 - `approved` / `rejected` decision is only allowed to take effect once.
 - When a new request supersedes an old request, the old request must be written as `superseded`, and cannot be silently overwritten.
 
-## 6. ExecutionStatus
+## 6. NodeRunStatus (canonical execution truth per v4.3)
 
-> Note: This enum was previously called `AgentRunStatus` in early documents; now unified to `ExecutionStatus`, consistent with `executions.status` field and entry in `transition_service_contract.md`.
+> Note: This document previously used `ExecutionStatus` as the execution status enum. v4.3 canonical execution status is based on `NodeRun.status` (14 states). `ExecutionStatus` is retained only as old `executions` projection view and migration documentation; new implementations must not use it as authoritative execution status enum.
 
-Enum:
+`NodeRunStatus` enum (14 states):
 
 - `created`
-- `prechecking`
-- `executing`
 - `blocked`
+- `ready`
+- `queued`
+- `leased`
+- `running`
+- `retry_wait`
+- `awaiting_hitl`
+- `reconciling`
 - `succeeded`
 - `failed`
+- `skipped`
 - `cancelled`
-- `superseded`
+- `aborted`
+
+Terminal states: `succeeded`, `failed`, `skipped`, `cancelled`, `aborted`.
 
 Allowed transitions:
 
-- `created -> prechecking`
-- `created -> cancelled`
-- `created -> failed`
-- `prechecking -> executing`
-- `prechecking -> blocked`
-- `prechecking -> cancelled`
-- `prechecking -> failed`
-- `executing -> blocked`
-- `executing -> succeeded`
-- `executing -> failed`
-- `executing -> cancelled`
-- `blocked -> prechecking`
-- `blocked -> executing`
-- `blocked -> cancelled`
-- `blocked -> failed`
-- `blocked -> superseded`
+- `created -> queued`
+- `queued -> ready`
+- `ready -> leased`
+- `leased -> running`
+- `running -> retry_wait`
+- `running -> awaiting_hitl`
+- `running -> reconciling`
+- `running -> succeeded`
+- `running -> failed`
+- `running -> skipped`
+- `running -> cancelled`
+- `running -> aborted`
+- `retry_wait -> ready`
+- `retry_wait -> failed`
+- `awaiting_hitl -> running`
+- `awaiting_hitl -> failed`
+- `reconciling -> succeeded`
+- `reconciling -> failed`
+- `blocked -> ready` (when dependency is satisfied)
+- `skipped -> aborted`
+- `cancelled -> aborted`
 
 Constraints:
 
-- `prechecking` is part of the formal running state, not a negligible temporary field.
-- `blocked` must be accompanied by a clear reason, such as `approval_required` or `dependency_unavailable`.
-- `superseded` indicates the execution was replaced by a new attempt or handover, and the old execution no longer advances.
-- Retry semantics are no longer expressed by a separate state, but achieved by creating a new execution attempt (incrementing the `attempt` field); the old execution enters `failed` or `superseded`.
-- `succeeded`, `failed`, `cancelled`, `superseded` are terminal states.
+- `retry_wait` is part of the formal running state, used for retry waiting period; must record `wakeAt`, `retryPolicyRef`, `attemptId`, and backoff reason.
+- `awaiting_hitl` must be accompanied by a clear reason, such as `approval_required`, `human_input_required`.
+- `reconciling` is used for coordinating side effects and compensation logic.
+- `blocked` indicates the node is not executable due to upstream dependencies not being satisfied; must not be disguised as `queued` or `ready`.
+- `queued` indicates the node has entered the scheduler queue and is waiting to be picked up by the scheduler; distinguish from `blocked` (dependency not satisfied).
+- Retry semantics are achieved by creating a new `NodeAttempt` (incrementing `attemptNo` field); must not update old `NodeRun` status.
+- `succeeded`, `failed`, `skipped`, `cancelled`, `aborted` are terminal states.
+- v4.3 truth execution status is based on `NodeRunStatus` and `NodeAttemptReceipt` append-only receipt; old `ExecutionStatus` must not inversely drive runtime legality judgment.
 
 ## 7. Cross-State Consistency Constraints
 
@@ -215,15 +311,15 @@ Constraints:
 - If a run enters `blocked` and the reason is approval wait, task and workflow status must synchronously enter waiting semantics.
 - When session enters `awaiting_user`, the task should be in `awaiting_decision`, workflow in `paused`, or have a clear channel-side waiting reason.
 - Session `completed / failed / cancelled` should follow task terminal state closure, but session terminal state must not inversely determine task terminal state.
-- When `current_stage=feedback|learn|improve|release`, the workflow can still remain `running`; the workflow must not be marked `completed` early just because execute has ended.
-- When stage returns from `release` to the next round of `observe`, the workflow still maintains the same lifecycle, only incrementing `loop_iteration`.
+- When `current_stage=feedback|learn|improve|release`, the workflow can still remain `running`; must not mark the workflow as `completed` early just because execute has ended.
+- When stage returns from `release` to the next round of `observe`, the workflow maintains the same lifecycle, only incrementing `loop_iteration`.
 
 ## 8. Failure Semantics
 
 - Non-terminal state recovery can only be completed through explicit state transitions; direct field overwrites for repair are prohibited.
 - `failed` must distinguish between retryable and non-retryable reason codes.
 - `cancelled` must preserve the cancellation initiator and reason.
-- Precheck failure must not be disguised as success followed by failure; the true failure stage must be preserved.
+- Precheck failure must not be disguised as execution success then failure; the true failure stage must be preserved.
 
 ## 9. Supplementary Rules
 
@@ -233,8 +329,8 @@ Constraints:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-1: ExecutionStatus uses 5 states (running/paused/cancelled/completed/failed), architecture NodeRun uses 9 states (pending/ready/running/blocked/succeeded/failed/skipped/cancelled/timed_out); WorkflowStatus has 6 states vs HarnessRun's 13 states. Fix: This semantics converges to v4.3 canonical contract; old fields, old states, old DTOs, or old terminology are only allowed as legacy/deprecated/projection/migration input, and must not serve as new implementation entry points.
+- T-1: Original ExecutionStatus used 13 states but lacked `blocked/queued`, and used the old name `ExecutionStatus` instead of `NodeRun.status`; WorkflowStatus 17 states (including `completing/cancelling/timed_out`) vs HarnessRun 13 states. Fix: §6 renames ExecutionStatus → NodeRunStatus, adds 14 states (`created/blocked/ready/queued/leased/running/retry_wait/awaiting_hitl/reconciling/succeeded/failed/skipped/cancelled/aborted`); §3 clarifies HarnessRunStatus as v4.3 canonical 13-state run status, old WorkflowStatus demoted to legacy projection.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

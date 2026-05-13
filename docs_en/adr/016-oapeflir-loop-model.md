@@ -17,7 +17,7 @@ The system adopts an eight-stage cognitive loop, but it is not an independent ex
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
    ↓                    ↓           ↓           ↓            ↓
    └────────────────────┴───────────┴───────────┴────────────┘
-                    (Dual-chain topology: main chain O→A→P→E→F, secondary chain F→L→I→R)
+                    (Dual-chain topology: main chain O→A→P→E→F, side chain F→L→I→R)
 ```
 
 Constraints:
@@ -41,7 +41,7 @@ Constraints:
 ### Mapping to Phase 1A/1B Execution Model
 
 - `HarnessRuntime` handles the real `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` execution main chain.
-- OAPEFLIR generates phased views/rationales above the Harness main chain and drives the Feedback → Learn → Improve → Release secondary chain.
+- OAPEFLIR generates phased views/rationales above the Harness main chain and drives the Feedback → Learn → Improve → Release side chain.
 - The canonical narrative of `OapeflirLoopService` as an independent runtime entry point no longer exists.
 
 ### Execute Layer Integration Requirements

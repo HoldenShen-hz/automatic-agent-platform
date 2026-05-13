@@ -16,4 +16,4 @@
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence must be provided for downstream impact analysis, schema migration approval, data lineage, and recovery drills.
+- Prior to GA, must provide downstream impact analysis, schema migration approval, data lineage, and recovery drill evidence.

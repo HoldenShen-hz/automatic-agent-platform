@@ -4,15 +4,15 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and dual-channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and rollout state machine (ADR-075)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
 
 ---
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 - Status: Accepted
 - Decision Date: 2026-04-02
 
-## Context
+## Background
 
 The platform must support both local CLI/TUI and server-side HTTP/Telegram/Web modes, and also meet crash recovery, observability, config hot-reload, and future multi-tenant scaling. Therefore, deployment and operations cannot consider only single-machine happy path.
 
@@ -62,7 +62,7 @@ To support recovery, at minimum need:
 - workflow_step_outputs.
 - sessions/messages.
 - events.
-- Artifacts index.
+- artifacts index.
 
 ## Access and API
 
@@ -104,9 +104,9 @@ Operations design must include testing and observability:
 - Phase 3: Enhanced channels, authentication, Web, and commercialization infrastructure.
 - Phase 4: Migrate to PostgreSQL, multi-tenant, queue system, and stronger enterprise capabilities.
 
-## Consequences
+## Results
 
-Advantages:
+Benefits:
 
 - Fast development speed; suitable for early solo + AI team progress.
 - Unified service layer reuses CLI, HTTP, Embedded Client.
@@ -120,7 +120,7 @@ Costs:
 
 ## Cross-References
 
-- [ADR-001 Three-Layer Separation of Authority](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation of Powers Architecture](./001-three-layer-architecture.md)
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 

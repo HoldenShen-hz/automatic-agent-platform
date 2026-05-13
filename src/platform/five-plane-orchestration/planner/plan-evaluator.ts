@@ -113,7 +113,7 @@ function getDepth(stepId: string, dependencies: Map<string, string[]>, visited: 
 /**
  * Estimates maximum concurrency based on dependency structure.
  */
-function estimateMaxConcurrency(plan: Plan): number {
+export function estimateMaxConcurrency(plan: Plan): number {
   const stepIds = plan.steps.map((s) => s.stepId);
   const inDegree = new Map<string, number>();
 

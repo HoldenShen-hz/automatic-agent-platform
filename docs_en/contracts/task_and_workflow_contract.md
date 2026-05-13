@@ -92,7 +92,8 @@ Rules:
 
 Each step contains at minimum:
 
-- `step_id`
+- `node_run_id`
+- `harness_run_id`
 - `role_id`
 - `input_binding`
 - `output_key`
@@ -105,6 +106,7 @@ Each step contains at minimum:
 
 Rules:
 
+- `node_run_id` is the step's unique primary key, linked to `NodeRun` truth.
 - `input_binding` must be resolvable to upstream output, task input, or system context.
 - `output_key` is unique within same workflow.
 - `approval_policy` only defines whether escalation is needed, does not carry channel interaction details.
@@ -142,9 +144,11 @@ Rules:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `step_id` | `string` | Step ID |
+| `node_run_id` | `string` | Associated NodeRun ID |
+| `harness_run_id` | `string` | Associated HarnessRun ID |
+| `attempt_id` | `string` | Associated NodeAttempt ID |
 | `role_id` | `string` | Execution role |
-| `status` | `succeeded \| failed \| partial_success` | Step result |
+| `status` | `succeeded \| failed \| partial_success \| skipped` | Step result |
 | `data` | `json` | Main output data |
 | `summary` | `string?` | Output summary |
 | `artifacts` | `ArtifactRef[]?` | Attachment references |
@@ -233,5 +237,6 @@ Supplementary notes:
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-22: This document originally wrote `PlanDTO` and `WorkflowState.current_stage` as authoritative handover/authoritative state of execution main chain. Root cause: early workflow contract tried to simultaneously carry orchestration truth and UI/cognitive view, causing plan handoff and stage view to mix in one object. Fix: This version converges authoritative handover to `PlanGraphBundle`, and explicitly demotes `WorkflowState.current_stage_view` to a projection field.
+- T-18: Original `WorkflowStep` / `StepOutput` used `step_id` as semantic primary key (legacy workflow step remnant), but v4.3 execution truth uses `node_run_id`. Fix: §6 clarifies `node_run_id` is the step's unique primary key, linked to `NodeRun` truth; §7 `StepOutput` association fields have converged to `node_run_id / harness_run_id / attempt_id`. Old `step_id` only preserved as legacy projection trace field.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

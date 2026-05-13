@@ -41,12 +41,12 @@ Benefits:
 - Code-level constraint enforcement improves compliance
 - Success criteria metrics make delivery assessable
 
-Costs:
+Trade-offs:
 
 - Maintaining risk register requires ongoing investment
 - Some constraints are difficult to codify
 
-## Cross References
+## Cross-references
 
 - [ADR-026 Risk Control Architecture](./026-risk-control-architecture.md)
 - [ADR-033 Phased Roadmap](./033-phased-roadmap.md)

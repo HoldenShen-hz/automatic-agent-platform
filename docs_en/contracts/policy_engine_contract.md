@@ -14,7 +14,7 @@ Related documents:
 
 ## 2. Objectives
 
-The unified Policy Engine must at minimum address:
+Unified Policy Engine must at minimum address:
 
 - Different modules no longer make permission judgments independently.
 - High-risk actions enter a single decision chain.

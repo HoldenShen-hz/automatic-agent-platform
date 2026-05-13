@@ -1,4 +1,4 @@
-# Enterprise Knowledge Base Domain Spec
+# Knowledge Base Domain Spec
 
 | Field | Value |
 | --- | --- |
@@ -11,9 +11,9 @@
 ## Hard Constraints
 
 - Must mirror source system document-level permissions.
-- Real-time access checks must be enforced at query time.
-- Generated answers must preserve citations and evidence references.
+- Real-time access checks must be executed at query time.
+- Generated answers must retain citations and evidence refs.
 
 ## Acceptance Criteria
 
-- Before GA, evidence must be provided for: permission mirroring, cross-department isolation, citation accuracy, and access audit.
+- Prior to GA, must provide permission mirroring, cross-department isolation, citation accuracy, and access audit evidence.

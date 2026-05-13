@@ -28,6 +28,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export const WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION = "workflow_step_checkpoint.v1";
+export const NODE_RUN_CHECKPOINT_SCHEMA_VERSION = "node_run_checkpoint.v1";
 
 /**
  * Context about how the step decision was made.
@@ -178,6 +179,115 @@ export interface WorkflowStepCheckpointDiff {
   outputKeysRemoved: string[];
   nextStepChanged: boolean;
   compensationChanged: boolean;
+}
+
+export interface CreateNodeRunCheckpointInput {
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphBundleId: string;
+  graphVersion: number;
+  planGraphId: string;
+  nodeId: string;
+  taskId: string;
+  executionId: string | null;
+  divisionId: string;
+  roleId: string;
+  outputKey: string;
+  status: StepOutputRecord["status"];
+  producedAt: string;
+  output: Record<string, unknown>;
+  decisionContext: {
+    source: string;
+    request: string;
+    routeReason: string | null;
+    priorNodeSummaries: string[];
+    dependsOnNodeIds: string[];
+  };
+  resumeContext: {
+    completedNodeIds: string[];
+    nextNodeId: string | null;
+    outputKeys: string[];
+  };
+}
+
+export interface NodeRunCheckpoint {
+  schemaVersion: typeof NODE_RUN_CHECKPOINT_SCHEMA_VERSION;
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphBundleId: string;
+  graphVersion: number;
+  planGraphId: string;
+  nodeId: string;
+  taskId: string;
+  executionId: string | null;
+  divisionId: string;
+  roleId: string;
+  outputKey: string;
+  status: StepOutputRecord["status"];
+  producedAt: string;
+  output: Record<string, unknown>;
+  decisionContext: CreateNodeRunCheckpointInput["decisionContext"];
+  resumeContext: CreateNodeRunCheckpointInput["resumeContext"];
+}
+
+export function createNodeRunCheckpoint(input: CreateNodeRunCheckpointInput): NodeRunCheckpoint {
+  return {
+    schemaVersion: NODE_RUN_CHECKPOINT_SCHEMA_VERSION,
+    harnessRunId: input.harnessRunId,
+    nodeRunId: input.nodeRunId,
+    planGraphBundleId: input.planGraphBundleId,
+    graphVersion: input.graphVersion,
+    planGraphId: input.planGraphId,
+    nodeId: input.nodeId,
+    taskId: input.taskId,
+    executionId: input.executionId,
+    divisionId: input.divisionId,
+    roleId: input.roleId,
+    outputKey: input.outputKey,
+    status: input.status,
+    producedAt: input.producedAt,
+    output: { ...input.output },
+    decisionContext: {
+      source: input.decisionContext.source,
+      request: input.decisionContext.request,
+      routeReason: input.decisionContext.routeReason,
+      priorNodeSummaries: [...input.decisionContext.priorNodeSummaries],
+      dependsOnNodeIds: [...input.decisionContext.dependsOnNodeIds],
+    },
+    resumeContext: {
+      completedNodeIds: [...input.resumeContext.completedNodeIds],
+      nextNodeId: input.resumeContext.nextNodeId,
+      outputKeys: [...input.resumeContext.outputKeys],
+    },
+  };
+}
+
+export function readNodeRunCheckpoint(record: ArtifactRecord): NodeRunCheckpoint | null {
+  if (record.kind !== "node_run_snapshot" || !existsSync(record.storagePath)) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(record.storagePath, "utf8")) as unknown;
+    return isNodeRunCheckpoint(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function summarizeNodeRunCheckpoint(artifactId: string, checkpoint: NodeRunCheckpoint) {
+  const output = checkpoint.output as { summary?: unknown };
+  return {
+    artifactId,
+    nodeRunId: checkpoint.nodeRunId,
+    planGraphId: checkpoint.planGraphId,
+    nodeId: checkpoint.nodeId,
+    status: checkpoint.status,
+    producedAt: checkpoint.producedAt,
+    nextNodeId: checkpoint.resumeContext.nextNodeId,
+    outputKeys: [...checkpoint.resumeContext.outputKeys],
+    summary: typeof output.summary === "string" ? output.summary : null,
+    source: checkpoint.decisionContext.source,
+  };
 }
 
 /**
@@ -387,6 +497,34 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
     && isResumeContext(candidate.resumeContext)
     && isFileDiffSummary(candidate.fileDiffSummary)
     && isArtifactRefArray(candidate.upstreamArtifactRefs);
+}
+
+function isNodeRunCheckpoint(value: unknown): value is NodeRunCheckpoint {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return candidate.schemaVersion === NODE_RUN_CHECKPOINT_SCHEMA_VERSION
+    && typeof candidate.harnessRunId === "string"
+    && typeof candidate.nodeRunId === "string"
+    && typeof candidate.planGraphBundleId === "string"
+    && typeof candidate.graphVersion === "number"
+    && typeof candidate.planGraphId === "string"
+    && typeof candidate.nodeId === "string"
+    && typeof candidate.taskId === "string"
+    && (candidate.executionId === null || typeof candidate.executionId === "string")
+    && typeof candidate.divisionId === "string"
+    && typeof candidate.roleId === "string"
+    && typeof candidate.outputKey === "string"
+    && typeof candidate.status === "string"
+    && typeof candidate.producedAt === "string"
+    && candidate.output != null
+    && typeof candidate.output === "object"
+    && !Array.isArray(candidate.output)
+    && candidate.decisionContext != null
+    && typeof candidate.decisionContext === "object"
+    && candidate.resumeContext != null
+    && typeof candidate.resumeContext === "object";
 }
 
 function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint | null {

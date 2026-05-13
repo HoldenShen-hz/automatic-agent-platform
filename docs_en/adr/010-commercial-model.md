@@ -2,15 +2,15 @@
 
 ---
 
-## OAPEFLIR Correlation
+## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post-execution assessment and risk judgment
+- **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
 - **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 types of feedback sources (ADR-079)
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-02
 
-## Context
+## Background
 
 The platform's overarching goal includes "profitable operations," but if we only design the technical architecture without defining the commercialization path in advance, subsequent billing, permissions, marketplace, and tenant capabilities will be difficult to integrate.
 
@@ -76,7 +76,7 @@ At minimum, these technical prerequisites are required:
 
 ## Results
 
-Pros:
+Benefits:
 
 - Commercialization is not an add-on layer, but is planned in sync with cost, tenant, security, and channels.
 - Ability to identify earlier which technical capabilities are prerequisites for commercialization.
@@ -88,7 +88,7 @@ Constraints:
 - Pricing, compliance, and market strategy must all retain flexibility for adjustment before real market validation.
 - Any charging design must be closed-loop with a real cost model.
 
-## Cross References
+## Cross-References
 
 - [ADR-008 Cost Model](./008-cost-model.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)

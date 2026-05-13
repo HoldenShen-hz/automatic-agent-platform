@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Above-threshold purchase orders must be based on approved demand forecasts.
+- Purchase orders exceeding threshold must be based on approved demand forecasts.
 - Scheduling, procurement, and inventory side effects must be reconcilable.
-- Anomaly predictions must not directly drive irreversible procurement actions.
+- Abnormal forecasts must not directly drive irreversible procurement actions.
 
 ## Acceptance Criteria
 
-- Demand forecast approval, procurement audit, inventory consistency, and anomaly handling evidence must be provided before GA.
+- Prior to GA, must provide demand forecast approval, procurement audit, inventory consistency, and exception handling evidence.

@@ -12,8 +12,8 @@
 
 - Every citation must be resolvable to a real paper or trusted database record.
 - Zero tolerance for fabricated citations.
-- Summaries, conclusions, and recommendations must distinguish facts, inferences, and assumptions.
+- Summaries, conclusions, and recommendations must clearly distinguish facts, inferences, and hypotheses.
 
 ## Acceptance Criteria
 
-- GA pre-release must provide DOI/database verification, citation accuracy rate, and manual review evidence.
+- Prior to GA, must provide DOI/database verification, citation accuracy rate, and human review evidence.

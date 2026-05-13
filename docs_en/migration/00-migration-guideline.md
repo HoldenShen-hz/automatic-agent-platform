@@ -426,7 +426,7 @@ Layer 1 │ Infrastructure Layer (Five Planes · Stability · Risk · Security �
 #### config/ — Green Direct Migration
 
 | Directory | File Count | Migration Notes |
-|-----------|------------|-----------------|
+|-----------|------------|----------------|
 | `config/bootstrap/` | 1 | Phase config directly reusable |
 | `config/runtime/` | 6 | Runtime config (with 5 environment variants) directly reusable |
 | `config/security/` | 6 | Security config directly reusable |
@@ -480,7 +480,7 @@ Layer 1 │ Infrastructure Layer (Five Planes · Stability · Risk · Security �
 #### 5.10.1 tests/helpers/ — 19 files / ~2,093 lines
 
 | File | Lines | Level | Purpose | Migration Notes |
-|------|-------|-------|---------|-----------------|
+|------|-------|-------|---------|----------------|
 | `fs.ts` | 21 | Green A | Temp workspace create/cleanup | Almost all tests depend on it, **migrate first** |
 | `seed.ts` | 100 | Green A | DB seed data (seedTaskAndExecution) | E2E/golden/integration depend on it |
 | `typed-factories.ts` | 143 | Green A | Type-safe mock factories (createPartial/unsafeCast) | Widely used |
@@ -943,9 +943,9 @@ The object migration matrix defines "what changes to what", this section defines
 ```
 Phase 1: Create new tables       → CREATE TABLE new_xxx (new schema)
 Phase 2: Enable dual-write       → Write to both old_xxx + new_xxx simultaneously
-Phase 3: Shadow reads           → Read from both tables simultaneously, compare results, record differences
+Phase 3: Shadow reads            → Read from both tables simultaneously, compare results, record differences
 Phase 4: Switch primary read     → Switch primary read to new_xxx, old_xxx becomes backup read
-Phase 5: Verification period    → Run ≥1 complete Phase cycle, confirm zero differences
+Phase 5: Verification period     → Run ≥1 complete Phase cycle, confirm zero differences
 Phase 6: Deprecate old table    → DROP TABLE old_xxx
 ```
 

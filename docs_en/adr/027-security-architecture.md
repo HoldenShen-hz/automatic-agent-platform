@@ -70,12 +70,12 @@ Benefits:
 - Short-lived secrets reduce leakage risk
 - Sandbox isolation protects host systems
 
-Costs:
+Trade-offs:
 
 - Security checks add performance overhead
 - Key management increases operational complexity
 
-## Cross References
+## Cross-references
 
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-026 Risk Control Architecture](./026-risk-control-architecture.md)

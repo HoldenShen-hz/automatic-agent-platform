@@ -70,7 +70,7 @@ Rules:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform_architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-4: Only 3 locking strategies supported (pinned/floating/range), but architecture §22.4 defines 4 including digest-locked. Fix: This semantics converges to v4.3 canonical contract; old fields, old states, old DTOs, or old terminology are only allowed as legacy/deprecated/projection/migration input and must not be used as new implementation entry points.
 

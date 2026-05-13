@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/legal/index.ts` |
 | domain_status | spec_ready |
 | risk_level | critical |
-| accountable_role | Practicing Lawyer / Legal Lead |
+| accountable_role | Licensed Attorney / Legal Lead |
 
 ## Hard Constraints
 
-- Agent only provides legal information, not final legal opinions.
-- All outbound or actioned outputs must be reviewed by a practicing lawyer.
-- Contract red lines, FTO, and dispute recommendations must preserve evidence.
+- Agent only provides legal information, not final legal advice.
+- All outbound or actioned outputs must be reviewed by a licensed attorney.
+- Contract red lines, FTO, and dispute recommendations must retain basis.
 
 ## Acceptance Criteria
 
-- Before GA, evidence must be provided for: lawyer review, output sign-off, citation evidence, and responsibility boundary records.
+- Prior to GA, must provide attorney review, output sign-off, citation evidence, and liability boundary records.

@@ -28,7 +28,7 @@ Unify lifecycle commonalities for the following entities:
 - strategy_version
 - stage_lifecycle_record
 
-And unify completion of reason records for terminal states such as failed / cancelled / killed / deprecated.
+And unify the completion of reason records for terminal states such as failed / cancelled / killed / deprecated.
 
 ## 3. Lifecycle Template
 

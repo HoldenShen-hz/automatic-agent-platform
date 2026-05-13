@@ -85,7 +85,7 @@ Constraints:
 `Goal` itself only describes decomposition input; after entering execution, the status truth must converge to `HarnessRun.status`.
 
 | GoalProjection Status | Corresponding HarnessRun Truth |
-|------|------|
+|-----------------------|--------------------------------|
 | draft | `HarnessRun` not yet created |
 | decomposing | `created / admitted / planning` |
 | planned | `ready` |
@@ -107,17 +107,26 @@ Rules:
 
 ## Consequences
 
-Advantages:
+Benefits:
 
 - Automated decomposition improves efficiency
 - Confidence mechanism balances automation and human intervention
 - DAG validation ensures executability
 
-Costs:
+Trade-offs:
 
 - Complex goal decomposition may be inaccurate
-- Dependency relationship analysis
+- Dependency relationship analysis is complex
 
 ## v4.3 ADR Remediation
 
 - A-28: This ADR originally defined a separate 9-state goal lifecycle. The root cause was that the goal decomposition ADR mixed "decomposition product status" and "runtime truth status" into one lifecycle, and did not converge when `HarnessRun` became the sole execution state machine. Fix: The main text now downgrades goal status to `GoalProjection`, and the execution phase is uniformly mapped to `HarnessRun.status`.
+
+## Cross-references
+
+- [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
+- [ADR-060 Explicit Planning Hub](./060-explicit-planning-hub.md)
+
+## Source Section
+
+- `§40` Goal Decomposition Engine Architecture

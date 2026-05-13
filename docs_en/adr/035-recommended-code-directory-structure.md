@@ -50,15 +50,15 @@ Benefits:
 - Easier for developers to locate code
 - Supports large-scale team parallel development
 
-Costs:
+Trade-offs:
 
 - Refactoring existing code requires significant effort
 - Must keep in sync with documentation
 
-## Cross References
+## Cross-references
 
 - [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
 
 ## Source Section
 
-- `§35` Recommended Code Directory
+- `§35` Recommended Code Directory Structure

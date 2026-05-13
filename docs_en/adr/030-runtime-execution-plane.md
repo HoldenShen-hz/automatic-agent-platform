@@ -52,7 +52,7 @@ State and Recovery Boundaries:
 ### 6 Built-in Executor Types
 
 | Type | Description |
-|------|------|
+|------|-------------|
 | ToolExecutor | Tool invocation executor |
 | PluginExecutor | Plugin executor |
 | BrowserExecutor | Browser automation executor |
@@ -67,7 +67,7 @@ Correspond to the 8 PolicyMode types, managed uniformly by PolicyCenterService.
 ### 6 Recovery Workers
 
 | Worker | Responsibility |
-|--------|------|
+|--------|----------------|
 | RuntimeRecoveryService | Generic recovery logic |
 | RuntimeRepairService | Repairs corrupted state |
 | RuntimeRecoveryDecisionService | Recovery decisions |
@@ -83,12 +83,12 @@ Benefits:
 - ExecutorRegistry supports extensibility
 - 6 recovery workers achieve self-healing
 
-Costs:
+Trade-offs:
 
 - Execution layer adds abstraction complexity
 - Recovery logic requires careful design
 
-## Cross References
+## Cross-references
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 - [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)

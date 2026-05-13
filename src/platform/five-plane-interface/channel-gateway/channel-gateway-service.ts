@@ -71,8 +71,12 @@ export class ChannelAdapterRegistry {
   /**
    * Registers a channel adapter.
    */
-  public register(adapter: ChannelAdapter): void {
-    this.adapters.set(adapter.channelType, adapter);
+  public register(adapter: ChannelAdapter | { readonly channel: string }): void {
+    const normalized = normalizeChannelAdapter(adapter);
+    if (this.adapters.has(normalized.channelType)) {
+      throw new Error(`channel_adapter.already_registered: ${normalized.channelType}`);
+    }
+    this.adapters.set(normalized.channelType, normalized);
   }
 
   /**
@@ -95,6 +99,72 @@ export class ChannelAdapterRegistry {
   public supports(channel: string): boolean {
     return this.adapters.has(channel);
   }
+
+  public has(channel: string): boolean {
+    return this.supports(channel);
+  }
+
+  public registeredChannels(): string[] {
+    return this.getChannelTypes();
+  }
+}
+
+function normalizeChannelAdapter(adapter: ChannelAdapter | { readonly channel: string }): ChannelAdapter {
+  if ("channelType" in adapter) {
+    return adapter;
+  }
+  const legacy = adapter as {
+    readonly channel: string;
+    send(input: { targetId: string; externalTargetId: string | null; text: string; metadata?: Record<string, unknown> }): Promise<GatewayDeliveryReceipt>;
+  };
+  return {
+    channelType: legacy.channel,
+    channel: legacy.channel,
+    supports: (channel) => channel === legacy.channel,
+    sendMessage: (input) => legacy.send(input),
+  } as ChannelAdapter;
+}
+
+export function createDefaultChannelAdapterRegistry(): ChannelAdapterRegistry {
+  const registry = new ChannelAdapterRegistry();
+  registry.register({
+    channelType: "telegram",
+    supports: (channel) => channel === "telegram",
+    async sendMessage(input) {
+      return createAdapterPlaceholderReceipt("telegram", input.targetId, input.externalTargetId);
+    },
+  });
+  registry.register({
+    channelType: "slack",
+    supports: (channel) => channel === "slack",
+    async sendMessage(input) {
+      return createAdapterPlaceholderReceipt("slack", input.targetId, input.externalTargetId);
+    },
+  });
+  registry.register({
+    channelType: "webhook",
+    supports: (channel) => channel === "webhook",
+    async sendMessage(input) {
+      return createAdapterPlaceholderReceipt("webhook", input.targetId, input.externalTargetId);
+    },
+  });
+  return registry;
+}
+
+function createAdapterPlaceholderReceipt(
+  channel: string,
+  targetId: string,
+  externalTargetId: string | null,
+): GatewayDeliveryReceipt {
+  return {
+    deliveredAt: new Date(0).toISOString(),
+    channel,
+    targetId,
+    externalTargetId,
+    requestUrl: "",
+    responseStatus: 0,
+    providerMessageId: null,
+  };
 }
 
 /**

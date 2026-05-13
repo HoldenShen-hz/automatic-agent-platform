@@ -209,3 +209,10 @@ interface RingMetricsCollector {
 ## 9. Closure Conclusion
 
 Ring Model is not simple percentage segmentation, but a progressive deployment mechanism with strict criteria, automated gates, and human approval points. Promotion from any ring must go through explicit criteria verification; rollback mechanism ensures problems can be controlled in a timely manner.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

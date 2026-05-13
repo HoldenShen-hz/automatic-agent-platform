@@ -53,24 +53,22 @@ const DEFAULT_CANARY_PERCENT = 10;        // Default 10%
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Standardized onboarding process ensures quality
 - Gate mechanism prevents inferior domains from onboarding
 - Progressive release reduces risk
 
-Negative:
+Trade-offs:
+
 - Onboarding process is heavy
 - Gate checks require tool support
 
-Trade-offs:
-- Quality vs. velocity
-- Safety vs. effort
+## Cross-references
 
-## Cross-References
-
-- [ADR-037 Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
+- [ADR-037 Business Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## Source Sections
+## Source Section
 
-- `§38` Four-Phase Onboarding Runbook
+- `§38` Business Domain Onboarding Runbook

@@ -2,7 +2,7 @@
 
 > Scope: Establish a traceable matrix from architecture chapters in [../architecture/00-platform-architecture.md](../architecture/00-platform-architecture.md) to ADR, contract, src, and tests.
 >
-> Data截止日期: 2026-04-23 (与 `architecture-design-vs-implementation-review.md` v8.3 逐条复核结果同步)
+> Data cutoff date: 2026-04-23 (synchronized with `architecture-design-vs-implementation-review.md` v8.3 item-by-item verification results)
 >
 > Status definitions:
 >

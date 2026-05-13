@@ -4,13 +4,13 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
 - **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 types of feedback sources (ADR-079)
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
 Historical materials in the system have referenced multiple extension entry points such as Skill Marketplace, Plugin Marketplace, and Template Marketplace. If these concepts coexist long-term, it would lead to:
 
@@ -109,9 +109,9 @@ Current documentation and subsequent implementation requirements:
 - Phase 1a / 1b only handles registry, permissions, and installation boundaries; no marketplace UI or commercial distribution
 - If Phase 4 begins marketplace work, design directly from the unified governance entry point rather than building multiple marketplace sets first then merging
 
-## Consequences
+## Results
 
-Pros:
+Benefits:
 
 - More consistent long-term governance.
 - Simpler user mental model.
@@ -122,7 +122,7 @@ Costs:
 - Requires abstracting different extension types into the same governance model when actually implemented in the future.
 - Some type-specific capabilities may require additional subtype rules rather than being handled completely flat.
 
-## Cross References
+## Cross-References
 
 - [ADR-014 Organization Model Mapping to Code Objects](./014-org-model-code-boundary.md)
 - [ADR-005 Security Model](./005-security-model.md)

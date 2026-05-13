@@ -4,13 +4,13 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
 - **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 types of feedback sources (ADR-079)
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -104,7 +104,7 @@ Current implementation and documentation requirements:
 - Documents may write `canonical id (business alias)` on first occurrence
 - Runtime dispatch models should be named by responsibility, not by organizational title
 
-## Outcomes
+## Results
 
 Advantages:
 
@@ -117,11 +117,11 @@ Costs:
 - Documentation and product materials need to maintain dual-layer mappings.
 - New members need to first understand the correspondence between canonical id and aliases.
 
-## Cross References
+## Cross-References
 
-- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation of Powers Architecture](./001-three-layer-architecture.md)
 - [ADR-002 Division System](./002-division-system.md)
-- [ADR-015 Whether Skills and Plugins Converge to a Single Marketplace](./015-unified-extension-marketplace.md)
+- [ADR-015 Convergence of Skills and Plugins into Single Marketplace](./015-unified-extension-marketplace.md)
 
 ## Source Sections
 

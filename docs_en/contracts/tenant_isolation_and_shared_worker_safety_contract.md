@@ -74,7 +74,7 @@ When cross-tenant risk indicators appear in shared workers or shared infrastruct
 - If it is a single-tenant hotspot failure, isolation scope should be minimized to `tenant/workspace`; if ownership cannot be determined, elevate to shared worker pool-level isolation and fail-closed.
 - Before automatically releasing isolation, the following must be verified: failure rate has dropped, sample size is sufficient, and context erasure and secret recovery checks have been completed.
 
-## 6. Sealing Conclusion
+## 6. Closure Conclusion
 
 Multi-tenant security does not end with adding `tenant_id` to tables. The execution state isolation of shared workers must also be formally modeled.
 

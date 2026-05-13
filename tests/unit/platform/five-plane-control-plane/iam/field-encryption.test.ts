@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "../test-utils.js";
-import { encryptField, decryptField } from "../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
+import { encryptField, decryptField } from "../../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
 
 describe("R10-05: Field Encryption with PBKDF2", () => {
   describe("encryptField/decryptField", () => {

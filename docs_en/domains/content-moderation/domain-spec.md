@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- CSAM detection must be reported within 1 minute.
+- CSAM detected must be reported within 1 minute.
 - Illegal content disposal, appeals, and restoration must be auditable.
-- High-risk content must not be released solely based on a single model's conclusion.
+- High-risk content must not be released based solely on a single model conclusion.
 
 ## Acceptance Criteria
 
-- GA pre-release must provide evidence of CSAM reporting drills, multimodal review, manual review, and appeals workflows.
+- Prior to GA, must provide CSAM reporting drill, multimodal review, human review, and appeals process evidence.

@@ -43,12 +43,12 @@ Benefits:
 - Regular drills ensure recovery capability is available
 - Backup retention strategy meets compliance requirements
 
-Costs:
+Trade-offs:
 
 - Backup storage costs
 - Drills consume production resources
 
-## Cross References
+## Cross-references
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-032 Deployment Architecture](./032-deployment-architecture.md)

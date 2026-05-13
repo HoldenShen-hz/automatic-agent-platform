@@ -57,4 +57,4 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 
 ## v4.3 Contract Remediation
 
-- T-74: This document previously only required requester/query/boundary, without enforcing tenant and runtime chain audit. The root cause is the knowledge boundary contract was designed from organizational isolation perspective; subsequent multi-tenant runtime lineage was not added. Fix: The main text now requires `requester_tenant_id / harness_run_id / node_run_id` to enter federated search requests and audit chain.
+- T-74: This document previously only required requester/query/boundary, without enforcing tenant and runtime chain audit. Root cause is the knowledge boundary contract was designed from organizational isolation perspective, and subsequent multi-tenant runtime lineage was not added. Fix: The main text now requires `requester_tenant_id / harness_run_id / node_run_id` in federated search requests and audit chain.

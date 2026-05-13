@@ -108,7 +108,7 @@ Current baseline implementation supplements:
 - Directly exposing secrets in CLI output or debug snapshots
 - Writing plaintext registry/deploy secrets into release bundles, deployment reports, or workflow artifacts
 
-## 10. Conclusion
+## 10. Closure Conclusion
 
 Industrial-grade secret management is not about "having a place to store keys," but rather:
 
@@ -124,4 +124,4 @@ The following items fix contract deviations recorded in `platform-architecture-i
 
 - T-50: This document originally only qualitatively required "short-lived credentials"; the root cause was that the secret contract emphasized hosting and audit but failed to write the hard TTL upper limit for runtime injection as an enforceable constraint. Fix: The main text now mandates that secret injection short-lived credentials converge to `TTL <= 300s`, and requires audit fields to explicitly record `ttl_seconds`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

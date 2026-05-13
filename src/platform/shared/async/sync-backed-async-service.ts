@@ -16,7 +16,11 @@ export abstract class SyncBackedAsyncService<TSync> {
       const result = operation(this.sync);
       return Promise.resolve(result);
     } catch (error) {
-      return Promise.reject(error);
+      const rejected = Promise.reject(error) as Promise<TResult>;
+      // Some legacy callers only assert that a Promise is returned. Mark the
+      // rejection handled while preserving rejection semantics for await/assert.rejects.
+      rejected.catch(() => undefined);
+      return rejected;
     }
   }
 

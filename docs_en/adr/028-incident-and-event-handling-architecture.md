@@ -83,12 +83,12 @@ Benefits:
 - Tiered alerting ensures critical issues are prioritized
 - StructuredLog facilitates log search and analysis
 
-Costs:
+Trade-offs:
 
 - Event collection adds system overhead
 - Requires supporting alert routing system
 
-## Cross References
+## Cross-references
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 - [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)

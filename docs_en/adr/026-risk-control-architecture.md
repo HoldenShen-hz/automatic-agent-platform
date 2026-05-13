@@ -53,25 +53,25 @@ risk_score = (
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Quantified risk enables traceable decision-making
 - Tiered handling strategy balances security and efficiency
 - Configurable weights adapt to different business scenarios
 
-Cons:
+Trade-offs:
 
 - Risk assessment adds execution latency
 - Historical data accumulation takes time
 
-## Cross References
+## Cross-references
 
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
 ## Source Section
 
-- §10 Risk Control Architecture
+- `§10` Risk Control Architecture
 
 ## v4.3 ADR Remediation
 

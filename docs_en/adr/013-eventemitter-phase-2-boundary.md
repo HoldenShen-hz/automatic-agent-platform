@@ -1,9 +1,9 @@
-# ADR-013 Whether EventEmitter Continues to Phase 2
+# ADR-013 EventEmitter Continued Use to Phase 2
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
 Current platform needs event-driven state projection, gateway streaming feedback, recovery scanning, and operations observation. But Phase 1a/1b still primarily uses single-machine, single-process, and minimal multi-Agent orchestration.
 
@@ -53,7 +53,7 @@ Costs:
 - Persistent event table and ack bear reliable event authoritative source
 - Phase 2 re-evaluates whether to upgrade to heavier queue system
 
-## Reasons for Choosing This Approach
+## Reasons for This Approach
 
 - Current stage intra-process event distribution needs objectively exist, EventEmitter is light enough.
 - But key risk is not "in-memory distribution tool not advanced enough" but whether reliability semantics are placed in persistence layer.
@@ -119,9 +119,9 @@ As of current phase1-4 delivery, aligned parts include:
 
 ## Cross-References
 
-- [ADR-012 Whether SQLite as Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-012 SQLite as Phase 1-2 Primary Store](./012-sqlite-phase-1-2-primary-store.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-011 Whether Effect-TS as Core Runtime Foundation](./011-effect-ts-adoption.md)
+- [ADR-011 Effect-TS as Core Runtime Foundation](./011-effect-ts-adoption.md)
 
 ## Source Sections
 

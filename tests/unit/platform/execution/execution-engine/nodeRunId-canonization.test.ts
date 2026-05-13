@@ -215,7 +215,7 @@ function resolveArtifactRefsFromModule(
 // CompensationStep nodeRunId Tests
 // =============================================================================
 
-test("R6-19: CompensationStep uses nodeRunId for canonical identity", () => {
+test("R6-19: CompensationStep uses nodeRunId for canonical identity", async () => {
   const { CompensationStep } = await import("../../../../src/platform/execution/compensation-manager.js");
 
   // R6-19: CompensationStep should have nodeRunId as canonical field
@@ -265,7 +265,7 @@ test("R6-19: buildTaskResultEnvelope uses nodeRunId for step correlation", () =>
 // Billing Types nodeRunId Tests
 // =============================================================================
 
-test("R6-19: UsageEventRecord has nodeRunId as canonical field", () => {
+test("R6-19: UsageEventRecord has nodeRunId as canonical field", async () => {
   const { UsageEventRecord } = await import("../../../../src/platform/contracts/types/domain/billing-types.js");
 
   // nodeRunId is the canonical field for execution correlation

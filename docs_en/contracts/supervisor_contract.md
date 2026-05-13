@@ -152,6 +152,7 @@ Rules:
 - `feedback.negative_spike` may only serve as governance and recovery signals and cannot be directly equated with candidate rejection or rollout rollback.
 - If the loop has entered `release`, the Supervisor's recovery actions must prioritize protecting rollout audit and evidence integrity.
 
+
 ## v4.3 Architecture Remediation
 
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.

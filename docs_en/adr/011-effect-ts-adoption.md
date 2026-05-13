@@ -10,7 +10,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
 - **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
 The system has clearly identified the need for state machines, unified error models, recovery chains, context propagation, resource lifecycle management, and subsequent execution plane evolution. Effect-TS can provide a relatively complete set of effect, resource, layer, and typed error abstractions, but it would also significantly increase team learning costs and initial implementation burden.
 
@@ -121,7 +121,7 @@ Requirements for future evolution:
 
 ## Results
 
-Pros:
+Benefits:
 
 - Phase 1a/1b implementation speed and comprehension costs are more manageable.
 - Stabilize platform boundaries first, then decide whether to upgrade runtime abstraction.
@@ -132,13 +132,13 @@ Costs:
 - Some typed effect and resource safety advantages are temporarily unavailable at this stage.
 - If Phase 2 decides to introduce, a controlled migration is still required.
 
-## Cross References
+## Cross-References
 
-- [ADR-012 SQLite as Phase 1-2 Only Primary Store](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-012 SQLite as Phase 1-2 Primary Store](./012-sqlite-phase-1-2-primary-store.md)
 - [ADR-013 EventEmitter Continued Use to Phase 2](./013-eventemitter-phase-2-boundary.md)
 - [ADR-014 Organization Model Direct Mapping to Code Objects](./014-org-model-code-boundary.md)
 
-## Source Chapters
+## Source Sections
 
 - `System Improvement Roadmap / P0-10`
 - `reference/16-competitive-differentiation.md`

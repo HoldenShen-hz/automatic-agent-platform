@@ -36,7 +36,7 @@ Related documents:
 | `node_run_id` | `string` | Current NodeRun |
 | `attempt_id` | `string` | Current NodeAttempt |
 | `task_id` | `string?` | Compatible query entry; not truth primary key |
-| `workflow_id` | `string?` | Legacy workflow projection reference |
+| `workflow_id` | `string?` | Legacy workflow projection reference; must not be used as truth primary key |
 | `agent_id` | `string` | Execution subject |
 | `role_id` | `string?` | Assumed role |
 | `run_kind` | `node_execution \| tool_call \| hitl_resume \| replay \| evaluator \| compensation \| release_gate` | Execution type |

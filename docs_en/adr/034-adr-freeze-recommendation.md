@@ -88,12 +88,12 @@ Benefits:
 - Freeze mechanism prevents validated decisions from being arbitrarily overturned
 - Status flow clearly distinguishes "under discussion" and "determined"
 
-Costs:
+Trade-offs:
 
 - ADR numbers may be skip-based, non-consecutive
 - Superseded ADRs still need to be retained, increasing documentation maintenance cost
 
-## Cross References
+## Cross-references
 
 - [ADR-033 Phased Roadmap](./033-phased-roadmap.md)
 - [ADR-035 Recommended Code Directory Structure](./035-recommended-code-directory-structure.md)

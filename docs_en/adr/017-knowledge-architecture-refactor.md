@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-17
 
-## Context
+## Background
 
 The §10 design document defines three Knowledge indexes (Keyword / Semantic / Structural) and three query levels (Quick / Standard / Deep). The actual implementation has two significant gaps:
 
@@ -16,15 +16,15 @@ The §10 design document defines three Knowledge indexes (Keyword / Semantic / S
 
 | Index | Implementation | Description |
 |-------|----------------|-------------|
-| Keyword / FTS5 | `KeywordKnowledgeIndex` | ✅ Implemented, inverted index |
-| Semantic / vector | `SemanticVectorStore` + EmbeddingProvider | ⚠️ Currently hash pseudo-vectors; needs upgrade to LLM provider embedding |
-| Structural / AST | `ASTIndex` | ❌ Not implemented (GAP-OAPEFLIR-06) |
+| Keyword / FTS5 | `KeywordKnowledgeIndex` | Implemented, inverted index |
+| Semantic / vector | `SemanticVectorStore` + EmbeddingProvider | Currently hash pseudo-vectors; needs upgrade to LLM provider embedding |
+| Structural / AST | `ASTIndex` | Not implemented (GAP-OAPEFLIR-06) |
 
 ### Three Query Levels
 
 | Level | Trigger Condition | Data Layer | Latency Target | topK |
 |-------|-------------------|------------|---------------|------|
-| **Quick** | confidence ≥ 0.5, no cache hit | L1 runtime cache only | <50ms | 3 |
+| **Quick** | confidence >= 0.5, no cache hit | L1 runtime cache only | <50ms | 3 |
 | **Standard** | Default level | L1 + keyword + semantic | <200ms | 10 |
 | **Deep** | confidence < 0.5 or explicit request | Full layer + graph traversal | <2s | 30 |
 

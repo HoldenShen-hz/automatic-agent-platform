@@ -760,7 +760,7 @@ CREATE TABLE IF NOT EXISTS memories (
 CREATE TABLE IF NOT EXISTS tool_result_files (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  execution_id TEXT NULL REFERENCES executions(id) ON DELETE SET NULL,
+  execution_id NULL REFERENCES executions(id) ON DELETE SET NULL,
   tool_name TEXT NOT NULL,
   artifact_id TEXT NOT NULL,
   file_path TEXT NOT NULL,

@@ -6,10 +6,18 @@ This contract defines `§62` minimum edge runtime, offline execution constraints
 
 ## 2. Canonical Objects
 
+- `EdgeDeploymentMode`
 - `EdgeRuntimeProfile`
 - `OfflineExecutionRecord`
 - `SyncEnvelope`
 - `ConflictResolutionDecision`
+
+`EdgeDeploymentMode` allows the following classifications:
+
+- `edge_micro`
+- `edge_standard`
+- `edge_mobile`
+- `edge_hybrid`
 
 ## 3. `EdgeRuntimeProfile` Minimum Fields
 
@@ -19,6 +27,7 @@ This contract defines `§62` minimum edge runtime, offline execution constraints
 - `checkpoint_required_before_preempt`
 - `capabilities`
 - `connectivity_mode`
+- `deployment_mode?`
 - `max_local_retention_hours`
 - `allowed_models`
 - `sync_policy`
@@ -28,6 +37,7 @@ Rules:
 - Canonical edge runtime must explicitly declare `stateful = true` because offline execution holds local state, checkpoints, and pending sync evidence.
 - `lease_migration_supported` must declare whether this edge runtime allows lease / ownership migration upon reconnection or preemption.
 - If `checkpoint_required_before_preempt = true`, checkpoint must be completed before preemption, upgrade, or region takeover, and only then may local execution termination be allowed.
+- If `deployment_mode` is not explicitly provided, runtime must automatically resolve to one of `edge_micro | edge_standard | edge_mobile | edge_hybrid` based on capability / connectivity, to avoid unclassified edge runtime state.
 
 ## 4. Rules
 

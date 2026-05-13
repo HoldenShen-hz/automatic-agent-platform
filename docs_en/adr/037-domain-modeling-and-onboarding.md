@@ -86,12 +86,14 @@ interface DomainDescriptor {
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Structured modeling enables platform to understand domain differences
 - Override mechanism supports customization
 - CLI tools simplify onboarding
 
-Negative:
+Trade-offs:
+
 - DomainDescriptor complexity is high
 - Domain modeling requires domain expert involvement
 
@@ -99,11 +101,11 @@ Negative:
 
 - A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture `§71-§94`.
 
-## Cross-References
+## Cross-references
 
 - [ADR-030 Runtime Execution Plane](./030-runtime-execution-plane.md)
 - [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
 
-## Source Sections
+## Source Section
 
 - `§37` Business Domain Modeling and Onboarding Architecture
