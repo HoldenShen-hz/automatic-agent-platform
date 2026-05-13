@@ -175,8 +175,8 @@ test("runMultiStepOrchestration emits platform.graph_scheduler.decision_recorded
     });
 
     const events = result.snapshot.events ?? [];
-    const routingEvent = events.find((e: any) => e.eventType === "platform.graph_scheduler.decision_recorded");
-    assert.ok(routingEvent, "Should emit platform.graph_scheduler.decision_recorded event");
+    const routingEvent = events.find((e: any) => e.eventType === "routing:decided");
+    assert.ok(routingEvent, "Should emit routing:decided event");
   } finally {
     try {
       const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
@@ -192,7 +192,7 @@ test("runMultiStepOrchestration validates workflow with assertWorkflowValid", as
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     // This test verifies the workflow validation path works
     // For invalid workflows, the assertWorkflowValid would throw

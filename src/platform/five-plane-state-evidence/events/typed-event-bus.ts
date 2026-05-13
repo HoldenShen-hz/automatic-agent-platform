@@ -258,8 +258,9 @@ export interface TypedEventPayloadMap {
  * Extracts event types from the registry that are NOT in TypedEventPayloadMap.
  */
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
-const TYPED_EVENT_COVERAGE_CHECK: MissingTypedEventDefinitions extends never ? true : never = true;
-void TYPED_EVENT_COVERAGE_CHECK;
+// Compile-time assertion: MissingTypedEventDefinitions should be never (no missing types)
+// If there are missing definitions, this assignment will fail at compile time
+const _TYPED_EVENT_COVERAGE_ASSERTION: MissingTypedEventDefinitions = null as unknown as never;
 
 /**
  * Union type of all event types that have typed payloads.

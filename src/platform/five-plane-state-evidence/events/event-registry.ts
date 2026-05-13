@@ -637,6 +637,14 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     consumers: ["oapeflir_projection", "truth_projector"],
     compatibilityPolicy: "backward_compatible_additive",
   },
+  // OAPEFLIR phase transition events
+  "oapeflir.phase.transition": {
+    type: "oapeflir.phase.transition",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector", "audit_projection"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
   // R17-03: Run termination cleanup events
   "run.cleanup_completed": {
     type: "run.cleanup_completed",

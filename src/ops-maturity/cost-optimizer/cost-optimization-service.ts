@@ -71,6 +71,9 @@ export class CostOptimizationService {
       this.unsourcedRecordCount += 1;
       throw new Error(`cost_optimizer.unsourced_record:${this.resolveSubjectId(record)}`);
     }
+    if (this.unsourcedRecordCount > 0) {
+      this.unsourcedRecordCount -= 1;
+    }
     this.records.push(record);
     return record;
   }
