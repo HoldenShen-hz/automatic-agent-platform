@@ -9,17 +9,13 @@ Platform construction is an incremental process that requires clear phase divisi
 
 ## Decision
 
-### 7-Phase Roadmap
+### 3 Ring Roadmap
 
-| Phase | Objective | Key Deliverables |
-|-------|-----------|------------------|
-| Phase 1 | Core Execution Plane | Basic Workflow, Plugin, State Management |
-| Phase 2 | Stability Enhancement | Recovery Mechanism, Monitoring Alerts |
-| Phase 3 | AI Operations Layer | LLM Abstraction, Prompt Governance, Cost Management |
-| Phase 4 | Business Domain Onboarding | DomainDescriptor, Pack SDK |
-| Phase 5 | Intelligent Interaction | NL Entry, Goal Decomposition, Proactive Agent |
-| Phase 6 | Organization Governance | Tenant Isolation, SSO, Permission Management |
-| Phase 7 | Scale Ecosystem | Multi-Region, Marketplace |
+| Ring | Objective | Key Deliverables |
+|------|-----------|------------------|
+| Ring 1 | Core Execution Plane | HarnessRuntime, PlanGraphBundle, State Management |
+| Ring 2 | Stability Enhancement | Recovery Mechanism, Monitoring Alerts, Governance and Durability |
+| Ring 3 | Business Domain and Ecosystem | DomainDescriptor, Pack SDK, Marketplace, Multi-Region |
 
 ### Roadmap Service
 
@@ -29,31 +25,37 @@ Platform construction is an incremental process that requires clear phase divisi
 
 ### Phase Gates
 
-- SuccessCriteriaService supports phase gate registration
+- SuccessCriteriaService supports ring gate registration
 - Metric scoring
 - `evaluatePhaseAdvance()` interception
 
 ### Feature Flags
 
-- Feature flag governance in `config-override-governance`
-- `gray-release-rehearsal` supports canary release
+- Feature flag governance in config-override-governance
+- gray-release-rehearsal supports canary release
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Phasing reduces delivery risk
 - Phase gates ensure quality
 - Feature flags support incremental release
 
-Negative:
+Costs:
+
 - Roadmap maintenance requires ongoing investment
 - Phase boundaries may need adjustment
 
-## Cross-References
+## Cross References
 
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 - [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
-## Source Sections
+## v4.3 ADR Remediation
+
+- A-64: This ADR originally used `Phase 1-7` as the canonical roadmap. The root cause was that when the rollout roadmap ADR was formed, the main architecture had not yet unified to the ring terminology. Fix: The body now uses `Ring 1/2/3`, with historical phases only allowed as old milestone mappings.
+
+## Source Section
 
 - `§33` Phased Roadmap

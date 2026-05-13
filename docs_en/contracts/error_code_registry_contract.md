@@ -1,4 +1,4 @@
-# Error Code Registry Contract
+# Error Code Registry
 
 ---
 

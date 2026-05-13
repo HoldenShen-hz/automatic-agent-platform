@@ -99,9 +99,9 @@ Phase 1a / 1b will do:
 
 Currently not doing:
 
--单独新建一套独立存储表强行替代现有 `HarnessRun / NodeRun / NodeAttempt` truth 表
+- Creating a separate independent storage table to forcibly replace existing `HarnessRun / NodeRun / NodeAttempt` truth tables
 
-## 7. Conclusion
+## 7. Closure Conclusion
 
 The purpose of unifying execution units is not to create another layer of concepts, but to reduce the future cost of "implementing the same scheduling logic repeatedly on five or six types of objects".
 

@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -29,7 +29,7 @@ Related documents:
 - `data_classification_and_prompt_handling_contract.md`
 - `tenant_and_organization_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 - Enable the memory system to not only store but also govern, expire, demote, revoke, and isolate by layer.
 - Make memory quality evaluable, not just looking at hit rate.
@@ -56,7 +56,7 @@ Rules:
 
 ## 4. Token Budget and Injection Boundaries
 
-Each layer must declare at least:
+Each layer must declare at minimum:
 
 - `token_budget`
 - `eviction_threshold`
@@ -200,7 +200,7 @@ Rules:
 - The authoritative / additive relationship between built-in memory and external memory backend must be clear and auditable.
 - If a provider hook fails, it should default to "do not inject additional memory"; it must not break main task execution.
 
-## 12. Closure Conclusion
+## 12. Conclusion
 
 Industrial-grade memory systems cannot default to "stored and always trusted".
 

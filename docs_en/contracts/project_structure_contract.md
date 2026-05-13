@@ -69,7 +69,7 @@ src/
   plugins/                       # Plugin system
   testing/                       # Testing tools
   benchmarks/                    # Performance benchmarks
-  apps/                          # Application entry points
+  apps/                         # Application entry points
 ```
 
 Rules:

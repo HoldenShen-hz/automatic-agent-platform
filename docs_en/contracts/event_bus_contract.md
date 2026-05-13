@@ -1,6 +1,6 @@
 # Event Bus Contract
 
-> **OAPEFLIR Relevant**: This contract defines the event bus mechanism for OAPEFLIR 8-stage pipeline, corresponding to ADR-016 §Dual-Chain Topology and ADR-079/ADR-080.
+> **OAPEFLIR Association**: This contract defines the event bus mechanism for OAPEFLIR 8-stage pipeline, corresponding to ADR-016 §Dual-Chain Topology and ADR-079/ADR-080.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope

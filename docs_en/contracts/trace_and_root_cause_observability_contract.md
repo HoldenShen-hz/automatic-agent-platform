@@ -141,10 +141,11 @@ It must support:
 - Business and technical indicator layering
 - Automatic aggregation of root cause clues after failures
 
+
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-39: This document originally treated `task` as the trace subject. The root cause was that the observability contract inherited the old task-centric single-machine execution model and was not rewritten along with `HarnessRun / NodeRun / NodeAttempt` becoming runtime truth. Fix: The main text now explicitly states "one HarnessRun = one trace", elevates `harness_run_id / node_run_id / attempt_id` to required correlation fields, and `task_id / execution_id` are retained only as legacy / projection correlation keys.
+- T-39: This document originally treated `task` as the trace subject. The root cause was that the observability contract inherited the old task-centric single-machine execution model and was not rewritten along with `HarnessRun / NodeRun / NodeAttempt` becoming runtime truth. Fix: Main text now explicitly states "one HarnessRun = one trace", elevates `harness_run_id / node_run_id / attempt_id` to required correlation fields, and `task_id / execution_id` are retained only as legacy / projection correlation keys.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

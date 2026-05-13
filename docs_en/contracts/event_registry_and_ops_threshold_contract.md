@@ -32,25 +32,27 @@ This document answers 3 questions:
 - Tier 1 events must declare producer, consumer, ack strategy, and replay requirements.
 - Tier 2/3 events, even if not mandatory for ack, must have clear usage scenarios to avoid event semantics drift.
 - Each registered event automatically carries `payloadSchemaRef` (default `event://{domain}/{action}/v1`) and `compatibilityPolicy` (default `backward_compatible_additive`), for compile-time validation at the typed event bus layer.
+- The `producer` field represents a stable producer service identifier, and is not equivalent to truth event namespace; whether `platform.*` / `oapeflir.view.*` is a truth fact is determined by the `event_type` namespace.
+- Historical `task:*` / `workflow:*` / `dispatch:*` / `worker:*` events are allowed to retain compatible producer IDs to avoid breaking old projectors, replay tools, and audit evidence chains; whether a truth fact is canonical is based on the `event_type` namespace.
 
-## 4. Phase 1a / 1b Event Registry
+## 4. Ring 1 / Ring 2 Event Registry
 
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
-| `task.created` | `tier1` | gateway / scheduler | runtime, observability | Yes | Yes |
-| `task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | Yes | Yes |
-| `workflow.started` | `tier1` | workflow runtime | observability, recovery scan | Yes | Yes |
-| `workflow.step_completed` | `tier1` | workflow runtime | orchestrator, recovery scan | Yes | Yes |
-| `workflow.failed` | `tier1` | workflow runtime | supervisor, recovery scan | Yes | Yes |
+| `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | Yes | Yes |
+| `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | Yes | Yes |
+| `platform.harness.started` | `tier1` | harness runtime | observability, recovery scan | Yes | Yes |
+| `platform.node.completed` | `tier1` | harness runtime | orchestrator, recovery scan | Yes | Yes |
+| `platform.harness.failed` | `tier1` | harness runtime | supervisor, recovery scan | Yes | Yes |
 | `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | Yes | Yes |
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | Yes | Yes |
 | `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | Yes | Yes |
 | `execution.succeeded` | `tier1` | runtime | transition service, observability | Yes | Yes |
 | `execution.failed` | `tier1` | runtime | supervisor, recovery scan | Yes | Yes |
 | `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | Yes | Yes |
-| `oapeflir.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | No | Recommended |
-| `oapeflir.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | No | Recommended |
-| `oapeflir.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | No | Recommended |
+| `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | No | Recommended |
+| `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | No | Recommended |
+| `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | No | Recommended |
 | `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | No | Recommended |
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | No | Recommended |
 | `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | No | Recommended |

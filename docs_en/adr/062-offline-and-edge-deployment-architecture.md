@@ -63,7 +63,7 @@ Advantages:
 - Reduces network dependency
 - Expands scope of applicability
 
-Tradeoffs:
+Trade-offs:
 
 - Synchronization complexity
 - Conflict handling complexity

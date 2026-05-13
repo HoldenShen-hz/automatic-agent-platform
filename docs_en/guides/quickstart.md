@@ -8,7 +8,7 @@ This document helps you quickly find your reading path within the split document
 
 1. First read [Platform Skeleton](../architecture/00-platform-architecture.md) to establish a global mental model.
 2. Then read [ADR-001](../adr/001-three-layer-architecture.md), [ADR-004](../adr/004-workflow-routing.md), [ADR-009](../adr/009-deployment-ops.md) to understand the core main path.
-3. If currently implementing memory, cost, or security, additionally read [ADR-003](../adr/003-memory-seven-layers.md), [ADR-008](../adr/008-cost-model.md), [ADR-005](../adr/005-security-model.md).
+3. If currently implementing memory, cost, or security, additionally read [ADR-003](../adr/003-memory-six-layers.md), [ADR-008](../adr/008-cost-model.md), [ADR-005](../adr/005-security-model.md).
 4. If adding new business capabilities, read [Division Authoring](./division-authoring.md) last.
 
 ## Current Recommended Implementation Scope

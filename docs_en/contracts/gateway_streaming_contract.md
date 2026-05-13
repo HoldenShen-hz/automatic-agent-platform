@@ -32,13 +32,15 @@ This contract defines streaming output, event dispatch, frame format, and progre
 v4.3 Alignment Notes:
 
 - Code-side authoritative streaming frame object is `StreamEventFrame`; `StreamEvent` is exported as its alias.
-- For contract naming compatibility, code-side also exports type aliases `StreamChannel`, `ProgressChunk`, `FinalChunk`, and `ErrorChunk`; all of these converge to the same `StreamEventFrame` primary chain rather than maintaining parallel DTOs.
-- `stream_gap` as a client-facing gap frame when the replay window has been evicted belongs to the `ErrorChunk` semantic domain as a recoverable streaming error.
+- For contract naming compatibility, code-side also exports type aliases `StreamChannel`, `ProgressChunk`, `FinalChunk`, and `ErrorChunk`; these aliases all converge to the same `StreamEventFrame` primary chain rather than maintaining parallel DTOs.
+- `stream_gap` as a replay window eviction client-facing gap frame belongs to the `ErrorChunk` semantic domain as a recoverable streaming error.
 
 ## 3. StreamEvent Minimum Fields
 
 - `stream_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `task_id?`
 - `channel`
 - `event_type`
 - `sequence`
@@ -57,11 +59,11 @@ v4.3 Alignment Notes:
 
 ## 5. SSE Frame Format
 
-Phase 1a unified format:
+Ring 1 baseline unified format:
 
 - `id`: `<stream_id>:<sequence>`
 - `event`: `event_type`
-- `data`: JSON, containing at minimum `stream_id`, `task_id`, `sequence`, `payload`
+- `data`: JSON, containing at minimum `stream_id`, `harness_run_id`, `sequence`, `payload`
 
 Rules:
 
@@ -72,10 +74,14 @@ Rules:
 Recommended operational rules:
 
 - Reconnect should use exponential backoff to avoid amplifying traffic jitter on disconnect.
-- Permanent rejections like `401/403/404` must not retry infinitely by default.
+- Permanent rejections like `401 / 403 / 404` must not retry infinitely by default.
 - Should maintain liveness timeout; when receiving only keepalive/frame after long time, should proactively disconnect and enter recovery.
 - For recoverable scenarios like "session temporarily not found / compaction pause / generation switch", should set finite retry budget rather than infinite retry or immediate death.
 - If supporting `Last-Event-ID` or equivalent resumption mechanism, should define replay buffer window; when client lags too far behind and required events have been evicted, server must return explicit error rather than silently dropping frames and continuing.
+
+## v4.3 Contract Remediation
+
+- T-66: This document originally defined `task_id` as the primary anchor for streaming events using Phase 1a scope. The root cause is that the streaming contract followed the task-level gateway model and did not synchronize to the `HarnessRun / NodeRun` and ring scope. Fix: The main text now uses `harness_run_id / node_run_id` as the primary chain, with `task_id` retained only for aggregation view purposes.
 
 ## 6. WebSocket Compatibility Strategy
 
@@ -103,7 +109,7 @@ Recommended operational rules:
 - When multiple windows subscribe to the same `stream_id`, deduplicate by `stream_id + sequence`; duplicate frames are safe to ignore.
 - Backpressure from CLI TTY and Web SSE should preferentially drop rebuildable intermediate `progress` and must not drop terminal frames.
 - keepalive/comment frames may only be used for liveness and should not enter the business event main chain.
-- Transport layer state distinguishes at minimum `connected/reconnecting/failed`; observer subscription and subscription with execution rights must not be confused.
+- Transport layer state distinguishes at minimum `connected / reconnecting / failed`; observer subscription and subscription with execution rights must not be confused.
 - If supporting read-only observer mode, may add `viewer_only` or equivalent interaction state, but this state can only express permission-limited observation and must not be misused as business failure.
 - If client has display-layer commit tick/catch-up mechanism, should only work based on queue state like backlog depth and oldest message age, and must not reorder or change business semantics due to different upstream sources.
 - When connecting replay/live dual channels, should first establish live subscription then snapshot replay buffer, and deduplicate with `replay_max_sequence` or equivalent high-water mark to avoid gaps or duplicate advancement between replay and live.

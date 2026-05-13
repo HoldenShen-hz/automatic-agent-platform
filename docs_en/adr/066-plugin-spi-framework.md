@@ -6,7 +6,7 @@
 
 ## Context
 
-The OAPEFLIR eight-stage architecture needs to provide differentiated retrieval, validation, planning, and presentation capabilities for different business domains (coding/operations/growth/game-dev/asset-production/livestream). At the same time, external systems (Jira/GitHub/Notion/Figma/OBS/Ad/CRM) need to connect through unified interfaces.
+OAPEFLIR's eight-stage architecture needs to provide differentiated retrieval, validation, planning, and presentation capabilities for different business domains (coding/operations/growth/game-dev/asset-production/livestream). At the same time, external systems (Jira/GitHub/Notion/Figma/OBS/Ad/CRM) need to connect through unified interfaces.
 
 The existing `PluginSPIRegistry` (`plugin-spi-registry.ts`, 829 lines) has implemented a complete lifecycle state machine. This ADR formally establishes the Plugin SPI as the official extension boundary for the platform domain registry; OAPEFLIR only consumes its projected views and results, and does not own plugin execution rights.
 

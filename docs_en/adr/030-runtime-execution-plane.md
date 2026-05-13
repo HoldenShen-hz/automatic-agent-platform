@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Background
+## Context
 
 The Execution Plane (P4) is where Agents actually execute tasks. It requires unified execution strategies, a registration mechanism, recovery mechanisms, and runtime patterns.
 

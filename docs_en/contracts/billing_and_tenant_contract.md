@@ -2,7 +2,7 @@
 
 ---
 
-## OAPEFLIR Relationship
+## OAPEFLIR Association
 
 This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 

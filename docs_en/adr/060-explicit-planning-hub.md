@@ -1,4 +1,4 @@
-# ADR-060 Explicit Planning Hub and Plan Hub
+# ADR-060 Explicit Planning Layer and Plan Hub
 
 - Status: Accepted
 - Decision Date: 2026-04-17
@@ -6,7 +6,7 @@
 
 ## Context
 
-In the early Phase 1A/1B architecture, the execution plan (Plan) generation logic was scattered inside `AgentExecutor`, implemented through an implicit "dispatch mode" for task decomposition. This design has three problems:
+In the early Phase 1A/1B architecture, execution plan (Plan) generation logic was scattered inside `AgentExecutor`, implemented through an implicit "dispatch mode" for task decomposition. This design has three problems:
 
 1. **Not traceable**: No explicit graph plan contract, unable to perform independent verification of plan content.
 2. **Not auditable**: Replan decisions have no version chain, making debugging difficult.
@@ -18,7 +18,7 @@ The OAPEFLIR Loop model (ADR-016) requires Plan as an independent Hub, forming a
 
 ### 1. Establish Independent Plan Hub
 
-Plan Hub, as the OAPEFLIR Stage 3 (between Assess and Execute), is responsible for:
+Plan Hub, as OAPEFLIR Stage 3 (between Assess and Execute), is responsible for:
 
 - Receiving `UnifiedAssessment` (from Assess Hub)
 - Outputting `Plan` DTO (as the sole input to Execute Hub)
@@ -113,7 +113,7 @@ Cons: Requires new planning/ module, approximately 1500 lines of code.
 - Added Zod schema validation at stage boundaries (PlanSchema).
 - All replan decisions are recorded for audit through `ReplanningDecision` DTO.
 
-## Cross References
+## Cross-References
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)

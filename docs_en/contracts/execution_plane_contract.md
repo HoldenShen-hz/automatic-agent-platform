@@ -3,7 +3,7 @@
 > **v4.3 Compatibility Note**: This file is preserved as historical execution plane documentation. v4.3 P3 -> P4 execution handover uses [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) as the standard; P4 state advancement uses [ADR-110](../adr/110-runtime-state-machine-authority.md) as the standard; linear execution / workflow semantics can only be used as legacy projection.
 
 > **OAPEFLIR Association**: This contract defines the execution plane of OAPEFLIR Execute Hub, corresponding to ADR-016 Execute phase and ADR-079 Feedback Hub.
-> **Update Date**: 2026-04-17
+> **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
@@ -141,7 +141,7 @@ flowchart TD
 | `queue_name` | `string` | Target queue |
 | `required_capabilities` | `string[]` | Worker required capabilities |
 | `dispatch_target` | `any \| local_only \| prefer_remote \| require_remote` | Dispatch target strategy |
-| `required_isolation_level` | `standard \| hardened \| strict` | Minimum isolation level requirement |
+| `required_isolation_level` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | Minimum isolation level requirement |
 | `required_repo_version?` | `string` | Requires worker code version match |
 | `dispatch_after` | `timestamp?` | Earliest dispatch time |
 | `attempt_no` | `integer` | Attempt count associated with this ticket |
@@ -163,13 +163,14 @@ Rules:
 
 ### 8.2 Isolation Level Semantics
 
-Worker isolation levels are ordered: `standard (0) < hardened (1) < strict (2)`.
+Worker isolation levels are ordered: `read_only (0) < workspace_write (1) < scoped_external_access (2) < restricted_exec (3)`.
 
 | Level | Meaning |
 | --- | --- |
-| `standard` | Standard sandbox |
-| `hardened` | Hardened sandbox (additional network/filesystem restrictions) |
-| `strict` | Strict isolation (minimum privilege) |
+| `read_only` | Read-only sandbox, no write permission |
+| `workspace_write` | Standard sandbox, allows writing to workspace |
+| `scoped_external_access` | Hardened sandbox, restricted external access |
+| `restricted_exec` | Strict isolation, minimum privilege execution |
 
 Rules:
 
@@ -186,11 +187,11 @@ Rules:
 
 - One `node_run_id` under the same `attempt_id` should correspond to only one active ticket.
 - After ticket expires, it must not be consumed by worker again.
-- Authoritative input to execute plane must come from `PlanGraphBundle`, not `PlanDTO` or unstructured prompt拼接.
+- Authoritative input to execute plane must come from `PlanGraphBundle`, not `PlanDTO` or unstructured prompt concatenation.
 
-## 8A. OAPEFLIR Plan → Execute → Feedback Boundary
+## 8A. OAPEFLIR Plan - Execute - Feedback Boundary
 
-### 8A.1 Plan Hub → Execute (Corresponding to ADR-060)
+### 8A.1 Plan Hub - Execute (Corresponding to ADR-060)
 
 When `PlanGraphBundle` enters execution plane, minimum should provide:
 
@@ -209,11 +210,11 @@ When `PlanGraphBundle` enters execution plane, minimum should provide:
 - Graph version chain must maintain stable lineage, must not be silently rewritten by new worker.
 - Node semantics that have generated `NodeAttemptReceipt` must not be in-place rewritten by new worker.
 
-### 8A.2 Execute → Feedback Hub (Corresponding to ADR-079)
+### 8A.2 Execute - Feedback Hub (Corresponding to ADR-079)
 
 After execution plane completes a single attempt, truth output must first land `NodeAttemptReceipt`:
 
-- `nodeAttemptReceiptId`
+- `receiptId`
 - `nodeAttemptId`
 - `nodeRunId`
 - `status`
@@ -232,8 +233,8 @@ On this basis, other planes or read models can derive:
 
 **Rules**:
 
-- `NodeAttemptReceipt` is the formal truth output from Execute → other planes, must not only be side-carried via logs.
-- `FeedbackSignal` must explicitly associate `nodeAttemptReceiptId`, `planGraphBundleId` and `graphVersion`, serving as derived cognition input, not replacing receipt.
+- `NodeAttemptReceipt` is the formal truth output from Execute to other planes, must not only be side-carried via logs.
+- `FeedbackSignal` must explicitly associate `receiptId`, `planGraphBundleId` and `graphVersion`, serving as derived cognition input, not replacing receipt.
 - If an attempt produces no feedback, should explicitly record `feedback_count=0` or equivalent evidence, to avoid subsequent Learn / Improve misjudging missing chain.
 - `DualChannelStepOutput` is only allowed as user display projection, must not be the sole basis for recovery, budget settlement, or side-effect confirmation.
 
@@ -266,7 +267,7 @@ Rules:
 - `last_heartbeat_at`
 - `max_concurrency`
 - `queue_affinity?`
-- `isolation_level` (`standard | hardened | strict`)
+- `isolation_level` (`read_only | workspace_write | scoped_external_access | restricted_exec`)
 - `saturation` (load saturation)
 - `repo_version?`
 - `remote_session_status?` (`connecting | connected | reconnecting | degraded | failed | viewer_only`)
@@ -416,7 +417,7 @@ Handling rules:
 - Phase 2b: Capacity-aware scheduling + recovery policy.
 - Phase 4: Enterprise multi-environment execution fleet.
 
-## 19. Conclusion
+## 19. Closure Conclusion
 
 The core of execution plane is not "moving running to multi-process", but formally modeling execution authority, recovery authority, and scheduling authority.
 
@@ -428,5 +429,7 @@ The current platform already has single-machine runtime baseline; after suppleme
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-14: This document originally wrote `PlanDTO + steps[] + dag` and `DualChannelStepOutput / FeedbackSignal` directly as execution plane main input/output. The root cause is that the old execution plane document inherited ADR-060/079 linear plan and feedback bridge draft, and the object model was not rewritten as `PlanGraphBundle` / `NodeAttemptReceipt` became canonical truth. Fix: The main text now converges P3 -> P4 input to `PlanGraphBundle`, P4 truth output to `NodeAttemptReceipt`, other objects are only allowed as derived views.
+- T-75: This document originally used `nodeAttemptReceiptId` in the Execute -> Feedback boundary. The root cause is that the execution plane contract was not synchronized after v4.3 rename of API-level field shapes. Fix: The main text now uniformly uses `receiptId` as the receipt primary key.
+- T-20: Original `WorkerSnapshot.isolation_level` referenced the deprecated enum `standard/hardened/strict`, not aligned with architecture §25.8 which defines `read_only/workspace_write/scoped_external_access/restricted_exec`. Fix: §10 `WorkerSnapshot` fields have been updated to the canonical enum; `ExecutionTicket.required_isolation_level` field (§8) remains consistent.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

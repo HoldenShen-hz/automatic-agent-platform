@@ -66,10 +66,14 @@ interface StructuredLog {
 }
 ```
 
-### Trace Span Hierarchy
+### Trace Span Hierarchy (step deprecated fix)
+
+> Note: R5-64 fix - `step` term is deprecated in v4.3, use `node_run`/`node_attempt` instead.
+
+- Span semantics should be organized as `service -> operation -> node_run -> node_attempt`, with the old `step` term only allowed in compatibility projection views.
 
 - OTel SDK implements distributed tracing
-- Span hierarchy: service → operation → step
+- Span hierarchy: service → operation → node_run → node_attempt (step deprecated)
 
 ## Consequences
 

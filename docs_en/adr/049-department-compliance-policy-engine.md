@@ -65,7 +65,7 @@ Negative:
 - Policy management complexity
 - Override rules may cause confusion
 
-## Cross-References
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)

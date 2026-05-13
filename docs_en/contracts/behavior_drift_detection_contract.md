@@ -38,7 +38,7 @@ This contract defines behavioral fingerprints, changepoint detection, and cross-
 - Response strategies must coordinate with rollout / governance.
 - `DriftMitigationAction` must explicitly label the target object, source alert, and expiration time to avoid decoupling between alerts and mitigation.
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: fingerprint build, changepoint detect, response planning
 - integration: drift signal -> rollout / autonomy response

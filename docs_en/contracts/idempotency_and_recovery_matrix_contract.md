@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines idempotency matrix for tool calls and `NodeRun / NodeAttempt`, as well as handling strategies during crash recovery.
+This contract defines the idempotency matrix for tool calls and `NodeRun / NodeAttempt`, as well as handling strategies during crash recovery.
 
 ## 2. Core Principles
 
@@ -35,7 +35,7 @@ This contract defines idempotency matrix for tool calls and `NodeRun / NodeAttem
 | File read | Yes | Path exists and not written | Can retry directly |
 | File write (overwrite) | Implementation-dependent | Content checksum / write marker | Verify then skip or rewrite |
 | File append | No | Append marker / transaction log | Default to manual confirmation or explicit idempotency key |
-| External API query | Usually | Request fingerprint | Can retry limitedly |
+| External API query | Usually yes | Request fingerprint | Can retry limitedly |
 | External API write | No | External resource id / idempotency key | Must not auto-retry by default |
 | LLM inference | Yes | Response cache or execution lineage | Can retry, but cost must be recalculated |
 | Artifact write | Policy-dependent | Artifact checksum / path | If exists and verified, can skip |
@@ -99,11 +99,10 @@ Phase 1a does not pursue complete automatic judgment, but must at minimum:
 
 The core of recovery capability is not "whether it can run again", but knowing which `NodeRun / NodeAttempt` can safely run again, and which must first confirm "whether it has already been done".
 
-
 ## v4.3 Architecture Remediation
 
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-37: This document originally built recovery matrix on `workflow step / step`. The root cause is early linear workflow documents were directly applied to recovery contract; after `NodeRun / NodeAttempt / NodeAttemptReceipt` became runtime truth, the main text still停留在 step perspective. Fix: The main text now changes canonical recovery objects to `NodeRun / NodeAttempt`, and explicitly states `step_id` is only allowed as semantic label or display projection.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only serve as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -20,7 +20,10 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 ## 3. ArtifactRecord Minimum Fields
 
 - `artifact_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `plan_graph_bundle_id?`
+- `task_id?`
 - `ref_id?`
 - `kind`
 - `path`
@@ -78,6 +81,10 @@ Rules:
 
 - Artifacts must be able to trace back to closed-loop objects such as feedback, learning, improvement, rollout, and diagnostics through `ref_id`.
 - Publish, preview, and governance-related artifacts must not exist only in filesystem paths; they must have structured indexes.
+
+## v4.3 Contract Remediation
+
+- T-64: This document originally only required `task_id`. Root cause: The artifact store contract predated the v4.3 executable contract, resulting in artifact indexes lacking runtime lineage. Fix: Body now requires `harness_run_id / node_run_id / plan_graph_bundle_id` as the minimum runtime chain primary key, with `task_id` serving only as an aggregation query entry point.
 
 ### 5.5 ArtifactPublishService
 

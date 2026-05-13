@@ -70,4 +70,3 @@ Rules:
 - unit: dashboard aggregation, attention ranking, wizard step validation
 - integration: console / dashboard data linkage with approval / incident / runtime
 - contract: different roles cannot see out-of-authority views
-

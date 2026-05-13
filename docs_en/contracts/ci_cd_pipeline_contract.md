@@ -7,7 +7,7 @@
 
 This contract defines the complete CI/CD pipeline mechanism for build, test, package, publish, and artifact promotion.
 
-Related documents:
+Related Documents:
 
 - `release_rollout_and_rollback_contract.md`
 - `ring_model_contract.md`
@@ -16,21 +16,21 @@ Related documents:
 
 ## 2. Pipeline Overview
 
-CI/CD Pipeline is responsible for promoting code, configuration, prompts and other artifacts from development environment to production environment, ensuring each stage's quality gate meets requirements.
+CI/CD Pipeline is responsible for promoting code, configuration, prompts, and other artifacts from the development environment to the production environment, ensuring that each stage's quality gate meets requirements.
 
 ### 2.1 Pipeline Stages
 
 ```
 build → test → package → publish → artifact_promotion → staging → production
   ↓        ↓        ↓         ↓              ↓              ↓          ↓
-[verify] [verify] [verify]  [verify]        [verify]       [verify]   [release]
+[verify] [verify] [verify]  [verify]       [verify]      [verify]  [release]
 ```
 
 ## 3. Pipeline Stages
 
 ### 3.1 Build Stage
 
-**Responsibility**: Compile/package source code into deployable artifact
+**Responsibility**: Compile/package source code into a deployable artifact
 
 **Input**:
 - Source code (Git commit)
@@ -64,7 +64,7 @@ build → test → package → publish → artifact_promotion → staging → pr
 
 ### 3.3 Package Stage
 
-**Responsibility**: Package build artifact into distributable format
+**Responsibility**: Package build artifact into a distributable format
 
 **Output**:
 - Package manifest
@@ -73,8 +73,8 @@ build → test → package → publish → artifact_promotion → staging → pr
 
 **Quality Gates**:
 - Package signature verification passes
-- Package size within limit
-- Dependency version locked
+- Package size within limits
+- Dependency versions locked
 
 ### 3.4 Publish Stage
 
@@ -92,7 +92,7 @@ build → test → package → publish → artifact_promotion → staging → pr
 
 ### 3.5 Artifact Promotion Stage
 
-**Responsibility**: Promote artifact in ring model
+**Responsibility**: Promote artifact within the ring model
 
 **Promotion Rules** (corresponding to §13 pre-release):
 - Ring 0 (off): No promotion
@@ -224,7 +224,7 @@ interface PromotionRequest {
 
 | Metric | Threshold | Verification Method |
 |------|------|---------|
-| Ring criteria | 100% meet | metrics evaluation |
+| Ring criteria | 100% met | metrics evaluation |
 | Rollback plan | exists | plan check |
 | Approval | approved (if required) | approval record |
 
@@ -255,7 +255,7 @@ type Environment =
 ### 7.2 Rollback Flow
 
 ```
-1. Monitoring detects problem
+1. Monitoring detects a problem
 2. Rollback criteria is met
 3. Rollback request is created
 4. Rollback plan is executed

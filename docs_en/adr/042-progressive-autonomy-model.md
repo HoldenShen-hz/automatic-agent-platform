@@ -18,6 +18,7 @@ Agents with different maturity levels require different autonomy permissions. Ne
 | 2 | partial_auto | Partial automation |
 | 3 | high_auto | High automation |
 | 4 | full_auto | Full automation |
+| 5 | autonomous | Autonomous decision-making (only available in high-maturity domains) |
 
 Rules:
 
@@ -69,3 +70,4 @@ Negative:
 ## v4.3 ADR Remediation
 
 - A-34: This ADR originally described level 4 `full_auto` as "full automation". The root cause was that the Progressive Autonomy ADR mistakenly wrote autonomy levels as an unlimited authorization ladder, without binding to high-risk domain risk override rules. Fix: The main text now explicitly states that high-risk domains cannot enter `full_auto` by default, unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance.
+- R3-54: This ADR defines 6 levels of autonomy (0-5), which do not directly correspond to the 4 levels required by §42.1. The root cause is that the autonomy model evolved from 4 levels to 6 levels. Fix: The main text explicitly states that the 6-level system (0 supervised, 1 assisted, 2 partial_auto, 3 high_auto, 4 full_auto, 5 autonomous) is canonical, and §42.1's 4 levels refer to different dimensions (such as risk levels), with no contradiction between them.

@@ -82,6 +82,9 @@ Minimum fields:
 | Field | Type | Description |
 | --- | --- | --- |
 | `receiptId` | `string` | Receipt ID |
+| `harnessRunId` | `string` | Parent HarnessRun |
+| `planGraphBundleId` | `string` | Parent graph bundle |
+| `graphVersion` | `number` | Graph version |
 | `nodeAttemptId` | `string` | Corresponding attempt |
 | `nodeRunId` | `string` | Corresponding node run |
 | `receiptKind` | `tool \| llm \| hitl \| subgraph \| evaluator \| router` | Receipt category |
@@ -91,6 +94,7 @@ Minimum fields:
 | `sideEffectRefs` | `string[]` | Associated side effects |
 | `budgetSettlementRefs` | `string[]` | Associated budget settlements |
 | `evidenceRefs` | `ArtifactRef[]` | Evidence references |
+| `durationMs` | `number?` | This attempt duration |
 | `producedAt` | `timestamp` | Production time |
 
 ## 5. Advancement Rules
@@ -121,6 +125,6 @@ Minimum fields:
 
 The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-46: This document originally wrote the receipt primary key as `nodeAttemptReceiptId`. Root cause: contract directly followed underlying storage naming habits and exposed table-shaped field names, without maintaining the canonical API shape of v4.3 executable contracts. Fix: The main text now converges the primary key to `receiptId`, and demotes `nodeAttemptReceiptId` to deprecated storage-shaped key.
+- T-46: This document originally wrote the receipt primary key as `nodeAttemptReceiptId` and omitted `harnessRunId / planGraphBundleId / graphVersion / durationMs`. Root cause: contract directly followed underlying storage naming habits and exposed table-shaped field names, without maintaining the canonical API shape of v4.3 executable contracts. Fix: The main text now converges the primary key to `receiptId` and supplements the run chain lineage and duration fields.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -51,4 +51,3 @@ This contract defines `§49-§51` governance delegation, inheritance, and self-s
 - unit: scope match, override precedence, revocation
 - integration: delegation -> governance action -> audit trail
 - contract: out-of-scope governance operations must fail
-

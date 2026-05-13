@@ -6,13 +6,13 @@ This contract defines the hard boundary between the intelligence layer and the c
 
 Core principle: `LLM is responsible for suggestions, system code is responsible for decisions.`
 
-Related documents:
+Related Documents:
 
 - `policy_engine_contract.md`
 - `runtime_execution_contract.md`
 - `approval_and_hitl_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
 - Prevent model output from directly over-authorizing control systems.
 - Bring high-risk decisions back to deterministic system code.

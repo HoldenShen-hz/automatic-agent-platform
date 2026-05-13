@@ -48,7 +48,7 @@ Related documents:
 ## 4. Required Criteria
 
 | Criteria | Minimum Requirement |
-|----------|---------------------|
+| --- | --- |
 | `contracts_frozen` | Related main documents, contracts, and ADRs are frozen and non-conflicting |
 | `conformance_tests` | Corresponding conformance / integration / recovery tests have passed |
 | `telemetry_instrumented` | Metrics, traces, and alerts are at least in place for current stage requirements |
@@ -76,7 +76,7 @@ Rules:
 ## 6. Promote Stage Requirements
 
 | Path | Minimum Requirement |
-|------|---------------------|
+| --- | --- |
 | `draft -> partial` | Contract first edition, happy path tests, minimum owner clear |
 | `partial -> contract_frozen` | All current stage contracts frozen, tests passed, boundaries clear |
 | `contract_frozen -> canary` | Telemetry, runbook, ownership, rollback path in place |

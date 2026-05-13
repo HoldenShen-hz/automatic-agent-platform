@@ -64,7 +64,7 @@ Costs:
 - Multi-region operational complexity
 - Cross-region data consistency challenges
 
-## Cross-References
+## Cross References
 
 - [ADR-031 Disaster Recovery and High Availability Architecture](./031-disaster-recovery-and-high-availability.md)
 - [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)

@@ -1,6 +1,6 @@
 # Context Propagation Contract
 
-> **OAPEFLIR Correlation**: This contract defines context propagation across OAPEFLIR 8 stages, corresponding to ADR-016.
+> **OAPEFLIR Relationship**: This contract defines context propagation across the OAPEFLIR 8 stages, corresponding to ADR-016.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope
@@ -15,7 +15,7 @@ Related Documents:
 - `tool_and_provider_execution_contract.md`
 - [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
 
-## 2. Objectives
+## 2. Goals
 
 Phase 1a context propagation must ensure at minimum:
 
@@ -166,7 +166,6 @@ Must cover at minimum:
 ## 11. Closure Conclusion
 
 The focus of context propagation is not passing fewer parameters, but making "who is currently executing what" a reliably readable fact at any runtime layer.
-
 
 
 ## v4.3 Architecture Remediation

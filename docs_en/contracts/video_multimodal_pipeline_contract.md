@@ -54,19 +54,21 @@ Inherits from `MultimodalInputPart`, specialized for video modality:
 
 ## 7. Rules
 
-- Video input must go through structured pipeline standardization
-- Pipeline output order: metadata -> transcript -> scenes -> key_frames -> quality_assessment
-- If transcript segment is unavailable, it must be exposed as `conditional` safety finding, not silently ignored
-- `quality_assessment.readiness` values: `"ready" | "conditional" | "blocked"`
-- When `metadata.duration_ms <= 0` or resolution is invalid, `readiness` must be `"blocked"`
-- `key_frames` interval defaults to 10 seconds, minimum 1 second
-- Scene timeline defaults to 15 second segmentation, maximum 12 scenes
+- Video input must go through structured pipeline standardization.
+- Pipeline output order: metadata -> transcript -> scenes -> key_frames -> quality_assessment.
+- If transcript segment is unavailable, it must be exposed as `conditional` safety finding, not silently ignored.
+- `quality_assessment.readiness` values: `"ready" | "conditional" | "blocked"`.
+- When `metadata.duration_ms <= 0` or resolution is invalid, `readiness` must be `"blocked"`.
+- `key_frames` interval defaults to 10 seconds, minimum 1 second.
+- Scene timeline defaults to 15 second segmentation, maximum 12 scenes.
 
 ## 8. Relationship with MultimodalGateway
 
-`VideoMultimodalInput` is the video specialization of `MultimodalInputPart`
-`VideoPipelineOutput` field mapping to `MultimodalGatewayResult.normalized_inputs` video summary
+`VideoMultimodalInput` is the video specialization of `MultimodalInputPart`.
+`VideoPipelineOutput` field mapping to `MultimodalGatewayResult.normalized_inputs` video summary.
 
-## 9. Testing Requirements
+## 9. Test Requirements
 
-- unit: `VideoProcessor` covers
+- unit: `VideoProcessor` covers metadata extraction, scene detection, keyframe extraction, quality assessment
+- integration: video request -> gateway -> `VideoPipelineOutput`, verifying transcript / scenes / keyframes / summary correctness
+- contract: `VideoMultimodalInput` field completeness, `VideoTimeline` scene count boundaries

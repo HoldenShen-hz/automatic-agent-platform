@@ -12,7 +12,7 @@ The platform needs to integrate with external systems (CRM, ERP, project managem
 ### Integration Patterns
 
 | Pattern | Description | Applicable Scenarios |
-|---------|-------------|----------------------|
+|---------|-------------|---------------------|
 | webhook | Event push | High real-time requirements |
 | polling | Polling pull | External system has no webhook |
 | api_proxy | API proxy | Requires authentication and transformation |

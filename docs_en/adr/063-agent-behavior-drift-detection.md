@@ -65,11 +65,11 @@ Negative:
 - False positives may disrupt business
 - Detection algorithm requires tuning
 
-## Cross-References
+## Cross References
 
 - [Platform Architecture §17 Model Evaluation and Quality Gate](../architecture/00-platform-architecture.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
-## Source Sections
+## Source Section
 
 - `§63` Agent Behavior Drift Detection Architecture

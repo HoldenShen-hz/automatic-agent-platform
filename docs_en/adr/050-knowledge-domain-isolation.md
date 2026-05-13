@@ -63,6 +63,6 @@ Negative:
 - Isolation affects knowledge reuse
 - Sharing process adds latency
 
-## Cross-References
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)

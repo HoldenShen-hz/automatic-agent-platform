@@ -23,4 +23,3 @@ interface EvidenceChainLink {
 - Any replayable or auditable conclusion must be traceable to `harnessRunId`.
 - When `nodeRunId` is missing, it must be documented that the evidence belongs to the run level rather than the node level.
 - The evidence chain must not rely solely on `taskId` / `executionId`.
-

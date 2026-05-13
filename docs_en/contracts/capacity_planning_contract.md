@@ -11,8 +11,10 @@ This contract defines `§67`'s capacity tracking, forecasting models, and what-i
 - `CapacityScenario`
 - `CapacityRecommendation`
 
-## 3. CapacitySignal Minimum Fields
+## 3. `CapacitySignal` Minimum Fields
 
+- `tenant_id`
+- `harness_run_id?`
 - `resource_type`
 - `region_id?`
 - `timestamp`

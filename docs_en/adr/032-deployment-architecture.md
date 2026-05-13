@@ -30,7 +30,7 @@ The platform needs to support multi-environment deployment (dev/test/staging/pre
 
 ### Worker Pool Isolation
 
-- `worker-pool/` supports capability category isolation
+- worker-pool/ supports capability category isolation
 - Different types of tasks use different Worker pools
 - Prevents resource contention
 
@@ -41,20 +41,22 @@ The platform needs to support multi-environment deployment (dev/test/staging/pre
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Multi-environment separation facilitates testing and release
 - Worker pool isolation improves stability
 - IaC approach facilitates environment consistency
 
-Negative:
+Costs:
+
 - Multi-environment increases operational complexity
 - Deployment process requires standardization
 
-## Cross-References
+## Cross References
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§32` Deployment Architecture

@@ -23,6 +23,9 @@ For more detailed inspect, healthz, and backpressure rules, refer to the drill-d
 - `timestamp`
 - `level`
 - `message`
+- `harness_run_id` (required)
+- `node_run_id?`
+- `attempt_id?`
 - `task_id?`
 - `agent_id?`
 - `stage?`
@@ -82,7 +85,6 @@ Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observabi
 | Field | Type | Description |
 | --- | --- | --- |
 | `harness_run_id` | `string` | Associated run truth |
-| `task_id?` | `string` | Associated task projection |
 | `loop_iteration` | `integer` | Which round of OAPEFLIR, starting from 1 |
 | `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | Current stage |
 | `status` | `pending \| active \| completed \| skipped \| failed \| timed_out` | Stage status |
@@ -96,7 +98,6 @@ Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observabi
 | Field | Type | Description |
 | --- | --- | --- |
 | `harness_run_id` | `string` | Associated run truth |
-| `task_id?` | `string?` | Associated task projection |
 | `loop_iteration` | `integer` | Which round of OAPEFLIR |
 | `trace_id` | `string` | Primary trace |
 | `started_at` | `timestamp` | This round start time |
@@ -148,5 +149,6 @@ Rules:
 The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
 - T-47: This document originally placed `oapeflirMetrics.convergenceRate` directly in the top-level canonical dimension of `RuntimeMetricsSummary`. Root cause: observability contract confused runtime truth health metrics with cognitive/explanatory view metrics. Fix: The main text now converges the primary dimensions to `harnessRunMetrics / nodeRunMetrics / attemptMetrics`, and explicitly demotes OAPEFLIR metrics to view-only metrics like `oapeflirViewMetrics / stageViewMetrics`.
+- T-22 (observability): The original `LogEvent` field list already includes `harness_run_id` (required) and `node_run_id?` / `attempt_id?` (optional), satisfying architecture `§25.8` budget correlation key requirements. R2-22 stated "missing harness_run_id/node_run_id" which was an audit misjudgment; this document `§3` is already correctly aligned and requires no modification.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -24,7 +24,7 @@ Related documents:
 ## 3. Unified Objects
 
 - `HumanOutput`: Conclusions or summaries intended for user display
-- `StructuredStepOutput`: Structured intermediate results of workflows/steps (corresponding to OAPEFLIR Execute DualChannelStepOutput)
+- `StructuredExecutionView`: Structured intermediate result view derived from `NodeAttemptReceipt`
 - `ArtifactRecord`: Physical artifacts such as files, images, reports, and compressed packages
 
 ### 3.1 OAPEFLIR ArtifactPlane Interface
@@ -32,9 +32,11 @@ Related documents:
 ```typescript
 interface ArtifactRecord {
   artifactId: string;
-  taskId: string;
-  executionId?: string;
-  planId?: string;          // OAPEFLIR Plan Hub
+  harnessRunId: string;
+  nodeRunId?: string;
+  planGraphBundleId?: string;
+  taskId?: string;          // Query entry point, not truth primary key
+  executionId?: string;     // legacy projection alias
   type: ArtifactType;
   path: string;
   mimeType: string;
@@ -52,6 +54,10 @@ interface ArtifactRef {
   targetId: string;
 }
 ```
+
+## v4.3 Contract Remediation
+
+- T-62: This document originally wrote `executionId / planId / StructuredStepOutput` as artifact primary association keys. Root cause: The artifact contract directly reused the old workflow-step output model without switching to the `NodeAttemptReceipt` and `PlanGraphBundle` execution truth boundaries. Fix: Body now uses `harnessRunId / nodeRunId / planGraphBundleId` as authoritative lineage; old fields are retained only as query compatibility aliases.
 
 ### 3.2 ArtifactType Extensions
 

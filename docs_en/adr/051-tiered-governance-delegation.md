@@ -33,17 +33,19 @@ interface DelegationScope {
 
 ### Delegation Levels
 
-| Level | Delegable Permissions |
-|-------|----------------------|
-| Platform Level | All permissions |
-| Business Group Level | Permissions within business group |
-| Department Level | Permissions within department |
-| Team Level | Limited permissions |
+| Level | Delegable Permissions | Constraints |
+|-------|----------------------|-------------|
+| Platform Level | Permissions outside NonOverridableInvariant only | Must comply with non-overridable constraints such as security boundaries and audit requirements |
+| Business Group Level | Permissions within business group | Subject to upper-level delegation constraints |
+| Department Level | Permissions within department | Subject to upper-level delegation constraints |
+| Team Level | Limited permissions | Subject to upper-level delegation constraints |
 
-### Constraints
+Note: NonOverridableInvariant represents platform-level security invariants that no delegation can override (such as security boundaries, audit requirements, etc.). Platform-level delegation is not "all permissions" but rather restricted all permissions after excluding NonOverridableInvariant.
+
+### Constraint Types
 
 | Constraint Type | Description |
-|-----------------|-------------|
+|----------------|-------------|
 | budget_limit | Budget upper limit |
 | risk_threshold | Risk upper limit |
 | approval_required | Requires upper-level approval |
@@ -68,11 +70,11 @@ Negative:
 - Delegation relationships are complex
 - Permission revocation requires complete process
 
-## Cross-References
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§51` Tiered Governance Delegation

@@ -267,6 +267,7 @@ const PluginDescriptorSchema = z.object({
 - Hook failures must not escalate privileges; default degradation is to disable that SPI instance or block loading.
 - SPI can only consume capabilities and settings declared in the manifest; no runtime privilege escalation allowed.
 
+
 ## v4.3 Architecture Remediation
 
 The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall take precedence.

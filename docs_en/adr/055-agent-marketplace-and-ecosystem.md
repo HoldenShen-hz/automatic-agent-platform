@@ -70,7 +70,7 @@ Costs:
 - Platform governance complexity
 - Quality inconsistency risk
 
-## Cross-References
+## Cross References
 
 - [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
 - [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)

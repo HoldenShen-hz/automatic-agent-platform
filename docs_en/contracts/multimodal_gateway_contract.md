@@ -10,10 +10,18 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `MultimodalInputPart`
 - `ModalityRouteDecision`
 - `MultimodalSafetyFinding`
+- `VideoPipelineOutput`
+- `VideoTranscriptSegment`
+- `VideoTimeline`
+- `VideoFrame`
 
 ## 3. `MultimodalRequest` Minimum Fields
 
 - `request_id`
+- `harness_run_id`
+- `node_run_id?`
+- `tenant_id`
+- `trace_id`
 - `modalities`
 - `input_parts`
 - `requested_outputs`
@@ -34,6 +42,7 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `ModalityRouter` must explicitly select provider / processor.
 - Modality inputs that fail security checks must not enter model calls.
 - `video` input must be standardized through a structured video pipeline, producing at minimum metadata, scene timeline, keyframe, quality/readiness assessment; if transcript segment is unavailable, must expose as conditional safety finding rather than silently ignoring.
+- The video pipeline's scene timeline / keyframe / transcript segment structure shall follow `video_multimodal_pipeline_contract.md`; the gateway must not compress these fields into untrackable free-text summaries.
 
 ## 5. Test Requirements
 

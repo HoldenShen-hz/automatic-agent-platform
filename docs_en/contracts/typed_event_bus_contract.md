@@ -235,4 +235,4 @@ Supplementary rules:
 
 ## 6. Closure Conclusion
 
-The Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.
+Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.

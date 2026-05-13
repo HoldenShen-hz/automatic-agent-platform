@@ -35,7 +35,7 @@ interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
   threshold: number;       // Failure rate threshold
   window_ms: number;      // Statistical window
-  open_duration_ms: number; // Duration of circuit break (does not include auto-clear semantics)
+  open_duration_ms: number; // Circuit break duration (does not include auto-clear semantics)
 }
 
 Constraints:
@@ -73,14 +73,14 @@ Costs:
 - Emergency stop affects business continuity
 - Recovery flow requires careful design
 
-## Cross References
+## Cross-References
 
 - [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
 - [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
 
 ## Source Section
 
-- Section 60: Emergency Stop and Global Circuit Breaker Architecture
+- `§60` Emergency Stop and Global Circuit Breaker Architecture
 
 ## v4.3 ADR Remediation
 

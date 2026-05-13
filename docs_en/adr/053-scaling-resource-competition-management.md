@@ -64,7 +64,7 @@ Advantages:
 - Priority mechanism ensures critical business needs are met
 - Dynamic adjustment adapts to load changes
 
-Tradeoffs:
+Costs:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead

@@ -47,6 +47,26 @@ Proposed → Accepted → Superseded
 3. **Superseded ADRs must contain cross-references** to the ADR that supersedes them
 4. **Each ADR must contain source sections** linking to specific section numbers in platform-architecture.md
 
+### v4.3 Remediation Exception Clause
+
+> Note: v4.3 architecture upgrade requires direct modification of 30+ ADRs to keep documentation in sync with implementation. By authoritative decision, the following remediation scenarios are granted exception permission and do not need to follow the "no direct modification" rule:
+
+**Exception Scenarios**:
+- Cross-ADR synchronized modifications during v4.3 main architecture version upgrades
+- ADR terminology unified corrections due to the introduction of Five-Plane X1 architecture
+- Routing/execution ADR updates due to HarnessRuntime becoming the sole execution runtime
+
+**Permission Conditions**:
+- Must include `## v4.3 ADR Remediation` section
+- Must record root cause and fix description
+- Must explicitly list all original ADR entries modified (such as A-18, A-21, etc.)
+- Multiple ADR modifications within the same batch may share one remediation section
+
+**Process Requirements**:
+- Remediation modifications still require review but can use fast-track approval
+- All remediation modifications must be merged into main branch
+- Document administrators audit remediation compliance quarterly
+
 ### Required ADR Fields
 
 Each ADR must contain:
@@ -62,24 +82,22 @@ Each ADR must contain:
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - ADR numbering has clear historical lineage, facilitating traceability of architecture decision evolution
 - Freeze mechanism prevents validated decisions from being arbitrarily overturned
 - Status flow clearly distinguishes "under discussion" and "determined"
 
-Negative:
+Costs:
+
 - ADR numbers may be skip-based, non-consecutive
 - Superseded ADRs still need to be retained, increasing documentation maintenance cost
 
-Trade-offs:
-- Stability vs. flexibility
-- Traceability vs. complexity
-
-## Cross-References
+## Cross References
 
 - [ADR-033 Phased Roadmap](./033-phased-roadmap.md)
 - [ADR-035 Recommended Code Directory Structure](./035-recommended-code-directory-structure.md)
 
-## Source Sections
+## Source Section
 
 - `§34` ADR Freeze Recommendation

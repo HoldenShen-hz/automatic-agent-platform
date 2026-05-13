@@ -12,7 +12,7 @@ The design requires supporting 3 learning types (R4-TYPES constraint): failure_p
 
 ## Decision
 
-### 1. 3 Learning Content Types (R4-TYPES Constraint)
+### 1. Three Learning Content Types (R4-TYPES Constraint)
 
 | Learning Type | Description | Detector |
 |---------|------|-------|
@@ -22,7 +22,7 @@ The design requires supporting 3 learning types (R4-TYPES constraint): failure_p
 
 **Constraint**: Phase 1 only supports these 3 types; no expansion until R4-TYPES constraint is lifted.
 
-### 2. 4 Initial Pattern Detectors
+### 2. Four Initial Pattern Detectors
 
 | Detector | Detected Pattern | Implementation File |
 |--------|---------|---------|
@@ -55,7 +55,8 @@ interface FailureMode {
 
 interface EvidenceRef {
   signalId: string;
-  executionId: string;
+  harnessRunId: string;
+  nodeRunId?: string;
   timestamp: string;
   excerpt?: string;
 }
@@ -187,9 +188,13 @@ Cons: Higher implementation complexity (~1500 lines of code).
 ## Source Sections
 
 - `§8` Learn Hub Design
-- `§8.1` 6 Learning Content Types (Phase 1 simplified to 3)
+- `§8.1` Six Learning Content Types (Phase 1 simplified to 3)
 - `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern Interfaces
-- `§8.5` 4 Initial Failure Patterns
+- `§8.5` Four Initial Failure Patterns
 - `§8.6-8.7` ExperienceDistillation / StrategyLearning
 - `§L.7` R4-TYPES constraint
 - `§L.9` R4-EVIDENCE constraint
+
+## v4.3 ADR Remediation
+
+- A-65: This ADR originally defined `Phase 1` and `EvidenceRef.executionId` as canonical constraints, root cause being that the learn hub ADR did not synchronize the evidence chain primary key after the runtime truth rename. Fix: The main text now uses ring scope, and the evidence chain anchor is changed to `harnessRunId / nodeRunId`.

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
 Regulations such as the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
 
@@ -68,7 +68,7 @@ Costs:
 - Explanation generation adds latency
 - Increased storage costs
 
-## Cross References
+## Cross-References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
 - [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)

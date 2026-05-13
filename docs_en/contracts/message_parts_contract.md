@@ -2,7 +2,7 @@
 
 ---
 
-## OAPEFLIR Relevance
+## OAPEFLIR Association
 
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
@@ -56,7 +56,7 @@ Related documents:
 ## 4. `MessagePart` Minimum Fields
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `part_id` | `string` | Part ID |
 | `message_id` | `string` | Parent message |
 | `part_type` | `string` | Part type from list above |
@@ -90,6 +90,6 @@ Related documents:
 - `question_prompt`: Must include at least `question_id`, `mode` (`single | multi | text`), `options?`, `recommended_option_id?`, `timeout_policy?`.
 - `todo_update`: Must include at least `todo_id`, `status` (`pending | in_progress | completed | cancelled`) and `source`.
 
-## 7. Closure Conclusion
+## 7. Conclusion
 
 Message parts are the foundational abstraction for the message layer. Subsequent stream replay, partial persistence, and context compaction should all be built on this model.

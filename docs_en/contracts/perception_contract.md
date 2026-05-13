@@ -87,7 +87,3 @@ interface UnifiedObservation {
 - `TaskSituationBuilder` must produce at minimum: `context_snapshot`, `risk_signals`, `domain_hints`.
 - `SystemSituationBuilder` must produce at minimum: `health_status`, `provider_health`, `resource_utilization`, `event_bus_backlog`.
 - Active task creation or action triggering must go through HQ/system policy by default; Observe must not directly issue these on its own.
-
-## 9. Closure Conclusion
-
-Perception is the compatibility shell for historical naming; authoritative semantics are now aligned to the OAPEFLIR Observe stage.

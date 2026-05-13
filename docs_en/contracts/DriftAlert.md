@@ -40,5 +40,5 @@ This contract defines the drift alert structure and routing specification for `�
 ## 6. Test Requirements
 
 - unit: alert generation, deduplication, routing
-- integration: alert -> response ->闭环 (closed-loop)
+- integration: alert -> response -> closed-loop
 - contract: severity to routing mapping validation

@@ -37,20 +37,22 @@ Enterprise-class platforms must have disaster recovery capabilities to ensure ra
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Clear RTO/RPO targets guide architectural decisions
 - Regular drills ensure recovery capability is available
 - Backup retention strategy meets compliance requirements
 
-Negative:
+Costs:
+
 - Backup storage costs
 - Drills consume production resources
 
-## Cross-References
+## Cross References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-032 Deployment Architecture](./032-deployment-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§31` Disaster Recovery and High Availability

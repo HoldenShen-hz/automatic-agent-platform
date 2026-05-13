@@ -198,10 +198,11 @@ Currently not doing:
 
 Whether the main state machine is clear ultimately depends on whether state can only be changed through a tightened set of entry points; this contract is the authoritative boundary for this set of entry points.
 
+
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-32: This document originally bound `TransitionCommand.entity_kind` to the pre-v4.3 object set of `task / workflow / session / approval / execution`. The root cause was that the transition service directly inherited the old repository table model and did not migrate along with `HarnessRun / NodeRun / SideEffect / BudgetReservation` becoming truth aggregates. Fix: The main text now converges canonical `entity_kind` to `harness_run / node_run / side_effect / budget_reservation`; others are retained only as projections or migration inputs.
+- T-32: This document originally bound `TransitionCommand.entity_kind` to the pre-v4.3 object set of `task / workflow / session / approval / execution`. The root cause was that the transition service directly inherited the old repository table model and did not migrate along with `HarnessRun / NodeRun / SideEffect / BudgetReservation` becoming truth aggregates. Fix: Main text now converges canonical `entity_kind` to `harness_run / node_run / side_effect / budget_reservation`; others are retained only as projections or migration inputs.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

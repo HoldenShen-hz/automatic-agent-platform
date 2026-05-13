@@ -55,7 +55,9 @@ This contract defines the unified message structure exchanged between channels s
 DecisionRequest requires at minimum:
 
 - `decision_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `task_id?`
 - `reason`
 - `options`
 - `deadline?`
@@ -72,6 +74,10 @@ DecisionResponse requires at minimum:
 - Gateway layer only does adaptation, does not modify platform semantics.
 - Channel differences should be resolved through formatter/adapter.
 - Decision requests must be traceable to specific task and escalation reason.
+
+## v4.3 Contract Remediation
+
+- T-65: This document originally wrote `task_id` as the sole key for decision interaction. The root cause is that the gateway message contract still defined approval according to the task-level UI model without descending to actual runtime instances. Fix: The main text now promotes `harness_run_id / node_run_id` to the authoritative chain for decision, with `task_id` retained only for channel aggregation semantics.
 
 ## 7. Supplementary Rules
 

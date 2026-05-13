@@ -92,7 +92,7 @@ Constraints:
 
 Rules:
 
-- All plugins / extensions must use manifest as the authoritative registration input.
+- All plugin / extension must use manifest as the authoritative registration input.
 - Extension / plugin production code can only interact with core through public SDK surface, and must not directly import core private modules or other extension private implementations.
 - If a plugin needs a new runtime seam, should prioritize adding a clear public SDK subpath or facade, rather than exposing private implementation files.
 
@@ -168,6 +168,7 @@ Supplementary rules:
 - `enabled` does not equal `active`; only allowed to enter active after passing compatibility, permission, and trust gates.
 - `reloaded` must preserve before/after version, configuration summary, and error reasons to facilitate audit and rollback.
 - Trust warnings, permission retries, and plugin settings can only serve as experience-layer safety valves, and cannot replace runtime policy, sandbox, and capability boundaries.
+- SPI runtime lifecycle state naming must be consistent with the `PluginSpiRegistry` state machine in §4 of [plugin_spi_contract.md](./plugin_spi_contract.md); the two documents must not each define different SPI lifecycle state names.
 
 ## 7. Domain Tool Bundle
 

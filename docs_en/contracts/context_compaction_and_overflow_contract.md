@@ -79,7 +79,7 @@ Rules:
 - Scan from oldest to newest by message timestamp
 - Prioritize processing `tool_result` / large external outputs
 - Keep the latest `N` rounds of tool results complete
-- Older tool results can be replaced with stable placeholder summaries, e.g., "Tool result trimmed"
+- Older tool results can be replaced with stable placeholder summaries, for example "Tool result trimmed"
 - User messages, system prompt, approval decisions, and recent assistant plans are not trimmed by default
 - `protected_parts` or equivalent allowlists can be declared; these must not be directly trimmed in Stage 1. Currently protected message types:
   - `user_request`: User request message
@@ -129,7 +129,7 @@ From high to low, recommended as follows:
 ### 8.1 OAPEFLIR Stage-Specific Retention Rules
 
 | OAPEFLIR Stage | Protected Content | Reason |
-| --- | --- | --- |
+|--------------|---------|------|
 | Observe | Latest observation signals | Assess dependency |
 | Assess | UnifiedAssessment results | Plan dependency |
 | Plan | Plan DTO + version | Execute dependency (R3-SINGLE constraint) |
@@ -139,7 +139,7 @@ From high to low, recommended as follows:
 | Improve | ImprovementCandidate | Rollout dependency |
 | Rollout | RolloutRecord | Audit traceability |
 
-## 9. CompactionRecord
+## 9. `CompactionRecord`
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -223,6 +223,6 @@ Currently does not do:
 - Cross-session intelligent summary fusion
 - Embedding-based context auto-reordering
 
-## 14. Closing Conclusion
+## 14. Closure Conclusion
 
 The correct response to context overflow is not "summarize earlier and more frequently" but first use the lowest-cost trimming to recover space, then hand the truly long-term semantics to be preserved to compaction.

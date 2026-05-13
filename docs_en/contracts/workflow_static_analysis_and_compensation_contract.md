@@ -19,7 +19,7 @@ Related documents:
 
 ## 3. Minimum Static Analysis Checks
 
-Before execution, must check at least:
+Before execution, must check at minimum:
 
 - Infinite loop detection
 - Unreachable step detection
@@ -58,7 +58,7 @@ Each step with side effects must declare one of:
 - `compensating_action`
 - `manual_reconciliation_required`
 
-Compensation action must at least explain:
+Compensation action must at minimum explain:
 
 - Trigger condition
 - Compensation owner
@@ -68,7 +68,7 @@ Compensation action must at least explain:
 
 ## 6. Long-Task Sharding
 
-Long tasks must support at least:
+Long tasks must support at minimum:
 
 - Checkpoint sharding
 - Subgraph recovery

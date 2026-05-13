@@ -1,19 +1,20 @@
-# Marketing and Brand Domain Spec
+# Quantitative Trading Domain Spec
 
 | Field | Value |
 | --- | --- |
-| architecture_section | §94 |
-| implementation_module | `src/domains/marketing/index.ts` |
+| architecture_section | §71 |
+| implementation_module | `src/domains/quant-trading/index.ts` |
 | domain_status | spec_ready |
-| risk_level | high |
-| accountable_role | Brand Lead / Legal Reviewer |
+| risk_level | critical |
+| accountable_role | Licensed Trading Lead / Risk Control Lead |
 
 ## Hard Constraints
 
-- All external content must pass brand consistency checks.
-- Advertising law, copyright, and trademark compliance checks must not be bypassed.
-- Crisis PR recommendations require human review before external release.
+- All order candidates must pass pre-market risk checks.
+- Position, loss limits, and trading hot paths must not be overwritten by Agent.
+- Ultra-low-latency order execution paths must not rely on general LLM/Harness loops.
 
 ## Acceptance Criteria
 
-- Brand consistency, advertising law compliance, manual sign-off, and external release audit evidence must be provided before GA.
+- DomainDescriptor, DomainRiskProfile, and DomainEvalFramework must first pass the §38 four-stage gate.
+- Trading risk control, backtesting, manual approval, audit, and kill-switch evidence must be provided before GA.

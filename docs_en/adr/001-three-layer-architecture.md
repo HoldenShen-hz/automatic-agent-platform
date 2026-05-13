@@ -151,3 +151,7 @@ Secondary Chain (async improvement):  Feedback → Learn → Improve → Rollout
 - `§2.2.1`
 - `§4.1`
 - `§OAPEFLIR` eight-stage model (added 2026-04-17)
+
+## v4.3 ADR Remediation
+
+- R5-63: This ADR originally referenced old section numbers (such as `§2.3`/`§4.5`/`§10.1` etc.), which have now been updated to the correct section mappings in the architecture document.

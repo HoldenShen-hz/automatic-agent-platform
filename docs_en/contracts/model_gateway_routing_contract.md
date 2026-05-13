@@ -15,6 +15,9 @@ Related documents:
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
+  harnessRunId: string;  // v4.3: required for budget tracking (INV-BUDGET-001)
+  nodeRunId: string | null;   // null when no node scheduled yet
+  attemptId: string | null;  // null before attempt starts
   taskId: string | null;
   sessionId: string | null;
   tenantId: string | null;
@@ -47,6 +50,8 @@ interface ModelRouteDecision {
 
 Rules:
 
+- `harnessRunId` is required for budget tracking (INV-BUDGET-001); `nodeRunId` / `attemptId` may be null when node is not yet scheduled.
+- `harnessRunId / nodeRunId / attemptId` are the authoritative correlation keys for tracking routing decision context.
 - `preferredModel` only represents a preference, not a mandatory pin; if the caller explicitly pins, it must be modeled separately.
 - When `requiredCapabilities` are not satisfied, must fail-close and must not silently degrade to an incompatible model.
 - `decisionReason` must include at least one auditable reason, such as `policy_allow`, `cost_guard`, `latency_guard`, `provider_cooldown`.
@@ -88,5 +93,6 @@ Rules:
 The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
 - T-10: The routing strategy enumeration had 3 types (cost_optimized/latency_optimized/quality_optimized), while architecture `§19` defines 5 types including compliance_constrained/hybrid. Root cause: old routing documentation only covered performance/cost three objectives and did not write compliance constraints and multi-objective trade-off strategies into the canonical request. Fix: `ModelRouteRequest.routingStrategy` has been supplemented with 5 canonical enumerations, and governance constraints for `compliance_constrained` and `hybrid` have been added.
+- T-21: The original `ModelRouteRequest.harnessRunId` was optional, which could not satisfy INV-BUDGET-001 budget tracking requirements. Fix: `harnessRunId` is now required; `nodeRunId` / `attemptId` may be null when node is not yet scheduled; routing decision context uses `harnessRunId` as the budget primary correlation key.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

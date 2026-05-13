@@ -71,8 +71,8 @@ Corresponding implementation boundaries:
 
 ## Source Sections
 
-- `§6 Interface Plane`
-- `§7 Platform Contracts`
-- `§8 Extensibility`
-- `§22 SDK/DX`
-- `§30 Business Pack / Plugin`
+- `§6` Interface Plane
+- `§7` Platform Contracts
+- `§8` Extensibility
+- `§22` SDK/DX
+- `§30` Business Pack / Plugin

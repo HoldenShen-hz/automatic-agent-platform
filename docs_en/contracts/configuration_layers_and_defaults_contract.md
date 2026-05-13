@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -62,9 +62,9 @@ The configuration governance layer uniformly loads and validates all configurati
 | `bootstrap` | `config/bootstrap/default.json` | Application identifier, phase declaration, feature flags |
 | `gateways` | `config/gateways/default.json` | API gateway and channel adapter configuration |
 | `domains` | `config/domains/default.json` | domain/tool bundle/plugin/namespace default configuration |
-| `knowledge` | `config/knowledge/default.json` | Knowledge namespace, trust, freshness configuration |
-| `memory` | `config/memory/default.json` | Memory layer, promotion, decay configuration |
-| `kvcache` | `config/kvcache/default.json` | Fixed prefix / domain block / variable suffix budget strategy |
+| `knowledge` | `config/knowledge/default.json` | knowledge namespace, trust, freshness configuration |
+| `memory` | `config/memory/default.json` | memory layer, promotion, decay configuration |
+| `kvcache` | `config/kvcache/default.json` | fixed prefix / domain block / variable suffix budget strategy |
 | `providers` | `config/providers/default.json` | LLM provider connection and profile selection |
 | `runtime` | `config/runtime/default.json` | Runtime parameters: timeout, concurrency, agent rounds, tool calls |
 | `security` | `config/security/default.json` | Sandbox mode, approval mode, remote worker registration strategy |
@@ -83,13 +83,13 @@ The configuration governance layer uniformly loads and validates all configurati
 | `runtime` | `defaultTaskTimeoutMs` | Must be a positive number |
 | `runtime` | `defaultStepTimeoutMs` | Must be a positive number |
 | `runtime` | `maxConcurrentTasks` | Must be a positive integer |
-| `security` | `sandboxMode` | Must be one of `read_only | workspace_write | scoped_external_access | restricted_exec` |
+| `security` | `sandboxMode` | Must be one of `read_only \| workspace_write \| scoped_external_access \| restricted_exec` |
 | `security` | `remoteWorkerRegistration.challengeTtlMs` | Must be a positive number |
 | `security` | `remoteWorkerRegistration.allowedCapabilities` | Must be a non-empty string array |
 | `providers` | provider / profile references | Must exist matching items in model metadata registry |
 | `domains` | domain/tool bundle/plugin refs | Must be consistent with registry |
 | `knowledge` | namespace / trust tier | Must satisfy enum and boundary constraints |
-| `kvcache` | budget partition | Fixed/domain/variable three-segment budget sum must be interpretable |
+| `kvcache` | budget partition | fixed/domain/variable three-segment budget sum must be interpretable |
 | Production environment | `allowDestructiveActions` | Must not be `true` (fail-closed) |
 
 ### 3A.3 JSONC Support
@@ -102,7 +102,7 @@ Configuration file loading paths must be within the config root directory; trave
 
 ## 4. Default Value Registry
 
-At least uniformly manage:
+At minimum uniformly manage:
 
 - timeout defaults
 - retry defaults

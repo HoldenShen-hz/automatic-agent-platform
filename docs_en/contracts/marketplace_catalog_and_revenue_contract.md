@@ -77,12 +77,11 @@ Rules:
 - integration: install / upgrade / deprecate / sunset / remove lifecycle
 - contract: Entries with revoked certification must not continue new installations
 
-
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-36: This document originally listed `RevenueSharePolicy` directly as a canonical marketplace object. The root cause was that early market contracts placed commercial settlement domain and runtime installation/security governance at the same layer, causing settlement fields to appear as if they could participate in Pack execution gates. Fix: The main text now demotes this semantics to `CommercialTermsProjection`, and explicitly states that revenue sharing / tax / refund / settlement cycle may only serve as commercial projections and must not affect installation security or runtime decisions.
 - T-43: This document originally crammed `draft / submitted / certified / published / deprecated / retired` all into `lifecycle_state`. The root cause was historical copy that mixed "review workflow status" and "runtime availability lifecycle" into a single enum, failing to separate review workflow from runtime lifecycle in v4.3. Fix: The main text now adds `review_status` to carry `draft / submitted / certified`, and consolidates `lifecycle_state` to `active / deprecated / sunset / removed`.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only serve as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only serve as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

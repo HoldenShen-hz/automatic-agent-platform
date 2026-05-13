@@ -1,20 +1,19 @@
-# Quantitative Trading Domain Spec
+# User Operations Domain Spec
 
 | Field | Value |
 | --- | --- |
-| architecture_section | §71 |
-| implementation_module | `src/domains/quant-trading/index.ts` |
+| architecture_section | §77 |
+| implementation_module | `src/domains/user-operations/index.ts` |
 | domain_status | spec_ready |
-| risk_level | critical |
-| accountable_role | Licensed Trading Lead / Risk Control Lead |
+| risk_level | high |
+| accountable_role | User Operations Lead |
 
 ## Hard Constraints
 
-- All order candidates must pass pre-market risk checks.
-- Position, loss limits, and trading hot paths must not be overwritten by Agent.
-- Ultra-low-latency order execution paths must not rely on general LLM/Harness loops.
+- All user touchpoints must enforce frequency limits.
+- User profiles, segmentation, and message content must comply with data classification policies.
+- High-risk touchpoints must support pause, recall, and audit.
 
 ## Acceptance Criteria
 
-- DomainDescriptor, DomainRiskProfile, and DomainEvalFramework must first pass the §38 four-stage gate.
-- Trading risk control, backtesting, manual approval, audit, and kill-switch evidence must be provided before GA.
+- Frequency control, unsubscribe, user segmentation audit, and experiment evaluation evidence must be provided before GA.

@@ -95,7 +95,7 @@ Costs: Adds runtime overhead (~5-10ms per invoke), requires isolation mechanism
 - `PluginConfigValidator` prevents malicious configuration injection
 - Ring 2 prioritizes implementing Operations Domain (reusing GitHub adapter)
 
-## Cross-References
+## Cross References
 
 - [ADR-015 Unified Extension Marketplace](./015-unified-extension-marketplace.md)
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)

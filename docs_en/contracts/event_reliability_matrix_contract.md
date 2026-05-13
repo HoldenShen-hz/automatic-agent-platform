@@ -18,15 +18,15 @@ Finer event registry, consumer relationships, and operations thresholds are cove
 | `tier2` | Best-effort delivery | Optional persistence | Optional | Recommended | Important progress, tool stages, observability events |
 | `tier3` | May be lost | May skip persistence | Not required | Not required | Streaming chunks, heartbeats, transient progress |
 
-## 3. Phase 1a Baseline Events
+## 3. Ring 1 Baseline Events
 
 | Event Type | Tier | Reason |
 | --- | --- | --- |
-| `task.created` | `tier1` | Primary chain fact event |
-| `task.status_changed` | `tier1` | User primary status |
-| `workflow.started` | `tier1` | Workflow lifecycle start |
-| `workflow.step_completed` | `tier1` | Next step advancement depends on this |
-| `workflow.failed` | `tier1` | Recovery and failure attribution |
+| `platform.task.created` | `tier1` | Primary chain fact event |
+| `platform.task.status_changed` | `tier1` | User primary status |
+| `platform.harness.started` | `tier1` | Harness lifecycle start |
+| `platform.node.completed` | `tier1` | Next node advancement depends on this |
+| `platform.harness.failed` | `tier1` | Recovery and failure attribution |
 | `approval.requested` | `tier1` | HITL primary chain |
 | `approval.resolved` | `tier1` | Prerequisite for recovery execution |
 | `improve.candidate_accepted` | `tier1` | Candidate acceptance changes subsequent strategy and rollout trajectory |
