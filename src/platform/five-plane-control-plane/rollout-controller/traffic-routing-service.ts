@@ -402,6 +402,25 @@ export class TrafficRoutingService {
     // Apply initial weight
     this.applyTrafficWeights(fromSlot, 100 - config.initialWeightPct, toSlot, config.initialWeightPct);
 
+    this.directiveSink.emitOperationalDirective(
+      createOperationalDirective({
+        type: "mode_switch",
+        scope: { harnessRunId: shift.id },
+        issuedBy: {
+          principalId: initiatedBy,
+          tenantId: "tenant:local",
+          roles: ["traffic_routing_service"],
+        },
+        reason: `canary_shift_started:${fromSlot}->${toSlot}`,
+        params: {
+          shiftId: shift.id,
+          fromSlot,
+          toSlot,
+          initialWeightPct: config.initialWeightPct,
+        },
+      }),
+    );
+
     return shift;
   }
 
@@ -488,6 +507,24 @@ export class TrafficRoutingService {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(rollback.id, rollback.shiftId, rollback.trigger, rollback.fromVersion, rollback.toVersion, rollback.reason, rollback.executedAt, rollback.completedAt, rollback.success ? 1 : 0);
+
+    this.directiveSink.emitOperationalDirective(
+      createOperationalDirective({
+        type: "rollback",
+        scope: { harnessRunId: shiftId },
+        issuedBy: {
+          principalId: "traffic_routing_service",
+          tenantId: "tenant:local",
+          roles: ["traffic_routing_service"],
+        },
+        reason: `traffic_shift_rollback:${trigger}`,
+        params: {
+          shiftId,
+          trigger,
+          reason,
+        },
+      }),
+    );
 
     return rollback;
   }

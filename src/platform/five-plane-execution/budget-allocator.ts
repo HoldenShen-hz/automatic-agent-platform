@@ -177,7 +177,15 @@ export class BudgetAllocator {
     readonly sweeperConfig?: Partial<ReservationSweeperConfig>;
     readonly deps?: BudgetAllocatorDeps;
   } = {}) {
-    this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    // If no state machine provided, create one with a no-op persistEvent to allow transitions to work
+    if (options.stateMachine) {
+      this.stateMachine = options.stateMachine;
+    } else {
+      // Create a state machine with a no-op persistEvent so transitions don't fail
+      this.stateMachine = new RuntimeStateMachine({
+        persistEvent: () => {},
+      });
+    }
     this.watermarkConfig = { ...DEFAULT_WATERMARK_CONFIG, ...options.watermarkConfig };
     this.crossRunPriorityConfig = { ...DEFAULT_CROSS_RUN_PRIORITY, ...options.crossRunPriorityConfig };
     this.sweeperConfig = { ...DEFAULT_SWEEPER_CONFIG, ...options.sweeperConfig };

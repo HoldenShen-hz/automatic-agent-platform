@@ -239,6 +239,7 @@ test("dispatchNext skips untrusted remote workers", () => {
   const trustedRemoteWorker = createMockWorker("worker-trusted", {
     placement: "remote",
     trusted: true,
+    registrationVerifiedAt: "2025-01-01T00:00:00.000Z",
     remoteSessionStatus: "connected",
     lastAcknowledgedStreamOffset: "offset-1",
     sessionConsistencyCheckStatus: "passed",

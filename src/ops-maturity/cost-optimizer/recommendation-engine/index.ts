@@ -38,8 +38,8 @@ export function buildCostOptimizationRecommendation(
     recommendationId: `rec_${subjectId}`,
     subjectId,
     estimatedSavingsUsd,
-    riskLevel: downgradePath ? "high" : currentCostUsd > 100 ? "medium" : "low",
-    action: downgradePath ? "downgrade_model" : currentCostUsd > 100 ? "right_size" : "increase_cache_hit",
+    riskLevel: downgradePath ? "high" : currentCostUsd >= 50 ? "medium" : "low",
+    action: downgradePath ? "downgrade_model" : currentCostUsd >= 50 ? "right_size" : "increase_cache_hit",
     ...(options.modelRef != null ? { currentModelRef: options.modelRef as string } : {}),
     ...(recommendedProfile != null && downgradePath ? { recommendedModelRef: `${recommendedProfile.provider}/${recommendedProfile.modelId}` as string } : {}),
   };

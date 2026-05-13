@@ -162,7 +162,7 @@ test("runMultiStepOrchestration creates workflow and session records", async () 
   }
 });
 
-test("runMultiStepOrchestration emits platform.graph_scheduler.decision_recorded event", async () => {
+test("runMultiStepOrchestration emits routing:decided event", async () => {
   const dbPath = await createTempDbPath();
 
   try {

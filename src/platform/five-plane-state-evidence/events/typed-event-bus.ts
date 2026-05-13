@@ -219,6 +219,7 @@ export interface TypedEventPayloadMap {
   // §28.1: Canonical platform events
   "platform.harness_run.status_changed": Record<string, unknown>;
   "platform.harness_run.created": Record<string, unknown>;
+  "platform.harness_run.admitted": Record<string, unknown>;
   "platform.harness_run.completed": Record<string, unknown>;
   "platform.harness_run.failed": Record<string, unknown>;
   "platform.node_run.status_changed": Record<string, unknown>;
@@ -231,6 +232,13 @@ export interface TypedEventPayloadMap {
   "oapeflir.view.run_lifecycle": Record<string, unknown>;
   "oapeflir.graph.scheduled": Record<string, unknown>;
   "oapeflir.node.executed": Record<string, unknown>;
+  "oapeflir.phase.transition": {
+    runId: string;
+    fromPhase: string;
+    toPhase: string;
+    triggeredBy?: string;
+    occurredAt: string;
+  };
   // R17-03: Run termination cleanup events
   "run.cleanup_completed": {
     runId: string;
