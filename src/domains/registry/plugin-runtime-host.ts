@@ -1,5 +1,6 @@
 import { fork, spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,7 +66,11 @@ abstract class BasePluginRuntimeHost {
     this.sandboxRoot = sandboxRoot;
     this.onReady = options.onReady ?? null;
     this.onExit = options.onExit ?? null;
-    this.childModulePath = resolvePluginRuntimeChildModulePath(import.meta.url, this.workspaceRoot);
+    this.childModulePath = resolvePluginRuntimeChildModulePath(
+      import.meta.url,
+      this.workspaceRoot,
+      this.isolation === "sandboxed_process",
+    );
   }
 
   public async start(): Promise<number> {
@@ -520,9 +525,16 @@ export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOp
     writeRoots.push(normalizedCoverageDir);
   }
 
+  for (const tempRoot of buildRuntimeTempRoots(options.env)) {
+    readRoots.push(tempRoot);
+    writeRoots.push(tempRoot);
+  }
+
   return dedupeArgs([
     ...baseArgs,
     "--permission",
+    "--allow-worker",
+    "--allow-child-process",
     ...readRoots.map((root) => `--allow-fs-read=${root}`),
     ...writeRoots.map((root) => `--allow-fs-write=${root}`),
   ]);
@@ -544,21 +556,34 @@ function buildSandboxReadRoots(workspaceRoot: string, execArgs: readonly string[
   return roots;
 }
 
-function resolvePluginRuntimeChildModulePath(currentModuleUrl: string, workspaceRoot: string): string {
+function buildRuntimeTempRoots(env: NodeJS.ProcessEnv): string[] {
+  const roots = [
+    tmpdir(),
+    env.TMPDIR,
+    env.TEMP,
+    env.TMP,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return dedupeArgs(roots.map((value) => resolve(value)));
+}
+
+function resolvePluginRuntimeChildModulePath(
+  currentModuleUrl: string,
+  workspaceRoot: string,
+  preferTypeScriptSource: boolean,
+): string {
   const sourceDir = dirname(fileURLToPath(currentModuleUrl));
-  const siblingJs = resolve(sourceDir, "plugin-runtime-child.js");
-  if (existsSync(siblingJs)) {
-    return siblingJs;
-  }
-  const distJs = resolve(workspaceRoot, "dist", "src", "domains", "registry", "plugin-runtime-child.js");
-  if (existsSync(distJs)) {
-    return distJs;
-  }
   const siblingTs = resolve(sourceDir, "plugin-runtime-child.ts");
-  if (existsSync(siblingTs)) {
-    return siblingTs;
+  const distJs = resolve(workspaceRoot, "dist", "src", "domains", "registry", "plugin-runtime-child.js");
+  const siblingJs = resolve(sourceDir, "plugin-runtime-child.js");
+  const preferredOrder = preferTypeScriptSource
+    ? [siblingTs, distJs, siblingJs]
+    : [siblingJs, distJs, siblingTs];
+  for (const candidate of preferredOrder) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
-  return siblingJs;
+  return preferTypeScriptSource ? siblingTs : siblingJs;
 }
 
 function sanitizePluginRuntimeExecArgs(execArgs: readonly string[]): string[] {

@@ -16,6 +16,7 @@ import {
   type ControlPlaneDirectiveSink,
   createNoOpDirectiveSink,
 } from "../control-plane-directive-sink.js";
+import { createOperationalDirective } from "../../contracts/control-directive/index.js";
 
 export interface RouteTarget {
   targetId: string;

@@ -28,10 +28,12 @@ test("BudgetAllocator reserves against hard cap and settles reservation with led
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
+    expectedVersion: reserved.ledger.version,
     context: {
       tenantId: "tenant-1",
       traceId: "trace-1",
       emittedBy: "budget-allocator",
+      principal: "budget-allocator",
     },
   });
 
@@ -66,10 +68,12 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
         ledger: reserved.ledger,
         reservation: reserved.reservation,
         actualAmount: 11,
+        expectedVersion: reserved.ledger.version,
         context: {
           tenantId: "tenant-1",
           traceId: "trace-1",
           emittedBy: "budget-allocator",
+          principal: "budget-allocator",
         },
       }),
     (error: unknown) =>
@@ -98,10 +102,12 @@ test("BudgetAllocator can release a reservation when execution never starts", ()
   const released = allocator.release({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
+    expectedVersion: reserved.ledger.version,
     context: {
       tenantId: "tenant-1",
       traceId: "trace-1",
       emittedBy: "budget-allocator",
+      principal: "budget-allocator",
     },
   });
 
@@ -137,6 +143,7 @@ test("BudgetAllocator.settle emits fact events for both reservation and ledger v
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
+    expectedVersion: reserved.ledger.version,
     context: {
       tenantId: "tenant-1",
       traceId: "trace-1",
