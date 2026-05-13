@@ -98,16 +98,12 @@ test("HealthDegradationMode accepts read_only_operations_only", () => {
 
 test("PolicyRuntimeMode accepts all valid values", () => {
   const modes: PolicyRuntimeMode[] = [
-    "supervised",
     "auto",
     "full-auto",
     "read-only",
-    "maintenance",
     "incident-mode",
-    "degraded",
-    "emergency",
   ];
-  assert.equal(modes.length, 8);
+  assert.equal(modes.length, 4);
 });
 
 // ---------------------------------------------------------------------------
@@ -149,9 +145,9 @@ test("mapPolicyModeToUnifiedRuntimeMode maps read-only to read_only", () => {
   assert.equal(result, "read_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to no_rollout", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps maintenance to manual_only", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("maintenance");
-  assert.equal(result, "no_rollout");
+  assert.equal(result, "manual_only");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode to incident_mode", () => {
@@ -159,14 +155,14 @@ test("mapPolicyModeToUnifiedRuntimeMode maps incident-mode to incident_mode", ()
   assert.equal(result, "incident_mode");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps degraded to no_external_call", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps degraded to manual_only", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("degraded");
-  assert.equal(result, "no_external_call");
+  assert.equal(result, "manual_only");
 });
 
-test("mapPolicyModeToUnifiedRuntimeMode maps emergency to no_write", () => {
+test("mapPolicyModeToUnifiedRuntimeMode maps emergency to manual_only", () => {
   const result = mapPolicyModeToUnifiedRuntimeMode("emergency");
-  assert.equal(result, "no_write");
+  assert.equal(result, "manual_only");
 });
 
 test("mapPolicyModeToUnifiedRuntimeMode falls back to manual_only for unknown values", () => {
@@ -264,10 +260,10 @@ test("full-auto policy mode and full_auto autonomy mode both map to full_auto", 
   assert.equal(fromPolicy, fromAutonomy);
 });
 
-test("emergency policy mode maps to no_write (same as suggestion autonomy)", () => {
+test("emergency policy mode no longer matches suggestion autonomy", () => {
   const fromPolicy = mapPolicyModeToUnifiedRuntimeMode("emergency");
   const fromAutonomy = mapAutonomyLevelToUnifiedRuntimeMode("suggestion");
-  assert.equal(fromPolicy, "no_write");
+  assert.equal(fromPolicy, "manual_only");
   assert.equal(fromAutonomy, "no_write");
 });
 

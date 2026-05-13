@@ -164,64 +164,68 @@ test("createRequestEnvelope stringifies metadata values", () => {
 // =============================================================================
 
 test("createControlDirective creates directive with required fields", () => {
-  const principal = createTestPrincipal();
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "Maintenance window",
+        kind: "pause",
+        targetRef: "execution:exec-1",
+        reasonCode: "maintenance_window",
+        issuedBy: "actor-1",
+        tenantId: "tenant-1",
+        executionId: "exec-1",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createControlDirective accepts all directive types", () => {
-  const principal = createTestPrincipal();
   const types: ControlDirectiveType[] = [
-    "mode_switch",
     "pause",
     "resume",
     "rollback",
-    "quota_adjust",
-    "kill",
+    "cancel",
+    "escalate",
   ];
   for (const type of types) {
     assert.throws(
       () =>
         createControlDirective({
-          type,
-          issuedBy: principal,
-          reason: `Testing ${type}`,
+          kind: type,
+          targetRef: `execution:${type}`,
+          reasonCode: `test_${type}`,
+          issuedBy: "actor-1",
+          tenantId: "tenant-1",
+          executionId: "exec-1",
         }),
       (error: unknown) =>
         error instanceof Error
         && "code" in error
-        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+        && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
     );
   }
 });
 
 test("createControlDirective applies optional fields", () => {
-  const principal = createTestPrincipal();
   assert.throws(
     () =>
       createControlDirective({
-        type: "quota_adjust",
-        issuedBy: principal,
-        reason: "Scale up",
+        kind: "rollback",
+        targetRef: "execution:exec-1",
+        reasonCode: "scale_up",
+        issuedBy: "actor-1",
+        tenantId: "tenant-1",
+        executionId: "exec-1",
         directiveId: "custom-directive-id",
-        targetScope: { tenantId: "tenant-1", workflowId: "wf-1" },
-        params: { maxTokens: 100000 },
-        expiresAt: "2026-12-31T23:59:59.000Z",
+        metadata: { maxTokens: 100000, workflowId: "wf-1" },
+        createdAt: "2026-12-31T23:59:59.000Z",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
@@ -230,56 +234,34 @@ test("createControlDirective applies optional fields", () => {
 // =============================================================================
 
 test("createExecutionPlan creates plan with required fields", () => {
-  const principal = createTestPrincipal();
-  const budget: ExecutionPlanBudget = {
-    maxSteps: 10,
-    maxDurationMs: 60000,
-    maxCost: 100,
-  };
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace-123",
-        principal,
-        workflowRunId: "wf-run-456",
+        taskId: "task-123",
+        tenantId: "tenant-1",
+        version: 1,
         steps: [mockPlanStep],
-        budget,
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
 test("createExecutionPlan applies optional fields", () => {
-  const principal = createTestPrincipal();
-  const budget: ExecutionPlanBudget = { maxSteps: 5, maxDurationMs: 30000, maxCost: 50 };
-  const sideEffect: SideEffectExpectation = {
-    effectId: "effect-1",
-    category: "write",
-    targetRef: "resource-1",
-    requiredReceipt: true,
-    reversible: false,
-  };
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace-123",
-        principal,
-        workflowRunId: "wf-run-456",
+        taskId: "task-123",
+        tenantId: "tenant-1",
+        version: 2,
         steps: [mockPlanStep],
-        budget,
-        planId: "custom-plan-id",
-        fallbackStrategy: "escalate",
-        approvalGates: ["gate-1", "gate-2"],
-        sideEffectExpectations: [sideEffect],
-        createdAt: "2026-01-01T00:00:00.000Z",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -287,16 +269,15 @@ test("createExecutionPlan defaults fallbackStrategy to retry", () => {
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace-123",
-        principal: createTestPrincipal(),
-        workflowRunId: "wf-run-456",
+        taskId: "task-123",
+        tenantId: "tenant-1",
+        version: 1,
         steps: [mockPlanStep],
-        budget: { maxSteps: 5, maxDurationMs: 30000, maxCost: 50 },
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -309,71 +290,77 @@ test("createExecutionReceipt creates receipt with required fields", () => {
     () =>
       createExecutionReceipt({
         planId: "plan-123",
-        stepId: "step-456",
-        status: "succeeded",
-        durationMs: 1500,
+        harnessRunId: "hrun-1",
+        planGraphId: "pgb-1",
+        nodeRunId: "nrun-1",
+        attemptId: "attempt-1",
+        status: "completed",
+        workerId: "worker-1",
+        taskId: "task-1",
+        tenantId: "tenant-1",
+        resultRef: null,
+        errorCode: null,
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
 test("createExecutionReceipt accepts all status values", () => {
   const statuses: ExecutionReceipt["status"][] = [
-    "succeeded",
+    "accepted",
+    "started",
+    "completed",
     "failed",
-    "timeout",
     "cancelled",
-    "awaiting_approval",
   ];
   for (const status of statuses) {
     assert.throws(
       () =>
         createExecutionReceipt({
           planId: "plan-123",
-          stepId: "step-456",
+          harnessRunId: "hrun-1",
+          planGraphId: "pgb-1",
+          nodeRunId: "nrun-1",
+          attemptId: "attempt-1",
           status,
-          durationMs: 100,
+          workerId: "worker-1",
+          taskId: "task-1",
+          tenantId: "tenant-1",
+          resultRef: null,
+          errorCode: null,
         }),
       (error: unknown) =>
         error instanceof Error
         && "code" in error
-        && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+        && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
     );
   }
 });
 
 test("createExecutionReceipt applies optional fields", () => {
-  const sideEffect: SideEffectRecord = {
-    effectId: "effect-1",
-    category: "write",
-    targetRef: "resource-1",
-    status: "committed",
-    summary: "Data written",
-  };
-  const errorDetail: ExecutionReceiptErrorDetail = {
-    code: "ERR_TIMEOUT",
-    message: "Operation timed out",
-    retryable: true,
-  };
   assert.throws(
     () =>
       createExecutionReceipt({
         planId: "plan-123",
-        stepId: "step-456",
+        harnessRunId: "hrun-1",
+        planGraphId: "pgb-1",
+        nodeRunId: "nrun-1",
+        attemptId: "attempt-1",
         status: "failed",
-        durationMs: 5000,
         receiptId: "custom-receipt-id",
-        sideEffects: [sideEffect],
-        evidenceRefs: ["ev-1", "ev-2"],
-        errorDetail,
+        workerId: "worker-1",
+        taskId: "task-1",
+        tenantId: "tenant-1",
+        resultRef: "artifact:result-1",
+        errorCode: "ERR_TIMEOUT",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -569,33 +556,37 @@ test("PlatformPrincipal has correct readonly properties", () => {
 });
 
 test("ControlDirectiveScope allows optional fields", () => {
-  const principal = createTestPrincipal();
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "test",
-        targetScope: { tenantId: "t1" },
+        kind: "pause",
+        targetRef: "execution:exec-1",
+        reasonCode: "test",
+        issuedBy: "actor-1",
+        tenantId: "t1",
+        executionId: "exec-1",
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "test",
-        targetScope: { workerId: "w1" },
+        kind: "resume",
+        targetRef: "worker:w1",
+        reasonCode: "test",
+        issuedBy: "actor-1",
+        tenantId: "tenant-1",
+        executionId: null,
+        metadata: { workerId: "w1" },
       }),
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 

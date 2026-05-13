@@ -37,9 +37,25 @@ test("SESSION_STATUSES contains all valid session statuses", () => {
 });
 
 test("EXECUTION_STATUSES contains all valid execution statuses", () => {
-  const expected = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = [
+    "created",
+    "prechecking",
+    "ready",
+    "queued",
+    "dispatching",
+    "executing",
+    "blocked",
+    "paused",
+    "resuming",
+    "recovering",
+    "timed_out",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "superseded",
+  ];
   assert.deepEqual(Array.from(EXECUTION_STATUSES), expected);
-  assert.equal(EXECUTION_STATUSES.length, 8);
+  assert.equal(EXECUTION_STATUSES.length, 15);
 });
 
 test("APPROVAL_STATUSES contains all valid approval statuses", () => {
@@ -64,8 +80,24 @@ test("SessionStatus type accepts all session statuses", () => {
 });
 
 test("ExecutionStatus type accepts all execution statuses", () => {
-  const statuses: ExecutionStatus[] = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
-  assert.equal(statuses.length, 8);
+  const statuses: ExecutionStatus[] = [
+    "created",
+    "prechecking",
+    "ready",
+    "queued",
+    "dispatching",
+    "executing",
+    "blocked",
+    "paused",
+    "resuming",
+    "recovering",
+    "timed_out",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "superseded",
+  ];
+  assert.equal(statuses.length, 15);
 });
 
 test("TaskTerminalStatus type only accepts terminal statuses", () => {
