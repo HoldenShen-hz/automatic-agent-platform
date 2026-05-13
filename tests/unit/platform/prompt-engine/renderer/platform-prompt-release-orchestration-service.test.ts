@@ -7,7 +7,9 @@ import { PromptRolloutService } from "../../../../../src/platform/prompt-engine/
 import { EvalDatasetJudgeService } from "../../../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
-// Helper to create a dataset with 20 standard priority cases
+const STANDARD_CASE_COUNT = 50;
+
+// Helper to create a dataset with enough standard-priority coverage for the current validator
 function createTestDataset(datasetId: string): {
   datasetId: string;
   name: string;
@@ -30,7 +32,7 @@ function createTestDataset(datasetId: string): {
   status: "active";
 } {
   const cases = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= STANDARD_CASE_COUNT; i++) {
     cases.push({
       caseId: `case_${i}`,
       input: { query: `test${i}` },
@@ -62,7 +64,7 @@ function createResults(datasetId: string): Array<{
   metadata: Record<string, unknown>;
 }> {
   const results = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= STANDARD_CASE_COUNT; i++) {
     results.push({
       caseId: `case_${i}`,
       output: `test${i}`,
@@ -187,7 +189,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease with llm_judge res
 
   // Create dataset with llm_judge criteria
   const cases = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= STANDARD_CASE_COUNT; i++) {
     cases.push({
       caseId: `case_${i}`,
       input: { query: `test${i}` },
@@ -249,7 +251,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease uses explicit judg
 
   // Create dataset with llm_judge criteria
   const cases = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= STANDARD_CASE_COUNT; i++) {
     cases.push({
       caseId: `case_${i}`,
       input: { query: `test${i}` },
@@ -302,7 +304,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease throws when explic
 
   // Create dataset with llm_judge criteria
   const cases = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= STANDARD_CASE_COUNT; i++) {
     cases.push({
       caseId: `case_${i}`,
       input: { query: `test${i}` },

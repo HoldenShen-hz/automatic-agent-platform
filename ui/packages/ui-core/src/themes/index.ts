@@ -10,8 +10,12 @@ export const darkTheme: CoreDesignTokens = {
     surface: "#111827",
     surfaceElevated: "#162034",
     border: "#334155",
+    accent: "#38bdf8",
     text: "#e5e7eb",
     subtle: "#94a3b8",
+    danger: "#f87171",
+    success: "#34d399",
+    warning: "#fbbf24",
   },
   shadows: {
     card: "0 10px 30px rgba(0, 0, 0, 0.18)",

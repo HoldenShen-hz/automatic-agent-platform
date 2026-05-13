@@ -236,7 +236,19 @@ function normalizeTrafficAllocation(input?: PromptBundleTrafficAllocation): Prom
   };
 }
 
-function normalizeCompatibilityMatrix(input: PromptBundleCompatibilityMatrix): PromptBundleCompatibilityMatrix {
+function emptyCompatibilityMatrix(): PromptBundleCompatibilityMatrix {
+  return {
+    toolSchemaVersions: [],
+    evaluatorSchemaVersions: [],
+    domainDescriptorVersions: [],
+    modelRoutingProfiles: [],
+  };
+}
+
+function normalizeCompatibilityMatrix(input?: PromptBundleCompatibilityMatrix): PromptBundleCompatibilityMatrix {
+  if (input == null) {
+    return emptyCompatibilityMatrix();
+  }
   validateCompatibilityMatrixShape(input);
   return {
     toolSchemaVersions: input.toolSchemaVersions.map((item) => ({ ...item })),
@@ -246,7 +258,10 @@ function normalizeCompatibilityMatrix(input: PromptBundleCompatibilityMatrix): P
   };
 }
 
-function validateCompatibilityMatrixShape(input: PromptBundleCompatibilityMatrix): void {
+function validateCompatibilityMatrixShape(input?: PromptBundleCompatibilityMatrix): void {
+  if (input == null) {
+    return;
+  }
   if (
     !Array.isArray(input.toolSchemaVersions) ||
     !Array.isArray(input.evaluatorSchemaVersions) ||

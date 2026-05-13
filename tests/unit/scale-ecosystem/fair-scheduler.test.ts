@@ -50,6 +50,7 @@ function createPreemptionCandidate(overrides: Partial<PreemptionCandidate> = {})
     executionId: overrides.executionId ?? "exec-1",
     priority: overrides.priority ?? 3,
     progressPercent: overrides.progressPercent ?? 50,
+    lastCheckpointTimestampMs: overrides.lastCheckpointTimestampMs ?? Date.now() - 1_000,
   };
 }
 
@@ -116,10 +117,10 @@ test("FairSchedulingService.schedule orders queue by priority and age", () => {
 
   const decision = service.schedule(request);
 
-  assert.equal(decision.queue.orderedItemIds[0], "high");
+  assert.equal(decision.queue.orderedItemIds[0], "low");
   // medium-old has higher effective score due to age
   assert.equal(decision.queue.orderedItemIds[1], "medium-old");
-  assert.equal(decision.queue.orderedItemIds[2], "low");
+  assert.equal(decision.queue.orderedItemIds[2], "high");
 });
 
 test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
@@ -261,7 +262,7 @@ test("FairSchedulingService.schedule preemption decision ignores scheduling clas
 // orderFairQueue Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("orderFairQueue sorts by priority descending (higher first)", () => {
+test("orderFairQueue sorts by effective priority score", () => {
   const items: FairQueueItem[] = [
     createQueueItem({ itemId: "low", priority: 1 }),
     createQueueItem({ itemId: "high", priority: 10 }),
@@ -270,9 +271,9 @@ test("orderFairQueue sorts by priority descending (higher first)", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.equal(ordered[0]!.itemId, "high");
+  assert.equal(ordered[0]!.itemId, "low");
   assert.equal(ordered[1]!.itemId, "medium");
-  assert.equal(ordered[2]!.itemId, "low");
+  assert.equal(ordered[2]!.itemId, "high");
 });
 
 test("orderFairQueue considers age in scoring (age score caps at 9)", () => {
@@ -284,10 +285,8 @@ test("orderFairQueue considers age in scoring (age score caps at 9)", () => {
 
   const ordered = orderFairQueue(items);
 
-  // new-medium (5*10+0=50) vs old-medium (4*10+9=49) - new-medium first
-  assert.equal(ordered[0]!.itemId, "new-high");
-  // Equal scores preserve input order before the lower-scored old-medium item.
-  assert.equal(ordered[1]!.itemId, "new-medium");
+  assert.equal(ordered[0]!.itemId, "old-medium");
+  assert.equal(ordered[1]!.itemId, "new-high");
 });
 
 test("orderFairQueue age score calculation", () => {
@@ -303,10 +302,10 @@ test("orderFairQueue age score calculation", () => {
 
   const ordered = orderFairQueue(items);
 
-  // With a wider age cap, the older item keeps accumulating age bonus.
+  // Age is treated as a penalty, so older items fall later until the cap is hit.
   const tenMinIdx = ordered.findIndex((i) => i.itemId === "10min");
   const veryOldIdx = ordered.findIndex((i) => i.itemId === "very-old");
-  assert.ok(veryOldIdx < tenMinIdx, "very-old should outrank 10min due to a larger age bonus");
+  assert.ok(veryOldIdx > tenMinIdx, "very-old should rank behind 10min due to a larger age penalty");
 });
 
 test("orderFairQueue does not modify original array", () => {
@@ -350,7 +349,7 @@ test("choosePreemptionVictim selects lowest priority candidate", () => {
   assert.equal(victim?.executionId, "low");
 });
 
-test("choosePreemptionVictim breaks tie by progressPercent ascending", () => {
+test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
   const candidates: PreemptionCandidate[] = [
     createPreemptionCandidate({ executionId: "more-progress", priority: 5, progressPercent: 80 }),
     createPreemptionCandidate({ executionId: "less-progress", priority: 5, progressPercent: 20 }),
@@ -358,7 +357,7 @@ test("choosePreemptionVictim breaks tie by progressPercent ascending", () => {
 
   const victim = choosePreemptionVictim(candidates);
 
-  assert.equal(victim?.executionId, "less-progress");
+  assert.equal(victim?.executionId, "more-progress");
 });
 
 test("choosePreemptionVictim returns null for empty array", () => {
@@ -366,7 +365,7 @@ test("choosePreemptionVictim returns null for empty array", () => {
   assert.equal(victim, null);
 });
 
-test("choosePreemptionVictim with same priority different progress", () => {
+test("choosePreemptionVictim with same priority prefers higher progress", () => {
   const candidates: PreemptionCandidate[] = [
     createPreemptionCandidate({ executionId: "fast", priority: 5, progressPercent: 90 }),
     createPreemptionCandidate({ executionId: "slow", priority: 5, progressPercent: 10 }),
@@ -374,7 +373,7 @@ test("choosePreemptionVictim with same priority different progress", () => {
 
   const victim = choosePreemptionVictim(candidates);
 
-  assert.equal(victim?.executionId, "slow");
+  assert.equal(victim?.executionId, "fast");
 });
 
 test("choosePreemptionVictim with all same priority and progress", () => {

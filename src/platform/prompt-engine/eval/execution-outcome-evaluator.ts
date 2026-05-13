@@ -110,6 +110,12 @@ export interface ExecutionOutcomeEvaluatorOptions {
 }
 
 export type EvaluationOutcome = EvaluationReport & ExecutionOutcomeEvaluation;
+export type LegacyEvaluationDimensionAliases = {
+  constraintCompliance: ConstraintComplianceResult;
+  budgetAdherence: BudgetAdherenceResult;
+  riskEvaluation: RiskEvaluationResult;
+  timingSlo: TimingSloResult;
+};
 
 /** Default quality gate config values */
 const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
@@ -190,7 +196,7 @@ export class ExecutionOutcomeEvaluator {
     actualDurationMs?: number,
     actualCost?: number,
     baselineQualityScore?: number | null,
-  ): EvaluationOutcome {
+  ): EvaluationOutcome & LegacyEvaluationDimensionAliases {
     const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback, baselineQualityScore);
 
     // R11-03: Evaluate constraint compliance dimension
@@ -211,6 +217,10 @@ export class ExecutionOutcomeEvaluator {
       score: legacy.qualityScore,
       evidenceRefs: legacy.reasons,
       notes: legacy.reasons.length > 0 ? legacy.reasons.join("; ") : "",
+      constraintCompliance,
+      budgetAdherence,
+      riskEvaluation,
+      timingSlo,
       dimensions: {
         qualityScore: legacy.qualityScore,
         constraintCompliance,
@@ -219,6 +229,10 @@ export class ExecutionOutcomeEvaluator {
         timingSlo,
       },
     };
+  }
+
+  public getConfig(): QualityGateConfig {
+    return this.config;
   }
 
   /**

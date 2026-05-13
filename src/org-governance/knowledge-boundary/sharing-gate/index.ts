@@ -63,18 +63,6 @@ function buildKnowledgeShareDecision(input: {
   return visibleDecision;
 }
 
-function grantIsActive(grant: KnowledgeShareGrant, nowIso: string): boolean {
-  if (!grant.expiresAt) {
-    return true;
-  }
-  const expiryMs = Date.parse(grant.expiresAt);
-  const nowMs = Date.parse(nowIso);
-  if (!Number.isFinite(expiryMs) || !Number.isFinite(nowMs)) {
-    return false;
-  }
-  return expiryMs > nowMs;
-}
-
 export function evaluateKnowledgeShare(
   boundary: KnowledgeBoundary,
   requesterOrgNodeId: string,
@@ -93,7 +81,7 @@ export function evaluateKnowledgeShare(
   const matchedGrant = grants.find((item) =>
     item.boundaryId === boundary.boundaryId
     && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
-    && grantIsActive(item, nowIso));
+    && (item.expiresAt == null || new Date(item.expiresAt) >= new Date(nowIso)));
   if (matchedGrant) {
     return buildKnowledgeShareDecision({
       mode: matchedGrant.transformMode ?? "summary",

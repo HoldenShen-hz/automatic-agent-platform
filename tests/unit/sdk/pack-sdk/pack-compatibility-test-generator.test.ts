@@ -96,14 +96,6 @@ test("PackCompatibilityTestGenerator.generate handles all sources together", () 
   );
 
   assert.equal(plan.manifestId, "full-pack");
-  assert.equal(plan.testCases.length, 3); // 1 manifest + 1 openapi + 1 event + 1 contract = 4? No, let me recount
-  // Actually: 1 manifest + 1 openapi + 1 event + 1 contract = 4
-  // Let me check: plan.testCases should have:
-  // - manifest test case (1)
-  // - openapi test case for getStatus (1)
-  // - event test case for task.started (1)
-  // - contract test case for health_contract (1)
-  // Total: 4
   assert.equal(plan.testCases.length, 4);
 });
 

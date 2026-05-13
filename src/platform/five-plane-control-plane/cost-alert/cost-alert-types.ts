@@ -83,6 +83,12 @@ export interface CostEvaluationResult {
  * Alert level based on threshold proximity.
  */
 export type CostAlertLevel = "ok" | "warning" | "critical" | "exceeded";
+export const CostAlertLevel = {
+  OK: "ok",
+  WARNING: "warning",
+  CRITICAL: "critical",
+  EXCEEDED: "exceeded",
+} as const;
 
 /**
  * Reason codes for cost evaluation results.

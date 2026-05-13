@@ -89,7 +89,7 @@ function describeValueType(value: unknown): string {
     return "array";
   }
   if (value === null) {
-    return "object";
+    return "null";
   }
   return typeof value;
 }
@@ -383,13 +383,13 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
     pluginId,
     domainId: "core",
     spiType: "validator",
-    capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
+    capabilityIds: ["output.validate"],
     async initialize() {
       initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return initialized;
+      return true;
     },
     async shutdown() {
       initialized = false;

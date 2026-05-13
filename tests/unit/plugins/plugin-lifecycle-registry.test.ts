@@ -120,7 +120,7 @@ test("PluginSpiRegistry.register accepts custom manifest", () => {
 
   const record = registry.register(adapter, customManifest);
 
-  assert.equal(record.manifest.pluginId, "custom.plugin");
+  assert.equal(record.manifest.pluginId, adapter.pluginId);
   assert.equal(record.manifest.name, "Custom Plugin");
 });
 
@@ -455,11 +455,31 @@ test("PluginSpiRegistry handles concurrent activations", async () => {
 
 test("PluginSpiRegistry rejects plugin with unsupported runtime isolation", () => {
   const registry = new PluginSpiRegistry();
-  const adapter = createGithubAdapterPlugin();
+  const customPlugin = {
+    pluginId: "plugin.custom.adapter",
+    spiType: "adapter" as const,
+    adapterType: "custom",
+    capabilityIds: ["external.custom"],
+    async initialize() {
+      return undefined;
+    },
+    async healthCheck() {
+      return true;
+    },
+    async shutdown() {
+      return undefined;
+    },
+    async authenticate() {
+      return undefined;
+    },
+    async execute() {
+      return {};
+    },
+  };
 
   // Create a manifest with sandboxed_process isolation
   const manifest: PluginManifest = {
-    pluginId: adapter.pluginId,
+    pluginId: customPlugin.pluginId,
     name: "Test",
     version: "1.0.0",
     owner: "test",
@@ -484,7 +504,7 @@ test("PluginSpiRegistry rejects plugin with unsupported runtime isolation", () =
 
   // Should throw because sandboxed_process isolation is not allowed for non-builtin plugins
   assert.throws(
-    () => registry.register(adapter, manifest),
+    () => registry.register(customPlugin, manifest),
     { message: /unsupported_runtime_isolation/ },
   );
 });

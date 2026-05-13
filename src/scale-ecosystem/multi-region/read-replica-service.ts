@@ -358,7 +358,7 @@ export class ReadReplicaService {
 
       case "any_healthy":
         return allReplicas.filter((r) => {
-          if (r.isPrimary) return true;
+          if (r.isPrimary) return false;
           const config = this.configs.get(r.replicaId);
           const maxLag = config?.maxLagMs ?? 5000;
           return this.isReplicaHealthyForRead(r.replicaId, maxLag);
@@ -368,7 +368,7 @@ export class ReadReplicaService {
       default:
         return allReplicas
           .filter((r) => {
-            if (r.isPrimary) return true;
+            if (r.isPrimary) return false;
             const config = this.configs.get(r.replicaId);
             const maxLag = config?.maxLagMs ?? 5000;
             return this.isReplicaHealthyForRead(r.replicaId, maxLag);

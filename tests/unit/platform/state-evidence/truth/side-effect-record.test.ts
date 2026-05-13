@@ -36,8 +36,32 @@ function makeSideEffectTransitionCommand(
   aggregate: ReturnType<typeof createSideEffectRecord>,
   fromStatus: SideEffectStatus,
   toStatus: SideEffectStatus,
-  extra?: { leaseId?: string; fencingToken?: string; preCommitPolicyProofRef?: string },
+  extra?: {
+    leaseId?: string | null;
+    fencingToken?: string | null;
+    preCommitPolicyProofRef?: string;
+    humanApprovalRef?: string | null;
+  },
 ) {
+  const commitStatuses: readonly SideEffectStatus[] = ["approved", "reserved", "committing", "committed", "confirming", "confirmed"];
+  const requiresCommitGuards = commitStatuses.includes(toStatus);
+  const leaseId =
+    extra?.leaseId === null
+      ? undefined
+      : extra?.leaseId ?? (requiresCommitGuards ? aggregate.leaseId ?? "lease-1" : undefined);
+  const fencingToken =
+    extra?.fencingToken === null
+      ? undefined
+      : extra?.fencingToken ?? (requiresCommitGuards ? aggregate.fencingToken ?? "fence-token-1" : undefined);
+  const humanApprovalRef =
+    aggregate.riskClass === "high" || aggregate.riskClass === "critical"
+      ? (
+          extra?.humanApprovalRef === null
+            ? undefined
+            : extra?.humanApprovalRef ?? "human-approval-ref-1"
+        )
+      : undefined;
+
   return {
     aggregateType: "SideEffectRecord" as const,
     aggregate,
@@ -47,10 +71,11 @@ function makeSideEffectTransitionCommand(
     traceId: "test-trace",
     reasonCode: "test",
     emittedBy: "test-suite",
-    ...(extra?.leaseId != null ? { leaseId: extra.leaseId } : {}),
-    ...(extra?.fencingToken != null ? { fencingToken: extra.fencingToken } : {}),
+    ...(leaseId != null ? { leaseId } : {}),
+    ...(fencingToken != null ? { fencingToken } : {}),
     sideEffectSafety: {
       preCommitPolicyProofRef: extra?.preCommitPolicyProofRef ?? "policy-proof-ref",
+      ...(humanApprovalRef != null ? { humanApprovalRef } : {}),
     },
   };
 }
@@ -377,7 +402,7 @@ test("multiple transitions increment aggregateSeq for same aggregate", () => {
   const t3 = repository.transition(
     makeSideEffectTransitionCommand(t2.aggregate, "reserved", "committing", {
       leaseId: "lease-1",
-      fencingToken: "fence-1",
+      fencingToken: "fence-token-1",
     }),
   );
 
@@ -416,7 +441,16 @@ test("event contains correct payload with status change", () => {
   );
 
   assert.ok(result.event.payload);
-  assert.deepEqual(result.event.payload, { status: "approved" });
+  assert.deepEqual(result.event.payload, {
+    aggregateType: "SideEffectRecord",
+    fromStatus: "proposed",
+    toStatus: "approved",
+    reasonCode: "test",
+    emittedBy: "test-suite",
+    sideEffectSafety: {
+      preCommitPolicyProofRef: "policy-proof-ref",
+    },
+  });
 });
 
 test("event records occurredAt timestamp", () => {
@@ -467,7 +501,10 @@ test("SideEffectRecord commit-affecting transition requires leaseId and fencingT
   assert.throws(
     () =>
       repository.transition(
-        makeSideEffectTransitionCommand(sideEffect, "reserved", "committing"),
+        makeSideEffectTransitionCommand(sideEffect, "reserved", "committing", {
+          leaseId: null,
+          fencingToken: null,
+        }),
       ),
     WorkflowStateError,
   );
@@ -562,12 +599,12 @@ test("SideEffectRecord non-commit-affecting transitions do not require leaseId a
   });
   repository.seed("SideEffectRecord", sideEffect);
 
-  // proposed -> approved is not a commit-affecting transition
+  // proposed -> manual_review_required is not a commit-affecting transition
   const result = repository.transition(
-    makeSideEffectTransitionCommand(sideEffect, "proposed", "approved"),
+    makeSideEffectTransitionCommand(sideEffect, "proposed", "manual_review_required"),
   );
 
-  assert.equal(result.aggregate.status, "approved");
+  assert.equal(result.aggregate.status, "manual_review_required");
 });
 
 test("SideEffectRecord rejected transition throws WorkflowStateError and does not mutate state", () => {

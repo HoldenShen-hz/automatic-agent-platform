@@ -468,7 +468,7 @@ test("dispatchNext selects worker based on queue affinity", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-2"); // affinity matched
@@ -505,7 +505,7 @@ test("dispatchNext filters workers by required capabilities", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-2");
@@ -542,7 +542,7 @@ test("dispatchNext filters workers by required isolation level", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-2");
@@ -579,7 +579,7 @@ test("dispatchNext respects dispatchTarget local_only", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "local-1");
@@ -614,7 +614,7 @@ test("dispatchNext filters out workers with placement mismatch for local_only", 
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "no_worker");
 });
@@ -650,7 +650,7 @@ test("dispatchNext filters out workers by repo version requirement", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-2");
@@ -690,7 +690,7 @@ test("dispatchNext prefers specified worker when available", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000, preferredWorkerId: "preferred-1" });
+  const result = service.dispatchNext({ leaseTtlMs: 30000, preferredWorkerId: "preferred-1" });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "preferred-1");
@@ -726,7 +726,7 @@ test("dispatchNext selects idle worker over busy worker", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "idle-1");
@@ -762,7 +762,7 @@ test("dispatchNext selects worker with more available slots", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-2"); // more slots
@@ -802,7 +802,7 @@ test("dispatchNext skips unavailable workers", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "healthy-1");
@@ -838,7 +838,7 @@ test("dispatchNext skips quarantined workers", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "healthy-1");
@@ -874,7 +874,7 @@ test("dispatchNext skips draining workers", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "healthy-1");
@@ -910,7 +910,7 @@ test("dispatchNext skips workers at capacity", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "available-1");
@@ -946,7 +946,7 @@ test("dispatchNext excludes degraded workers by default", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "healthy-1");
@@ -981,7 +981,7 @@ test("dispatchNext includes degraded workers when includeDegraded is true", () =
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000, includeDegraded: true });
+  const result = service.dispatchNext({ leaseTtlMs: 30000, includeDegraded: true });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "degraded-1");
@@ -1022,7 +1022,7 @@ test("dispatchNext requires remote placement for require_remote target", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "remote-1");
@@ -1057,7 +1057,7 @@ test("dispatchNext blocks require_remote when no remote workers available", () =
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "blocked");
   assert.equal(result.reasonCode, "remote.unavailable");
@@ -1098,7 +1098,7 @@ test("dispatchNext iterates through tickets when first worker unavailable", () =
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.ticket?.id, "ticket-2");
@@ -1143,7 +1143,7 @@ test("dispatchNext triggers preemption for urgent ticket with no eligible worker
 
   // Without a proper preemption setup (running execution, workflow state), preemption won't succeed
   // but the service should still handle the ticket gracefully
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   // Result depends on preemption success - either dispatched or blocked
   assert.ok(["dispatched", "blocked", "no_worker"].includes(result.outcome), `Unexpected outcome: ${result.outcome}`);
@@ -1182,7 +1182,7 @@ test("dispatchNext records decision trace with correct outcome", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "dispatched");
   assert.ok(result.trace != null);
@@ -1218,7 +1218,7 @@ test("dispatchNext returns no reasonCode when require_remote has no remote candi
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30000 });
 
   assert.equal(result.outcome, "blocked");
   assert.equal(result.reasonCode, "remote.unavailable");
@@ -1264,7 +1264,7 @@ test("dispatchNext filters tickets by queueName when specified", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000, queueName: "priority-queue" });
+  const result = service.dispatchNext({ leaseTtlMs: 30000, queueName: "priority-queue" });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.ticket?.queueName, "priority-queue");
@@ -1294,7 +1294,7 @@ test("dispatchNext returns no_ticket when no tickets match queue filter", () => 
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000, queueName: "nonexistent-queue" });
+  const result = service.dispatchNext({ leaseTtlMs: 30000, queueName: "nonexistent-queue" });
 
   assert.equal(result.outcome, "no_ticket");
 });

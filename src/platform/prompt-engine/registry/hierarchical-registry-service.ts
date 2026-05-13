@@ -84,7 +84,8 @@ export class HierarchicalPromptRegistryService {
     const effectiveDomain = domain ?? input.domain ?? packId;
     const timestamp = nowIso();
     // Ensure displayVersion is provided (may come from input.version semver formatting)
-    const displayVersion = input.displayVersion ?? `v${input.version}`;
+    const displayVersion = input.displayVersion
+      ?? (typeof input.version === "string" && input.version.startsWith("v") ? input.version : `v${input.version}`);
     const bundle = createPromptBundle({
       ...input,
       displayVersion,
@@ -118,16 +119,16 @@ export class HierarchicalPromptRegistryService {
     // Try task-type level first (uses domain as context)
     if (effectiveDomain) {
       const taskTypeEntry = this.taskTypeBundles.get(effectiveDomain)?.get(taskType)?.get(name);
-      if (taskTypeEntry && !taskTypeEntry.metadata.deprecated) {
-        return taskTypeEntry;
+      if (taskTypeEntry) {
+        return taskTypeEntry.metadata.deprecated ? null : taskTypeEntry;
       }
     }
 
     // Try domain level
     if (effectiveDomain) {
       const domainEntry = this.domainBundles.get(effectiveDomain)?.get(name);
-      if (domainEntry && !domainEntry.metadata.deprecated) {
-        return domainEntry;
+      if (domainEntry) {
+        return domainEntry.metadata.deprecated ? null : domainEntry;
       }
     }
 
@@ -156,7 +157,7 @@ export class HierarchicalPromptRegistryService {
         deprecated: bundle.metadata.deprecated,
         lifecycleStatus: (bundle.metadata as { lifecycleStatus?: string }).lifecycleStatus as "draft" | "active" | "deprecated" | "archived" ?? "active",
       }))
-      .sort((a, b) => a.version - b.version);
+      .sort((a, b) => b.version - a.version);
   }
 
   /**
@@ -169,6 +170,7 @@ export class HierarchicalPromptRegistryService {
 
     const addFromMap = (map: Map<string, PromptBundle>) => {
       for (const bundle of map.values()) {
+        if (bundle.metadata.deprecated === true) continue;
         if (seen.has(bundle.bundleId)) continue;
         seen.add(bundle.bundleId);
         results.push(this.buildListResult(bundle));
@@ -194,7 +196,7 @@ export class HierarchicalPromptRegistryService {
    */
   public deprecateBundle(
     name: string,
-    version: string,
+    version: string | number,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -226,17 +228,19 @@ export class HierarchicalPromptRegistryService {
 
   public removeBundle(
     name: string,
-    version: string,
+    version: string | number,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
   ): boolean {
-    const scopeKey = this.buildScopeKey(name, level, level === "task-type" ? domain : undefined, domain, packId);
-    const removedFromScope = this.versionsByScope.get(scopeKey)?.delete(String(version)) ?? false;
+    const normalizedVersion = this.normalizeVersionKey(version);
+    const removedFromScope = level === "task-type"
+      ? this.removeTaskTypeVersion(name, normalizedVersion, domain)
+      : (this.versionsByScope.get(this.buildScopeKey(name, level, undefined, domain, packId))?.delete(normalizedVersion) ?? false);
     const versions = this.versionsByName.get(name);
     if (versions) {
       for (const [bundleId, bundle] of versions.entries()) {
-        if (String(bundle.version) === version) {
+        if (String(bundle.version) === normalizedVersion) {
           versions.delete(bundleId);
         }
       }
@@ -375,28 +379,38 @@ export class HierarchicalPromptRegistryService {
 
   private findBundle(
     name: string,
-    version: string,
+    version: string | number,
     level: RegistryLevel,
     domain?: string,
     _packId?: string,
   ): PromptBundle | null {
-    const scopeKey = this.buildScopeKey(name, level, level === "task-type" ? domain : undefined, domain);
+    if (level === "task-type") {
+      const scopeEntries = this.getTaskTypeScopeEntries(name, domain);
+      if (scopeEntries.length === 0) {
+        return null;
+      }
+      if (version !== undefined && version !== "") {
+        const normalizedVersion = this.normalizeVersionKey(version);
+        for (const bundles of scopeEntries) {
+          const bundle = bundles.get(normalizedVersion);
+          if (bundle && bundle.metadata.deprecated !== true) {
+            return bundle;
+          }
+        }
+        return null;
+      }
+      return this.selectDefaultBundle(scopeEntries.flatMap((bundles) => [...bundles.values()]));
+    }
+
+    const scopeKey = this.buildScopeKey(name, level, undefined, domain);
     const bundles = this.versionsByScope.get(scopeKey);
     if (!bundles) return null;
 
-    // R28-18 fix: if version is specified, find the exact version; otherwise find default bundle
     if (version !== undefined && version !== "") {
-      // Strip 'v' prefix if present (displayVersion format like "v1.0" → "1.0")
-      const normalizedVersion = version.startsWith("v") ? version.slice(1) : version;
-      const versionNum = Number(normalizedVersion);
-      if (!isNaN(versionNum)) {
-        const bundle = bundles.get(String(versionNum));
-        return bundle && bundle.metadata.deprecated !== true ? bundle : null;
-      }
-      return null;
+      const bundle = bundles.get(this.normalizeVersionKey(version));
+      return bundle && bundle.metadata.deprecated !== true ? bundle : null;
     }
 
-    // No version specified — find the default bundle (highest weight, then most recent)
     return this.selectDefaultBundle([...bundles.values()]);
   }
 
@@ -410,41 +424,59 @@ export class HierarchicalPromptRegistryService {
     domain?: string,
     _packId?: string,
   ): void {
-    switch (level) {
-      case "global":
-        this.globalBundles.set(bundle.name, bundle);
-        break;
-      case "domain":
-        if (domain) {
-          this.domainBundles.get(domain)?.set(bundle.name, bundle);
-        }
-        break;
-      case "task-type":
-        if (domain) {
-          const taskTypeMap = this.taskTypeBundles.get(domain);
-          if (taskTypeMap) {
-            // Find the taskType that contains this bundle and update it
-            for (const [taskType, bundles] of taskTypeMap.entries()) {
-              if (bundles.get(bundle.name) !== undefined) {
-                bundles.set(bundle.name, bundle);
-                break;
-              }
-            }
-          }
-        }
-        break;
-    }
-
-    // Also update versionsByName and versionsByScope
     const existingVersions = this.versionsByName.get(bundle.name);
     if (existingVersions) {
       existingVersions.set(bundle.bundleId, bundle);
     }
 
-    const scopeKey = this.buildScopeKey(bundle.name, level, level === "task-type" ? domain : undefined, domain);
+    const scopeKey = this.buildScopeKey(
+      bundle.name,
+      level,
+      level === "task-type" ? bundle.taskType : undefined,
+      domain,
+    );
     const scopeVersions = this.versionsByScope.get(scopeKey);
     if (scopeVersions) {
       scopeVersions.set(String(bundle.version), bundle);
+    }
+
+    const currentBundle =
+      scopeVersions == null
+        ? (bundle.metadata.deprecated ? null : bundle)
+        : this.selectDefaultBundle([...scopeVersions.values()]);
+
+    switch (level) {
+      case "global":
+        if (currentBundle) {
+          this.globalBundles.set(bundle.name, currentBundle);
+        } else {
+          this.globalBundles.delete(bundle.name);
+        }
+        break;
+      case "domain":
+        if (!domain) {
+          break;
+        }
+        if (currentBundle) {
+          this.domainBundles.get(domain)?.set(bundle.name, currentBundle);
+        } else {
+          this.domainBundles.get(domain)?.delete(bundle.name);
+        }
+        break;
+      case "task-type":
+        if (!domain) {
+          break;
+        }
+        const taskTypeBundles = this.taskTypeBundles.get(domain)?.get(bundle.taskType);
+        if (!taskTypeBundles) {
+          break;
+        }
+        if (currentBundle) {
+          taskTypeBundles.set(bundle.name, currentBundle);
+        } else {
+          taskTypeBundles.delete(bundle.name);
+        }
+        break;
     }
   }
 
@@ -513,6 +545,52 @@ export class HierarchicalPromptRegistryService {
         return right.createdAt.localeCompare(left.createdAt);
       });
     return eligible[0] ?? null;
+  }
+
+  private normalizeVersionKey(version: string | number): string {
+    if (typeof version === "number") {
+      return String(version);
+    }
+
+    const normalized = version.trim();
+    const fullSemverMatch = normalized.match(/^v?(\d+)\.(\d+)(?:\.(\d+))?$/);
+    if (fullSemverMatch) {
+      const major = parseInt(fullSemverMatch[1]!, 10);
+      const minor = parseInt(fullSemverMatch[2]!, 10);
+      const patch = fullSemverMatch[3] !== undefined ? parseInt(fullSemverMatch[3]!, 10) : 0;
+      return String(major * 100 + minor * 10 + patch);
+    }
+
+    const plainIntegerMatch = normalized.match(/^(\d+)$/);
+    if (plainIntegerMatch) {
+      return String(parseInt(plainIntegerMatch[1]!, 10));
+    }
+
+    const simpleMatch = normalized.match(/^v(\d+)$/);
+    if (simpleMatch) {
+      return String(parseInt(simpleMatch[1]!, 10) * 10);
+    }
+
+    return normalized;
+  }
+
+  private getTaskTypeScopeEntries(name: string, domain?: string): Array<Map<string, PromptBundle>> {
+    if (!domain) {
+      return [];
+    }
+    const prefix = `task-type:${domain}:`;
+    const suffix = `:${name}`;
+    return [...this.versionsByScope.entries()]
+      .filter(([scopeKey]) => scopeKey.startsWith(prefix) && scopeKey.endsWith(suffix))
+      .map(([, bundles]) => bundles);
+  }
+
+  private removeTaskTypeVersion(name: string, normalizedVersion: string, domain?: string): boolean {
+    let removed = false;
+    for (const bundles of this.getTaskTypeScopeEntries(name, domain)) {
+      removed = bundles.delete(normalizedVersion) || removed;
+    }
+    return removed;
   }
 
   private computeTrafficSlot(key: string): number {

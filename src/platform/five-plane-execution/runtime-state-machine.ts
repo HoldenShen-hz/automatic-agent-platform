@@ -446,10 +446,24 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     // R4-30: SideEffectRecord commit path transitions require fencing token
     const commitStatuses: readonly string[] = ["approved", "reserved", "committing", "committed", "confirming", "confirmed"];
     if (commitStatuses.includes(command.toStatus as string)) {
-      if (command.fencingToken == null) {
+      if (command.leaseId == null || command.fencingToken == null) {
         throw new WorkflowStateError(
           "runtime_state_machine.side_effect_fencing_required",
-          "SideEffectRecord commit transitions require a fencing token.",
+          "SideEffectRecord commit transitions require an active lease and fencing token.",
+          { details: { sideEffectId: sideEffect.sideEffectId } },
+        );
+      }
+      if (sideEffect.leaseId != null && command.leaseId !== sideEffect.leaseId) {
+        throw new WorkflowStateError(
+          "runtime_state_machine.side_effect_lease_mismatch",
+          "SideEffectRecord transition requires the active lease.",
+          { details: { sideEffectId: sideEffect.sideEffectId } },
+        );
+      }
+      if (sideEffect.fencingToken != null && command.fencingToken !== sideEffect.fencingToken) {
+        throw new WorkflowStateError(
+          "runtime_state_machine.side_effect_fencing_token_mismatch",
+          "SideEffectRecord transition requires the active fencing token.",
           { details: { sideEffectId: sideEffect.sideEffectId } },
         );
       }
@@ -477,6 +491,8 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
       return {
         ...(command.aggregate as SideEffectRecord),
         status: command.toStatus as SideEffectStatus,
+        ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
+        ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
         version: (command.aggregate as SideEffectRecord).version + 1,
         updatedAt: occurredAt,
       } as TAggregate;

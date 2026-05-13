@@ -105,12 +105,14 @@ export class ReplicationEventBuffer {
   private buffer: ReplicationEvent[] = [];
   private readonly maxSize: number;
   private readonly flushIntervalMs: number;
+  private readonly onScheduledFlush: (() => void) | undefined;
   private lastFlushAt: number = Date.now();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  public constructor(maxSize = 1000, flushIntervalMs = 5000) {
+  public constructor(maxSize = 1000, flushIntervalMs = 5000, onScheduledFlush?: () => void) {
     this.maxSize = maxSize;
     this.flushIntervalMs = flushIntervalMs;
+    this.onScheduledFlush = onScheduledFlush;
   }
 
   public add(event: ReplicationEvent): boolean {
@@ -144,7 +146,8 @@ export class ReplicationEventBuffer {
   private scheduleFlush(): void {
     if (this.timer || this.buffer.length === 0) return;
     this.timer = setTimeout(() => {
-      this.flush();
+      this.timer = null;
+      this.onScheduledFlush?.();
     }, this.flushIntervalMs);
   }
 }
@@ -175,7 +178,12 @@ export class DataReplicatorService {
     this.config = { ...config };
     this.emit = config.emit ?? (() => {});
     for (const regionId of config.targetRegionIds) {
-      this.buffers.set(regionId, new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs));
+      this.buffers.set(
+        regionId,
+        new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs, () => {
+          void this.flush(regionId);
+        }),
+      );
     }
   }
 

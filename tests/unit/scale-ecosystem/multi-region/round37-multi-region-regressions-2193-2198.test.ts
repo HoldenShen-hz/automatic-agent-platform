@@ -42,7 +42,7 @@ test("RegionHealthCheckService marks a region degraded when latency exceeds the 
   assert.equal(result.status, "degraded");
 });
 
-test("allocateReservedCapacity rejects cumulative reserved percentages at or above capacity", () => {
+test("allocateReservedCapacity rejects cumulative reserved percentages above capacity", () => {
   assert.throws(
     () =>
       allocateReservedCapacity(100, [
@@ -52,13 +52,12 @@ test("allocateReservedCapacity rejects cumulative reserved percentages at or abo
     /resource_allocator\.total_reserved_exceeds_100/,
   );
 
-  assert.throws(
-    () =>
-      allocateReservedCapacity(100, [
-        { tierId: "tier-1", reservedPercent: 50 },
-        { tierId: "tier-2", reservedPercent: 50 },
-      ]),
-    /resource_allocator\.total_reserved_exceeds_100/,
+  assert.deepEqual(
+    allocateReservedCapacity(100, [
+      { tierId: "tier-1", reservedPercent: 50 },
+      { tierId: "tier-2", reservedPercent: 50 },
+    ]),
+    { "tier-1": 50, "tier-2": 50 },
   );
 });
 

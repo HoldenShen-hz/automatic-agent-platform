@@ -69,7 +69,8 @@ export class SlaExpiryChecker {
     const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Determine warning thresholds (custom or default)
-    const thresholds = this.resolveThresholds(request.domainThresholds);
+    const thresholds = [...this.resolveThresholds(request.domainThresholds)]
+      .sort((left, right) => left.daysBeforeExpiry - right.daysBeforeExpiry);
 
     // Find the highest severity warning that applies
     let warningLevel: "none" | "info" | "warning" | "critical" = "none";
@@ -80,7 +81,8 @@ export class SlaExpiryChecker {
       if (daysUntilExpiry <= threshold.daysBeforeExpiry) {
         warningLevel = threshold.severity;
         shouldWarn = true;
-        warningMessage = `SLA ${request.slaId} (tier: ${request.tierId}) expires in ${daysUntilExpiry} days (${threshold.severity} level)`;
+        const dayLabel = Math.abs(daysUntilExpiry) === 1 ? "day" : "days";
+        warningMessage = `SLA ${request.slaId} (tier: ${request.tierId}) expires in ${daysUntilExpiry} ${dayLabel} (${threshold.severity} level)`;
         break;
       }
     }

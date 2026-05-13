@@ -277,8 +277,8 @@ test("ExecutionOutcomeEvaluator handles all signal types together", () => {
   assert.equal(result.factorBreakdown.successSignals, 2);
   assert.equal(result.factorBreakdown.failureSignals, 1);
   assert.equal(result.factorBreakdown.partialSignals, 1);
-  assert.equal(result.factorBreakdown.completionBonus, 0.45); // default weight
-  assert.equal(result.factorBreakdown.failurePenalty, 0.3);  // default weight
+  assert.equal(result.factorBreakdown.completionBonus, 0.4); // default weight
+  assert.equal(result.factorBreakdown.failurePenalty, 0.2);  // default weight
   assert.equal(result.factorBreakdown.partialPenalty, 0.1);  // default weight
 });
 

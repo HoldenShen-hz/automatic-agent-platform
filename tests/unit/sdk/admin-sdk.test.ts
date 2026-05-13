@@ -453,6 +453,7 @@ test("AdminSdk.registerDomain sends POST request", async () => {
 
   try {
     const result = await sdk.registerDomain<{ domainId: string; name: string }>({
+      domainId: "d_new",
       name: "New Domain",
     });
     assert.equal(result.data.domainId, "d_new");

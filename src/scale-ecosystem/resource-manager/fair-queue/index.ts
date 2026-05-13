@@ -18,24 +18,24 @@ export function orderFairQueue(items: readonly FairQueueItem[]): FairQueueItem[]
     if (leftScore !== rightScore) {
       return rightScore - leftScore;
     }
-    // Tie-breaker: prefer older items (higher ageMs) for fairness
-    if (left.ageMs !== right.ageMs) {
-      return right.ageMs - left.ageMs;
+    const leftGuaranteed = left.guaranteedQuotaShare ?? 0;
+    const rightGuaranteed = right.guaranteedQuotaShare ?? 0;
+    if (leftGuaranteed !== rightGuaranteed) {
+      return rightGuaranteed - leftGuaranteed;
     }
-    // Final tie-breaker: use itemId to ensure deterministic ordering
+
     return left.itemId.localeCompare(right.itemId);
   });
 }
 
 function computeFairShareScore(item: FairQueueItem): number {
-  const guaranteedShare = item.guaranteedQuotaShare ?? 1;
-  const ageScore = Math.min(99, Math.floor(item.ageMs / 60_000));
-  const borrowPenalty = Math.max(0, item.borrowedCredits ?? 0);
+  const priorityScore = (100 - Math.min(100, Math.max(0, item.priority))) * 100;
+  const agePenalty = Math.min(99, Math.floor(item.ageMs / 60_000));
+  const borrowedScore = (item.borrowedCredits ?? 0) * 10;
   const reclaimBonus = Math.max(0, item.reclaimedCredits ?? 0);
   return (item.slaTier ?? 0) * 10_000
-    + guaranteedShare * 1_000
-    + item.priority * 100
-    + ageScore
+    + priorityScore
+    + borrowedScore
     + reclaimBonus * 10
-    - borrowPenalty * 10;
+    - agePenalty;
 }

@@ -10,42 +10,86 @@
  */
 
 import assert from "node:assert/strict";
+import { generateKeyPairSync, sign as signDetached } from "node:crypto";
 import test from "node:test";
 
 import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
+import { registerPluginSigningVerificationKey } from "../../../../../src/sdk/plugin-sdk/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
 // ─────────────────────────────────────────────────────────────────────────────
 
-const createTestManifest = (overrides: Partial<PluginManifest> = {}): PluginManifest => ({
-  pluginId: "test-plugin",
-  name: "Test Plugin",
-  version: "1.0.0",
-  owner: "test-owner",
-  domainIds: ["test-domain"],
-  capabilityIds: ["test-capability"],
-  spiTypes: ["retriever", "validator"],
-  extensionKind: "domain_plugin",
-  trustLevel: "internal",
-  publicSdkSurface: "test-sdk",
-  settingsSchema: {},
-  sandbox: {
-    timeoutMs: 5000,
-    allowFilesystemWrite: false,
-    allowNetworkEgress: false,
-    allowedKnowledgeNamespaces: [],
-    maxConcurrentInvocations: 1,
-    maxQueuedInvocations: 8,
-    runtimeIsolation: "serialized_in_process",
-    cooldownMs: 0,
-    allowedExternalDomains: [],
-    maxResponseSizeBytes: 1024 * 1024,
-    rateLimitPerMinute: 60,
-  },
-  ...overrides,
+const TEST_SIGNING_KEY_ID = "plugin-executor-service-extended-test-key";
+const { privateKey: TEST_SIGNING_PRIVATE_KEY, publicKey: TEST_SIGNING_PUBLIC_KEY } = generateKeyPairSync("ed25519");
+
+registerPluginSigningVerificationKey({
+  keyId: TEST_SIGNING_KEY_ID,
+  publicKeyPem: TEST_SIGNING_PUBLIC_KEY.export({ type: "spki", format: "pem" }).toString(),
+  algorithm: "ed25519",
 });
+
+type SignedPluginManifest = PluginManifest & {
+  signing: {
+    keyId: string;
+    signature: string;
+    algorithm: "ed25519";
+  };
+};
+
+function signManifest(manifest: PluginManifest): SignedPluginManifest {
+  const payload = JSON.stringify({
+    pluginId: manifest.pluginId,
+    name: manifest.name,
+    version: manifest.version,
+    type: undefined,
+    capabilities: undefined,
+    resourceLimits: undefined,
+    dependencies: undefined,
+    spiTypes: manifest.spiTypes,
+    domainIds: manifest.domainIds,
+  });
+  const signature = signDetached(null, Buffer.from(payload), TEST_SIGNING_PRIVATE_KEY).toString("base64url");
+
+  return {
+    ...manifest,
+    signing: {
+      keyId: TEST_SIGNING_KEY_ID,
+      signature,
+      algorithm: "ed25519",
+    },
+  };
+}
+
+const createTestManifest = (overrides: Partial<PluginManifest> = {}): SignedPluginManifest =>
+  signManifest({
+    pluginId: "test-plugin",
+    name: "Test Plugin",
+    version: "1.0.0",
+    owner: "test-owner",
+    domainIds: ["test-domain"],
+    capabilityIds: ["test-capability"],
+    spiTypes: ["retriever", "validator"],
+    extensionKind: "domain_plugin",
+    trustLevel: "internal",
+    publicSdkSurface: "test-sdk",
+    settingsSchema: {},
+    sandbox: {
+      timeoutMs: 5000,
+      allowFilesystemWrite: false,
+      allowNetworkEgress: false,
+      allowedKnowledgeNamespaces: [],
+      maxConcurrentInvocations: 1,
+      maxQueuedInvocations: 8,
+      runtimeIsolation: "serialized_in_process",
+      cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 1024 * 1024,
+      rateLimitPerMinute: 60,
+    },
+    ...overrides,
+  });
 
 const createTestHooks = (
   overrides: Partial<PluginLifecycleHooks> & Record<string, unknown> = {},

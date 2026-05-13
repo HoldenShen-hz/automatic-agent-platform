@@ -24,6 +24,7 @@ export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "pl
 export const PluginTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 export const PluginLifecycleStateSchema = z.enum([
   "registered",
+  "validated",
   "loading",
   "loaded",
   "initialized",
@@ -68,7 +69,7 @@ export const PluginManifestSchema = z.object({
   capabilityIds: z.array(z.string().min(1)).default([]),
   spiTypes: z.array(PluginSpiTypeSchema).min(1),
   extensionKind: z.enum(["domain_plugin", "external_adapter"]).default("domain_plugin"),
-  trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
+  trustLevel: z.enum(["internal", "trusted", "verified", "certified", "community", "unverified"]).default("trusted"),
   publicSdkSurface: z.string().min(1),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
   sandbox: PluginSandboxPolicySchema.default({

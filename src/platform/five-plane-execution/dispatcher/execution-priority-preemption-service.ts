@@ -148,7 +148,7 @@ function resolveCandidatePriority(taskPriority: TaskPriority, latestTicket: Exec
 }
 
 function isPreemptionTriggerTicket(ticket: ExecutionTicketRecord): boolean {
-  return ticket.priority === "urgent" || ticket.priority === "high" || ticket.riskClass === "critical";
+  return ticket.priority === "urgent";
 }
 
 function isRemoteSessionReadyForDispatch(worker: RegisteredWorkerView): boolean {

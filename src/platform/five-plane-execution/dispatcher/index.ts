@@ -358,7 +358,7 @@ class MultiStepToolRegistry {
     // Deny-by-default: only allow if policy permits
     const policyRequest: PolicyDecisionRequest = {
       decisionId: newId("tool_policy"),
-      taskId: "",
+      taskId: "multi-step-tool-task",
       subjectType: "agent",
       subjectId: "multi-step-tool-registry",
       action: "invoke_tool",
@@ -397,9 +397,9 @@ class MultiStepToolRegistry {
         const denyAllPolicy = createWorkspaceWritePolicy(this.repoRoot);
         const request = {
           callId: `call_${Date.now()}`,
-          taskId: "",
+          taskId: "multi-step-tool-task",
           agentId: "multi-step",
-          traceId: "",
+          traceId: "multi-step-tool-trace",
           toolName: "todo_write",
           sandboxPolicy: denyAllPolicy,
           operation: (args.operation as "create" | "update" | "delete" | "list" | "get") ?? "create",

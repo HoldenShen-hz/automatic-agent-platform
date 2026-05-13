@@ -138,7 +138,9 @@ export class PromptRolloutService {
       fixedPrefixHash: input.template.fixedPrefixHash,
       regressionSuiteId: input.regressionSuiteId.trim(),
       regressionPassed: input.regressionPassed,
-      guardrailSummary: decision.reason,
+      guardrailSummary: decision.allowed && decision.nextStatus === "canary_5"
+        ? "rollout_guardrail_passed"
+        : decision.reason,
       createdAt: now,
       updatedAt: now,
       statusEnteredAt: now,

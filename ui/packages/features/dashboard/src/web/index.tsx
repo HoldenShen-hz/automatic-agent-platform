@@ -1,11 +1,14 @@
-import { EChartSurface, FeatureScaffold, MetricGrid, createPanelStyle, designTokens } from "@aa/ui-core";
+import { EChartSurface, FeatureScaffold, MetricGrid, createPanelStyle, designTokens, resolveTheme } from "@aa/ui-core";
 import type { ReactElement } from "react";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
+import { useThemeState } from "@aa/shared-state";
 import { useDashboardVm } from "../hooks";
 
 export function DashboardWebView(): ReactElement {
   const vm = useDashboardVm();
   const featureCopy = translateFeatureCopy("dashboard");
+  const resolvedColorScheme = useThemeState((state) => state.resolvedColorScheme);
+  const theme = resolveTheme(resolvedColorScheme);
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       {vm.loading ? <p>{translateMessage("ui.dashboard.loading")}</p> : (
@@ -31,7 +34,7 @@ export function DashboardWebView(): ReactElement {
             ))}
           </div>
           <div style={{ marginTop: 16 }}>
-            <EChartSurface title={translateMessage("ui.dashboard.trendTitle")} values={vm.trendValues} />
+            <EChartSurface title={translateMessage("ui.dashboard.trendTitle")} values={vm.trendValues} theme={theme} />
           </div>
         </>
       )}

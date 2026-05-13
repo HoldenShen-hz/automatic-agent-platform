@@ -11,14 +11,18 @@ import {
   TimelineChart,
   createPanelStyle,
   designTokens,
+  resolveTheme,
 } from "@aa/ui-core";
 import { useState, type ReactElement } from "react";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
+import { useThemeState } from "@aa/shared-state";
 import { useAnalyticsVm } from "../hooks";
 
 export function AnalyticsWebView(): ReactElement {
   const vm = useAnalyticsVm();
   const featureCopy = translateFeatureCopy("analytics");
+  const resolvedColorScheme = useThemeState((state) => state.resolvedColorScheme);
+  const theme = resolveTheme(resolvedColorScheme);
   const breakdowns = vm.breakdowns ?? [];
   const initialDimension = breakdowns[0]?.dimension ?? "time";
   const [selectedDimension, setSelectedDimension] = useState(initialDimension);
@@ -67,7 +71,7 @@ export function AnalyticsWebView(): ReactElement {
         <article style={createPanelStyle(designTokens.color.border)}>
           <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Line</div>
           <div style={{ marginTop: 12 }}>
-            <EChartSurface title="Analytics Trend" values={vm.trendSummary} showTableFallback />
+            <EChartSurface title="Analytics Trend" values={vm.trendSummary} showTableFallback theme={theme} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>

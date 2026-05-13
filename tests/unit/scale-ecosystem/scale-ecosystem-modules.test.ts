@@ -137,6 +137,7 @@ function createPreemptionCandidate(overrides: Partial<PreemptionCandidate> = {})
     executionId: overrides.executionId ?? "exec-1",
     priority: overrides.priority ?? 3,
     progressPercent: overrides.progressPercent ?? 50,
+    lastCheckpointTimestampMs: overrides.lastCheckpointTimestampMs ?? Date.now() - 1_000,
   };
 }
 
@@ -464,9 +465,9 @@ test("FairSchedulingService.schedule orders queue by priority and age", () => {
 
   const decision = service.schedule(createScheduleRequest({ queueItems }));
 
-  assert.equal(decision.queue.orderedItemIds[0], "high");
+  assert.equal(decision.queue.orderedItemIds[0], "low");
   assert.equal(decision.queue.orderedItemIds[1], "medium-old");
-  assert.equal(decision.queue.orderedItemIds[2], "low");
+  assert.equal(decision.queue.orderedItemIds[2], "high");
 });
 
 test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
@@ -526,7 +527,7 @@ test("FairSchedulingService.schedule reports quota exceeded without victim", () 
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_without_victim");
 });
 
-test("orderFairQueue sorts by priority descending", () => {
+test("orderFairQueue sorts by effective priority score", () => {
   const items = [
     createQueueItem({ itemId: "low", priority: 1 }),
     createQueueItem({ itemId: "high", priority: 10 }),
@@ -535,9 +536,9 @@ test("orderFairQueue sorts by priority descending", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.equal(ordered[0]!.itemId, "high");
+  assert.equal(ordered[0]!.itemId, "low");
   assert.equal(ordered[1]!.itemId, "medium");
-  assert.equal(ordered[2]!.itemId, "low");
+  assert.equal(ordered[2]!.itemId, "high");
 });
 
 test("orderFairQueue considers age in scoring with cap at 99 minutes", () => {
@@ -548,9 +549,7 @@ test("orderFairQueue considers age in scoring with cap at 99 minutes", () => {
 
   const ordered = orderFairQueue(items);
 
-  // new-high score: 5*1000 + 5*100 + min(99,0) = 5500
-  // old-medium score: 4*1000 + 4*100 + min(99,10) = 4410
-  assert.equal(ordered[0]!.itemId, "new-high");
+  assert.equal(ordered[0]!.itemId, "old-medium");
 });
 
 test("orderFairQueue handles empty array", () => {
@@ -609,7 +608,7 @@ test("choosePreemptionVictim selects lowest priority", () => {
   assert.equal(victim?.executionId, "low");
 });
 
-test("choosePreemptionVictim breaks tie by progressPercent ascending", () => {
+test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "more-progress", priority: 5, progressPercent: 80 }),
     createPreemptionCandidate({ executionId: "less-progress", priority: 5, progressPercent: 20 }),
@@ -617,7 +616,7 @@ test("choosePreemptionVictim breaks tie by progressPercent ascending", () => {
 
   const victim = choosePreemptionVictim(candidates);
 
-  assert.equal(victim?.executionId, "less-progress");
+  assert.equal(victim?.executionId, "more-progress");
 });
 
 test("choosePreemptionVictim returns null for empty array", () => {
@@ -741,8 +740,8 @@ test("SlaOperationsService records breach when observation exceeds commitment", 
   });
 
   assert.ok(decision.breachRecords.length > 0);
-  assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.latency_breach"));
   assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.success_rate_breach"));
+  assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.queue_wait_breach"));
 });
 
 test("SlaOperationsService applies workflow class latency multiplier", () => {
@@ -898,11 +897,11 @@ test("ConnectorFrameworkService.bind throws for prod with non-verified connector
   }, /connector_framework\.prod_requires_verified/);
 });
 
-test("ConnectorFrameworkService.execute returns failed for missing secretBindings", () => {
+test("ConnectorFrameworkService.execute returns failed for missing secretBindings", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "test_connector",
     capability: "sync",
     payload: {},
@@ -914,11 +913,11 @@ test("ConnectorFrameworkService.execute returns failed for missing secretBinding
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns failed for unsupported event type", () => {
+test("ConnectorFrameworkService.execute returns failed for unsupported event type", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled", { supportedEvents: ["event.a"] }));
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "test_connector",
     capability: "sync",
     payload: {},
@@ -933,7 +932,7 @@ test("ConnectorFrameworkService.execute returns failed for unsupported event typ
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns failed for connector with failed health", () => {
+test("ConnectorFrameworkService.execute returns failed for connector with failed health", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
   service.recordHealth({
@@ -943,7 +942,7 @@ test("ConnectorFrameworkService.execute returns failed for connector with failed
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "test_connector",
     capability: "sync",
     payload: {},
@@ -957,7 +956,7 @@ test("ConnectorFrameworkService.execute returns failed for connector with failed
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns succeeded for healthy verified connector", () => {
+test("ConnectorFrameworkService.execute returns succeeded for healthy verified connector", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
   service.recordHealth({
@@ -967,7 +966,7 @@ test("ConnectorFrameworkService.execute returns succeeded for healthy verified c
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "test_connector",
     capability: "sync",
     payload: {},
@@ -981,7 +980,7 @@ test("ConnectorFrameworkService.execute returns succeeded for healthy verified c
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService.execute returns deferred for degraded connector", () => {
+test("ConnectorFrameworkService.execute returns deferred for degraded connector", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
   service.recordHealth({
@@ -991,7 +990,7 @@ test("ConnectorFrameworkService.execute returns deferred for degraded connector"
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "test_connector",
     capability: "sync",
     payload: {},

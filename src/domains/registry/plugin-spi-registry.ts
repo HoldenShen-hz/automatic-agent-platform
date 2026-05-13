@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type { ArtifactRef } from "../../platform/orchestration/oapeflir/ref-types.js";
-import { hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
+import { getBuiltinPluginManifest, hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
   HumanOutput,
   MachineOutput,
@@ -57,6 +57,19 @@ function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
     trustLevel: "trusted",
     publicSdkSurface: "core/domain-registry/plugin-spi",
     settingsSchema: {},
+    sandbox: {
+      timeoutMs: 5000,
+      allowFilesystemWrite: false,
+      allowNetworkEgress: plugin.spiType === "adapter",
+      allowedKnowledgeNamespaces: [],
+      maxConcurrentInvocations: 1,
+      maxQueuedInvocations: 8,
+      runtimeIsolation: "serialized_in_process",
+      cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
+    },
   });
 }
 
@@ -87,21 +100,63 @@ export class PluginSpiRegistry {
   }
 
   public register<TPlugin extends RegisteredPlugin>(plugin: TPlugin, manifest?: PluginManifest): RegisteredPluginRecord<TPlugin> {
+    const defaultManifest = defaultManifestFor(plugin);
+    const builtinManifest = getBuiltinPluginManifest(plugin.pluginId) ?? undefined;
+    const declaredSpiTypes = manifest?.spiTypes ?? plugin.manifest?.spiTypes;
+    if (declaredSpiTypes != null && !declaredSpiTypes.includes(plugin.spiType)) {
+      throw new ValidationError("plugin_spi.spi_type_mismatch", "plugin_spi.spi_type_mismatch: Plugin manifest does not include the plugin spi type.", {
+        category: "validation",
+        source: "internal",
+        details: { pluginId: plugin.pluginId, spiType: plugin.spiType },
+      });
+    }
+    const inheritedBuiltinManifest = builtinManifest == null
+      ? undefined
+      : {
+          ...builtinManifest,
+          sandbox: {
+            ...defaultManifest.sandbox,
+            ...builtinManifest.sandbox,
+            ...(plugin.manifest?.sandbox == null && manifest?.sandbox == null
+              ? { runtimeIsolation: defaultManifest.sandbox.runtimeIsolation }
+              : {}),
+          },
+        };
     const normalizedManifest = PluginManifestSchema.parse({
-      ...defaultManifestFor(plugin),
+      ...defaultManifest,
+      ...(inheritedBuiltinManifest ?? {}),
       ...(plugin.manifest ?? {}),
       ...(manifest ?? {}),
       pluginId: plugin.pluginId,
-      spiTypes: Array.from(new Set([plugin.spiType, ...(manifest?.spiTypes ?? plugin.manifest?.spiTypes ?? [])])),
-      capabilityIds: Array.from(new Set([...(plugin.capabilityIds ?? []), ...(manifest?.capabilityIds ?? plugin.manifest?.capabilityIds ?? [])])),
+      spiTypes: Array.from(new Set([
+        plugin.spiType,
+        ...(builtinManifest?.spiTypes ?? []),
+        ...(plugin.manifest?.spiTypes ?? []),
+        ...(manifest?.spiTypes ?? []),
+      ])),
+      capabilityIds: Array.from(new Set([
+        ...(plugin.capabilityIds ?? []),
+        ...(builtinManifest?.capabilityIds ?? []),
+        ...(plugin.manifest?.capabilityIds ?? []),
+        ...(manifest?.capabilityIds ?? []),
+      ])),
       domainIds:
         "domainId" in plugin
-          ? Array.from(new Set([plugin.domainId, ...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])]))
-          : [...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])],
+          ? Array.from(new Set([
+              plugin.domainId,
+              ...(builtinManifest?.domainIds ?? []),
+              ...(plugin.manifest?.domainIds ?? []),
+              ...(manifest?.domainIds ?? []),
+            ]))
+          : Array.from(new Set([
+              ...(builtinManifest?.domainIds ?? []),
+              ...(plugin.manifest?.domainIds ?? []),
+              ...(manifest?.domainIds ?? []),
+            ])),
     });
 
     if (!normalizedManifest.spiTypes.includes(plugin.spiType)) {
-      throw new ValidationError("plugin_spi.spi_type_mismatch", "Plugin manifest does not include the plugin spi type.", {
+      throw new ValidationError("plugin_spi.spi_type_mismatch", "plugin_spi.spi_type_mismatch: Plugin manifest does not include the plugin spi type.", {
         category: "validation",
         source: "internal",
         details: { pluginId: plugin.pluginId, spiType: plugin.spiType },
@@ -113,7 +168,7 @@ export class PluginSpiRegistry {
         || normalizedManifest.sandbox.runtimeIsolation === "containerized_process")
       && !hasBuiltinPlugin(plugin.pluginId)
     ) {
-      throw new ValidationError("plugin_spi.unsupported_runtime_isolation", `Plugin ${plugin.pluginId} cannot use ${normalizedManifest.sandbox.runtimeIsolation} isolation.`, {
+      throw new ValidationError("plugin_spi.unsupported_runtime_isolation", `plugin_spi.unsupported_runtime_isolation: Plugin ${plugin.pluginId} cannot use ${normalizedManifest.sandbox.runtimeIsolation} isolation.`, {
         category: "validation",
         source: "internal",
         details: {
@@ -184,14 +239,14 @@ export class PluginSpiRegistry {
     this.clearCooldownIfExpired(record);
 
     if (record.lifecycleState === "disabled") {
-      throw new ValidationError("plugin_spi.plugin_disabled", `Plugin ${pluginId} is disabled.`, {
+      throw new ValidationError("plugin_spi.plugin_disabled", `plugin_spi.plugin_disabled: Plugin ${pluginId} is disabled.`, {
         category: "validation",
         source: "internal",
         details: { pluginId, disabledReason: record.disabledReason },
       });
     }
     if (record.lifecycleState === "unloaded") {
-      throw new ValidationError("plugin_spi.plugin_unloaded", `Plugin ${pluginId} was unloaded and must be re-registered before activation.`, {
+      throw new ValidationError("plugin_spi.plugin_unloaded", `plugin_spi.plugin_unloaded: Plugin ${pluginId} was unloaded and must be re-registered before activation.`, {
         category: "validation",
         source: "internal",
         details: { pluginId },
@@ -399,7 +454,7 @@ export class PluginSpiRegistry {
   private requireRecord(pluginId: string): RegisteredPluginRecord {
     const record = this.get(pluginId);
     if (!record) {
-      throw new ValidationError("plugin_spi.plugin_not_found", `Plugin ${pluginId} was not found or is not registered.`, {
+      throw new ValidationError("plugin_spi.plugin_not_found", `plugin_spi.plugin_not_found: Plugin ${pluginId} was not found or is not registered.`, {
         category: "validation",
         source: "internal",
       });

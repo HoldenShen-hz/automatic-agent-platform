@@ -3,7 +3,8 @@ import { createPersistentOfflineQueue, OfflineQueue } from "./offline-queue";
 import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types";
 
 export interface SyncMutationDispatcher {
-  dispatch(mutation: OfflineMutation): Promise<void>;
+  dispatch?(mutation: OfflineMutation): Promise<unknown>;
+  request?(mutation: OfflineMutation): Promise<unknown>;
 }
 
 export class SyncCoordinator {
@@ -13,13 +14,13 @@ export class SyncCoordinator {
     private readonly dispatcher: SyncMutationDispatcher = new FetchSyncMutationDispatcher(),
   ) {}
 
-  public queueMutation(mutation: OfflineMutation): void {
-    this.queue.enqueue(mutation);
+  public queueMutation(mutation: OfflineMutation): Promise<void> {
+    return this.queue.enqueue(mutation);
   }
 
-  public queueMutations(mutations: readonly OfflineMutation[]): void {
+  public async queueMutations(mutations: readonly OfflineMutation[]): Promise<void> {
     for (const mutation of mutations) {
-      this.queue.enqueue(mutation);
+      await this.queue.enqueue(mutation);
     }
   }
 
@@ -37,11 +38,43 @@ export class SyncCoordinator {
 
   public async flush(flushedAt = new Date().toISOString()): Promise<SyncFlushResult> {
     const mutations = this.queue.peek();
+    const succeeded: OfflineMutation[] = [];
+    const failed: OfflineMutation[] = [];
+    const conflicts: Array<{ mutation: OfflineMutation; serverValue: unknown }> = [];
+    const retained: OfflineMutation[] = [];
+
     for (const mutation of mutations) {
-      await this.dispatcher.dispatch(mutation);
+      try {
+        const response = await this.send(mutation);
+        if (isConflictResponse(response)) {
+          const conflictedMutation: OfflineMutation = {
+            ...mutation,
+            status: "conflict",
+          };
+          conflicts.push({
+            mutation: conflictedMutation,
+            serverValue: response.serverValue,
+          });
+          retained.push(conflictedMutation);
+          continue;
+        }
+        succeeded.push(mutation);
+      } catch {
+        const retryableMutation: OfflineMutation = {
+          ...mutation,
+          retryCount: (mutation.retryCount ?? 0) + 1,
+          status: "pending",
+        };
+        failed.push(retryableMutation);
+        retained.push(retryableMutation);
+      }
     }
+    await this.queue.replace(retained);
     return {
-      mutations: this.queue.drain(),
+      succeeded,
+      failed,
+      conflicts,
+      mutations: succeeded,
       flushedAt,
     };
   }
@@ -52,6 +85,16 @@ export class SyncCoordinator {
     strategy: ConflictResolutionStrategy = "server_wins",
   ): T {
     return this.resolver.resolve(serverValue, localValue, strategy);
+  }
+
+  private async send(mutation: OfflineMutation): Promise<unknown> {
+    if (typeof this.dispatcher.dispatch === "function") {
+      return await this.dispatcher.dispatch(mutation);
+    }
+    if (typeof this.dispatcher.request === "function") {
+      return await this.dispatcher.request(mutation);
+    }
+    throw new TypeError("sync.dispatcher_missing");
   }
 }
 
@@ -70,4 +113,10 @@ export class FetchSyncMutationDispatcher implements SyncMutationDispatcher {
       throw new Error(`sync.flush_failed:${response.status}`);
     }
   }
+}
+
+function isConflictResponse(value: unknown): value is { conflict: true; serverValue: unknown } {
+  return value != null
+    && typeof value === "object"
+    && (value as { conflict?: unknown }).conflict === true;
 }

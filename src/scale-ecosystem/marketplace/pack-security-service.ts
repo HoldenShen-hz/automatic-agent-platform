@@ -323,11 +323,21 @@ export class PackSecurityService {
    */
   private async executeInSandbox(input: SecurityScanInput): Promise<SecurityIssue[]> {
     const issues: SecurityIssue[] = [];
-    const sourceCode = input.sourceCode;
+    const sourceCode = this.resolveSourceContent(input);
 
     if (!sourceCode || sourceCode.trim().length === 0) {
       // If no source code provided, run static analysis only
       return issues;
+    }
+
+    if (/\bfetch\s*\(/i.test(sourceCode)) {
+      issues.push({
+        severity: "critical",
+        category: "sandbox_violation",
+        code: "SAND012",
+        message: "Pack attempted unauthorized network access",
+        location: "runtime",
+      });
     }
 
     // Prepare sandbox context with only whitelisted APIs
@@ -527,7 +537,15 @@ export class PackSecurityService {
       const errorMessage = err instanceof Error ? err.message : String(err);
 
       // Check for specific sandbox escape or abuse attempts
-      if (errorMessage.includes("Cannot access strict mode") ||
+      if (errorMessage.includes("Script execution timed out")) {
+        issues.push({
+          severity: "high",
+          category: "sandbox_violation",
+          code: "SAND011",
+          message: `Pack code execution timed out: ${errorMessage}`,
+          location: "runtime",
+        });
+      } else if (errorMessage.includes("Cannot access strict mode") ||
           errorMessage.includes("VM context")) {
         issues.push({
           severity: "critical",
@@ -582,8 +600,7 @@ export class PackSecurityService {
 
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
-    // Scan actual source code, not the URI string
-    const sourceContent = input.sourceCode ?? "";
+    const sourceContent = this.resolveSourceContent(input);
 
     for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
       if (pattern.test(sourceContent)) {
@@ -608,6 +625,16 @@ export class PackSecurityService {
     }
 
     return { issues };
+  }
+
+  private resolveSourceContent(input: SecurityScanInput): string {
+    if (input.sourceCode != null && input.sourceCode.trim().length > 0) {
+      return input.sourceCode;
+    }
+    if (input.sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
+      return input.sourceUri.slice(INLINE_SOURCE_PREFIX.length);
+    }
+    return "";
   }
 
   private checkCapabilitySafety(capabilities: readonly string[]): { issues: SecurityIssue[] } {

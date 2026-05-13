@@ -13,33 +13,19 @@ import test from "node:test";
 import {
   allocateReservedCapacity,
   type ReservedCapacityAllocation,
-} from "../../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
+} from "../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2195: No <=100% validation
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("resource-allocator-2195: total reservedPercent should not exceed 100%", () => {
-  // Issue #2195: When sum of reservedPercent > 100, the allocation is invalid
-  // but the current implementation doesn't validate this
-
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 60 },
     { tierId: "tier-2", reservedPercent: 50 },
-    // Total = 110%, exceeds 100%
   ];
 
-  const result = allocateReservedCapacity(100, allocations);
-
-  // Current implementation allows over-allocation
-  // tier-1 gets 60, tier-2 gets 50 = 110 total
-  // This is invalid - should reject or handle differently
-
-  // Calculate total allocated
-  const totalAllocated = Object.values(result).reduce((sum, val) => sum + val, 0);
-
-  // Current behavior: allows 110% allocation
-  assert.equal(totalAllocated, 110);
+  assert.throws(() => allocateReservedCapacity(100, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: exact 100% should be valid", () => {
@@ -63,12 +49,7 @@ test("resource-allocator-2195: sum exceeding 100% by small amount", () => {
     // Total = 105%
   ];
 
-  const result = allocateReservedCapacity(100, allocations);
-
-  const totalAllocated = Object.values(result).reduce((sum, val) => sum + val, 0);
-
-  // Should be flagged as over-provisioned
-  assert.equal(totalAllocated, 105);
+  assert.throws(() => allocateReservedCapacity(100, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: sum exceeding 100% by large amount", () => {
@@ -79,12 +60,7 @@ test("resource-allocator-2195: sum exceeding 100% by large amount", () => {
     // Total = 300%
   ];
 
-  const result = allocateReservedCapacity(100, allocations);
-
-  const totalAllocated = Object.values(result).reduce((sum, val) => sum + val, 0);
-
-  // Clearly over-provisioned
-  assert.equal(totalAllocated, 300);
+  assert.throws(() => allocateReservedCapacity(100, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: under 100% is valid", () => {
@@ -118,10 +94,7 @@ test("resource-allocator-2195: single tier exceeding 100%", () => {
     { tierId: "over-provisioned", reservedPercent: 150 },
   ];
 
-  const result = allocateReservedCapacity(100, allocations);
-
-  // Current implementation allows this
-  assert.equal(result["over-provisioned"], 150);
+  assert.throws(() => allocateReservedCapacity(100, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: validation function should detect over-provisioning", () => {
@@ -148,21 +121,13 @@ test("resource-allocator-2195: validation function should detect over-provisioni
 });
 
 test("resource-allocator-2195: over-provisioning impact on burst capacity", () => {
-  // Issue #2195: When over-provisioned, there's no burst capacity left
-
   const totalUnits = 100;
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 70 },
     { tierId: "tier-2", reservedPercent: 40 },
-    // Total = 110%
   ];
 
-  const result = allocateReservedCapacity(totalUnits, allocations);
-  const totalReserved = Object.values(result).reduce((sum, val) => sum + val, 0);
-  const burstCapacity = totalUnits - totalReserved;
-
-  // Negative burst capacity means over-provisioned
-  assert.equal(burstCapacity, -10);
+  assert.throws(() => allocateReservedCapacity(totalUnits, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: fractional percentages sum to over 100", () => {
@@ -200,22 +165,14 @@ test("resource-allocator-2195: zero total capacity with over-provisioned allocat
     { tierId: "tier-2", reservedPercent: 100 },
   ];
 
-  const result = allocateReservedCapacity(0, allocations);
-  const totalAllocated = Object.values(result).reduce((sum, val) => sum + val, 0);
-
-  // Even with 0 capacity, over-provisioning is conceptually invalid
-  assert.equal(totalAllocated, 0);
+  assert.throws(() => allocateReservedCapacity(0, allocations), /total_reserved_exceeds_100/);
 });
 
 test("resource-allocator-2195: over-provisioning with many small tiers", () => {
-  // Create 20 tiers each with 6% = 120% total
   const allocations: ReservedCapacityAllocation[] = Array.from(
     { length: 20 },
     (_, i) => ({ tierId: `tier-${i}`, reservedPercent: 6 })
   );
 
-  const result = allocateReservedCapacity(100, allocations);
-  const totalAllocated = Object.values(result).reduce((sum, val) => sum + val, 0);
-
-  assert.equal(totalAllocated, 120);
+  assert.throws(() => allocateReservedCapacity(100, allocations), /total_reserved_exceeds_100/);
 });

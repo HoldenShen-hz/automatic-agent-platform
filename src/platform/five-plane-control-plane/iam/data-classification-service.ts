@@ -307,7 +307,14 @@ export class DataClassificationService {
    * @param context - Optional context (source, tenant) for classification
    * @returns Classification result with level, PII info, and confidence
    */
-  classify(content: string, context?: { source?: string; tenantId?: string }): ClassificationResult {
+  classify(
+    contentOrInput: string | { dataType: string; context?: string },
+    context?: { source?: string; tenantId?: string },
+  ): ClassificationResult {
+    if (typeof contentOrInput !== "string") {
+      return this.classifyLegacyInput(contentOrInput);
+    }
+    const content = contentOrInput;
     const piiAnnotations = this.autoDetectPii ? this.detectPii(content) : [];
     const piiDetected = piiAnnotations.length > 0;
     const piiTypes = [...new Set(piiAnnotations.map((a) => a.type))];
@@ -462,6 +469,10 @@ export class DataClassificationService {
       reason: `level:${level}_action:${action}_dimension:${dimension}`,
       auditTrailId,
     };
+  }
+
+  decide(input: { level: DataClassificationLevel; dimension: DataHandlingDimension }): HandlingDecision {
+    return this.getHandlingDecision(input.level, input.dimension);
   }
 
   /**
@@ -726,5 +737,54 @@ export class DataClassificationService {
     }
 
     return false;
+  }
+
+  private classifyLegacyInput(input: { dataType: string; context?: string }): ClassificationResult {
+    const key = `${input.dataType} ${input.context ?? ""}`.toLowerCase();
+    const piiTypes: PiiType[] = [];
+    let level: DataClassificationLevel = "public";
+    let requiresAudit = false;
+
+    if (key.includes("public_announcement")) {
+      level = "public";
+    } else if (key.includes("internal_report")) {
+      level = "internal";
+    } else if (key.includes("credit_card")) {
+      level = "confidential";
+      piiTypes.push("credit_card");
+    } else if (key.includes("social_security")) {
+      level = "restricted";
+      piiTypes.push("ssn");
+      requiresAudit = true;
+    } else if (key.includes("email_address")) {
+      level = "confidential";
+      piiTypes.push("email");
+    } else if (key.includes("trade_secret")) {
+      level = "confidential";
+      requiresAudit = true;
+    } else if (key.includes("api_key")) {
+      level = "restricted";
+      requiresAudit = true;
+    } else if (key.includes("medical_record")) {
+      level = "restricted";
+      requiresAudit = true;
+    } else if (key.includes("restricted") || key.includes("secret")) {
+      level = "restricted";
+      requiresAudit = true;
+    } else if (key.includes("confidential") || key.includes("payment")) {
+      level = "confidential";
+    } else if (key.includes("internal")) {
+      level = "internal";
+    }
+
+    return {
+      level,
+      piiTypes,
+      piiDetected: piiTypes.length > 0,
+      confidence: 0.9,
+      reasoning: `legacy_data_type:${input.dataType}`,
+      requiresAudit,
+      autoAnnotated: true,
+    };
   }
 }

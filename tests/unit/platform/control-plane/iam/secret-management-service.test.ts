@@ -58,6 +58,9 @@ test("secret management service registers secrets, resolves them with usage audi
       requestedBy: "ops.release",
       grantedTo: "deploy-worker",
       usagePurpose: "publish_image",
+    }, {
+      callerScopeType: "system",
+      callerScopeRef: "system",
     });
 
     assert.equal(resolved.metadata.providerKind, "environment");
@@ -153,6 +156,9 @@ test("secret management service resolves vault-managed secrets from provider-spe
       requestedBy: "ops.deploy",
       grantedTo: "deploy-worker",
       usagePurpose: "apply_manifest",
+    }, {
+      callerScopeType: "system",
+      callerScopeRef: "system",
     });
 
     assert.equal(resolved.metadata.providerKind, "vault");
@@ -192,7 +198,10 @@ test("secret management service can require a managed secret without creating a 
       lastRotatedAt: "2026-04-01T00:00:00.000Z",
     });
 
-    const required = await service.requireSecret("secret://providers/openai/default");
+    const required = await service.requireSecret("secret://providers/openai/default", {
+      callerScopeType: "system",
+      callerScopeRef: "system",
+    });
 
     assert.equal(required.metadata.providerKind, "vault");
     assert.equal(required.metadata.auditId, null);

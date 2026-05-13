@@ -409,16 +409,16 @@ test("renewLease blocked when lease has already expired", () => {
 
     createTestExecution(store, db, executionId, taskId, now);
 
-    // Acquire lease with very short TTL
+    // Acquire lease with the minimum supported TTL.
     const acquireResult = service.acquireLease({
       executionId,
       workerId: "worker-a",
-      ttlMs: 1000, // 1 second
+      ttlMs: 5000,
       occurredAt: now,
     });
 
     // Try to renew after lease would have expired
-    const expiredTime = new Date(Date.parse(now) + 5000).toISOString();
+    const expiredTime = new Date(Date.parse(now) + 6000).toISOString();
     const renewResult = service.renewLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
@@ -603,17 +603,17 @@ test("acquireLease expires an existing lease that has passed its expiration time
 
     createTestExecution(store, db, executionId, taskId, now);
 
-    // Acquire first lease with very short TTL
+    // Acquire first lease with the minimum supported TTL.
     const firstResult = service.acquireLease({
       executionId,
       workerId: "worker-a",
-      ttlMs: 1000, // 1 second
+      ttlMs: 5000,
       occurredAt: now,
     });
     assert.equal(firstResult.outcome, "granted");
 
     // Wait until the lease expires
-    const expiredTime = new Date(Date.parse(now) + 5000).toISOString();
+    const expiredTime = new Date(Date.parse(now) + 6000).toISOString();
 
     // Acquiring a new lease should expire the old one first
     const secondResult = service.acquireLease({
@@ -649,17 +649,17 @@ test("reclaimExpiredLeases reclaims leases past their expiration", () => {
 
     createTestExecution(store, db, executionId, taskId, now);
 
-    // Acquire lease with short TTL
+    // Acquire lease with the minimum supported TTL.
     const acquireResult = service.acquireLease({
       executionId,
       workerId: "worker-a",
-      ttlMs: 1000, // 1 second
+      ttlMs: 5000,
       occurredAt: now,
     });
     assert.equal(acquireResult.outcome, "granted");
 
     // Wait for expiration
-    const expiredTime = new Date(Date.parse(now) + 5000).toISOString();
+    const expiredTime = new Date(Date.parse(now) + 6000).toISOString();
 
     // Reclaim expired leases
     const reclaimed = service.reclaimExpiredLeases(expiredTime);

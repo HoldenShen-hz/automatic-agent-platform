@@ -70,7 +70,7 @@ export function createFeatureModule(config: {
       title: config.title,
       permission: config.permission,
       platforms,
-      codeSplit: false,
+      codeSplit: true,
     },
     Component,
   };

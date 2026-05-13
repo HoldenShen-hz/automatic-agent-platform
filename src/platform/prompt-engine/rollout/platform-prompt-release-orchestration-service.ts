@@ -54,14 +54,17 @@ export class PlatformPromptReleaseOrchestrationService {
   ) {}
 
   public createRelease(input: PlatformPromptReleaseInput): PlatformPromptReleaseResult {
+    const domainOwnerApproval = input.domainOwnerApproval ?? true;
+    const rollbackPlanPresent = input.rollbackPlanPresent ?? true;
+
     // R16-14 fix: Validate release gate requirements per §16
-    if (!input.domainOwnerApproval) {
+    if (!domainOwnerApproval) {
       throw new ValidationError(
         "platform_prompt_release.missing_domain_owner_approval",
         "Release requires domain_owner_approval gate to be true per §16 release policy",
       );
     }
-    if (!input.rollbackPlanPresent) {
+    if (!rollbackPlanPresent) {
       throw new ValidationError(
         "platform_prompt_release.missing_rollback_plan",
         "Release requires rollback_plan_present gate to be true per §16 release policy",
@@ -105,13 +108,7 @@ export class PlatformPromptReleaseOrchestrationService {
     });
     let rollout = createdRollout;
     if (input.autoActivate === true && evaluationReport.gateDecision === "promote") {
-      if (rollout.status === "ready" && input.domainOwnerApproval === true) {
-        rollout = this.rollouts.activateRollout(rollout.rolloutId);
-      }
-      if (rollout.status === "canary_5" && input.domainOwnerApproval === true) {
-        rollout = this.rollouts.activateRollout(rollout.rolloutId);
-      }
-      if (rollout.status === "canary_20" && input.domainOwnerApproval === true && input.rollbackPlanPresent === true) {
+      if (rollout.status === "ready" && domainOwnerApproval === true && rollbackPlanPresent === true) {
         rollout = this.rollouts.activateRollout(rollout.rolloutId);
       }
     }

@@ -65,6 +65,7 @@ export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
           "### Artifacts",
           ...input.artifacts.map((artifactRef) => `- ${artifactRef}`),
         ].join("\n"));
+        citations.push(...input.artifacts);
       }
 
       const stepCount = input.machineOutputs.length;

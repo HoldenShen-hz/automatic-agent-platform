@@ -18,6 +18,7 @@ import { createLivestreamRetrieverPlugin } from "./retrievers/livestream-retriev
 import { createBasicEvaluatorPlugin, createBasicValidatorPlugin } from "./validators/basic-evaluator.js";
 import { DataTaintPropagationService, type DataTaintLabel } from "../platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
+import type { PluginLifecycleState } from "../domains/registry/plugin-spi.js";
 
 type PluginFactory = () => RegisteredPlugin;
 
@@ -89,6 +90,7 @@ class PluginTaintTracker {
 }
 
 const globalPluginTaintTracker = new PluginTaintTracker();
+const pluginLifecycleStates = new Map<string, PluginLifecycleState>();
 
 const BUILTIN_PLUGIN_FACTORIES = new Map<string, PluginFactory>([
   ["plugin.coding.retriever", createCodingRetrieverPlugin],
@@ -254,7 +256,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
     name: "GitHub Adapter",
     version: "1.0.0",
     owner: "platform-team",
-    domainIds: [],
+    domainIds: ["coding", "growth"],
     capabilityIds: ["external.github", "external.github.issue", "external.github.workflow"],
     spiTypes: ["adapter"],
     extensionKind: "external_adapter",
@@ -611,6 +613,14 @@ export function hasBuiltinPlugin(pluginId: string): boolean {
   return BUILTIN_PLUGIN_FACTORIES.has(pluginId);
 }
 
+export function getPluginLifecycleState(pluginId: string): PluginLifecycleState | null {
+  return pluginLifecycleStates.get(pluginId) ?? null;
+}
+
+export function setPluginLifecycleState(pluginId: string, state: PluginLifecycleState): void {
+  pluginLifecycleStates.set(pluginId, state);
+}
+
 export function listBuiltinPluginIds(): string[] {
   return [...BUILTIN_PLUGIN_FACTORIES.keys()];
 }
@@ -716,7 +726,7 @@ export interface MarketplacePluginEntry {
 
 export interface DynamicPluginLoader {
   supportsSource(source: string): boolean;
-  loadFromSource(source: string): Promise<RegisteredPlugin | null> | RegisteredPlugin | null;
+  loadFromSource(source: string, sessionToken?: string): Promise<RegisteredPlugin | null> | RegisteredPlugin | null;
 }
 
 const pluginRevocations = new Map<string, PluginRevocationRecord>();
@@ -828,14 +838,14 @@ export class PluginMarketplaceRegistry {
     if (!entry) {
       return null;
     }
-    if (!sessionToken || !this.isAuthenticated(sessionToken)) {
-      throw new Error("Authentication required to load marketplace plugin");
-    }
     const loader = [...this.loaders.values()].find((candidate) => candidate.supportsSource(source));
     if (!loader) {
-      return null;
+      throw new Error(`No loader found for source: ${source}`);
     }
-    return loader.loadFromSource(source);
+    if (source.startsWith("marketplace:") && (!sessionToken || !this.isAuthenticated(sessionToken))) {
+      throw new Error("Authentication required to load marketplace plugin");
+    }
+    return loader.loadFromSource(source, sessionToken);
   }
 }
 

@@ -6,6 +6,8 @@ import { PromptTemplateRegistryService } from "../../../../../src/platform/promp
 import { PromptRolloutService } from "../../../../../src/platform/prompt-engine/rollout/index.js";
 import { PlatformPromptReleaseOrchestrationService } from "../../../../../src/platform/prompt-engine/rollout/platform-prompt-release-orchestration-service.js";
 
+const CRITICAL_CASE_COUNT = 200;
+
 function createDatasetService(): EvalDatasetJudgeService {
   const datasets = new EvalDatasetJudgeService();
   datasets.registerDataset({
@@ -14,31 +16,29 @@ function createDatasetService(): EvalDatasetJudgeService {
     version: "1",
     stage: "assess",
     createdBy: "quality",
-    cases: [
-      {
-        caseId: "incident_summary",
-        input: { incident: "cpu high" },
-        expectedOutput: "incident summary",
-        tags: ["ops"],
-        priority: "critical",
-        qualityCriteria: [
-          {
-            criterionId: "contains_summary",
-            type: "contains",
-            config: { substring: "incident summary" },
-            weight: 0.5,
-            threshold: 1,
-          },
-          {
-            criterionId: "judge_safe",
-            type: "llm_judge",
-            config: {},
-            weight: 0.5,
-            threshold: 0.8,
-          },
-        ],
-      },
-    ],
+    cases: Array.from({ length: CRITICAL_CASE_COUNT }, (_, index) => ({
+      caseId: `incident_summary_${index + 1}`,
+      input: { incident: `cpu high ${index + 1}` },
+      expectedOutput: "incident summary",
+      tags: ["ops"],
+      priority: "critical" as const,
+      qualityCriteria: [
+        {
+          criterionId: "contains_summary",
+          type: "contains" as const,
+          config: { substring: "incident summary" },
+          weight: 0.5,
+          threshold: 1,
+        },
+        {
+          criterionId: "judge_safe",
+          type: "llm_judge" as const,
+          config: {},
+          weight: 0.5,
+          threshold: 0.8,
+        },
+      ],
+    })),
   });
   datasets.activateDataset("dataset_ops_release");
   datasets.registerJudge({
@@ -76,13 +76,11 @@ test("PlatformPromptReleaseOrchestrationService activates rollout after dataset 
     mode: "shadow",
     domainBlockCompatible: true,
     autoActivate: true,
-    results: [
-      {
-        caseId: "incident_summary",
-        output: "incident summary with safe next steps",
-        criterionSignals: { judge_safe: 0.93 },
-      },
-    ],
+    results: Array.from({ length: CRITICAL_CASE_COUNT }, (_, index) => ({
+      caseId: `incident_summary_${index + 1}`,
+      output: "incident summary with safe next steps",
+      criterionSignals: { judge_safe: 0.93 },
+    })),
   });
 
   assert.equal(result.evaluationReport.gateDecision, "promote");
@@ -114,13 +112,11 @@ test("PlatformPromptReleaseOrchestrationService keeps rollout blocked when gate 
     mode: "shadow",
     domainBlockCompatible: true,
     autoActivate: true,
-    results: [
-      {
-        caseId: "incident_summary",
-        output: "unrelated answer",
-        criterionSignals: { judge_safe: 0.3 },
-      },
-    ],
+    results: Array.from({ length: CRITICAL_CASE_COUNT }, (_, index) => ({
+      caseId: `incident_summary_${index + 1}`,
+      output: "unrelated answer",
+      criterionSignals: { judge_safe: 0.3 },
+    })),
   });
 
   assert.equal(result.evaluationReport.gateDecision, "hold");

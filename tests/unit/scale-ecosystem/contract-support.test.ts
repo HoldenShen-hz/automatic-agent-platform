@@ -69,7 +69,18 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
     "l2",
   );
   assert.equal(
-    isMarketplaceListingCertified({ listingId: "l1", certificationId: "c1", status: "approved", approvedAt: "2026-04-20T00:00:00.000Z" }),
+    isMarketplaceListingCertified({
+      listingId: "l1",
+      certificationId: "c1",
+      status: "approved",
+      approvedAt: "2026-04-20T00:00:00.000Z",
+      lastReviewedAt: "2026-04-20T00:00:00.000Z",
+      sbomVerified: true,
+      signatureVerified: true,
+      compatibilityVerified: true,
+      sandboxVerified: true,
+      egressPolicyReviewed: true,
+    }),
     true,
   );
   assert.equal(
@@ -81,15 +92,13 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
     shouldReplicateToRegion({ sourceRegionId: "cn-sh", targetRegionIds: ["cn-bj"], residencyMode: "same_jurisdiction" }, "cn-bj"),
     true,
   );
-  assert.deepEqual(
-    resolveRegionFailover({ primaryHealthy: false, candidateRegionIds: ["us-west-2"] }),
-    {
-      shouldFailover: true,
-      targetRegionId: "us-west-2",
-      rationale: "multi_region.primary_unhealthy",
-      fencingEpoch: 1,
-    },
-  );
+  const failover = resolveRegionFailover({ primaryHealthy: false, candidateRegionIds: ["us-west-2"] });
+  assert.equal(failover.shouldFailover, true);
+  assert.equal(failover.targetRegionId, "us-west-2");
+  assert.equal(failover.rationale, "multi_region.primary_unhealthy");
+  assert.equal(failover.fencingEpoch, 1);
+  assert.equal(failover.leaderState, "promoted");
+  assert.equal(failover.reconciliationResult.canProceed, true);
   assert.equal(
     selectPreferredRegion([
       { regionId: "us-west-2", jurisdiction: "US", latencyScore: 120, residencyAllowed: true },
@@ -103,12 +112,12 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
       { itemId: "a", tenantId: "t1", priority: 1, ageMs: 1_000 },
       { itemId: "b", tenantId: "t2", priority: 2, ageMs: 1_000 },
     ])[0]?.itemId,
-    "b",
+    "a",
   );
   assert.equal(
     choosePreemptionVictim([
-      { executionId: "exec_1", priority: 1, progressPercent: 50 },
-      { executionId: "exec_2", priority: 2, progressPercent: 10 },
+      { executionId: "exec_1", priority: 1, progressPercent: 50, lastCheckpointTimestampMs: Date.now() - 1_000 },
+      { executionId: "exec_2", priority: 2, progressPercent: 10, lastCheckpointTimestampMs: Date.now() - 1_000 },
     ])?.executionId,
     "exec_1",
   );

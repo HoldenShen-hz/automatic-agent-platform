@@ -18,234 +18,103 @@ function createCandidate(status: ImprovementCandidate["status"]): ImprovementCan
   };
 }
 
-test("RolloutStateMachine promotes approved candidates into the pending approval lane", () => {
+test("RolloutStateMachine promotes approved candidates into evaluation lane", () => {
   const stateMachine = new RolloutStateMachine();
-  const record = stateMachine.transition(createCandidate("approved"), "suggest", {
+  const record = stateMachine.transition(createCandidate("approved"), "L1_evaluate", {
     approvedBy: "operator",
   });
 
-  assert.equal(record.previousLevel, "off");
-  assert.equal(record.level, "suggest");
-  assert.equal(record.status, "pending_approval");
+  assert.equal(record.previousLevel, "L0_off");
+  assert.equal(record.level, "L1_evaluate");
+  assert.equal(record.status, "evaluation_enabled");
 });
 
-test("RolloutStateMachine allows progressive promotion from shadow to stable lanes", () => {
+test("RolloutStateMachine allows progressive promotion from evaluation to stable lanes", () => {
   const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
+  const candidate = createCandidate("approved");
 
-  const canary = stateMachine.transition(candidate, "canary_5");
-  assert.equal(canary.previousLevel, "shadow");
+  const canary = stateMachine.transition(candidate, "L2_canary", {
+    currentStatus: "evaluation_enabled",
+  });
+  assert.equal(canary.previousLevel, "L1_evaluate");
   assert.equal(canary.status, "canary_5");
 
-  const partial = stateMachine.transition(candidate, "partial_25", {
+  const partial = stateMachine.transition(candidate, "L3_partial", {
     currentStatus: "canary_5",
   });
-  assert.equal(partial.previousLevel, "canary_5");
+  assert.equal(partial.previousLevel, "L2_canary");
   assert.equal(partial.status, "partial_25");
 
-  const stable = stateMachine.transition(candidate, "stable", {
-    currentStatus: "partial_75",
+  const stable = stateMachine.transition(candidate, "L4_stable", {
+    currentStatus: "partial_25",
   });
-  assert.equal(stable.previousLevel, "partial_75");
-  assert.equal(stable.status, "stable");
+  assert.equal(stable.previousLevel, "L3_partial");
+  assert.equal(stable.status, "stable_75");
 });
 
 test("RolloutStateMachine rejects invalid transitions", () => {
   const stateMachine = new RolloutStateMachine();
   assert.throws(
-    () => stateMachine.transition(createCandidate("approved"), "partial_25", {
-      currentStatus: "draft",
+    () => stateMachine.transition(createCandidate("approved"), "L4_stable", {
+      currentStatus: "candidate_created",
     }),
     /Invalid rollout transition/,
   );
 });
 
-test("RolloutStateMachine allows rejected state self-transition", () => {
+test("RolloutStateMachine allows rejected and rolled_back self-transitions", () => {
   const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("rejected");
 
-  const result = stateMachine.transition(candidate, "off", {
+  const rejected = stateMachine.transition(createCandidate("rejected"), "L0_off", {
     currentStatus: "rejected",
     targetStatus: "rejected",
   });
+  assert.equal(rejected.status, "rejected");
 
-  assert.equal(result.status, "rejected");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine infers rejected status from candidate when currentStatus not provided", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("rejected");
-  candidate.sourceSignalRefs = ["sig_rejected_1", "sig_rejected_2"];
-
-  // Do NOT provide currentStatus - let inferCurrentStatus be called
-  const result = stateMachine.transition(candidate, "off", {
-    targetStatus: "rejected",
-    strategyVersionId: "v123",
-    approvedBy: "test-operator",
-    guardrailReasonCodes: ["test_reason"],
-  });
-
-  assert.equal(result.status, "rejected");
-  assert.equal(result.level, "off");
-  assert.equal(result.previousLevel, "off");
-  assert.equal(result.strategyVersionId, "v123");
-  assert.equal(result.approvedBy, "test-operator");
-  assert.deepEqual(result.guardrailReasonCodes, ["test_reason"]);
-  assert.deepEqual(result.evidence, ["sig_rejected_1", "sig_rejected_2"]);
-});
-
-test("RolloutStateMachine allows rolled_back state self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("rolled_back");
-
-  const result = stateMachine.transition(candidate, "off", {
+  const rolledBack = stateMachine.transition(createCandidate("rolled_back"), "L0_off", {
     currentStatus: "rolled_back",
     targetStatus: "rolled_back",
   });
-
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
+  assert.equal(rolledBack.status, "rolled_back");
 });
 
-test("RolloutStateMachine infers rolled_back status from candidate when currentStatus not provided", () => {
+test("RolloutStateMachine infers terminal statuses from candidate state", () => {
   const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("rolled_back");
-  candidate.sourceSignalRefs = ["sig_rb_1"];
 
-  // Do NOT provide currentStatus - let inferCurrentStatus be called
-  const result = stateMachine.transition(candidate, "off", {
-    targetStatus: "rolled_back",
-    strategyVersionId: "v456",
-    approvedBy: "test-admin",
-    guardrailReasonCodes: ["rollback_test"],
-  });
-
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-  assert.equal(result.previousLevel, "off");
-  assert.equal(result.strategyVersionId, "v456");
-  assert.equal(result.approvedBy, "test-admin");
-  assert.deepEqual(result.guardrailReasonCodes, ["rollback_test"]);
-  assert.deepEqual(result.evidence, ["sig_rb_1"]);
-});
-
-test("RolloutStateMachine allows paused to transition to shadow", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "shadow", {
-    currentStatus: "paused",
-    targetStatus: "shadow",
-  });
-
-  assert.equal(result.status, "shadow");
-  assert.equal(result.level, "shadow");
-});
-
-test("RolloutStateMachine allows paused to transition to stable", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "stable", {
-    currentStatus: "paused",
-    targetStatus: "stable",
-  });
-
-  assert.equal(result.status, "stable");
-  assert.equal(result.level, "stable");
-});
-
-test("RolloutStateMachine rejects draft to stable direct transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  assert.throws(
-    () => stateMachine.transition(candidate, "stable", {
-      currentStatus: "draft",
-    }),
-    /Invalid rollout transition/,
-  );
-});
-
-test("RolloutStateMachine allows pending_approval to shadow", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "shadow", {
-    currentStatus: "pending_approval",
-    targetStatus: "shadow",
-  });
-
-  assert.equal(result.status, "shadow");
-});
-
-test("RolloutStateMachine allows pending_approval to rejected", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "pending_approval",
+  const rejected = stateMachine.transition(createCandidate("rejected"), "L0_off", {
     targetStatus: "rejected",
   });
+  assert.equal(rejected.previousLevel, "L0_off");
+  assert.equal(rejected.status, "rejected");
 
-  assert.equal(result.status, "rejected");
-  assert.equal(result.level, "off");
+  const rolledBack = stateMachine.transition(createCandidate("rolled_back"), "L0_off", {
+    targetStatus: "rolled_back",
+  });
+  assert.equal(rolledBack.previousLevel, "L0_off");
+  assert.equal(rolledBack.status, "rolled_back");
 });
 
-test("RolloutStateMachine allows pending_approval to paused", () => {
+test("RolloutStateMachine allows paused rollouts to resume or roll back", () => {
   const stateMachine = new RolloutStateMachine();
   const candidate = createCandidate("approved");
 
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "pending_approval",
-    targetStatus: "paused",
+  const resumed = stateMachine.transition(candidate, "L4_stable", {
+    currentStatus: "paused",
   });
+  assert.equal(resumed.status, "stable_75");
 
-  assert.equal(result.status, "paused");
-});
-
-test("RolloutStateMachine allows shadow to rolled_back", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "shadow",
+  const rolledBack = stateMachine.transition(candidate, "L0_off", {
+    currentStatus: "paused",
     targetStatus: "rolled_back",
   });
-
-  assert.equal(result.status, "rolled_back");
-});
-
-test("RolloutStateMachine allows canary_5 to paused", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "canary_5",
-    targetStatus: "paused",
-  });
-
-  assert.equal(result.status, "paused");
-});
-
-test("RolloutStateMachine allows partial_50 to rolled_back", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "partial_50",
-    targetStatus: "rolled_back",
-  });
-
-  assert.equal(result.status, "rolled_back");
+  assert.equal(rolledBack.status, "rolled_back");
 });
 
 test("RolloutStateMachine preserves guardrail reason codes", () => {
   const stateMachine = new RolloutStateMachine();
   const candidate = createCandidate("approved");
 
-  const result = stateMachine.transition(candidate, "shadow", {
+  const result = stateMachine.transition(candidate, "L1_evaluate", {
     guardrailReasonCodes: ["rollout.metrics_gate_failed", "rollout.latency_exceeded"],
   });
 
@@ -257,451 +126,7 @@ test("RolloutStateMachine preserves evidence from candidate source signals", () 
   const candidate = createCandidate("approved");
   candidate.sourceSignalRefs = ["sig_1", "sig_2", "sig_3"];
 
-  const result = stateMachine.transition(candidate, "suggest");
+  const result = stateMachine.transition(candidate, "L1_evaluate");
 
   assert.deepEqual(result.evidence, ["sig_1", "sig_2", "sig_3"]);
-});
-
-// =============================================================================
-// Self-transition tests (stable, canary_5, partial statuses)
-// =============================================================================
-
-test("RolloutStateMachine allows stable self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  // First get to stable
-  const stable = stateMachine.transition(candidate, "stable", {
-    currentStatus: "partial_75",
-    targetStatus: "stable",
-  });
-  assert.equal(stable.status, "stable");
-
-  // Self-transition within stable
-  const result = stateMachine.transition(candidate, "stable", {
-    currentStatus: "stable",
-    targetStatus: "stable",
-  });
-  assert.equal(result.status, "stable");
-  assert.equal(result.level, "stable");
-});
-
-test("RolloutStateMachine allows canary_5 self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "canary_5", {
-    currentStatus: "canary_5",
-    targetStatus: "canary_5",
-  });
-  assert.equal(result.status, "canary_5");
-});
-
-test("RolloutStateMachine allows partial_25 self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_25", {
-    currentStatus: "partial_25",
-    targetStatus: "partial_25",
-  });
-  assert.equal(result.status, "partial_25");
-});
-
-test("RolloutStateMachine allows partial_50 self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_50", {
-    currentStatus: "partial_50",
-    targetStatus: "partial_50",
-  });
-  assert.equal(result.status, "partial_50");
-});
-
-test("RolloutStateMachine allows partial_75 self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_75", {
-    currentStatus: "partial_75",
-    targetStatus: "partial_75",
-  });
-  assert.equal(result.status, "partial_75");
-});
-
-test("RolloutStateMachine allows pending_approval self-transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "pending_approval",
-    targetStatus: "pending_approval",
-  });
-  assert.equal(result.status, "pending_approval");
-});
-
-// =============================================================================
-// paused transitions
-// =============================================================================
-
-test("RolloutStateMachine paused status maps to suggest level (returns to pending_approval)", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  // paused -> pending_approval (via suggest level)
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "paused",
-    targetStatus: "pending_approval",
-  });
-  assert.equal(result.status, "pending_approval");
-});
-
-test("RolloutStateMachine allows draft to rejected transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "draft",
-    targetStatus: "rejected",
-  });
-  assert.equal(result.status, "rejected");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows draft to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "draft",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows draft to pending_approval transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "draft",
-    targetStatus: "pending_approval",
-  });
-  assert.equal(result.status, "pending_approval");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows draft to shadow transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "shadow", {
-    currentStatus: "draft",
-    targetStatus: "shadow",
-  });
-  assert.equal(result.status, "shadow");
-  assert.equal(result.level, "shadow");
-});
-
-test("RolloutStateMachine allows draft to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "draft",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows pending_approval to shadow transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "shadow", {
-    currentStatus: "pending_approval",
-    targetStatus: "shadow",
-  });
-  assert.equal(result.status, "shadow");
-  assert.equal(result.level, "shadow");
-});
-
-test("RolloutStateMachine allows shadow to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "shadow",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows canary_5 to partial_25 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_25", {
-    currentStatus: "canary_5",
-    targetStatus: "partial_25",
-  });
-  assert.equal(result.status, "partial_25");
-  assert.equal(result.level, "partial_25");
-});
-
-test("RolloutStateMachine allows canary_5 to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "canary_5",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows partial_25 to partial_50 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_50", {
-    currentStatus: "partial_25",
-    targetStatus: "partial_50",
-  });
-  assert.equal(result.status, "partial_50");
-  assert.equal(result.level, "partial_50");
-});
-
-test("RolloutStateMachine allows partial_25 to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "partial_25",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows partial_25 to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "partial_25",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows partial_50 to partial_75 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "partial_75", {
-    currentStatus: "partial_50",
-    targetStatus: "partial_75",
-  });
-  assert.equal(result.status, "partial_75");
-  assert.equal(result.level, "partial_75");
-});
-
-test("RolloutStateMachine allows partial_50 to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "partial_50",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows partial_75 to stable transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "stable", {
-    currentStatus: "partial_75",
-    targetStatus: "stable",
-  });
-  assert.equal(result.status, "stable");
-  assert.equal(result.level, "stable");
-});
-
-test("RolloutStateMachine allows partial_75 to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "partial_75",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows partial_75 to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "partial_75",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows stable to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "stable",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine allows stable to paused transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("shadow_running");
-
-  const result = stateMachine.transition(candidate, "suggest", {
-    currentStatus: "stable",
-    targetStatus: "paused",
-  });
-  assert.equal(result.status, "paused");
-  assert.equal(result.level, "suggest");
-});
-
-test("RolloutStateMachine allows paused to canary_5 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "canary_5", {
-    currentStatus: "paused",
-    targetStatus: "canary_5",
-  });
-  assert.equal(result.status, "canary_5");
-  assert.equal(result.level, "canary_5");
-});
-
-test("RolloutStateMachine allows paused to partial_25 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "partial_25", {
-    currentStatus: "paused",
-    targetStatus: "partial_25",
-  });
-  assert.equal(result.status, "partial_25");
-  assert.equal(result.level, "partial_25");
-});
-
-test("RolloutStateMachine allows paused to partial_50 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "partial_50", {
-    currentStatus: "paused",
-    targetStatus: "partial_50",
-  });
-  assert.equal(result.status, "partial_50");
-  assert.equal(result.level, "partial_50");
-});
-
-test("RolloutStateMachine allows paused to partial_75 transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "partial_75", {
-    currentStatus: "paused",
-    targetStatus: "partial_75",
-  });
-  assert.equal(result.status, "partial_75");
-  assert.equal(result.level, "partial_75");
-});
-
-test("RolloutStateMachine allows paused to rolled_back transition", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  const result = stateMachine.transition(candidate, "off", {
-    currentStatus: "paused",
-    targetStatus: "rolled_back",
-  });
-  assert.equal(result.status, "rolled_back");
-  assert.equal(result.level, "off");
-});
-
-test("RolloutStateMachine transition throws for unknown currentStatus with missing allowed transitions", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("approved");
-
-  // Using an unknown status that has no allowed transitions defined
-  assert.throws(
-    () => stateMachine.transition(candidate, "canary_5", {
-      currentStatus: "unknown_status" as any,
-    }),
-    /Invalid rollout transition/,
-  );
-});
-
-// =============================================================================
-// inferCurrentStatus default branch coverage (proposed, evaluating)
-// =============================================================================
-
-test("RolloutStateMachine infers draft status for proposed candidate (default branch)", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("proposed");
-  candidate.sourceSignalRefs = ["sig_proposed"];
-
-  // proposed falls into default branch of inferCurrentStatus, returning "draft"
-  const result = stateMachine.transition(candidate, "suggest", {
-    targetStatus: "pending_approval",
-  });
-
-  assert.equal(result.status, "pending_approval");
-  assert.equal(result.level, "suggest");
-  assert.deepEqual(result.evidence, ["sig_proposed"]);
-});
-
-test("RolloutStateMachine infers draft status for evaluating candidate (default branch)", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("evaluating");
-  candidate.sourceSignalRefs = ["sig_evaluating_1", "sig_evaluating_2"];
-
-  // evaluating falls into default branch of inferCurrentStatus, returning "draft"
-  const result = stateMachine.transition(candidate, "shadow", {
-    targetStatus: "shadow",
-  });
-
-  assert.equal(result.status, "shadow");
-  assert.equal(result.level, "shadow");
-  assert.deepEqual(result.evidence, ["sig_evaluating_1", "sig_evaluating_2"]);
-});
-
-test("RolloutStateMachine allows draft transition to canary_5 (via shadow)", () => {
-  const stateMachine = new RolloutStateMachine();
-  const candidate = createCandidate("proposed");
-
-  // draft -> shadow is allowed, targeting canary_5 level
-  const result = stateMachine.transition(candidate, "canary_5", {
-    currentStatus: "draft",
-    targetStatus: "shadow",
-  });
-
-  assert.equal(result.status, "shadow");
-  assert.equal(result.level, "canary_5");
 });

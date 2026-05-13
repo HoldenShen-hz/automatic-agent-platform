@@ -293,11 +293,16 @@ export class SecretManagementService {
         });
       }
 
-      // Enforce scope-based authorization only when an explicit caller scope is provided.
-      // Legacy callers rely on registry enrollment and provider ownership checks.
-      if (authContext != null) {
-        this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
+      if (authContext == null) {
+        throw new PolicyDeniedError(
+          `secret.authorization_required:${registry.secretRef}`,
+          `secret.authorization_required:${registry.secretRef}`,
+          {
+            details: { secretRef: registry.secretRef },
+          },
+        );
       }
+      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
       // Resolve specific version or fall back to current version
       const versionToResolve = input.version ?? registry.currentVersion;
@@ -382,11 +387,16 @@ export class SecretManagementService {
       });
     }
 
-    // Enforce scope-based authorization only when an explicit caller scope is provided.
-    // Legacy callers rely on registry enrollment and provider ownership checks.
-    if (authContext != null) {
-      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
+    if (authContext == null) {
+      throw new PolicyDeniedError(
+        `secret.authorization_required:${registry.secretRef}`,
+        `secret.authorization_required:${registry.secretRef}`,
+        {
+          details: { secretRef: registry.secretRef },
+        },
+      );
     }
+    this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
     const provider = this.providers[registry.providerKind];
     if (provider == null) {

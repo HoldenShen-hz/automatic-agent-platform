@@ -196,9 +196,7 @@ export class RegionHealthCheckService {
       const latencyMs = Date.now() - startTime;
       const failures = (this.consecutiveFailures.get(regionId) ?? 0) + 1;
       this.consecutiveFailures.set(regionId, failures);
-      this.lastCheckTime.set(regionId, nowIso());
-
-      return {
+      const healthResult: RegionHealthCheckResult = {
         regionId,
         status: "unhealthy",
         checkedAt: nowIso(),
@@ -206,6 +204,9 @@ export class RegionHealthCheckService {
         metrics: [],
         errorMessage: error instanceof Error ? error.message : "Health check failed",
       };
+      this.healthResults.set(regionId, healthResult);
+      this.lastCheckTime.set(regionId, healthResult.checkedAt);
+      return healthResult;
     }
   }
 
@@ -284,14 +285,7 @@ export class RegionHealthCheckService {
    * Check all registered regions
    */
   public async checkAllRegions(): Promise<readonly RegionHealthCheckResult[]> {
-    const results: RegionHealthCheckResult[] = [];
-
-    for (const regionId of this.configs.keys()) {
-      const result = await this.checkRegion(regionId);
-      results.push(result);
-    }
-
-    return results;
+    return Promise.all([...this.configs.keys()].map((regionId) => this.checkRegion(regionId)));
   }
 
   /**
@@ -408,7 +402,7 @@ export class RegionHealthCheckService {
     try {
       // Use HTTP HEAD request to measure latency with minimal payload
       const url = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
-      const response = await fetch(`${url}/health`, {
+      await fetch(`${url}/health`, {
         method: "HEAD",
         signal: controller.signal,
         headers: {
@@ -418,10 +412,9 @@ export class RegionHealthCheckService {
       clearTimeout(timeout);
       // If response is received, calculate actual RTT
       return Date.now() - startTime;
-    } catch {
+    } catch (error) {
       clearTimeout(timeout);
-      // On error, return a high latency value to indicate unhealthy connection
-      return timeoutMs + 1;
+      throw error;
     }
   }
 

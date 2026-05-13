@@ -15,7 +15,7 @@ function manifest(lifecycleState: "registered" | "configured" | "verified" | "en
   };
 }
 
-test("ConnectorFrameworkService enforces verification and health on production execution", () => {
+test("ConnectorFrameworkService enforces verification and health on production execution", async () => {
   const service = new ConnectorFrameworkService();
   service.register(manifest("verified"));
   const binding = service.bind("crm_sync", "tenant_1", "prod", "2026-04-20T00:00:00.000Z");
@@ -27,7 +27,7 @@ test("ConnectorFrameworkService enforces verification and health on production e
     latencyMs: 100,
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "crm_sync",
     capability: "sync",
     payload: {},
@@ -41,7 +41,7 @@ test("ConnectorFrameworkService enforces verification and health on production e
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService forbids unverified prod events and failed health cannot return success", () => {
+test("ConnectorFrameworkService forbids unverified prod events and failed health cannot return success", async () => {
   const service = new ConnectorFrameworkService();
   service.register(manifest("configured"));
   assert.throws(() => {
@@ -59,7 +59,7 @@ test("ConnectorFrameworkService forbids unverified prod events and failed health
     latencyMs: 1000,
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "erp_sync",
     capability: "sync",
     payload: {},

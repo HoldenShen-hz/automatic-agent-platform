@@ -586,6 +586,8 @@ export interface SideEffectRecord {
   readonly idempotencyKey: string;
   readonly status: SideEffectStatus;
   readonly riskClass: RiskClass;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
   readonly approvalRef?: string;
   readonly preCommitPolicyProofRef: ArtifactRef;
   readonly externalRef?: string;
@@ -1423,6 +1425,8 @@ export function createSideEffectRecord(input: {
   preCommitPolicyProofRef: ArtifactRef;
   sideEffectId?: string;
   status?: SideEffectStatus;
+  leaseId?: string;
+  fencingToken?: string;
   approvalRef?: string;
   externalRef?: string;
   deadline: string;
@@ -1446,6 +1450,8 @@ export function createSideEffectRecord(input: {
     idempotencyKey: input.idempotencyKey,
     status: input.status ?? "proposed",
     riskClass: input.riskClass,
+    ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
+    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
     ...(input.approvalRef != null ? { approvalRef: input.approvalRef } : {}),
     preCommitPolicyProofRef: input.preCommitPolicyProofRef,
     ...(input.externalRef != null ? { externalRef: input.externalRef } : {}),

@@ -16,20 +16,48 @@ import { z } from "zod";
 // R31-38 FIX: Input validation schema for registerDomain
 const registerDomainSchema = z.object({
   domainId: z.string().min(1),
-  displayName: z.string().min(1),
+  displayName: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
   description: z.string().optional(),
   version: z.string().optional(),
   capabilities: z.array(z.string()).optional(),
-});
+}).refine((value) => (value.displayName ?? value.name)?.trim().length !== 0, {
+  message: "displayName or name is required",
+  path: ["displayName"],
+}).transform((value) => ({
+  domainId: value.domainId,
+  displayName: value.displayName ?? value.name!,
+  description: value.description,
+  version: value.version,
+  capabilities: value.capabilities,
+}));
+
+function encodePathPreservingSlashes(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
 
 export interface AdminSdkConfig extends ApiClientConfig {
   /** R31-39 FIX: Legacy role field retained for compatibility. */
   requiredRole?: string;
   principal?: {
     readonly principalId?: string;
+    readonly subject?: string;
     readonly tenantId?: string;
     readonly roles?: readonly string[];
     readonly permissions?: readonly string[];
+  };
+}
+
+function normalizeAdminSdkPrincipal(config: AdminSdkConfig): NonNullable<ApiClientConfig["principal"]> {
+  const roles = config.principal?.roles ?? (config.requiredRole ? [config.requiredRole] : ["admin"]);
+  const tenantId = config.principal?.tenantId ?? config.tenantId;
+  return {
+    subject: config.principal?.principalId ?? config.principal?.subject ?? "admin-sdk",
+    roles,
+    ...(tenantId != null ? { tenantId } : {}),
   };
 }
 
@@ -84,8 +112,17 @@ export class AdminSdk {
   private readonly config: AdminSdkConfig;
 
   public constructor(config: AdminSdkConfig) {
-    this.client = createApiClient(config);
-    this.config = config;
+    const normalizedConfig: AdminSdkConfig = {
+      ...config,
+      platformVersion: config.platformVersion ?? "v4.3",
+      sdkVersion: config.sdkVersion ?? "1.0.0",
+      principal: config.principal ?? normalizeAdminSdkPrincipal(config),
+    };
+    this.client = createApiClient({
+      ...normalizedConfig,
+      principal: normalizeAdminSdkPrincipal(normalizedConfig),
+    });
+    this.config = normalizedConfig;
   }
 
   public listDomains<T>() {
@@ -112,14 +149,95 @@ export class AdminSdk {
     return this.client.publishPack<T>(packId, body);
   }
 
-  public pauseHarnessRun<T>(runId: string, reason?: string) {
-    assertAdminAccess(this.config, "pauseHarnessRun", ["admin:harness_runs:control"]);
-    return this.client.pauseHarnessRun<T>(runId, reason);
+  public activateDomain<T>(domainId: string, reason?: string) {
+    assertAdminAccess(this.config, "activateDomain", ["admin:domains:write"]);
+    return this.client.post<T>(`/domains/${encodeURIComponent(domainId)}/activate`, reason ? { reason } : {});
   }
 
-  public abortHarnessRun<T>(runId: string, reason?: string) {
+  public deactivateDomain<T>(domainId: string, reason?: string) {
+    assertAdminAccess(this.config, "deactivateDomain", ["admin:domains:write"]);
+    return this.client.post<T>(`/domains/${encodeURIComponent(domainId)}/deactivate`, reason ? { reason } : {});
+  }
+
+  public suspendDomain<T>(domainId: string, reason?: string) {
+    assertAdminAccess(this.config, "suspendDomain", ["admin:domains:write"]);
+    return this.client.post<T>(`/domains/${encodeURIComponent(domainId)}/suspend`, reason ? { reason } : {});
+  }
+
+  public resumeDomain<T>(domainId: string) {
+    assertAdminAccess(this.config, "resumeDomain", ["admin:domains:write"]);
+    return this.client.post<T>(`/domains/${encodeURIComponent(domainId)}/resume`, {});
+  }
+
+  public getDomainStatus<T>(domainId: string) {
+    assertAdminAccess(this.config, "getDomainStatus", ["admin:domains:read"]);
+    return this.client.get<T>(`/domains/${encodeURIComponent(domainId)}/status`);
+  }
+
+  public pauseHarnessRun<T>(runId: string, reason?: string): Promise<{ data: T; status: number; headers: Record<string, string> }>;
+  public pauseHarnessRun(input: {
+    harnessRunId: string;
+    reason: string;
+    issuedBy: OperationalDirective["issuedBy"];
+  }): OperationalDirective;
+  public pauseHarnessRun<T>(
+    inputOrRunId:
+      | string
+      | {
+          harnessRunId: string;
+          reason: string;
+          issuedBy: OperationalDirective["issuedBy"];
+        },
+    reason?: string,
+  ) {
+    assertAdminAccess(this.config, "pauseHarnessRun", ["admin:harness_runs:control"]);
+    if (typeof inputOrRunId === "string") {
+      return this.client.pauseHarnessRun<T>(inputOrRunId, reason);
+    }
+    return createOperationalDirective({
+      type: "pause",
+      scope: { harnessRunId: inputOrRunId.harnessRunId },
+      issuedBy: inputOrRunId.issuedBy,
+      reason: inputOrRunId.reason,
+    });
+  }
+
+  public abortHarnessRun<T>(runId: string, reason?: string): Promise<{ data: T; status: number; headers: Record<string, string> }>;
+  public abortHarnessRun(input: {
+    harnessRunId: string;
+    reason: string;
+    issuedBy: OperationalDirective["issuedBy"];
+  }): OperationalDirective;
+  public abortHarnessRun<T>(
+    inputOrRunId:
+      | string
+      | {
+          harnessRunId: string;
+          reason: string;
+          issuedBy: OperationalDirective["issuedBy"];
+        },
+    reason?: string,
+  ) {
     assertAdminAccess(this.config, "abortHarnessRun", ["admin:harness_runs:control"]);
-    return this.client.abortHarnessRun<T>(runId, reason);
+    if (typeof inputOrRunId === "string") {
+      return this.client.abortHarnessRun<T>(inputOrRunId, reason);
+    }
+    return createOperationalDirective({
+      type: "kill",
+      scope: { harnessRunId: inputOrRunId.harnessRunId },
+      issuedBy: inputOrRunId.issuedBy,
+      reason: inputOrRunId.reason,
+    });
+  }
+
+  public resumeHarnessRun(runId: string, issuedBy: OperationalDirective["issuedBy"]) {
+    assertAdminAccess(this.config, "resumeHarnessRun", ["admin:harness_runs:control"]);
+    return createOperationalDirective({
+      type: "resume",
+      scope: { harnessRunId: runId },
+      issuedBy,
+      reason: "Resume harness run",
+    });
   }
 
   public triggerPanic<T>(body: unknown) {
@@ -202,6 +320,14 @@ export class AdminSdk {
     return this.client.post<T>(`/tenants/${encodeURIComponent(tenantId)}/suspend`, { reason });
   }
 
+  /**
+   * Resume a suspended tenant.
+   */
+  public resumeTenant<T>(tenantId: string) {
+    assertAdminAccess(this.config, "resumeTenant", ["admin:tenants:activate"]);
+    return this.client.post<T>(`/tenants/${encodeURIComponent(tenantId)}/resume`, {});
+  }
+
   // =============================================================================
   // Configuration Management Operations
   // =============================================================================
@@ -209,9 +335,9 @@ export class AdminSdk {
   /**
    * Get configuration value(s) by key pattern.
    */
-  public getConfig<T>(configKey: string, tenantId?: string) {
+  public getConfig<T>(configKey?: string, tenantId?: string) {
     assertAdminAccess(this.config, "getConfig", ["admin:config:read"]);
-    const path = `/config/${encodeURIComponent(configKey)}`;
+    const path = configKey == null ? "/config" : `/config/${encodePathPreservingSlashes(configKey)}`;
     return this.client.get<T>(tenantId ? `${path}?tenantId=${encodeURIComponent(tenantId)}` : path);
   }
 
@@ -228,7 +354,7 @@ export class AdminSdk {
    */
   public setConfig<T>(configKey: string, body: unknown) {
     assertAdminAccess(this.config, "setConfig", ["admin:config:write"]);
-    return this.client.put<T>(`/config/${encodeURIComponent(configKey)}`, body);
+    return this.client.put<T>(`/config/${encodePathPreservingSlashes(configKey)}`, body);
   }
 
   /**
@@ -236,7 +362,7 @@ export class AdminSdk {
    */
   public updateConfig<T>(configKey: string, body: unknown) {
     assertAdminAccess(this.config, "updateConfig", ["admin:config:write"]);
-    return this.client.patch<T>(`/config/${encodeURIComponent(configKey)}`, body);
+    return this.client.patch<T>(`/config/${encodePathPreservingSlashes(configKey)}`, body);
   }
 
   /**
@@ -244,7 +370,47 @@ export class AdminSdk {
    */
   public deleteConfig<T>(configKey: string) {
     assertAdminAccess(this.config, "deleteConfig", ["admin:config:delete"]);
-    return this.client.delete<T>(`/config/${encodeURIComponent(configKey)}`);
+    return this.client.delete<T>(`/config/${encodePathPreservingSlashes(configKey)}`);
+  }
+
+  public listPolicies<T>(query?: { cursor?: string; limit?: number; tenantId?: string; effect?: string }) {
+    assertAdminAccess(this.config, "listPolicies", ["admin:policy:read"]);
+    return this.client.getPaginated<T>("/policies", query);
+  }
+
+  public getPolicy<T>(policyId: string) {
+    assertAdminAccess(this.config, "getPolicy", ["admin:policy:read"]);
+    return this.client.get<T>(`/policies/${encodeURIComponent(policyId)}`);
+  }
+
+  public createPolicy<T>(body: unknown) {
+    assertAdminAccess(this.config, "createPolicy", ["admin:policy:write"]);
+    return this.client.post<T>("/policies", body);
+  }
+
+  public updatePolicy<T>(policyId: string, body: unknown) {
+    assertAdminAccess(this.config, "updatePolicy", ["admin:policy:write"]);
+    return this.client.patch<T>(`/policies/${encodeURIComponent(policyId)}`, body);
+  }
+
+  public deletePolicy<T>(policyId: string) {
+    assertAdminAccess(this.config, "deletePolicy", ["admin:policy:write"]);
+    return this.client.delete<T>(`/policies/${encodeURIComponent(policyId)}`);
+  }
+
+  public attachPolicy<T>(targetType: string, targetId: string, policyId: string) {
+    assertAdminAccess(this.config, "attachPolicy", ["admin:policy:write"]);
+    return this.client.post<T>(`/policies/${encodeURIComponent(policyId)}/attachments`, { targetType, targetId });
+  }
+
+  public detachPolicy<T>(targetType: string, targetId: string, policyId: string) {
+    assertAdminAccess(this.config, "detachPolicy", ["admin:policy:write"]);
+    return this.client.post<T>(`/policies/${encodeURIComponent(policyId)}/attachments/detach`, { targetType, targetId });
+  }
+
+  public listPolicyAttachments<T>(policyId: string, query?: { cursor?: string; limit?: number }) {
+    assertAdminAccess(this.config, "listPolicyAttachments", ["admin:policy:read"]);
+    return this.client.getPaginated<T>(`/policies/${encodeURIComponent(policyId)}/attachments`, query);
   }
 
   /**
@@ -252,7 +418,7 @@ export class AdminSdk {
    */
   public listConfigRevisions<T>(configKey: string, query?: { cursor?: string; limit?: number }) {
     assertAdminAccess(this.config, "listConfigRevisions", ["admin:config:read"]);
-    return this.client.getPaginated<T>(`/config/${encodeURIComponent(configKey)}/revisions`, query);
+    return this.client.getPaginated<T>(`/config/${encodePathPreservingSlashes(configKey)}/revisions`, query);
   }
 
   /**
@@ -260,7 +426,7 @@ export class AdminSdk {
    */
   public rollbackConfig<T>(configKey: string, revisionId: string) {
     assertAdminAccess(this.config, "rollbackConfig", ["admin:config:write"]);
-    return this.client.post<T>(`/config/${encodeURIComponent(configKey)}/rollback`, { revisionId });
+    return this.client.post<T>(`/config/${encodePathPreservingSlashes(configKey)}/rollback`, { revisionId });
   }
 
   // =============================================================================
@@ -314,6 +480,136 @@ export class AdminSdk {
   public archiveAuditLogs<T>(body: unknown) {
     assertAdminAccess(this.config, "archiveAuditLogs", ["admin:audit:archive"]);
     return this.client.post<T>("/audit/archive", body);
+  }
+
+  public listAuditLogs<T>(
+    tenantId: string,
+    query?: {
+      limit?: number;
+      cursor?: string;
+      principalId?: string;
+      action?: string;
+      fromTimestamp?: string;
+      toTimestamp?: string;
+    },
+  ) {
+    assertAdminAccess(this.config, "listAuditLogs", ["admin:audit:read"]);
+    return this.client.get<T[]>("/audit/logs", {
+      tenantId,
+      limit: query?.limit,
+      cursor: query?.cursor,
+      principalId: query?.principalId,
+      action: query?.action,
+      fromTimestamp: query?.fromTimestamp,
+      toTimestamp: query?.toTimestamp,
+    });
+  }
+
+  public getAuditEntry<T>(auditId: string) {
+    assertAdminAccess(this.config, "getAuditEntry", ["admin:audit:read"]);
+    return this.client.get<T>(`/audit/logs/${encodeURIComponent(auditId)}`);
+  }
+
+  public async bulkCreateTenants<T>(tenants: readonly unknown[]) {
+    assertAdminAccess(this.config, "bulkCreateTenants", ["admin:tenants:create"]);
+    const response = await this.client.post<{ successes: T[]; failures: unknown[] }>("/tenants/bulk", { tenants });
+    return response.data;
+  }
+
+  public async bulkUpdateTenants<T>(updates: readonly unknown[]) {
+    assertAdminAccess(this.config, "bulkUpdateTenants", ["admin:tenants:update"]);
+    const response = await this.client.patch<{ successes: T[]; failures: unknown[] }>("/tenants/bulk", { updates });
+    return response.data;
+  }
+
+  public async bulkDeleteTenants<T>(tenantIds: readonly string[]) {
+    assertAdminAccess(this.config, "bulkDeleteTenants", ["admin:tenants:delete"]);
+    const response = await this.client.post<{ successes: T[]; failures: unknown[] }>("/tenants/bulk-delete", {
+      tenantIds,
+    });
+    return response.data;
+  }
+
+  public async bulkCreatePolicies<T>(policies: readonly unknown[]) {
+    assertAdminAccess(this.config, "bulkCreatePolicies", ["admin:policy:write"]);
+    const response = await this.client.post<{ successes: T[]; failures: unknown[] }>("/policies/bulk", { policies });
+    return response.data;
+  }
+
+  public async bulkAttachPolicies<T>(
+    attachments: readonly { targetType: string; targetId: string; policyId: string }[],
+  ) {
+    assertAdminAccess(this.config, "bulkAttachPolicies", ["admin:policy:write"]);
+    const response = await this.client.post<{ successes: T[]; failures: unknown[] }>(
+      "/policies/attachments/bulk",
+      { attachments },
+    );
+    return response.data;
+  }
+
+  public async bulkDomainLifecycle<T>(
+    operations: readonly { domainId: string; action: string; reason?: string }[],
+  ) {
+    assertAdminAccess(this.config, "bulkDomainLifecycle", ["admin:domains:write"]);
+    const response = await this.client.post<{ successes: T[]; failures: unknown[] }>("/domains/lifecycle/bulk", {
+      operations,
+    });
+    return response.data;
+  }
+
+  public listWorkers<T = unknown>(tenantId?: string) {
+    assertAdminAccess(this.config, "listWorkers", ["admin:workers:read"]);
+    return this.client.get<T[]>("/workers", tenantId == null ? undefined : { tenantId });
+  }
+
+  public listRollouts<T>(query?: { cursor?: string; limit?: number; status?: string }) {
+    assertAdminAccess(this.config, "listRollouts", ["admin:rollouts:read"]);
+    return this.client.getPaginated<T>("/rollouts", query);
+  }
+
+  public getRollout<T>(rolloutId: string) {
+    assertAdminAccess(this.config, "getRollout", ["admin:rollouts:read"]);
+    return this.client.get<T>(`/rollouts/${encodeURIComponent(rolloutId)}`);
+  }
+
+  public createRollout<T>(body: unknown) {
+    assertAdminAccess(this.config, "createRollout", ["admin:rollouts:write"]);
+    return this.client.post<T>("/rollouts", body);
+  }
+
+  public updateRollout<T>(rolloutId: string, body: unknown) {
+    assertAdminAccess(this.config, "updateRollout", ["admin:rollouts:write"]);
+    return this.client.patch<T>(`/rollouts/${encodeURIComponent(rolloutId)}`, body);
+  }
+
+  public pauseRollout<T>(rolloutId: string, reason?: string) {
+    assertAdminAccess(this.config, "pauseRollout", ["admin:rollouts:write"]);
+    return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/pause`, reason ? { reason } : {});
+  }
+
+  public resumeRollout<T>(rolloutId: string) {
+    assertAdminAccess(this.config, "resumeRollout", ["admin:rollouts:write"]);
+    return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/resume`, {});
+  }
+
+  public cancelRollout<T>(rolloutId: string, reason?: string) {
+    assertAdminAccess(this.config, "cancelRollout", ["admin:rollouts:write"]);
+    return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/cancel`, reason ? { reason } : {});
+  }
+
+  public getRolloutStatus<T>(rolloutId: string) {
+    assertAdminAccess(this.config, "getRolloutStatus", ["admin:rollouts:read"]);
+    return this.client.get<T>(`/rollouts/${encodeURIComponent(rolloutId)}/status`);
+  }
+
+  public rollbackRollout<T>(rolloutId: string) {
+    assertAdminAccess(this.config, "rollbackRollout", ["admin:rollouts:write"]);
+    return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/rollback`, {});
+  }
+
+  public advanceRolloutPercentage<T>(rolloutId: string, percentage: number) {
+    assertAdminAccess(this.config, "advanceRolloutPercentage", ["admin:rollouts:write"]);
+    return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/advance`, { percentage });
   }
 
   // R8-23 FIX: OperationalDirective methods for runtime control

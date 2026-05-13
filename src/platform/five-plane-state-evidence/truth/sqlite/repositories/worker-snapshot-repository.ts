@@ -98,7 +98,7 @@ export class WorkerSnapshotRepository {
   }
 
   public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): void {
-    const expectedVersion = snapshot.version;
+    const expectedVersion = typeof snapshot.version === "number" ? snapshot.version : 0;
     const insertedVersion = expectedVersion > 0 ? expectedVersion : 1;
     const changes = execute(
       this.conn,
@@ -147,7 +147,7 @@ export class WorkerSnapshotRepository {
         last_heartbeat_at = excluded.last_heartbeat_at,
         updated_at = excluded.updated_at,
         version = worker_snapshots.version + 1
-      WHERE worker_snapshots.version = ?`,
+      WHERE ? = 0 OR worker_snapshots.version = ?`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -183,6 +183,7 @@ export class WorkerSnapshotRepository {
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
       insertedVersion,
+      expectedVersion,
       expectedVersion,
     );
     if (changes === 0) {

@@ -93,7 +93,7 @@ test("SlaExpiryChecker.checkExpiry issues critical warning at 1 day", () => {
 
   assert.equal(result.shouldWarn, true);
   assert.equal(result.record.warningLevel, "critical");
-  assert.ok(result.warningMessage?.includes("1 days"));
+  assert.ok(result.warningMessage?.includes("1 day"));
 });
 
 test("SlaExpiryChecker.checkExpiry uses highest severity when multiple thresholds match", () => {

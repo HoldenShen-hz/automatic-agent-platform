@@ -429,7 +429,7 @@ interface BuildContainerizedPluginRuntimeLaunchSpecOptions {
 }
 
 function sanitizePluginIdForPath(pluginId: string): string {
-  return pluginId.replace(/[^a-z0-9._-]+/gi, "-").replace(/-+/g, "-");
+  return pluginId.replace(/[^a-z0-9._-]/gi, "_");
 }
 
 function validatePluginId(pluginId: string): void {
@@ -446,6 +446,21 @@ function validatePluginId(pluginId: string): void {
     );
   }
   if (pluginId.includes("..")) {
+    throw new ValidationError(
+      "plugin_spi.invalid_plugin_id",
+      "plugin_spi.invalid_plugin_id",
+      {
+        retryable: false,
+        details: {
+          pluginId,
+        },
+      },
+    );
+  }
+}
+
+function validateContainerLaunchPluginId(pluginId: string): void {
+  if (pluginId.includes("\0") || /['"`]/.test(pluginId)) {
     throw new ValidationError(
       "plugin_spi.invalid_plugin_id",
       "plugin_spi.invalid_plugin_id",
@@ -661,7 +676,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
     );
   }
 
-  validatePluginId(options.pluginId);
+  validateContainerLaunchPluginId(options.pluginId);
   const rendered = template.map((value) => renderContainerizedToken(value, options));
   if (rendered.length === 0 || rendered[0]!.trim().length === 0) {
     throw new ValidationError(
@@ -687,7 +702,7 @@ function renderContainerizedToken(
   options: BuildContainerizedPluginRuntimeLaunchSpecOptions,
 ): string {
   const substitutions: Record<string, string> = {
-    "{pluginId}": options.pluginId,
+    "{pluginId}": sanitizePluginIdForPath(options.pluginId),
     "{workspaceRoot}": options.workspaceRoot,
     "{sandboxRoot}": options.sandboxRoot ?? options.workspaceRoot,
     "{runtimeImage}": options.runtimeImage ?? "",

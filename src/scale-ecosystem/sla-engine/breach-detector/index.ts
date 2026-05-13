@@ -38,6 +38,21 @@ export interface SlaBreachAnalysis {
   readonly budget: SlaBudgetAnalysis;
 }
 
+export interface SloBurnRateObservation {
+  readonly errorCount: number;
+  readonly requestCount: number;
+  readonly timestampMs: number;
+}
+
+export interface SloBurnRateState {
+  readonly windowStartMs: number;
+  readonly totalRequests: number;
+  readonly errorCount: number;
+  readonly currentBurnRate: number;
+  readonly errorBudgetRemaining: number;
+  readonly errorBudgetConsumed: number;
+}
+
 export function analyzeSlaBreach(observation: SlaObservation, commitment: SlaCommitment): SlaBreachAnalysis {
   const breaches: string[] = [];
   if (observation.latencyMs > commitment.maxLatencyMs) breaches.push("sla.latency_breach");
@@ -96,4 +111,31 @@ export function analyzeSlaBreach(observation: SlaObservation, commitment: SlaCom
 
 export function detectSlaBreach(observation: SlaObservation, commitment: SlaCommitment): string[] {
   return analyzeSlaBreach(observation, commitment).breaches;
+}
+
+export function calculateBurnRate(
+  observations: readonly SloBurnRateObservation[],
+  windowMs: number,
+  targetErrorRate: number,
+  nowMs: number = Date.now(),
+): SloBurnRateState {
+  const windowStartMs = nowMs - windowMs;
+  const inWindow = observations.filter((observation) => observation.timestampMs >= windowStartMs && observation.timestampMs <= nowMs);
+  const totalRequests = inWindow.reduce((sum, observation) => sum + Math.max(0, observation.requestCount), 0);
+  const errorCount = inWindow.reduce((sum, observation) => sum + Math.max(0, observation.errorCount), 0);
+  const currentErrorRate = totalRequests > 0 ? errorCount / totalRequests : 0;
+  const currentBurnRate = targetErrorRate > 0 ? currentErrorRate / targetErrorRate : 0;
+  const allowedErrors = totalRequests * Math.max(0, targetErrorRate);
+  const rawConsumed = allowedErrors > 0 ? (errorCount / allowedErrors) * 100 : 0;
+  const errorBudgetConsumed = Math.min(100, Math.max(0, rawConsumed));
+  const errorBudgetRemaining = Math.max(0, 100 - errorBudgetConsumed);
+
+  return {
+    windowStartMs,
+    totalRequests,
+    errorCount,
+    currentBurnRate,
+    errorBudgetRemaining,
+    errorBudgetConsumed,
+  };
 }

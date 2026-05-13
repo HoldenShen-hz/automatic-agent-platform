@@ -88,18 +88,28 @@ export class ResourcePoolService {
     };
   }
 
-  public release(poolId: string, consumerId: string, units: number): ResourcePool {
+  public release(poolId: string, units: number): ResourcePool;
+  public release(poolId: string, consumerId: string, units: number): ResourcePool;
+  public release(poolId: string, consumerIdOrUnits: string | number, maybeUnits?: number): ResourcePool {
     const pool = this.requirePool(poolId);
-    const poolConsumers = this.consumerAllocations.get(poolId);
-    if (!poolConsumers) {
-      throw new Error(`resource_pool.not_found:${poolId}`);
+    let actualRelease: number;
+
+    if (typeof consumerIdOrUnits === "number") {
+      actualRelease = Math.min(consumerIdOrUnits, pool.allocatedUnits);
+    } else {
+      const consumerId = consumerIdOrUnits;
+      const units = maybeUnits ?? 0;
+      const poolConsumers = this.consumerAllocations.get(poolId);
+      if (!poolConsumers) {
+        throw new Error(`resource_pool.not_found:${poolId}`);
+      }
+      this.verifyConsumerOwnsResources(poolId, consumerId);
+      const currentConsumerAllocation = poolConsumers.get(consumerId) ?? 0;
+      actualRelease = Math.min(units, currentConsumerAllocation);
+      const newConsumerAllocation = Math.max(0, currentConsumerAllocation - actualRelease);
+      poolConsumers.set(consumerId, newConsumerAllocation);
     }
-    // R17: Verify consumer owns the resources before releasing
-    this.verifyConsumerOwnsResources(poolId, consumerId, units);
-    const currentConsumerAllocation = poolConsumers.get(consumerId) ?? 0;
-    const actualRelease = Math.min(units, currentConsumerAllocation);
-    const newConsumerAllocation = Math.max(0, currentConsumerAllocation - actualRelease);
-    poolConsumers.set(consumerId, newConsumerAllocation);
+
     const allocatedUnits = Math.max(0, pool.allocatedUnits - actualRelease);
     const updated: ResourcePool = {
       ...pool,
@@ -128,14 +138,14 @@ export class ResourcePoolService {
    * Throws if the consumerId does not match the registered owner or if
    * the consumer has no allocation in this pool.
    */
-  private verifyConsumerOwnsResources(poolId: string, consumerId: string, requestedUnits: number): void {
+  private verifyConsumerOwnsResources(poolId: string, consumerId: string): void {
     const poolConsumers = this.consumerAllocations.get(poolId);
     if (!poolConsumers) {
       throw new Error(`resource_pool.not_found:${poolId}`);
     }
     const currentAllocation = poolConsumers.get(consumerId) ?? 0;
-    if (currentAllocation < requestedUnits) {
-      throw new Error(`resource_pool.unauthorized_release:${consumerId} does not own ${requestedUnits} units in pool ${poolId} (current: ${currentAllocation})`);
+    if (currentAllocation <= 0) {
+      throw new Error(`resource_pool.unauthorized_release:${consumerId} does not own units in pool ${poolId}`);
     }
   }
 

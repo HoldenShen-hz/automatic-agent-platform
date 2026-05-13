@@ -144,7 +144,7 @@ test("AdminSdk.bulkCreateTenants sends array of tenants", async () => {
       { tenantId: "tenant_2", name: "Tenant Two", status: "active" },
     ]);
 
-    assert.deepEqual(capturedBody.tenants.length, 2);
+    assert.deepEqual((capturedBody.payload as { tenants: unknown[] }).tenants.length, 2);
     assert.equal(result.successes.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
@@ -175,7 +175,7 @@ test("AdminSdk.bulkUpdateTenants sends array of updates", async () => {
       { tenantId: "tenant_1", patch: { name: "Updated Name" } },
     ]);
 
-    assert.deepEqual(capturedBody.updates.length, 1);
+    assert.deepEqual((capturedBody.payload as { updates: unknown[] }).updates.length, 1);
     assert.equal(result.successes.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -185,10 +185,10 @@ test("AdminSdk.bulkUpdateTenants sends array of updates", async () => {
 test("AdminSdk.bulkDeleteTenants sends tenant IDs", async () => {
   const sdk = createTestSdk();
 
-  let capturedUrl = "";
+  let capturedBody: Record<string, unknown> = {};
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => {
-    capturedUrl = url as string;
+  globalThis.fetch = async (_url, options) => {
+    capturedBody = JSON.parse(options?.body as string);
     return new Response(
       JSON.stringify({
         successes: [{ tenantId: "tenant_1" }],
@@ -207,8 +207,7 @@ test("AdminSdk.bulkDeleteTenants sends tenant IDs", async () => {
       "tenant_2",
     ]);
 
-    assert.ok(capturedUrl.includes("tenant_1"));
-    assert.ok(capturedUrl.includes("tenant_2"));
+    assert.deepEqual((capturedBody.payload as { tenantIds: string[] }).tenantIds, ["tenant_1", "tenant_2"]);
     assert.equal(result.successes.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -246,7 +245,7 @@ test("AdminSdk.bulkCreatePolicies sends array of policies", async () => {
       },
     ]);
 
-    assert.deepEqual(capturedBody.policies.length, 1);
+    assert.deepEqual((capturedBody.payload as { policies: unknown[] }).policies.length, 1);
     assert.equal(result.successes.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -278,7 +277,7 @@ test("AdminSdk.bulkAttachPolicies sends array of attachments", async () => {
       { targetType: "domain", targetId: "domain_1", policyId: "policy_2" },
     ]);
 
-    assert.deepEqual(capturedBody.attachments.length, 2);
+    assert.deepEqual((capturedBody.payload as { attachments: unknown[] }).attachments.length, 2);
     assert.equal(result.successes.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -310,7 +309,7 @@ test("AdminSdk.bulkDomainLifecycle sends array of operations", async () => {
       { domainId: "domain_2", action: "suspend", reason: "Maintenance" },
     ]);
 
-    assert.deepEqual(capturedBody.operations.length, 2);
+    assert.deepEqual((capturedBody.payload as { operations: unknown[] }).operations.length, 2);
     assert.equal(result.successes.length, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -681,11 +680,12 @@ test("AdminSdk.createTenant includes all input fields", async () => {
       metadata: { region: "us-east-1" },
     });
 
-    assert.equal(capturedBody.tenantId, "new_tenant");
-    assert.equal(capturedBody.name, "New Tenant Name");
-    assert.equal(capturedBody.displayName, "New Tenant Display");
-    assert.equal(capturedBody.status, "active");
-    assert.deepEqual(capturedBody.metadata, { region: "us-east-1" });
+    const payload = capturedBody.payload as Record<string, unknown>;
+    assert.equal(payload.tenantId, "new_tenant");
+    assert.equal(payload.name, "New Tenant Name");
+    assert.equal(payload.displayName, "New Tenant Display");
+    assert.equal(payload.status, "active");
+    assert.deepEqual(payload.metadata, { region: "us-east-1" });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -710,8 +710,9 @@ test("AdminSdk.updateTenant sends partial update", async () => {
       status: "suspended",
     });
 
-    assert.equal(capturedBody.name, "Updated Name");
-    assert.equal(capturedBody.status, "suspended");
+    const payload = capturedBody.payload as Record<string, unknown>;
+    assert.equal(payload.name, "Updated Name");
+    assert.equal(payload.status, "suspended");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -732,7 +733,7 @@ test("AdminSdk.suspendTenant includes reason in body", async () => {
 
   try {
     await sdk.suspendTenant<{ tenantId: string; status: string }>("tenant_1", "Policy violation #123");
-    assert.equal(capturedBody.reason, "Policy violation #123");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "Policy violation #123");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -753,7 +754,7 @@ test("AdminSdk.resumeTenant sends empty body", async () => {
 
   try {
     await sdk.resumeTenant<{ tenantId: string; status: string }>("tenant_1");
-    assert.deepEqual(capturedBody, {});
+    assert.deepEqual((capturedBody.payload as Record<string, unknown>), {});
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -784,13 +785,14 @@ test("AdminSdk.createPolicy includes all policy fields", async () => {
       priority: 10,
     });
 
-    assert.equal(capturedBody.policyId, "new_policy");
-    assert.equal(capturedBody.description, "A test policy");
-    assert.equal(capturedBody.effect, "allow");
-    assert.deepEqual(capturedBody.actions, ["read", "write", "delete"]);
-    assert.deepEqual(capturedBody.resources, ["resource:task", "resource:execution"]);
-    assert.deepEqual(capturedBody.conditions, { ipRange: ["10.0.0.0/8"] });
-    assert.equal(capturedBody.priority, 10);
+    const payload = capturedBody.payload as Record<string, unknown>;
+    assert.equal(payload.policyId, "new_policy");
+    assert.equal(payload.description, "A test policy");
+    assert.equal(payload.effect, "allow");
+    assert.deepEqual(payload.actions, ["read", "write", "delete"]);
+    assert.deepEqual(payload.resources, ["resource:task", "resource:execution"]);
+    assert.deepEqual(payload.conditions, { ipRange: ["10.0.0.0/8"] });
+    assert.equal(payload.priority, 10);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -815,8 +817,9 @@ test("AdminSdk.updatePolicy sends partial update", async () => {
       description: "Updated description",
     });
 
-    assert.equal(capturedBody.priority, 5);
-    assert.equal(capturedBody.description, "Updated description");
+    const payload = capturedBody.payload as Record<string, unknown>;
+    assert.equal(payload.priority, 5);
+    assert.equal(payload.description, "Updated description");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -837,7 +840,7 @@ test("AdminSdk.activateDomain includes optional reason", async () => {
 
   try {
     await sdk.activateDomain<{ domainId: string; status: string }>("domain_1", "Enabling for production");
-    assert.equal(capturedBody.reason, "Enabling for production");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "Enabling for production");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -858,7 +861,7 @@ test("AdminSdk.deactivateDomain includes optional reason", async () => {
 
   try {
     await sdk.deactivateDomain<{ domainId: string; status: string }>("domain_1", "Maintenance window");
-    assert.equal(capturedBody.reason, "Maintenance window");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "Maintenance window");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -879,7 +882,7 @@ test("AdminSdk.suspendDomain includes reason", async () => {
 
   try {
     await sdk.suspendDomain<{ domainId: string; status: string }>("domain_1", "Policy violation");
-    assert.equal(capturedBody.reason, "Policy violation");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "Policy violation");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -900,7 +903,7 @@ test("AdminSdk.resumeDomain sends empty body", async () => {
 
   try {
     await sdk.resumeDomain<{ domainId: string; status: string }>("domain_1");
-    assert.deepEqual(capturedBody, {});
+    assert.deepEqual((capturedBody.payload as Record<string, unknown>), {});
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -921,7 +924,7 @@ test("AdminSdk.pauseRollout includes optional reason", async () => {
 
   try {
     await sdk.pauseRollout<{ rolloutId: string; status: string }>("rollout_1", "Manual pause for testing");
-    assert.equal(capturedBody.reason, "Manual pause for testing");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "Manual pause for testing");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -942,7 +945,7 @@ test("AdminSdk.cancelRollout includes optional reason", async () => {
 
   try {
     await sdk.cancelRollout<{ rolloutId: string; status: string }>("rollout_1", "No longer needed");
-    assert.equal(capturedBody.reason, "No longer needed");
+    assert.equal((capturedBody.payload as Record<string, unknown>).reason, "No longer needed");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -963,7 +966,7 @@ test("AdminSdk.advanceRolloutPercentage sends targetPercentage", async () => {
 
   try {
     await sdk.advanceRolloutPercentage<{ rolloutId: string; percentage: number }>("rollout_1", 50);
-    assert.equal(capturedBody.targetPercentage, 50);
+    assert.equal((capturedBody.payload as Record<string, unknown>).percentage, 50);
   } finally {
     globalThis.fetch = originalFetch;
   }

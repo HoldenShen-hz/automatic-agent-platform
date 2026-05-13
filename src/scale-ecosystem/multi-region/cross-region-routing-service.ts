@@ -68,6 +68,11 @@ function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities:
   return requiredCapabilities.every((capability) => capabilities.has(capability));
 }
 
+function isSelectableRegion(region: RegionDescriptor): boolean {
+  const status = (region as RegionDescriptor & { status?: string }).status;
+  return status !== "disabled" && status !== "draining";
+}
+
 export class CrossRegionRoutingService {
   private readonly readReplicaService: ReadReplicaService | null;
 
@@ -122,6 +127,7 @@ export class CrossRegionRoutingService {
       .filter((region) =>
         blockedRegionIds.has(region.regionId)
         || region.regionId === unhealthyPrimaryRegionId
+        || !isSelectableRegion(region)
         || !region.residencyAllowed
         || !allowedJurisdictions.has(region.jurisdiction)
         || !includesAllCapabilities(region, requiredCapabilities))

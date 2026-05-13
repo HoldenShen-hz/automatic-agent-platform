@@ -26,8 +26,8 @@ function createBaseRequest(overrides: Partial<RuntimeGovernanceRequest> = {}): R
       { itemId: "job_2", tenantId: "tenant_2", priority: 2, ageMs: 1_000 },
     ],
     preemptionCandidates: [
-      { executionId: "exec_1", priority: 1, progressPercent: 20 },
-      { executionId: "exec_2", priority: 3, progressPercent: 50 },
+      { executionId: "exec_1", priority: 1, progressPercent: 20, lastCheckpointTimestampMs: Date.now() - 1_000 },
+      { executionId: "exec_2", priority: 3, progressPercent: 50, lastCheckpointTimestampMs: Date.now() - 1_000 },
     ],
     tiers: [
       { tierId: "standard", displayName: "Standard", priority: 1, reservedCapacityPercent: 20 },
@@ -223,9 +223,9 @@ test("RuntimeGovernanceService selects preemption victim by lowest priority", ()
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     preemptionCandidates: [
-      { executionId: "exec_high", priority: 5, progressPercent: 90 },
-      { executionId: "exec_low", priority: 1, progressPercent: 30 },
-      { executionId: "exec_mid", priority: 3, progressPercent: 60 },
+      { executionId: "exec_high", priority: 5, progressPercent: 90, lastCheckpointTimestampMs: Date.now() - 1_000 },
+      { executionId: "exec_low", priority: 1, progressPercent: 30, lastCheckpointTimestampMs: Date.now() - 1_000 },
+      { executionId: "exec_mid", priority: 3, progressPercent: 60, lastCheckpointTimestampMs: Date.now() - 1_000 },
     ],
   });
 
@@ -422,8 +422,8 @@ test("RuntimeGovernanceService combines connector, region, quota, queue, and SLA
       { itemId: "job_2", tenantId: "tenant_2", priority: 2, ageMs: 1_000 },
     ],
     preemptionCandidates: [
-      { executionId: "exec_1", priority: 1, progressPercent: 20 },
-      { executionId: "exec_2", priority: 3, progressPercent: 50 },
+      { executionId: "exec_1", priority: 1, progressPercent: 20, lastCheckpointTimestampMs: Date.now() - 1_000 },
+      { executionId: "exec_2", priority: 3, progressPercent: 50, lastCheckpointTimestampMs: Date.now() - 1_000 },
     ],
     tiers: [
       { tierId: "standard", displayName: "Standard", priority: 1, reservedCapacityPercent: 20 },
@@ -442,7 +442,7 @@ test("RuntimeGovernanceService combines connector, region, quota, queue, and SLA
   assert.equal(decision.regionId, "cn-sh");
   assert.equal(decision.failoverRegionId, "us-west-2");
   assert.equal(decision.quotaAllowed, true);
-  assert.equal(decision.queueOrder[0], "job_2");
+  assert.equal(decision.queueOrder[0], "job_1");
   assert.equal(decision.preemptionVictimId, "exec_1");
   assert.equal(decision.highestTierId, "enterprise");
   assert.deepEqual(decision.reservedCapacity, { enterprise: 40, standard: 20 });

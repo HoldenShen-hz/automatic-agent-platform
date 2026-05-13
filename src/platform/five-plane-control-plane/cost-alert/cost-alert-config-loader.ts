@@ -44,6 +44,24 @@ const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/cost-alert/default.js
 
 let cachedConfig: CostAlertConfig | null = null;
 
+export class CostAlertConfigLoader {
+  public loadDefault(configPath: string = DEFAULT_CONFIG_PATH, sandboxPolicy?: SandboxPolicy): CostAlertConfig {
+    return loadCostAlertConfig(configPath, sandboxPolicy);
+  }
+
+  public validateBudgetPolicy(input: {
+    scope: string;
+    budgetLimitUsd: number;
+    warningThreshold: number;
+    criticalThreshold: number;
+  }): boolean {
+    return input.budgetLimitUsd > 0
+      && input.warningThreshold >= 0
+      && input.warningThreshold < input.criticalThreshold
+      && input.criticalThreshold <= 1;
+  }
+}
+
 /**
  * Loads the cost alert configuration from the JSON config file.
  *

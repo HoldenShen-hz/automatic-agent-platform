@@ -10,7 +10,10 @@ function buildCompatibilityResult(
   policy: Record<string, unknown>,
   denyByDefault: boolean,
 ): PolicyResolutionResult & Record<string, unknown> {
-  const flattenedPolicy = { ...policy };
+  const flattenedPolicy = {
+    ...policy,
+    _denyByDefault: denyByDefault,
+  };
   Object.defineProperties(flattenedPolicy, {
     policy: {
       value: flattenedPolicy,

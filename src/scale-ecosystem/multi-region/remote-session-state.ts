@@ -12,7 +12,7 @@ export function transitionRemoteSessionState(
 ): RemoteSessionState {
   switch (signal) {
     case "connected":
-      return "connected";
+      return current === "failed" ? "connecting" : "connected";
     case "connection_lost":
       return current === "failed" ? "failed" : "reconnecting";
     case "partial_sync":

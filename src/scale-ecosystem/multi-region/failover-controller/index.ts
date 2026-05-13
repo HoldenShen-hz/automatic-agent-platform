@@ -19,6 +19,11 @@ export interface RegionFailoverInput {
   readonly primaryErrorRate?: number;
   readonly maxAcceptableErrorRate?: number;
   readonly preferredRegionId?: string | null;
+  readonly candidateRegionSignals?: Readonly<Record<string, {
+    readonly healthy?: boolean;
+    readonly latencyMs?: number;
+    readonly errorRate?: number;
+  }>>;
   /** Quorum-based consensus for failover decision */
   readonly quorumRegions?: readonly string[];
   readonly minQuorumWeight?: number;
@@ -66,6 +71,13 @@ export interface RegionFailoverDecision {
   readonly fencingEpoch: number;
   readonly demotedRegionId: string | null;
   readonly leaderState: "stable" | "promoted" | "demoted_previous_leader";
+  readonly oldLeaderId?: string | null;
+  readonly demoteOldLeader?: boolean;
+  readonly fencingToken?: {
+    readonly epoch: number;
+    readonly leaderRegionId: string | null;
+    readonly previousLeaderId: string | null;
+  } | null;
   /** Consensus information for the decision */
   readonly consensus?: ConsensusDecision;
   /** Reconciliation result after failover - present when shouldFailover is true and reconciliation was run */
@@ -178,6 +190,7 @@ export function getGlobalEpochManager(): EpochManager {
 export class RegionFailoverController {
   private readonly stateByPartition = new Map<string, FencingEpochState>();
   private readonly quorumVotes = new Map<string, QuorumVote[]>();
+  private readonly failureCounts = new Map<string, number>();
   private readonly epochManager: EpochManager;
   private readonly reconciliationJob: FailoverReconciliationJob;
 
@@ -278,9 +291,10 @@ export class RegionFailoverController {
 
   public resolve(input: RegionFailoverInput): RegionFailoverDecision {
     const partitionKey = input.partitionKey ?? "global";
-    const previous = this.stateByPartition.get(partitionKey) ?? {
+    const existingState = this.stateByPartition.get(partitionKey);
+    const previous = existingState ?? {
       partitionKey,
-      fencingEpoch: 0,
+      fencingEpoch: input.currentLeaderRegionId == null ? 0 : 1,
       leaderRegionId: input.currentLeaderRegionId ?? null,
       demotedLeaderRegionId: null,
     };
@@ -336,9 +350,7 @@ export class RegionFailoverController {
       }
     }
 
-    const targetRegionId = input.preferredRegionId && input.candidateRegionIds.includes(input.preferredRegionId)
-      ? input.preferredRegionId
-      : input.candidateRegionIds[0] ?? null;
+    const targetRegionId = this.selectTargetRegion(input);
 
     // Demoted leader is the previous leader (not null) that differs from target
     const demotedRegionId = previous.leaderRegionId != null && previous.leaderRegionId !== targetRegionId
@@ -381,14 +393,44 @@ export class RegionFailoverController {
       fencingEpoch: effectivePromoteEpoch,
       demotedRegionId,
       leaderState: demotedRegionId == null ? "promoted" : "demoted_previous_leader",
+      oldLeaderId: demotedRegionId,
+      demoteOldLeader: demotedRegionId != null,
+      fencingToken: {
+        epoch: effectivePromoteEpoch,
+        leaderRegionId: targetRegionId,
+        previousLeaderId: demotedRegionId,
+      },
       ...(consensus !== undefined ? { consensus } : {}),
       reconciliationResult,
     };
     return result;
   }
 
+  public resolveRegionFailover(input: RegionFailoverInput): RegionFailoverDecision {
+    return this.resolve(input);
+  }
+
   public getState(partitionKey = "global"): FencingEpochState | null {
     return this.stateByPartition.get(partitionKey) ?? null;
+  }
+
+  public recordFailure(regionId: string): void {
+    this.failureCounts.set(regionId, (this.failureCounts.get(regionId) ?? 0) + 1);
+  }
+
+  public acknowledgeDemotion(_regionId: string): void {
+    // Compatibility no-op. New fencing-based flow relies on epoch checks instead.
+  }
+
+  public detectSplitBrain(regionId: string, offeredEpoch: number, partitionKey = "global"): boolean {
+    const state = this.stateByPartition.get(partitionKey);
+    if (state == null) {
+      return false;
+    }
+    if (offeredEpoch < state.fencingEpoch) {
+      return true;
+    }
+    return offeredEpoch === state.fencingEpoch && state.leaderRegionId !== regionId;
   }
 
   /**
@@ -430,12 +472,60 @@ export class RegionFailoverController {
 
     return token;
   }
+
+  private selectTargetRegion(input: RegionFailoverInput): string | null {
+    if (input.preferredRegionId && input.candidateRegionIds.includes(input.preferredRegionId)) {
+      return input.preferredRegionId;
+    }
+    if (input.candidateRegionIds.length === 0) {
+      return null;
+    }
+    if (input.candidateRegionSignals == null) {
+      return input.candidateRegionIds.find((regionId) => !this.isCircuitOpen(regionId)) ?? input.candidateRegionIds[0] ?? null;
+    }
+
+    const ranked = [...input.candidateRegionIds]
+      .filter((regionId) => !this.isCircuitOpen(regionId))
+      .sort((left, right) => {
+        const leftSignal = input.candidateRegionSignals?.[left];
+        const rightSignal = input.candidateRegionSignals?.[right];
+        const healthDelta = this.getHealthRank(rightSignal?.healthy) - this.getHealthRank(leftSignal?.healthy);
+        if (healthDelta !== 0) {
+          return healthDelta;
+        }
+        const errorDelta = (leftSignal?.errorRate ?? Number.POSITIVE_INFINITY) - (rightSignal?.errorRate ?? Number.POSITIVE_INFINITY);
+        if (errorDelta !== 0) {
+          return errorDelta;
+        }
+        const latencyDelta = (leftSignal?.latencyMs ?? Number.POSITIVE_INFINITY) - (rightSignal?.latencyMs ?? Number.POSITIVE_INFINITY);
+        if (latencyDelta !== 0) {
+          return latencyDelta;
+        }
+        return input.candidateRegionIds.indexOf(left) - input.candidateRegionIds.indexOf(right);
+      });
+    return ranked[0] ?? input.candidateRegionIds[0] ?? null;
+  }
+
+  private isCircuitOpen(regionId: string): boolean {
+    return (this.failureCounts.get(regionId) ?? 0) >= 3;
+  }
+
+  private getHealthRank(healthy: boolean | undefined): number {
+    return healthy === false ? 0 : 1;
+  }
 }
 
 const defaultFailoverController = new RegionFailoverController();
+const fencingEpochCounters = new Map<string, number>();
 
 export function getNextFencingEpoch(partitionKey = "global"): number {
-  return (defaultFailoverController.getState(partitionKey)?.fencingEpoch ?? 0) + 1;
+  const current = Math.max(
+    fencingEpochCounters.get(partitionKey) ?? 0,
+    defaultFailoverController.getState(partitionKey)?.fencingEpoch ?? 0,
+  );
+  const next = current + 1;
+  fencingEpochCounters.set(partitionKey, next);
+  return next;
 }
 
 export function resolveRegionFailover(input: RegionFailoverInput): RegionFailoverDecision {

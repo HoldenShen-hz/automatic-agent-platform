@@ -43,6 +43,35 @@ export { buildPlatformArchitectureBootstrapSummary } from "./platform-architectu
 export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
+export {
+  CrossRegionRoutingService,
+  DataReplicatorService,
+  RegionHealthCheckService,
+  FairSchedulingService,
+  ResourcePoolService,
+  SlaOperationsService,
+  MarketplaceGovernanceService,
+  PackSecurityService,
+  sortMarketplaceCatalog,
+  BillingService,
+  StripeBillingPaymentGateway,
+  buildBillingMarkdown,
+  TenantPlatformService,
+  ComplianceProgramService,
+  DataPlaneFlowService,
+  PerceptionService,
+  PmfValidationService,
+  EnterpriseCapabilityMatrixService,
+  LicenseEnforcementService,
+  PlatformOperatorService,
+  FeedbackImprovementService,
+  FeedbackCollector,
+  FeedbackQualityGrader,
+  ConnectorFrameworkService,
+  GitHubConnector,
+  JiraConnector,
+  SlackConnector,
+} from "./scale-ecosystem/index.js";
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;

@@ -67,12 +67,14 @@ const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null
 const UiStoreContext = createContext<ReturnType<typeof createUiStore> | null>(null);
 const RealtimeStoreContext = createContext<ReturnType<typeof createRealtimeStore> | null>(null);
 const SyncStoreContext = createContext<ReturnType<typeof createSyncStore> | null>(null);
+const ThemeStoreContext = createContext<ReturnType<typeof createThemeStore> | null>(null);
 const AuthServiceContext = createContext<AuthService | null>(null);
 const SyncCoordinatorContext = createContext<SyncCoordinator | null>(null);
 const fallbackAuthStore = createAuthStore();
 const fallbackUiStore = createUiStore();
 const fallbackRealtimeStore = createRealtimeStore();
 const fallbackSyncStore = createSyncStore();
+const fallbackThemeStore = createThemeStore();
 const identity = <T,>(state: T): T => state;
 
 export function UiRuntimeProvider(
@@ -92,6 +94,7 @@ export function UiRuntimeProvider(
   const uiStore = useMemo(() => createUiStore(), []);
   const realtimeStore = useMemo(() => createRealtimeStore(), []);
   const syncStore = useMemo(() => createSyncStore(), []);
+  const themeStore = useMemo(() => createThemeStore(), []);
   const authService = useMemo(() => new AuthService(), []);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
@@ -113,6 +116,14 @@ export function UiRuntimeProvider(
         method: "POST",
         body: { scope: "mission-control" },
         createdAt: "2026-04-23T00:00:00.000Z",
+        tenantId: identity.tenantId,
+        traceId: "trace-bootstrap-dashboard-prefetch",
+        principal: {
+          principalId: identity.userId,
+          tenantId: identity.tenantId,
+          roles: ["operator"],
+        },
+        status: "pending",
       },
       {
         id: "bootstrap-approvals-prefetch",
@@ -120,6 +131,14 @@ export function UiRuntimeProvider(
         method: "POST",
         body: { queue: "primary" },
         createdAt: "2026-04-23T00:00:01.000Z",
+        tenantId: identity.tenantId,
+        traceId: "trace-bootstrap-approvals-prefetch",
+        principal: {
+          principalId: identity.userId,
+          tenantId: identity.tenantId,
+          roles: ["operator"],
+        },
+        status: "pending",
       },
     ];
     syncCoordinator.queueMutations(bootstrapMutations);
@@ -176,7 +195,11 @@ export function UiRuntimeProvider(
                 createElement(
                   SyncStoreContext.Provider,
                   { value: syncStore },
-                  createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+                  createElement(
+                    ThemeStoreContext.Provider,
+                    { value: themeStore },
+                    createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+                  ),
                 ),
               ),
             ),
@@ -210,6 +233,11 @@ export function useSyncStoreApi() {
   return store;
 }
 
+export function useThemeStoreApi() {
+  const store = useContext(ThemeStoreContext) ?? fallbackThemeStore;
+  return store;
+}
+
 export function useAuthState<TSelected = AuthStoreState>(
   selector: (state: AuthStoreState) => TSelected = identity as (state: AuthStoreState) => TSelected,
 ): TSelected {
@@ -226,6 +254,12 @@ export function useSyncState<TSelected = SyncStoreState>(
   selector: (state: SyncStoreState) => TSelected = identity as (state: SyncStoreState) => TSelected,
 ): TSelected {
   return useStore(useSyncStoreApi(), selector);
+}
+
+export function useThemeState<TSelected = ThemeStoreState>(
+  selector: (state: ThemeStoreState) => TSelected = identity as (state: ThemeStoreState) => TSelected,
+): TSelected {
+  return useStore(useThemeStoreApi(), selector);
 }
 
 export function useSystemStatus(): SystemStatusVM {

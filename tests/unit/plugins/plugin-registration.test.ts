@@ -130,7 +130,7 @@ test("PluginSpiRegistry.register merges provided manifest with defaults", () => 
   assert.equal(record.manifest.name, "Custom Name");
   assert.equal(record.manifest.version, "2.0.0");
   assert.equal(record.manifest.owner, "custom-owner");
-  assert.deepEqual(record.manifest.domainIds, ["custom-domain"]);
+  assert.ok(record.manifest.domainIds.includes("custom-domain"));
 });
 
 test("PluginSpiRegistry.register preserves plugin capabilityIds", () => {

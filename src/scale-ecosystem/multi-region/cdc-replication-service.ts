@@ -49,6 +49,8 @@ export interface CDCReplicationEvent {
   readonly taskId: string;
   readonly payloadJson: string;
   readonly createdAt: string;
+  readonly sourceRegionId?: string;
+  readonly vectorClock?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -128,6 +130,90 @@ export class CdcQueueBackpressureError extends Error {
   }
 }
 
+export type VectorClockComparison = -1 | 0 | 1;
+
+export class VectorClock {
+  private readonly versions: Map<string, number>;
+
+  public constructor(initial?: Map<string, number> | Readonly<Record<string, number>>) {
+    if (initial instanceof Map) {
+      this.versions = new Map(initial);
+      return;
+    }
+    this.versions = new Map(Object.entries(initial ?? {}));
+  }
+
+  public update(regionId: string, sequence: number): void {
+    const current = this.versions.get(regionId) ?? 0;
+    if (sequence > current) {
+      this.versions.set(regionId, sequence);
+    }
+  }
+
+  public merge(other: VectorClock): VectorClock {
+    const merged = new VectorClock(this.versions);
+    for (const [regionId, sequence] of other.versions.entries()) {
+      merged.update(regionId, sequence);
+    }
+    return merged;
+  }
+
+  public compare(other: VectorClock): VectorClockComparison {
+    const regionIds = new Set<string>([
+      ...this.versions.keys(),
+      ...other.versions.keys(),
+    ]);
+    let thisLess = false;
+    let thisGreater = false;
+    for (const regionId of regionIds) {
+      const left = this.versions.get(regionId) ?? 0;
+      const right = other.versions.get(regionId) ?? 0;
+      if (left < right) {
+        thisLess = true;
+      } else if (left > right) {
+        thisGreater = true;
+      }
+      if (thisLess && thisGreater) {
+        return 0;
+      }
+    }
+    if (thisLess) {
+      return -1;
+    }
+    if (thisGreater) {
+      return 1;
+    }
+    return 0;
+  }
+
+  public toMap(): Map<string, number> {
+    return new Map(this.versions);
+  }
+
+  public getMaxSequence(): number {
+    let max = 0;
+    for (const sequence of this.versions.values()) {
+      if (sequence > max) {
+        max = sequence;
+      }
+    }
+    return max;
+  }
+}
+
+export interface CDCReplicationConflict {
+  readonly taskId: string;
+  readonly localEventId: string;
+  readonly remoteEventId: string;
+  readonly resolution: "local_wins" | "remote_wins" | "merged";
+}
+
+export interface CDCConflictResolutionResult {
+  readonly resolved: boolean;
+  readonly resolvedEvent: CDCReplicationEvent | null;
+  readonly conflict: CDCReplicationConflict | null;
+}
+
 /**
  * CDC replication service for multi-region data sync
  */
@@ -136,6 +222,9 @@ export class CDCReplicationService {
   private readonly configs = new Map<string, RegionReplicationConfig>();
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
   private readonly latestSourceEventAt = new Map<string, string>();
+  private readonly processedEventCounts = new Map<string, number>();
+  private readonly vectorClocks = new Map<string, VectorClock>();
+  private readonly conflictHistory = new Map<string, CDCReplicationConflict[]>();
 
   /**
    * Register a replication configuration
@@ -190,9 +279,11 @@ export class CDCReplicationService {
     const batchSize = config?.batchSize ?? 100;
 
     // Filter events after checkpoint
-    const eventsToReplicate = sourceEvents.filter(
-      (event) => event.sequence > checkpoint.lastEventSequence,
-    );
+    const hasProcessedEvents = checkpoint.lastEventId != null;
+    const eventsToReplicate = sourceEvents.filter((event) =>
+      hasProcessedEvents
+        ? event.sequence > checkpoint.lastEventSequence
+        : event.sequence >= checkpoint.lastEventSequence);
 
     if (eventsToReplicate.length === 0) {
       return null;
@@ -244,6 +335,7 @@ export class CDCReplicationService {
     };
 
     this.checkpoints.set(key, checkpoint);
+    this.processedEventCounts.set(key, (this.processedEventCounts.get(key) ?? 0) + batch.events.length);
     this.removeBatchFromQueue(key, batch.batchId);
   }
 
@@ -310,8 +402,13 @@ export class CDCReplicationService {
     targetRegionId: string,
     totalSourceEvents: number,
   ): number {
-    const checkpoint = this.getCheckpoint(sourceRegionId, targetRegionId);
-    if (!checkpoint) {
+    const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    const processedEventCount = this.processedEventCounts.get(key);
+    if (processedEventCount != null) {
+      return Math.max(0, totalSourceEvents - processedEventCount);
+    }
+    const checkpoint = this.checkpoints.get(key);
+    if (checkpoint == null) {
       return totalSourceEvents;
     }
     return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
@@ -405,12 +502,167 @@ export class CDCReplicationService {
     return status;
   }
 
+  public updateVectorClock(entityId: string, regionId: string, sequence: number): VectorClock {
+    const current = this.vectorClocks.get(entityId) ?? new VectorClock();
+    current.update(regionId, sequence);
+    this.vectorClocks.set(entityId, current);
+    return current;
+  }
+
+  public getVectorClock(entityId: string): VectorClock | undefined {
+    return this.vectorClocks.get(entityId);
+  }
+
+  public mergeVectorClock(entityId: string, remoteClock: VectorClock): VectorClock {
+    const merged = (this.vectorClocks.get(entityId) ?? new VectorClock()).merge(remoteClock);
+    this.vectorClocks.set(entityId, merged);
+    return merged;
+  }
+
+  public detectConflict(localEvent: CDCReplicationEvent, remoteEvent: CDCReplicationEvent): boolean {
+    if (localEvent.taskId !== remoteEvent.taskId) {
+      return false;
+    }
+    const localClock = this.getEventVectorClock(localEvent);
+    const remoteClock = this.getEventVectorClock(remoteEvent);
+    if (localClock != null && remoteClock != null) {
+      return localClock.compare(remoteClock) === 0 && localEvent.id !== remoteEvent.id;
+    }
+    return localEvent.sequence === remoteEvent.sequence && localEvent.id !== remoteEvent.id;
+  }
+
+  public resolveConflictLWW(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+  ): CDCConflictResolutionResult {
+    const localAt = Date.parse(localEvent.createdAt);
+    const remoteAt = Date.parse(remoteEvent.createdAt);
+    const remoteWins = Number.isNaN(localAt) || (!Number.isNaN(remoteAt) && remoteAt >= localAt);
+    return {
+      resolved: true,
+      resolvedEvent: remoteWins ? remoteEvent : localEvent,
+      conflict: {
+        taskId: localEvent.taskId,
+        localEventId: localEvent.id,
+        remoteEventId: remoteEvent.id,
+        resolution: remoteWins ? "remote_wins" : "local_wins",
+      },
+    };
+  }
+
+  public resolveConflictMerge(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+  ): CDCConflictResolutionResult {
+    const localPayload = this.parsePayload(localEvent.payloadJson);
+    const remotePayload = this.parsePayload(remoteEvent.payloadJson);
+    const mergedEvent: CDCReplicationEvent = {
+      ...remoteEvent,
+      payloadJson: JSON.stringify({
+        ...localPayload,
+        ...remotePayload,
+        _merged: true,
+      }),
+    };
+    return {
+      resolved: true,
+      resolvedEvent: mergedEvent,
+      conflict: {
+        taskId: localEvent.taskId,
+        localEventId: localEvent.id,
+        remoteEventId: remoteEvent.id,
+        resolution: "merged",
+      },
+    };
+  }
+
+  public resolveConflict(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+    strategy: "lww" | "merge" = "lww",
+  ): CDCConflictResolutionResult {
+    if (!this.detectConflict(localEvent, remoteEvent)) {
+      const localClock = this.getEventVectorClock(localEvent);
+      const remoteClock = this.getEventVectorClock(remoteEvent);
+      if (localClock != null && remoteClock != null) {
+        const comparison = localClock.compare(remoteClock);
+        if (comparison === -1) {
+          return {
+            resolved: true,
+            resolvedEvent: remoteEvent,
+            conflict: null,
+          };
+        }
+        if (comparison === 1) {
+          return {
+            resolved: true,
+            resolvedEvent: localEvent,
+            conflict: null,
+          };
+        }
+      }
+    }
+    return strategy === "merge"
+      ? this.resolveConflictMerge(localEvent, remoteEvent)
+      : this.resolveConflictLWW(localEvent, remoteEvent);
+  }
+
+  public recordConflict(taskId: string, conflict: CDCReplicationConflict): void {
+    const history = this.conflictHistory.get(taskId) ?? [];
+    history.push(conflict);
+    this.conflictHistory.set(taskId, history);
+  }
+
+  public getConflictHistory(taskId: string): readonly CDCReplicationConflict[] {
+    return this.conflictHistory.get(taskId) ?? [];
+  }
+
+  public mergeEventsWithConflictResolution(
+    taskId: string,
+    localEvents: readonly CDCReplicationEvent[],
+    remoteEvents: readonly CDCReplicationEvent[],
+    strategy: "lww" | "merge" = "lww",
+  ): CDCReplicationEvent[] {
+    const merged = [...localEvents];
+    for (const remoteEvent of remoteEvents) {
+      const localIndex = merged.findIndex((event) =>
+        event.taskId === taskId
+        && event.taskId === remoteEvent.taskId
+        && event.sequence === remoteEvent.sequence);
+      if (localIndex === -1) {
+        merged.push(remoteEvent);
+        continue;
+      }
+      const resolved = this.resolveConflict(merged[localIndex]!, remoteEvent, strategy);
+      const replacement = resolved.resolvedEvent ?? remoteEvent;
+      merged.splice(localIndex, 1, replacement);
+      if (resolved.conflict != null) {
+        this.recordConflict(taskId, resolved.conflict);
+      }
+    }
+    return merged.sort((left, right) => {
+      if (left.sequence !== right.sequence) {
+        return left.sequence - right.sequence;
+      }
+      return Date.parse(left.createdAt) - Date.parse(right.createdAt);
+    });
+  }
+
+  public applyBatch(
+    taskId: string,
+    localEvents: readonly CDCReplicationEvent[],
+    remoteEvents: readonly CDCReplicationEvent[],
+    strategy: "lww" | "merge" = "lww",
+  ): CDCReplicationEvent[] {
+    return this.mergeEventsWithConflictResolution(taskId, localEvents, remoteEvents, strategy);
+  }
+
   /**
    * Enqueue batch for async replication
    */
   private enqueueBatch(key: string, batch: CDCReplicationBatch): void {
     const queue = this.replicationQueues.get(key) ?? [];
-    const maxQueueDepth = this.configs.get(key)?.maxQueueDepth ?? 100;
+    const maxQueueDepth = this.configs.get(key)?.maxQueueDepth ?? Number.POSITIVE_INFINITY;
     if (queue.length >= maxQueueDepth) {
       throw new CdcQueueBackpressureError(key, queue.length, maxQueueDepth);
     }
@@ -436,6 +688,22 @@ export class CDCReplicationService {
    */
   private getConfigKey(sourceRegionId: string, targetRegionId: string): string {
     return `${sourceRegionId}->${targetRegionId}`;
+  }
+
+  private getEventVectorClock(event: CDCReplicationEvent): VectorClock | null {
+    if (event.vectorClock != null) {
+      return new VectorClock(event.vectorClock);
+    }
+    return this.vectorClocks.get(event.taskId) ?? null;
+  }
+
+  private parsePayload(payloadJson: string): Record<string, unknown> {
+    try {
+      const parsed = JSON.parse(payloadJson) as Record<string, unknown>;
+      return parsed != null && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
   }
 }
 

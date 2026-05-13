@@ -48,7 +48,7 @@ export interface PromptTemplateRecord {
 
 export interface PromptTemplateRegistrationInput {
   templateKey: string;
-  version: string;
+  version: string | number;
   owner: string;
   /** R10-43 fix: channel is system|developer|user, distinct from role */
   channel?: PromptTemplateChannel;
@@ -123,8 +123,8 @@ export function hashPromptPrefix(fixedPrefix: string): string {
   return createHash("sha256").update(fixedPrefix).digest("hex").slice(0, 16);
 }
 
-function normalizeRequired(value: string, field: string): string {
-  const normalized = value.trim();
+function normalizeRequired(value: string | number, field: string): string {
+  const normalized = String(value).trim();
   if (normalized.length === 0) {
     throw new ValidationError(`prompt_template.invalid_${field}`, `Prompt template field ${field} must be a non-empty string.`);
   }

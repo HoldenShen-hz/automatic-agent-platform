@@ -94,7 +94,7 @@ test("createDelegationManager sets expiresAt correctly", async () => {
   const spec = createDelegationSpec({ timeout: 60000 });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation?.expiresAt);
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
@@ -107,7 +107,7 @@ test("createDelegationManager uses defaultTimeout when spec timeout is zero", as
   const spec = createDelegationSpec({ timeout: 0 });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn > 100000);
@@ -184,7 +184,7 @@ test("createDelegationManager transitions pending to active on complete", async 
 
   await service.complete(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "completed");
 });
 
@@ -196,7 +196,7 @@ test("createDelegationManager transitions to failed state", async () => {
   const handle = await service.delegate(parent, spec);
   await service.fail(handle.delegationId, "Test error");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "failed");
 });
 
@@ -208,7 +208,7 @@ test("createDelegationManager transitions to cancelled state", async () => {
   const handle = await service.delegate(parent, spec);
   await service.cancel(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "cancelled");
 });
 
@@ -275,7 +275,7 @@ test("createDelegationManager completeWithEvidence validates ACP", async () => {
   const handle = await service.delegate(parent, spec);
   await service.completeWithEvidence(handle.delegationId, ["evidence:proof"], "artifact:result");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "completed");
 });
 
@@ -325,13 +325,13 @@ test("createDelegationManager revokeExpiredDelegations marks expired delegations
   const handle = await service.delegate(parent, spec);
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  const result = service.revokeExpiredDelegations();
+  const result = await service.revokeExpiredDelegations();
 
   assert.equal(result.expired, 1);
   assert.equal(result.scanned, 1);
   assert.equal(result.errors.length, 0);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "expired");
 });
 
@@ -344,17 +344,17 @@ test("createDelegationManager revokeExpiredDelegations skips completed delegatio
   await service.complete(handle.delegationId);
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  const result = service.revokeExpiredDelegations();
+  const result = await service.revokeExpiredDelegations();
 
   assert.equal(result.expired, 0);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation?.status, "completed");
 });
 
-test("createDelegationManager revokeExpiredDelegations handles empty store", () => {
+test("createDelegationManager revokeExpiredDelegations handles empty store", async () => {
   const service = createDelegationManager();
 
-  const result = service.revokeExpiredDelegations();
+  const result = await service.revokeExpiredDelegations();
 
   assert.equal(result.scanned, 0);
   assert.equal(result.expired, 0);
@@ -378,7 +378,7 @@ test("createDelegationManager getExpiredDelegations returns expired pending/acti
 
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  const expired = service.getExpiredDelegations();
+  const expired = await service.getExpiredDelegations();
   assert.equal(expired.length, 1);
 });
 
@@ -402,7 +402,7 @@ test("createDelegationManager getPendingExpirationCount returns correct count", 
 
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  assert.equal(service.getPendingExpirationCount(), 3);
+  assert.equal(await service.getPendingExpirationCount(), 3);
 });
 
 test("createDelegationManager getExpiredDelegations excludes already expired", async () => {
@@ -416,9 +416,9 @@ test("createDelegationManager getExpiredDelegations excludes already expired", a
   }));
 
   await new Promise((resolve) => setTimeout(resolve, 10));
-  service.revokeExpiredDelegations();
+  await service.revokeExpiredDelegations();
 
-  const expired = service.getExpiredDelegations();
+  const expired = await service.getExpiredDelegations();
   assert.equal(expired.some((d) => d.delegationId === handle.delegationId), false);
 });
 
@@ -427,7 +427,7 @@ test("createDelegationManager revokeExpiredDelegations returns errors on failure
   const parent = createParentContext();
 
   // This tests the error collection path - difficult to trigger without mocking
-  const result = service.revokeExpiredDelegations();
+  const result = await service.revokeExpiredDelegations();
   assert.ok(Array.isArray(result.errors));
 });
 
@@ -435,17 +435,17 @@ test("createDelegationManager revokeExpiredDelegations returns errors on failure
 // Delegation Listing and Filtering
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDelegationManager getDelegation returns null for non-existent", () => {
+test("createDelegationManager getDelegation returns null for non-existent", async () => {
   const service = createDelegationManager();
 
-  const result = service.getDelegation("non-existent-id");
+  const result = await service.getDelegation("non-existent-id");
   assert.equal(result, null);
 });
 
-test("createDelegationManager getDelegationChain returns null for unknown agent", () => {
+test("createDelegationManager getDelegationChain returns null for unknown agent", async () => {
   const service = createDelegationManager();
 
-  const result = service.getDelegationChain("unknown-agent");
+  const result = await service.getDelegationChain("unknown-agent");
   assert.equal(result, null);
 });
 
@@ -462,7 +462,7 @@ test("createDelegationManager getActiveDelegations returns delegations for agent
     targetPackId: "pack-2",
   }));
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 2);
 });
 
@@ -481,7 +481,7 @@ test("createDelegationManager getActiveDelegations excludes completed", async ()
 
   await service.complete(handle1.delegationId);
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
   // handle2 should be the remaining active delegation
   const activeIds = active.map(d => d.delegationId);
@@ -504,7 +504,7 @@ test("createDelegationManager getActiveDelegations excludes failed", async () =>
 
   await service.fail(handle1.delegationId, "error");
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
 });
 
@@ -523,14 +523,14 @@ test("createDelegationManager getActiveDelegations excludes cancelled", async ()
 
   await service.cancel(handle1.delegationId);
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
 });
 
-test("createDelegationManager getActiveDelegations returns empty for unknown agent", () => {
+test("createDelegationManager getActiveDelegations returns empty for unknown agent", async () => {
   const service = createDelegationManager();
 
-  const active = service.getActiveDelegations("unknown-agent");
+  const active = await service.getActiveDelegations("unknown-agent");
   assert.equal(active.length, 0);
 });
 
@@ -547,7 +547,7 @@ test("createDelegationManager getDelegationChain tracks multiple delegations", a
     targetPackId: "pack-2",
   }));
 
-  const chain = service.getDelegationChain("parent-agent");
+  const chain = await service.getDelegationChain("parent-agent");
   assert.ok(chain);
   assert.equal(chain!.totalDelegations, 2);
   assert.equal(chain!.nodes.length, 2);
@@ -573,8 +573,8 @@ test("createDelegationManager getDelegationChain tracks depth across chain", asy
     targetPackId: "pack-2",
   }));
 
-  const chain1 = service.getDelegationChain("parent-agent");
-  const chain2 = service.getDelegationChain(handle1.childAgentId);
+  const chain1 = await service.getDelegationChain("parent-agent");
+  const chain2 = await service.getDelegationChain(handle1.childAgentId);
 
   assert.equal(chain1!.maxDepthReached, 1);
   assert.equal(chain2!.maxDepthReached, 2);
@@ -601,8 +601,8 @@ test("createDelegationManager getActiveDelegations includes both parent and chil
     targetPackId: "pack-2",
   }));
 
-  const activeAsParent = service.getActiveDelegations("parent-agent");
-  const activeAsChild = service.getActiveDelegations(handle1.childAgentId);
+  const activeAsParent = await service.getActiveDelegations("parent-agent");
+  const activeAsChild = await service.getActiveDelegations(handle1.childAgentId);
 
   assert.ok(activeAsParent.length > 0);
   assert.ok(activeAsChild.length > 0);

@@ -10,6 +10,7 @@ export interface PlatformAdapterFactoryOptions {
   readonly platform: PlatformId;
   readonly screenSecurityDefault?: boolean;
   readonly analyticsConsentDefault?: boolean;
+  readonly allowedShellCommands?: readonly string[];
 }
 
 class MemorySecureStore {
@@ -34,6 +35,7 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
   private readonly foregroundListeners = new Set<() => void>();
   private readonly backgroundListeners = new Set<() => void>();
   private readonly processes = new Map<number, StoredProcessHandle>();
+  private readonly allowedShellCommands: ReadonlySet<string>;
   private nextPid = 1000;
   private analyticsConsent: boolean;
   private screenSecurityEnabled: boolean;
@@ -41,6 +43,7 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
   public constructor(public readonly platform: PlatformId, options: Omit<PlatformAdapterFactoryOptions, "platform"> = {}) {
     this.analyticsConsent = options.analyticsConsentDefault ?? false;
     this.screenSecurityEnabled = options.screenSecurityDefault ?? false;
+    this.allowedShellCommands = new Set(options.allowedShellCommands ?? []);
   }
 
   public async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -94,6 +97,13 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
   }
 
   public async runShell(command: string): Promise<{ code: number; stdout: string; stderr: string }> {
+    if (this.allowedShellCommands.size > 0 && !this.allowedShellCommands.has(command)) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `Command "${command}" is not in whitelist: ${Array.from(this.allowedShellCommands).join(", ")}`,
+      };
+    }
     return {
       code: 0,
       stdout: `${this.platform}:${command}`,
@@ -165,6 +175,7 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
       processCount: this.processes.size,
       analyticsConsent: this.analyticsConsent,
       screenSecurityEnabled: this.screenSecurityEnabled,
+      allowedShellCommands: [...this.allowedShellCommands],
     };
   }
 }

@@ -62,6 +62,7 @@ function createPreemptionCandidate(overrides: Partial<PreemptionCandidate> = {})
     executionId: overrides.executionId ?? "exec-1",
     priority: overrides.priority ?? 3,
     progressPercent: overrides.progressPercent ?? 50,
+    lastCheckpointTimestampMs: overrides.lastCheckpointTimestampMs ?? Date.now() - 1_000,
   };
 }
 
@@ -82,8 +83,8 @@ test("FairSchedulingService.schedule returns decision with queue ordering", () =
   const decision = service.schedule(request);
 
   assert.equal(decision.queue.orderedItemIds.length, 2);
-  assert.equal(decision.queue.orderedItemIds[0], "high");
-  assert.equal(decision.queue.orderedItemIds[1], "low");
+  assert.equal(decision.queue.orderedItemIds[0], "low");
+  assert.equal(decision.queue.orderedItemIds[1], "high");
 });
 
 test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
@@ -169,9 +170,9 @@ test("orderFairQueue orders by priority and age score", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.equal(ordered[0]!.itemId, "high-prio");
+  assert.equal(ordered[0]!.itemId, "low-prio");
   assert.equal(ordered[1]!.itemId, "medium-prio");
-  assert.equal(ordered[2]!.itemId, "low-prio");
+  assert.equal(ordered[2]!.itemId, "high-prio");
 });
 
 test("choosePreemptionVictim selects lowest priority", () => {

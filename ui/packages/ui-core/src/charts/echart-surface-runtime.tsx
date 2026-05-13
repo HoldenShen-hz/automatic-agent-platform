@@ -97,6 +97,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
   const chartRef = useRef<ReturnType<typeof init> | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const previousValuesRef = useRef<readonly number[]>([]);
+  const chartTheme = theme.color;
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
 
   useEffect(() => {
@@ -146,7 +147,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       });
     }
     previousValuesRef.current = [...values];
-  }, [theme, title, values]);
+  }, [values, chartTheme.accent, chartTheme.border]);
 
   return (
     <div>

@@ -17,3 +17,8 @@ export * from "./scale-baseline-catalog.js";
 export * from "./scale-bootstrap.js";
 export * from "./sla-engine/index.js";
 export * from "./tenant-platform/index.js";
+export {
+  CrossRegionRoutingService,
+  DataReplicatorService,
+  RegionHealthCheckService,
+} from "./multi-region/index.js";

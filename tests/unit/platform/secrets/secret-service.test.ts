@@ -282,6 +282,7 @@ test("resolveSecret returns secret value with audit record for active secret", a
       scopeType: "system",
       scopeRef: "system.active",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
     const resolution = await service.resolveSecret(
       {
@@ -316,6 +317,7 @@ test("resolveSecret records usage in audit trail", async () => {
       scopeType: "system",
       scopeRef: "system.audit",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
     await service.resolveSecret(
       {
@@ -419,6 +421,7 @@ test("resolveSecret allows caller with matching tenant scope", async () => {
       scopeType: "tenant",
       scopeRef: "tenant-123",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
     // Caller from same tenant can access
     const resolution = await service.resolveSecret(
@@ -451,6 +454,7 @@ test("resolveSecret allows caller with matching workspace scope", async () => {
       scopeType: "workspace",
       scopeRef: "workspace-abc",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
     // Caller from same workspace can access
     const resolution = await service.resolveSecret(
@@ -746,12 +750,16 @@ test("buildAuditSummary returns complete audit information", async () => {
       scopeType: "system",
       scopeRef: "system.summary",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
     await service.resolveSecret({
       secretRef: "secret://system/summary",
       requestedBy: "auditor",
       grantedTo: "audit-worker",
       usagePurpose: "audit",
+    }, {
+      callerScopeType: "system",
+      callerScopeRef: "system",
     });
     const summary = service.buildAuditSummary("secret://system/summary");
     assert.equal(summary.registry.secretRef, "secret://system/summary");

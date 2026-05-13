@@ -17,6 +17,33 @@ import {
   createNoOpDirectiveSink,
 } from "../control-plane-directive-sink.js";
 
+export interface RouteTarget {
+  targetId: string;
+  weight: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RoutingRule {
+  ruleId: string;
+  matchCriteria: {
+    header?: Record<string, string>;
+    path?: string;
+  };
+  targetId: string;
+  weight: number;
+}
+
+export interface TrafficRoute {
+  routeId: string;
+  name: string;
+  targets: RouteTarget[];
+  rules: RoutingRule[];
+  strategy: "weighted" | "rule_based" | "failover" | "canary";
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 /** Deployment slot identifiers */
@@ -150,6 +177,18 @@ CREATE INDEX IF NOT EXISTS idx_rollback_records_shift ON rollback_records(shift_
 
 type RawRow = Record<string, unknown>;
 
+function createCompatDb(): AuthoritativeSqlDatabase {
+  return {
+    connection: {
+      prepare: () => ({
+        run: () => undefined,
+        get: () => undefined,
+        all: () => [],
+      }),
+    },
+  } as unknown as AuthoritativeSqlDatabase;
+}
+
 // ── Service ────────────────────────────────────────────────────────────
 
 /**
@@ -160,12 +199,104 @@ type RawRow = Record<string, unknown>;
  */
 export class TrafficRoutingService {
   private readonly directiveSink: ControlPlaneDirectiveSink;
+  private readonly compatRoutes = new Map<string, TrafficRoute>();
 
   constructor(
-    private readonly db: AuthoritativeSqlDatabase,
+    private readonly db: AuthoritativeSqlDatabase = createCompatDb(),
     directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
   ) {
     this.directiveSink = directiveSink;
+  }
+
+  public createRoute(input: Omit<TrafficRoute, "status" | "createdAt" | "updatedAt">): TrafficRoute {
+    const now = nowIso();
+    const route: TrafficRoute = {
+      ...input,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.compatRoutes.set(route.routeId, route);
+    return route;
+  }
+
+  public addRule(routeId: string, rule: Omit<RoutingRule, "ruleId"> & { ruleId?: string }): TrafficRoute {
+    const route = this.requireCompatRoute(routeId);
+    route.rules.push({
+      ...rule,
+      ruleId: rule.ruleId ?? newId("route_rule"),
+    });
+    route.updatedAt = nowIso();
+    return route;
+  }
+
+  public removeRule(routeId: string, ruleId: string): TrafficRoute {
+    const route = this.requireCompatRoute(routeId);
+    route.rules = route.rules.filter((rule) => rule.ruleId !== ruleId);
+    route.updatedAt = nowIso();
+    return route;
+  }
+
+  public evaluateRoute(routeId: string, request: { headers?: Record<string, string>; path?: string }): RouteTarget {
+    const route = this.requireCompatRoute(routeId);
+    for (const rule of route.rules) {
+      const headerMatches = rule.matchCriteria.header == null
+        || Object.entries(rule.matchCriteria.header).every(([key, value]) => request.headers?.[key] === value);
+      const pathMatches = rule.matchCriteria.path == null
+        || request.path == null
+        || request.path.startsWith(rule.matchCriteria.path.replace("*", ""));
+      if (headerMatches && pathMatches) {
+        return route.targets.find((target) => target.targetId === rule.targetId) ?? {
+          targetId: rule.targetId,
+          weight: rule.weight,
+        };
+      }
+    }
+    return [...route.targets].sort((left, right) => right.weight - left.weight)[0]!;
+  }
+
+  public updateTargetWeight(routeId: string, targetId: string, weight: number): TrafficRoute {
+    const route = this.requireCompatRoute(routeId);
+    route.targets = route.targets.map((target) => target.targetId === targetId ? { ...target, weight } : target);
+    route.updatedAt = nowIso();
+    return route;
+  }
+
+  public deactivateRoute(routeId: string): TrafficRoute {
+    const route = this.requireCompatRoute(routeId);
+    route.status = "inactive";
+    route.updatedAt = nowIso();
+    return route;
+  }
+
+  public initiateFailover(routeId: string, failedTargetId: string): TrafficRoute & { activeTarget: string; previousTarget: string } {
+    const route = this.requireCompatRoute(routeId);
+    const nextTarget = route.targets.find((target) => target.targetId !== failedTargetId) ?? route.targets[0]!;
+    return {
+      ...route,
+      activeTarget: nextTarget.targetId,
+      previousTarget: failedTargetId,
+    };
+  }
+
+  public getCanaryPercentage(routeId: string): number {
+    const route = this.requireCompatRoute(routeId);
+    return route.targets.find((target) => target.targetId === "canary")?.weight ?? 0;
+  }
+
+  public promoteCanary(routeId: string): TrafficRoute {
+    const route = this.requireCompatRoute(routeId);
+    route.targets = route.targets.map((target) => {
+      if (target.targetId === "stable") {
+        return { ...target, weight: 100 };
+      }
+      if (target.targetId === "canary") {
+        return { ...target, weight: 0 };
+      }
+      return target;
+    });
+    route.updatedAt = nowIso();
+    return route;
   }
 
   // ── Slot Management ────────────────────────────────────────────────
@@ -462,6 +593,14 @@ export class TrafficRoutingService {
   }
 
   // ── Mappers ───────────────────────────────────────────────────────
+
+  private requireCompatRoute(routeId: string): TrafficRoute {
+    const route = this.compatRoutes.get(routeId);
+    if (route == null) {
+      throw new Error(`traffic_route.not_found:${routeId}`);
+    }
+    return route;
+  }
 
   private mapSlot(row: RawRow): DeploymentSlotRecord {
     return {

@@ -175,6 +175,11 @@ test("createApiClient creates client with all options", () => {
     bearerToken: "test-token",
     timeoutMs: 30000,
     maxRetries: 5,
+    principal: {
+      subject: "user-123",
+      tenantId: "tenant-1",
+      roles: ["operator"],
+    },
   };
   const client = createApiClient(config);
   assert.ok(client instanceof RetryableApiClient);

@@ -48,7 +48,7 @@ test("HierarchicalPromptRegistryService.registerBundle stores at global level", 
   const bundle = registry.registerBundle(createTestBundle("test-bundle", "v1.0"), "global");
 
   assert.equal(bundle.name, "test-bundle");
-  assert.equal(bundle.version, "v1.0");
+  assert.equal(bundle.version, 100);
   assert.equal(bundle.domain, "test-domain");
 });
 
@@ -124,7 +124,7 @@ test("HierarchicalPromptRegistryService.registerBundle throws for missing system
 
   assert.throws(
     () => registry.registerBundle(invalidBundle, "global"),
-    (error: unknown) => (error as Error).message.includes("System prompt content must be non-empty"),
+    (error: unknown) => (error as Error).message.includes("systemPrompt content must be non-empty"),
   );
 });
 
@@ -151,15 +151,15 @@ test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecat
 test("HierarchicalPromptRegistryService supports domain-level override", () => {
   const registry = new HierarchicalPromptRegistryService();
   registry.registerBundle(createTestBundle("test-bundle", "v1.0"), "global");
-  registry.registerBundle(createTestBundle("test-bundle", "v1.0-domain"), "domain", "override-domain");
+  registry.registerBundle(createTestBundle("test-bundle", "v2.0"), "domain", "override-domain");
 
   const globalBundle = registry.getBundle("test-bundle", "classification", undefined, undefined);
   const domainBundle = registry.getBundle("test-bundle", "classification", "override-packs", "override-domain");
 
   assert.ok(globalBundle !== null);
-  assert.equal(globalBundle!.version, "v1.0");
+  assert.equal(globalBundle!.version, 100);
   assert.ok(domainBundle !== null);
-  assert.equal(domainBundle!.version, "v1.0-domain");
+  assert.equal(domainBundle!.version, 200);
 });
 
 test("HierarchicalPromptRegistryService.listBundleVersions includes multiple registered versions", () => {
@@ -170,8 +170,8 @@ test("HierarchicalPromptRegistryService.listBundleVersions includes multiple reg
   const versions = registry.listBundleVersions("test-bundle");
 
   assert.equal(versions.length, 2);
-  assert.equal(versions[0]?.version, "v1.0");
-  assert.equal(versions[1]?.version, "v1.1");
+  assert.equal(versions[0]?.version, 110);
+  assert.equal(versions[1]?.version, 100);
 });
 
 test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted traffic split", () => {
@@ -202,7 +202,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted 
   const resolved = registry.resolveBundleForTraffic("traffic-bundle", "classification", undefined, undefined, "stable-key");
 
   assert.ok(resolved !== null);
-  assert.equal(resolved!.version, "v1.0");
+  assert.equal(resolved!.version, 100);
 });
 
 // Issue 1966 fix: Verify traffic slot weights are normalized for fair allocation

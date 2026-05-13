@@ -35,60 +35,20 @@ test("TIER_1_EVENT_TYPES contains all expected Tier 1 event types", () => {
 });
 
 test("TIER_1_EVENT_TYPES has correct length", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 32);
+  assert.equal(TIER_1_EVENT_TYPES.length, 19);
 });
 
-test("TIER_1_EVENT_TYPES contains delegation namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:created"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:completed"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:failed"));
-});
-
-test("TIER_1_EVENT_TYPES contains prompt namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:injected"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:rendered"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:validation_failed"));
-});
-
-test("TIER_1_EVENT_TYPES contains cost namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("cost:budget_created"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("cost:budget_exceeded"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("cost:actualized"));
-});
-
-test("TIER_1_EVENT_TYPES contains tenant namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:provisioned"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:suspended"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:deleted"));
-});
-
-test("TIER_1_EVENT_TYPES contains pack namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("pack:installed"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("pack:uninstalled"));
-});
-
-test("TIER_1_EVENT_TYPES contains marketplace namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_published"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_purchased"));
-});
-
-test("TIER_1_EVENT_TYPES contains anomaly namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("anomaly:classified"));
-});
-
-test("TIER_1_EVENT_TYPES contains slo namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("slo:breached"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("slo:recovered"));
-});
-
-test("TIER_1_EVENT_TYPES contains compliance namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("compliance:audit_recorded"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("compliance:violation_detected"));
-});
-
-test("TIER_1_EVENT_TYPES contains knowledge namespace events", () => {
-  assert.ok(TIER_1_EVENT_TYPES.includes("knowledge:document_indexed"));
-  assert.ok(TIER_1_EVENT_TYPES.includes("knowledge:query_processed"));
+test("TIER_1_EVENT_TYPES contains canonical platform events", () => {
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.harness_run.status_changed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.harness_run.created"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.harness_run.completed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.harness_run.failed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.node_run.status_changed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.node_run.started"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.node_run.completed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.budget_ledger.status_changed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.budget_reservation.status_changed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.side_effect.status_changed"));
 });
 
 test("getEventTier returns tier_1 for all Tier 1 event types", () => {
@@ -227,103 +187,18 @@ test("getRequiredConsumers returns correct consumers for cost events", () => {
   assert.ok(limitReached.includes("inspect_projection"));
 });
 
-test("getRequiredConsumers returns correct consumers for delegation events", () => {
-  const created = getRequiredConsumers("delegation:created");
-  assert.ok(created.includes("delegation_projection"));
-  assert.ok(created.includes("inspect_projection"));
+test("getRequiredConsumers returns correct consumers for canonical platform events", () => {
+  const harnessRun = getRequiredConsumers("platform.harness_run.status_changed");
+  assert.ok(harnessRun.includes("truth_projector"));
+  assert.ok(harnessRun.includes("audit_projection"));
 
-  const completed = getRequiredConsumers("delegation:completed");
-  assert.ok(completed.includes("delegation_projection"));
+  const nodeRun = getRequiredConsumers("platform.node_run.started");
+  assert.ok(nodeRun.includes("truth_projector"));
+  assert.ok(nodeRun.includes("audit_projection"));
 
-  const failed = getRequiredConsumers("delegation:failed");
-  assert.ok(failed.includes("delegation_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for prompt events", () => {
-  const injected = getRequiredConsumers("prompt:injected");
-  assert.ok(injected.includes("prompt_projection"));
-  assert.ok(injected.includes("inspect_projection"));
-
-  const rendered = getRequiredConsumers("prompt:rendered");
-  assert.ok(rendered.includes("prompt_projection"));
-
-  const validationFailed = getRequiredConsumers("prompt:validation_failed");
-  assert.ok(validationFailed.includes("prompt_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for cost budget events", () => {
-  const budgetCreated = getRequiredConsumers("cost:budget_created");
-  assert.ok(budgetCreated.includes("cost_dashboard"));
-  assert.ok(budgetCreated.includes("inspect_projection"));
-
-  const budgetExceeded = getRequiredConsumers("cost:budget_exceeded");
-  assert.ok(budgetExceeded.includes("cost_dashboard"));
-
-  const actualized = getRequiredConsumers("cost:actualized");
-  assert.ok(actualized.includes("cost_dashboard"));
-});
-
-test("getRequiredConsumers returns correct consumers for tenant events", () => {
-  const provisioned = getRequiredConsumers("tenant:provisioned");
-  assert.ok(provisioned.includes("tenant_projection"));
-  assert.ok(provisioned.includes("inspect_projection"));
-
-  const suspended = getRequiredConsumers("tenant:suspended");
-  assert.ok(suspended.includes("tenant_projection"));
-
-  const deleted = getRequiredConsumers("tenant:deleted");
-  assert.ok(deleted.includes("tenant_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for pack events", () => {
-  const installed = getRequiredConsumers("pack:installed");
-  assert.ok(installed.includes("pack_projection"));
-  assert.ok(installed.includes("inspect_projection"));
-
-  const uninstalled = getRequiredConsumers("pack:uninstalled");
-  assert.ok(uninstalled.includes("pack_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for marketplace events", () => {
-  const published = getRequiredConsumers("marketplace:listing_published");
-  assert.ok(published.includes("marketplace_projection"));
-  assert.ok(published.includes("inspect_projection"));
-
-  const purchased = getRequiredConsumers("marketplace:listing_purchased");
-  assert.ok(purchased.includes("marketplace_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for anomaly events", () => {
-  const classified = getRequiredConsumers("anomaly:classified");
-  assert.ok(classified.includes("incident_projection"));
-  assert.ok(classified.includes("inspect_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for slo events", () => {
-  const breached = getRequiredConsumers("slo:breached");
-  assert.ok(breached.includes("slo_projection"));
-  assert.ok(breached.includes("inspect_projection"));
-
-  const recovered = getRequiredConsumers("slo:recovered");
-  assert.ok(recovered.includes("slo_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for compliance events", () => {
-  const auditRecorded = getRequiredConsumers("compliance:audit_recorded");
-  assert.ok(auditRecorded.includes("compliance_projection"));
-  assert.ok(auditRecorded.includes("inspect_projection"));
-
-  const violation = getRequiredConsumers("compliance:violation_detected");
-  assert.ok(violation.includes("compliance_projection"));
-});
-
-test("getRequiredConsumers returns correct consumers for knowledge events", () => {
-  const indexed = getRequiredConsumers("knowledge:document_indexed");
-  assert.ok(indexed.includes("knowledge_projection"));
-  assert.ok(indexed.includes("inspect_projection"));
-
-  const processed = getRequiredConsumers("knowledge:query_processed");
-  assert.ok(processed.includes("knowledge_projection"));
+  const sideEffect = getRequiredConsumers("platform.side_effect.status_changed");
+  assert.ok(sideEffect.includes("truth_projector"));
+  assert.ok(sideEffect.includes("audit_projection"));
 });
 
 test("getRequiredConsumers returns empty array for non-Tier 1 events", () => {

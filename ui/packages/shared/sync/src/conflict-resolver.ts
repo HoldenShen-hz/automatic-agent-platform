@@ -1,28 +1,44 @@
-import type { ConflictResolutionStrategy } from "./types";
+import type { ConflictMetadata, ConflictResolutionStrategy } from "./types";
 
 export class ConflictResolver {
-  public resolve<T>(serverValue: T, localValue: T, strategy: ConflictResolutionStrategy = "server_wins"): T {
+  public resolve<T>(
+    serverValue: T,
+    localValue: T,
+    strategy: ConflictResolutionStrategy = "server_wins",
+    serverMetadata?: ConflictMetadata,
+    localMetadata?: ConflictMetadata,
+  ): T {
     if (strategy === "local_wins") {
       return localValue;
     }
     if (strategy === "merge") {
-      return mergeValues(serverValue, localValue);
+      return mergeValues(serverValue, localValue, serverMetadata, localMetadata);
     }
-    return serverValue;
+    return preferByLamport(serverValue, localValue, serverMetadata, localMetadata);
   }
 }
 
-function mergeValues<T>(serverValue: T, localValue: T): T {
+function mergeValues<T>(
+  serverValue: T,
+  localValue: T,
+  serverMetadata?: ConflictMetadata,
+  localMetadata?: ConflictMetadata,
+): T {
   if (Array.isArray(serverValue) && Array.isArray(localValue)) {
-    return mergeArrays(serverValue, localValue) as T;
+    return mergeArrays(serverValue, localValue, serverMetadata, localMetadata) as T;
   }
   if (isPlainObject(serverValue) && isPlainObject(localValue)) {
-    return mergeObjects(serverValue, localValue) as T;
+    return mergeObjects(serverValue, localValue, serverMetadata, localMetadata) as T;
   }
-  return preferMostRecent(serverValue, localValue);
+  return preferByLamport(serverValue, localValue, serverMetadata, localMetadata);
 }
 
-function mergeArrays(serverValue: readonly unknown[], localValue: readonly unknown[]): readonly unknown[] {
+function mergeArrays(
+  serverValue: readonly unknown[],
+  localValue: readonly unknown[],
+  serverMetadata?: ConflictMetadata,
+  localMetadata?: ConflictMetadata,
+): readonly unknown[] {
   const indexByIdentity = new Map<string, number>();
   const merged: unknown[] = [...serverValue];
 
@@ -47,7 +63,17 @@ function mergeArrays(serverValue: readonly unknown[], localValue: readonly unkno
       merged.push(value);
       continue;
     }
-    merged[existingIndex] = mergeValues(merged[existingIndex], value);
+    const serverClock = serverMetadata?.vectorClock[extractIdentityValue(identity)];
+    const localClock = localMetadata?.vectorClock[extractIdentityValue(identity)];
+    if (serverClock == null && localClock == null) {
+      continue;
+    }
+    merged[existingIndex] = mergeValues(
+      merged[existingIndex],
+      value,
+      serverClock == null ? undefined : { lamportTimestamp: serverClock.timestamp, vectorClock: {} },
+      localClock == null ? undefined : { lamportTimestamp: localClock.timestamp, vectorClock: {} },
+    );
   }
 
   return merged;
@@ -56,6 +82,8 @@ function mergeArrays(serverValue: readonly unknown[], localValue: readonly unkno
 function mergeObjects(
   serverValue: Record<string, unknown>,
   localValue: Record<string, unknown>,
+  serverMetadata?: ConflictMetadata,
+  localMetadata?: ConflictMetadata,
 ): Record<string, unknown> {
   const merged: Record<string, unknown> = { ...serverValue };
   const keys = new Set([...Object.keys(serverValue), ...Object.keys(localValue)]);
@@ -72,17 +100,35 @@ function mergeObjects(
     const serverField = serverValue[key];
     const localField = localValue[key];
     if (Array.isArray(serverField) && Array.isArray(localField)) {
-      merged[key] = mergeArrays(serverField, localField);
+      merged[key] = mergeArrays(serverField, localField, serverMetadata, localMetadata);
       continue;
     }
     if (isPlainObject(serverField) && isPlainObject(localField)) {
-      merged[key] = mergeObjects(serverField, localField);
+      merged[key] = mergeObjects(serverField, localField, serverMetadata, localMetadata);
       continue;
     }
-    merged[key] = preferMostRecent(serverField, localField);
+    const serverClock = serverMetadata?.vectorClock[key];
+    const localClock = localMetadata?.vectorClock[key];
+    if (serverClock != null || localClock != null) {
+      merged[key] = (localClock?.timestamp ?? -1) > (serverClock?.timestamp ?? -1) ? localField : serverField;
+      continue;
+    }
+    merged[key] = preferByLamport(serverField, localField, serverMetadata, localMetadata);
   }
 
   return merged;
+}
+
+function preferByLamport<T>(
+  serverValue: T,
+  localValue: T,
+  serverMetadata?: ConflictMetadata,
+  localMetadata?: ConflictMetadata,
+): T {
+  if (serverMetadata != null && localMetadata != null) {
+    return localMetadata.lamportTimestamp > serverMetadata.lamportTimestamp ? localValue : serverValue;
+  }
+  return preferMostRecent(serverValue, localValue);
 }
 
 function preferMostRecent<T>(serverValue: T, localValue: T): T {
@@ -114,6 +160,11 @@ function resolveVersionOrder(value: unknown): number | null {
     }
   }
   return null;
+}
+
+function extractIdentityValue(identity: string): string {
+  const separatorIndex = identity.indexOf(":");
+  return separatorIndex >= 0 ? identity.slice(separatorIndex + 1) : identity;
 }
 
 function getIdentityKey(value: unknown): string | null {

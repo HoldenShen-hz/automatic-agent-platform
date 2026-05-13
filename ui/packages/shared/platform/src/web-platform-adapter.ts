@@ -2,20 +2,18 @@ import { DefaultPlatformAdapter } from "./base-platform-adapter";
 
 export class WebPlatformAdapter extends DefaultPlatformAdapter {
   public constructor() {
-    super("web");
+    super("web", { screenSecurityDefault: true });
   }
 
   public override async readSecureValue(key: string): Promise<string | null> {
-    return globalThis.localStorage?.getItem(`aa.secure.${key}`) ?? super.readSecureValue(key);
+    return super.readSecureValue(key);
   }
 
   public override async writeSecureValue(key: string, value: string): Promise<void> {
-    globalThis.localStorage?.setItem(`aa.secure.${key}`, value);
     await super.writeSecureValue(key, value);
   }
 
   public override async deleteSecureValue(key: string): Promise<void> {
-    globalThis.localStorage?.removeItem(`aa.secure.${key}`);
     await super.deleteSecureValue(key);
   }
 

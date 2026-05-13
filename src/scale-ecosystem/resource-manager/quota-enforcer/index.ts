@@ -119,6 +119,11 @@ export interface MultiResourceQuotaDecision {
   readonly burstDimensions: readonly string[];
   readonly remainingByDimension: Readonly<Record<string, number>>;
   readonly overallDecision: QuotaDecision;
+  readonly exceeded: boolean;
+  readonly warning: boolean;
+  readonly usesBurst: boolean;
+  readonly remainingUnits: number;
+  readonly exceededDimensions: readonly string[];
 }
 
 export interface QuotaCheckResult extends MultiResourceQuotaDecision {}
@@ -280,6 +285,13 @@ function evaluateLegacyMultiResourceQuota(
         ? 0
         : Math.min(...Object.values(remainingByDimension).concat(Number.POSITIVE_INFINITY)),
     },
+    exceeded: failedDimensions.length > 0,
+    warning: warningDimensions.length > 0,
+    usesBurst: burstDimensions.length > 0,
+    remainingUnits: failedDimensions.length > 0
+      ? 0
+      : Math.min(...Object.values(remainingByDimension).concat(Number.POSITIVE_INFINITY)),
+    exceededDimensions: failedDimensions,
   };
 }
 
@@ -323,6 +335,13 @@ function evaluateCanonicalMultiResourceQuota(
         ? 0
         : Math.min(...Object.values(remainingByDimension).concat(Number.POSITIVE_INFINITY)),
     },
+    exceeded: failedDimensions.length > 0,
+    warning: warningDimensions.length > 0,
+    usesBurst: burstDimensions.length > 0,
+    remainingUnits: failedDimensions.length > 0
+      ? 0
+      : Math.min(...Object.values(remainingByDimension).concat(Number.POSITIVE_INFINITY)),
+    exceededDimensions: failedDimensions,
   };
 }
 
@@ -353,6 +372,11 @@ export function evaluateMultiDimensionalQuota(
     burstDimensions: overallDecision.usesBurst ? [vectorOrPolicy.resourceType] : [],
     remainingByDimension: { [vectorOrPolicy.resourceType]: overallDecision.remainingUnits },
     overallDecision,
+    exceeded: overallDecision.exceeded,
+    warning: overallDecision.warning,
+    usesBurst: overallDecision.usesBurst,
+    remainingUnits: overallDecision.remainingUnits,
+    exceededDimensions: overallDecision.exceeded ? [vectorOrPolicy.resourceType] : [],
   };
 }
 
@@ -428,6 +452,11 @@ export class QuotaEnforcerService {
           usesBurst: false,
           remainingUnits: Number.POSITIVE_INFINITY,
         },
+        exceeded: false,
+        warning: false,
+        usesBurst: false,
+        remainingUnits: Number.POSITIVE_INFINITY,
+        exceededDimensions: [],
       };
     }
 

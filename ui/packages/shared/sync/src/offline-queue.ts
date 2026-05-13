@@ -16,9 +16,9 @@ export class OfflineQueue {
     await this.readyPromise;
   }
 
-  public enqueue(mutation: OfflineMutation): void {
+  public async enqueue(mutation: OfflineMutation): Promise<void> {
     this.queue.push(mutation);
-    void this.persist();
+    await this.persist();
   }
 
   public drain(): OfflineMutation[] {
@@ -38,6 +38,12 @@ export class OfflineQueue {
 
   public isEmpty(): boolean {
     return this.queue.length === 0;
+  }
+
+  public async replace(mutations: readonly OfflineMutation[]): Promise<void> {
+    this.queue.length = 0;
+    this.queue.push(...mutations);
+    await this.persist();
   }
 
   private async persist(): Promise<void> {

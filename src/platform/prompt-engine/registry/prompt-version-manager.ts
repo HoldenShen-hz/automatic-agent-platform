@@ -16,9 +16,9 @@ export interface SemanticVersion {
 }
 
 export interface VersionLineage {
-  current: string;
-  previous?: string;
-  next?: string;
+  current: string | number;
+  previous?: string | number;
+  next?: string | number;
 }
 
 export interface VersionManagerConfig {
@@ -36,6 +36,7 @@ const DEFAULT_VERSION_CONFIG: VersionManagerConfig = {
 };
 
 const VERSION_REGEX = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
+const INTEGER_REGEX = /^\d+$/;
 
 export class PromptVersionManager {
   private readonly config: VersionManagerConfig;
@@ -71,6 +72,36 @@ export class PromptVersionManager {
     return result;
   }
 
+  private isIntegerLike(version: string | number): boolean {
+    return typeof version === "number" || INTEGER_REGEX.test(version.trim());
+  }
+
+  private normalizeIntegerVersion(version: string | number): number {
+    if (typeof version === "number") {
+      return version;
+    }
+    return parseInt(version.trim(), 10);
+  }
+
+  private normalizeComparableVersion(version: string | number): number {
+    if (this.isIntegerLike(version)) {
+      return this.normalizeIntegerVersion(version);
+    }
+    const parsed = this.parseVersion(String(version));
+    return parsed.major * 100 + parsed.minor * 10 + (parsed.patch ?? 0);
+  }
+
+  private getSortedVersionValues(bundleName: string): Array<string | number> {
+    const bundleVersionMap = this.bundleVersions.get(bundleName);
+    if (!bundleVersionMap) {
+      return [];
+    }
+
+    return [...bundleVersionMap.values()]
+      .map((entry) => entry.bundle.version as string | number)
+      .sort((left, right) => this.compareVersions(left, right));
+  }
+
   /**
    * Formats a SemanticVersion back to a version string.
    */
@@ -90,36 +121,34 @@ export class PromptVersionManager {
    * while displayVersion provides human-readable semver format.
    */
   public compareVersions(v1: string | number, v2: string | number): number {
-    // Handle number versions directly (per §16.2)
-    if (typeof v1 === "number" && typeof v2 === "number") {
-      if (v1 < v2) return -1;
-      if (v1 > v2) return 1;
-      return 0;
-    }
-    // Handle string versions (semver format for display)
-    const strV1 = String(v1);
-    const strV2 = String(v2);
-    const parsed1 = this.parseVersion(strV1);
-    const parsed2 = this.parseVersion(strV2);
-
-    if (parsed1.major !== parsed2.major) {
-      return parsed1.major < parsed2.major ? -1 : 1;
-    }
-    if (parsed1.minor !== parsed2.minor) {
-      return parsed1.minor < parsed2.minor ? -1 : 1;
-    }
-    const patch1 = parsed1.patch ?? 0;
-    const patch2 = parsed2.patch ?? 0;
-    if (patch1 !== patch2) {
-      return patch1 < patch2 ? -1 : 1;
-    }
+    const comparableV1 = this.normalizeComparableVersion(v1);
+    const comparableV2 = this.normalizeComparableVersion(v2);
+    if (comparableV1 < comparableV2) return -1;
+    if (comparableV1 > comparableV2) return 1;
     return 0;
   }
 
   /**
    * Determines the next version based on current version and update type.
    */
-  public getNextVersion(currentVersion: string, updateType: "major" | "minor" | "patch"): SemanticVersion {
+  public getNextVersion(currentVersion: number): number;
+  public getNextVersion(currentVersion: string, updateType: "major" | "minor" | "patch"): SemanticVersion;
+  public getNextVersion(currentVersion: string | number, updateType?: "major" | "minor" | "patch"): SemanticVersion | number {
+    if (typeof currentVersion === "number" && updateType === undefined) {
+      return currentVersion + 1;
+    }
+
+    if (typeof currentVersion === "string" && updateType === undefined && this.isIntegerLike(currentVersion)) {
+      return this.normalizeIntegerVersion(currentVersion) + 1;
+    }
+
+    if (typeof currentVersion !== "string" || updateType === undefined) {
+      throw new ValidationError(
+        "prompt_version.invalid_next_version_request",
+        "Semantic version next-version calculation requires a string version and explicit update type.",
+      );
+    }
+
     const current = this.parseVersion(currentVersion);
 
     switch (updateType) {
@@ -139,12 +168,12 @@ export class PromptVersionManager {
   /**
    * Gets the version lineage (previous, current, next candidate).
    */
-  public getVersionLineage(bundleName: string, currentVersion: string): VersionLineage {
-    const versions = this.getSortedVersions(bundleName);
-    const currentIndex = versions.indexOf(currentVersion);
+  public getVersionLineage(bundleName: string, currentVersion: string | number): VersionLineage {
+    const versions = this.getSortedVersionValues(bundleName);
+    const currentIndex = versions.findIndex((version) => this.compareVersions(version, currentVersion) === 0);
 
-    const previous: string | undefined = currentIndex > 0 ? versions[currentIndex - 1]! : undefined;
-    const next: string | undefined = currentIndex < versions.length - 1 ? versions[currentIndex + 1]! : undefined;
+    const previous = currentIndex > 0 ? versions[currentIndex - 1] : undefined;
+    const next = currentIndex >= 0 && currentIndex < versions.length - 1 ? versions[currentIndex + 1] : undefined;
     const lineage: VersionLineage = { current: currentVersion };
     if (previous !== undefined) {
       lineage.previous = previous;
@@ -158,13 +187,16 @@ export class PromptVersionManager {
   /**
    * Checks if a version is considered "current" (latest minor for a major).
    */
-  public isCurrentVersion(bundleName: string, version: string): boolean {
-    const versions = this.getSortedVersions(bundleName);
+  public isCurrentVersion(bundleName: string, version: string | number): boolean {
+    const versions = this.getSortedVersionValues(bundleName);
     if (versions.length === 0) return true;
 
     const latestVersion = versions[versions.length - 1]!;
-    const current = this.parseVersion(version);
-    const latest = this.parseVersion(latestVersion);
+    if (this.isIntegerLike(version) && this.isIntegerLike(latestVersion)) {
+      return this.normalizeIntegerVersion(version) === this.normalizeIntegerVersion(latestVersion);
+    }
+    const current = this.parseVersion(String(version));
+    const latest = this.parseVersion(String(latestVersion));
 
     // Same major, same minor (or patch exists and version is without patch)
     if (current.major === latest.major && current.minor === latest.minor) {
@@ -186,14 +218,21 @@ export class PromptVersionManager {
     }
   }
 
+  public isValidVersion(version: string | number): boolean {
+    if (typeof version === "number") {
+      return Number.isInteger(version) && version > 0;
+    }
+    if (this.isIntegerLike(version)) {
+      return this.normalizeIntegerVersion(version) > 0;
+    }
+    return this.isValidVersionFormat(version);
+  }
+
   /**
    * Gets all versions for a bundle sorted by version order.
    */
-  public getSortedVersions(bundleName: string): string[] {
-    const bundleVersionMap = this.bundleVersions.get(bundleName);
-    if (!bundleVersionMap) return [];
-
-    return [...bundleVersionMap.keys()].sort((a, b) => this.compareVersions(a, b));
+  public getSortedVersions(bundleName: string): Array<string | number> {
+    return this.getSortedVersionValues(bundleName);
   }
 
   /**
@@ -210,13 +249,33 @@ export class PromptVersionManager {
     });
 
     // Enforce max versions limit
-    const versions = this.getSortedVersions(bundle.name);
+    const versions = this.getSortedVersionValues(bundle.name);
     while (versions.length > this.config.maxVersionsPerBundle) {
       const oldest = versions.shift();
       if (oldest) {
-        this.bundleVersions.get(bundle.name)!.delete(oldest);
+        this.bundleVersions.get(bundle.name)!.delete(String(oldest));
       }
     }
+  }
+
+  public validateCompatibilityMatrix(bundle: PromptBundle): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    if ((bundle.compatibilityMatrix.toolSchemaVersions?.length ?? 0) === 0) {
+      errors.push("compatibilityMatrix.toolSchemaVersions must contain at least one tool schema version.");
+    }
+    if ((bundle.compatibilityMatrix.evaluatorSchemaVersions?.length ?? 0) === 0) {
+      errors.push("compatibilityMatrix.evaluatorSchemaVersions must contain at least one evaluator schema version.");
+    }
+    if ((bundle.compatibilityMatrix.domainDescriptorVersions?.length ?? 0) === 0) {
+      errors.push("compatibilityMatrix.domainDescriptorVersions must contain at least one domain descriptor version.");
+    }
+    if ((bundle.compatibilityMatrix.modelRoutingProfiles?.length ?? 0) === 0) {
+      errors.push("compatibilityMatrix.modelRoutingProfiles must contain at least one model routing profile.");
+    }
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
   }
 
   /**
@@ -226,15 +285,18 @@ export class PromptVersionManager {
     const bundleVersionMap = this.bundleVersions.get(bundleName);
     if (!bundleVersionMap) return [];
 
-    const sorted = this.getSortedVersions(bundleName);
+    const sorted = this.getSortedVersionValues(bundleName);
     const current = sorted.length > 0 ? sorted[sorted.length - 1] : null;
 
     return sorted.map((versionStr) => {
-      const entry = bundleVersionMap.get(versionStr)!;
+      const entry = bundleVersionMap.get(String(versionStr))!;
+      const numericVersion = typeof entry.bundle.version === "number"
+        ? entry.bundle.version
+        : this.normalizeComparableVersion(entry.bundle.version);
       return {
-        version: Number(versionStr),
+        version: numericVersion,
         displayVersion: entry.bundle.displayVersion,
-        isCurrent: versionStr === current,
+        isCurrent: current != null && this.compareVersions(versionStr, current) === 0,
         isDefault: entry.bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: entry.bundle.metadata.trafficAllocation.weight,
         createdAt: entry.createdAt,

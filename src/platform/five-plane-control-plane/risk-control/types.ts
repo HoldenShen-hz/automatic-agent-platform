@@ -40,7 +40,7 @@ export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
  * Input factors for risk score calculation per §10.2
  * ADR-026 v4.3 canonical 8-factor model
  */
-export const RiskFactorsSchema = z.object({
+export const CanonicalRiskFactorsSchema = z.object({
   // ADR-026 v4.3: 8-factor canonical model replaces legacy 6-factor
   impact: z.number().min(1).max(5),                    // weight=4, operation impact
   irreversibility: z.number().min(1).max(5),          // weight=4, result irreversibility
@@ -52,6 +52,17 @@ export const RiskFactorsSchema = z.object({
   evidenceConfidence: z.enum(["high", "medium", "low"]), // weight=1, evidence sufficiency
   // Legacy fields removed per ADR-026 v4.3 remediation
 });
+
+export const LegacyRiskFactorsSchema = z.object({
+  stepTypeRisk: StepTypeRiskSchema,
+  targetSystemRisk: TargetSystemRiskSchema,
+  dataClassRisk: DataClassRiskSchema,
+  blastRadius: BlastRadiusSchema,
+  priorFailureRatePercent: z.number().min(0).max(100),
+  confidence: ConfidenceLevelSchema,
+});
+
+export const RiskFactorsSchema = z.union([CanonicalRiskFactorsSchema, LegacyRiskFactorsSchema]);
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 
 /**
@@ -121,6 +132,12 @@ export interface RiskConfig {
     readonly blastRadius: number;
     readonly historicalFailureRate: number;
     readonly evidenceConfidence: number;
+    // Legacy six-factor weights
+    readonly stepTypeRisk?: number;
+    readonly targetSystemRisk?: number;
+    readonly dataClassRisk?: number;
+    readonly priorFailureRate?: number;
+    readonly confidence?: number;
   };
   readonly impactValues: Record<string, number>;
   readonly irreversibilityValues: Record<string, number>;
@@ -135,6 +152,17 @@ export interface RiskConfig {
     readonly critical: { readonly maxPercent: number; readonly value: number };
   };
   readonly evidenceConfidenceValues: Record<string, number>;
+  // Legacy six-factor config
+  readonly stepTypeRiskValues?: Record<string, number>;
+  readonly targetSystemRiskValues?: Record<string, number>;
+  readonly dataClassRiskValues?: Record<string, number>;
+  readonly priorFailureRateThresholds?: {
+    readonly low: { readonly maxPercent: number; readonly value: number };
+    readonly medium: { readonly maxPercent: number; readonly value: number };
+    readonly high: { readonly maxPercent: number; readonly value: number };
+    readonly critical: { readonly maxPercent: number; readonly value: number };
+  };
+  readonly confidenceValues?: Record<string, number>;
   readonly riskLevelThresholds: {
     readonly low: number;
     readonly medium: number;

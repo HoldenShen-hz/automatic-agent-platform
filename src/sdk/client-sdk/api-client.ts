@@ -26,7 +26,7 @@ export interface ApiClientConfig {
   sdkVersion?: string;
   contractVersion?: string;
   /** Principal for request envelope (carried in metadata) */
-  principal?: { subject?: string; tenantId?: string; roles?: readonly string[] };
+  principal?: { subject?: string; principalId?: string; tenantId?: string; roles?: readonly string[] };
   /** Default idempotency key prepended to all request idempotency keys */
   idempotencyKey?: string;
   /** Whether to perform version handshake on init (default: false) */
@@ -413,7 +413,7 @@ export class RetryableApiClient {
    * Only GET requests are retried on 5xx errors.
    * POST/DELETE/PUT/PATCH are not retried to prevent duplicate side effects.
    */
-  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE"]);
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
   /**
    * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.
@@ -421,16 +421,17 @@ export class RetryableApiClient {
    */
   private wrapRequestBody<TPayload>(payload: TPayload, idempotencyKey?: string): ContractEnvelope<TPayload> {
     const metadata: Record<string, string> = {};
+    const principalSubject = this.config.principal?.subject?.trim() || this.config.principal?.principalId?.trim();
     const principal = this.config.principal == null
       ? undefined
       : {
-          ...(this.config.principal.subject ? { subject: this.config.principal.subject } : {}),
+          ...(principalSubject ? { subject: principalSubject } : {}),
           ...(this.config.principal.tenantId ? { tenantId: this.config.principal.tenantId } : {}),
           ...(this.config.principal.roles?.length ? { roles: [...this.config.principal.roles] } : {}),
         };
     if (this.config.principal != null) {
-      const p = this.config.principal as { subject?: string; tenantId?: string; roles?: readonly string[] };
-      if (p.subject) metadata.principalSubject = p.subject;
+      const p = this.config.principal as { subject?: string; principalId?: string; tenantId?: string; roles?: readonly string[] };
+      if (principalSubject) metadata.principalSubject = principalSubject;
       if (p.tenantId) metadata.principalTenantId = p.tenantId;
       if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
     }
@@ -800,7 +801,7 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   if (!config.apiVersion?.trim()) {
     throw new ValidationError("client_sdk.missing_api_version", "API client requires apiVersion.");
   }
-  if (!config.principal?.subject?.trim()) {
+  if (!(config.principal?.subject?.trim() || config.principal?.principalId?.trim())) {
     throw new ValidationError("client_sdk.missing_principal", "API client requires principal.");
   }
   return new RetryableApiClient(config);

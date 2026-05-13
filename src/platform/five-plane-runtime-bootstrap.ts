@@ -53,6 +53,14 @@ import {
 export const FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID = "plane.runtime.catalog";
 export const X1_FABRIC_BOOTSTRAP_SERVICE_ID = "plane.x1-fabric.bootstrap";
 
+const FIVE_PLANE_BOOTSTRAP_SERVICE_IDS = [
+  INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
+  CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
+  ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
+  EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
+  STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
+] as const;
+
 export interface X1FabricBootstrap {
   readonly capabilityGroupId: "x1-fabric";
   readonly capabilityCount: number;
@@ -70,6 +78,13 @@ export interface FivePlaneRuntimeCatalog {
   readonly orchestrationPlane: readonly OrchestrationCapabilityBaseline[];
   readonly executionPlane: readonly ExecutionCapabilityBaseline[];
   readonly stateEvidencePlane: readonly StateEvidenceCapabilityBaseline[];
+}
+
+export interface BootstrapHealthCheck {
+  readonly healthy: boolean;
+  readonly failedServices: string[];
+  readonly errors: string[];
+  readonly checkedAt: string;
 }
 
 export function buildFivePlaneRuntimeCatalog(): FivePlaneRuntimeCatalog {
@@ -101,6 +116,18 @@ export function buildX1FabricBootstrap(): X1FabricBootstrap {
       COMPLIANCE_BOOTSTRAP_SERVICE_ID,
       X1_FABRIC_BOOTSTRAP_SERVICE_ID,
     ],
+  };
+}
+
+export function performBootstrapHealthCheck(
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+): BootstrapHealthCheck {
+  const failedServices = FIVE_PLANE_BOOTSTRAP_SERVICE_IDS.filter((serviceId) => !registry.isInitialized(serviceId));
+  return {
+    healthy: failedServices.length === 0,
+    failedServices: [...failedServices],
+    errors: failedServices.map((serviceId) => `service_not_initialized:${serviceId}`),
+    checkedAt: new Date().toISOString(),
   };
 }
 

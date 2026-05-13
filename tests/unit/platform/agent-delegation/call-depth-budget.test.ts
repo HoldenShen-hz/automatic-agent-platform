@@ -8,7 +8,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CallDepthBudget } from "../../../../src/platform/orchestration/agent-delegation/call-depth-budget.js";
-import { DEFAULT_MAX_DEPTH } from "../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
 
 test("CallDepthBudget.evaluate returns allowed when under limit", () => {
   const budget = new CallDepthBudget();
@@ -21,7 +20,7 @@ test("CallDepthBudget.evaluate returns allowed when under limit", () => {
 
   assert.equal(decision.allowed, true);
   assert.equal(decision.effectiveCallDepth, 4); // 2 + 1 + 1
-  assert.equal(decision.maxCallDepth, DEFAULT_MAX_DEPTH);
+  assert.equal(decision.maxCallDepth, 8);
   assert.equal(decision.reasonCode, "call_depth.allowed");
 });
 

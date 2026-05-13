@@ -77,6 +77,7 @@ export class IncidentDetector {
           symptoms: check.findings,
           metrics: check.metrics,
         }));
+        continue;
       } else if (check.status === "degraded") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
@@ -87,6 +88,7 @@ export class IncidentDetector {
           symptoms: check.findings,
           metrics: check.metrics,
         }));
+        continue;
       }
 
       // Apply detection rules for additional SEV1-3 coverage

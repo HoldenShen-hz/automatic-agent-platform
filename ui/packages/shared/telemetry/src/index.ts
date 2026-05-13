@@ -206,7 +206,7 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
     private readonly headers: Readonly<Record<string, string>> = {},
   ) {
     if ((this.headers.authorization ?? "").length === 0) {
-      throw new Error("telemetry.authorization_required:OTLP exports require authorization");
+      throw new Error("telemetry.authorization_required:OTLP exports requires authorization header or VITE_OTLP_AUTH_TOKEN");
     }
   }
 

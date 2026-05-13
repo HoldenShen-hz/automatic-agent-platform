@@ -180,6 +180,16 @@ export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectur
   };
 }
 
+export function assertStartupOrderEnforced(startupTargets: readonly PlatformStartupTarget[] = buildPlatformStartupTargets()): void {
+  const seen = new Set<PlatformStartupTarget["targetKind"]>();
+  for (const target of startupTargets) {
+    if (seen.has(target.targetKind)) {
+      throw new Error(`Duplicate startup target kind: ${target.targetKind}`);
+    }
+    seen.add(target.targetKind);
+  }
+}
+
 export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
   if (!registeredArchitectureCatalogs.has(registry)) {
     registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {

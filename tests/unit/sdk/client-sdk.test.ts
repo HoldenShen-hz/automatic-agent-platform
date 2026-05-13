@@ -13,6 +13,12 @@ import {
   ApiRequestSpec,
 } from "../../../src/sdk/client-sdk/index.js";
 
+const mockPrincipal = {
+  subject: "user-123",
+  tenantId: "tenant-123",
+  roles: ["operator"],
+};
+
 test("buildApiUrl constructs versioned URL with trailing slash normalization", () => {
   const config: ApiClientConfig = { baseUrl: "https://api.example.com/", apiVersion: "/v1/" };
   const request: ApiRequestSpec = { path: "/users" };
@@ -106,7 +112,7 @@ test("createApiClient throws ValidationError when apiVersion is whitespace only"
 });
 
 test("createApiClient returns RetryableApiClient with valid config", () => {
-  const config: ApiClientConfig = { baseUrl: "https://api.example.com", apiVersion: "v1" };
+  const config: ApiClientConfig = { baseUrl: "https://api.example.com", apiVersion: "v1", principal: mockPrincipal };
   const client = createApiClient(config);
   assert.ok(client instanceof RetryableApiClient);
 });
@@ -434,9 +440,10 @@ test("RetryableApiClient throws after max retries exhausted on persistent 5xx", 
     });
 
   try {
-    // After max retries, the 503 response is returned (not thrown)
-    const result = await client.get("/users/1");
-    assert.equal(result.status, 503);
+    await assert.rejects(
+      client.get("/users/1"),
+      (error: unknown) => error instanceof Error && "code" in error && error.code === "client_sdk.network_error",
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

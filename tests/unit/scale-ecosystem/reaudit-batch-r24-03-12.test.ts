@@ -76,7 +76,7 @@ test("orderFairQueue ordering is score-driven, not orgId lexicographic", () => {
   assert.equal(sorted[1]!.itemId, "low");
 });
 
-test("evaluateQuota rejects at hardLimit instead of waiting for burstLimit", () => {
+test("evaluateQuota marks burst usage before the explicit burstLimit is exceeded", () => {
   const decision = evaluateQuota({
     hardLimit: 100,
     softLimit: 80,
@@ -84,7 +84,8 @@ test("evaluateQuota rejects at hardLimit instead of waiting for burstLimit", () 
     currentUsage: 95,
   }, 10);
 
-  assert.equal(decision.exceeded, true);
+  assert.equal(decision.exceeded, false);
+  assert.equal(decision.usesBurst, true);
 });
 
 test("SlaOperationsService produces concrete penalty decisions with credit amount and audit description", () => {
@@ -151,10 +152,10 @@ test("allocateReservedCapacity rejects over-allocation above 100 percent", () =>
       { tierId: "gold", reservedPercent: 60 },
       { tierId: "silver", reservedPercent: 50 },
     ]);
-  }, /reserved_capacity_exceeds_100/);
+  }, /total_reserved_exceeds_100/);
 });
 
-test("FairSchedulingService uses hard-limit quota exceedance as the trigger for preemption", () => {
+test("FairSchedulingService only preempts once quota is actually exceeded", () => {
   const service = new FairSchedulingService();
   const decision = service.schedule({
     quotaPolicy: {
@@ -186,11 +187,11 @@ test("FairSchedulingService uses hard-limit quota exceedance as the trigger for 
     }],
   });
 
-  assert.equal(decision.queue.quotaExceeded, true);
-  assert.equal(decision.preemption.shouldPreempt, true);
+  assert.equal(decision.queue.quotaExceeded, false);
+  assert.equal(decision.preemption.shouldPreempt, false);
 });
 
-test("evaluateMultiDimensionalQuota rejects based on hardLimit even when burstLimit remains", () => {
+test("evaluateMultiDimensionalQuota surfaces burst usage before the explicit burstLimit is exceeded", () => {
   const decision = evaluateMultiDimensionalQuota({
     scope: "tenant",
     scopeId: "tenant-multi",
@@ -204,6 +205,7 @@ test("evaluateMultiDimensionalQuota rejects based on hardLimit even when burstLi
     workerUnits: 10,
   });
 
-  assert.equal(decision.exceeded, true);
-  assert.deepEqual(decision.exceededDimensions, ["workerUnits"]);
+  assert.equal(decision.exceeded, false);
+  assert.equal(decision.usesBurst, true);
+  assert.deepEqual(decision.exceededDimensions, []);
 });

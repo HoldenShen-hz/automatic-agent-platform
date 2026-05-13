@@ -21,6 +21,8 @@ export { PluginSpiRegistry } from "../domains/registry/plugin-spi-registry.js";
 export {
   createBuiltinPlugin,
   createBuiltinPluginWithManifest,
+  getPluginLifecycleState,
+  setPluginLifecycleState,
   listBuiltinPluginIds,
   getBuiltinPluginManifest,
   listBuiltinPluginManifests,

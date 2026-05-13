@@ -98,7 +98,11 @@ test("AdminSdk.registerDomain sends POST with domain data", async () => {
   };
 
   try {
-    const result = await sdk.registerDomain<{ domainId: string; name: string }>({ name: "New Domain", displayName: "New Domain" });
+    const result = await sdk.registerDomain<{ domainId: string; name: string }>({
+      domainId: "new-domain",
+      displayName: "New Domain",
+      description: "New Domain",
+    });
     assert.equal(result.data.domainId, "new-domain");
     assert.equal(result.status, 201);
     assert.ok(capturedBody);
@@ -136,7 +140,14 @@ test("AdminSdk.registerDomain rejects empty domainId", async () => {
 // ============================================================================
 
 test("AdminSdk.publishPack requires admin role", async () => {
-  const sdkNoRole = createAdminSdk();
+  const sdkNoRole = createAdminSdk({
+    requiredRole: "",
+    principal: {
+      principalId: "user-1",
+      roles: [],
+      permissions: [],
+    },
+  });
 
   try {
     await sdkNoRole.publishPack<{ published: boolean }>("pack-1", {});
@@ -351,7 +362,7 @@ test("AdminSdk.manageAgentLifecycle includes body when provided", async () => {
   try {
     const result = await sdk.manageAgentLifecycle<{ agentId: string }>("agent-1", "configure", { maxConcurrency: 5 });
     assert.equal(result.data.agentId, "agent-1");
-    assert.deepEqual(capturedBody, { maxConcurrency: 5 });
+    assert.deepEqual((capturedBody as { payload?: unknown }).payload, { maxConcurrency: 5 });
   } finally {
     globalThis.fetch = originalFetch;
   }
