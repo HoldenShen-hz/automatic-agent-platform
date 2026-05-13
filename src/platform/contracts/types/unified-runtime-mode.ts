@@ -141,5 +141,11 @@ export function toDocumentedUnifiedRuntimeMode(mode: UnifiedRuntimeMode): Docume
       return "manual-only";
     case "incident_mode":
       return "incident-mode";
+    case "maintenance":
+      return "manual-only";
+    case "degraded":
+      return "no-external-call";
+    case "emergency":
+      return "no-write";
   }
 }

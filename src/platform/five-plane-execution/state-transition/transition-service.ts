@@ -285,7 +285,7 @@ export class TaskTransitionService {
  */
 export class WorkflowTransitionService {
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
+    private readonly db: AuthoritativeSqlDatabase | null,
     private readonly repository: RuntimeLifecycleRepository,
   ) {}
 
@@ -293,9 +293,14 @@ export class WorkflowTransitionService {
    * Transitions workflow status atomically within a database transaction.
    */
   public transition(command: WorkflowStatusTransitionCommand): void {
-    this.db.transaction(() => {
+    if (this.db) {
+      this.db.transaction(() => {
+        this.apply(command);
+      });
+    } else {
+      // Fallback for testing without database
       this.apply(command);
-    });
+    }
   }
 
   /**
@@ -472,7 +477,7 @@ export class ApprovalTransitionService {
  */
 class TaskTerminalTransitionService {
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
+    private readonly db: AuthoritativeSqlDatabase | null,
     private readonly repository: RuntimeLifecycleRepository,
   ) {}
 
@@ -484,9 +489,14 @@ class TaskTerminalTransitionService {
    * across all related entities.
    */
   public transition(input: TaskTerminalTransitionInput): void {
-    this.db.transaction(() => {
+    if (this.db) {
+      this.db.transaction(() => {
+        this.apply(input);
+      });
+    } else {
+      // Fallback for testing without database
       this.apply(input);
-    });
+    }
   }
 
   /**
@@ -600,7 +610,7 @@ class TaskTerminalTransitionService {
  */
 class ApprovalBlockingTransitionService {
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
+    private readonly db: AuthoritativeSqlDatabase | null,
     private readonly repository: RuntimeLifecycleRepository,
     private readonly tasks: TaskTransitionService,
     private readonly workflows: WorkflowTransitionService,
@@ -617,7 +627,11 @@ class ApprovalBlockingTransitionService {
    * is resolved.
    */
   public transition(input: BlockedForApprovalTransitionCommand): BlockedForApprovalTransitionResult {
-    return this.db.transaction(() => this.apply(input));
+    if (this.db) {
+      return this.db.transaction(() => this.apply(input));
+    }
+    // Fallback for testing without database
+    return this.apply(input);
   }
 
   /**
@@ -812,9 +826,12 @@ function buildEventTraceContext(context: TransitionAuditContext, taskId: string)
   };
 }
 
-function resolveExistingExecutionId(db: AuthoritativeSqlDatabase, executionId: string | null): string | null {
+function resolveExistingExecutionId(db: AuthoritativeSqlDatabase | null, executionId: string | null): string | null {
   if (executionId == null) {
     return null;
+  }
+  if (db == null) {
+    return executionId;
   }
   if (typeof db.connection.prepare !== "function") {
     return executionId;

@@ -309,6 +309,23 @@ export class PolicyCenterService {
           explainSummary: "No-external-call mode allows local execution only.",
         };
       case "no_rollout":
+        if (input.action === "advance_rollout") {
+          return {
+            constraints: { mode: normalizedMode, rolloutAllowed: false },
+            denyReason: "policy.no_rollout_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.no_rollout"],
+            explainSummary: "No-rollout mode blocks rollout changes.",
+          };
+        }
+        return {
+          constraints: { mode: normalizedMode, rolloutAllowed: false },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.no_rollout"],
+          explainSummary: "No-rollout mode keeps release changes gated.",
+        };
+      case "maintenance":
         return {
           constraints: { mode: normalizedMode, maintenanceWindow: true, rollbackAllowed: false },
           denyReason: input.action === "advance_rollout" ? "policy.maintenance_mode_denied" : null,
@@ -316,7 +333,7 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.maintenance"],
           explainSummary: "Maintenance mode restricts rollout changes and sets maintenance window.",
         };
-      case "no_external_call":
+      case "degraded":
         return {
           constraints: { mode: normalizedMode, fallbackOnly: true, maxParallelism: 1 },
           denyReason: null,
@@ -324,7 +341,7 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.degraded"],
           explainSummary: "Degraded mode restricts to fallback execution with limited parallelism.",
         };
-      case "no_write":
+      case "emergency":
         return {
           constraints: { mode: normalizedMode, breakGlass: true, operatorAckRequired: input.subjectType !== "system" },
           denyReason: null,
@@ -468,11 +485,11 @@ function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {
     case "incident-mode":
       return "incident_mode";
     case "maintenance":
-      return "no_rollout";
+      return "maintenance";
     case "degraded":
-      return "no_external_call";
+      return "degraded";
     case "emergency":
-      return "no_write";
+      return "emergency";
     default:
       return normalizeUnifiedRuntimeMode(mode as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
   }

@@ -528,8 +528,11 @@ export class IntakeRouter {
       routeTrace.push(`llm_confidence:${llmExtraction.confidence.toFixed(2)}`);
       routeTrace.push(`ambiguity_flags:${llmExtraction.ambiguityFlags.join(",") || "none"}`);
 
-      // Only use LLM extraction if it has higher confidence
-      if (llmExtraction.confidence > classification.confidence) {
+      // Only use LLM extraction if it has higher confidence AND we have some rules/hints matched
+      // When no rules or hints matched, LLM extraction's "confidence" is misleading - it only
+      // indicates lack of ambiguity, not actual intent knowledge
+      const hasSomeMatchedSignals = classification.matchedRules.length > 0 || matchedHints.length > 0;
+      if (llmExtraction.confidence > classification.confidence && hasSomeMatchedSignals) {
         finalClassification = {
           intent: classification.intent, // Keep keyword-based intent for safety
           continuation: classification.continuation,

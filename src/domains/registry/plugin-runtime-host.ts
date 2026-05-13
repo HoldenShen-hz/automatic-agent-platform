@@ -231,6 +231,8 @@ abstract class BasePluginRuntimeHost {
 }
 
 export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
+  private stderrBuffer = "";
+
   public constructor(options: PluginRuntimeHostOptions) {
     super(
       options,
@@ -261,9 +263,13 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         sandboxRoot: this.sandboxRoot,
       }),
       execArgv,
-      stdio: ["ignore", "ignore", "ignore", "ipc"],
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
     });
     this.attachChild(child, process.execPath, [this.childModulePath]);
+    child.stderr?.setEncoding("utf8");
+    child.stderr?.on("data", (chunk: string) => {
+      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
+    });
     child.on("message", (message: unknown) => {
       this.handleMessage(message);
     });
@@ -300,6 +306,12 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
       clearTimeout(timer);
       child.kill();
     });
+  }
+
+  protected override handleExit(message: string): void {
+    const stderr = this.stderrBuffer.trim();
+    this.stderrBuffer = "";
+    super.handleExit(stderr.length > 0 ? `${message} stderr=${stderr}` : message);
   }
 }
 
@@ -562,6 +574,9 @@ function sanitizePluginRuntimeExecArgs(execArgs: readonly string[]): string[] {
       continue;
     }
     if (matchesInlineTsxLoaderArg(arg)) {
+      continue;
+    }
+    if (arg === "--test" || arg.startsWith("--test-")) {
       continue;
     }
     if (!arg.startsWith("--inspect")) {
