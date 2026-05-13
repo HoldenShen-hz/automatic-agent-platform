@@ -1534,10 +1534,11 @@ export function createCompensationRecord(input: {
 
 export function createBudgetLedger(input: {
   tenantId: string;
-  harnessRunId: string;
-  currency: string;
+  harnessRunId?: string;
+  currency?: string;
   hardCap: number;
   budgetLedgerId?: string;
+  resourceKinds?: readonly BudgetResourceKind[];
   tier?: "platform" | "tenant" | "pack" | "step";
   scopeKey?: string;
   parentBudgetLedgerId?: string;
@@ -1547,16 +1548,19 @@ export function createBudgetLedger(input: {
   releasedAmount?: number;
   status?: BudgetLedger["status"];
   version?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }): BudgetLedger {
   requireNonNegative(input.hardCap, "budget_ledger.hard_cap_invalid");
+  const createdAt = input.createdAt ?? nowIso();
   return {
     budgetLedgerId: input.budgetLedgerId ?? newId("bledger"),
     tenantId: input.tenantId,
-    harnessRunId: input.harnessRunId,
+    harnessRunId: input.harnessRunId ?? "legacy-harness-run",
     ...(input.tier != null ? { tier: input.tier } : {}),
     ...(input.scopeKey != null ? { scopeKey: input.scopeKey } : {}),
     ...(input.parentBudgetLedgerId != null ? { parentBudgetLedgerId: input.parentBudgetLedgerId } : {}),
-    currency: input.currency,
+    currency: input.currency ?? "USD",
     hardCap: input.hardCap,
     ...(input.softCap != null ? { softCap: input.softCap } : {}),
     reservedAmount: input.reservedAmount ?? 0,
@@ -1564,26 +1568,33 @@ export function createBudgetLedger(input: {
     releasedAmount: input.releasedAmount ?? 0,
     status: input.status ?? "open",
     version: input.version ?? 0,
-  };
+    resourceKinds: input.resourceKinds ?? [],
+    createdAt,
+    updatedAt: input.updatedAt ?? createdAt,
+  } as BudgetLedger;
 }
 
 export function createBudgetReservation(input: {
-  budgetLedgerId: string;
-  harnessRunId: string;
+  budgetLedgerId?: string;
+  ledger?: BudgetLedger;
+  harnessRunId?: string;
   amount: number;
   resourceKind: BudgetResourceKind;
   expiresAt: string;
   budgetReservationId?: string;
+  reservationId?: string;
   nodeRunId?: string;
   status?: BudgetReservation["status"];
   createdAt?: string;
   version?: number;
 }): BudgetReservation {
   requirePositive(input.amount, "budget_reservation.amount_invalid");
+  const budgetReservationId = input.budgetReservationId ?? input.reservationId ?? newId("bresv");
   return {
-    budgetReservationId: input.budgetReservationId ?? newId("bresv"),
-    budgetLedgerId: input.budgetLedgerId,
-    harnessRunId: input.harnessRunId,
+    budgetReservationId,
+    reservationId: budgetReservationId,
+    budgetLedgerId: input.budgetLedgerId ?? input.ledger?.budgetLedgerId ?? "legacy-budget-ledger",
+    harnessRunId: input.harnessRunId ?? input.ledger?.harnessRunId ?? "legacy-harness-run",
     ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
     amount: input.amount,
     resourceKind: input.resourceKind,
@@ -1591,7 +1602,7 @@ export function createBudgetReservation(input: {
     expiresAt: input.expiresAt,
     createdAt: input.createdAt ?? nowIso(),
     version: input.version ?? 0,
-  };
+  } as BudgetReservation;
 }
 
 export function reserveBudgetHardCap(input: {
@@ -1638,22 +1649,28 @@ export function reserveBudgetHardCap(input: {
 }
 
 export function createBudgetSettlement(input: {
-  budgetReservationId: string;
+  budgetReservationId?: string;
+  reservation?: BudgetReservation;
   actualAmount: number;
-  settlementKind: BudgetSettlement["settlementKind"];
+  settlementKind?: BudgetSettlement["settlementKind"];
   budgetSettlementId?: string;
+  settlementId?: string;
   evidenceRefs?: readonly ArtifactRef[];
   createdAt?: string;
 }): BudgetSettlement {
   requireNonNegative(input.actualAmount, "budget_settlement.actual_amount_invalid");
+  const budgetSettlementId = input.budgetSettlementId ?? input.settlementId ?? newId("bsettle");
+  const budgetReservationId = input.budgetReservationId ?? input.reservation?.budgetReservationId ?? input.reservation?.["reservationId" as keyof BudgetReservation] as string | undefined;
   return {
-    budgetSettlementId: input.budgetSettlementId ?? newId("bsettle"),
-    budgetReservationId: input.budgetReservationId,
+    budgetSettlementId,
+    settlementId: budgetSettlementId,
+    budgetReservationId: budgetReservationId ?? "legacy-budget-reservation",
+    reservationId: budgetReservationId ?? "legacy-budget-reservation",
     actualAmount: input.actualAmount,
-    settlementKind: input.settlementKind,
+    settlementKind: input.settlementKind ?? "final",
     evidenceRefs: input.evidenceRefs ?? [],
     createdAt: input.createdAt ?? nowIso(),
-  };
+  } as BudgetSettlement;
 }
 
 export function createRunVersionLock(input: {

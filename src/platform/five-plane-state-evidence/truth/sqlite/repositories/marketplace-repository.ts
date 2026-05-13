@@ -136,9 +136,9 @@ export class MarketplaceRepository {
       record.manifestChecksum,
       record.lifecycleState,
       record.reviewRequired,
-      record.sbomVerified,
-      record.sandboxCertVerified,
-      record.egressPolicyCompliant,
+      record.sbomVerified ?? 0,
+      record.sandboxCertVerified ?? 0,
+      record.egressPolicyCompliant ?? 0,
       record.createdAt,
       record.updatedAt,
     );

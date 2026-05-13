@@ -89,7 +89,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   private readonly stateMachine: RuntimeStateMachine;
 
   public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
-    this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    this.stateMachine = options.stateMachine ?? new RuntimeStateMachine({ persistEvent: () => undefined });
   }
 
   public seed(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {

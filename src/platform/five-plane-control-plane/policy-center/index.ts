@@ -255,6 +255,25 @@ export class PolicyCenterService {
     matchedRuleRefs: string[];
     explainSummary: string;
   } {
+    if (input.mode === "maintenance") {
+      const blockedActions: readonly PolicyAction[] = ["advance_rollout", "org_change", "install_extension"];
+      return {
+        constraints: { mode: "no_rollout", maintenanceWindow: true, rolloutAllowed: false },
+        denyReason: blockedActions.includes(input.action) ? "policy.maintenance_mode_denied" : null,
+        requiresApproval: false,
+        matchedRuleRefs: ["mode.maintenance"],
+        explainSummary: "Maintenance mode blocks rollout, organization, and extension changes.",
+      };
+    }
+    if (input.mode === "emergency") {
+      return {
+        constraints: { mode: "no_write", breakGlass: true, operatorAckRequired: input.subjectType !== "system" },
+        denyReason: null,
+        requiresApproval: input.subjectType !== "system",
+        matchedRuleRefs: ["mode.emergency"],
+        explainSummary: "Emergency mode enables break-glass procedures with operator acknowledgment.",
+      };
+    }
     const normalizedMode = normalizePolicyCenterMode(input.mode);
     switch (normalizedMode) {
       case "read_only":
@@ -476,6 +495,8 @@ function parseHost(resourceRef: string | null | undefined): string | null {
 
 function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {
   switch (mode) {
+    case "supervised":
+      return "manual_only";
     case "auto":
       return "supervised_auto";
     case "full-auto":
@@ -485,11 +506,11 @@ function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {
     case "incident-mode":
       return "incident_mode";
     case "maintenance":
-      return "maintenance";
+      return "no_rollout";
     case "degraded":
-      return "degraded";
+      return "no_external_call";
     case "emergency":
-      return "emergency";
+      return "no_write";
     default:
       return normalizeUnifiedRuntimeMode(mode as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
   }
