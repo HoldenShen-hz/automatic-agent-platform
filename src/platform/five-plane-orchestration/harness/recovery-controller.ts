@@ -189,7 +189,8 @@ export class RecoveryController {
 
       case "tool_timeout": {
         if (!this.shouldUseBackoffRecovery(run)) {
-          return this.runtime.resume(recovering);
+          this.durableService.persist(recovering);
+          return recovering;
         }
         // R18-16 fix: consult LoopController for retry/replan decision per §45.11
         // Node-level retry should go through LoopController's guard evaluation
@@ -244,7 +245,8 @@ export class RecoveryController {
 
       case "platform_panic": {
         if (!this.shouldUseBackoffRecovery(run)) {
-          return this.runtime.resume(recovering);
+          this.durableService.persist(recovering);
+          return recovering;
         }
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
           this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "platform_panic_retry_exhausted", {

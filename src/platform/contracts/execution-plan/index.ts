@@ -35,10 +35,11 @@ export function createExecutionPlan(_input: {
 }
 
 // Runtime warning for imports from legacy contract path
-console.warn(
+process.emitWarning(
   "[DEPRECATED] execution-plan/ is deprecated. " +
   "Use PlanGraphBundle from src/platform/contracts/executable-contracts instead. " +
   "See: https://docs.example.com/platform/contracts#execution-plan-migration",
+  { code: "AA_LEGACY_EXECUTION_PLAN" },
 );
 
 /**

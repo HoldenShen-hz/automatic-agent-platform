@@ -81,7 +81,7 @@ export type FailedPredicate = (report: any) => boolean;
  * 1. Resolve output directory from `AA_STABLE_<NAME>_OUTPUT_DIR` or default
  * 2. Call `runner({ outputDir })`
  * 3. Call `writer(join(outputDir, reportFilename), report)`
- * 4. `console.log(JSON.stringify(report, null, 2))`
+ * 4. `process.stdout.write(JSON.stringify(report, null, 2))`
  * 5. Call `failed(report)` — set exit code 1 if true
  */
 export function createStableCli(opts: {
@@ -170,7 +170,7 @@ export function createStableCli(opts: {
       const reportPath = join(outputDir, reportFilename);
       writer(reportPath, report);
     }
-    console.log(JSON.stringify(report, null, 2));
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 
     if (failed(report)) {
       process.exitCode = 1;
@@ -181,7 +181,7 @@ export function createStableCli(opts: {
   // Entry point — always use .catch() so rejections don't silently disappear
   // -------------------------------------------------------------------------
   main().catch((err) => {
-    console.error(err);
+    process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
     process.exitCode = 1;
   });
 }

@@ -14,14 +14,15 @@ import type { ConstraintPack } from "../harness/index.js";
  * If the policy plane defines a canonical type, this interface should be removed and replaced with an import.
  */
 export interface EffectivePolicySnapshot {
-  readonly policyIds: readonly string[];
-  readonly appliedPolicies: readonly {
+  readonly policyIds?: readonly string[];
+  readonly blockedTools?: readonly string[];
+  readonly appliedPolicies?: readonly {
     readonly policyId: string;
     readonly version: string;
     readonly constraints: readonly string[];
   }[];
-  readonly autonomyLevel: ConstraintPack["autonomyMode"];
-  readonly approvalMode: ConstraintPack["approvalMode"];
+  readonly autonomyLevel?: ConstraintPack["autonomyMode"];
+  readonly approvalMode?: ConstraintPack["approvalMode"];
 }
 
 /**
@@ -65,6 +66,18 @@ export type AssessmentServiceResult = Omit<UnifiedAssessment, "riskAssessment"> 
   riskAssessment: UnifiedAssessment["riskAssessment"] & RiskAssessment;
 };
 
+interface WrappedAssessmentInput {
+  readonly taskSituation: TaskSituation;
+  readonly constraintPack?: ConstraintPack;
+  readonly effectivePolicySnapshot?: EffectivePolicySnapshot;
+  readonly effectivePolicy?: EffectivePolicySnapshot;
+  readonly inheritedRiskAssessment?: { readonly level?: RiskAssessment["level"]; readonly factors?: readonly string[] };
+}
+
+function isWrappedAssessmentInput(input: TaskSituation | WrappedAssessmentInput): input is WrappedAssessmentInput {
+  return typeof input === "object" && input != null && "taskSituation" in input;
+}
+
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
   private readonly fileCountThresholds: { critical: number; high: number; moderate: number; simple: number };
@@ -100,13 +113,18 @@ export class AssessmentService {
    * @returns UnifiedAssessment and standalone RiskAssessment produced by the Assess stage
    */
   public assess(
-    taskSituation: TaskSituation,
+    taskSituation: TaskSituation | WrappedAssessmentInput,
     constraintPack?: ConstraintPack,
     effectivePolicy?: EffectivePolicySnapshot,
   ): AssessmentServiceResult {
+    const wrappedInput = isWrappedAssessmentInput(taskSituation) ? taskSituation : null;
+    if (wrappedInput != null) {
+      constraintPack = wrappedInput.constraintPack ?? constraintPack;
+      effectivePolicy = wrappedInput.effectivePolicySnapshot ?? wrappedInput.effectivePolicy ?? effectivePolicy;
+    }
     // NOTE: taskSituation is already a TaskSituation from the Observe stage.
     // If re-parsing is needed for validation, use parseTaskSituation(taskSituation) here.
-    const situation = taskSituation;
+    const situation = wrappedInput?.taskSituation ?? taskSituation;
     const blockerSeverities = situation.blockers.map((blocker) => blocker.severity);
     const riskFactors: string[] = [];
 
@@ -121,6 +139,11 @@ export class AssessmentService {
       // The escalation threshold from ConstraintPack could be used for additional risk escalation.
       void escalationThreshold; // Available for future threshold-based escalation
     }
+    if (constraintPack?.approvalMode === "required") {
+      riskFactors.push("approval_mode_required");
+    } else if (constraintPack?.approvalMode === "supervised") {
+      riskFactors.push("approval_mode_supervised");
+    }
 
     // R5-6: Consume EffectivePolicySnapshot for policy-informed routing
     if (effectivePolicy) {
@@ -129,11 +152,19 @@ export class AssessmentService {
         riskFactors.push("policy_suggestion_mode");
       }
       // If any applied policy has constraint flags, factor them in
-      for (const policy of effectivePolicy.appliedPolicies) {
+      for (const blockedTool of effectivePolicy.blockedTools ?? []) {
+        if (situation.environmentContext.availableTools.includes(blockedTool)) {
+          riskFactors.push(`blocked_tools:${blockedTool}`);
+        }
+      }
+      for (const policy of effectivePolicy.appliedPolicies ?? []) {
         if (policy.constraints.some((c) => c.includes("high_risk") || c.includes("critical"))) {
           riskFactors.push(`policy_constraint:${policy.policyId}`);
         }
       }
+    }
+    for (const factor of wrappedInput?.inheritedRiskAssessment?.factors ?? []) {
+      riskFactors.push(`inherited:${factor}`);
     }
 
     if (blockerSeverities.includes("critical")) {
@@ -160,6 +191,9 @@ export class AssessmentService {
     // If estimated worst-path cost exceeds budgetEnvelope, task is not feasible
     const budgetEnvelope = constraintPack?.budgetEnvelope ?? constraintPack?.budget;
     if (budgetEnvelope) {
+      if (budgetEnvelope.maxSteps <= 1 || budgetEnvelope.maxCost <= 1) {
+        riskFactors.push("tight_budget_envelope");
+      }
       const estimatedCost = this.estimateWorstPathCost(situation, initialComplexityAssessment.score);
       if (estimatedCost > budgetEnvelope.maxCost) {
         riskFactors.push("budget_exceeds_feasibility_threshold");
@@ -373,33 +407,44 @@ export class AssessmentService {
   private deriveDivision(situation: TaskSituation): string {
     const tools = situation.environmentContext.availableTools;
     const blockers = situation.blockers.map(b => b.description.toLowerCase());
-    const objective = situation.userIntent.raw.toLowerCase();
+    const objective = [
+      situation.objective,
+      situation.userIntent.raw,
+      situation.userIntent.normalized,
+      (situation as { domainId?: string }).domainId ?? "",
+    ].join(" ").toLowerCase();
 
     // Data/analytics division: data processing, queries, pipelines
     if (tools.some(t => /data|query|pipeline|etl|warehouse|analytics/.test(t)) ||
         blockers.some(b => /data|query|pipeline|etl/.test(b)) ||
-        /data |analytics |pipeline |etl |query /.test(objective)) {
+        /\b(data|analytics|pipeline|etl|query|warehouse)\b/.test(objective)) {
       return "data";
+    }
+
+    if (tools.some(t => /incident|rollback|restore|capacity|ops|operate|sre/.test(t)) ||
+        blockers.some(b => /incident|rollback|restore|capacity|ops|operate|sre/.test(b)) ||
+        /\b(incident|rollback|restore|capacity|ops|operate|operational|sre|cluster)\b/.test(objective)) {
+      return "ops";
     }
 
     // Infrastructure division: deployment, DevOps, cloud ops
     if (tools.some(t => /deploy|kubernetes|terraform|aws|gcp|azure|docker|container/.test(t)) ||
         blockers.some(b => /deploy|infrastructure|cloud|docker|kubernetes/.test(b)) ||
-        /deploy |infrastructure |kubernetes |docker |cloud |devops/.test(objective)) {
+        /\b(deploy|infrastructure|kubernetes|docker|cloud|devops)\b/.test(objective)) {
       return "infrastructure";
     }
 
     // Security division: security扫描, vuln, auth
     if (tools.some(t => /security|scan|vuln|auth|identity|oauth|jwt|cert/.test(t)) ||
         blockers.some(b => /security|vuln|auth|cert|pki/.test(b)) ||
-        /security |vuln |auth |oauth |pki/.test(objective)) {
+        /\b(security|vuln|auth|oauth|pki)\b/.test(objective)) {
       return "security";
     }
 
     // Research/ML division: training, model, ml, llm
     if (tools.some(t => /train|model|ml|llm|ai|infer|tensor|gpu/.test(t)) ||
         blockers.some(b => /model|ml|llm|ai|train|tensor/.test(b)) ||
-        /model |ml |llm |train |ai |machine learning/.test(objective)) {
+        /\b(model|ml|llm|train|ai|machine learning)\b/.test(objective)) {
       return "research";
     }
 

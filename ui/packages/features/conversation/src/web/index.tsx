@@ -1,5 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { CodeBlock, FeatureScaffold, FileAttachment, KeyValueTable } from "@aa/ui-core";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useConversationVm } from "../hooks";
 
 function renderMessageContent(content: string): ReactElement {
@@ -12,6 +13,7 @@ function renderMessageContent(content: string): ReactElement {
 
 export function ConversationWebView(): ReactElement {
   const vm = useConversationVm();
+  const copy = translateFeatureCopy("conversation");
 
   function handleFileAttach(event: ChangeEvent<HTMLInputElement>): void {
     if (event.target.files == null) {
@@ -21,27 +23,32 @@ export function ConversationWebView(): ReactElement {
   }
 
   return (
-    <FeatureScaffold title="NL Conversation" summary="对话优先输入入口" status="Implemented/Partial">
+    <FeatureScaffold title={copy.title} summary={copy.summary} status={translateMessage("ui.conversation.status")}>
       <div style={{ display: "grid", gap: 16 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <input onChange={(event) => vm.setDraft(event.target.value)} value={vm.draft} />
+          <input
+            aria-label={translateMessage("ui.conversation.prompt.label")}
+            onChange={(event) => vm.setDraft(event.target.value)}
+            placeholder={translateMessage("ui.conversation.prompt.placeholder")}
+            value={vm.draft}
+          />
           <label>
-            Attach files
-            <input aria-label="Attach files" onChange={handleFileAttach} style={{ display: "none" }} type="file" multiple />
+            {translateMessage("ui.conversation.attachFiles")}
+            <input aria-label={translateMessage("ui.conversation.attachFiles")} onChange={handleFileAttach} style={{ display: "none" }} type="file" multiple />
           </label>
-          <button onClick={() => { void vm.sendPrompt(); }} type="button">Send Prompt</button>
-          <button disabled={vm.messages.length === 0} onClick={() => { void vm.buildPlan(); }} type="button">Build Plan</button>
-          <button disabled={!vm.planReady} onClick={vm.confirmPlan} type="button">Confirm</button>
-          <button disabled={!vm.executionReady && vm.messages.length === 0} onClick={() => { void vm.executePlan(); }} type="button">Execute</button>
-          <button onClick={vm.requestClarification} type="button">Trigger Clarification</button>
+          <button aria-label={translateMessage("ui.conversation.sendPrompt")} onClick={() => { void vm.sendPrompt(); }} type="button">{translateMessage("ui.conversation.sendPrompt")}</button>
+          <button aria-label={translateMessage("ui.conversation.buildPlan")} disabled={vm.messages.length === 0} onClick={() => { void vm.buildPlan(); }} type="button">{translateMessage("ui.conversation.buildPlan")}</button>
+          <button aria-label={translateMessage("ui.conversation.confirm")} disabled={!vm.planReady} onClick={vm.confirmPlan} type="button">{translateMessage("ui.conversation.confirm")}</button>
+          <button aria-label={translateMessage("ui.conversation.execute")} disabled={!vm.executionReady && vm.messages.length === 0} onClick={() => { void vm.executePlan(); }} type="button">{translateMessage("ui.conversation.execute")}</button>
+          <button aria-label={translateMessage("ui.conversation.triggerClarification")} onClick={vm.requestClarification} type="button">{translateMessage("ui.conversation.triggerClarification")}</button>
         </div>
         <KeyValueTable
           rows={[
-            { key: "Conversation Status", value: vm.status },
-            { key: "Messages", value: String(vm.messages.length) },
-            { key: "Plan Ready", value: String(vm.planReady) },
-            { key: "Execution Ready", value: String(vm.executionReady) },
-            { key: "Streaming", value: vm.isStreaming ? "connected" : "idle" },
+            { key: translateMessage("ui.conversation.table.status"), value: vm.status },
+            { key: translateMessage("ui.conversation.table.messages"), value: String(vm.messages.length) },
+            { key: translateMessage("ui.conversation.table.planReady"), value: String(vm.planReady) },
+            { key: translateMessage("ui.conversation.table.executionReady"), value: String(vm.executionReady) },
+            { key: translateMessage("ui.conversation.table.streaming"), value: vm.isStreaming ? translateMessage("ui.conversation.streaming.connected") : translateMessage("ui.conversation.streaming.idle") },
           ]}
         />
         {vm.attachments.length > 0 && <FileAttachment files={vm.attachments} />}

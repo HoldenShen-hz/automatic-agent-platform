@@ -51,13 +51,13 @@ async function main(): Promise<void> {
     ...(envConfig.validationIterations != null ? { validationIterations: envConfig.validationIterations } : {}),
   });
 
-  console.log(JSON.stringify(report, null, 2));
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed) {
     process.exitCode = 1;
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
   process.exitCode = 1;
 });

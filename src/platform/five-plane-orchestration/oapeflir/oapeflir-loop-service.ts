@@ -152,6 +152,7 @@ export class OapeflirLoopService {
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
   // R19-06 fix: Store eventPublisher for emitting state change events per §14.3
   private readonly eventPublisher: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | undefined;
+  public loopController: HarnessLoopController | null = null;
   /** Optional control-plane sink reserved for directive emission integrations. */
   private readonly directiveSink: ControlPlaneDirectiveSink | null;
   // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
@@ -184,6 +185,9 @@ export class OapeflirLoopService {
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
+    if ((input as Partial<OapeflirLoopInput>).workflow == null) {
+      return await this.produceStageRationale(input);
+    }
     return await startActiveSpan("oapeflir.loop", {
       tracerName: "automatic-agent-platform.oapeflir",
       attributes: {
@@ -1166,7 +1170,7 @@ export class OapeflirLoopService {
     }
   }
 
-  private buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
+  public buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
     return stepOutputs.map((output, index) => {
       // R19-08 fix: Derive feedback category from step output status, not hardcoded "success"
       // Failed steps with validation failures should produce failure/blocker feedback
@@ -1187,7 +1191,8 @@ export class OapeflirLoopService {
           durationMs: output.systemTelemetry.durationMs,
           validationPassed,
         },
-        stepOutputRefs: [output.stepId],
+        stepOutputRefs: [(output as unknown as { nodeRunId?: string }).nodeRunId ?? output.stepId],
+        ...((output as unknown as { nodeRunId?: string }).nodeRunId != null ? { nodeRunId: (output as unknown as { nodeRunId: string }).nodeRunId } : {}),
         timestamp: Date.now() + index,
         feedbackTrustScore: 0.5,
         trustFactors: {
@@ -1205,6 +1210,26 @@ export class OapeflirLoopService {
    * R19-06 fix: Emits platform._ facts / oapeflir.view._ projections for state changes per §14.3.
    * Called after each stage transition to emit lifecycle events.
    */
+  public emitOapeflirEvent(eventType: string, payload: Record<string, unknown>, taskId: string): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    (this.eventPublisher.publish as (input: { eventType: string; taskId: string; payload: Record<string, unknown> }) => void)({
+      eventType,
+      taskId,
+      payload,
+    });
+  }
+
+  public assertGuardAllowsStage(stage: "assess" | "plan" | "execute", taskId: string): void {
+    const reasonCode = this.loopController?.getGuardViolation() ?? null;
+    if (reasonCode == null) {
+      return;
+    }
+    this.emitOapeflirEvent("oapeflir.decision.recorded", { stage, reasonCode }, taskId);
+    throw new Error(`oapeflir.guard_blocked_before_${stage}: ${reasonCode}`);
+  }
+
   private emitStageEvent(stage: string, taskId: string, data: Record<string, unknown>): void {
     if (!this.eventPublisher) {
       return;
@@ -1340,7 +1365,7 @@ export class OapeflirLoopService {
       case "medium":
         return 0.5;
       case "high":
-        return 0.75;
+        return 0.85;
       case "critical":
         return 1;
       default:

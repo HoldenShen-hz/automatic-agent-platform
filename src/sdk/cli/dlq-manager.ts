@@ -30,6 +30,14 @@ interface DlqAction {
   confirmed?: boolean;
 }
 
+function writeLine(message: string): void {
+  process.stdout.write(`${message}\n`);
+}
+
+function writeJson(value: unknown): void {
+  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}
+
 export function parseArguments(overrides?: Record<string, string | boolean | undefined>): DlqAction {
   const values = overrides ?? parseArgs({
     options: {
@@ -87,10 +95,10 @@ function listGatewayDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorag
 
   const rows = sql.prepare(query).all(...params);
   if (rows.length === 0) {
-    console.log("No gateway dead letters found.");
+    writeLine("No gateway dead letters found.");
     return;
   }
-  console.table(rows);
+  writeJson(rows);
 }
 
 function listJobDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number): void {
@@ -104,10 +112,10 @@ function listJobDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageCon
     LIMIT ?
   `).all(limit);
   if (rows.length === 0) {
-    console.log("No job dead letters found.");
+    writeLine("No job dead letters found.");
     return;
   }
-  console.table(rows);
+  writeJson(rows);
 }
 
 function listEventDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number): void {
@@ -120,10 +128,10 @@ function listEventDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageC
     LIMIT ?
   `).all(limit);
   if (rows.length === 0) {
-    console.log("No event dead letters found.");
+    writeLine("No event dead letters found.");
     return;
   }
-  console.table(rows);
+  writeJson(rows);
 }
 
 function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>): void {
@@ -133,7 +141,7 @@ function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   const jobsCount = (sql.prepare(`SELECT COUNT(*) as c FROM queue_jobs WHERE status = 'dead_letter'`).get() as { c: number })?.c ?? 0;
   const eventsCount = (sql.prepare(`SELECT COUNT(*) as c FROM event_dead_letters`).get() as { c: number })?.c ?? 0;
 
-  console.table({
+  writeJson({
     gateway: gatewayCount,
     jobs: jobsCount,
     events: eventsCount,
@@ -153,15 +161,15 @@ function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
       ORDER BY updated_at ASC
       LIMIT 100
     `).run();
-    console.log(`Retried up to ${result.changes} dead-lettered jobs (batch limit: 100).`);
+    writeLine(`Retried up to ${result.changes} dead-lettered jobs (batch limit: 100).`);
   } else if (queue === "gateway") {
     // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
-    console.log(`Gateway dead letters (${count}) cannot be directly retried. Consider re-processing or purging.`);
+    writeLine(`Gateway dead letters (${count}) cannot be directly retried. Consider re-processing or purging.`);
   } else if (queue === "events") {
     // Event DLQ retry would require re-publishing events
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM event_dead_letters`).get() as { c: number })?.c ?? 0;
-    console.log(`Event dead letters (${count}) cannot be directly retried. Consider re-publishing or purging.`);
+    writeLine(`Event dead letters (${count}) cannot be directly retried. Consider re-publishing or purging.`);
   }
 }
 
@@ -171,21 +179,21 @@ function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   // R31-34 FIX: Require --confirm flag for purge operations to prevent accidental deletion
   const confirmFlag = process.env.AA_DLQ_PURGE_CONFIRM ?? "";
   if (confirmFlag !== "yes") {
-    console.log("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes environment variable.");
-    console.log(`Dry-run: Would delete all ${queue} dead letter records.`);
-    console.log("Set AA_DLQ_PURGE_CONFIRM=yes to proceed with actual deletion.");
+    writeLine("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes environment variable.");
+    writeLine(`Dry-run: Would delete all ${queue} dead letter records.`);
+    writeLine("Set AA_DLQ_PURGE_CONFIRM=yes to proceed with actual deletion.");
     return;
   }
 
   if (queue === "gateway") {
     const result = sql.prepare(`DELETE FROM gateway_dead_letters`).run();
-    console.log(`Purged ${result.changes} gateway dead letter entries.`);
+    writeLine(`Purged ${result.changes} gateway dead letter entries.`);
   } else if (queue === "jobs") {
     const result = sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run();
-    console.log(`Purged ${result.changes} dead-lettered job entries.`);
+    writeLine(`Purged ${result.changes} dead-lettered job entries.`);
   } else if (queue === "events") {
     const result = sql.prepare(`DELETE FROM event_dead_letters`).run();
-    console.log(`Purged ${result.changes} event dead letter entries.`);
+    writeLine(`Purged ${result.changes} event dead letter entries.`);
   }
 }
 

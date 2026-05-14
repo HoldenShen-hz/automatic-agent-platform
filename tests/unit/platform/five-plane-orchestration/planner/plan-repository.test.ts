@@ -97,7 +97,7 @@ test("PlanRepository.save handles multiple tasks independently", () => {
   const repo = new PlanRepository();
   repo.save(makePlan({ taskId: "task-A" }));
   repo.save(makePlan({ taskId: "task-B" }));
-  repo.save(makePlan({ taskId: "task-A" }));
+  repo.save(makePlan({ taskId: "task-A", version: 2 }));
 
   assert.equal(repo.listByTask("task-A").length, 2);
   assert.equal(repo.listByTask("task-B").length, 1);

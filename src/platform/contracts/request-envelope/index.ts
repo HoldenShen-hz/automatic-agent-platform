@@ -4,10 +4,11 @@ import type { PrincipalRef } from "../executable-contracts/index.js";
 import type { OperationalDirective, DecisionDirective } from "../control-directive/index.js";
 
 // Runtime warning for imports from legacy contract path
-console.warn(
+process.emitWarning(
   "[DEPRECATED] request-envelope/ is deprecated. " +
   "Use RequestEnvelope from src/platform/contracts/executable-contracts instead. " +
   "See: https://docs.example.com/platform/contracts#request-envelope-migration",
+  { code: "AA_LEGACY_REQUEST_ENVELOPE" },
 );
 
 /**

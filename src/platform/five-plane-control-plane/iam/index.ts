@@ -60,3 +60,48 @@ export type {
   PlatformRole,
   PrincipalAccessProfile,
 } from "./access-model.js";
+export {
+  createSession,
+  extractBearerToken,
+  getPrincipalSessions,
+  getSession,
+  getSessionStats,
+  refreshSession,
+  revokeAllPrincipalSessions,
+  revokeSession,
+  validateAccessToken,
+} from "./session-management.js";
+export type {
+  AccessToken,
+  RefreshToken,
+  Session,
+  SessionStatus,
+  SessionValidationError,
+  SessionValidationResult,
+} from "./session-management.js";
+export {
+  extractServiceAuth,
+  generateMtlsCertificate,
+  getMtlsCertificate,
+  getServiceAuthStats,
+  getServiceCertificates,
+  getServiceIdentity,
+  getServiceIdentityByName,
+  issueServiceToken,
+  registerServiceIdentity,
+  revokeAllServiceTokens,
+  revokeMtlsCertificate,
+  revokeServiceToken,
+  rotateServiceKey,
+  updateServiceIdentityStatus,
+  validateServiceToken,
+} from "./service-auth.js";
+export type {
+  MtlsCertificate,
+  ServiceAuthError,
+  ServiceAuthResult,
+  ServiceIdentity,
+  ServiceIdentityStatus,
+  ServiceToken,
+  ServiceTokenType,
+} from "./service-auth.js";

@@ -228,7 +228,7 @@ export function checkFreshness(
  * // Later, before writing
  * const result = guard.check('/path/to/file.txt');
  * if (!result.fresh) {
- *   console.error('File was modified!', result.reason);
+ *   process.stderr.write(`File was modified: ${result.reason}\n`);
  *   // Re-read and try again
  * }
  * ```

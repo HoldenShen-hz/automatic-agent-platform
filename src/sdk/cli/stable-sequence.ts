@@ -27,13 +27,13 @@ async function main(): Promise<void> {
       })
     : await runStableEvidenceSequence(options);
 
-  console.log(JSON.stringify(report, null, 2));
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (report.state.blocked) {
     process.exitCode = 1;
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
   process.exitCode = 1;
 });

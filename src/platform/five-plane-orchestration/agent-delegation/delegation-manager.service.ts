@@ -141,7 +141,7 @@ export class DelegationManagerService {
     if (this.delegationRepository) {
       this.hydrateFromRepository().catch((err) => {
         // Log but don't fail startup - in-memory mode still works as fallback
-        console.error("Failed to hydrate delegations from repository:", err);
+        process.stderr.write(`Failed to hydrate delegations from repository: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
       });
     }
   }

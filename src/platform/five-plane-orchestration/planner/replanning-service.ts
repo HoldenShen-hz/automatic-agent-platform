@@ -31,7 +31,7 @@ export class ReplanningService {
     };
   }
 
-  public decide(plan: Plan, feedback: FeedbackBatch, trigger?: ReplanningTrigger | null): ReplanningDecision {
+  public decide(plan: Plan | { readonly harnessRunId?: string; readonly graphVersion?: number }, feedback: FeedbackBatch, trigger?: ReplanningTrigger | null): ReplanningDecision {
     const repairable = feedback.outcome === "repairable" || feedback.signals.some((signal) => signal.category === "correction");
     const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
     const shouldReplan = repairable || failed;
@@ -51,11 +51,14 @@ export class ReplanningService {
       reasonCode = "planning.downgrade_mode";
     }
 
+    const taskId = "taskId" in plan ? plan.taskId : plan.harnessRunId ?? "unknown_task";
+    const currentVersion = "version" in plan ? plan.version : plan.graphVersion ?? 1;
+
     return {
       decisionId: newId("replan_decision"),
-      taskId: plan.taskId,
+      taskId,
       shouldReplan: shouldReplan || downgradeMode,
-      nextPlanVersion: shouldReplan || downgradeMode ? plan.version + 1 : null,
+      nextPlanVersion: shouldReplan || downgradeMode ? currentVersion + 1 : null,
       strategy,
       reasonCode,
       decidedAt: Date.now(),

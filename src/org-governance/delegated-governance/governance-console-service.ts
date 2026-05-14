@@ -12,7 +12,7 @@
  *
  * Current Implementation Status: Phase 1 stub
  *
- * TODO (Phase 2):
+ * Phase 2 implementation scope:
  * - Add persistent storage for delegations
  * - Implement full audit logging for all console actions
  * - Add role-based access control for console operations

@@ -91,7 +91,7 @@ function main(): void {
     }
   }, { dbPath: envConfig.dbPath });
 
-  console.log(JSON.stringify(output, null, 2));
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
 main();

@@ -141,7 +141,7 @@ export const LEGACY_CONTRACT_NAMES = [
 export type LegacyContractName = (typeof LEGACY_CONTRACT_NAMES)[number];
 
 /**
- * Emits a console warning if a deprecated contract name is detected.
+ * Emits a process warning if a deprecated contract name is detected.
  * Use this in migration scripts or CI to detect usage of deprecated contracts.
  *
  * @param contractName - The contract name to check
@@ -151,10 +151,11 @@ export type LegacyContractName = (typeof LEGACY_CONTRACT_NAMES)[number];
 export function emitDeprecationWarning(contractName: string, importPath?: string): boolean {
   if (LEGACY_CONTRACT_NAMES.includes(contractName as LegacyContractName)) {
     const pathSuffix = importPath ? ` imported from "${importPath}"` : "";
-    console.warn(
+    process.emitWarning(
       `[DEPRECATION WARNING] "${contractName}"${pathSuffix} is a deprecated contract. ` +
       `Migrate to canonical executable-contracts per §4 and §5.3. ` +
       `See LEGACY_CONTRACT_NAMES in platform/contracts/index.ts for the full list.`,
+      { code: "AA_DEPRECATED_CONTRACT" },
     );
     return true;
   }

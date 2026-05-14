@@ -301,6 +301,29 @@ export class EvaluatorService {
     level: "unchanged" | "elevated" | "decreased";
   } {
     const baselineRisk = planGraphBundle.riskProfile.riskClass;
+    const failureCount = feedback.signals.filter((signal) => signal.category === "failure" || signal.category === "timeout").length;
+    const criticalCount = feedback.signals.filter((signal) => signal.severity === "critical").length;
+    if (criticalCount > 0) {
+      return {
+        severity: "critical",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} -> critical`,
+        level: baselineRisk === "critical" ? "unchanged" : "elevated",
+      };
+    }
+    if (failureCount >= 3) {
+      return {
+        severity: "error",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
+        level: "elevated",
+      };
+    }
+    if (failureCount === 0) {
+      return {
+        severity: "info",
+        message: `Risk boundary: baseline ${baselineRisk} unchanged`,
+        level: "unchanged",
+      };
+    }
     const evaluated = this.riskEvaluationEngine.evaluate({
       taskId: planGraphBundle.planGraphBundleId,
       factors: this.buildRiskFactors(planGraphBundle, feedback),

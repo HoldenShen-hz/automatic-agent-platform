@@ -3,11 +3,12 @@ import { newId, nowIso } from "../types/ids.js";
 import type { EventAppendCommand, AuditAppendCommand, ArtifactWriteCommand, EventReplayBehavior } from "../executable-contracts/index.js";
 
 // Runtime warning for imports from legacy contract path
-console.warn(
+process.emitWarning(
   "[DEPRECATED] StateCommand from state-command/ is deprecated. " +
   "Use inter-plane commands (EventAppendCommand, AuditAppendCommand, ArtifactWriteCommand) " +
   "from src/platform/contracts/executable-contracts instead. " +
   "See: https://docs.example.com/platform/contracts#state-command-migration",
+  { code: "AA_LEGACY_STATE_COMMAND" },
 );
 
 export type StateCommandAction = "upsert" | "transition" | "append_event" | "delete";

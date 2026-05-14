@@ -32,6 +32,14 @@ import { SideEffectManager } from "../side-effect-manager.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 const MAX_SPAWN_DEPTH = 8;
+const DEFAULT_DISPATCH_BUDGET_POLICY: BudgetPolicy = {
+  maxTaskCostUsd: 10,
+  maxDailyCostUsd: 100,
+  maxMonthlyCostUsd: 1000,
+  maxPlatformCostUsd: 0,
+  warnAtRatio: 0.8,
+  mode: "auto",
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,6 +49,9 @@ export interface MultiStepToolDefinition {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+}
+export interface MultiStepToolDispatcherOptions {
+  budgetPolicy?: BudgetPolicy;
 }
 interface ToolCallResult {
   toolCallId: string;
@@ -89,6 +100,7 @@ class MultiStepToolRegistry {
   private readonly repoRoot: string;
   private readonly spawnedAgents: Map<string, SpawnedAgentState>;
   private readonly budgetGuard: BudgetGuard;
+  private readonly budgetPolicy: BudgetPolicy;
   private readonly policyEngine: PolicyEngine;
   private readonly sideEffectManager: SideEffectManager;
   private spawnDepth: number = 0;
@@ -98,7 +110,7 @@ class MultiStepToolRegistry {
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
-  constructor() {
+  constructor(options: MultiStepToolDispatcherOptions = {}) {
     this.todoService = new TodoWriteToolService();
     this.webFetchTool = createWebFetchTool();
     this.webSearchTool = createWebSearchTool();
@@ -106,23 +118,13 @@ class MultiStepToolRegistry {
     this.repoRoot = process.cwd();
     this.spawnedAgents = new Map();
     this.budgetGuard = new BudgetGuard();
+    this.budgetPolicy = options.budgetPolicy ?? DEFAULT_DISPATCH_BUDGET_POLICY;
     // R4-34 (INV-POLICY-001): Add PolicyEngine for pre-check before tool dispatch
     this.policyEngine = new PolicyEngine({
-      budgetPolicy: this.getDefaultBudgetPolicy(),
+      budgetPolicy: this.budgetPolicy,
     });
     // R4-33 (INV-SIDEEFFECT-001): Add SideEffectManager for tracking web_fetch/web_search side effects
     this.sideEffectManager = new SideEffectManager();
-  }
-
-  private getDefaultBudgetPolicy(): BudgetPolicy {
-    return {
-      maxTaskCostUsd: 10,
-      maxDailyCostUsd: 100,
-      maxMonthlyCostUsd: 1000,
-      maxPlatformCostUsd: 0,
-      warnAtRatio: 0.8,
-      mode: "auto",
-    };
   }
 
   private estimateToolCost(toolName: string): number {
@@ -143,7 +145,7 @@ class MultiStepToolRegistry {
     // R4-25 (INV-BUDGET-001): Reserve budget before tool call
     const estimatedCost = this.estimateToolCost(toolName);
     const evaluation = this.budgetGuard.evaluateTaskSpend({
-      policy: this.getDefaultBudgetPolicy(),
+      policy: this.budgetPolicy,
       currentTaskCostUsd: 0,
       nextEstimatedCostUsd: estimatedCost,
     });

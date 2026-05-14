@@ -68,7 +68,7 @@ function main(): void {
           }),
         };
   }, envConfig.dbPath != null ? { dbPath: envConfig.dbPath } : {});
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 main();

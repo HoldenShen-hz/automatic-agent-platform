@@ -661,7 +661,8 @@ export class RedisQueueAdapter implements QueueAdapter {
 
   async retryJobAsync(jobId: string): Promise<QueueJobRecord | null> {
     const job = await this.getJobAsync(jobId);
-    if (!job || (job.status !== "failed" && job.status !== "dead_letter")) return null;
+    const retryableWaiting = job?.status === "waiting" && (job.attempts > 0 || job.lastError != null);
+    if (!job || (job.status !== "failed" && job.status !== "dead_letter" && !retryableWaiting)) return null;
     await this.client.hmset(this.jobKey(jobId), { status: "waiting", attempts: "0", last_error: "" });
     await this.client.srem(this.activeKey(job.queueName), jobId);
     await this.client.srem(this.deadLetterKey(job.queueName), jobId);
@@ -692,14 +693,33 @@ export class RedisQueueAdapter implements QueueAdapter {
   }
 
   async statsAsync(queueName: string): Promise<QueueStats> {
-    const [waitingTotal, delayed, active, completed, deadLetter] = await Promise.all([
+    const [waitingTotal, scoreDelayed, active, completed, deadLetter] = await Promise.all([
       this.client.zcard(this.waitingKey(queueName)),
       this.client.zcount(this.waitingKey(queueName), Date.now(), "+inf"),
       this.client.scard(this.activeKey(queueName)),
       this.client.scard(this.completedKey(queueName)),
       this.client.scard(this.deadLetterKey(queueName)),
     ]);
-    const waiting = Math.max(0, waitingTotal - delayed);
+    let waiting = Math.max(0, waitingTotal - scoreDelayed);
+    let delayed = scoreDelayed;
+    const queuedIds = await this.client.zrangebyscore(this.waitingKey(queueName), "-inf", "+inf");
+    let statusWaiting = 0;
+    let statusDelayed = 0;
+    let observedRecords = 0;
+    for (const id of queuedIds) {
+      const job = await this.getJobAsync(id);
+      if (job == null) continue;
+      observedRecords += 1;
+      if (job.status === "delayed") {
+        statusDelayed += 1;
+      } else if (job.status === "waiting") {
+        statusWaiting += 1;
+      }
+    }
+    if (observedRecords > 0) {
+      waiting = statusWaiting;
+      delayed = statusDelayed;
+    }
     return {
       queueName,
       waiting,

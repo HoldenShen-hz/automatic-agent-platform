@@ -26,19 +26,20 @@ export class RuntimeEntryGuard {
  * This method only provides runtime checks. For build-time @deprecated enforcement on legacy imports,
  * use the ESLint no-restricted-imports rule configured in eslint.config.js.
  *
- * R6-24 FIX: This method now emits a console warning at runtime to aid migration.
- * The console.warn message includes migration guidance per §4.3.
+ * R6-24 FIX: This method emits a runtime warning to aid migration.
+ * The warning message includes migration guidance per §4.3.
  */
 public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
     // R6-24 FIX: Emit runtime warning for migration aid
     // Use LEGACY_CONTRACT_NAMES from executable-contracts for consistent enforcement
     // Use type-safe includes() by casting to readonly string[] first
     if (input.contractName != null && this.isLegacyContractName(input.contractName)) {
-      console.warn(
+      process.emitWarning(
         `[DEPRECATION] Legacy contract '${input.contractName}' used. ` +
         `Migrate to canonical contracts per §4.3. ` +
         `Use PlanGraphBundle instead of ExecutionPlan, NodeAttemptReceipt instead of ExecutionReceipt, ` +
         `OperationalDirective/DecisionDirective instead of ControlDirective.`,
+        { code: "AA_LEGACY_CONTRACT" },
       );
       throw new ValidationError(
         "runtime_entry_guard.legacy_contract_forbidden",
@@ -46,9 +47,10 @@ public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonl
       );
     }
     if (input.eventType != null && !input.eventType.startsWith("platform.")) {
-      console.warn(
+      process.emitWarning(
         `[DEPRECATION] Non-platform event type '${input.eventType}' used for truth write. ` +
         `Runtime truth writes must use platform.* fact events per §28.1.`,
+        { code: "AA_NON_PLATFORM_FACT" },
       );
       throw new ValidationError(
         "runtime_entry_guard.platform_fact_required",

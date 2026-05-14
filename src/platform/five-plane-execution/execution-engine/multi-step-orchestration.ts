@@ -158,9 +158,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: [] as string[] },
     };
   } else {
-    const router = new IntakeRouter();
+    const router = input.intakeRouter ?? new IntakeRouter();
     routing = router.route({ title: input.title, request: input.request });
-    const planner = new WorkflowPlanner();
+    const planner = input.workflowPlanner ?? new WorkflowPlanner();
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);
   }

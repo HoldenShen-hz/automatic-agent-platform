@@ -334,9 +334,8 @@ export class ConfigHotReloadService {
       try {
         await subscriber.onConfigChanged(change, newConfig);
       } catch (error) {
-        console.error(
-          `[ConfigHotReload] Subscriber ${subscriber.componentName} failed to handle config change:`,
-          error,
+        process.stderr.write(
+          `[ConfigHotReload] Subscriber ${subscriber.componentName} failed to handle config change: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
         );
       }
     }

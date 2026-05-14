@@ -436,14 +436,14 @@ export class MissionControlService {
     // This is a placeholder that returns null; percentile calculation requires
     // access to raw duration arrays which are built inside MetricsService.buildSummary().
     // For now, derive from available metrics - p50/p99 require raw data access.
-    // TODO: Consider adding p50/p99 to RuntimeMetricsSummary if needed.
+    // p50/p99 can be added once RuntimeMetricsSummary exposes raw durations.
     return null;
   }
 
   private computeBudgetUtilizationPercent(summary: RuntimeMetricsSummary): number | null {
     // Budget utilization requires a budget limit which is not tracked in current metrics.
     // Returns null until budget limit is available in cost metrics.
-    // TODO: Add budgetLimitUsd to costMetrics when budget tracking is implemented.
+    // budgetLimitUsd can be added to costMetrics when budget tracking is implemented.
     return null;
   }
 

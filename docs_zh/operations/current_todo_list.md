@@ -1,6 +1,7 @@
 # Current Todo List
 
 > 本文件当前以 v4.3 Executable Specification Freeze 为主索引。下方“2026-04-25 全量测试失败清单”保留为历史测试基线，用于回归对账；它不再作为 v4.3 新路线的唯一优先级来源。
+> 2026-05-14 复核：`docs_zh/reviews/issues-table.md` 是本轮 design review 问题收口的权威逐行状态表；本文件只保留长期运行批次和历史回归基线，不再作为 review issue 的唯一完成判定来源。
 
 ## v4.3 Executable Specification Freeze 当前待办
 

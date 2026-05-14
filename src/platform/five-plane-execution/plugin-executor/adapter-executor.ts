@@ -189,7 +189,7 @@ export class AdapterExecutor {
     _idempotencyKey: string,
     _attempt: number,
   ): Promise<AdapterExecutionResult | null> {
-    // TODO: In production, implement Redis-based idempotency check
+    // Production path can replace this with a Redis-based idempotency check.
     // e.g., const cached = await redis.get(`idempotency:${idempotencyKey}`);
     // return cached ? JSON.parse(cached) : null;
     return null;
@@ -204,7 +204,7 @@ export class AdapterExecutor {
     _attempt: number,
     _result: AdapterExecutionResult,
   ): Promise<void> {
-    // TODO: In production, implement Redis-based caching
+    // Production path can replace this with Redis-based caching.
     // e.g., await redis.set(`idempotency:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
   }
 

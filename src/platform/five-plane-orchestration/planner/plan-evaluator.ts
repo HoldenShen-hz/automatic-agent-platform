@@ -211,6 +211,8 @@ export class PlanEvaluator {
       issues: evaluation.issues,
       recommendation: assessment.risk === "critical"
         ? "require_human_approval"
+        : evaluation.issues.some((issue) => issue.includes("resource_budget_exceeded"))
+          ? "reduce_scope_or_allocate_more_budget"
         : evaluation.viable
           ? "proceed_to_execute"
           : "revise_plan",

@@ -20,3 +20,8 @@
 - 先看 `00`，再看 `01`，最后按需进入 `02-04`。
 - 若 `02-04` 与 `00` 冲突，以 `00` 为准。
 - 本目录不放执行追踪、一次性 review 或临时 TODO。
+
+## 最近同步
+
+- 2026-05-14：`docs_zh/reviews/issues-table.md` 中的架构/实现一致性问题以本目录 README 为索引入口重新挂接；具体代码级修复证据仍记录在 review 表对应行和 `scripts/ci/audit-review-batch-resource-contracts.mjs`。
+- 大型结构项（巨型文件拆分、符号链接迁移、全局类型逃逸清理）不在 `00-platform-architecture.md` 内伪装为已完成，继续按治理边界和后续拆分计划推进。

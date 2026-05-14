@@ -250,9 +250,7 @@ export class PanicPropagationService {
     this.updatePlaneState(directiveId, plane, "force-terminated");
 
     // Log the force termination
-    console.error(
-      `[PanicPropagation] Force termination triggered for ${plane} directive ${directiveId}`,
-    );
+    process.stderr.write(`[PanicPropagation] Force termination triggered for ${plane} directive ${directiveId}\n`);
 
     // In a real implementation, this would:
     // 1. Send SIGKILL or equivalent to all processes on the plane
@@ -466,10 +464,10 @@ export class PanicPropagationService {
     // 2. Send encrypted halt directive with directiveId, scope, freezeModes
     // 3. Wait for acknowledgment or timeout
     // For now, we simulate successful delivery
-    console.log(
+    process.stdout.write(
       `[PanicPropagation] Sending HALT directive to ${directive.targetPlane}: ` +
         `directiveId=${directive.directiveId}, scope=${directive.scope}, ` +
-        `deadline=${directive.ackDeadline}`,
+        `deadline=${directive.ackDeadline}\n`,
     );
     return true;
   }

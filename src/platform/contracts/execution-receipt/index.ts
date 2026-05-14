@@ -12,10 +12,11 @@ export {
 } from "../executable-contracts/index.js";
 
 // Runtime warning for imports from legacy contract path
-console.warn(
+process.emitWarning(
   "[DEPRECATED] execution-receipt/ is deprecated. " +
   "Use NodeAttemptReceipt from src/platform/contracts/executable-contracts instead. " +
   "See: https://docs.example.com/platform/contracts#execution-receipt-migration",
+  { code: "AA_LEGACY_EXECUTION_RECEIPT" },
 );
 
 export type ExecutionReceiptStatus = "accepted" | "started" | "completed" | "failed" | "cancelled";

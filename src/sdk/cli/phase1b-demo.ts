@@ -51,35 +51,33 @@ async function main(): Promise<void> {
     request: "Analyze the task, draft a solution, and review the final output before completion.",
   });
 
-  console.log(
-    JSON.stringify(
-      {
-        routing: result.routing,
-        plannedSteps: result.plannedWorkflow.executionSteps.map((step) => ({
-          stepId: step.stepId,
-          roleId: step.roleId,
-          dependsOnStepIds: step.dependsOnStepIds,
-        })),
-        task: {
-          id: result.snapshot.task.id,
-          status: result.snapshot.task.status,
-        },
-        workflow: result.snapshot.workflow,
-        stepOutputs: result.snapshot.stepOutputs.map((step) => ({
-          nodeRunId: step.nodeRunId,
-          stepId: step.stepId,
-          roleId: step.roleId,
-          summary: step.summary,
-        })),
-        streamFrames: result.streamFrames.map((frame) => ({
-          sequence: frame.sequence,
-          eventType: frame.eventType,
-        })),
+  process.stdout.write(`${JSON.stringify(
+    {
+      routing: result.routing,
+      plannedSteps: result.plannedWorkflow.executionSteps.map((step) => ({
+        stepId: step.stepId,
+        roleId: step.roleId,
+        dependsOnStepIds: step.dependsOnStepIds,
+      })),
+      task: {
+        id: result.snapshot.task.id,
+        status: result.snapshot.task.status,
       },
-      null,
-      2,
-    ),
-  );
+      workflow: result.snapshot.workflow,
+      stepOutputs: result.snapshot.stepOutputs.map((step) => ({
+        nodeRunId: step.nodeRunId,
+        stepId: step.stepId,
+        roleId: step.roleId,
+        summary: step.summary,
+      })),
+      streamFrames: result.streamFrames.map((frame) => ({
+        sequence: frame.sequence,
+        eventType: frame.eventType,
+      })),
+    },
+    null,
+    2,
+  )}\n`);
 }
 
 main();

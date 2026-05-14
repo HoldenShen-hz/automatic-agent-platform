@@ -31,6 +31,10 @@ export interface MultiStepToolExecutionInput {
   budgetLedgerId?: string;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;
+  /** Optional injection seam for tests and embedding runtimes. */
+  intakeRouter?: Pick<IntakeRouter, "route">;
+  /** Optional injection seam for tests and embedding runtimes. */
+  workflowPlanner?: Pick<WorkflowPlanner, "plan">;
   crashInjection?: import("../recovery/workflow-crash-simulator.js").WorkflowCrashInjection;
   stepFailureInjection?: ReadonlySet<string>;
   stepFailurePlans?: Readonly<Record<string, readonly (string | StepFailurePlan)[]>>;

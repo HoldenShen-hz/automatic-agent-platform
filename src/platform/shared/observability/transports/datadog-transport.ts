@@ -76,7 +76,7 @@ export class DatadogTransport implements LogTransport {
         if (isLastAttempt) {
           // Re-add entries to front of batch for backpressure when all retries exhausted
           this.batch.unshift(...entries);
-          console.error(`[DatadogTransport] failed to send ${entries.length} logs after ${maxRetries} attempts:`, err);
+          process.stderr.write(`[DatadogTransport] failed to send ${entries.length} logs after ${maxRetries} attempts: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
           return;
         }
         // Exponential backoff: 100ms, 200ms, 400ms

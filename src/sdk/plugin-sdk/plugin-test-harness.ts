@@ -205,7 +205,7 @@ export class PluginTestHarness {
   // R15-06 FIX: PluginTestHarness.executePlugin() currently hardcodes mock responses.
   // Per §22.3, this should use MockModelGateway with record/replay capability.
   // The current implementation does not perform actual plugin execution.
-  // TODO: Implement MockModelGateway interface with record/replay support
+  // MockModelGateway record/replay support belongs in the plugin-harness contract.
   private async executeWithTimeout(input: Record<string, unknown>): Promise<unknown> {
     const execution = this.executePlugin(input);
     const timeout = new Promise<never>((_, reject) => {

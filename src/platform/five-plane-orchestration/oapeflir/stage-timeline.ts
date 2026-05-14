@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const OapeflirStageSchema = z.enum(["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release", "knowledge_promotion"]);
+export const OapeflirStageSchema = z.enum(["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"]);
 export const OapeflirStageStatusSchema = z.enum(["completed", "skipped"]);
 
 export const OapeflirStageRecordSchema = z.object({
