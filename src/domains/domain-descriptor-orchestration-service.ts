@@ -141,7 +141,7 @@ export class DomainDescriptorOrchestrationService {
   }
 }
 
-function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainLifecycleState {
+function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainDescriptorInput["lifecycleState"] {
   if (value === "validating") {
     return "validated";
   }

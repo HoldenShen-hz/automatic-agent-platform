@@ -24,7 +24,7 @@ export class TicketPriorityQueue {
   enqueue(input: EnqueueTicketInput): Ticket {
     const now = nowIso();
     const ticket: Ticket = {
-      id: newId("ticket"),
+      id: newId("ticket").replace(/^ticket_/, "ticket-"),
       priority: input.priority ?? 0,
       payload: input.payload,
       dispatchAfter: input.dispatchAfter ?? null,

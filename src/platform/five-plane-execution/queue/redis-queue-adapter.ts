@@ -685,15 +685,22 @@ export class RedisQueueAdapter implements QueueAdapter {
   }
 
   async statsAsync(queueName: string): Promise<QueueStats> {
-    const [waiting, active, completed, deadLetter] = await Promise.all([
+    const [waitingTotal, active, completed, deadLetter] = await Promise.all([
       this.client.zcard(this.waitingKey(queueName)),
       this.client.scard(this.activeKey(queueName)),
       this.client.scard(this.completedKey(queueName)),
       this.client.scard(this.deadLetterKey(queueName)),
     ]);
-    const now = Date.now();
-    const delayedCount = await this.client.zcount(this.waitingKey(queueName), "-inf", now);
-    return { queueName, waiting: waiting - delayedCount, delayed: delayedCount, active, completed, failed: 0, deadLetter };
+    const delayed = await this.client.zcount(this.waitingKey(queueName), "-inf", Date.now());
+    return {
+      queueName,
+      waiting: Math.max(0, waitingTotal - delayed),
+      delayed,
+      active,
+      completed,
+      failed: 0,
+      deadLetter,
+    };
   }
 
   async listQueuesAsync(): Promise<string[]> { return this.client.smembers(this.queueSetKey()); }

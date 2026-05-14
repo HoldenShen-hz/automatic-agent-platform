@@ -145,11 +145,11 @@ export class SqliteQueueAdapter implements QueueAdapter {
 
   purge(queueName: string, olderThan: string): number {
     const before = this.db.connection
-      .prepare(`SELECT id FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND updated_at < ?`)
+      .prepare(`SELECT id FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND COALESCE(completed_at, updated_at) < ?`)
       .all(queueName, olderThan) as RawRow[];
     if (before.length === 0) return 0;
     this.db.connection
-      .prepare(`DELETE FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND updated_at < ?`)
+      .prepare(`DELETE FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND COALESCE(completed_at, updated_at) < ?`)
       .run(queueName, olderThan);
     return before.length;
   }
