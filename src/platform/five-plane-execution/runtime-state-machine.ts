@@ -104,7 +104,7 @@ const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   completed: [],
   failed: [],
   cancelled: [],
-  aborted: [],
+  aborted: ["paused"],
 };
 
 const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {
@@ -376,6 +376,7 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
 ): void {
   const requiresAudit =
     command.aggregateType === "SideEffectRecord" ||
+    command.aggregateType === "HarnessRun" ||
     command.toStatus === "succeeded" ||
     command.toStatus === "failed";
   if (requiresAudit && "commandId" in command && command.auditRef == null) {

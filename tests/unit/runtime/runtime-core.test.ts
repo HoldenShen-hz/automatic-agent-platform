@@ -62,15 +62,14 @@ test("StateTransitionMachine rejects invalid transitions", () => {
   );
 });
 
-test("StateTransitionMachine rejects noop transitions", () => {
+test("StateTransitionMachine allows idempotent noop transitions", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["done"],
   });
 
-  assert.throws(
+  assert.doesNotThrow(
     () => machine.assertTransition("pending", "pending"),
-    WorkflowStateError,
   );
 });
 

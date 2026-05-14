@@ -59,7 +59,7 @@ export class PolicyRolloutService {
     if (candidate.status !== "approved" && normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off") {
       return {
         allowed: false,
-        releaseLevel: "L0_off",
+        releaseLevel: strategyVersion.releaseLevel === "shadow" ? "suggest" : "off",
         reasonCode: "improvement.candidate_not_approved",
         reasonCodes: ["improvement.candidate_not_approved"],
       };

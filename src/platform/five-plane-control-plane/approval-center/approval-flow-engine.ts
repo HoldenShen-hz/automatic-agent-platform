@@ -13,6 +13,20 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { ValidationError } from "../../contracts/errors.js";
 import type { ApprovalRequest, ApprovalDecision } from "./approval-service.js";
 import {
+  DEFAULT_ESCALATION_RULE,
+  DEFAULT_FEEDBACK_LOOP_CONFIG,
+  DEFAULT_TIMEOUT_CONFIG,
+  FlowStatus,
+  FlowType,
+  type ApprovalFlowConfig,
+  type ApprovalFlowState,
+  type FeedbackLoop,
+  type FeedbackResult,
+  type FlowEscalationLevel,
+  type HumanFeedback,
+  type VoteResult,
+} from "./approval-flow-types.js";
+import {
   QuorumConfig,
   QuorumVote,
   QuorumStatus,
@@ -28,185 +42,31 @@ import {
 } from "./quorum-calculator.js";
 import {
   EscalationManager,
-  EscalationRule,
   EscalationContext,
   EscalationReason,
   Delegation,
-  NotificationChannel,
   NotificationChannelType,
   NotificationPriority,
   ApproverRule,
 } from "./escalation-manager.js";
-
-/**
- * Flow types supported by the approval engine.
- */
-export enum FlowType {
-  SINGLE = "single",
-  MULTI_PARTY = "multi_party",
-  DELEGATED = "delegated",
-  SEQUENTIAL_CHAIN = "sequential_chain",
-}
-
-/**
- * Status of an approval flow.
- */
-export enum FlowStatus {
-  PENDING = "pending",
-  APPROVED = "approved",
-  REJECTED = "rejected",
-  EXPIRED = "expired",
-  ESCALATED = "escalated",
-  MAX_ITERATIONS_REACHED = "max_iterations_reached",
-  CANCELLED = "cancelled",
-}
-
-/**
- * Configuration for approval timeout.
- */
-export interface ApprovalTimeoutConfig {
-  warnAfterMs: number;
-  escalateAfterMs: number;
-  autoActionAfterMs: number;
-  autoAction: "approve" | "deny" | "escalate";
-}
-
-/**
- * Configuration for feedback loop.
- */
-export interface FeedbackLoopConfig {
-  maxIterations: number;
-  requireReplanOnReject: boolean;
-}
-
-/**
- * Configuration for an approval flow.
- */
-export interface ApprovalFlowConfig {
-  flowId: string;
-  flowType: FlowType;
-  approvers: ApproverRule[];
-  quorum?: QuorumConfig;
-  timeout: ApprovalTimeoutConfig;
-  escalation: EscalationRule;
-  feedbackLoop?: FeedbackLoopConfig;
-  /** Notification channels to use */
-  notificationChannels?: NotificationChannel[];
-}
-
-/**
- * Human feedback in a feedback loop.
- */
-export interface HumanFeedback {
-  iteration: number;
-  feedbackType: "approve" | "reject_with_guidance" | "modify_directly";
-  guidance?: string;
-  modifiedArtifactRef?: string;
-  timestamp: string;
-  principal: string;
-}
-
-/**
- * Feedback loop state.
- */
-export interface FeedbackLoop {
-  loopId: string;
-  harnessRunId: string;
-  nodeRunId: string;
-  /** @deprecated legacy workflow projection identifier; use harnessRunId */
-  workflowRunId: string;
-  /** @deprecated legacy step projection identifier; use nodeRunId */
-  stepId: string;
-  maxIterations: number;
-  currentIteration: number;
-  humanFeedback: HumanFeedback[];
-}
-
-/**
- * State of an approval flow.
- */
-export interface ApprovalFlowState {
-  flowId: string;
-  config: ApprovalFlowConfig;
-  request: ApprovalRequest;
-  status: FlowStatus;
-  currentIteration: number;
-  votes: QuorumVote[];
-  votingStartedAt: string;
-  escalationHistory: FlowEscalationLevel[];
-  delegation: Delegation | null;
-  feedbackLoop: FeedbackLoop | null;
-  createdAt: string;
-  updatedAt: string;
-  expiresAt: string | null;
-  /** Warnings sent */
-  warningsSent: string[];
-  /** Whether escalation has been triggered */
-  escalationTriggered: boolean;
-}
-
-/**
- * A single escalation level in the flow history.
- * This is a simplified version for flow tracking.
- */
-export interface FlowEscalationLevel {
-  level: number;
-  escalateTo: ApproverRule;
-  escalatedAt: string;
-  escalatedBy: string;
-  reason: EscalationReason;
-  /** Source approval that triggered this escalation */
-  sourceApprovalId: string;
-}
-
-/**
- * Result of submitting a vote.
- */
-export interface VoteResult {
-  success: boolean;
-  quorumStatus: QuorumStatus;
-  flowStatus: FlowStatus;
-  error?: string;
-}
-
-/**
- * Result of adding feedback.
- */
-export interface FeedbackResult {
-  success: boolean;
-  newIteration: number;
-  flowStatus: FlowStatus;
-  shouldReplan: boolean;
-  error?: string;
-}
-
-/**
- * Default timeout configuration (1 hour warn, 2 hours escalate, 24 hours auto-action).
- */
-const DEFAULT_TIMEOUT_CONFIG: ApprovalTimeoutConfig = {
-  warnAfterMs: 60 * 60 * 1000,
-  escalateAfterMs: 2 * 60 * 60 * 1000,
-  autoActionAfterMs: 24 * 60 * 60 * 1000,
-  autoAction: "deny",
+export {
+  DEFAULT_ESCALATION_RULE,
+  DEFAULT_FEEDBACK_LOOP_CONFIG,
+  DEFAULT_TIMEOUT_CONFIG,
+  FlowStatus,
+  FlowType,
 };
-
-/**
- * Default escalation rule.
- */
-const DEFAULT_ESCALATION_RULE: EscalationRule = {
-  escalateTo: { type: "role", identifier: "admin", can_delegate: true },
-  maxEscalationDepth: 3,
-  notificationChannels: [],
-  escalationTimeoutMs: 30 * 60 * 1000,
-};
-
-/**
- * Default feedback loop configuration.
- */
-const DEFAULT_FEEDBACK_LOOP_CONFIG: FeedbackLoopConfig = {
-  maxIterations: 5,
-  requireReplanOnReject: true,
-};
+export type {
+  ApprovalFlowConfig,
+  ApprovalFlowState,
+  ApprovalTimeoutConfig,
+  FeedbackLoop,
+  FeedbackLoopConfig,
+  FeedbackResult,
+  FlowEscalationLevel,
+  HumanFeedback,
+  VoteResult,
+} from "./approval-flow-types.js";
 
 /**
  * Approval Flow Engine - orchestrates the complete approval lifecycle.

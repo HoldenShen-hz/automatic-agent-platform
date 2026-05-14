@@ -151,7 +151,9 @@ export class ContextIsolator {
 
     return {
       // R26-04 fix: intersect resources to ensure override doesn't exceed base scope
-      resources: this.intersectLists(override.resources.length > 0 ? override.resources : base.resources, base.resources),
+      resources: override.resources.length > 0
+        ? this.intersectLists(base.resources, override.resources)
+        : [],
       actions: this.mergeActions(base.actions, override.actions),
       constraints: {
         ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),
@@ -252,12 +254,10 @@ export class ContextIsolator {
   }
 
   private intersectLists(parent: readonly string[], child: readonly string[]): string[] {
-    if (child.length === 0) return [...parent];
     return parent.filter((item) => child.includes(item));
   }
 
   private mergeActions(parent: readonly string[], child: readonly string[]): string[] {
-    if (child.length === 0) return [...parent];
     return parent.filter((action) => child.includes(action));
   }
 

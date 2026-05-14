@@ -92,7 +92,11 @@ export function createUncaughtExceptionHandler(
 
     // Initiate graceful shutdown with reason
     try {
-      shutdown.initiateShutdown("uncaught_exception");
+      void shutdown.initiateShutdown("uncaught_exception").catch((shutdownErr: unknown) => {
+        processLogger.error("Failed to initiate graceful shutdown", {
+          data: { error: String(shutdownErr) },
+        });
+      });
     } catch (shutdownErr) {
       processLogger.error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
@@ -104,6 +108,7 @@ export function createUncaughtExceptionHandler(
       processLogger.error("uncaughtException handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000);
+    hardExitTimer.unref?.();
   };
 }
 
@@ -156,7 +161,11 @@ export function createUnhandledRejectionHandler(
     });
 
     try {
-      shutdown.initiateShutdown("unhandled_rejection");
+      void shutdown.initiateShutdown("unhandled_rejection").catch((shutdownErr: unknown) => {
+        processLogger.error("Failed to initiate graceful shutdown", {
+          data: { error: String(shutdownErr) },
+        });
+      });
     } catch (shutdownErr) {
       processLogger.error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
@@ -168,6 +177,7 @@ export function createUnhandledRejectionHandler(
       processLogger.error("unhandledRejection handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000);
+    hardExitTimer.unref?.();
   };
 }
 

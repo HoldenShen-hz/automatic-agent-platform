@@ -279,12 +279,12 @@ test("createCheckpoint makes defensive copies of arrays", async () => {
     },
   });
 
+  const checkpoint = createWorkflowStepCheckpoint(input);
+
   // Mutate originals after creating checkpoint
   priorSummaries.push("mutated");
   dependsOn.push("mutated-dep");
   completed.push("mutated-completed");
-
-  const checkpoint = createWorkflowStepCheckpoint(input);
 
   assert.strictEqual(checkpoint.decisionContext.priorStepSummaries.length, 2);
   assert.strictEqual(checkpoint.decisionContext.dependsOnStepIds.length, 2);

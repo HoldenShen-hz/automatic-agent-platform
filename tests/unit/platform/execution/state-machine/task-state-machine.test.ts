@@ -253,31 +253,22 @@ test("TaskStateMachine: rejects in_progress -> queued", () => {
 });
 
 // ---------------------------------------------------------------------------
-// No-op transitions are rejected
+// No-op transitions are accepted as idempotent writes.
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects no-op queued -> queued", () => {
+test("TaskStateMachine: allows no-op queued -> queued", () => {
   const machine = createTaskStateMachine();
-  assert.throws(
-    () => machine.assertTransition("queued", "queued"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied",
-  );
+  machine.assertTransition("queued", "queued");
 });
 
-test("TaskStateMachine: rejects no-op in_progress -> in_progress", () => {
+test("TaskStateMachine: allows no-op in_progress -> in_progress", () => {
   const machine = createTaskStateMachine();
-  assert.throws(
-    () => machine.assertTransition("in_progress", "in_progress"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied",
-  );
+  machine.assertTransition("in_progress", "in_progress");
 });
 
-test("TaskStateMachine: rejects no-op done -> done", () => {
+test("TaskStateMachine: allows no-op done -> done", () => {
   const machine = createTaskStateMachine();
-  assert.throws(
-    () => machine.assertTransition("done", "done"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied",
-  );
+  machine.assertTransition("done", "done");
 });
 
 // ---------------------------------------------------------------------------

@@ -32,187 +32,31 @@
  */
 
 import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../control-plane/config-center/model-metadata-registry.js";
-import type { RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
 import type { ProviderHealthSummary } from "../../shared/observability/provider-health-tracker.js";
 import type { ModelGovernanceSnapshot } from "../../contracts/types/governance.js";
 import { AppError } from "../../contracts/errors.js";
-
-/**
- * Classification of the type of work being performed.
- * Affects tier preference order in route selection.
- */
-export type ModelRouteClass = "default" | "classification" | "writing" | "coding" | "reasoning";
-
-/**
- * Risk level affects tier selection and fallback behavior.
- * Higher risk prefers more capable models.
- */
-export type ModelRouteRiskLevel = RiskLevel;
-export type ModelRoutePurpose = "plan" | "execute" | "evaluate" | "summarize" | "chat";
-export type ModelRoutingStrategy =
-  | "cost_optimized"
-  | "latency_optimized"
-  | "quality_optimized"
-  | "compliance_constrained"
-  | "hybrid";
-export type RouteFailureCode =
-  | "route.no_candidate"
-  | "route.policy_denied"
-  | "route.cost_guard"
-  | "route.provider_cooldown"
-  | "route.capability_mismatch";
-
-/**
- * Request for model routing decision
- */
-export interface ModelRouteRequest {
-  requestId?: string;
-  harnessRunId?: string;
-  nodeRunId?: string | null;
-  attemptId?: string | null;
-  taskId?: string | null;
-  sessionId?: string | null;
-  tenantId?: string | null;
-  purpose?: ModelRoutePurpose;
-  routingStrategy?: ModelRoutingStrategy;
-  // Type of work (affects tier preference order)
-  routeClass?: ModelRouteClass;
-  // Risk level (higher risk prefers more capable models)
-  riskLevel?: ModelRouteRiskLevel;
-  // Required capabilities (e.g., "vision", "function_calling")
-  requiredCapabilities?: readonly string[];
-  preferredModel?: string | null;
-  maxLatencyMs?: number | null;
-  maxCostUsd?: number | null;
-  // Explicitly requested profile (bypasses normal selection)
-  preferredProfileName?: string | null;
-  // Must-use profile (throws if unavailable)
-  pinnedProfileName?: string | null;
-  // Preferred if available, otherwise falls back normally
-  stickyProfileName?: string | null;
-  // Turn identifier for fallback lease tracking
-  turnId?: string | null;
-  // Existing fallback lease to honor
-  fallbackLease?: ModelRouteFallbackLease | null;
-  // Governance snapshot for profile status
-  governanceSnapshot?: ModelGovernanceSnapshot | null;
-  /** Required provider/profile region for data residency controls. */
-  data_residency?: string | null;
-  /** Whether PII was detected in the request payload. */
-  pii_input_detected?: boolean;
-  /** Whether the response path is expected to handle PII-bearing output. */
-  pii_output_possible?: boolean;
-  /** Whether the caller requires model-training opt-out. */
-  model_training_opt_out?: boolean;
-  /** Whether judge-model independence is required. */
-  judge_independence?: boolean;
-  /** Optional latency SLO target for the selected profile. */
-  latency_slo_target_ms?: number | null;
-  // Maximum input cost per 1k USD (filters candidates)
-  maxInputPer1kUsd?: number | null;
-  // Allow fallback to higher-cost tiers if needed
-  allowStrongUpgrade?: boolean;
-}
-
-/**
- * A turn-scoped fallback lease issued when primary profile cannot be used.
- * Allows using the fallback profile for the current turn only.
- */
-export interface ModelRouteFallbackLease {
-  turnId: string;
-  primaryProfileName: string;
-  fallbackProfileName: string;
-  issuedAt: string;
-  // Why the fallback was triggered
-  reason:
-    | "provider_health_fallback"
-    | "cost_cap_fallback"
-    | "tier_fallback";
-}
-
-/**
- * Detailed trace of the routing decision for debugging and auditing.
- * Records why each profile was considered and why the final choice was made.
- */
-export interface ModelRouteTrace {
-  // Why this profile was selected
-  routeReason:
-    | "pinned_profile"
-    | "sticky_profile"
-    | "preferred_profile"
-    | "risk_driven_reasoning"
-    | "coding_required"
-    | "classification_cheap_default"
-    | "writing_balanced_default"
-    | "default_balanced"
-    | "capability_driven_selection"
-    | "cost_cap_fallback"
-    | "provider_health_fallback"
-    | "tier_fallback"
-    | "governance_fallback"
-    | "turn_scoped_fallback_lease";
-  requestedRouteClass: ModelRouteClass;
-  requestedRiskLevel: ModelRouteRiskLevel;
-  requiredCapabilities: string[];
-  // Ordered tiers that were considered
-  targetTierOrder: string[];
-  selectedProfileName: string;
-  selectedProvider: string;
-  preferredProfileName: string | null;
-  pinnedProfileName: string | null;
-  stickyProfileName: string | null;
-  turnId: string | null;
-  // Fallback lease details (if issued)
-  turnScopedFallbackPrimaryProfileName: string | null;
-  turnScopedFallbackProfileName: string | null;
-  turnScopedFallbackActive: boolean;
-  turnScopedFallbackIssued: boolean;
-  turnScopedFallbackAutoRecoveryNextTurn: boolean;
-  // Governance status of selected profile
-  selectedGovernanceStatus: "active" | "degraded" | "disabled" | "unknown";
-  selectedGovernanceRollbackTarget: string | null;
-  // Health status of all providers
-  healthStatuses: Record<string, ProviderHealthSummary["status"] | "unknown">;
-  // Why profiles were filtered out
-  filteredOut: string[];
-}
-
-/**
- * Complete routing decision with selected profile and trace
- */
-export interface ModelRouteDecision {
-  profileName: string;
-  profile: ModelProfileMetadata;
-  providerId: string;
-  modelId: string;
-  authProfileId: string;
-  fallbackChain: string[];
-  stickySession: boolean;
-  decisionReason: string[];
-  trace: ModelRouteTrace;
-  // New fallback lease issued (if any)
-  fallbackLease: ModelRouteFallbackLease | null;
-}
-
-export interface ModelRoutingServiceOptions {
-  registry: ModelMetadataRegistry;
-  // Health status per provider
-  providerHealth?: Record<string, ProviderHealthSummary>;
-  persistence?: {
-    persistRoutingDecision: (decision: {
-      profileName: string;
-      provider: string;
-      dataResidencyMet: boolean;
-      latencySloTargetMs: number;
-      latencyP99Ms: number | null;
-      piiSafe: boolean;
-      piiOutputGoverned: boolean;
-      trainingOptOutSupported: boolean;
-      judgeIndependent: boolean;
-      occurredAt: string;
-    }) => void;
-  };
-}
+import type {
+  ModelRouteClass,
+  ModelRouteDecision,
+  ModelRouteFallbackLease,
+  ModelRouteRequest,
+  ModelRouteRiskLevel,
+  ModelRouteTrace,
+  ModelRoutingServiceOptions,
+  RouteFailureCode,
+} from "./model-routing-types.js";
+export type {
+  ModelRouteClass,
+  ModelRouteDecision,
+  ModelRouteFallbackLease,
+  ModelRoutePurpose,
+  ModelRouteRequest,
+  ModelRouteRiskLevel,
+  ModelRouteTrace,
+  ModelRoutingServiceOptions,
+  ModelRoutingStrategy,
+  RouteFailureCode,
+} from "./model-routing-types.js";
 
 // Internal: eligible profile with provider status attached
 interface EligibleProfile {

@@ -1,7 +1,7 @@
 import { getRequiredConsumers } from "./event-types.js";
 import type { EventTier } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { z } from "zod";
+import { EVENT_PAYLOAD_VALIDATORS, RUNTIME_EVENT_REPLAY_METADATA, genericEventPayloadSchema } from "./event-registry-payloads.js";
 
 /**
  * Event Registry - Central registry of all event types in the system.
@@ -201,6 +201,42 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "runtime_state_machine",
     consumers: ["truth_projector", "audit_projection"],
   },
+  "platform.node_run.created": {
+    type: "platform.node_run.created",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.admitted": {
+    type: "platform.node_run.admitted",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.planning": {
+    type: "platform.node_run.planning",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.ready": {
+    type: "platform.node_run.ready",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.pausing": {
+    type: "platform.node_run.pausing",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.replanning": {
+    type: "platform.node_run.replanning",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
   "platform.node_run.started": {
     type: "platform.node_run.started",
     tier: "tier_1",
@@ -209,6 +245,24 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
   },
   "platform.node_run.completed": {
     type: "platform.node_run.completed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.failed": {
+    type: "platform.node_run.failed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.compensating": {
+    type: "platform.node_run.compensating",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.skipped": {
+    type: "platform.node_run.skipped",
     tier: "tier_1",
     producer: "runtime_state_machine",
     consumers: ["truth_projector", "audit_projection"],
@@ -224,6 +278,72 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     tier: "tier_1",
     producer: "budget_allocator",
     consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget.status_changed": {
+    type: "platform.budget.status_changed",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget.reserved": {
+    type: "platform.budget.reserved",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget.actualized": {
+    type: "platform.budget.actualized",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget.exceeded": {
+    type: "platform.budget.exceeded",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget_reconciliation.status_changed": {
+    type: "platform.budget_reconciliation.status_changed",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.side_effect.status_changed": {
+    type: "platform.side_effect.status_changed",
+    tier: "tier_1",
+    producer: "side_effect_manager",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.side_effect.triggered": {
+    type: "platform.side_effect.triggered",
+    tier: "tier_1",
+    producer: "side_effect_manager",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.side_effect.completed": {
+    type: "platform.side_effect.completed",
+    tier: "tier_1",
+    producer: "side_effect_manager",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.side_effect.failed": {
+    type: "platform.side_effect.failed",
+    tier: "tier_1",
+    producer: "side_effect_manager",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "oapeflir.view.run_lifecycle": {
+    type: "oapeflir.view.run_lifecycle",
+    tier: "tier_1",
+    producer: "oapeflir_projection",
+    consumers: ["oapeflir_projection", "inspect_projection"],
+  },
+  "oapeflir.decision.recorded": {
+    type: "oapeflir.decision.recorded",
+    tier: "tier_1",
+    producer: "oapeflir_projection",
+    consumers: ["oapeflir_projection", "inspect_projection"],
   },
   "dispatch:ticket_created": {
     type: "dispatch:ticket_created",
@@ -709,198 +829,6 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
  */
 export type KnownEventType = keyof typeof RAW_EVENT_SCHEMA_REGISTRY;
 
-const optionalStringSchema = z.string().optional();
-const optionalNullableStringSchema = z.string().nullable().optional();
-const traceContextSchema = z.object({
-  traceId: z.string(),
-  spanId: z.string().nullable(),
-  parentSpanId: z.string().nullable(),
-  correlationId: z.string().nullable(),
-}).passthrough();
-
-const taskStatusChangedPayloadSchema = z.object({
-  fromStatus: optionalStringSchema,
-  toStatus: z.string(),
-  reasonCode: optionalStringSchema,
-  occurredAt: optionalStringSchema,
-  entityKind: optionalStringSchema,
-  entityId: optionalStringSchema,
-  reasonDetail: optionalNullableStringSchema,
-  actorType: optionalStringSchema,
-  actorId: optionalNullableStringSchema,
-  idempotencyKey: optionalNullableStringSchema,
-  metadataJson: optionalNullableStringSchema,
-  manualOverride: z.boolean().optional(),
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const workflowStepCompletedPayloadSchema = z.object({
-  stepId: z.string(),
-  roleId: optionalStringSchema,
-  status: optionalStringSchema,
-  outputKey: optionalNullableStringSchema,
-  attempt: z.number().int().nonnegative().optional(),
-  manualOverride: z.boolean().optional(),
-  workflowId: optionalStringSchema,
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const decisionRequestedPayloadSchema = z.object({
-  approvalId: z.string(),
-  taskId: optionalStringSchema,
-  executionId: optionalNullableStringSchema,
-  sourceAgentId: optionalStringSchema,
-  reason: optionalStringSchema,
-  riskLevel: z.enum(["low", "medium", "high", "critical"]).optional(),
-  options: z.array(z.string()).optional(),
-  context: z.record(z.unknown()).optional(),
-  timeoutPolicy: z.enum(["reject", "approve", "remain_pending"]).optional(),
-  createdAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const decisionRespondedPayloadSchema = z.object({
-  approvalId: z.string(),
-  decisionType: z.enum(["option_selected", "confirmed", "text_input", "rejected", "expired"]).optional(),
-  selectedOptionId: optionalStringSchema,
-  confirmed: z.literal(true).optional(),
-  inputText: optionalStringSchema,
-  respondedBy: optionalStringSchema,
-  respondedAt: optionalStringSchema,
-  cascadeDeny: z.literal(true).optional(),
-  cascadeSourceApprovalId: optionalStringSchema,
-  cascadeSessionId: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const divisionOutcomePayloadSchema = z.object({
-  divisionId: z.string(),
-  workflowId: optionalNullableStringSchema,
-  executionId: optionalNullableStringSchema,
-  reasonCode: optionalStringSchema,
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const subtaskOutcomePayloadSchema = z.object({
-  stepId: optionalStringSchema,
-  subtaskId: optionalStringSchema,
-  roleId: optionalStringSchema,
-  status: optionalStringSchema,
-  attempt: z.number().int().nonnegative().optional(),
-  parentTaskId: optionalStringSchema,
-  occurredAt: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough().superRefine((value, ctx) => {
-  if (value.stepId == null && value.subtaskId == null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["stepId"],
-      message: "Expected at least one of stepId or subtaskId.",
-    });
-  }
-});
-
-const costLimitReachedPayloadSchema = z.object({
-  budgetId: z.string(),
-  currentCostUsd: z.number(),
-  limitUsd: z.number(),
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const domainLifecyclePayloadSchema = z.object({
-  domainId: z.string(),
-  status: z.string(),
-  capabilityCount: z.number().int().nonnegative(),
-  pluginCount: z.number().int().nonnegative(),
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const pluginLifecyclePayloadSchema = z.object({
-  pluginId: z.string(),
-  domainId: optionalNullableStringSchema,
-  spiType: z.string(),
-  lifecycleState: z.string(),
-  bindingId: optionalNullableStringSchema,
-  occurredAt: optionalStringSchema,
-  reasonCode: optionalNullableStringSchema,
-  errorMessage: optionalNullableStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const pluginInvocationPayloadSchema = z.object({
-  pluginId: z.string(),
-  domainId: optionalNullableStringSchema,
-  spiType: z.string(),
-  phase: z.string(),
-  invocationId: z.string(),
-  lifecycleState: z.string(),
-  runtimeIsolation: z.string(),
-  activeInvocationCount: z.number().int().nonnegative(),
-  queuedInvocationCount: z.number().int().nonnegative(),
-  bindingId: optionalNullableStringSchema,
-  occurredAt: optionalStringSchema,
-  durationMs: z.number().int().nonnegative().optional(),
-  status: z.enum(["started", "completed", "failed"]).optional(),
-  reasonCode: optionalNullableStringSchema,
-  errorMessage: optionalNullableStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const knowledgeChunkIndexedPayloadSchema = z.object({
-  namespace: z.string(),
-  documentId: z.string(),
-  chunkId: z.string(),
-  trustLevel: z.string(),
-  keywordCount: z.number().int().nonnegative(),
-  relationCount: z.number().int().nonnegative(),
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const learningKnowledgePromotedPayloadSchema = z.object({
-  learningObjectId: z.string(),
-  learningType: z.string(),
-  documentId: z.string(),
-  namespace: z.string(),
-  trustLevel: z.string(),
-  promotedCount: z.number().int().nonnegative(),
-  occurredAt: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough();
-
-const genericEventPayloadSchema = z.record(z.unknown());
-
-const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<string, unknown>>>> = {
-  "task:status_changed": taskStatusChangedPayloadSchema,
-  "workflow:step_completed": workflowStepCompletedPayloadSchema,
-  "decision:requested": decisionRequestedPayloadSchema,
-  "decision:responded": decisionRespondedPayloadSchema,
-  "division:completed": divisionOutcomePayloadSchema,
-  "division:failed": divisionOutcomePayloadSchema,
-  "subtask:completed": subtaskOutcomePayloadSchema,
-  "subtask:failed": subtaskOutcomePayloadSchema,
-  "cost:limit_reached": costLimitReachedPayloadSchema,
-  "domain:registered": domainLifecyclePayloadSchema,
-  "domain:activated": domainLifecyclePayloadSchema,
-  "domain:canary": domainLifecyclePayloadSchema,
-  "domain:updating": domainLifecyclePayloadSchema,
-  "domain:updated": domainLifecyclePayloadSchema,
-  "domain:deprecated": domainLifecyclePayloadSchema,
-  "domain:archived": domainLifecyclePayloadSchema,
-  "plugin:spi_registered": pluginLifecyclePayloadSchema,
-  "plugin:activated": pluginLifecyclePayloadSchema,
-  "plugin:error_isolated": pluginLifecyclePayloadSchema,
-  "plugin:suspended": pluginLifecyclePayloadSchema,
-  "plugin:invocation_started": pluginInvocationPayloadSchema,
-  "plugin:invocation_completed": pluginInvocationPayloadSchema,
-  "knowledge:chunk_indexed": knowledgeChunkIndexedPayloadSchema,
-  "learning:knowledge_promoted": learningKnowledgePromotedPayloadSchema,
-};
 
 /**
  * Processed event schema registry with defaults applied.
@@ -917,98 +845,6 @@ export const EVENT_SCHEMA_REGISTRY: Record<KnownEventType, EventSchemaDefinition
   ]),
 ) as Record<KnownEventType, EventSchemaDefinition>;
 
-export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> = {
-  "platform.request_envelope.admitted": {
-    eventType: "platform.request_envelope.admitted",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "intake-admission-service",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["intake-admission-service.test.ts"],
-  },
-  "platform.harness_run.status_changed": {
-    eventType: "platform.harness_run.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts", "runtime-truth-repository.test.ts"],
-  },
-  "platform.node_run.status_changed": {
-    eventType: "platform.node_run.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts", "plan-graph-harness-runtime.test.ts"],
-  },
-  "platform.side_effect.status_changed": {
-    eventType: "platform.side_effect.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: false,
-    schemaOwner: "side-effect-manager",
-    replayBehavior: "skip_side_effect",
-    consumerContractTests: ["side-effect-manager.test.ts"],
-  },
-  "platform.budget_ledger.status_changed": {
-    eventType: "platform.budget_ledger.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts", "runtime-state-machine.test.ts"],
-  },
-  "platform.budget_reservation.status_changed": {
-    eventType: "platform.budget_reservation.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts", "runtime-state-machine.test.ts"],
-  },
-  "platform.graph_scheduler.decision_recorded": {
-    eventType: "platform.graph_scheduler.decision_recorded",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "graph-scheduler",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
-  },
-  "oapeflir.view.run_lifecycle": {
-    eventType: "oapeflir.view.run_lifecycle",
-    sourceOfTruth: "projection",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "oapeflir-projection",
-    replayBehavior: "simulate",
-    consumerContractTests: ["layered-event-inbox.test.ts"],
-  },
-  "oapeflir.graph.scheduled": {
-    eventType: "oapeflir.graph.scheduled",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "graph-scheduler",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
-  },
-  "oapeflir.node.executed": {
-    eventType: "oapeflir.node.executed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "harness-runtime",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
-  },
-};
 
 /**
  * Checks if an event type has a registered schema.
@@ -1049,9 +885,6 @@ export function getRegisteredConsumers(type: string): readonly string[] {
  * @throws Error if the schema is not found
  */
 export function getEventSchema(type: string): EventSchemaDefinition {
-  if (type in EVENT_SCHEMA_REGISTRY) {
-    return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
-  }
   const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
   if (metadata != null) {
     return {
@@ -1062,6 +895,9 @@ export function getEventSchema(type: string): EventSchemaDefinition {
       payloadSchemaRef: buildPayloadSchemaRef(type),
       compatibilityPolicy: "backward_compatible_additive",
     };
+  }
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
   }
   if (!hasEventSchema(type)) {
     throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {

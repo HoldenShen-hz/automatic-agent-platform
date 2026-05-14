@@ -108,7 +108,7 @@ test("ExperienceDistillationService.distill preserves evidence refs and source s
   assert.deepEqual(first.sourceSignalIds, ["sig_prev"]);
 });
 
-test("ExperienceDistillationService.distill sets validatedBy to none and promotionStatus to draft", () => {
+test("ExperienceDistillationService.distill sets validatedBy to none and promotionStatus to quarantine", () => {
   const service = new ExperienceDistillationService();
   const signals: LearningSignal[] = [
     {
@@ -130,7 +130,7 @@ test("ExperienceDistillationService.distill sets validatedBy to none and promoti
   const first = result[0];
   assert.ok(first != null);
   assert.equal(first.validatedBy, "none");
-  assert.equal(first.promotionStatus, "draft");
+  assert.equal(first.promotionStatus, "quarantine");
 });
 
 test("ExperienceDistillationService.distill maps multiple signals", () => {

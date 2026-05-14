@@ -11,119 +11,42 @@
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
-import type { RuntimeContextSnapshot } from "./runtime-context.js";
-import { getContext } from "./runtime-context.js";
+import { getContext, type RuntimeContextSnapshot } from "./runtime-context.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { RuntimeError } from "../../contracts/errors.js";
+import type {
+  AfterAgentHook,
+  AfterModelHook,
+  BeforeAgentHook,
+  BeforeModelHook,
+  MiddlewareContext,
+  MiddlewareHook,
+  MiddlewareResult,
+  OnFailedHook,
+  OnFailedPayload,
+  OnSucceededHook,
+  OnSucceededPayload,
+  WrapModelCallHook,
+  WrapToolCallHook,
+} from "./agent-middleware-types.js";
+
+export type {
+  AfterAgentHook,
+  AfterModelHook,
+  BeforeAgentHook,
+  BeforeModelHook,
+  MiddlewareContext,
+  MiddlewareHook,
+  MiddlewareResult,
+  OnFailedHook,
+  OnFailedPayload,
+  OnSucceededHook,
+  OnSucceededPayload,
+  WrapModelCallHook,
+  WrapToolCallHook,
+} from "./agent-middleware-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-
-/**
- * Result of a middleware hook execution.
- */
-export interface MiddlewareResult {
-  success: boolean;
-  input?: unknown;
-  error?: {
-    code: string;
-    message: string;
-    warning?: boolean;
-  };
-  continueOnError?: boolean;
-}
-
-/**
- * Context passed to all middleware hooks.
- */
-export interface MiddlewareContext {
-  runtime: RuntimeContextSnapshot;
-  chainStartedAt: string;
-  agentRound: number;
-  stepId: string | null;
-  executionId: string | null;
-  taskId: string;
-}
-
-/**
- * Base middleware hook interface.
- */
-export interface MiddlewareHook {
-  name: string;
-  priority: number;
-}
-
-/**
- * before_agent - Called before the agent begins a new round.
- */
-export interface BeforeAgentHook extends MiddlewareHook {
-  run(ctx: MiddlewareContext, input: { request: string; history: unknown[] }): MiddlewareResult | Promise<MiddlewareResult>;
-}
-
-/**
- * before_model - Called before making an LLM API call.
- */
-export interface BeforeModelHook extends MiddlewareHook {
-  run(ctx: MiddlewareContext, input: { messages: unknown[]; model?: string }): MiddlewareResult | Promise<MiddlewareResult>;
-}
-
-/**
- * after_model - Called after receiving an LLM response.
- */
-export interface AfterModelHook extends MiddlewareHook {
-  run(ctx: MiddlewareContext, input: { messages: unknown[]; response: unknown }): MiddlewareResult | Promise<MiddlewareResult>;
-}
-
-/**
- * wrap_model_call - Wraps the actual LLM API call.
- */
-export interface WrapModelCallHook extends MiddlewareHook {
-  run<T>(
-    ctx: MiddlewareContext,
-    input: { messages: unknown[]; model?: string },
-    next: () => Promise<T>,
-  ): Promise<T>;
-}
-
-/**
- * wrap_tool_call - Wraps a tool execution call.
- */
-export interface WrapToolCallHook extends MiddlewareHook {
-  run<T>(
-    ctx: MiddlewareContext,
-    input: { toolName: string; args: Record<string, unknown> },
-    next: () => Promise<T>,
-  ): Promise<T>;
-}
-
-/**
- * after_agent - Called after agent round completes.
- */
-export interface AfterAgentHook extends MiddlewareHook {
-  run(ctx: MiddlewareContext, input: { response: unknown; toolsUsed: string[] }): MiddlewareResult | Promise<MiddlewareResult>;
-}
-
-export interface OnSucceededPayload {
-  taskId: string;
-  executionId: string;
-  output: unknown;
-  durationMs: number;
-}
-
-export interface OnFailedPayload {
-  taskId: string;
-  executionId: string;
-  errorCode: string;
-  errorMessage: string;
-  durationMs: number;
-}
-
-export interface OnSucceededHook extends MiddlewareHook {
-  run(payload: OnSucceededPayload): void | Promise<void>;
-}
-
-export interface OnFailedHook extends MiddlewareHook {
-  run(payload: OnFailedPayload): void | Promise<void>;
-}
 
 export class AgentMiddlewareChain {
   // C-04: Use copy-on-write pattern for atomic array updates

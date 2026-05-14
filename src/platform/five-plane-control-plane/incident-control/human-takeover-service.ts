@@ -22,6 +22,7 @@ import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
 import { createRecoverySession, isSessionTerminalStatus } from "../../contracts/types/status.js";
+import type { IncidentContextBundle, ManualOverride, TakeoverActionResult } from "./human-takeover-types.js";
 import {
   executionTerminalForTask,
   normalizeInputJson,
@@ -35,53 +36,7 @@ import {
   throwTakeoverWorkflowError,
   workflowTerminalForTask,
 } from "./human-takeover-support.js";
-
-/**
- * R23-71: ManualOverride - Record of manual operator override in the execution loop
- */
-export interface ManualOverride {
-  overrideId: string;
-  taskId: string;
-  executionId: string | null;
-  operatorId: string;
-  actionType: "input_modification" | "worker_switch" | "step_skip" | "task_complete" | "execution_retry" | "step_modification";
-  reasonCode: string;
-  targetStage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release" | null;
-  overridePayloadJson: string;
-  feedbackSignalInjected: boolean;
-  improvementCandidateCreated: boolean;
-  createdAt: string;
-  traceId: string | null;
-}
-
-/**
- * R23-71: IncidentContextBundle - Context bundle for incident/override correlation
- */
-export interface IncidentContextBundle {
-  bundleId: string;
-  incidentId: string | null;
-  taskId: string;
-  executionId: string | null;
-  overrideIds: readonly string[];
-  takeoverSessionIds: readonly string[];
-  operatorIds: readonly string[];
-  severity: "low" | "medium" | "high" | "critical";
-  status: "active" | "resolved" | "cancelled";
-  createdAt: string;
-  resolvedAt: string | null;
-  metadataJson: string | null;
-}
-
-/**
- * Result of a takeover action operation.
- * Contains identifiers needed to track the action and its effects.
- */
-export interface TakeoverActionResult {
-  taskId: string;
-  executionId: string | null;
-  takeoverSessionId: string;
-  operatorActionId: string;
-}
+export type { IncidentContextBundle, ManualOverride, TakeoverActionResult } from "./human-takeover-types.js";
 
 /**
  * HumanTakeoverService manages operator interventions in task execution.

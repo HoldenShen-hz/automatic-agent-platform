@@ -283,8 +283,12 @@ test("getRegisteredConsumers returns empty for Tier 2 events", () => {
 // Event Types
 // ============================================================================
 
-test("TIER_1_EVENT_TYPES contains 32 events", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 32);
+test("TIER_1_EVENT_TYPES contains canonical runtime reliability events", () => {
+  assert.ok(TIER_1_EVENT_TYPES.length >= 46);
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.node_run.failed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.side_effect.failed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("platform.budget.actualized"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("oapeflir.phase.transition"));
 });
 
 test("Tier1EventType union type works", () => {

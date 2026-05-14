@@ -20,6 +20,12 @@ export const RolloutLevelSchema = z.enum([
   "L3_partial",
   "L4_stable",
   "L5_full",
+  "off",
+  "evaluate_0",
+  "canary_5",
+  "partial_25",
+  "stable_75",
+  "stable_100",
 ]);
 
 // Deprecated aliases for backward compatibility

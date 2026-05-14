@@ -142,7 +142,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: learningObject.promotionStatus,
+          promotionStatus: "quarantine",
         },
         warnings: [`PII detected: ${piiResult.piiTypes.join(", ")}`],
       };
@@ -156,7 +156,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: learningObject.promotionStatus,
+          promotionStatus: "quarantine",
         },
         warnings: [`Secrets detected: ${piiResult.secretTypes.join(", ")}`],
       };
@@ -171,7 +171,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: learningObject.promotionStatus,
+          promotionStatus: "quarantine",
         },
         warnings: ["Object failed diversity check - possible contamination or duplication"],
       };
@@ -185,7 +185,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: learningObject.promotionStatus,
+          promotionStatus: "quarantine",
         },
       };
     }
@@ -198,7 +198,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: learningObject.promotionStatus,
+          promotionStatus: "quarantine",
         },
       };
     }

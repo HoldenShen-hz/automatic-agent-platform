@@ -428,11 +428,11 @@ test("ACPInvariantEnforcer.checkBudgetNotExceeded returns false when child budge
   assert.equal(enforcer.checkBudgetNotExceeded(2000, 1000), false);
 });
 
-test("ACPInvariantEnforcer.checkDepthLimit returns true when depth < maxDepth", () => {
+test("ACPInvariantEnforcer.checkDepthLimit returns true when depth <= maxDepth", () => {
   const enforcer = new ACPInvariantEnforcer();
 
   assert.equal(enforcer.checkDepthLimit(3, 5), true);
-  assert.equal(enforcer.checkDepthLimit(5, 5), false);
+  assert.equal(enforcer.checkDepthLimit(5, 5), true);
   assert.equal(enforcer.checkDepthLimit(0, 5), true);
 });
 

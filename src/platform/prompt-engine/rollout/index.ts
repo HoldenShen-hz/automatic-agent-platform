@@ -30,24 +30,26 @@ export const DEPRECATED_PROMPT_ROLLOUT_MODE_ALIASES: Record<string, PromptRollou
 
 /**
  * R34-04 fix: Normalize rollout mode names to standardized L0-L5 levels.
- * Plain names (off, suggest, shadow, canary, staged, full) are now canonical.
- * L0-L5 names are kept for backward compatibility.
+ * L0-L5 names are canonical; plain names are accepted as backward-compatible aliases.
  */
 export function normalizePromptRolloutMode(mode: string): PromptRolloutMode {
-  // L0-L5 style names map to plain names
-  const l0l5ToPlain: Record<string, PromptRolloutMode> = {
-    "L0_off": "off",
-    "L1_suggest": "suggest",
-    "L2_shadow": "shadow",
-    "L3_canary": "canary",
-    "L4_partial": "staged",
-    "L5_stable": "full",
+  const canonicalByMode: Record<string, PromptRolloutMode> = {
+    off: "L0_off",
+    suggest: "L1_suggest",
+    shadow: "L2_shadow",
+    canary: "L3_canary",
+    staged: "L4_partial",
+    full: "L5_stable",
+    partial: "L4_partial",
+    stable: "L5_stable",
+    L0_off: "L0_off",
+    L1_suggest: "L1_suggest",
+    L2_shadow: "L2_shadow",
+    L3_canary: "L3_canary",
+    L4_partial: "L4_partial",
+    L5_stable: "L5_stable",
   };
-  if (mode.startsWith("L") && mode.includes("_")) {
-    return l0l5ToPlain[mode] ?? "off";
-  }
-  const normalized = DEPRECATED_PROMPT_ROLLOUT_MODE_ALIASES[mode];
-  return normalized ?? (mode as PromptRolloutMode);
+  return canonicalByMode[mode] ?? "L0_off";
 }
 
 // R16-04 fix: PromptRolloutStatus must include all lifecycle states per §16.1

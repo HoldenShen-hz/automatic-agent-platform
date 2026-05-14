@@ -93,7 +93,7 @@ export interface WorkflowStepCheckpoint {
   workflowId: string;
   divisionId: string;
   harnessRunId: string;
-  nodeRunId: string;
+  nodeRunId: string | null;
   planGraphId: string;
   stepId: string;
   roleId: string;
@@ -120,7 +120,7 @@ export interface CreateWorkflowStepCheckpointInput {
   workflowId: string;
   divisionId: string;
   harnessRunId?: string;
-  nodeRunId?: string;
+  nodeRunId?: string | null;
   planGraphId?: string;
   stepId: string;
   roleId: string;
@@ -148,13 +148,14 @@ export interface CreateWorkflowStepCheckpointInput {
 export interface WorkflowStepCheckpointSummary {
   artifactId: string;
   /** Canonical node run identifier (replaces stepId as primary key) */
-  nodeRunId: string;
+  nodeRunId: string | null;
   planGraphId: string;
   stepId: string;
   workflowId: string;
   status: StepOutputRecord["status"];
   producedAt: string;
   nextNodeRunId: string | null;
+  nextStepId: string | null;
   outputKeys: string[];
   summary: string | null;
   source: string;
@@ -162,7 +163,7 @@ export interface WorkflowStepCheckpointSummary {
 
 export interface WorkflowStepCheckpointRestoreState {
   harnessRunId: string;
-  nodeRunId: string;
+  nodeRunId: string | null;
   planGraphId: string;
   workflowId: string;
   output: Record<string, unknown>;
@@ -306,7 +307,7 @@ export function createWorkflowStepCheckpoint(
     workflowId: input.workflowId,
     divisionId: input.divisionId,
     harnessRunId: input.harnessRunId ?? `harness:${input.executionId ?? input.taskId}`,
-    nodeRunId: input.nodeRunId ?? `node:${input.stepId}`,
+    nodeRunId: input.nodeRunId === undefined ? `node:${input.stepId}` : input.nodeRunId,
     planGraphId: input.planGraphId ?? `plan:${input.workflowId}`,
     stepId: input.stepId,
     roleId: input.roleId,
@@ -395,7 +396,8 @@ export function summarizeWorkflowStepCheckpoint(
     workflowId: checkpoint.workflowId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
-    nextNodeRunId: null, // Would be derived from resume context graph traversal
+    nextNodeRunId: null,
+    nextStepId: checkpoint.resumeContext.nextStepId,
     outputKeys: [...checkpoint.resumeContext.outputKeys],
     summary: typeof output?.summary === "string" ? output.summary : null,
     source: checkpoint.decisionContext.source,

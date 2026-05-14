@@ -1,4 +1,6 @@
 const ALLOWED_COMMANDS: &[&str] = &["status", "health", "version"];
+const ALLOWED_DEEP_LINK_SCHEMES: &[&str] = &["aa://", "https://", "http://"];
+
 fn is_command_allowed(command: &str) -> bool {
     ALLOWED_COMMANDS.contains(&command)
 }
@@ -7,8 +9,11 @@ fn is_allowed_deep_link(url: &str) -> bool {
     url::Url::parse(url)
         .ok()
         .and_then(|parsed| Some(parsed.scheme().to_string()))
+        .map(|scheme| format!("{scheme}://"))
         .map(|scheme| {
-            scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https")
+            ALLOWED_DEEP_LINK_SCHEMES
+                .iter()
+                .any(|allowed| allowed.eq_ignore_ascii_case(&scheme))
         })
         .unwrap_or(false)
 }

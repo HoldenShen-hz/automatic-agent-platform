@@ -81,18 +81,24 @@ function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus)
   // R23-43 fix: Use L0-L5 level naming for standardized rollout progression
   switch (level) {
     case "L0_off":
+    case "off":
       return currentStatus === "candidate_created" || currentStatus === "under_review" || currentStatus === "approved"
         ? "rejected"
         : "rolled_back";
     case "L1_evaluate":
+    case "evaluate_0":
       return "evaluation_enabled";
     case "L2_canary":
+    case "canary_5":
       return "canary_5";
     case "L3_partial":
+    case "partial_25":
       return "partial_25";
     case "L4_stable":
+    case "stable_75":
       return "stable_75";
     case "L5_full":
+    case "stable_100":
       return currentStatus === "stable_100" ? "released" : "stable_100";
   }
 }

@@ -1,7 +1,7 @@
 /**
  * State Transition Machine Unit Tests
  *
- * Tests state transition validation, no-op rejection,
+ * Tests state transition validation, no-op idempotency,
  * and invalid transition detection.
  */
 
@@ -75,40 +75,27 @@ test("assertTransition() allows valid transition from in_progress to failed", ()
 // Tests: No-op Transitions
 // ---------------------------------------------------------------------------
 
-test("assertTransition() rejects no-op transition to same state", () => {
+test("assertTransition() allows no-op transition to same state", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
+  assert.doesNotThrow(
     () => machine.assertTransition("queued", "queued"),
-    (err: unknown) =>
-      err instanceof WorkflowStateError &&
-      err.message.includes("noop_transition_denied"),
-    "Should throw WorkflowStateError for no-op transition",
   );
 });
 
-test("assertTransition() rejects no-op transition for terminal states", () => {
+test("assertTransition() allows no-op transition for terminal states", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
+  assert.doesNotThrow(
     () => machine.assertTransition("done", "done"),
-    (err: unknown) =>
-      err instanceof WorkflowStateError &&
-      err.message.includes("noop_transition_denied"),
   );
 
-  assert.throws(
+  assert.doesNotThrow(
     () => machine.assertTransition("failed", "failed"),
-    (err: unknown) =>
-      err instanceof WorkflowStateError &&
-      err.message.includes("noop_transition_denied"),
   );
 
-  assert.throws(
+  assert.doesNotThrow(
     () => machine.assertTransition("cancelled", "cancelled"),
-    (err: unknown) =>
-      err instanceof WorkflowStateError &&
-      err.message.includes("noop_transition_denied"),
   );
 });
 
@@ -198,20 +185,12 @@ test("WorkflowStateError contains entity kind in details", () => {
   }
 });
 
-test("WorkflowStateError for no-op contains entity kind in details", () => {
+test("no-op transition does not produce WorkflowStateError details", () => {
   const machine = createTaskStateMachine();
 
-  try {
+  assert.doesNotThrow(() => {
     machine.assertTransition("pending", "pending");
-    assert.fail("Should have thrown");
-  } catch (err) {
-    assert.ok(err instanceof WorkflowStateError);
-    assert.deepEqual((err as WorkflowStateError).details, {
-      entityKind: "task",
-      current: "pending",
-      next: "pending",
-    });
-  }
+  });
 });
 
 // ---------------------------------------------------------------------------

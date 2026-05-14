@@ -37,6 +37,8 @@ test("AgentMiddlewareChain registers and returns hooks correctly", () => {
     wrapModelCall: [],
     wrapToolCall: [],
     afterAgent: [],
+    onSucceeded: [],
+    onFailed: [],
   });
 });
 

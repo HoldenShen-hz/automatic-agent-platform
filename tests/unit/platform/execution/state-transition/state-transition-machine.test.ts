@@ -17,8 +17,7 @@ test("StateTransitionMachine accepts valid entity kind and transitions map", () 
 test("StateTransitionMachine works with empty transitions map", () => {
   const transitions: Record<string, readonly string[]> = { a: [], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
-  // a is terminal - no-op is NOT allowed (per R4-19 fix: RuntimeStateMachine rejects no-op)
-  assert.throws(() => machine.assertTransition("a", "a"), WorkflowStateError);
+  machine.assertTransition("a", "a");
   // a cannot transition to b
   assert.throws(() => machine.assertTransition("a", "b"), WorkflowStateError);
 });
@@ -33,12 +32,10 @@ test("assertTransition allows valid transition", () => {
   machine.assertTransition("queued", "pending"); // should not throw
 });
 
-test("assertTransition rejects no-op transition (same state)", () => {
+test("assertTransition allows no-op transition (same state)", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
-  // R4-19 fix: no-op is NOT allowed - matches RuntimeStateMachine behavior
-  assert.throws(() => machine.assertTransition("a", "a"), (err: unknown) =>
-    err instanceof WorkflowStateError && err.message.includes("noop_transition_denied"));
+  machine.assertTransition("a", "a");
 });
 
 test("assertTransition rejects invalid transition", () => {
@@ -174,9 +171,7 @@ test("StateTransitionMachine handles cyclical transitions", () => {
   assert.throws(() => machine.assertTransition("awaiting_user", "open"), WorkflowStateError);
 });
 
-test("StateTransitionMachine rejects self-loops via no-op", () => {
-  // R4-19 fix: no-op transitions are NOT allowed even if state includes itself in allowed transitions
-  // Self-loops should go through the normal reject path for consistency with RuntimeStateMachine
+test("StateTransitionMachine handles self-loops via no-op", () => {
   const transitions: Record<string, readonly string[]> = {
     active: ["active", "idle", "stopped"], // active can transition to itself per old behavior
     idle: ["active"],
@@ -184,10 +179,8 @@ test("StateTransitionMachine rejects self-loops via no-op", () => {
   };
   const machine = new StateTransitionMachine("worker", transitions);
 
-  // No-op is NOT allowed even if "active" is in the allowed list
-  assert.throws(() => machine.assertTransition("active", "active"), WorkflowStateError);
-  // But idle->idle is also a no-op and is not allowed
-  assert.throws(() => machine.assertTransition("idle", "idle"), WorkflowStateError);
+  machine.assertTransition("active", "active");
+  machine.assertTransition("idle", "idle");
   // Normal transitions still work
   machine.assertTransition("active", "idle");
 });

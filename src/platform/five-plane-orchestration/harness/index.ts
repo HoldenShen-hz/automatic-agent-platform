@@ -141,6 +141,9 @@ export interface ConstraintPack {
     readonly maxModelTokens?: number;
     readonly maxContextTokens?: number;
     readonly maxOutputTokens?: number;
+    readonly max_model_tokens?: number;
+    readonly max_context_tokens?: number;
+    readonly max_output_tokens?: number;
   };
   readonly versionLockRef?: string;
 }
@@ -187,6 +190,9 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       maxModelTokens?: number;
       maxContextTokens?: number;
       maxOutputTokens?: number;
+      max_model_tokens?: number;
+      max_context_tokens?: number;
+      max_output_tokens?: number;
     };
   } = {
     policyIds: input.policyIds ? [...input.policyIds] : [],
@@ -223,25 +229,34 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       partial.budget.maxModelTokens = budgetEnvelope.maxTokens as number;
       partial.budget.maxContextTokens = budgetEnvelope.maxTokens as number;
       partial.budget.maxOutputTokens = budgetEnvelope.maxTokens as number;
+      partial.budget.max_model_tokens = budgetEnvelope.maxTokens as number;
+      partial.budget.max_context_tokens = budgetEnvelope.maxTokens as number;
+      partial.budget.max_output_tokens = budgetEnvelope.maxTokens as number;
     }
     // R18-01 fix: Copy explicit token budget fields per §45.3
     if ("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null) {
       partial.budget.maxModelTokens = budgetEnvelope.maxModelTokens;
+      partial.budget.max_model_tokens = budgetEnvelope.maxModelTokens;
     }
     if ("maxContextTokens" in budgetEnvelope && budgetEnvelope.maxContextTokens != null) {
       partial.budget.maxContextTokens = budgetEnvelope.maxContextTokens;
+      partial.budget.max_context_tokens = budgetEnvelope.maxContextTokens;
     }
     if ("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null) {
       partial.budget.maxOutputTokens = budgetEnvelope.maxOutputTokens;
+      partial.budget.max_output_tokens = budgetEnvelope.maxOutputTokens;
     }
     if (legacyBudget?.maxModelTokens != null) {
       partial.budget.maxModelTokens = legacyBudget.maxModelTokens;
+      partial.budget.max_model_tokens = legacyBudget.maxModelTokens;
     }
     if (legacyBudget?.maxContextTokens != null) {
       partial.budget.maxContextTokens = legacyBudget.maxContextTokens;
+      partial.budget.max_context_tokens = legacyBudget.maxContextTokens;
     }
     if (legacyBudget?.maxOutputTokens != null) {
       partial.budget.maxOutputTokens = legacyBudget.maxOutputTokens;
+      partial.budget.max_output_tokens = legacyBudget.maxOutputTokens;
     }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,

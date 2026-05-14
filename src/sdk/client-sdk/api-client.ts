@@ -14,58 +14,26 @@ import {
   type ContractEnvelopeVerificationResult,
 } from "../../platform/contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../platform/contracts/types/ids.js";
-
-export interface ApiClientConfig {
-  baseUrl: string;
-  apiVersion: string;
-  tenantId?: string;
-  bearerToken?: string;
-  timeoutMs?: number;
-  maxRetries?: number;
-  platformVersion?: string;
-  sdkVersion?: string;
-  contractVersion?: string;
-  /** Principal for request envelope (carried in metadata) */
-  principal?: { subject?: string; principalId?: string; tenantId?: string; roles?: readonly string[] };
-  /** Default idempotency key prepended to all request idempotency keys */
-  idempotencyKey?: string;
-  /** Whether to perform version handshake on init (default: false) */
-  performVersionHandshakeOnInit?: boolean;
-}
-
-export interface ApiRequestSpec {
-  path: string;
-  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-  query?: Record<string, string | number | boolean | null | undefined>;
-  body?: unknown;
-  idempotencyKey?: string;
-}
-
-export interface ApiResponse<T> {
-  data: T;
-  status: number;
-  headers: Record<string, string>;
-}
-
-export interface PaginationSpec {
-  cursor?: string;
-  limit?: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  status: number;
-  headers: Record<string, string>;
-  nextCursor: string | null;
-  totalCount?: number;
-}
-
-export interface RetryConfig {
-  maxRetries: number;
-  backoffMs: number;
-  backoffMultiplier: number;
-  maxBackoffMs: number;
-}
+import type {
+  ApiClientConfig,
+  ApiRequestOptions,
+  ApiRequestSpec,
+  ApiResponse,
+  PaginatedResponse,
+  PaginationSpec,
+  RetryConfig,
+  VersionHandshakeResult,
+} from "./api-client-types.js";
+export type {
+  ApiClientConfig,
+  ApiRequestOptions,
+  ApiRequestSpec,
+  ApiResponse,
+  PaginatedResponse,
+  PaginationSpec,
+  RetryConfig,
+  VersionHandshakeResult,
+} from "./api-client-types.js";
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
@@ -111,32 +79,6 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
     ...(config.sdkVersion ? { "X-SDK-Version": config.sdkVersion } : {}),
     ...(config.contractVersion ? { "X-Contract-Version": config.contractVersion } : {}),
   };
-}
-
-/**
- * Result of a version handshake negotiation with the server.
- */
-export interface VersionHandshakeResult {
-  /** Whether the server accepted the version */
-  readonly accepted: boolean;
-  /** HTTP status code from server */
-  readonly statusCode: number;
-  /** Reason code from server */
-  readonly reasonCode: string;
-  /** Server response headers */
-  readonly headers: Record<string, string>;
-  /** Compatibility warnings from server */
-  readonly warnings: readonly string[];
-  /** Reported platform version when provided by the server */
-  readonly platformVersion?: string;
-  /** Reported contract version when provided by the server */
-  readonly contractVersion?: string;
-  /** Minimum compatible SDK/client version when provided by the server */
-  readonly minClientVersion?: string;
-}
-
-export interface ApiRequestOptions {
-  readonly idempotencyKey?: string;
 }
 
 /**

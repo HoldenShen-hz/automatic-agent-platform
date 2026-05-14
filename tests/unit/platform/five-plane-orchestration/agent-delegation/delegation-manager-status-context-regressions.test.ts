@@ -64,7 +64,7 @@ test("cancel rejects concurrent status changes via fencing token", async () => {
     originalTransition(delegation, nextStatus, fencingToken);
   };
 
-  assert.throws(
+  await assert.rejects(
     () => service.cancel(handle.delegationId),
     (error: unknown) =>
       typeof error === "object"

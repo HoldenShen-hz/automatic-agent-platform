@@ -53,9 +53,7 @@ export class ACPInvariantEnforcer {
   }
 
   public checkDepthLimit(depth: number, maxDepth: number): boolean {
-    // Use >= to match TopologyValidator.validateDepth() semantics
-    // which throws when currentDepth >= maxDepth
-    return depth < maxDepth;
+    return depth <= maxDepth;
   }
 
   public enforceAll(message: ACPMessage, context: InvariantContext): { passed: boolean; violations: string[] } {

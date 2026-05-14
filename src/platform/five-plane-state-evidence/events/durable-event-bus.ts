@@ -8,57 +8,33 @@ import { injectTraceContext } from "../../shared/observability/trace-context.js"
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
+import {
+  ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS,
+  AdaptivePollingInterval,
+  DEFAULT_CONSUMER_GROUPS,
+  MAX_DELIVERY_RETRIES,
+  calculateBackoff,
+  ensureEventReferencedExecution,
+  ensureEventReferencedTask,
+  getActiveConsumerRefCounts,
+  sleep,
+  validateEventPayloadSize,
+  type BackPressureState,
+  type ConsumerGroup,
+  type DeliveryChainState,
+  type EventHandler,
+  type EventPartitionKey,
+  type PartitionSequenceEntry,
+  type PartitionSubscriber,
+} from "./durable-event-bus-support.js";
+export type {
+  BackPressureState,
+  ConsumerGroup,
+  EventHandler,
+  EventPartitionKey,
+} from "./durable-event-bus-support.js";
 
-// REL-01: dedicated logger for dead-letter visibility. The ack row already
-// persists the final status and error code, but there was previously no
-// operator-visible signal — failures were silently buried under a generic
-// workflow error. This logger emits a structured `event_bus.dead_letter`
-// record that alerting pipelines can subscribe to.
 const eventBusLogger = new StructuredLogger({ retentionLimit: 200 });
-
-/**
- * Handler function type for processing events.
- * May return void or a Promise for async handlers.
- */
-export type EventHandler = (event: EventRecord) => void | Promise<void>;
-
-/**
- * Maximum number of delivery retry attempts before dead-lettering an event.
- */
-const MAX_DELIVERY_RETRIES = 3;
-
-/**
- * Initial backoff delay in milliseconds before first retry.
- */
-const INITIAL_BACKOFF_MS = 100;
-
-/**
- * Maximum backoff delay cap in milliseconds.
- */
-const MAX_BACKOFF_MS = 5000;
-
-/**
- * Active consumer registrations are shared per database instance so separate
- * bus wrappers over the same store can coordinate tier-1 ack creation.
- */
-const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<string, number>>();
-
-/**
- * R12-04: Base polling interval before queue-depth back-pressure adjusts it.
- */
-export const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
-
-/**
- * Calculates exponential backoff delay with jitter for retry intervals.
- * Uses exponential increase with a cap and adds random jitter to prevent thundering herd.
- * @param attemptIndex - The current retry attempt number (0-based)
- * @returns Delay in milliseconds to wait before next retry
- */
-function calculateBackoff(attemptIndex: number): number {
-  const exponentialDelay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, attemptIndex), MAX_BACKOFF_MS);
-  const jitter = Math.random() * exponentialDelay * 0.1;
-  return Math.round(exponentialDelay + jitter);
-}
 
 /**
  * Durable Event Bus - Reliable event delivery with acknowledgment tracking.
@@ -90,116 +66,6 @@ function calculateBackoff(attemptIndex: number): number {
  * @see Event Registry Contract: docs_zh/contracts/event_registry_and_ops_threshold_contract.md
  * @see Event Bus Contract: docs_zh/contracts/event_bus_contract.md
  */
-/**
- * Event partition key for ordering guarantees.
- * Events with the same partitionKey are delivered in FIFO order.
- */
-export type EventPartitionKey = string & { __partitionKey: true };
-
-/**
- * R12-01: Sequence number entry for partition ordering.
- */
-interface PartitionSequenceEntry {
-  sequence: number;
-  pendingConsumers: Set<string>;
-  event: EventRecord;
-}
-
-/**
- * Consumer group configuration for isolated delivery.
- * R12-02: Each consumer group maintains independent ack state and delivery isolation.
- */
-export interface ConsumerGroup {
-  groupId: string;
-  /** Maximum concurrent deliveries per group */
-  maxConcurrency: number;
-  /** Back-pressure threshold in bytes */
-  backPressureThresholdBytes: number;
-}
-
-/**
- * Back-pressure state for a consumer or group.
- */
-export interface BackPressureState {
-  isBackPressure: boolean;
-  pendingCount: number;
-  bufferedBytes: number;
-  lastCheckedAt: string;
-}
-
-const DEFAULT_CONSUMER_GROUPS: ConsumerGroup[] = [
-  { groupId: "default", maxConcurrency: 10, backPressureThresholdBytes: 1_000_000 },
-  { groupId: "high-priority", maxConcurrency: 20, backPressureThresholdBytes: 500_000 },
-  { groupId: "low-priority", maxConcurrency: 5, backPressureThresholdBytes: 2_000_000 },
-];
-
-/**
- * Partition-aware subscriber entry.
- */
-interface PartitionSubscriber {
-  handler: EventHandler;
-  /** Partition keys this subscriber is interested in. Empty means all partitions. */
-  partitions: ReadonlySet<string>;
-  /** R12-02: Consumer group ID for delivery isolation */
-  groupId: string;
-  /** Monotonic version used to ignore stale in-flight deliveries after handler replacement. */
-  generation: number;
-}
-
-/**
- * Delivery chain state for a consumer.
- */
-interface DeliveryChainState {
-  chain: Promise<void>;
-  backPressure: BackPressureState;
-  lastDeliveryAt: string | null;
-  deliveryCount: number;
-  /** R12-02: Consumer group reference */
-  groupId: string;
-}
-
-/**
- * Back-pressure aware polling interval calculator.
- * Returns adaptive poll intervals based on system load.
- */
-/**
- * R12-04: Fixed - uses adaptive polling interval based on back-pressure state.
- * The AdaptivePollingInterval class (lines 168-200) now dynamically adjusts
- * polling frequency based on consumer back-pressure, replacing the old fixed 10ms interval.
- */
-class AdaptivePollingInterval {
-  private baseIntervalMs = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS;
-  private maxIntervalMs = 5_000;
-  private currentIntervalMs: number;
-
-  public constructor(baseIntervalMs = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS, maxIntervalMs = 5_000) {
-    this.baseIntervalMs = baseIntervalMs;
-    this.maxIntervalMs = maxIntervalMs;
-    this.currentIntervalMs = baseIntervalMs;
-  }
-
-  /**
-   * Gets the current polling interval based on back-pressure state.
-   */
-  public getInterval(backPressureState: BackPressureState): number {
-    if (backPressureState.isBackPressure) {
-      // Exponential back-off when under pressure
-      this.currentIntervalMs = Math.min(this.currentIntervalMs * 2, this.maxIntervalMs);
-    } else {
-      // Gradually return to base interval
-      this.currentIntervalMs = Math.max(this.baseIntervalMs, this.currentIntervalMs / 2);
-    }
-    return this.currentIntervalMs;
-  }
-
-  /**
-   * Resets to base interval.
-   */
-  public reset(): void {
-    this.currentIntervalMs = this.baseIntervalMs;
-  }
-}
-
 export class DurableEventBus {
   // R12-01: Partition-aware subscribers with ordering guarantees
   private readonly subscribers = new Map<string, PartitionSubscriber>();
@@ -391,12 +257,12 @@ export class DurableEventBus {
   }): EventRecord {
     this.assertNotDisposed();
     const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
-    this.validatePayloadSize(payloadWithTraceContext);
+    validateEventPayloadSize(payloadWithTraceContext);
     const validatedPayload = validateEventPayload(
       input.eventType,
       payloadWithTraceContext,
     );
-    this.validatePayloadSize(validatedPayload);
+    validateEventPayloadSize(validatedPayload);
 
     const schema = getEventSchema(input.eventType);
     const resolvedSequence = this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null);
@@ -407,10 +273,10 @@ export class DurableEventBus {
     // so that event record and handler invocation are atomic (or both roll back).
     const eventRecord = this.db.transaction(() =>
       {
-        this.ensureReferencedTask(input.taskId ?? null);
+        ensureEventReferencedTask(this.store, input.taskId ?? null);
         // R12-05 FIX: Also ensure execution exists within the same transaction
         // to satisfy FK constraint on execution_id column
-        const validExecutionId = this.ensureReferencedExecution(input.executionId ?? null, input.taskId ?? null);
+        const validExecutionId = ensureEventReferencedExecution(this.store, eventBusLogger, input.executionId ?? null, input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
@@ -477,12 +343,12 @@ export class DurableEventBus {
     // Validate all payloads upfront before any database writes
     const validatedPayloads = inputs.map((input) => {
       const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
-      this.validatePayloadSize(payloadWithTraceContext);
+      validateEventPayloadSize(payloadWithTraceContext);
       const validatedPayload = validateEventPayload(
         input.eventType,
         payloadWithTraceContext,
       );
-      this.validatePayloadSize(validatedPayload);
+      validateEventPayloadSize(validatedPayload);
       return validatedPayload;
     });
 
@@ -494,9 +360,9 @@ export class DurableEventBus {
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
-        this.ensureReferencedTask(input.taskId ?? null);
+        ensureEventReferencedTask(this.store, input.taskId ?? null);
         // R12-05 FIX: Also ensure execution exists within same transaction
-        const validExecutionId = this.ensureReferencedExecution(input.executionId ?? null, input.taskId ?? null);
+        const validExecutionId = ensureEventReferencedExecution(this.store, eventBusLogger, input.executionId ?? null, input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
@@ -1100,66 +966,6 @@ export class DurableEventBus {
     }
   }
 
-  private validatePayloadSize(payload: Record<string, unknown>): void {
-    const payloadSize = JSON.stringify(payload).length;
-    if (payloadSize > 1_000_000) {
-      throw new ValidationError("event.payload_too_large", `event.payload_too_large: Event payload size ${payloadSize} exceeds maximum of 1000000 bytes`, {
-        details: { payloadSize, maxSize: 1_000_000 },
-      });
-    }
-  }
-
-  private ensureReferencedTask(taskId: string | null): void {
-    if (taskId == null || this.store.task.getTask(taskId) != null) {
-      return;
-    }
-    const createdAt = nowIso();
-    this.store.task.insertTask({
-      id: taskId,
-      parentId: null,
-      rootId: taskId,
-      divisionId: null,
-      tenantId: null,
-      title: `Event reference ${taskId}`,
-      status: "pending",
-      source: "system",
-      priority: "normal",
-      inputJson: JSON.stringify({ createdBy: "durable_event_bus_reference" }),
-      normalizedInputJson: null,
-      outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: 0,
-      errorCode: null,
-      createdAt,
-      updatedAt: createdAt,
-      completedAt: null,
-    });
-  }
-
-  /**
-   * R12-05 FIX: Ensures the referenced execution exists within the transaction.
-   * If executionId is provided but doesn't exist, logs a warning and returns null
-   * so that event append + truth co-write remain atomic (FK constraint satisfied).
-   * Returns the valid executionId to use, or null if the execution doesn't exist
-   * (in which case the event will be written with execution_id = NULL).
-   */
-  private ensureReferencedExecution(executionId: string | null, taskId: string | null): string | null {
-    if (executionId == null) {
-      return null;
-    }
-    if (this.store.execution.getExecution(executionId) != null) {
-      return executionId;
-    }
-    // R12-05 FIX: Execution doesn't exist - log warning and return null
-    // so caller will set execution_id = NULL on the event (preserving atomicity)
-    eventBusLogger.warn("event_bus.execution_not_found_for_event", {
-      executionId,
-      taskId,
-      message: "Referenced execution not found, event will be written with execution_id = NULL",
-    });
-    return null;
-  }
-
   private registerActiveConsumer(consumerId: string): void {
     const currentCount = this.activeConsumerRefCounts.get(consumerId) ?? 0;
     this.activeConsumerRefCounts.set(consumerId, currentCount + 1);
@@ -1190,22 +996,4 @@ export class DurableEventBus {
     this.runSequenceNumbers.set(runId, nextSequence);
     return nextSequence;
   }
-}
-
-/**
- * Sleep utility for async delay.
- * @param ms - Milliseconds to sleep
- * @returns Promise that resolves after the delay
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getActiveConsumerRefCounts(db: AuthoritativeSqlDatabase): Map<string, number> {
-  let refCounts = ACTIVE_CONSUMER_REF_COUNTS.get(db);
-  if (refCounts === undefined) {
-    refCounts = new Map<string, number>();
-    ACTIVE_CONSUMER_REF_COUNTS.set(db, refCounts);
-  }
-  return refCounts;
 }

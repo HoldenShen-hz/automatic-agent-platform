@@ -833,7 +833,7 @@ test("verifyTransitionAllowed correctly validates task state machine rules", () 
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done");
 });
 
-test("verifyTransitionAllowed rejects no-op transitions", () => {
+test("verifyTransitionAllowed treats no-op transitions as idempotent", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -846,14 +846,12 @@ test("verifyTransitionAllowed rejects no-op transitions", () => {
 
   const service = new TransitionService(db, mockStore, repository);
 
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       service.applyTaskTerminalState(makeTerminalInput({
         currentTaskStatus: "done",
         terminalStatus: "done",
       })),
-    /noop_transition_denied/,
-    "Should reject no-op transition from done to done",
   );
 });
 

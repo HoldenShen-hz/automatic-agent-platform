@@ -34,22 +34,27 @@ export class GuardrailEvaluator {
     const strategyVersion = strategyOrMetrics as StrategyVersion;
     const reasonCodes: string[] = [];
 
-    if (candidate.sourceSignalRefs.length === 0) {
+    const sourceSignalRefs = candidate.sourceSignalRefs ?? [];
+    const sourceLearningObjectIds = candidate.sourceLearningObjectIds ?? [];
+    const guardrails = candidate.guardrails ?? [];
+    const learningObjectId = candidate.learningObjectId ?? sourceLearningObjectIds[0] ?? "";
+
+    if (sourceSignalRefs.length === 0) {
       reasonCodes.push("improvement.guardrail_missing_evidence");
     }
-    if (candidate.sourceLearningObjectIds.length === 0) {
+    if (sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_missing_learning_object");
     }
-    if (candidate.learningObjectId.length === 0) {
+    if (learningObjectId.length === 0) {
       reasonCodes.push("improvement.guardrail_missing_primary_learning_object");
     }
-    if (strategyVersion.sourceLearningObjectIds.length === 0) {
+    if ((strategyVersion.sourceLearningObjectIds ?? []).length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
     if (normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off" && candidate.status !== "approved") {
       reasonCodes.push("improvement.guardrail_requires_approval");
     }
-    for (const guardrail of candidate.guardrails) {
+    for (const guardrail of guardrails) {
       if (rolloutLevelRank(strategyVersion.releaseLevel) < rolloutLevelRank(guardrail.requiredLevel)) {
         reasonCodes.push(`improvement.guardrail_level_blocked:${guardrail.guardrailId}`);
       }

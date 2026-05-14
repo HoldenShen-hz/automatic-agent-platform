@@ -22,100 +22,29 @@ import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authorit
 import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { decideWorkflowStepRetry, type WorkflowStepRetryDecision } from "../../orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 import { validateWorkflowStepOutput } from "../../orchestration/oapeflir/workflow/output-schema.js";
-import type { AdmissionDecision } from "../dispatcher/admission-controller.js";
-import type { TransitionService } from "../state-transition/transition-service.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
-import type { ContextCompactionService } from "./context-compaction-service.js";
 import { buildStepOutput } from "./multi-step-agent-round-loop.js";
 import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
+import {
+  buildStepFailureSummary,
+  normalizeStepErrorCode,
+  resolveStepFailurePlan,
+  type ExecutionDeps,
+  type StepExecutionResult,
+  type StepSupervisorContext,
+} from "./multi-step-supervisor-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
-export function normalizeStepFailurePlan(value: string | StepFailurePlan): StepFailurePlan {
-  return typeof value === "string" ? { errorCode: value } : value;
-}
-
-export function resolveStepFailurePlan(
-  input: MultiStepToolExecutionInput,
-  stepId: string,
-  attempt: number,
-): StepFailurePlan | null {
-  const plannedFailure = input.stepFailurePlans?.[stepId]?.[attempt - 1];
-  if (plannedFailure != null) {
-    return normalizeStepFailurePlan(plannedFailure);
-  }
-  if (attempt === 1 && input.stepFailureInjection?.has(stepId)) {
-    return { errorCode: "tool.execution_failed", summary: `Step ${stepId} failed (injected)`, message: "Injected failure" };
-  }
-  return null;
-}
-
-export function normalizeStepErrorCode(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.startsWith("workflow.output_schema_invalid")) return "validation.schema_mismatch";
-  if (message.startsWith("workflow.output_schema_missing")) return "validation.invalid_input";
-  return "internal.unexpected_error";
-}
-
-export function buildStepFailureSummary(stepId: string, decision: WorkflowStepRetryDecision): string {
-  switch (decision.action) {
-    case "retry":
-      return `Step ${stepId} failed (${decision.errorCode}) and will retry.`;
-    case "escalate":
-      return `Step ${stepId} requires escalation (${decision.errorCode}).`;
-    default:
-      return `Step ${stepId} failed (${decision.errorCode}).`;
-  }
-}
-
-export interface StepSupervisorContext {
-  taskId: string;
-  sessionId: string;
-  traceId: string;
-  traceContext: ReturnType<typeof import("../../shared/observability/trace-context.js").createRootTraceContext>;
-  streamId: string;
-  /** R4-27 fix: HarnessRun ID for canonical execution tracking */
-  harnessRunId: string;
-  admissionDecision: AdmissionDecision;
-  input: MultiStepToolExecutionInput;
-  routing: ReturnType<typeof import("../../orchestration/routing/intake-router.js").IntakeRouter.prototype.route>;
-  plannedWorkflow: ReturnType<typeof import("../../orchestration/routing/workflow-planner.js").WorkflowPlanner.prototype.plan>;
-  outputs: Record<string, unknown>;
-  stepOutputs: StepOutputRecord[];
-  toolExposureService: import("../tool-executor/role-tool-exposure-service.js").RoleToolExposureService;
-  latestCompaction: ContextCompactionResult | null;
-  executionAttemptCounter: number;
-  workflowRetryCount: number;
-  workflowLastErrorCode: string | null;
-  blockedForDecision: boolean;
-  skippedStepIds: Set<string>;
-  failedStepIds: Set<string>;
-}
-
-export interface StepExecutionResult {
-  stepCompleted: boolean;
-  blockedForDecision: boolean;
-  latestCompaction: ContextCompactionResult | null;
-  workflowRetryCount: number;
-  workflowLastErrorCode: string | null;
-  outputs: Record<string, unknown>;
-  stepOutputs: StepOutputRecord[];
-  skippedStepIds: Set<string>;
-  failedStepIds: Set<string>;
-}
-
-interface ExecutionDeps {
-  store: AuthoritativeTaskStore;
-  db: AuthoritativeSqlDatabase;
-  transitions: TransitionService;
-  artifactStore: ArtifactStore;
-  contextCompaction: ContextCompactionService;
-  streamBridge: StreamBridge;
-  transitionExecutionStatus: TransitionService["transitionExecutionStatus"];
-  createContext: (reasonCode: string) => TransitionAuditContext;
-}
+export {
+  buildStepFailureSummary,
+  normalizeStepErrorCode,
+  normalizeStepFailurePlan,
+  resolveStepFailurePlan,
+} from "./multi-step-supervisor-types.js";
+export type { ExecutionDeps, StepExecutionResult, StepSupervisorContext } from "./multi-step-supervisor-types.js";
 
 export async function executeStepLoop(
   ctx: StepSupervisorContext,

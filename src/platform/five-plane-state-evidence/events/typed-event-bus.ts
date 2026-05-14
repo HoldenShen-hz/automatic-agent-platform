@@ -223,13 +223,31 @@ export interface TypedEventPayloadMap {
   "platform.harness_run.completed": Record<string, unknown>;
   "platform.harness_run.failed": Record<string, unknown>;
   "platform.node_run.status_changed": Record<string, unknown>;
+  "platform.node_run.created": Record<string, unknown>;
+  "platform.node_run.admitted": Record<string, unknown>;
+  "platform.node_run.planning": Record<string, unknown>;
+  "platform.node_run.ready": Record<string, unknown>;
+  "platform.node_run.pausing": Record<string, unknown>;
+  "platform.node_run.replanning": Record<string, unknown>;
   "platform.node_run.started": Record<string, unknown>;
   "platform.node_run.completed": Record<string, unknown>;
+  "platform.node_run.failed": Record<string, unknown>;
+  "platform.node_run.compensating": Record<string, unknown>;
+  "platform.node_run.skipped": Record<string, unknown>;
   "platform.budget_ledger.status_changed": Record<string, unknown>;
   "platform.budget_reservation.status_changed": Record<string, unknown>;
+  "platform.budget.status_changed": Record<string, unknown>;
+  "platform.budget.reserved": Record<string, unknown>;
+  "platform.budget.actualized": Record<string, unknown>;
+  "platform.budget.exceeded": Record<string, unknown>;
+  "platform.budget_reconciliation.status_changed": Record<string, unknown>;
   "platform.side_effect.status_changed": Record<string, unknown>;
+  "platform.side_effect.triggered": Record<string, unknown>;
+  "platform.side_effect.completed": Record<string, unknown>;
+  "platform.side_effect.failed": Record<string, unknown>;
   // OAPEFLR events
   "oapeflir.view.run_lifecycle": Record<string, unknown>;
+  "oapeflir.decision.recorded": Record<string, unknown>;
   "oapeflir.graph.scheduled": Record<string, unknown>;
   "oapeflir.node.executed": Record<string, unknown>;
   "oapeflir.phase.transition": {

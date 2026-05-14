@@ -1,11 +1,5 @@
 import type { ApprovalDecision, ApprovalRequest } from "./approval-service.js";
-import type {
-  ApproverRule,
-  Delegation,
-  EscalationReason,
-  EscalationRule,
-  NotificationChannel,
-} from "./escalation-manager.js";
+import type { ApproverRule, Delegation, EscalationReason, EscalationRule, NotificationChannel } from "./escalation-manager.js";
 import type { QuorumConfig, QuorumStatus, QuorumVote } from "./quorum-calculator.js";
 
 export enum FlowType {
@@ -61,22 +55,11 @@ export interface FeedbackLoop {
   loopId: string;
   harnessRunId: string;
   nodeRunId: string;
-  /** @deprecated legacy workflow projection identifier; use harnessRunId */
   workflowRunId: string;
-  /** @deprecated legacy step projection identifier; use nodeRunId */
   stepId: string;
   maxIterations: number;
   currentIteration: number;
   humanFeedback: HumanFeedback[];
-}
-
-export interface FlowEscalationLevel {
-  level: number;
-  escalateTo: ApproverRule;
-  escalatedAt: string;
-  escalatedBy: string;
-  reason: EscalationReason;
-  sourceApprovalId: string;
 }
 
 export interface ApprovalFlowState {
@@ -95,6 +78,15 @@ export interface ApprovalFlowState {
   expiresAt: string | null;
   warningsSent: string[];
   escalationTriggered: boolean;
+}
+
+export interface FlowEscalationLevel {
+  level: number;
+  escalateTo: ApproverRule;
+  escalatedAt: string;
+  escalatedBy: string;
+  reason: EscalationReason;
+  sourceApprovalId: string;
 }
 
 export interface VoteResult {
@@ -131,4 +123,6 @@ export const DEFAULT_FEEDBACK_LOOP_CONFIG: FeedbackLoopConfig = {
   requireReplanOnReject: true,
 };
 
-export type { ApprovalDecision };
+export interface ApprovalRequestWithDecision extends ApprovalRequest {
+  decision?: ApprovalDecision;
+}

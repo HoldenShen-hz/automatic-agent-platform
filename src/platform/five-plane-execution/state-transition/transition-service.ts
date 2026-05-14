@@ -20,11 +20,9 @@
  */
 
 import type {
-  ApprovalStatus,
   ExecutionStatus,
   SessionStatus,
   TaskStatus,
-  TaskTerminalStatus,
   WorkflowStatus,
 } from "../../contracts/types/status.js";
 import type {
@@ -47,178 +45,21 @@ import {
 } from "../../state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { injectTraceContext, toAuditContextTraceContext } from "../../shared/observability/trace-context.js";
 import { newId } from "../../contracts/types/ids.js";
-import { StateTransitionMachine } from "./state-transition-machine.js";
-
-/**
- * Allowed task status transitions.
- *
- * Tasks flow through a linear progression: queued -> pending -> in_progress,
- * then branch to done, failed, cancelled, or await_decision (for human approval).
- * Once in a terminal state (done, failed, cancelled), no further transitions are allowed.
- */
-const TASK_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
-  queued: ["pending", "in_progress", "cancelled"],
-  pending: ["in_progress", "cancelled"],
-  in_progress: ["awaiting_decision", "done", "failed", "cancelled"],
-  awaiting_decision: ["in_progress", "failed", "cancelled"],
-  done: [],
-  failed: [],
-  cancelled: [],
-};
-
-/**
- * Allowed workflow status transitions.
- *
- * Workflows represent multi-step execution plans. They support pausing and resuming,
- * and can transition to cancelling (a transient state) before reaching cancelled.
- * The terminal states (completed, failed, cancelled) allow no further transitions.
- */
-const WORKFLOW_TRANSITIONS: Record<WorkflowStatus, readonly WorkflowStatus[]> = {
-  running: ["paused", "completed", "failed", "cancelling", "cancelled"],
-  paused: ["resuming", "failed", "cancelled"],
-  resuming: ["running", "failed", "cancelled"],
-  completed: [],
-  failed: [],
-  cancelling: ["cancelled"],
-  cancelled: [],
-};
-
-/**
- * Allowed session status transitions.
- *
- * Sessions track the interaction context between agent and user. They can pause
- * (e.g., when waiting for user input) and resume. The "open" state is the initial
- * state; sessions can return to open for recovery scenarios.
- */
-const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
-  open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
-  streaming: ["awaiting_user", "completed", "failed", "cancelled", "open"],
-  awaiting_user: ["streaming", "completed", "failed", "cancelled"],
-  paused: ["streaming", "completed", "failed", "cancelled", "open"],
-  completed: [],
-  failed: [],
-  cancelled: [],
-};
-
-/**
- * Allowed execution status transitions.
- *
- * Executions are individual attempts to perform work. They go through prechecking
- * (validation), executing (actual work), and can become blocked (awaiting approval),
- * succeeded, failed, cancelled, or superseded (by a newer execution).
- */
-const EXECUTION_TRANSITIONS: Record<ExecutionStatus, readonly ExecutionStatus[]> = {
-  created: ["prechecking", "executing", "cancelled", "failed"],
-  prechecking: ["executing", "blocked", "cancelled", "failed"],
-  ready: ["queued", "cancelled", "failed"],
-  queued: ["dispatching", "cancelled", "failed"],
-  dispatching: ["executing", "cancelled", "failed"],
-  executing: ["blocked", "succeeded", "failed", "cancelled"],
-  blocked: ["prechecking", "executing", "cancelled", "failed", "superseded"],
-  paused: ["resuming", "executing", "cancelled", "failed"],
-  resuming: ["executing", "cancelled", "failed"],
-  recovering: ["executing", "cancelled", "failed", "timed_out"],
-  timed_out: ["executing", "cancelled", "failed"],
-  succeeded: [],
-  failed: [],
-  cancelled: [],
-  superseded: [],
-};
-
-/**
- * Allowed approval status transitions.
- *
- * Approvals track human authorization decisions. A request can be approved, rejected,
- * expired (timeout), or cancelled. Once in a terminal state, no further transitions apply.
- */
-const APPROVAL_TRANSITIONS: Record<ApprovalStatus, readonly ApprovalStatus[]> = {
-  requested: ["approved", "rejected", "expired", "cancelled"],
-  approved: [],
-  rejected: [],
-  expired: [],
-  cancelled: [],
-};
-
-/**
- * State machines for each entity type.
- * Each machine validates transitions against its allowed-transition map.
- */
-const taskStateMachine = new StateTransitionMachine("task", TASK_TRANSITIONS);
-const workflowStateMachine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
-const sessionStateMachine = new StateTransitionMachine("session", SESSION_TRANSITIONS);
-const executionStateMachine = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
-const approvalStateMachine = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
-
-/**
- * Defines an approval request when execution is blocked pending human decision.
- *
- * When a task requires human approval (e.g., for sensitive tool execution),
- * this definition captures the request details: source agent, reason, risk level,
- * available approval options, and timeout policy.
- */
-export interface BlockedApprovalRequestDefinition {
-  approvalId?: string | undefined;
-  sourceAgentId: string;
-  reason: string;
-  riskLevel: "low" | "medium" | "high" | "critical";
-  options: readonly string[];
-  context: Record<string, unknown>;
-  timeoutPolicy: "reject" | "approve" | "remain_pending";
-  createdAt?: string | undefined;
-}
-
-/**
- * Command to transition multiple entities to blocked/awaiting-approval state.
- *
- * When an execution requires human approval, all related entities (task, workflow,
- * session, execution) must be transitioned to their "blocked" states atomically.
- * This command captures the current state of each entity to validate transitions.
- */
-export interface BlockedForApprovalTransitionCommand {
-  taskId: string;
-  sessionId: string;
-  executionId: string;
-  currentTaskStatus: TaskStatus;
-  currentWorkflowStatus: WorkflowStatus;
-  currentSessionStatus: SessionStatus;
-  currentExecutionStatus: ExecutionStatus;
-  workflowCurrentStepIndex: number;
-  workflowOutputsJson: string;
-  approval: BlockedApprovalRequestDefinition;
-  context: TransitionAuditContext;
-}
-
-/** Result of blocking an execution for approval - returns the created approval ID and timestamp. */
-export interface BlockedForApprovalTransitionResult {
-  approvalId: string;
-  createdAt: string;
-}
-
-/**
- * Input for transitioning a task and its related entities to a terminal state.
- *
- * When a task reaches a terminal state (done, failed, cancelled), all related
- * entities (workflow, session, execution) must also transition to their
- * corresponding terminal states atomically. This input captures the current
- * state of each entity for validation.
- */
-type TaskTerminalTransitionInput = {
-  taskId: string;
-  sessionId: string;
-  executionId: string;
-  currentTaskStatus: TaskStatus;
-  currentWorkflowStatus: WorkflowStatus;
-  currentSessionStatus: SessionStatus;
-  currentExecutionStatus: ExecutionStatus;
-  terminalStatus: TaskTerminalStatus;
-  taskOutputJson: string;
-  outputsJson: string;
-  context: TransitionAuditContext;
-  expectedTaskUpdatedAt?: string;
-  expectedWorkflowStepIndex?: number;
-  expectedSessionUpdatedAt?: string;
-  expectedExecutionUpdatedAt?: string;
-};
+import {
+  approvalStateMachine,
+  executionStateMachine,
+  sessionStateMachine,
+  taskStateMachine,
+  workflowStateMachine,
+  type BlockedForApprovalTransitionCommand,
+  type BlockedForApprovalTransitionResult,
+  type TaskTerminalTransitionInput,
+} from "./transition-service-model.js";
+export type {
+  BlockedApprovalRequestDefinition,
+  BlockedForApprovalTransitionCommand,
+  BlockedForApprovalTransitionResult,
+} from "./transition-service-model.js";
 
 /**
  * Service for transitioning task status.

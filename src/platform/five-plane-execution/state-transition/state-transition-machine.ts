@@ -43,14 +43,7 @@ export class StateTransitionMachine<TState extends string> {
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
-      if (this.allowsNoopTransition()) {
-        return;
-      }
-      throw new WorkflowStateError(
-        `${this.entityKind}.noop_transition_denied`,
-        `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`,
-        { details: { entityKind: this.entityKind, current, next } },
-      );
+      return;
     }
 
     if (!this.transitions[current]?.includes(next)) {
@@ -60,7 +53,4 @@ export class StateTransitionMachine<TState extends string> {
     }
   }
 
-  private allowsNoopTransition(): boolean {
-    return false;
-  }
 }

@@ -17,133 +17,42 @@ import {
 } from "./runtime-state-machine.js";
 import { newId } from "../contracts/types/ids.js";
 import { ValidationError, WorkflowStateError } from "../contracts/errors.js";
+import type {
+  BudgetAllocatorContext,
+  BudgetAllocatorDeps,
+  BudgetAllocatorEvents,
+  BudgetAtomicRepository,
+  BudgetTruthStore,
+  BudgetReleasePersistence,
+  BudgetReleaseResult,
+  BudgetSettlementPersistence,
+  BudgetSettlementResult,
+  BudgetTier,
+  CrossRunPriorityConfig,
+  NormalizedBudgetAllocatorContext,
+  ReservationSweeperConfig,
+  StreamingIncrementResult,
+  WatermarkAlert,
+  WatermarkAlertConfig,
+} from "./budget-allocator-types.js";
 
-export interface BudgetAllocatorContext {
-  readonly tenantId: string;
-  readonly traceId: string;
-  readonly emittedBy: string;
-  readonly principal?: string;
-  readonly fencingToken?: string;
-  readonly tier?: BudgetTier;
-  readonly tierLimit?: number;
-  readonly watermarkAlert?: {
-    readonly warningThreshold: number;
-    readonly criticalThreshold: number;
-    readonly hardCapThreshold: number;
-  };
-  readonly autoThrottle?: {
-    readonly enabled: boolean;
-    readonly throttleRatio: number;
-    readonly recoveryRatio: number;
-  };
-  readonly crossRunPriority?: {
-    readonly priority: number;
-    readonly weightFactor: number;
-  };
-  readonly streamingSettle?: {
-    readonly enabled: boolean;
-    readonly tokenInterval: number;
-    readonly timeIntervalMs: number;
-  };
-}
-
-export interface BudgetSettlementResult {
-  readonly reservation: RuntimeTransitionResult<BudgetReservation>;
-  readonly settlement: BudgetSettlement;
-  readonly ledger: BudgetLedger;
-  readonly hierarchyLedgers?: readonly BudgetLedger[];
-}
-
-export interface BudgetReleaseResult {
-  readonly reservation: RuntimeTransitionResult<BudgetReservation>;
-  readonly settlement: BudgetSettlement;
-  readonly ledger: BudgetLedger;
-  readonly hierarchyLedgers?: readonly BudgetLedger[];
-}
-
-export enum BudgetTier {
-  PLATFORM = "platform",
-  TENANT = "tenant",
-  PACK = "pack",
-  STEP = "step",
-}
-
-export interface BudgetWatermarkAlert {
-  readonly budgetLedgerId: string;
-  readonly tenantId: string;
-  readonly tier?: BudgetTier | string;
-  readonly alertKind: "warning" | "critical" | "hard_cap_reached";
-  readonly utilizationRatio: number;
-  readonly thresholdRatio: number;
-  readonly occurredAt: string;
-}
-
-export interface BudgetAutoThrottleEvent {
-  readonly budgetLedgerId: string;
-  readonly tenantId: string;
-  readonly throttleKind: "engaged" | "recovered";
-  readonly utilizationRatio: number;
-  readonly throttleRatio: number;
-  readonly occurredAt: string;
-}
-
-export interface BudgetAllocatorEvents {
-  readonly emitWatermarkAlert?: (alert: BudgetWatermarkAlert) => void;
-  readonly emitAutoThrottleEvent?: (event: BudgetAutoThrottleEvent) => void;
-  readonly emitStreamingSettle?: (reservationId: string, amount: number, tier?: BudgetTier | string) => void;
-}
-
-export interface BudgetTruthStore {
-  upsertWithCas<TAggregate>(params: {
-    aggregateType: string;
-    aggregateId: string;
-    aggregate: TAggregate;
-    expectedVersion: number;
-  }): { success: boolean; aggregate?: TAggregate; expectedVersion?: number; actualVersion?: number };
-}
-
-type NormalizedBudgetAllocatorContext = BudgetAllocatorContext & {
-  readonly principal: string;
-};
-
-/** R11-06: Watermark alert configuration */
-export interface WatermarkAlertConfig {
-  readonly softCapPercent: number;    // Percentage of hard cap to trigger warning
-  readonly hardCapPercent: number;    // Percentage of hard cap to trigger blocking
-  readonly enabled: boolean;
-}
-
-/** R11-06: Watermark alert result */
-export interface WatermarkAlert {
-  readonly triggered: boolean;
-  readonly level: "none" | "warning" | "critical";
-  readonly message: string;
-  readonly percentUsed: number;
-}
-
-/** R11-06: Cross-run priority configuration */
-export interface CrossRunPriorityConfig {
-  readonly enabled: boolean;
-  readonly basePriority: number;
-  readonly ageWeight: number;        // Weight for wait time in priority calculation
-  readonly riskWeight: number;       // Weight for risk level in priority calculation
-}
-
-/** R11-06: Reservation expiry sweeper configuration */
-export interface ReservationSweeperConfig {
-  readonly enabled: boolean;
-  readonly sweepIntervalMs: number;
-  readonly clockSkewSafetyMarginMs: number;
-  readonly maxExpiryAgeMs: number;    // Max age for orphaned reservation detection
-}
-
-/** R11-07: Streaming increment result for partial reservation updates */
-export interface StreamingIncrementResult {
-  readonly reservationId: string;
-  readonly incrementalAmount: number;
-  readonly totalReserved: number;
-  readonly expiresAt: string;
-}
+export type {
+  BudgetAllocatorContext,
+  BudgetAllocatorDeps,
+  BudgetAllocatorEvents,
+  BudgetAtomicRepository,
+  BudgetTruthStore,
+  BudgetReleasePersistence,
+  BudgetReleaseResult,
+  BudgetSettlementPersistence,
+  BudgetSettlementResult,
+  CrossRunPriorityConfig,
+  ReservationSweeperConfig,
+  StreamingIncrementResult,
+  WatermarkAlert,
+  WatermarkAlertConfig,
+} from "./budget-allocator-types.js";
+export { BudgetTier } from "./budget-allocator-types.js";
 
 const DEFAULT_WATERMARK_CONFIG: WatermarkAlertConfig = {
   softCapPercent: 0.8,   // 80% of hard cap
@@ -164,72 +73,6 @@ const DEFAULT_SWEEPER_CONFIG: ReservationSweeperConfig = {
   clockSkewSafetyMarginMs: 5000,    // 5 seconds
   maxExpiryAgeMs: 300000,           // 5 minutes
 };
-
-export interface BudgetSettlementPersistence {
-  /**
-   * Persists a budget settlement record to durable storage.
-   * Must be called within the same transaction as the ledger update.
-   */
-  persistSettlement(settlement: BudgetSettlement): void;
-}
-
-export interface BudgetReleasePersistence {
-  /**
-   * Persists a budget release record to durable storage.
-   * Must be called within the same transaction as the ledger update.
-   */
-  persistRelease(settlement: BudgetSettlement): void;
-}
-
-/**
- * R11-12: SQL-level atomic budget repository interface.
- * Provides database-backed atomic CAS operations for concurrent settle/release.
- */
-export interface BudgetAtomicRepository {
-  /**
-   * Atomically settle a reservation and update the ledger using SQL CAS.
-   * Returns updated ledger on success, or null if version mismatch (concurrent modification).
-   *
-   * @param ledger - Current ledger state
-   * @param reservation - Reservation being settled
-   * @param actualAmount - Actual amount consumed
-   * @param expectedVersion - Expected ledger version for CAS
-   * @param settlement - Settlement record to insert
-   */
-  settleAtomically(
-    ledger: BudgetLedger,
-    reservation: BudgetReservation,
-    actualAmount: number,
-    expectedVersion: number,
-    settlement: BudgetSettlement,
-  ): Promise<{ success: boolean; ledger?: BudgetLedger; rowsAffected: number }>;
-
-  /**
-   * Atomically release a reservation and update the ledger using SQL CAS.
-   * Returns updated ledger on success, or null if version mismatch (concurrent modification).
-   *
-   * @param ledger - Current ledger state
-   * @param reservation - Reservation being released
-   * @param expectedVersion - Expected ledger version for CAS
-   * @param settlement - Release settlement record to insert
-   */
-  releaseAtomically(
-    ledger: BudgetLedger,
-    reservation: BudgetReservation,
-    expectedVersion: number,
-    settlement: BudgetSettlement,
-  ): Promise<{ success: boolean; ledger?: BudgetLedger; rowsAffected: number }>;
-}
-
-export interface BudgetAllocatorDeps {
-  readonly settlementPersistence?: BudgetSettlementPersistence;
-  readonly releasePersistence?: BudgetReleasePersistence;
-  /**
-   * R11-12: Optional SQL repository for atomic CAS operations.
-   * When provided, settle/release will use SQL-level atomicity instead of in-memory CAS.
-   */
-  readonly atomicRepository?: BudgetAtomicRepository;
-}
 
 export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;

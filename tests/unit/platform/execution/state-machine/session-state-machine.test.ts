@@ -123,42 +123,27 @@ test("SessionStateMachine: rejects invalid transition from cancelled to streamin
 });
 
 // ---------------------------------------------------------------------------
-// No-op transitions (same state to same state are not allowed)
+// No-op transitions are idempotent and allowed by the generic transition machine.
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: rejects no-op transition on streaming", () => {
+test("SessionStateMachine: allows no-op transition on streaming", () => {
   const machine = createSessionStateMachine();
-  assert.throws(
-    () => machine.assertTransition("streaming", "streaming"),
-    WorkflowStateError,
-  );
+  machine.assertTransition("streaming", "streaming");
 });
 
-test("SessionStateMachine: rejects no-op transition on completed", () => {
+test("SessionStateMachine: allows no-op transition on completed", () => {
   const machine = createSessionStateMachine();
-  // Noop transitions on terminal states are not allowed
-  assert.throws(
-    () => machine.assertTransition("completed", "completed"),
-    WorkflowStateError,
-  );
+  machine.assertTransition("completed", "completed");
 });
 
-test("SessionStateMachine: rejects no-op transition on failed", () => {
+test("SessionStateMachine: allows no-op transition on failed", () => {
   const machine = createSessionStateMachine();
-  // Noop transitions on terminal states are not allowed
-  assert.throws(
-    () => machine.assertTransition("failed", "failed"),
-    WorkflowStateError,
-  );
+  machine.assertTransition("failed", "failed");
 });
 
-test("SessionStateMachine: rejects no-op transition on cancelled", () => {
+test("SessionStateMachine: allows no-op transition on cancelled", () => {
   const machine = createSessionStateMachine();
-  // Noop transitions on terminal states are not allowed
-  assert.throws(
-    () => machine.assertTransition("cancelled", "cancelled"),
-    WorkflowStateError,
-  );
+  machine.assertTransition("cancelled", "cancelled");
 });
 
 // ---------------------------------------------------------------------------
@@ -271,19 +256,9 @@ test("SessionStateMachine: WorkflowStateError contains correct entityKind", () =
   }
 });
 
-test("SessionStateMachine: WorkflowStateError for noop contains correct entityKind", () => {
+test("SessionStateMachine: no-op transition does not throw WorkflowStateError", () => {
   const machine = createSessionStateMachine();
-
-  try {
-    machine.assertTransition("streaming", "streaming");
-    assert.fail("Expected error to be thrown");
-  } catch (err) {
-    assert.ok(err instanceof WorkflowStateError);
-    const error = err as WorkflowStateError & { details?: { entityKind: string; current: string; next: string } };
-    assert.equal(error.details?.entityKind, "session");
-    assert.equal(error.details?.current, "streaming");
-    assert.equal(error.details?.next, "streaming");
-  }
+  machine.assertTransition("streaming", "streaming");
 });
 
 test("SessionStateMachine: WorkflowStateError has statusCode 409", () => {
@@ -354,16 +329,9 @@ test("SessionStateMachine: invalid transition error message contains invalid_tra
   }
 });
 
-test("SessionStateMachine: noop transition error message contains noop_transition_denied code", () => {
+test("SessionStateMachine: noop transition is accepted as idempotent", () => {
   const machine = createSessionStateMachine();
-
-  try {
-    machine.assertTransition("streaming", "streaming");
-    assert.fail("Expected error to be thrown");
-  } catch (err) {
-    assert.ok(err instanceof WorkflowStateError);
-    assert.ok(err.message.includes("session.noop_transition_denied"));
-  }
+  machine.assertTransition("streaming", "streaming");
 });
 
 // ---------------------------------------------------------------------------

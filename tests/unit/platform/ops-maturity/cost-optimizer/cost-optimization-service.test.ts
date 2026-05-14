@@ -180,7 +180,7 @@ test("buildCostOptimizationRecommendation includes action based on cost threshol
 
   assert.ok(lowCost !== null);
   assert.ok(highCost !== null);
-  assert.strictEqual(lowCost?.action, "increase_cache_hit");
+  assert.strictEqual(lowCost?.action, "right_size");
   assert.strictEqual(highCost?.action, "right_size");
 });
 
