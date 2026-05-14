@@ -14,6 +14,7 @@ export interface HotPathExecutionRequest {
   readonly responsibilityBoundaryService?: {
     assertActionAllowed(boundaryId: string, action: BoundaryAction, actorType: ResponsibilityActorType): void;
   };
+  readonly allowedAutonomyLevel?: "frozen" | "suggestion" | "supervised" | "semi_auto" | "full_auto";
 }
 
 export interface HotPathExecutionDecision {
@@ -23,6 +24,7 @@ export interface HotPathExecutionDecision {
     | "hot_path.allowed"
     | "hot_path.llm_blocked"
     | "hot_path.no_deterministic_fallback"
+    | "hot_path.autonomy_exceeded"
     | "hot_path.responsibility_boundary_blocked";
 }
 
@@ -49,6 +51,24 @@ export class DeterministicHotPathGate {
       }
     }
     if (request.latencyClass !== "low_latency") {
+      return { allowed: true, routeMode: "llm_allowed", reasonCode: "hot_path.allowed" };
+    }
+    if (
+      request.usesLlmHotPath
+      && request.allowedAutonomyLevel != null
+      && request.allowedAutonomyLevel !== "semi_auto"
+      && request.allowedAutonomyLevel !== "full_auto"
+    ) {
+      return {
+        allowed: false,
+        routeMode: "deterministic_hot_path_only",
+        reasonCode: "hot_path.autonomy_exceeded",
+      };
+    }
+    if (
+      !request.usesLlmHotPath
+      && (request.allowedAutonomyLevel === "semi_auto" || request.allowedAutonomyLevel === "full_auto")
+    ) {
       return { allowed: true, routeMode: "llm_allowed", reasonCode: "hot_path.allowed" };
     }
     if (!request.deterministicFallbackAvailable) {

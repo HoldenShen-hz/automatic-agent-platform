@@ -54,7 +54,7 @@ export interface MemoryPromotionCandidate {
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
   { from: "runtime", to: "session", minHitCount: 3, minQualityScore: 0.4, minImportanceScore: 0.3 },
   { from: "session", to: "agent", minHitCount: 8, minQualityScore: 0.55, minImportanceScore: 0.5 },
-  { from: "agent", to: "project", minHitCount: 10, minQualityScore: 0.8, minImportanceScore: 0.65 },
+  { from: "agent", to: "project", minHitCount: 15, minQualityScore: 0.7, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 25, minQualityScore: 0.8, minImportanceScore: 0.75 },
   { from: "user", to: "evolution", minHitCount: 40, minQualityScore: 0.9, minImportanceScore: 0.85 },
 ];

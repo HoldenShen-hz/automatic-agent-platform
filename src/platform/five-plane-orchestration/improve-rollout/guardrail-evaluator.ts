@@ -121,5 +121,7 @@ function rolloutLevelRank(level: RolloutLevel | StrategyReleaseLevel): number {
       return 4;
     case "L5_full":
       return 5;
+    default:
+      return 0;
   }
 }

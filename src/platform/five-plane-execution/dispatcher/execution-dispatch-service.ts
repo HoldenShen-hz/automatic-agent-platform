@@ -1,4 +1,3 @@
-
 import type {
   AgentExecutionRecord,
   DispatchTarget,
@@ -7,10 +6,8 @@ import type {
   DispatchWorkerRejectionReason,
   ExecutionTicketRecord,
   RemoteAvailability,
-  TaskPriority,
   WorkerIsolationLevel,
 } from "../../contracts/types/domain.js";
-
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { HealthReportProvider } from "../../contracts/types/health.js";
 import { createNoOpHealthReportProvider } from "../../contracts/types/health.js";
@@ -55,7 +52,11 @@ import {
   type DispatchQueueAvailabilitySnapshot,
   type ExecutionTicketDecision,
 } from "./execution-dispatch-support.js";
-
+import {
+  hashDispatchSeed,
+  interleaveTicketsByTenant,
+  sortTicketsForDeterministicDispatch,
+} from "./execution-dispatch-ordering.js";
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export type {
@@ -70,15 +71,12 @@ export class ExecutionDispatchService {
   private readonly leases: ExecutionLeaseService;
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
-  // R9-10 fix: Reuse single HealthService instance instead of creating per-ticket O(n) scan
-  // R19-45 fix: Use HealthReportProvider interface instead of direct HealthService to avoid P5 Evidence coupling
   private readonly healthService: HealthReportProvider;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
-    // R19-45: Optional health provider - if not provided, uses no-op provider
     healthProvider: HealthReportProvider | null = null,
     private readonly dlqService: {
       enqueue(input: {
@@ -95,8 +93,6 @@ export class ExecutionDispatchService {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
-    // R9-10 fix: Initialize HealthService once instead of per-ticket
-    // R19-45 fix: Use injected provider or create no-op if not available
     this.healthService = healthProvider ?? createNoOpHealthReportProvider();
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
@@ -131,7 +127,6 @@ export class ExecutionDispatchService {
         id: newId("ticket"),
         executionId: execution.id,
         taskId: execution.taskId,
-        // R13-15 fix: tenantId for per-tenant fair scheduling
         tenantId: task.tenantId ?? "default",
         priority: input.priority ?? task.priority,
         queueName: input.queueName ?? null,
@@ -195,116 +190,6 @@ export class ExecutionDispatchService {
       };
     });
   }
-  /**
-   * R6-4: §14.9 Deterministic graph scheduler - sorts tickets for deterministic dispatch ordering.
-   *
-   * Ordering policy (highest priority first):
-   * 1. Critical path rank (higher = more critical for overall execution time)
-   * 2. Priority (urgent > high > medium > low)
-   * 3. Risk class (critical > high > medium > low) for isolation routing
-   * 4. Scheduler seed (lexicographic for determinism across restarts)
-   *
-   * @param tickets - Array of execution tickets to sort
-   * @returns Sorted array of tickets
-   */
-  private sortTicketsForDeterministicDispatch(tickets: ExecutionTicketRecord[]): ExecutionTicketRecord[] {
-    const RISK_CLASS_ORDER: Record<string, number> = {
-      critical: 4,
-      high: 3,
-      medium: 2,
-      low: 1,
-    };
-    const PRIORITY_ORDER: Record<TaskPriority, number> = {
-      critical: 5,
-      urgent: 4,
-      high: 3,
-      normal: 2,
-      low: 1,
-    };
-
-    return [...tickets].sort((left, right) => {
-      // 1. Critical path rank (higher = more critical, sort descending)
-      const leftRank = left.criticalPathRank ?? 0;
-      const rightRank = right.criticalPathRank ?? 0;
-      if (leftRank !== rightRank) {
-        return rightRank - leftRank;
-      }
-
-      // 2. Priority (urgent > high > medium > low)
-      const leftPriority = PRIORITY_ORDER[left.priority] ?? 0;
-      const rightPriority = PRIORITY_ORDER[right.priority] ?? 0;
-      if (leftPriority !== rightPriority) {
-        return rightPriority - leftPriority;
-      }
-
-      // 3. Risk class for isolation routing (critical > high > medium > low)
-      const leftRisk = RISK_CLASS_ORDER[left.riskClass ?? "low"] ?? 0;
-      const rightRisk = RISK_CLASS_ORDER[right.riskClass ?? "low"] ?? 0;
-      if (leftRisk !== rightRisk) {
-        return rightRisk - leftRisk;
-      }
-
-      // 4. Scheduler seed for deterministic ordering across restarts
-      const leftSeed = left.schedulerSeed ?? "";
-      const rightSeed = right.schedulerSeed ?? "";
-      return leftSeed.localeCompare(rightSeed);
-    });
-  }
-
-  /**
-   * R13-15 fix: Interleaves tickets from different tenants to prevent single tenant flooding.
-   *
-   * Groups tickets by tenant, then round-robins across tenant groups to ensure
-   * fair dispatch opportunity. Max burst per tenant prevents any single tenant
-   * from consuming all dispatch slots.
-   *
-   * @param tickets - Sorted tickets to interleave
-   * @returns Tenant-interleaved ticket array
-   */
-  private interleaveByTenant(tickets: ExecutionTicketRecord[], maxBurstPerTenant = 3): ExecutionTicketRecord[] {
-    if (tickets.length <= 1) {
-      return tickets;
-    }
-
-    // Group by tenant
-    const byTenant = new Map<string, ExecutionTicketRecord[]>();
-    for (const ticket of tickets) {
-      const tenant = ticket.tenantId ?? "default";
-      const group = byTenant.get(tenant) ?? [];
-      group.push(ticket);
-      byTenant.set(tenant, group);
-    }
-
-    // Round-robin across tenants with burst limit
-    const result: ExecutionTicketRecord[] = [];
-    const tenantIterators = new Map<string, Iterator<ExecutionTicketRecord>>();
-
-    for (const [tenant, group] of byTenant) {
-      tenantIterators.set(tenant, group[Symbol.iterator]());
-    }
-
-    let progress = true;
-    while (progress) {
-      progress = false;
-      for (const [tenant, iter] of tenantIterators) {
-        let burst = 0;
-        let next: IteratorResult<ExecutionTicketRecord>;
-        while (burst < maxBurstPerTenant) {
-          next = iter.next();
-          if (next.done) {
-            tenantIterators.delete(tenant);
-            break;
-          }
-          result.push(next.value);
-          burst++;
-          progress = true;
-        }
-      }
-    }
-
-    return result;
-  }
-
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
     let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
@@ -319,11 +204,8 @@ export class ExecutionDispatchService {
       };
     }
 
-    // R6-4: Apply deterministic graph scheduling for consistent ticket ordering per §14.9
-    tickets = this.sortTicketsForDeterministicDispatch(tickets);
-
-    // R13-15 fix: Interleave by tenant to prevent single tenant flooding
-    tickets = this.interleaveByTenant(tickets);
+    tickets = sortTicketsForDeterministicDispatch(tickets);
+    tickets = interleaveTicketsByTenant(tickets);
 
     const queueAvailability = this.queueAvailabilitySnapshot?.();
     if (queueAvailability?.state === "unavailable") {
@@ -986,10 +868,6 @@ export class ExecutionDispatchService {
     return trace;
   }
 
-  /**
-   * R6-6: Categorize backpressure failure for DLQ classification.
-   * Maps backpressure reason codes to failure categories for triage.
-   */
   private categorizeFailure(reasonCode: string | null): FailureCategory | "poison_pill" {
     if (reasonCode == null) return "unknown";
     if (reasonCode.includes("read_only_mode")) return "configuration";
@@ -1118,12 +996,4 @@ export class ExecutionDispatchService {
     this.store.worker.upsertAgentExecutionRecord(record);
     return record;
   }
-}
-
-function hashDispatchSeed(seed: string): number {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = ((hash * 31) + seed.charCodeAt(index)) >>> 0;
-  }
-  return hash;
 }

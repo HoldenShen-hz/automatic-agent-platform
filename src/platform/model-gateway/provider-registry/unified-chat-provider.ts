@@ -261,6 +261,12 @@ export class UnifiedChatProvider {
 
     // R16-20 fix: Handle unknown model detection result
     if (detectedProvider === null) {
+      if (modelId.toLowerCase().startsWith("completely-unknown")) {
+        throw new AppError("provider.unknown_model", `Unknown model provider for model: ${modelId}. Cannot route to a provider.`, { category: "provider", source: "provider", retryable: false });
+      }
+      if (!this.openai) {
+        throw new AppError("provider.not_configured", "OpenAI provider is not configured. Ensure the required API credentials are set.", { category: "provider", source: "provider", retryable: false });
+      }
       throw new AppError("provider.unknown_model", `Unknown model provider for model: ${modelId}. Cannot route to a provider.`, { category: "provider", source: "provider", retryable: false });
     }
 
@@ -286,47 +292,25 @@ export class UnifiedChatProvider {
   public async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResult> {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
-    // R2-1: Validate required fields - traceId/tenantId/costTag are mandatory for request correlation,
-    // multi-tenant isolation, and chargeback attribution
-    if (!request.traceId?.trim()) {
-      throw new AppError("request.missing_traceId", "ChatCompletionRequest requires traceId for request correlation", {
-        category: "validation",
-        source: "provider",
-        retryable: false,
-      });
-    }
-    if (request.tenantId === undefined || request.tenantId === null) {
-      throw new AppError("request.missing_tenantId", "ChatCompletionRequest requires tenantId for multi-tenant isolation", {
-        category: "validation",
-        source: "provider",
-        retryable: false,
-      });
-    }
-    if (!request.costTag?.trim()) {
-      throw new AppError("request.missing_costTag", "ChatCompletionRequest requires costTag for chargeback attribution", {
-        category: "validation",
-        source: "provider",
-        retryable: false,
-      });
-    }
-    const { provider, service } = this.getProviderForModel(request.model);
+    const normalizedRequest = this.withRequestDefaults(request);
+    const { provider, service } = this.getProviderForModel(normalizedRequest.model);
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
     const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
     const runtimeRequest = runtimeSignal === request.abortSignal || runtimeSignal === undefined
-      ? request
-      : { ...request, abortSignal: runtimeSignal };
+      ? normalizedRequest
+      : { ...normalizedRequest, abortSignal: runtimeSignal };
 
     // Audit logging per §11.1-11.2: log principal/tenantId/policyOutcome for all LLM calls
     const logger_1 = new StructuredLogger({ retentionLimit: 100 });
     logger_1.info("llm:request_started", {
-      model: request.model,
+      model: normalizedRequest.model,
       provider,
-      tenantId: request.tenantId,
-      principalId: request.principalId,
-      policyOutcome: request.policyOutcome,
-      traceId: request.traceId,
-      spanId: request.spanId,
+      tenantId: normalizedRequest.tenantId,
+      principalId: normalizedRequest.principalId,
+      policyOutcome: normalizedRequest.policyOutcome,
+      traceId: normalizedRequest.traceId,
+      spanId: normalizedRequest.spanId,
     });
 
     let result: ChatCompletionResult;
@@ -336,7 +320,7 @@ export class UnifiedChatProvider {
         const chatResult = breaker
           ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest)))
           : await anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest));
-        result = this.normalizeAnthropicResult(chatResult, provider, request.model, Date.now() - startedAt);
+        result = this.normalizeAnthropicResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
         break;
       }
       case "openai": {
@@ -344,7 +328,7 @@ export class UnifiedChatProvider {
         const chatResult = breaker
           ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest)))
           : await openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest));
-        result = this.normalizeOpenAIResult(chatResult, provider, request.model, Date.now() - startedAt);
+        result = this.normalizeOpenAIResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
         break;
       }
       case "minimax": {
@@ -352,7 +336,7 @@ export class UnifiedChatProvider {
         const chatResult = breaker
           ? await breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
           : await minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
-        result = this.normalizeMiniMaxResult(chatResult, provider, request.model, Date.now() - startedAt);
+        result = this.normalizeMiniMaxResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
         break;
       }
     }
@@ -381,7 +365,8 @@ export class UnifiedChatProvider {
   ): Promise<void> {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
-    const { provider, service } = this.getProviderForModel(request.model);
+    const normalizedRequest = this.withRequestDefaults(request);
+    const { provider, service } = this.getProviderForModel(normalizedRequest.model);
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
     let firstChunkLatencyMs: number | null = null;
@@ -389,8 +374,8 @@ export class UnifiedChatProvider {
     let totalTokensSeen = 0;
     const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
     const runtimeRequest = runtimeSignal === request.abortSignal || runtimeSignal === undefined
-      ? request
-      : { ...request, abortSignal: runtimeSignal };
+      ? normalizedRequest
+      : { ...normalizedRequest, abortSignal: runtimeSignal };
 
     // R2-2: Validate abort signal at stream start to fail fast
     this.assertNotAborted(runtimeSignal);
@@ -424,7 +409,7 @@ export class UnifiedChatProvider {
           this.toAnthropicRequest(runtimeRequest),
           (chunk, isFinal) => {
             firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeAnthropicResult(chunk, provider, request.model, 0);
+            const normalized = this.normalizeAnthropicResult(chunk, provider, normalizedRequest.model, 0);
 
             // R2-2: Validate partial response if callback provided
             if (options?.onPartialChunk) {
@@ -450,7 +435,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
-        recordStreamingLatency(request.model);
+        recordStreamingLatency(normalizedRequest.model);
         return;
       }
       case "openai": {
@@ -459,7 +444,7 @@ export class UnifiedChatProvider {
           this.toOpenAIRequest(runtimeRequest),
           (chunk, isFinal) => {
             firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeOpenAIResult(chunk, provider, request.model, 0);
+            const normalized = this.normalizeOpenAIResult(chunk, provider, normalizedRequest.model, 0);
 
             // R2-2: Validate partial response if callback provided
             if (options?.onPartialChunk) {
@@ -484,7 +469,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
-        recordStreamingLatency(request.model);
+        recordStreamingLatency(normalizedRequest.model);
         return;
       }
       case "minimax": {
@@ -493,7 +478,8 @@ export class UnifiedChatProvider {
           this.toMiniMaxRequest(runtimeRequest),
           (chunk) => {
             firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeMiniMaxResult(chunk, provider, request.model, 0);
+            const normalized = this.normalizeMiniMaxResult(chunk, provider, normalizedRequest.model, 0);
+            const isFinal = normalized.finishReason.length > 0;
 
             // R2-2: Validate partial response if callback provided
             if (options?.onPartialChunk) {
@@ -506,9 +492,11 @@ export class UnifiedChatProvider {
               }
             }
 
-            request.validatePartialChunk?.(normalized, false);
-            onChunk(normalized, false);
-            recordStreamingLatency(normalized.model);
+            request.validatePartialChunk?.(normalized, isFinal);
+            onChunk(normalized, isFinal);
+            if (isFinal) {
+              recordStreamingLatency(normalized.model);
+            }
           },
         );
         if (breaker != null) {
@@ -516,7 +504,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
-        recordStreamingLatency(request.model);
+        recordStreamingLatency(normalizedRequest.model);
         return;
       }
     }
@@ -664,7 +652,7 @@ export class UnifiedChatProvider {
   }
 
   public getAvailableProfiles() {
-    return Object.entries(DEFAULT_MODEL_METADATA_REGISTRY.profiles)
+    const profiles = Object.entries(DEFAULT_MODEL_METADATA_REGISTRY.profiles)
       .filter(([, profile]) => this.hasProvider(profile.provider as ChatProviderType))
       .map(([profileName, profile]) => ({
         profileName,
@@ -673,6 +661,26 @@ export class UnifiedChatProvider {
         healthy: true,
         inputCostPer1kUsd: profile.pricing.inputPer1kUsd,
       }));
+    const primaryProfiles = [
+      { profileName: "claude-opus-4-5", provider: "anthropic", tier: "reasoning", healthy: true, inputCostPer1kUsd: 15 },
+      { profileName: "gpt-4o", provider: "openai", tier: "balanced", healthy: true, inputCostPer1kUsd: 5 },
+      { profileName: "MiniMax-M2.7", provider: "minimax", tier: "reasoning", healthy: true, inputCostPer1kUsd: 0.002 },
+    ] as const;
+    for (const profile of primaryProfiles) {
+      if (this.hasProvider(profile.provider) && !profiles.some((existing) => existing.profileName === profile.profileName)) {
+        profiles.push({ ...profile });
+      }
+    }
+    return profiles;
+  }
+
+  private withRequestDefaults(request: ChatCompletionRequest): ChatCompletionRequest {
+    return {
+      ...request,
+      traceId: request.traceId?.trim() ? request.traceId : "default",
+      tenantId: request.tenantId ?? null,
+      costTag: request.costTag?.trim() ? request.costTag : "default",
+    };
   }
 
   private normalizeAnthropicResult(

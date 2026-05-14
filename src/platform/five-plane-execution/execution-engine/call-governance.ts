@@ -26,147 +26,33 @@
  * const result = await governance.execute("model:gpt-4", async () => await callApi());
  */
 
-/**
- * Rate limiter configuration.
- *
- * Implements a sliding window rate limiter that tracks call counts per key
- * within a configurable time window. Calls exceeding the limit are rejected
- * with a retry-after hint.
- */
-export interface LimiterConfig {
-  maxCalls: number;
-  windowMs: number;
-  keyGenerator?: ((context: LimiterContext) => string) | undefined;
-}
-
-export interface LimiterContext {
-  provider?: string;
-  model?: string;
-  tenantId?: string;
-  taskId?: string;
-  endpoint?: string;
-}
-
-/** Circuit breaker states: closed (normal), open (failing fast), half_open (testing recovery). */
-export type CircuitState = "closed" | "open" | "half_open";
-
-/**
- * Circuit breaker configuration.
- *
- * The circuit breaker prevents cascading failures by tracking failures and
- * "opening" the circuit when failures exceed a threshold. In the open state,
- * calls fail immediately without attempting the operation. After a reset
- * timeout, it enters half_open state to test if the service has recovered.
- */
-export interface BreakerConfig {
-  failureThreshold: number;
-  successThreshold: number;
-  resetTimeoutMs: number;
-  halfOpenMaxCalls?: number | undefined;
-}
-
-/**
- * Retry configuration with exponential backoff.
- *
- * Controls automatic retry behavior for failed calls. The retry delay follows
- * an exponential backoff formula: baseDelay * (backoffMultiplier ^ attempt).
- * Jitter adds randomness to prevent thundering herd when multiple clients retry.
- *
- * Error codes are classified as retryable or non-retryable. By default, errors
- * containing "transient", "rate_limit", or "timeout" are retryable; errors
- * containing "auth", "forbidden", or "not_found" are not.
- */
-export interface RetryConfig {
-  maxAttempts: number;
-  baseDelayMs: number;
-  maxDelayMs: number;
-  backoffMultiplier: number;
-  jitterFactor?: number | undefined;
-  retryableCodes?: string[] | undefined;
-  nonRetryableCodes?: string[] | undefined;
-  onRetry?: ((input: {
-    attempt: number;
-    error: { code: string; message: string; retryable: boolean; retryAfterMs?: number | undefined };
-  }) => void | Promise<void>) | undefined;
-}
-
-export interface CallResult<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    retryable: boolean;
-    retryAfterMs?: number | undefined;
-  };
-  metadata?: {
-    attempts: number;
-    latencyMs: number;
-    circuitState?: CircuitState | undefined;
-  };
-}
-
-/**
- * Combined governance policy specifying limiter, breaker, and retry settings.
- *
- * All three patterns are optional. If a pattern is omitted, calls proceed
- * without that governance check.
- */
-export interface CallPolicy {
-  limiter?: LimiterConfig | undefined;
-  breaker?: BreakerConfig | undefined;
-  retry?: RetryConfig | undefined;
-}
-
-export interface PolicyStats {
-  totalCalls: number;
-  successfulCalls: number;
-  failedCalls: number;
-  rejectedCalls: number;
-  currentCircuitState: CircuitState;
-  lastFailure?: string;
-  lastFailureAt?: string;
-}
-
-export interface DistributedRateLimiterLike {
-  checkAndConsume(key: string): Promise<{ allowed: boolean; retryAfterMs?: number | undefined }>;
-  reset?(key: string): Promise<void> | void;
-}
-
-export interface CallGovernanceOptions {
-  distributedRateLimiter?: DistributedRateLimiterLike | null;
-}
-
-/**
- * Rate limiter internal entry tracking call count and window start time.
- * @internal
- */
-interface LimiterEntry {
-  count: number;
-  windowStart: number;
-}
-
-/**
- * Circuit breaker internal entry tracking failures, successes, and state.
- * @internal
- */
-interface BreakerEntry {
-  failures: number;
-  successes: number;
-  state: CircuitState;
-  lastFailure: number;
-  halfOpenCalls: number;
-}
-
-/**
- * Snapshot of circuit breaker state for a given key.
- * @internal
- */
-interface CircuitBreakerSnapshot {
-  failures: number;
-  state: CircuitState;
-  lastFailure: number;
-}
+import type {
+  BreakerConfig,
+  BreakerEntry,
+  CallGovernanceOptions,
+  CallPolicy,
+  CallResult,
+  CircuitBreakerSnapshot,
+  CircuitState,
+  DistributedRateLimiterLike,
+  LimiterConfig,
+  LimiterContext,
+  LimiterEntry,
+  PolicyStats,
+  RetryConfig,
+} from "./call-governance-types.js";
+export type {
+  BreakerConfig,
+  CallGovernanceOptions,
+  CallPolicy,
+  CallResult,
+  CircuitState,
+  DistributedRateLimiterLike,
+  LimiterConfig,
+  LimiterContext,
+  PolicyStats,
+  RetryConfig,
+} from "./call-governance-types.js";
 
 /**
  * Sliding window rate limiter for API call governance.

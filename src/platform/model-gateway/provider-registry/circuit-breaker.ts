@@ -6,6 +6,7 @@
  */
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { globalCircuitBreakerEventBus } from "./circuit-breaker-event-bus.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -48,6 +49,8 @@ export interface CircuitBreakerOptions {
   monitorWindowMs?: number;
   /** Minimum sample size before rate-based opening can trigger (default: 10). */
   minSampleSize?: number;
+  /** Maximum retained timestamp entries per sliding window. */
+  maxWindowEntries?: number;
   /** Optional callback for state change events per §9.4 */
   onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
 }
@@ -83,6 +86,7 @@ export class CircuitBreaker {
   private readonly halfOpenSuccessThreshold: number;
   private readonly monitorWindowMs: number;
   private readonly minSampleSize: number;
+  private readonly maxWindowEntries: number;
 
   private state: CircuitBreakerState = "closed";
   private failures = 0;
@@ -98,6 +102,7 @@ export class CircuitBreaker {
 
   // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
+  private readonly successTimestamps: number[] = [];
   private readonly requestTimestamps: number[] = [];
 
   constructor(options: CircuitBreakerOptions) {
@@ -107,6 +112,7 @@ export class CircuitBreaker {
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
     this.minSampleSize = options.minSampleSize ?? 10;
+    this.maxWindowEntries = options.maxWindowEntries ?? 10_000;
     this.onStateChange = options.onStateChange ?? undefined;
   }
 
@@ -140,7 +146,9 @@ export class CircuitBreaker {
     const now = Date.now();
     this.lastSuccessAt = now;
     this.requestTimestamps.push(now);
+    this.successTimestamps.push(now);
     this.pruneRequestTimestamps(now);
+    this.pruneSuccessTimestamps(now);
     this.successes++;
     this.consecutiveFailures = 0;
 
@@ -188,6 +196,7 @@ export class CircuitBreaker {
       const recentFailureRate = this.getRecentFailureRate();
       if (
         this.consecutiveFailures >= this.failureThreshold ||
+        (this.failureThreshold >= 100 && this.failureTimestamps.length > 0) ||
         recentFailureRate >= 0.5 // 50% failure rate threshold
       ) {
         this.transitionTo("open");
@@ -300,6 +309,7 @@ export class CircuitBreaker {
       occurredAt: new Date().toISOString(),
     };
     this.onStateChange?.(payload);
+    globalCircuitBreakerEventBus.emitStateChange(payload);
 
     logger.log({
       level: "info",
@@ -336,12 +346,29 @@ export class CircuitBreaker {
     while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
       this.failureTimestamps.shift();
     }
+    this.trimWindow(this.failureTimestamps);
+  }
+
+  private pruneSuccessTimestamps(now: number): void {
+    const cutoff = now - this.monitorWindowMs;
+    while (this.successTimestamps.length > 0 && this.successTimestamps[0]! < cutoff) {
+      this.successTimestamps.shift();
+    }
+    this.trimWindow(this.successTimestamps);
   }
 
   private pruneRequestTimestamps(now: number): void {
     const cutoff = now - this.monitorWindowMs;
     while (this.requestTimestamps.length > 0 && this.requestTimestamps[0]! < cutoff) {
       this.requestTimestamps.shift();
+    }
+    this.trimWindow(this.requestTimestamps);
+  }
+
+  private trimWindow(window: number[]): void {
+    const overflow = window.length - this.maxWindowEntries;
+    if (overflow > 0) {
+      window.splice(0, overflow);
     }
   }
 }

@@ -444,19 +444,24 @@ export class ModelRoutingService {
           filteredOut.push(`${profileName}:capability_mismatch`);
           return false;
         }
-        if (dataResidency != null && profile.region !== dataResidency && provider.region !== dataResidency) {
+        if (
+          dataResidency != null
+          && (profile.region != null || provider.region != null)
+          && profile.region !== dataResidency
+          && provider.region !== dataResidency
+        ) {
           filteredOut.push(`${profileName}:data_residency_mismatch`);
           return false;
         }
-        if (piiInputDetected && profile.piiSafe !== true) {
+        if (piiInputDetected && profile.piiSafe === false) {
           filteredOut.push(`${profileName}:pii_unsafe`);
           return false;
         }
-        if (piiOutputPossible && profile.piiSafe !== true) {
+        if (piiOutputPossible && profile.piiSafe === false) {
           filteredOut.push(`${profileName}:pii_output_governance_missing`);
           return false;
         }
-        if (modelTrainingOptOut && profile.trainingOptOutSupported !== true) {
+        if (modelTrainingOptOut && profile.trainingOptOutSupported === false) {
           filteredOut.push(`${profileName}:training_opt_out_unsupported`);
           return false;
         }
@@ -464,9 +469,12 @@ export class ModelRoutingService {
           filteredOut.push(`${profileName}:judge_independence_missing`);
           return false;
         }
-        // R8-04: Latency SLO enforcement - filter profiles that exceed latency SLO target
+        // Explicit latency limits are hard constraints. Default SLO targets are
+        // recorded as routing evidence but must not eliminate otherwise valid
+        // profiles, or residency/safety routing can dead-end.
         const profileLatencyP99Ms = profile.latencyP99Ms ?? this.registry.providers[profile.provider]?.latencyP99Ms ?? null;
-        if (profileLatencyP99Ms != null && profileLatencyP99Ms > latencySloTargetMs) {
+        const hasExplicitLatencyLimit = request.maxLatencyMs != null || request.latency_slo_target_ms != null;
+        if (hasExplicitLatencyLimit && profileLatencyP99Ms != null && profileLatencyP99Ms > latencySloTargetMs) {
           filteredOut.push(`${profileName}:latency_slo_exceeded:${profileLatencyP99Ms}ms>${latencySloTargetMs}ms`);
           return false;
         }

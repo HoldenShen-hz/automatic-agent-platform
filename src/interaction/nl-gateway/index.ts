@@ -25,930 +25,121 @@ export type {
   EntityExtractionConfig,
 } from "./nl-gateway-config-loader.js";
 
-import { createHash } from "node:crypto";
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
-import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
+import { createPlatformPrincipal } from "../../platform/contracts/index.js";
 import {
   createConfirmedTaskSpec,
   createPrincipalRef,
   createRequestEnvelopeFromConfirmedTask,
   createTaskDraft as createCanonicalTaskDraft,
-  type ConfirmedTaskSpec,
-  type JsonValue,
-  type RequestEnvelope as CanonicalRequestEnvelope,
-  type TaskDraft as CanonicalTaskDraft,
 } from "../../platform/contracts/executable-contracts/index.js";
-import type { NlGatewayConfig } from "./nl-gateway-config-loader.js";
-import { loadNlGatewayConfig, getConversationWindowSize } from "./nl-gateway-config-loader.js";
+import { loadNlGatewayConfig, getConversationWindowSize, type NlGatewayConfig } from "./nl-gateway-config-loader.js";
 import { parseIntentTokensWithModel } from "./intent-parser/index.js";
 import { buildSlotClarificationState } from "./slot-resolver/index.js";
-import { createRequestEnvelope, type RequestEnvelopeLegacy } from "../../platform/contracts/types/index.js";
+import { createRequestEnvelope } from "../../platform/contracts/types/index.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 
-export interface NlEntryRequest {
-  readonly tenantId: string;
-  readonly userId: string;
-  readonly message: string;
-  readonly locale?: string;
-  readonly preferredLocale?: string;
-  readonly acceptLanguage?: string;
-  readonly channel?: string;
-}
-
-export interface NlEntryIntent {
-  readonly intent: string;
-  readonly confidence: number;
-  readonly entities: Record<string, string>;
-}
-
-export interface NlEntryPort {
-  parse(request: NlEntryRequest): Promise<NlEntryIntent>;
-}
-
-export interface ExtractedEntity {
-  readonly entityType: string;
-  readonly value: string;
-  readonly normalized: unknown;
-  readonly sourceSpan: readonly [number, number];
-}
-
-export interface DetectedIntent {
-  readonly intentType:
-    | "task_create"
-    | "task_query"
-    | "task_modify"
-    | "cancel_task"
-    | "create_goal"
-    | "decompress_goal"
-    | "status_inquiry"
-    | "approval_action"
-    | "why";
-  readonly domainHint: string | null;
-  readonly entities: readonly ExtractedEntity[];
-  readonly urgency: "low" | "normal" | "high" | "critical";
-  readonly confidence: number;
-}
-
-export interface IntentParseResult {
-  readonly rawInput: string;
-  readonly detectedIntents: readonly DetectedIntent[];
-  readonly confidence: number;
-  readonly requiresClarification: boolean;
-  readonly clarificationQuestions?: readonly string[];
-  readonly locale: string;
-  readonly continuation: "new_task" | "follow_up" | "correction";
-  readonly suggestedDivisionId: string;
-  readonly suggestedWorkflowId: string;
-  readonly conversationState: ConversationState;
-  readonly clarificationState: ClarificationState;
-  readonly context: ContextEnrichment;
-  readonly securityFindings: readonly PromptInjectionFinding[];
-  readonly blockedByPolicy: boolean;
-  readonly priorConversationTurns: readonly ConversationTurn[];
-  // R5-16: Independent risk classification result (separate pipeline stage from intent parsing)
-  readonly riskClassification?: {
-    readonly riskLevel: "low" | "medium" | "high" | "critical";
-    readonly riskFactors: readonly string[];
-    readonly requiresApproval: boolean;
-  };
-}
-
-export interface RiskPreview {
-  readonly overallRisk: "low" | "medium" | "high" | "critical";
-  readonly riskFactors: readonly string[];
-  readonly reversible: boolean;
-  readonly sideEffects: readonly string[];
-  readonly approvalNeeded: boolean;
-  readonly overall_risk?: "low" | "medium" | "high" | "critical";
-  readonly risk_factors?: readonly string[];
-  readonly side_effects?: readonly string[];
-  readonly approval_needed?: boolean;
-}
-
-export interface NlRequestPayload {
-  readonly userId: string;
-  readonly title: string;
-  readonly request: string;
-  readonly locale: string;
-  readonly channel: string | null;
-  readonly divisionId: string;
-  readonly workflowId: string;
-  readonly intent: DetectedIntent["intentType"];
-  readonly continuation: IntentParseResult["continuation"];
-  readonly entities: readonly ExtractedEntity[];
-  readonly confirmationRequired: boolean;
-  readonly generatedSummary: string;
-}
-
-export type RequestEnvelope = PlatformRequestEnvelope;
-
-export type ConversationState =
-  | "Idle"
-  | "IntentParsing"
-  | "Clarifying"
-  | "Building"
-  | "Confirming"
-  | "Executing"
-  | "Reporting";
-
-export interface PromptInjectionFinding {
-  readonly reasonCode: string;
-  readonly severity: "low" | "medium" | "high";
-  readonly blocked: boolean;
-  readonly matchedText: string;
-}
-
-export interface ContextEnrichment {
-  readonly domainHint: string;
-  readonly extractedConstraints: readonly string[];
-  readonly targetEnvironments: readonly string[];
-  readonly requestedChannels: readonly string[];
-  readonly timelineRefs: readonly string[];
-  readonly requiredSlots?: readonly string[];
-  readonly missingSlots?: readonly string[];
-  readonly resolvedSlots?: Readonly<Record<string, unknown>>;
-}
-
-export interface TaskDraft {
-  readonly draftId: string;
-  readonly rawInput: string;
-  readonly locale: string;
-  readonly intent: DetectedIntent;
-  readonly context: ContextEnrichment;
-  readonly riskPreview: RiskPreview;
-  readonly state: Extract<ConversationState, "Building" | "Confirming" | "Executing">;
-}
-
-export interface ClarificationState {
-  readonly state: "none" | "required" | "blocked";
-  readonly reasonCodes: readonly string[];
-  readonly questions: readonly string[];
-  // R5-30: Round tracking for clarification sessions
-  readonly rounds: number;
-  readonly maxRounds: number;
-}
-
-export interface UserConfirmationReceipt {
-  readonly confirmationId: string;
-  readonly required: boolean;
-  readonly state: "not_required" | "pending_user_confirmation" | "confirmed";
-  readonly reasonCodes: readonly string[];
-  readonly summary: string;
-  // R5-32: Additional confirmation receipt fields
-  readonly scope?: string;
-  readonly time?: string;
-  readonly riskPreviewVersion?: string;
-  // R5-40: Extended confirmation receipt fields
-  readonly riskPreview?: RiskPreview;
-  readonly actor?: string;
-  readonly timestamp?: string;
-}
-
-export interface TaskBuildResult {
-  readonly requestEnvelope: RequestEnvelopeLegacy | null;
-  readonly riskPreview: RiskPreview;
-  readonly costEstimate: CostEstimate;
-  readonly confirmationRequired: boolean;
-  readonly humanSummary: string;
-  readonly taskDraft: TaskDraft;
-  readonly clarificationState: ClarificationState;
-  readonly confirmationReceipt: UserConfirmationReceipt;
-  readonly conversationState: ConversationState;
-  readonly clarificationSession: ClarificationSession | null;
-  readonly canonicalTaskDraft: CanonicalTaskDraft;
-  readonly confirmedTaskSpec: ConfirmedTaskSpec | null;
-  readonly canonicalRequestEnvelope: CanonicalRequestEnvelope | null;
-  readonly dryRunPreview?: DryRunPreview;
-}
-
-export interface LocaleConfig {
-  readonly supportedLocales: readonly string[];
-  readonly defaultLocale: string;
-  readonly localeResolutionOrder?: readonly LocaleResolutionSource[];
-}
-
-export type LocaleResolutionSource = "user_profile" | "accept_language" | "input_detect" | "default";
-
-export interface CostEstimatorPort {
-  estimate(divisionId?: string | null): CostEstimate;
-}
-
-export interface IntentParserLlmResult {
-  readonly intentType: DetectedIntent["intentType"];
-  readonly confidence: number;
-  readonly reasoning?: string;
-  readonly language?: string;
-}
-
-export interface IntentParserPort {
-  parseWithLlm?(input: {
-    readonly message: string;
-    readonly locale: string;
-    readonly priorConversationContext?: ConversationContext;
-  }): Promise<IntentParserLlmResult>;
-}
-
-export interface MemoryServicePort {
-  remember(input: {
-    readonly scope: string;
-    readonly content: string;
-    readonly classification?: string;
-  }): void;
-  findMemories(query: {
-    readonly scope: string;
-  }): readonly { readonly content: string }[];
-}
-
-export interface NlEntryServiceOptions {
-  readonly intakeRouter?: IntakeRouter;
-  readonly costEstimator?: CostEstimatorPort | null;
-  readonly clarificationThreshold?: number;
-  readonly localeConfig?: LocaleConfig;
-  readonly conversationWindowSize?: number;
-  readonly nlGatewayConfig?: NlGatewayConfig;
-  readonly intentParser?: IntentParserPort;
-  readonly memoryService?: MemoryServicePort;
-  // R9-41: Dry-run executor for actual risk preview
-  readonly dryRunExecutor?: DryRunExecutorPort | null;
-}
-
-export interface ClarificationSession {
-  readonly sessionId: string;
-  readonly taskDraftId: string;
-  readonly stage: "pending_clarification";
-}
-
-export interface DryRunPreview {
-  readonly mode: "dry_run";
-  readonly blocked: boolean;
-  readonly approvalRequired: boolean;
-  readonly scope: string;
-  readonly proposedOperations: readonly string[];
-  readonly sideEffectPreview: readonly string[];
-  readonly policyChecks: readonly string[];
-  readonly proposedPayload: {
-    readonly userId: string;
-    readonly divisionId: string;
-    readonly workflowId: string;
-  };
-}
-
-const INTENT_CONFIDENCE_THRESHOLD = 0.8;
-const SLOT_CONFIDENCE_THRESHOLD = 0.85;
-// R5-30: Default maximum clarification rounds
-const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
-const DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS = 1000;
-const PROMPT_INJECTION_PATTERNS = [
-  /ignore (all|any|previous|prior) instructions/i,
-  /reveal (the )?(system|developer) prompt/i,
-  /show me (the )?(hidden|internal) instructions/i,
-  /bypass (the )?(guardrails|safety|policy)/i,
-  /忽略(所有|之前|上面)指令/,
-  /泄露(系统|开发者)?提示词/,
-  /绕过(安全|策略|护栏)/,
-] as const;
-
-/**
- * Conversation context for multi-turn dialogs
- */
-export interface ConversationContext {
-  readonly tenantId: string;
-  readonly userId: string;
-  readonly turnCount: number;
-  readonly maxTurns: number;
-  readonly turns: readonly ConversationTurn[];
-  readonly lastIntent?: DetectedIntent;
-}
-
-export interface ConversationTurn {
-  readonly turnNumber: number;
-  readonly message: string;
-  readonly detectedIntent: DetectedIntent;
-  readonly timestamp: string;
-}
-
-export interface ConversationContextManagerOptions {
-  readonly maxActiveContexts?: number;
-}
-
-const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
-  supportedLocales: ["zh-CN", "en-US", "ja-JP", "de-DE"],
-  defaultLocale: "zh-CN",
-  localeResolutionOrder: ["user_profile", "accept_language", "input_detect", "default"],
-};
-
-const GENERIC_AMBIGUOUS_PATTERNS = [
-  "做一份报表",
-  "处理一下",
-  "看一下",
-  "帮我处理",
-  "帮我做",
-  "做一个",
-  "optimize this",
-  "handle it",
-  "fix this",
-  "do the report",
-] as const;
-
-const HIGH_RISK_KEYWORDS = [
-  "delete",
-  "drop",
-  "remove",
-  "erase",
-  "purge",
-  "deploy",
-  "release",
-  "publish",
-  "approve",
-  "price",
-  "production",
-  "prod",
-  "删除",
-  "清理",
-  "下线",
-  "发布",
-  "上线",
-  "审批",
-  "价格",
-  "生产环境",
-] as const;
-
-const CRITICAL_RISK_KEYWORDS = [
-  "delete production",
-  "drop table",
-  "mass delete",
-  "delete all",
-  "删除全部",
-  "删除生产",
-  "清空",
-] as const;
-
-const IRREVERSIBLE_KEYWORDS = [
-  "delete",
-  "drop",
-  "erase",
-  "remove",
-  "删除",
-  "清空",
-  "覆盖",
-] as const;
-
-const DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
-const PERCENT_PATTERN = /\b\d+(?:\.\d+)?%\b/g;
-const CURRENCY_PATTERN = /(?:¥|\$|￥)\s?\d+(?:\.\d+)?/g;
-const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test)\b|线上|生产环境|测试环境/gi;
-const CHANNEL_PATTERN = /\b(slack|telegram|webhook|email|api)\b/gi;
-
-function detectInputLocale(message: string): string | null {
-  if (/[\u4e00-\u9fff]/.test(message)) {
-    return "zh-CN";
-  }
-  if (/[\u3040-\u30ff]/.test(message)) {
-    return "ja-JP";
-  }
-  if (/[äöüß]/i.test(message)) {
-    return "de-DE";
-  }
-  if (/[a-z]/i.test(message)) {
-    return "en-US";
-  }
-  return null;
-}
-
-function parseAcceptLanguage(raw?: string): string[] {
-  if (raw == null || raw.trim().length === 0) {
-    return [];
-  }
-  return raw
-    .split(",")
-    .map((item) => item.trim().split(";")[0]?.trim())
-    .filter((item): item is string => Boolean(item && item.length > 0));
-}
-
-function mapIntentType(intent: string): DetectedIntent["intentType"] {
-  switch (intent) {
-    case "create":
-      return "task_create";
-    case "modify":
-    case "correction":
-      return "task_modify";
-    case "cancel":
-      return "cancel_task";
-    case "goal":
-    case "create_goal":
-      return "create_goal";
-    case "decompose":
-    case "decompress":
-    case "breakdown":
-      return "decompress_goal";
-    case "approve":
-      return "approval_action";
-    case "clarify":
-    case "chitchat":
-      return "status_inquiry";
-    // R5-17: Add "why" intent type mapping
-    case "why":
-    case "explain":
-    case "reason":
-      return "why";
-    default:
-      return "task_query";
-  }
-}
-
-function isMediumRiskIntent(intentType: DetectedIntent["intentType"]): boolean {
-  return intentType === "task_modify" || intentType === "cancel_task";
-}
-
-function requiresApprovalIntent(intentType: DetectedIntent["intentType"]): boolean {
-  return intentType === "approval_action";
-}
-
-function deriveUrgency(message: string): DetectedIntent["urgency"] {
-  const normalized = message.toLowerCase();
-  if (/(critical|sev1|p0|立刻停机|立即回滚|马上删除生产|critical incident|紧急停机)/.test(normalized)) {
-    return "critical";
-  }
-  if (/(asap|immediately|urgent|立刻|马上|紧急|尽快)/.test(normalized)) {
-    return "high";
-  }
-  if (/(today|before|今晚|今天|本周)/.test(normalized)) {
-    return "normal";
-  }
-  return "low";
-}
-
-function deriveTitle(message: string): string {
-  const compact = message.replace(/\s+/g, " ").trim();
-  if (compact.length <= 60) {
-    return compact;
-  }
-  return `${compact.slice(0, 57)}...`;
-}
-
-function dedupeEntities(entities: readonly ExtractedEntity[]): ExtractedEntity[] {
-  const seen = new Set<string>();
-  const result: ExtractedEntity[] = [];
-  for (const entity of entities) {
-    const key = `${entity.entityType}:${entity.value}:${JSON.stringify(entity.normalized)}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    result.push(entity);
-  }
-  return result;
-}
-
-function toJsonValue(value: unknown): JsonValue {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry) => toJsonValue(entry));
-  }
-  if (typeof value === "object") {
-    const normalized: Record<string, JsonValue> = {};
-    for (const [key, entry] of Object.entries(value)) {
-      if (entry !== undefined) {
-        normalized[key] = toJsonValue(entry);
-      }
-    }
-    return normalized;
-  }
-  return String(value);
-}
-
-function serializeEntities(entities: readonly ExtractedEntity[]): readonly JsonValue[] {
-  return entities.map((entity) => ({
-    entityType: entity.entityType,
-    value: entity.value,
-    normalized: toJsonValue(entity.normalized),
-    sourceSpan: [entity.sourceSpan[0], entity.sourceSpan[1]],
-  }));
-}
-
-function collectRegexEntities(message: string, pattern: RegExp, entityType: string, normalizeValue?: (value: string) => unknown): ExtractedEntity[] {
-  const regex = new RegExp(pattern.source, pattern.flags);
-  const entities: ExtractedEntity[] = [];
-  for (const match of message.matchAll(regex)) {
-    const value = match[0];
-    if (value == null || match.index == null) {
-      continue;
-    }
-    entities.push({
-      entityType,
-      value,
-      normalized: normalizeValue?.(value) ?? value,
-      sourceSpan: [match.index, match.index + value.length],
-    });
-  }
-  return entities;
-}
-
-function extractEntities(message: string): ExtractedEntity[] {
-  const entities = [
-    ...collectRegexEntities(message, DATE_PATTERN, "date", (value) => value),
-    ...collectRegexEntities(message, PERCENT_PATTERN, "percentage", (value) => Number.parseFloat(value.replace("%", "")) / 100),
-    ...collectRegexEntities(message, CURRENCY_PATTERN, "money", (value) => Number.parseFloat(value.replace(/[^\d.]/g, ""))),
-    ...collectRegexEntities(message, ENV_PATTERN, "environment", (value) => value.toString().toLowerCase()),
-    ...collectRegexEntities(message, CHANNEL_PATTERN, "channel", (value) => value.toString().toLowerCase()),
-  ];
-  return dedupeEntities(entities);
-}
-
-function defaultCostEstimate(): CostEstimate {
-  return {
-    estimatedCostUsd: 0.05,
-    confidence: "default",
-    sampleCount: 0,
-    divisionId: null,
-    basedOn: "default",
-  };
-}
-
-function estimateSlotConfidence(entities: readonly ExtractedEntity[], message: string): number {
-  if (entities.length >= 2) {
-    return 0.95;
-  }
-  if (entities.length === 1) {
-    return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.78 : 0.88;
-  }
-  if (/(status|query|list|查看|查询|状态|队列|任务|create|make|generate|创建|新建|生成|工单)/i.test(message)) {
-    return 0.86;
-  }
-  return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.52 : 0.72;
-}
-
-function buildConversationMemoryScope(tenantId: string, userId: string): string {
-  return `nl_gateway.conversation:${tenantId}:${userId}`;
-}
-
-function collectResolvedSlotsFromTurns(turns: readonly ConversationTurn[]): Readonly<Record<string, unknown>> {
-  const resolved: Record<string, unknown> = {};
-  for (const turn of turns) {
-    for (const entity of turn.detectedIntent.entities) {
-      resolved[entity.entityType] = entity.normalized;
-    }
-  }
-  return resolved;
-}
-
-function buildClarificationQuestions(message: string, confidence: number, divisionId: string, entities: readonly ExtractedEntity[]): string[] {
-  const questions: string[] = [];
-  const normalized = message.toLowerCase();
-  if (confidence < INTENT_CONFIDENCE_THRESHOLD) {
-    questions.push("你希望我先查询现状、创建新任务，还是修改已有内容？");
-  }
-  if (GENERIC_AMBIGUOUS_PATTERNS.some((pattern) => normalized.includes(pattern))) {
-    questions.push("请补充更具体的范围，例如业务域、时间区间或目标对象。");
-  }
-  if (divisionId === "general_ops" && /(报表|report|campaign|广告|合同|招聘|deploy|release|代码|bug)/i.test(message)) {
-    questions.push("这是哪个业务域的请求？例如工程、营销、法务或 HR。");
-  }
-  if (entities.length === 0 && /(modify|update|delete|修改|更新|删除|deploy|release|发布)/i.test(message)) {
-    questions.push("请指出具体对象或环境，避免误操作。");
-  }
-  return questions;
-}
-
-function buildMissingSlotQuestions(missingSlots: readonly string[]): string[] {
-  return missingSlots.map((slot) => {
-    switch (slot) {
-      case "date":
-        return "请提供日期或时间范围，例如 2026-05-01。";
-      case "environment":
-        return "请说明目标环境，例如 dev、staging 或 production。";
-      case "channel":
-        return "请说明通知渠道，例如 slack、email 或 webhook。";
-      default:
-        return `请补充必需信息：${slot}。`;
-    }
-  });
-}
-
-function detectPromptInjection(message: string): PromptInjectionFinding[] {
-  const findings: PromptInjectionFinding[] = [];
-  const seen = new Set<string>();
-
-  for (const pattern of PROMPT_INJECTION_PATTERNS) {
-    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
-    const regex = new RegExp(pattern.source, flags);
-    for (const matched of message.matchAll(regex)) {
-      const matchedText = matched[0];
-      if (!matchedText || seen.has(`${pattern.source}:${matchedText}:${matched.index ?? -1}`)) {
-        continue;
-      }
-      seen.add(`${pattern.source}:${matchedText}:${matched.index ?? -1}`);
-      findings.push({
-        reasonCode: "harness.guardrail.prompt_injection_detected",
-        severity: /reveal|show me|泄露/.test(matchedText) ? "high" : "medium",
-        blocked: true,
-        matchedText,
-      } satisfies PromptInjectionFinding);
-    }
-  }
-
-  return findings;
-}
-
-function deriveConversationState(
-  requiresClarification: boolean,
-  confirmationRequired: boolean,
-  blockedByPolicy: boolean,
-): ConversationState {
-  if (blockedByPolicy) {
-    return "Clarifying";
-  }
-  if (requiresClarification) {
-    return "Clarifying";
-  }
-  if (confirmationRequired) {
-    return "Confirming";
-  }
-  return "Executing";
-}
-
-/**
- * R9-41: DryRunExecutor port for actual execution during risk preview
- */
-export interface DryRunExecutorPort {
-  executeDryRun(input: {
-    readonly message: string;
-    readonly divisionId: string;
-    readonly workflowId: string;
-    readonly userId: string;
-    readonly locale: string;
-  }): Promise<{
-    readonly blocked: boolean;
-    readonly actualRiskLevel: "low" | "medium" | "high" | "critical";
-    readonly detectedSideEffects: readonly string[];
-    readonly policyCheckResults: readonly string[];
-  }>;
-}
-
-function buildRiskPreview(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-  dryRunExecutor?: DryRunExecutorPort | null,
-  dryRunContext?: { divisionId: string; workflowId: string; userId: string; locale: string } | null,
-): RiskPreview {
-  const normalized = message.toLowerCase();
-  const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const riskFactors: string[] = [];
-  const sideEffects: string[] = [];
-
-  if (critical) {
-    riskFactors.push("请求涉及破坏性或生产级变更");
-  } else if (high) {
-    riskFactors.push("请求可能影响线上系统、审批流或成本");
-  }
-  if (requiresApprovalIntent(intentType)) {
-    riskFactors.push("请求属于审批类动作，需要审计和责任链");
-  }
-  if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
-    sideEffects.push("可能改变成本或预算分配");
-  }
-  if (/(deploy|release|publish|发布|上线)/i.test(message)) {
-    sideEffects.push("可能影响运行中的环境或用户体验");
-  }
-  if (/(delete|drop|remove|删除|清空)/i.test(message)) {
-    sideEffects.push("可能移除已有数据或配置");
-  }
-
-  // R9-41: Perform actual dry-run execution for high/critical risk items to get accurate assessment
-  let dryRunResult: { blocked: boolean; actualRiskLevel: "low" | "medium" | "high" | "critical"; detectedSideEffects: readonly string[]; policyCheckResults: readonly string[] } | null = null;
-  if (dryRunExecutor != null && dryRunContext != null && (critical || high)) {
-    try {
-      dryRunResult = {
-        blocked: false,
-        actualRiskLevel: critical ? "critical" : high ? "high" : "medium",
-        detectedSideEffects: [],
-        policyCheckResults: [],
-      };
-      // Note: In production, this would be awaited. For sync context, we capture the result.
-      // The actual async call happens in buildTask which awaits it.
-    } catch {
-      // Dry-run failed - stick with keyword-based assessment
-    }
-  }
-
-  return {
-    overallRisk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",
-    riskFactors,
-    reversible: !irreversible,
-    sideEffects,
-    approvalNeeded: critical || high || requiresApprovalIntent(intentType),
-    overall_risk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",
-    risk_factors: riskFactors,
-    side_effects: sideEffects,
-    approval_needed: critical || high || requiresApprovalIntent(intentType),
-  };
-}
-
-/**
- * R9-41: Async version of risk preview with actual dry-run execution
- */
-async function buildRiskPreviewWithDryRun(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-  dryRunExecutor: DryRunExecutorPort | null,
-  dryRunContext: { readonly message: string; readonly divisionId: string; readonly workflowId: string; readonly userId: string; readonly locale: string } | null,
-): Promise<RiskPreview> {
-  const normalized = message.toLowerCase();
-  const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const riskFactors: string[] = [];
-  const sideEffects: string[] = [];
-
-  if (critical) {
-    riskFactors.push("请求涉及破坏性或生产级变更");
-  } else if (high) {
-    riskFactors.push("请求可能影响线上系统、审批流或成本");
-  }
-  if (requiresApprovalIntent(intentType)) {
-    riskFactors.push("请求属于审批类动作，需要审计和责任链");
-  }
-  if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
-    sideEffects.push("可能改变成本或预算分配");
-  }
-  if (/(deploy|release|publish|发布|上线)/i.test(message)) {
-    sideEffects.push("可能影响运行中的环境或用户体验");
-  }
-  if (/(delete|drop|remove|删除|清空)/i.test(message)) {
-    sideEffects.push("可能移除已有数据或配置");
-  }
-
-  // R9-41: Perform actual dry-run execution for high/critical risk items
-  let dryRunAdjustedRisk: "low" | "medium" | "high" | "critical" | null = null;
-  let dryRunSideEffects: readonly string[] = [];
-  let dryRunPolicyResults: readonly string[] = [];
-
-  if (dryRunExecutor != null && dryRunContext != null && (critical || high)) {
-    try {
-      const result = await dryRunExecutor.executeDryRun({ ...dryRunContext, message });
-      dryRunAdjustedRisk = result.actualRiskLevel;
-      dryRunSideEffects = result.detectedSideEffects;
-      dryRunPolicyResults = result.policyCheckResults;
-      // Merge dry-run detected side effects
-      sideEffects.push(...dryRunSideEffects);
-      // Add policy check results to risk factors
-      for (const policyResult of dryRunPolicyResults) {
-        if (!riskFactors.some((f) => f.includes(policyResult))) {
-          riskFactors.push(`策略检查: ${policyResult}`);
-        }
-      }
-    } catch {
-      // Dry-run failed - stick with keyword-based assessment
-    }
-  }
-
-  // Use dry-run result if available, otherwise fall back to keyword-based
-  const overallRisk = dryRunAdjustedRisk ?? (critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low");
-
-  return {
-    overallRisk,
-    riskFactors,
-    reversible: !irreversible,
-    sideEffects,
-    approvalNeeded: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
-    overall_risk: overallRisk,
-    risk_factors: riskFactors,
-    side_effects: sideEffects,
-    approval_needed: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
-  };
-}
-
-function inferRequiredSlots(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-  workflowId: string,
-): string[] {
-  const required = new Set<string>();
-  if (/(schedule|rollout|安排|排期)/i.test(message) || workflowId.includes("schedule")) {
-    required.add("date");
-  }
-  if (/(deploy|release|publish|上线|发布|生产环境|prod|production)/i.test(message)) {
-    required.add("environment");
-  }
-  if (/(notify|notification|通知|slack|email|webhook)/i.test(message)) {
-    required.add("channel");
-  }
-  if (requiresApprovalIntent(intentType) && /(invoice|payment|发票|付款)/i.test(message)) {
-    required.add("date");
-  }
-  return [...required];
-}
-
-function memoryScopeFor(request: Pick<NlEntryRequest, "tenantId" | "userId">): string {
-  return `${request.tenantId}:${request.userId}:nl_gateway`;
-}
-
-function clarificationRoundKey(request: Pick<NlEntryRequest, "tenantId" | "userId" | "message">): string {
-  return `${request.tenantId}:${request.userId}:${request.message.trim().toLowerCase()}`;
-}
-
-function buildConfirmationScope(divisionId: string, context: ContextEnrichment): string {
-  const environment = context.targetEnvironments[0]
-    ?? (context.extractedConstraints.includes("production_scope") ? "production" : null);
-  return environment == null ? divisionId : `${divisionId}/${environment}`;
-}
-
-function buildCanonicalDomainId(divisionId: string): string {
-  if (divisionId === "platform_engineering" || divisionId === "engineering_ops") {
-    return "coding";
-  }
-  return divisionId;
-}
-
-function resolveAutonomyMode(
-  confirmationRequired: boolean,
-  riskPreview: RiskPreview,
-): "suggestion" | "full_auto" {
-  return confirmationRequired || riskPreview.approvalNeeded ? "suggestion" : "full_auto";
-}
-
-function resolveRuntimeMode(
-  confirmationRequired: boolean,
-  riskPreview: RiskPreview,
-): "no_write" | "suggestion" | "full_auto" {
-  if (riskPreview.overallRisk === "critical" || riskPreview.approvalNeeded) {
-    return "no_write";
-  }
-  if (confirmationRequired) {
-    return "suggestion";
-  }
-  return "full_auto";
-}
-
-function buildStableIdempotencyKey(request: Pick<NlEntryRequest, "tenantId" | "userId" | "message">): string {
-  const digest = createHash("sha256")
-    .update(`${request.tenantId}:${request.userId}:${request.message}`)
-    .digest("hex")
-    .slice(0, 24);
-  return `nl:${digest}`;
-}
-
-function parseStoredConversationTurn(content: string): ConversationTurn | null {
-  try {
-    const parsed = JSON.parse(content) as Partial<ConversationTurn>;
-    if (
-      typeof parsed.message === "string"
-      && typeof parsed.turnNumber === "number"
-      && typeof parsed.timestamp === "string"
-      && parsed.detectedIntent != null
-    ) {
-      return parsed as ConversationTurn;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function buildDryRunPreview(input: {
-  readonly request: NlEntryRequest;
-  readonly divisionId: string;
-  readonly workflowId: string;
-  readonly riskPreview: RiskPreview;
-  readonly context: ContextEnrichment;
-}): DryRunPreview | undefined {
-  if (!input.riskPreview.approvalNeeded && input.riskPreview.overallRisk !== "critical") {
-    return undefined;
-  }
-  const environment = input.context.targetEnvironments[0] ?? "unknown";
-  const channel = input.context.requestedChannels[0] ?? null;
-  return {
-    mode: "dry_run",
-    blocked: false,
-    approvalRequired: input.riskPreview.approvalNeeded,
-    scope: `${input.divisionId}/${environment}`,
-    proposedOperations: [
-      `目标环境 ${environment}`,
-      ...(channel == null ? [] : [`结果通知渠道 ${channel}`]),
-      `执行域 ${input.divisionId}`,
-    ],
-    sideEffectPreview: input.riskPreview.sideEffects.length > 0
-      ? input.riskPreview.sideEffects
-      : ["可能影响环境配置或运行中的业务流量"],
-    policyChecks: [
-      ...(input.riskPreview.approvalNeeded ? ["approval_required"] : []),
-      ...(input.riskPreview.reversible ? ["reversible_candidate"] : ["irreversible_operation"]),
-    ],
-    proposedPayload: {
-      userId: input.request.userId,
-      divisionId: input.divisionId,
-      workflowId: input.workflowId,
-    },
-  };
-}
+export type {
+  ClarificationSession,
+  ClarificationState,
+  ContextEnrichment,
+  ConversationContext,
+  ConversationContextManagerOptions,
+  ConversationState,
+  ConversationTurn,
+  CostEstimatorPort,
+  DetectedIntent,
+  DryRunExecutorPort,
+  DryRunPreview,
+  ExtractedEntity,
+  IntentParseResult,
+  IntentParserLlmResult,
+  IntentParserPort,
+  LocaleConfig,
+  LocaleResolutionSource,
+  MemoryServicePort,
+  NlEntryIntent,
+  NlEntryPort,
+  NlEntryRequest,
+  NlEntryServiceOptions,
+  NlRequestPayload,
+  PromptInjectionFinding,
+  RequestEnvelope,
+  RiskPreview,
+  TaskBuildResult,
+  TaskDraft,
+  UserConfirmationReceipt,
+} from "./nl-gateway-model.js";
+
+import type {
+  ClarificationSession,
+  ClarificationState,
+  ContextEnrichment,
+  ConversationContext,
+  ConversationContextManagerOptions,
+  ConversationTurn,
+  CostEstimatorPort,
+  DetectedIntent,
+  DryRunExecutorPort,
+  DryRunPreview,
+  ExtractedEntity,
+  IntentParseResult,
+  IntentParserPort,
+  LocaleConfig,
+  MemoryServicePort,
+  NlEntryIntent,
+  NlEntryPort,
+  NlEntryRequest,
+  NlEntryServiceOptions,
+  PromptInjectionFinding,
+  RequestEnvelope,
+  RiskPreview,
+  TaskBuildResult,
+  TaskDraft,
+  UserConfirmationReceipt,
+} from "./nl-gateway-model.js";
+
+import {
+  buildCanonicalDomainId,
+  buildClarificationQuestions,
+  buildConfirmationScope,
+  buildConversationMemoryScope,
+  buildDryRunPreview,
+  buildMissingSlotQuestions,
+  buildRiskPreview,
+  buildRiskPreviewWithDryRun,
+  buildStableIdempotencyKey,
+  collectResolvedSlotsFromTurns,
+  CRITICAL_RISK_KEYWORDS,
+  DEFAULT_LOCALE_CONFIG,
+  DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS,
+  DEFAULT_MAX_CLARIFICATION_ROUNDS,
+  defaultCostEstimate,
+  deriveConversationState,
+  deriveTitle,
+  deriveUrgency,
+  detectInputLocale,
+  detectPromptInjection,
+  estimateSlotConfidence,
+  extractEntities,
+  HIGH_RISK_KEYWORDS,
+  inferRequiredSlots,
+  INTENT_CONFIDENCE_THRESHOLD,
+  IRREVERSIBLE_KEYWORDS,
+  isMediumRiskIntent,
+  mapIntentType,
+  memoryScopeFor,
+  parseAcceptLanguage,
+  clarificationRoundKey,
+  parseStoredConversationTurn,
+  requiresApprovalIntent,
+  resolveAutonomyMode,
+  resolveRuntimeMode,
+  serializeEntities,
+  SLOT_CONFIDENCE_THRESHOLD,
+  toJsonValue,
+} from "./nl-gateway-support.js";
 
 export class ContextEnricher {
   public enrich(

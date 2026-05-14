@@ -28,7 +28,6 @@ import type {
   SessionRecord,
   StepOutputRecord,
   TaskRecord,
-  TransitionAuditContext,
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 
@@ -47,13 +46,10 @@ import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workf
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
 import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
-import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulator.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import {
   AdmissionController,
-  type AdmissionBackpressureSnapshot,
-  type AdmissionPolicy,
 } from "../dispatcher/admission-controller.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { provideContext, withContextPatch } from "./runtime-context.js";
@@ -65,69 +61,16 @@ import {
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
+import {
+  DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
+  DEFAULT_SINGLE_TASK_MAX_RETRIES,
+  DEFAULT_SINGLE_TASK_RETRY_BACKOFF,
+  createContext,
+  type HappyPathInput,
+} from "./single-task-happy-path-support.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-const DEFAULT_SINGLE_TASK_MAX_RETRIES = 0;
-const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "none";
-
-const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
-  memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
-  eventLoopLagThresholdMs: Number.POSITIVE_INFINITY,
-} as const;
-
-/**
- * Input parameters for single-task execution.
- * These values are typically provided by the CLI or API caller.
- */
-export interface HappyPathInput {
-  /** Absolute path to the SQLite database file for persistence */
-  dbPath: string;
-  /** Human-readable title for the task */
-  title: string;
-  /** The user's original request or instruction */
-  request: string;
-  /** Optional tenant scope for the created task */
-  tenantId?: string | null;
-  /** Optional admission policy override for runtime backpressure validation */
-  admissionPolicy?: AdmissionPolicy;
-  /** Optional backpressure snapshot supplier used by the admission controller */
-  admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;
-  /** Optional crash injection used by recovery drills */
-  crashInjection?: WorkflowCrashInjection;
-  /** Optional override used by tests to force schema validation paths */
-  stepOutputOverride?: Record<string, unknown>;
-  /** Optional logger injection for tests and embedding runtimes. */
-  logger?: Pick<StructuredLogger, "log">;
-}
-
-/**
- * Creates a standardized audit context for tracking state transitions.
- * Every transition in the system is recorded with this context for traceability.
- *
- * @param traceId - Unique identifier linking all events within a single request flow
- * @param reasonCode - Machine-readable code explaining why this transition occurred (e.g., "task.started")
- * @returns A complete TransitionAuditContext object with timestamp and actor information
- */
-function createContext(
-  traceContext: ReturnType<typeof createRootTraceContext>,
-  reasonCode: string,
-): TransitionAuditContext {
-  const span = createChildTraceContext(traceContext);
-  const context: TransitionAuditContext = {
-    reasonCode,
-    traceId: span.traceId,
-    parentSpanId: span.parentSpanId,
-    actorType: "system",
-    occurredAt: nowIso(),
-  };
-  if (span.spanId != null) {
-    context.spanId = span.spanId;
-  }
-  if (span.correlationId != null) {
-    context.correlationId = span.correlationId;
-  }
-  return context;
-}
+export type { HappyPathInput } from "./single-task-happy-path-support.js";
 
 /**
  * Executes the single-task workflow.

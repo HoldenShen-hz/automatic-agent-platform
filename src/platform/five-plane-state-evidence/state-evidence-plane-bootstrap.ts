@@ -15,11 +15,17 @@ export interface StateEvidencePlaneBootstrap {
 }
 
 export function buildStateEvidencePlaneBootstrap(): StateEvidencePlaneBootstrap {
-  return {
+  const catalog = Object.freeze([...listStateEvidenceCapabilityBaselines()]);
+  const registeredServiceIds = Object.freeze([
+    STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID,
+    STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
+  ]) as readonly [typeof STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID, typeof STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID];
+
+  return Object.freeze({
     planeId: "state-evidence",
-    catalog: listStateEvidenceCapabilityBaselines(),
-    registeredServiceIds: [STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID, STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID],
-  };
+    catalog,
+    registeredServiceIds,
+  });
 }
 
 export function registerStateEvidencePlaneBootstrap(

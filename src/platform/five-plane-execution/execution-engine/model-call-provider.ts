@@ -13,76 +13,39 @@
  */
 
 import { globalMiddlewareChain, type WrapModelCallHook, type MiddlewareContext } from "./agent-middleware-chain.js";
-import { createUnifiedChatProvider, type UnifiedProviderConfig, type ChatMessage, type ChatCompletionRequest } from "../../model-gateway/provider-registry/unified-chat-provider.js";
+import { createUnifiedChatProvider, type ChatCompletionRequest } from "../../model-gateway/provider-registry/unified-chat-provider.js";
 import type { ModelProfileMetadata } from "../../control-plane/config-center/model-metadata-registry.js";
 import { ProviderError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { CallGovernance, type DistributedRateLimiterLike } from "./call-governance.js";
-import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
-import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
-import { BudgetGuard, type BudgetPolicy, type BudgetReservationRequest } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { nowIso } from "../../contracts/types/ids.js";
+import { CallGovernance } from "./call-governance.js";
+import { BudgetGuard } from "../../model-gateway/cost-tracker/budget-guard.js";
+import {
+  buildBudgetReservationRequest,
+  buildModelGovernanceKey,
+  createModelCallGovernance,
+  estimateActualLlmCallCost,
+  estimateLlmCallCost,
+  getDefaultBudgetPolicy,
+  isRetryableProviderError,
+  parseNonNegativeInteger,
+  parsePositiveInteger,
+  readTrimmedEnvValue,
+  resolveFallbackModels,
+  sleep,
+  toGovernanceError,
+  type LlmModelCallRequest,
+  type LlmModelCallResult,
+  type ModelCallProviderConfig,
+} from "./model-call-provider-support.js";
+export type {
+  LlmModelCallRequest,
+  LlmModelCallResult,
+  ModelCallProviderConfig,
+} from "./model-call-provider-support.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
-export interface ModelCallProviderConfig {
-  anthropicApiKey?: string;
-  openaiApiKey?: string;
-  minimaxApiKey?: string;
-  defaultModel?: string;
-  providerConfig?: UnifiedProviderConfig;
-  callRateLimit?: {
-    maxCalls: number;
-    windowMs: number;
-  } | null;
-  distributedRateLimiter?: DistributedRateLimiterLike | null;
-  fallbackModels?: readonly string[];
-  retry?: {
-    maxAttempts?: number;
-    baseDelayMs?: number;
-  };
-}
-
 let modelCallProviderInstance: ModelCallProviderService | null = null;
-
-export interface LlmModelCallRequest {
-  model: string;
-  messages: ChatMessage[];
-  system?: string;
-  temperature?: number;
-  maxTokens: number;
-  harnessRunId?: string;
-  traceId?: string;
-  tenantId?: string | null;
-  costTag?: string;
-  abortSignal?: AbortSignal;
-  tools?: Array<{
-    type: "function";
-    name: string;
-    description?: string;
-    parameters: Record<string, unknown>;
-  }>;
-}
-
-export interface LlmModelCallResult {
-  id: string;
-  content: string;
-  refusal: string | null;
-  reasoningContent: string | null;
-  finishReason: string;
-  toolCalls: Array<{
-    id: string;
-    type: "function";
-    function: { name: string; arguments: string };
-  }>;
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  model: string;
-  provider: string;
-}
 
 export class ModelCallProviderService {
   private readonly unifiedProvider: ReturnType<typeof createUnifiedChatProvider>;
@@ -169,7 +132,7 @@ export class ModelCallProviderService {
       });
     }
 
-    const policy = this.getDefaultBudgetPolicy();
+    const policy = getDefaultBudgetPolicy();
 
     // R2-6: Enforce maxModelTokens constraint before LLM call
     if (policy.maxModelTokens != null && policy.maxModelTokens > 0 && request.maxTokens > policy.maxModelTokens) {
@@ -179,8 +142,8 @@ export class ModelCallProviderService {
     }
 
     // R4-25 (INV-BUDGET-001): Reserve budget before LLM call
-    const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
-    const reserveResult = this.budgetGuard.atomicReserve(this.buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    const estimatedCostUsd = estimateLlmCallCost(request.maxTokens, request.model);
+    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(request, policy, estimatedCostUsd));
     if (!reserveResult.success) {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
         retryable: false,
@@ -238,7 +201,7 @@ export class ModelCallProviderService {
 
       const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
-        this.estimateActualLlmCallCost(result, result.model) ?? estimatedCostUsd,
+        estimateActualLlmCallCost(result, result.model) ?? estimatedCostUsd,
       );
       if (!settleResult.success) {
         throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {
@@ -269,7 +232,7 @@ export class ModelCallProviderService {
       });
     }
 
-    const policy = this.getDefaultBudgetPolicy();
+    const policy = getDefaultBudgetPolicy();
     const maxDurationMs = policy.maxDurationMs;
 
     // R2-6: Enforce maxDurationMs constraint using AbortSignal timeout
@@ -301,8 +264,8 @@ export class ModelCallProviderService {
 
     const governanceKey = buildModelGovernanceKey(request.model);
     const startTime = Date.now();
-    const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
-    const reserveResult = this.budgetGuard.atomicReserve(this.buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    const estimatedCostUsd = estimateLlmCallCost(request.maxTokens, request.model);
+    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(request, policy, estimatedCostUsd));
     if (!reserveResult.success) {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
         retryable: false,
@@ -345,13 +308,13 @@ export class ModelCallProviderService {
       } else {
         const result = await this.callGovernance.execute(governanceKey, executeStreaming);
         if (!result.success) {
-          throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+          throw toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
         }
       }
 
       const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
-        this.estimateActualLlmCallCost(latestChunk, request.model) ?? estimatedCostUsd,
+        estimateActualLlmCallCost(latestChunk, request.model) ?? estimatedCostUsd,
       );
       if (!settleResult.success) {
         throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {
@@ -434,7 +397,7 @@ export class ModelCallProviderService {
 
     const result = await this.callGovernance.execute(key, call);
     if (!result.success || result.data == null) {
-      throw this.toGovernanceError(
+      throw toGovernanceError(
         key,
         result.error?.code ?? "governance.unknown_error",
         result.error?.message ?? `Model call rejected by governance for ${key}.`,
@@ -494,213 +457,6 @@ export class ModelCallProviderService {
     throw lastError;
   }
 
-  private getDefaultBudgetPolicy(): BudgetPolicy {
-    return {
-      maxTaskCostUsd: 10,
-      maxDailyCostUsd: 100,
-      maxMonthlyCostUsd: 1000,
-      maxPlatformCostUsd: 0,
-      maxSteps: 100,
-      maxModelTokens: 8192,
-      maxDurationMs: 60000,
-      warnAtRatio: 0.8,
-      mode: "auto",
-    };
-  }
-
-  private buildBudgetReservationRequest(
-    request: LlmModelCallRequest,
-    policy: BudgetPolicy,
-    estimatedCostUsd: number,
-  ): BudgetReservationRequest {
-    return {
-      policy,
-      spend: {
-        currentTaskCostUsd: 0,
-        nextEstimatedCostUsd: estimatedCostUsd,
-        currentDailyCostUsd: 0,
-        currentMonthlyCostUsd: 0,
-      },
-      tenantId: request.tenantId ?? "system",
-      harnessRunId: request.harnessRunId?.trim() || request.traceId?.trim() || `harness_run:llm:${Date.now()}`,
-      traceId: request.traceId?.trim() || `trace:${nowIso()}`,
-      emittedBy: "model_call_provider",
-    };
-  }
-
-  private estimateLlmCallCost(maxTokens: number, model: string): number {
-    // Estimate cost based on model and token count
-    const costPerThousandTokens: Record<string, number> = {
-      "MiniMax-M2.7": 0.001,
-      "MiniMax-M2.7-highspeed": 0.002,
-      "MiniMax-M2": 0.0008,
-      "MiniMax-M1": 0.0005,
-      "claude-opus-4-5": 0.015,
-      "claude-sonnet-4": 0.008,
-      "claude-haiku-3-5": 0.002,
-      "gpt-4o": 0.005,
-      "gpt-4o-mini": 0.0015,
-    };
-    const rate = costPerThousandTokens[model] ?? 0.001;
-    return (maxTokens / 1000) * rate;
-  }
-
-  private estimateActualLlmCallCost(result: LlmModelCallResult | null, model: string): number | null {
-    if (result == null) {
-      return null;
-    }
-    return this.estimateCostFromUsage(result.usage.promptTokens, result.usage.completionTokens, model);
-  }
-
-  private estimateCostFromUsage(promptTokens: number, completionTokens: number, model: string): number {
-    return this.estimateLlmCallCost(Math.max(0, promptTokens) + Math.max(0, completionTokens), model);
-  }
-
-  private toGovernanceError(
-    key: string,
-    code: string,
-    message: string,
-    retryable: boolean,
-    retryAfterMs?: number,
-  ): ProviderError {
-    return new ProviderError(code, message, {
-      retryable,
-      ...(retryAfterMs != null ? { details: { governanceKey: key, retryAfterMs } } : { details: { governanceKey: key } }),
-    });
-  }
-}
-
-function buildModelGovernanceKey(model: string): string {
-  return `model:${model}`;
-}
-
-function createModelCallGovernance(
-  config: ModelCallProviderConfig,
-  env: NodeJS.ProcessEnv,
-): CallGovernance | null {
-  const callRateLimit = resolveCallRateLimit(config, env);
-  const distributedRateLimiter = resolveDistributedRateLimiter(config, env);
-  if (callRateLimit == null) {
-    return null;
-  }
-
-  return new CallGovernance(
-    {
-      limiter: {
-        maxCalls: callRateLimit.maxCalls,
-        windowMs: callRateLimit.windowMs,
-      },
-    },
-    {
-      distributedRateLimiter,
-    },
-  );
-}
-
-function resolveCallRateLimit(
-  config: ModelCallProviderConfig,
-  env: NodeJS.ProcessEnv,
-): { maxCalls: number; windowMs: number } | null {
-  if (config.callRateLimit != null) {
-    return config.callRateLimit;
-  }
-  const maxCalls = parsePositiveInteger(env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS);
-  const windowMs = parsePositiveInteger(env.AA_MODEL_CALL_RATE_LIMIT_WINDOW_MS);
-  if (maxCalls == null && windowMs == null) {
-    return null;
-  }
-  return {
-    maxCalls: maxCalls ?? 100,
-    windowMs: windowMs ?? 1000,
-  };
-}
-
-function resolveDistributedRateLimiter(
-  config: ModelCallProviderConfig,
-  env: NodeJS.ProcessEnv,
-): DistributedRateLimiterLike | null {
-  if (config.distributedRateLimiter != null) {
-    return config.distributedRateLimiter;
-  }
-  const redisConfig = readRedisConnectionConfigFromEnv("AA_MODEL_CALL_RATE_LIMIT_REDIS", env);
-  if (redisConfig == null) {
-    return null;
-  }
-  return new DistributedRateLimiter({
-    redis: {
-      ...redisConfig,
-      ...(readTrimmedEnvValue(env.AA_MODEL_CALL_RATE_LIMIT_REDIS_KEY_PREFIX) != null
-        ? { keyPrefix: readTrimmedEnvValue(env.AA_MODEL_CALL_RATE_LIMIT_REDIS_KEY_PREFIX)! }
-        : {}),
-    },
-  });
-}
-
-function resolveFallbackModels(config: ModelCallProviderConfig, env: NodeJS.ProcessEnv): readonly string[] {
-  if (config.fallbackModels !== undefined) {
-    return config.fallbackModels.map((model) => model.trim()).filter((model) => model.length > 0);
-  }
-  return (env.AA_MODEL_PROVIDER_FALLBACK_MODELS ?? "")
-    .split(",")
-    .map((model) => model.trim())
-    .filter((model) => model.length > 0);
-}
-
-function isRetryableProviderError(error: unknown): boolean {
-  if (error instanceof ProviderError) {
-    return error.retryable;
-  }
-  if (typeof error === "object" && error !== null && "retryable" in error) {
-    return (error as { retryable?: unknown }).retryable !== false;
-  }
-  return true;
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function readTrimmedEnvValue(raw: string | undefined): string | null {
-  if (raw == null) {
-    return null;
-  }
-  const value = raw.trim();
-  return value.length > 0 ? value : null;
-}
-
-function parsePositiveInteger(raw: string | undefined): number | null {
-  const value = readTrimmedEnvValue(raw);
-  if (value == null) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function parseNonNegativeInteger(raw: string | undefined): number | null {
-  const value = readTrimmedEnvValue(raw);
-  if (value == null) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function parseBoolean(raw: string | undefined): boolean | null {
-  const value = readTrimmedEnvValue(raw);
-  if (value == null) {
-    return null;
-  }
-  const normalized = value.toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-  return null;
 }
 
 export function initializeModelCallProvider(config: ModelCallProviderConfig): ModelCallProviderService {

@@ -262,7 +262,14 @@ export class DegradationController {
     }
 
     try {
-      const provider = this.fallbackProvider ?? this.primaryProvider;
+      if (this.fallbackProvider == null) {
+        throw new AppError(
+          "degradation.fallback_provider_unavailable",
+          "Fallback provider unavailable during degraded routing.",
+          { category: "provider", source: "provider" },
+        );
+      }
+      const provider = this.fallbackProvider;
       const response = await provider.createChatCompletion({
         model: fallbackProfile.profileName,
         messages: request.messages.map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
@@ -442,7 +449,9 @@ export class DegradationController {
    */
   private async routeWithDepth(request: LLMDegradationRequest, depth: number): Promise<LLMDegradationResponse> {
     const MAX_ROUTE_DEPTH = 4; // D0 through D4 = max 4 escalations within one route call
-    this.lastEscalationReason = null;
+    if (depth === 0) {
+      this.lastEscalationReason = null;
+    }
     let attemptLevel = this.currentLevel;
     const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
 
@@ -468,6 +477,13 @@ export class DegradationController {
           try {
             return await this.routeD1(request);
           } catch (error) {
+            if (error instanceof AppError && error.code === "degradation.fallback_provider_unavailable") {
+              throw new ProviderError(
+                "degradation.max_depth_exceeded",
+                "LLM service failed after maximum degradation attempts.",
+                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
+              );
+            }
             if (depth >= MAX_ROUTE_DEPTH) {
               throw new ProviderError(
                 "degradation.max_depth_exceeded",
@@ -584,7 +600,7 @@ export class DegradationController {
     return {
       action: "maintain",
       newLevel: this.currentLevel,
-      reason: errorHealthy && latencyHealthy && ttftHealthy ? "healthy" : "health_not_recovered",
+      reason: shouldEscalate ? "health_not_recovered" : "healthy",
     };
   }
 

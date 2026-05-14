@@ -92,27 +92,72 @@ export class HierarchicalPromptRegistryService {
 
     // R23-48 fix: Normalize pack-level storage into the domain map for backward compatibility.
     const effectiveDomain = level === "pack" ? packId : (domain ?? input.domain);
+    const normalizedInput = this.normalizeRegistrationInput(input, domain, packId);
     const timestamp = nowIso();
     // Ensure displayVersion is provided (may come from input.version semver formatting)
-    const displayVersion = input.displayVersion
-      ?? (typeof input.version === "string" && input.version.startsWith("v") ? input.version : `v${input.version}`);
+    const displayVersion = normalizedInput.displayVersion
+      ?? (typeof normalizedInput.version === "string" && normalizedInput.version.startsWith("v") ? normalizedInput.version : `v${normalizedInput.version}`);
     const bundle = createPromptBundle({
-      ...input,
+      ...normalizedInput,
       displayVersion,
-      bundleId: this.buildBundleId(input, level, effectiveDomain),
-      domain: effectiveDomain ?? input.domain,
-      packId: packId ?? input.packId,
-      constraints: this.normalizeConstraints(input.constraints),
+      bundleId: this.buildBundleId(normalizedInput, level, effectiveDomain),
+      domain: effectiveDomain ?? normalizedInput.domain,
+      packId: packId ?? normalizedInput.packId,
+      constraints: this.normalizeConstraints(normalizedInput.constraints),
       createdAt: timestamp,
       updatedAt: timestamp,
     }) as PromptBundle;
-    if (typeof input.version === "string") {
-      (bundle as unknown as { version: string }).version = input.version;
+    if (typeof normalizedInput.version === "string") {
+      (bundle as unknown as { version: string }).version = normalizedInput.version;
     }
 
     this.storeBundle(bundle, level, effectiveDomain);
     this.storeVersion(bundle, level, effectiveDomain);
     return bundle;
+  }
+
+  private normalizeRegistrationInput(
+    input: PromptBundleRegistrationInput,
+    domain?: string,
+    packId?: string,
+  ): PromptBundleRegistrationInput {
+    const legacy = input as PromptBundleRegistrationInput & {
+      prompts?: readonly { readonly role?: string; readonly content: string }[];
+      variables?: readonly string[];
+      trafficAllocation?: { readonly weight?: number };
+    };
+    const variables = [...(legacy.variables ?? [])];
+    const systemPrompt = input.systemPrompt ?? {
+      content: legacy.prompts?.find((prompt) => prompt.role === "system")?.content ?? legacy.prompts?.[0]?.content ?? "",
+      templateVariables: variables,
+      channel: "system" as const,
+    };
+    return {
+      ...input,
+      displayVersion: input.displayVersion ?? (typeof input.version === "string" ? input.version : `${input.version}.0.0`),
+      domain: input.domain ?? domain ?? "global",
+      taskType: input.taskType ?? "default",
+      packId: input.packId ?? packId,
+      systemPrompt,
+      userPrompt: input.userPrompt,
+      fewShotExamples: input.fewShotExamples ?? [],
+      constraints: input.constraints,
+      compatibilityMatrix: input.compatibilityMatrix ?? {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
+      metadata: {
+        ...(input.metadata ?? {}),
+        trafficAllocation: {
+          weight: legacy.trafficAllocation?.weight ?? input.metadata?.trafficAllocation?.weight ?? 100,
+          startTime: input.metadata?.trafficAllocation?.startTime,
+          endTime: input.metadata?.trafficAllocation?.endTime,
+          targeting: input.metadata?.trafficAllocation?.targeting,
+        },
+      } as PromptBundleMetadata,
+    };
   }
 
   /**

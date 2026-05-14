@@ -26,6 +26,12 @@ export function parseJwtHeader(value: unknown): { kid?: string; alg?: string } {
   if (!isRecord(value)) {
     throwOidcValidationError("jwt.header_invalid");
   }
+  if ("kid" in value && value.kid != null && typeof value.kid !== "string") {
+    throwOidcValidationError("jwt.header_invalid");
+  }
+  if ("alg" in value && value.alg != null && typeof value.alg !== "string") {
+    throwOidcValidationError("jwt.header_invalid");
+  }
   return {
     ...(typeof value.kid === "string" ? { kid: value.kid } : {}),
     ...(typeof value.alg === "string" ? { alg: value.alg } : {}),

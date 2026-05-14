@@ -11,7 +11,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §19
  */
 
-import { nowIso, newId } from "../../contracts/types/ids.js";
+import { nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
 import {
   TopologyValidator,
@@ -29,8 +29,6 @@ import type {
   DelegationHandle,
   AwaitableDelegationHandle,
   DelegationChain,
-  DelegationChainNode,
-  DelegationOptions,
   PermissionSet,
   DelegationCreatedEvent,
   DelegationStatus,
@@ -48,44 +46,26 @@ import {
 } from "./delegation-audit-service.js";
 import { ContextIsolator, createContextIsolator } from "./context-isolator.js";
 import { DelegationTracker, createDelegationTracker } from "./delegation-tracker.js";
-
-// Extended options interface that includes service dependencies
-interface DelegationManagerOptions extends DelegationOptions {
-  governanceService?: DelegationGovernanceService;
-  auditService?: DelegationAuditService;
-  tracker?: DelegationTracker;
-}
-
-export interface DelegationExpirationConfig {
-  checkIntervalMs?: number;
-  batchSize?: number;
-}
-
-export interface ExpirationScanResult {
-  scanned: number;
-  expired: number;
-  errors: readonly string[];
-}
+import {
+  ALLOWED_STATUS_TRANSITIONS,
+  createDelegationResultRecord,
+  evictExpiredDelegationEntries,
+  hydrateDelegationStoresFromRepository,
+  type DelegationExpirationConfig,
+  type DelegationManagerOptions,
+  type ExpirationScanResult,
+} from "./delegation-manager-support.js";
+export type {
+  DelegationExpirationConfig,
+  DelegationManagerOptions,
+  ExpirationScanResult,
+} from "./delegation-manager-support.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Manager Service
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class DelegationManagerService {
-  private static readonly ALLOWED_STATUS_TRANSITIONS: Readonly<Record<DelegationStatus, readonly DelegationStatus[]>> = {
-    pending: ["active", "completed", "failed", "cancelled", "expired", "timed_out"],
-    pending_approval: ["active", "cancelled", "expired", "timed_out"],
-    discovery: ["bid", "awarded", "cancelled"],
-    bid: ["awarded", "cancelled"],
-    awarded: ["active", "cancelled"],
-    active: ["completed", "failed", "cancelled", "expired", "timed_out"],
-    completed: [],
-    failed: [],
-    cancelled: [],
-    expired: [],
-    timed_out: [],
-  };
-
   private readonly topologyValidator: TopologyValidator;
   private readonly collaborationProtocol: CollaborationProtocolService;
   private readonly callDepthBudget: CallDepthBudget;
@@ -94,22 +74,16 @@ export class DelegationManagerService {
   private readonly contextIsolator: ContextIsolator;
   private readonly delegationTracker: DelegationTracker;
   private readonly defaultTimeout: number;
-  // R9-06: Cache maps populated from repository - repository is the authoritative store
-  // These are caches only, populated on init from repository and kept in sync
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
   private readonly delegationRootStore: Map<string, string>;
-  // R9-06: Injected delegation repository - the authoritative persistent store
   private readonly delegationRepository: DelegationRepository;
   private readonly eventRepository: DelegationEventRepository | null;
-  // R9-06: Always use repository when available (injected repositories are always truthy)
   private readonly useRepositoryAsPrimaryStore: boolean = true;
-  // C-11: TTL-based eviction to prevent memory leaks (only used when no repository)
   private readonly MAX_ENTRIES = 1000;
-  private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private readonly ENTRY_TTL_MS = 60 * 60 * 1000;
   private lastEvictionTime = 0;
-  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
-
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000;
   public constructor(options: DelegationManagerOptions = {}, delegationRepository?: DelegationRepository, eventRepository?: DelegationEventRepository) {
     const config: TopologyValidatorConfig = {
       maxDepth: options.maxDepth ?? options.maxDelegationDepth ?? DEFAULT_MAX_DEPTH,
@@ -146,155 +120,27 @@ export class DelegationManagerService {
     }
   }
 
-  /**
-   * C-11: Evict expired delegation entries to prevent memory leaks.
-   * §186-2183: Only evict terminal-state delegations - never evict active delegations.
-   * R9-06: Skip eviction when repository is primary store - repository manages its own lifecycle.
-   */
   private evictExpired(): void {
-    // R9-06: When repository is primary store, delegation lifecycle is managed by repository
-    if (this.useRepositoryAsPrimaryStore) {
-      return;
-    }
-
-    const now = Date.now();
-    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
-      return;
-    }
-    this.lastEvictionTime = now;
-
-    const expiryThreshold = now - this.ENTRY_TTL_MS;
-    const entriesToDelete: string[] = [];
-
-    // Find expired delegation store entries - only terminal states are eligible for eviction
-    for (const [key, delegation] of this.delegationStore) {
-      const createdAt = new Date(delegation.createdAt).getTime();
-      // Root cause: eviction was removing active delegations that happened to exceed TTL
-      // Fix: Only evict delegations in terminal states (completed/failed/cancelled/expired)
-      const isTerminalState = delegation.status === "completed" || delegation.status === "failed" ||
-        delegation.status === "expired" || delegation.status === "cancelled";
-      if (createdAt < expiryThreshold && isTerminalState) {
-        entriesToDelete.push(key);
-      }
-    }
-
-    for (const key of entriesToDelete) {
-      this.delegationStore.delete(key);
-    }
-
-    // If still over capacity, remove oldest terminal-state entries only
-    if (this.delegationStore.size > this.MAX_ENTRIES) {
-      const sortedEntries = [...this.delegationStore.entries()].sort((a, b) => {
-        const aTime = new Date(a[1].createdAt).getTime();
-        const bTime = new Date(b[1].createdAt).getTime();
-        return aTime - bTime;
-      });
-
-      const toRemove = this.delegationStore.size - this.MAX_ENTRIES;
-      for (let i = 0; i < toRemove; i++) {
-        const key = sortedEntries[i]![0];
-        // Only remove terminal-state delegations when doing capacity eviction
-        const delegation = this.delegationStore.get(key);
-        if (delegation) {
-          const isTerminalState = delegation.status === "completed" || delegation.status === "failed" ||
-            delegation.status === "expired" || delegation.status === "cancelled";
-          if (isTerminalState) {
-            this.delegationStore.delete(key);
-          }
-        }
-      }
-    }
+    this.lastEvictionTime = evictExpiredDelegationEntries({
+      useRepositoryAsPrimaryStore: this.useRepositoryAsPrimaryStore,
+      nowMs: Date.now(),
+      lastEvictionTime: this.lastEvictionTime,
+      evictionIntervalMs: this.EVICTION_INTERVAL_MS,
+      entryTtlMs: this.ENTRY_TTL_MS,
+      maxEntries: this.MAX_ENTRIES,
+      delegationStore: this.delegationStore,
+    });
   }
 
-  /**
-   * R9-06: Hydrates in-memory stores from repository on startup.
-   * This ensures active delegation chains survive process restarts.
-   */
   private async hydrateFromRepository(): Promise<void> {
-    if (!this.delegationRepository) {
-      return;
-    }
-
-    // Load all non-terminal delegations from repository
-    const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
-    let hydratedCount = 0;
-
-    for (const status of activeStatuses) {
-      const delegations = await this.delegationRepository.findByStatus(status);
-      for (const record of delegations) {
-        // R9-06: Reconstruct partial DelegationResult from repository record
-        // Note: Full permissions and other runtime fields are not persisted,
-        // so we create a minimal reconstruction sufficient for chain tracking.
-        const delegationResult: DelegationResult = {
-          delegationId: record.delegationId,
-          parentAgentId: record.parentAgentId,
-          childAgentId: record.childAgentId,
-          depth: record.depth,
-          status: record.status,
-          createdAt: record.createdAt,
-          expiresAt: record.expiresAt ?? nowIso(), // Fallback if expiresAt was null
-          permissions: { resources: [], actions: [], constraints: {} }, // Reconstructed
-          grantedPermissions: { resources: [], actions: [], constraints: {} }, // Reconstructed
-          correlationId: record.delegationId, // Use delegationId as correlationId fallback
-          artifact_refs: [],
-          trust_level: 0,
-          taint_labels: [],
-          evidence_refs: [],
-          policy_outcome: "delegation.hydrated_from_repository",
-          data_class: "delegation",
-          summary: `Hydrated delegation from repository: ${record.delegationId}`,
-        };
-
-        this.delegationStore.set(record.delegationId, delegationResult);
-
-        // R9-06: Reconstruct chain tracking
-        const rootAgentId = record.delegationChain[0] ?? record.parentAgentId;
-        this.delegationRootStore.set(record.delegationId, rootAgentId);
-
-        // R9-06: Rebuild chain nodes for active delegations
-        let chain = this.chainStore.get(rootAgentId);
-        if (!chain) {
-          chain = {
-            rootAgentId,
-            nodes: [],
-            maxDepthReached: 0,
-            totalDelegations: 0,
-          };
-          this.chainStore.set(rootAgentId, chain);
-        }
-
-        const existingNode = chain.nodes.find((n) => n.delegationId === record.delegationId);
-        if (!existingNode) {
-          const node: DelegationChainNode = {
-            delegationId: record.delegationId,
-            agentId: record.childAgentId,
-            packId: record.childAgentId, // Use childAgentId as packId fallback
-            agentType: "worker",
-            depth: record.depth,
-            createdAt: record.createdAt,
-            parentDelegationId: null,
-            status: "active",
-          };
-          chain.nodes = [...chain.nodes, node];
-          chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
-          chain.totalDelegations++;
-        }
-
-        hydratedCount++;
-      }
-    }
+    await hydrateDelegationStoresFromRepository({
+      delegationRepository: this.delegationRepository,
+      delegationStore: this.delegationStore,
+      chainStore: this.chainStore,
+      delegationRootStore: this.delegationRootStore,
+    });
   }
 
-  // ── Main Delegation API ─────────────────────────────────────────────────────
-
-  /**
-   * Creates a new delegation from parent agent to child agent.
-   *
-   * @param parent - Parent agent context
-   * @param spec - Delegation specification
-   * @returns DelegationHandle for tracking the delegation
-   * @throws DelegationDepthExceededError | DelegationFanoutExceededError | DelegationCycleDetectedError
-   */
   /**
    * Creates a new delegation from parent agent to child agent.
    *
@@ -972,72 +818,16 @@ export class DelegationManagerService {
     spec: DelegationSpec,
     permissions: PermissionSet,
   ): Promise<DelegationResult> {
-    // C-11: Evict expired entries before creating new one
     this.evictExpired();
-
-    const delegationId = newId("dlg");
-    const now = nowIso();
-    // R17-15: Enforce upper bound on timeout to prevent immortal delegations
-    const MAX_DELEGATION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-    const requestedTimeout = spec.timeout > 0 ? spec.timeout : this.defaultTimeout;
-    const timeout = Math.min(requestedTimeout, MAX_DELEGATION_TIMEOUT_MS);
-    const expiresAt = new Date(Date.now() + timeout).toISOString();
-
-    const delegation: DelegationResult = {
-      delegationId,
-      parentAgentId: parent.agentId,
-      childAgentId: childContext.agentId,
-      depth: parent.delegationDepth + 1,
+    return await createDelegationResultRecord({
+      parent,
+      childContext,
+      spec,
       permissions,
-      grantedPermissions: permissions,
-      createdAt: now,
-      expiresAt,
-      correlationId: childContext.correlationId,
-      ...(spec.requiresApproval ? { requiresApproval: true } : {}),
-      status: spec.requiresApproval ? "pending_approval" : "pending",
-      summary: `Delegated ${childContext.agentType} work from ${parent.agentId} to ${childContext.agentId}`,
-      artifact_refs: [],
-      trust_level: Math.max(0, Number((1 - Math.min(parent.delegationDepth + 1, DEFAULT_MAX_DEPTH) / (DEFAULT_MAX_DEPTH + 1)).toFixed(2))),
-      taint_labels: permissions.constraints.allowedDomains ?? [],
-      evidence_refs: [],
-      policy_outcome: "delegation.permissions_narrowed",
-      data_class: spec.dataClass ?? "delegation",
-    };
-
-    // R9-06: Build the full delegation chain from root to this delegation
-    // delegationChain stores [rootAgentId, ..., parentAgentId, childAgentId]
-    // This enables getDelegationChain to find all delegations in a chain
-    let delegationChain: readonly string[] = [delegation.parentAgentId, delegation.childAgentId];
-    if (this.delegationRepository && parent.activeDelegations.length > 0) {
-      // Find the parent's delegation to extend its chain
-      const parentDelegationId = parent.activeDelegations.at(-1);
-      if (parentDelegationId) {
-        const parentDelegation = await this.delegationRepository.findById(parentDelegationId);
-        if (parentDelegation && parentDelegation.delegationChain.length > 0) {
-          // Extend parent's chain with new child
-          delegationChain = [...parentDelegation.delegationChain, delegation.childAgentId];
-        }
-      }
-    }
-
-    // R9-06: When repository is available as primary store, write to repository first
-    // then update in-memory cache. When no repository, use in-memory as primary store.
-    if (this.delegationRepository) {
-      await this.delegationRepository.create({
-        delegationId: delegation.delegationId,
-        parentAgentId: delegation.parentAgentId,
-        childAgentId: delegation.childAgentId,
-        delegationChain,
-        depth: delegation.depth,
-        expiresAt: delegation.expiresAt,
-        status: delegation.status,
-      });
-    }
-
-    // Always update in-memory cache after repository write (or as primary if no repository)
-    this.delegationStore.set(delegationId, delegation);
-
-    return delegation;
+      defaultTimeout: this.defaultTimeout,
+      delegationRepository: this.delegationRepository,
+      delegationStore: this.delegationStore,
+    });
   }
 
   private requireDelegation(delegationId: string): DelegationResult {
@@ -1061,7 +851,7 @@ export class DelegationManagerService {
     // concurrent status transitions (e.g., cancel() + complete() racing).
     // Read current status and determine allowed transitions atomically.
     const currentStatus = fencingToken ?? delegation.status;
-    const allowedStatuses = DelegationManagerService.ALLOWED_STATUS_TRANSITIONS[currentStatus];
+    const allowedStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus];
     if (!allowedStatuses.includes(nextStatus)) {
       throw new ValidationError(
         "delegation.invalid_status_transition",

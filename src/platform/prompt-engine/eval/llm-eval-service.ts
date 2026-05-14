@@ -13,235 +13,48 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import type {
+  AbTestCaseEvaluation,
+  AbTestConfig,
+  AbTestOptions,
+  AbTestResult,
+  CiGateOptions,
+  CiGateResult,
+  EvalCaseDefinition,
+  EvalCaseEvaluation,
+  EvalCaseEvaluator,
+  EvalCaseEvaluatorInput,
+  EvalCaseResult,
+  EvalRunRecord,
+  EvalStatus,
+  EvalStructuredOutput,
+  EvalSuiteKind,
+  EvalSuiteRecord,
+  LlmEvaluationClient,
+  QualityVerdict,
+} from "./llm-eval-types.js";
 export { LLM_EVAL_DDL } from "./prompt-model-policy-governance-schema.js";
-
-// ── Types ──────────────────────────────────────────────────────────────
-
-/** Status of an evaluation run */
-export type EvalStatus = "pending" | "running" | "passed" | "failed" | "degraded";
-/** Kind of evaluation suite */
-export type EvalSuiteKind = "golden" | "regression" | "ab_test" | "smoke";
-/** Quality verdict for an evaluation */
-export type QualityVerdict = "pass" | "fail" | "degraded" | "inconclusive";
-/** Structured output types supported by evaluation results */
-export type EvalStructuredOutput =
-  | string
-  | number
-  | boolean
-  | null
-  | Record<string, unknown>
-  | Array<unknown>;
-
-/**
- * A defined evaluation suite containing test cases.
- */
-export interface EvalSuiteRecord {
-  id: string;
-  name: string;
-  kind: EvalSuiteKind;
-  description: string;
-  cases: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * A single evaluation run against a suite with a specific model and prompt.
- */
-export interface EvalRunRecord {
-  id: string;
-  suiteId: string;
-  modelId: string;
-  promptVersion: string;
-  status: EvalStatus;
-  totalCases: number;
-  passedCases: number;
-  failedCases: number;
-  averageScore: number | null;
-  verdict: QualityVerdict;
-  startedAt: string;
-  completedAt: string | null;
-  triggeredBy: string;
-  metadata: string | null;
-}
-
-/**
- * Definition of a single test case within a suite.
- *
- * R2-10: Added priority field to support §21.7 risk-level independence enforcement.
- */
-export interface EvalCaseDefinition {
-  id: string;
-  input: string;
-  expectedOutput: string;
-  tags?: string[];
-  /** R2-10: Risk priority level for independence enforcement - high/critical require independent judge */
-  priority?: "critical" | "high" | "medium" | "low";
-}
-
-/**
- * Result of evaluating a single test case.
- */
-export interface EvalCaseResult {
-  id: string;
-  runId: string;
-  caseId: string;
-  input: string;
-  expectedOutput: string;
-  actualOutput: string;
-  score: number;
-  passed: boolean;
-  latencyMs: number;
-  metadata: string | null;
-}
-
-/**
- * Configuration for an A/B test comparing two model/prompt combinations.
- */
-export interface AbTestConfig {
-  controlModelId: string;
-  treatmentModelId: string;
-  controlPromptVersion: string;
-  treatmentPromptVersion: string;
-  minSampleSize: number;
-  significanceThreshold: number;
-  /** Minimum score to consider a case as "passed" in A/B test evaluation (default: 0.8) */
-  passThreshold?: number;
-}
-
-export interface AbTestCaseEvaluatorInput extends EvalCaseEvaluatorInput {
-  arm: "control" | "treatment";
-  expectedOutput: string;
-}
-
-export interface AbTestCaseEvaluation {
-  actualOutput: EvalStructuredOutput;
-  score: number;
-  latencyMs?: number;
-}
-
-export interface AbTestOptions {
-  llmEvaluator?: {
-    evaluateCase: (input: AbTestCaseEvaluatorInput) => Promise<AbTestCaseEvaluation> | AbTestCaseEvaluation;
-  };
-  /**
-   * Optional LLM client for real evaluation.
-   * When provided, the A/B test will use actual LLM calls instead of deterministic scoring.
-   */
-  llmClient?: LlmEvaluationClient;
-}
-
-/**
- * Interface for LLM evaluation client.
- * Implement this to provide real LLM-based evaluation.
- */
-export interface LlmEvaluationClient {
-  /**
-   * Evaluate a single test case using an LLM.
-   * @param modelId - The model to use for evaluation
-   * @param promptVersion - The prompt version to use
-   * @param input - The test case input
-   * @param expectedOutput - The expected output for comparison
-   * @returns The evaluation result with actual output and score
-   */
-  evaluate(input: {
-    modelId: string;
-    promptVersion: string;
-    input: string;
-    expectedOutput: string;
-  }): Promise<{
-    actualOutput: EvalStructuredOutput;
-    score: number;
-    latencyMs: number;
-  }>;
-}
-
-/**
- * Result of an A/B test evaluation.
- */
-export interface AbTestResult {
-  controlRunId: string;
-  treatmentRunId: string;
-  controlAvgScore: number;
-  treatmentAvgScore: number;
-  improvement: number;
-  significant: boolean;
-  pValue: number;
-  verdict: QualityVerdict;
-  /** R23-47 fix: Indicates whether mock/deterministic scores were used instead of real LLM evaluation */
-  mockEvaluation: boolean;
-  /**
-   * Z-score from Welch's t-test comparing treatment vs control scores.
-   * Positive values indicate treatment outperformed control.
-   */
-  zScore: number;
-  /**
-   * 95% confidence interval for the improvement ratio [lower, upper].
-   * Calculated using bootstrap resampling (10,000 iterations).
-   */
-  confidenceInterval: [number, number];
-}
-
-/**
- * Result of a CI gate evaluation determining if a release can proceed.
- *
- * R2-10: Added independenceViolation field to report §21.7 independence violations.
- */
-export interface CiGateResult {
-  passed: boolean;
-  runId: string;
-  verdict: QualityVerdict;
-  regressions: string[];
-  improvements: string[];
-  summary: string;
-  /** R2-10: Set when high-risk evaluation requires independent judge but none is configured */
-  independenceViolation?: string;
-}
-
-/**
- * Evaluation result for a single test case.
- */
-export interface EvalCaseEvaluation {
-  actualOutput: EvalStructuredOutput;
-  score: number;
-  passed: boolean;
-  latencyMs?: number;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Input provided to an evaluator function for a single case.
- */
-export interface EvalCaseEvaluatorInput {
-  suite: EvalSuiteRecord;
-  caseDefinition: EvalCaseDefinition;
-  modelId: string;
-  promptVersion: string;
-}
-
-/**
- * Function type that evaluates a single test case.
- */
-export type EvalCaseEvaluator = (
-  input: EvalCaseEvaluatorInput,
-) => EvalCaseEvaluation;
-
-/**
- * Options for CI gate evaluation.
- *
- * R2-10: Added enforceIndependenceForHighRisk and independentJudgeId to support
- * §21.7 requirement that high-risk evaluations use an independent judge.
- */
-export interface CiGateOptions {
-  evaluator?: EvalCaseEvaluator;
-  baselinePromptVersion?: string | null;
-  improvementScoreThreshold?: number;
-  passingVerdicts?: readonly QualityVerdict[];
-  /** R2-10: When true, enforces that high-risk evaluations use an independent judge */
-  enforceIndependenceForHighRisk?: boolean;
-  /** R2-10: Judge ID to use for independent evaluation of high-risk cases */
-  independentJudgeId?: string;
-}
+export type {
+  AbTestCaseEvaluation,
+  AbTestCaseEvaluatorInput,
+  AbTestConfig,
+  AbTestOptions,
+  AbTestResult,
+  CiGateOptions,
+  CiGateResult,
+  EvalCaseDefinition,
+  EvalCaseEvaluation,
+  EvalCaseEvaluator,
+  EvalCaseEvaluatorInput,
+  EvalCaseResult,
+  EvalRunRecord,
+  EvalStatus,
+  EvalStructuredOutput,
+  EvalSuiteKind,
+  EvalSuiteRecord,
+  LlmEvaluationClient,
+  QualityVerdict,
+} from "./llm-eval-types.js";
 
 type RawRow = Record<string, unknown>;
 

@@ -171,6 +171,9 @@ export interface BudgetGuardResult {
 export interface ExecutionChainBudgetSpend {
   readonly currentTaskCostUsd: number;
   readonly nextEstimatedCostUsd: number;
+  readonly currentPackCostUsd?: number;
+  readonly currentPlatformCostUsd?: number;
+  readonly currentStepCostUsd?: number;
   readonly currentDailyCostUsd: number;
   readonly currentMonthlyCostUsd: number;
   readonly stage?: BudgetExecutionStage;
@@ -594,6 +597,9 @@ export class BudgetGuard {
   }): BudgetGuardCascadeResult {
     const next = input.spend.nextEstimatedCostUsd;
     const projectedTask = input.spend.currentTaskCostUsd + next;
+    const projectedPack = (input.spend.currentPackCostUsd ?? input.spend.currentTaskCostUsd) + next;
+    const projectedPlatform = (input.spend.currentPlatformCostUsd ?? input.spend.currentTaskCostUsd) + next;
+    const projectedStep = (input.spend.currentStepCostUsd ?? 0) + next;
     const projectedDaily = input.spend.currentDailyCostUsd + next;
     const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
 
@@ -605,13 +611,13 @@ export class BudgetGuard {
 
     // R2-6: 3-level budget hierarchy: add platform/pack/step checks if configured
     if ((input.policy.maxPlatformCostUsd ?? 0) > 0) {
-      checks.push({ scope: "platform" as const, projected: projectedTask, limit: input.policy.maxPlatformCostUsd! });
+      checks.push({ scope: "platform" as const, projected: projectedPlatform, limit: input.policy.maxPlatformCostUsd! });
     }
     if (input.policy.maxPackCostUsd != null && input.policy.maxPackCostUsd > 0) {
-      checks.push({ scope: "pack" as const, projected: projectedTask, limit: input.policy.maxPackCostUsd });
+      checks.push({ scope: "pack" as const, projected: projectedPack, limit: input.policy.maxPackCostUsd });
     }
     if (input.policy.maxStepCostUsd != null && input.policy.maxStepCostUsd > 0) {
-      checks.push({ scope: "step" as const, projected: next, limit: input.policy.maxStepCostUsd });
+      checks.push({ scope: "step" as const, projected: projectedStep, limit: input.policy.maxStepCostUsd });
     }
     const stageBudget = input.spend.stage == null
       ? null
@@ -632,6 +638,9 @@ export class BudgetGuard {
       0,
       Math.min(
         input.policy.maxTaskCostUsd - projectedTask,
+        input.policy.maxPackCostUsd != null && input.policy.maxPackCostUsd > 0 ? input.policy.maxPackCostUsd - projectedPack : Number.POSITIVE_INFINITY,
+        input.policy.maxPlatformCostUsd != null && input.policy.maxPlatformCostUsd > 0 ? input.policy.maxPlatformCostUsd - projectedPlatform : Number.POSITIVE_INFINITY,
+        input.policy.maxStepCostUsd != null && input.policy.maxStepCostUsd > 0 ? input.policy.maxStepCostUsd - projectedStep : Number.POSITIVE_INFINITY,
         input.policy.maxDailyCostUsd - projectedDaily,
         input.policy.maxMonthlyCostUsd - projectedMonthly,
         stageBudget != null ? stageBudget.maxCostUsd - next : Number.POSITIVE_INFINITY,
@@ -760,9 +769,9 @@ export class BudgetExecutionSessionManager {
     return updated;
   }
 
-  public async settle(sessionId: string, actualAmount: number): Promise<BudgetLedger> {
+  public settle(sessionId: string, actualAmount: number): BudgetLedger | Promise<BudgetLedger> {
     const session = this.getRequiredSession(sessionId);
-    const settled = await this.allocator.settle({
+    const settled = this.allocator.settle({
       ledger: session.ledger,
       reservation: session.reservation,
       actualAmount,
@@ -774,6 +783,16 @@ export class BudgetExecutionSessionManager {
         emittedBy: session.request.emittedBy,
       },
     });
+    if (settled instanceof Promise) {
+      return settled.then((result) => {
+        this.sessions.set(sessionId, {
+          ...session,
+          state: "settled",
+          ledger: result.ledger,
+        });
+        return result.ledger;
+      });
+    }
     this.sessions.set(sessionId, {
       ...session,
       state: "settled",

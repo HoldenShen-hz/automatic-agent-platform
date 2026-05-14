@@ -14,7 +14,7 @@ import type {
   AlertSeverity,
   RawRow,
 } from "./slo-alerting/types.js";
-import type { AlertChannel } from "./slo-alerting-service.js";
+import type { AlertChannel } from "./slo-alerting-channels.js";
 
 export interface AlertDispatcherOptions {
   channels?: Partial<Record<AlertChannelKind, AlertChannel>>;

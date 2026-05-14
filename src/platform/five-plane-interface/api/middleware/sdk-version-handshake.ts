@@ -13,7 +13,7 @@ export interface SdkVersionHandshakeRequest {
 export interface SdkVersionHandshakeDecision {
   readonly accepted: boolean;
   readonly statusCode: 200 | 426;
-  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required";
+  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required" | "sdk.platform_incompatible";
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly warnings: readonly string[];
 }
@@ -33,6 +33,19 @@ export class SdkVersionHandshakeService {
 
     // R5-53: Validate platform minimum version compatibility
     // R5-53 fix: Reject handshake if platform_min_version is below minimum, not just warn
+    if (platformMinVersion != null && this.compareSemver(platformMinVersion, this.policy.platformVersion) > 0) {
+      return {
+        accepted: false,
+        statusCode: 426,
+        reasonCode: "sdk.platform_incompatible",
+        responseHeaders: this.buildHeaders("platform_incompatible"),
+        warnings: [
+          `compatibility_error:platform_min=${platformMinVersion};platform=${this.policy.platformVersion}`,
+          ...warnings,
+        ],
+      };
+    }
+
     if (platformMinVersion != null && !this.isStrictSemver(platformMinVersion)) {
       return {
         accepted: false,

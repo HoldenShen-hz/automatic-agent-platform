@@ -22,7 +22,7 @@
 
 import { createHash } from "node:crypto";
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../platform/state-evidence/artifacts/artifact-store.js";
 import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type {
@@ -39,217 +39,38 @@ import type {
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { PolicyDeniedError, StorageError, ValidationError } from "../../platform/contracts/errors.js";
-
-/** Input for registering a new extension package */
-export interface RegisterExtensionPackageInput {
-  /** Optional package ID (auto-generated if not provided) */
-  packageId?: string;
-  /** Tenant scope for this package (null for global) */
-  tenantId?: string | null;
-  /** Extension identifier this package implements */
-  extensionId: string;
-  /** Type of package (tool, workflow, integration, etc.) */
-  packageType: ExtensionPackageType;
-  /** Human-readable display name */
-  displayName: string;
-  /** Version string (semver-ish) */
-  version: string;
-  /** Owner identifier */
-  owner: string;
-  /** Trust level classification */
-  trustLevel: ExtensionTrustLevel;
-  /** URI to the package source */
-  sourceUri: string;
-  /** Capabilities provided by this package */
-  capabilities: string[];
-  /** Permissions required by this package */
-  permissions: string[];
-  /** Compatibility requirements for this package */
-  compatibility: {
-    apiContract: string;
-    permissionSurface: string;
-    runtimeCapability: string;
-  };
-  /** Whether the package signature has been verified */
-  signatureVerified: boolean;
-  /** Whether an SBOM scan has completed and passed */
-  sbomVerified?: boolean;
-  /** Whether sandbox certification has completed and passed */
-  sandboxCertVerified?: boolean;
-  /** Whether egress policy review has completed and passed */
-  egressPolicyCompliant?: boolean;
-  /** SHA-256 checksum of the manifest */
-  manifestChecksum: string;
-  /** Current lifecycle state (defaults to installed) */
-  lifecycleState?: ExtensionLifecycleState;
-  /** Whether review is required before publication */
-  reviewRequired?: boolean;
-  /** Creation timestamp override */
-  createdAt?: string;
-  /** Update timestamp override */
-  updatedAt?: string;
-}
-
-/** Input for submitting a package for marketplace review */
-export interface SubmitMarketplaceReviewInput {
-  /** Optional review ID (auto-generated if not provided) */
-  reviewId?: string;
-  /** Tenant scope */
-  tenantId?: string | null;
-  /** Package to submit for review */
-  packageId: string;
-  /** Submitter identifier */
-  submitter: string;
-  /** Optional initial findings */
-  findings?: string[];
-  /** Submission timestamp override */
-  submittedAt?: string;
-}
-
-/** Input for a review decision */
-export interface DecideMarketplaceReviewInput {
-  /** Review ID to decide */
-  reviewId: string;
-  /** Tenant scope */
-  tenantId?: string | null;
-  /** Decision status */
-  status: Extract<MarketplaceReviewStatus, "approved" | "rejected">;
-  /** Reviewer identifier */
-  reviewer: string;
-  /** Reason code for the decision */
-  decisionReasonCode: string;
-  /** Optional final findings */
-  findings?: string[];
-  /** Decision timestamp override */
-  decidedAt?: string;
-}
-
-/** Input for publishing an approved package */
-export interface PublishExtensionInput {
-  /** Optional publication ID (auto-generated if not provided) */
-  publicationId?: string;
-  /** Tenant scope */
-  tenantId?: string | null;
-  /** Package to publish */
-  packageId: string;
-  /** Review that approved this package (latest approved if not specified) */
-  reviewId?: string;
-  /** Channel to publish to (defaults to marketplace_public) */
-  channel?: string;
-  /** Publication timestamp override */
-  publishedAt?: string;
-}
-
-/** Input for revoking a publication */
-export interface RevokeExtensionInput {
-  /** Publication to revoke */
-  publicationId: string;
-  /** Tenant scope */
-  tenantId?: string | null;
-  /** Reason code for revocation */
-  reasonCode: string;
-  /** Revocation timestamp override */
-  revokedAt?: string;
-}
-
-export interface DeprecateExtensionInput {
-  packageId: string;
-  tenantId?: string | null;
-  reasonCode: string;
-  migrationTarget?: string | null;
-  replacementSuggestions?: readonly string[];
-  deprecatedAt?: string;
-}
-
-export interface SunsetExtensionInput {
-  packageId: string;
-  tenantId?: string | null;
-  reasonCode: string;
-  /** When the sunset period begins (package continues working but is marked as sunsetting). */
-  sunsetAt: string;
-  /** When the package reaches end-of-life and stops working entirely. */
-  endOfLifeAt: string | null;
-  /** Threshold-based conditions that could accelerate sunset (e.g., critical findings). */
-  thresholdConditions?: readonly {
-    conditionId: string;
-    description: string;
-    severityThreshold: "low" | "medium" | "high" | "critical";
-    actionOnTrigger: "immediate_eol" | "extend_grace_period" | "none";
-  }[];
-  migrationTarget?: string | null;
-  replacementSuggestions?: readonly string[];
-}
-
-export interface RetireExtensionInput {
-  packageId: string;
-  tenantId?: string | null;
-  reasonCode: string;
-  migrationCompletionRatio?: number;
-  retiredAt?: string;
-}
-
-/** Entry in the marketplace catalog */
-export interface MarketplaceCatalogEntry {
-  packageId: string;
-  tenantId: string | null;
-  extensionId: string;
-  packageType: ExtensionPackageType;
-  displayName: string;
-  version: string;
-  owner: string;
-  trustLevel: ExtensionTrustLevel;
-  signatureVerified: boolean;
-  lifecycleState: ExtensionLifecycleState;
-  reviewStatus: MarketplaceReviewStatus | "missing";
-  publicationStatus: MarketplacePublicationStatus | "unpublished";
-  channel: string | null;
-  reasonCodes: string[];
-  compatibility: {
-    apiContract: string;
-    permissionSurface: string;
-    runtimeCapability: string;
-  };
-  capabilities: string[];
-  permissions: string[];
-  migrationTarget?: string | null;
-  replacementSuggestions?: readonly string[];
-}
-
-/** Summary statistics for the marketplace catalog */
-export interface MarketplaceCatalogSummary {
-  packagesReady: number;
-  reviewPending: number;
-  blocked: number;
-  revoked: number;
-  total: number;
-  overallVerdict: "ready" | "partial" | "blocked";
-}
-
-/** Complete marketplace governance catalog report */
-export interface MarketplaceCatalogReport {
-  reportId: string;
-  generatedAt: string;
-  tenantId: string | null;
-  summary: MarketplaceCatalogSummary;
-  entries: MarketplaceCatalogEntry[];
-}
-
-/** Result of running marketplace governance */
-export interface MarketplaceGovernanceRunResult {
-  report: MarketplaceCatalogReport;
-  record: MarketplaceGovernanceReportRecord;
-}
-
-/** Result of exporting the marketplace catalog */
-export interface MarketplaceGovernanceExportResult extends MarketplaceGovernanceRunResult {
-  jsonArtifact: ArtifactRef;
-  markdownArtifact: ArtifactRef;
-}
-
-/** Options for MarketplaceGovernanceService */
-export interface MarketplaceGovernanceServiceOptions {
-  artifactStoreOptions?: ArtifactStoreOptions;
-}
+import type {
+  DecideMarketplaceReviewInput,
+  DeprecateExtensionInput,
+  MarketplaceCatalogEntry,
+  MarketplaceCatalogReport,
+  MarketplaceCatalogSummary,
+  MarketplaceGovernanceExportResult,
+  MarketplaceGovernanceRunResult,
+  MarketplaceGovernanceServiceOptions,
+  PublishExtensionInput,
+  RegisterExtensionPackageInput,
+  RetireExtensionInput,
+  RevokeExtensionInput,
+  SubmitMarketplaceReviewInput,
+  SunsetExtensionInput,
+} from "./marketplace-governance-types.js";
+export type {
+  DecideMarketplaceReviewInput,
+  DeprecateExtensionInput,
+  MarketplaceCatalogEntry,
+  MarketplaceCatalogReport,
+  MarketplaceCatalogSummary,
+  MarketplaceGovernanceExportResult,
+  MarketplaceGovernanceRunResult,
+  MarketplaceGovernanceServiceOptions,
+  PublishExtensionInput,
+  RegisterExtensionPackageInput,
+  RetireExtensionInput,
+  RevokeExtensionInput,
+  SubmitMarketplaceReviewInput,
+  SunsetExtensionInput,
+} from "./marketplace-governance-types.js";
 
 /**
  * Validates a URI or similar identifier with extended characters.

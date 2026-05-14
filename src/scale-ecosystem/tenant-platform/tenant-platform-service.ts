@@ -42,257 +42,37 @@ import type {
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { Slo } from "../../platform/contracts/types/slo.js";
-
-/**
- * Validates an identifier string against the allowed pattern.
- * Throws if the value contains invalid characters or is too short/long.
- */
-function assertIdentifier(value: string, code: string): string {
-  if (!/^[a-zA-Z0-9._:-]{2,128}$/.test(value)) {
-    throw new ValidationError(code, code, {
-      category: "tenant",
-      source: "runtime",
-      details: { value },
-    });
-  }
-  return value;
-}
-
-/**
- * Validates a non-empty string after trimming whitespace.
- * Throws if the trimmed value is empty.
- */
-function assertNonEmpty(value: string, code: string): string {
-  const normalized = value.trim();
-  if (normalized.length === 0) {
-    throw new ValidationError(code, code, {
-      category: "tenant",
-      source: "runtime",
-    });
-  }
-  return normalized;
-}
-
-/** Input for creating a new workspace */
-export interface CreateWorkspaceInput {
-  /** Optional workspace ID (auto-generated if not provided) */
-  workspaceId?: string;
-  /** Owner user ID */
-  ownerId: string;
-  /** Human-readable display name */
-  displayName: string;
-  /** Plan identifier for this workspace */
-  planId: string;
-  /** Default policy set identifier */
-  defaultPolicySet?: string;
-  /** Optional parent organization ID */
-  organizationId?: string | null;
-  /** Creation timestamp override */
-  createdAt?: string;
-}
-
-/** Input for adding a user to a workspace */
-export interface AddWorkspaceMembershipInput {
-  /** Workspace to add membership to */
-  workspaceId: string;
-  /** User ID to add */
-  userId: string;
-  /** Role identifier for this membership */
-  role: string;
-  /** Join timestamp override */
-  joinedAt?: string;
-}
-
-/** Input for creating a new organization */
-export interface CreateOrganizationInput {
-  /** Optional organization ID (auto-generated if not provided) */
-  organizationId?: string;
-  /** Human-readable display name */
-  displayName: string;
-  /** Optional billing account binding */
-  billingAccountId?: string | null;
-  /** Optional default tenant for this organization */
-  defaultTenantId?: string | null;
-  /** Creation timestamp override */
-  createdAt?: string;
-}
-
-/** Input for adding a user to an organization */
-export interface AddOrganizationMembershipInput {
-  /** Organization to add membership to */
-  organizationId: string;
-  /** User ID to add */
-  userId: string;
-  /** Role identifier for this membership */
-  role: string;
-  /** Join timestamp override */
-  joinedAt?: string;
-}
-
-/** Input for creating a new tenant */
-export interface CreateTenantInput {
-  /** Optional tenant ID (auto-generated if not provided) */
-  tenantId?: string;
-  /** Parent organization ID */
-  organizationId: string;
-  /** Storage scope identifier */
-  storageScope: string;
-  /** Identity scope identifier */
-  identityScope: string;
-  /** Policy scope identifier */
-  policyScope: string;
-  /** Artifact scope identifier */
-  artifactScope: string;
-  /** Tenant isolation mode (defaults to shared_hard_scoped) */
-  isolationMode?: TenantIsolationMode;
-  /** Deployment mode (defaults to cloud_shared) */
-  deploymentMode?: DeploymentMode;
-  /** Creation timestamp override */
-  createdAt?: string;
-  /** Whether to set this tenant as the organization's default */
-  setAsOrganizationDefault?: boolean;
-  /** Optional tenant-specific encryption override. */
-  encryptionConfig?: {
-    algorithm?: EncryptionAlgorithm;
-    keyRotationPeriodDays?: number;
-    enforceHardwareSecurityModule?: boolean;
-  };
-}
-
-/** Input for creating a deployment binding */
-export interface CreateDeploymentBindingInput {
-  /** Optional binding ID (auto-generated if not provided) */
-  bindingId?: string;
-  /** Tenant to bind */
-  tenantId: string;
-  /** Environment identifier */
-  environmentId: string;
-  /** Deployment mode for this binding */
-  deploymentMode: DeploymentMode;
-  /** Geographic region */
-  region: string;
-  /** Network boundary identifier */
-  networkBoundary: string;
-  /** Creation timestamp override */
-  createdAt?: string;
-}
-
-/** Input for creating a data namespace */
-export interface CreateDataNamespaceInput {
-  /** Optional namespace ID (auto-generated if not provided) */
-  namespaceId?: string;
-  /** Data plane for this namespace */
-  plane: DataNamespacePlane;
-  /** Optional tenant scope */
-  tenantId?: string | null;
-  /** Optional organization scope */
-  organizationId?: string | null;
-  /** Optional workspace scope */
-  workspaceId?: string | null;
-  /** Data retention policy identifier */
-  retentionPolicy: string;
-  /** Encryption policy identifier */
-  encryptionPolicy: string;
-  /** Optional data residency policy */
-  residencyPolicy?: string | null;
-  /** Creation timestamp override */
-  createdAt?: string;
-}
-
-/** Summary of the entire tenant topology with counts and entity lists */
-export interface TenantTopologySummary {
-  /** ISO timestamp when the summary was generated */
-  generatedAt: string;
-  /** Entity counts across the topology */
-  counts: {
-    workspaces: number;
-    workspaceMemberships: number;
-    organizations: number;
-    organizationMemberships: number;
-    tenants: number;
-    deploymentBindings: number;
-    dataNamespaces: number;
-  };
-  /** Workspaces with their memberships included */
-  workspaces: Array<WorkspaceRecord & { memberships: WorkspaceMembershipRecord[] }>;
-  /** Organizations with their memberships included */
-  organizations: Array<OrganizationRecord & { memberships: OrganizationMembershipRecord[] }>;
-  /** All tenant records */
-  tenants: TenantRecord[];
-  /** All deployment bindings */
-  deploymentBindings: DeploymentBindingRecord[];
-  /** All data namespaces */
-  dataNamespaces: DataNamespaceRecord[];
-}
-
-export interface DedicatedPoolIsolationRecord {
-  readonly tenantId: string;
-  readonly organizationId: string;
-  readonly resourcePool: ResourcePool;
-  readonly routingPolicy: "dedicated_pool_only";
-  readonly executionIsolation: "tenant_scoped_worker_pool";
-  readonly provisionedAt: string;
-  readonly quotaScopeId: string;
-}
-
-/**
- * Tenant lifecycle stage (maps to TenantRecord.status field)
- */
-export type TenantLifecycleStage = "provisioning" | "active" | "suspended" | "deactivated" | "decommissioned";
-
-/**
- * Input for lifecycle operations
- */
-export interface TenantLifecycleInput {
-  /** Tenant ID */
-  tenantId: string;
-  /** Actor initiating the change */
-  actor: string;
-  /** Reason for the change */
-  reason: string;
-}
-
-/**
- * Maps lifecycle stage to TenantRecord.status value
- */
-function toTenantStatus(stage: TenantLifecycleStage): "active" | "suspended" | "terminated" {
-  switch (stage) {
-    case "provisioning":
-    case "active":
-    case "deactivated":
-      return "active";
-    case "suspended":
-      return "suspended";
-    case "decommissioned":
-      return "terminated";
-  }
-}
-
-/**
- * Maps TenantRecord.status to lifecycle stage
- */
-function fromTenantStatus(status: "active" | "suspended" | "terminated" | undefined): TenantLifecycleStage {
-  switch (status) {
-    case "suspended":
-      return "suspended";
-    case "terminated":
-      return "decommissioned";
-    case "active":
-    default:
-      return "active";
-  }
-}
-
-/**
- * Valid tenant lifecycle transitions
- */
-const VALID_LIFECYCLE_TRANSITIONS: Record<TenantLifecycleStage, TenantLifecycleStage[]> = {
-  provisioning: ["active", "decommissioned"],
-  active: ["suspended", "deactivated", "decommissioned"],
-  suspended: ["active", "deactivated", "decommissioned"],
-  deactivated: ["active", "decommissioned"],
-  decommissioned: [],
-};
+import {
+  VALID_LIFECYCLE_TRANSITIONS,
+  assertIdentifier,
+  assertNonEmpty,
+  fromTenantStatus,
+  toTenantStatus,
+  type AddOrganizationMembershipInput,
+  type AddWorkspaceMembershipInput,
+  type CreateDataNamespaceInput,
+  type CreateDeploymentBindingInput,
+  type CreateOrganizationInput,
+  type CreateTenantInput,
+  type CreateWorkspaceInput,
+  type DedicatedPoolIsolationRecord,
+  type TenantLifecycleInput,
+  type TenantLifecycleStage,
+  type TenantTopologySummary,
+} from "./tenant-platform-types.js";
+export type {
+  AddOrganizationMembershipInput,
+  AddWorkspaceMembershipInput,
+  CreateDataNamespaceInput,
+  CreateDeploymentBindingInput,
+  CreateOrganizationInput,
+  CreateTenantInput,
+  CreateWorkspaceInput,
+  DedicatedPoolIsolationRecord,
+  TenantLifecycleInput,
+  TenantLifecycleStage,
+  TenantTopologySummary,
+} from "./tenant-platform-types.js";
 
 /**
  * Service for managing the tenant platform topology.
@@ -333,21 +113,11 @@ export class TenantPlatformService {
     return this.fairSchedulingService;
   }
 
-  /**
-   * Defines an SLO for a tenant.
-   * @param tenantId - The tenant ID
-   * @param slo - The SLO definition
-   */
   public defineSlo(tenantId: string, slo: Slo): void {
     assertIdentifier(tenantId, "tenant.invalid_tenant_id");
     this.sloDefinitions.set(`${tenantId}:${slo.sloId}`, slo);
   }
 
-  /**
-   * Gets all SLO definitions for a tenant.
-   * @param tenantId - The tenant ID
-   * @returns Array of SLOs for the tenant
-   */
   public getSloForTenant(tenantId: string): Slo[] {
     const results: Slo[] = [];
     for (const [key, slo] of this.sloDefinitions) {
@@ -358,12 +128,6 @@ export class TenantPlatformService {
     return results;
   }
 
-  /**
-   * Evaluates whether an SLO is met based on metrics.
-   * @param sloId - The SLO ID
-   * @param metrics - Map of metric name to metric value
-   * @returns true if the SLO is met, false otherwise
-   */
   public evaluateSlo(sloId: string, metrics: Record<string, number>): boolean {
     for (const slo of this.sloDefinitions.values()) {
       if (slo.sloId === sloId) {
@@ -386,20 +150,10 @@ export class TenantPlatformService {
     return false;
   }
 
-  /**
-   * R21-08: Retrieve preemption candidates for a tenant.
-   *
-   * Finds all active executions for the tenant that are eligible for preemption,
-   * including checkpoint information needed for the preemption logic.
-   *
-   * @param tenantId - Tenant to get candidates for
-   * @returns Array of preemption candidates with execution details
-   */
   private getPreemptionCandidatesForTenant(tenantId: string): PreemptionCandidate[] {
     const candidates: PreemptionCandidate[] = [];
 
-    // Get all active executions (executing, blocked status)
-    const activeExecutions = this.store.dispatch.listExecutionsByStatuses(["executing", "blocked"]);
+    const activeExecutions = this.store.dispatch?.listExecutionsByStatuses?.(["executing", "blocked"]) ?? [];
 
     for (const execution of activeExecutions) {
       // Get task to check tenant ownership
