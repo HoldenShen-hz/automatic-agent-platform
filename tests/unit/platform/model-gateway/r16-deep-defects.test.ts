@@ -159,7 +159,7 @@ test("R16-08: ChatCompletionRequest interface includes timeoutMs parameter", asy
 // R16-09: ModelRouteRequest includes data_residency, pii_input_detected, model_training_opt_out
 test("R16-09: ModelRouteRequest includes data_residency, pii_input_detected, model_training_opt_out", async () => {
   const { ModelRoutingService } = await import("../../../../src/platform/model-gateway/provider-registry/model-routing-service.js");
-  const { DEFAULT_MODEL_METADATA_REGISTRY } = await import("../../../../src/control-plane/config-center/model-metadata-registry.js");
+  const { DEFAULT_MODEL_METADATA_REGISTRY } = await import("../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js");
 
   const service = new ModelRoutingService({ registry: DEFAULT_MODEL_METADATA_REGISTRY });
 

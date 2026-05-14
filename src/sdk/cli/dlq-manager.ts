@@ -18,6 +18,7 @@
  */
 
 import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
 
 interface DlqAction {
@@ -25,17 +26,21 @@ interface DlqAction {
   queue: "gateway" | "jobs" | "events";
   limit: number;
   channel: string | undefined;
+  retryLimit?: number;
+  confirmed?: boolean;
 }
 
-function parseArguments(): DlqAction {
-  const { values } = parseArgs({
+export function parseArguments(overrides?: Record<string, string | boolean | undefined>): DlqAction {
+  const values = overrides ?? parseArgs({
     options: {
       action: { type: "string", short: "a" },
       queue: { type: "string", short: "q" },
       limit: { type: "string", short: "l", default: "50" },
       channel: { type: "string", short: "c" },
+      "retry-limit": { type: "string" },
+      yes: { type: "boolean", short: "y" },
     },
-  });
+  }).values;
 
   const action = values.action as DlqAction["action"];
   const queue = values.queue as DlqAction["queue"];
@@ -47,11 +52,19 @@ function parseArguments(): DlqAction {
     throw new Error("Invalid queue. Use: gateway, jobs, events");
   }
 
+  const retryLimitRaw = values["retry-limit"];
+  const retryLimit = retryLimitRaw == null ? undefined : Number.parseInt(String(retryLimitRaw), 10);
+  if (retryLimitRaw != null && (retryLimit == null || !Number.isInteger(retryLimit) || retryLimit <= 0)) {
+    throw new Error("Invalid retry-limit. Use a positive integer.");
+  }
+
   return {
     action,
     queue,
-    limit: Math.max(1, Math.min(500, parseInt(values.limit ?? "50", 10))),
-    channel: values.channel ?? undefined,
+    limit: Math.max(1, Math.min(500, parseInt(String(values.limit ?? "50"), 10))),
+    channel: typeof values.channel === "string" ? values.channel : undefined,
+    ...(retryLimit == null ? {} : { retryLimit }),
+    confirmed: values.yes === true,
   };
 }
 
@@ -208,4 +221,6 @@ function main(): void {
   }
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

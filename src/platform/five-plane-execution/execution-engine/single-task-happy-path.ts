@@ -462,6 +462,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       }
     }
 
+    let recordedCostEvent: CostEventRecord | null = null;
+
     db.transaction(() => {
       store.task.insertTask(task);
       store.workflow.insertWorkflowState(workflow);
@@ -686,6 +688,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         createdAt: nowIso(),
       };
       store.billing.insertCostEvent(costEvent);
+      recordedCostEvent = costEvent;
 
       store.workflow.updateWorkflowState(
         taskId,
@@ -760,7 +763,13 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       context: createContext(traceContext, "task.completed"),
     });
 
-    return store.operations.loadTaskSnapshot(taskId);
+    const snapshot = store.operations.loadTaskSnapshot(taskId);
+    return {
+      ...snapshot,
+      executions: snapshot.execution == null ? [] : [snapshot.execution],
+      prechecks: [precheck],
+      costEvents: recordedCostEvent == null ? [] : [recordedCostEvent],
+    };
     }); // end provideContext
   } finally {
     storage.close();

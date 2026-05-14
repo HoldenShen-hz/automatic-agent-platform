@@ -146,17 +146,20 @@ function collectStepWarnings(stepOutput: StepOutputRecord): string[] {
   const warnings: string[] = [];
   if (stepOutput.status === "partial_success") {
     warnings.push(`${stepOutput.nodeRunId}:partial_success`);
+    warnings.push("partial_success");
   }
 
   const validation = safeParseRecord(stepOutput.validationJson);
   if (validation?.valid === false) {
     warnings.push(`${stepOutput.nodeRunId}:validation_failed`);
+    warnings.push("validation_failed");
   }
   const validationWarnings = validation?.warnings;
   if (Array.isArray(validationWarnings)) {
     for (const warning of validationWarnings) {
       if (typeof warning === "string" && warning.length > 0) {
         warnings.push(`${stepOutput.nodeRunId}:validation:${warning}`);
+        warnings.push(`validation:${warning}`);
       }
     }
   }

@@ -36,21 +36,21 @@ const mockRuntimeContext = {
 };
 
 test("AgentMiddlewareChain has registerOnSucceeded method", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   assert.ok(typeof chain.registerOnSucceeded === "function", "registerOnSucceeded should be a function");
 });
 
 test("AgentMiddlewareChain has registerOnFailed method", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   assert.ok(typeof chain.registerOnFailed === "function", "registerOnFailed should be a function");
 });
 
 test("registerOnSucceeded adds hook to the chain", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   let called = false;
@@ -69,7 +69,7 @@ test("registerOnSucceeded adds hook to the chain", async () => {
 });
 
 test("registerOnFailed adds hook to the chain", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   let called = false;
@@ -88,7 +88,7 @@ test("registerOnFailed adds hook to the chain", async () => {
 });
 
 test("onSucceeded hook receives taskId, executionId, output, durationMs", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   let receivedPayload: OnSucceededPayload | null = null;
@@ -116,7 +116,7 @@ test("onSucceeded hook receives taskId, executionId, output, durationMs", async 
 });
 
 test("onFailed hook receives taskId, executionId, errorCode, errorMessage, durationMs", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   let receivedPayload: OnFailedPayload | null = null;
@@ -146,7 +146,7 @@ test("onFailed hook receives taskId, executionId, errorCode, errorMessage, durat
 });
 
 test("onSucceeded hooks are called in sorted order by priority", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const callOrder: string[] = [];
@@ -186,7 +186,7 @@ test("onSucceeded hooks are called in sorted order by priority", async () => {
 });
 
 test("onFailed hooks are called in sorted order by priority", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const callOrder: string[] = [];
@@ -227,7 +227,7 @@ test("onFailed hooks are called in sorted order by priority", async () => {
 });
 
 test("Multiple onSucceeded hooks receive the same input", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const receivedInputs: OnSucceededPayload[] = [];
@@ -262,7 +262,7 @@ test("Multiple onSucceeded hooks receive the same input", async () => {
 });
 
 test("Multiple onFailed hooks receive the same input", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const receivedInputs: OnFailedPayload[] = [];
@@ -298,7 +298,7 @@ test("Multiple onFailed hooks receive the same input", async () => {
 });
 
 test("getRegisteredHooks includes onSucceeded and onFailed arrays", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
 
@@ -322,7 +322,7 @@ test("getRegisteredHooks includes onSucceeded and onFailed arrays", async () => 
 });
 
 test("reset clears onSucceeded and onFailed hooks", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
 
@@ -346,7 +346,7 @@ test("reset clears onSucceeded and onFailed hooks", async () => {
 });
 
 test("triggerOnSucceeded calls all registered hooks even if one throws", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const callResults: string[] = [];
@@ -380,7 +380,7 @@ test("triggerOnSucceeded calls all registered hooks even if one throws", async (
 });
 
 test("triggerOnFailed calls all registered hooks even if one throws", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   const callResults: string[] = [];
@@ -415,7 +415,7 @@ test("triggerOnFailed calls all registered hooks even if one throws", async () =
 });
 
 test("succeeded and failed hooks are independent - adding one does not affect the other", async () => {
-  const { AgentMiddlewareChain } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
+  const { AgentMiddlewareChain } = await import("../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js");
 
   const chain = new AgentMiddlewareChain();
   let succeededCalled = false;

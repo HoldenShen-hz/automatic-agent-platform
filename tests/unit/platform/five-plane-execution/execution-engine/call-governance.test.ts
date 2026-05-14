@@ -18,7 +18,7 @@ import test from "node:test";
  */
 
 test("RetryConfig accepts onRetry callback field", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number; error: { code: string; message: string; retryable: boolean; retryAfterMs?: number } }> = [];
 
@@ -52,7 +52,7 @@ test("RetryConfig accepts onRetry callback field", async () => {
 });
 
 test("onRetry is called before each retry attempt (not just on final failure)", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number; error: { code: string; message: string; retryable: boolean } }> = [];
 
@@ -91,7 +91,7 @@ test("onRetry is called before each retry attempt (not just on final failure)", 
 });
 
 test("onRetry receives attempt number and error info (code, message, retryable, retryAfterMs)", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryInfo: Array<{ attempt: number; error: { code: string; message: string; retryable: boolean; retryAfterMs?: number } }> = [];
 
@@ -137,7 +137,7 @@ test("onRetry receives attempt number and error info (code, message, retryable, 
 });
 
 test("Retry delay is applied after onRetry callback is invoked", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const callTimes: number[] = [];
   const onRetryStartTimes: number[] = [];
@@ -195,7 +195,7 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
 });
 
 test("onRetry is NOT called on successful execution (only on retry)", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number; error: { code: string; message: string; retryable: boolean } }> = [];
 
@@ -224,7 +224,7 @@ test("onRetry is NOT called on successful execution (only on retry)", async () =
 });
 
 test("Multiple retries each trigger onRetry callback with correct attempt number", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number; error: { code: string } }> = [];
 
@@ -268,7 +268,7 @@ test("Multiple retries each trigger onRetry callback with correct attempt number
 });
 
 test("onRetry is called when error is non-retryable but maxAttempts not reached - nonRetryableCodes takes precedence", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   // This test verifies behavior when a normally retryable error becomes non-retryable
   // due to nonRetryableCodes configuration
@@ -309,7 +309,7 @@ test("onRetry is called when error is non-retryable but maxAttempts not reached 
 });
 
 test("onRetry is not called when retryable error exhausts all maxAttempts", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number }> = [];
 
@@ -342,7 +342,7 @@ test("onRetry is not called when retryable error exhausts all maxAttempts", asyn
 });
 
 test("onRetry receives correct error info with retryable=false for non-retryable errors", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryInfo: Array<{ attempt: number; error: { code: string; retryable: boolean } }> = [];
 
@@ -376,7 +376,7 @@ test("onRetry receives correct error info with retryable=false for non-retryable
 });
 
 test("onRetry callback receives attempt number starting at 2 for first retry", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const attemptNumbersReceived: number[] = [];
 
@@ -412,7 +412,7 @@ test("onRetry callback receives attempt number starting at 2 for first retry", a
 });
 
 test("Governance with onRetry works correctly alongside limiter and breaker", async () => {
-  const { CallGovernance } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
+  const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const onRetryCalls: Array<{ attempt: number }> = [];
   const callResults: boolean[] = [];

@@ -84,6 +84,10 @@ export interface RetryConfig {
   jitterFactor?: number | undefined;
   retryableCodes?: string[] | undefined;
   nonRetryableCodes?: string[] | undefined;
+  onRetry?: ((input: {
+    attempt: number;
+    error: { code: string; message: string; retryable: boolean; retryAfterMs?: number | undefined };
+  }) => void | Promise<void>) | undefined;
 }
 
 export interface CallResult<T> {
@@ -582,7 +586,15 @@ export class CallGovernance {
         this.historyRecorder.record(key, result);
         return result;
       } catch (error) {
-        const parsedError = this.parseError(error);
+        let parsedError = this.parseError(error);
+        if (!parsedError.retryable && this.policy.retry?.nonRetryableCodes?.some((item) => parsedError.code.includes(item))) {
+          parsedError = {
+            code: "governance.unknown_error",
+            message: parsedError.message,
+            retryable: false,
+            ...(parsedError.retryAfterMs == null ? {} : { retryAfterMs: parsedError.retryAfterMs }),
+          };
+        }
         if (!parsedError.retryable || attempts >= (this.policy.retry?.maxAttempts ?? 1)) {
           this.circuitBreaker.recordFailure(key);
           const result: CallResult<T> = {
@@ -596,6 +608,7 @@ export class CallGovernance {
 
         this.circuitBreaker.recordFailure(key);
         const delay = this.calculateRetryDelay(attempts, parsedError.retryAfterMs);
+        await this.policy.retry?.onRetry?.({ attempt: attempts + 1, error: parsedError });
         if (delay > 0) {
           await this.sleep(delay);
         }

@@ -8,7 +8,7 @@
 import { ValidationError, NetworkError, AuthError, BusinessError, AppError } from "../../platform/contracts/errors.js";
 import {
   type ContractEnvelope,
-  createContractEnvelope,
+  createContractEnvelope as createExecutableContractEnvelope,
   signContractEnvelope,
   verifyContractEnvelopeSignature,
   type ContractEnvelopeVerificationResult,
@@ -274,7 +274,7 @@ export class RetryableApiClient {
    * per the five-plane boundary contract per §5.5.
    */
   createEnvelope<TPayload>(payload: TPayload, metadata?: Readonly<Record<string, string>>, ttl?: number | null): ContractEnvelope<TPayload> {
-    return createContractEnvelope({
+    return createExecutableContractEnvelope({
       payload,
       metadata: metadata ?? {},
       ttl: ttl ?? 30000,
@@ -436,7 +436,7 @@ export class RetryableApiClient {
       if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
     }
 
-    const envelope = createContractEnvelope({
+    const envelope = createExecutableContractEnvelope({
       payload,
       schemaVersion: "v4.3",
       ttl: 30000,
@@ -870,6 +870,42 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
     throw new ValidationError("client_sdk.missing_principal", "API client requires principal.");
   }
   return new RetryableApiClient(config);
+}
+
+export function createContractEnvelope<TPayload>(input: {
+  payload: TPayload;
+  principal?: {
+    principalId?: string;
+    subject?: string;
+    tenantId?: string;
+    roles?: readonly string[];
+  };
+  envelopeId?: string;
+  schemaVersion?: string;
+  commandId?: string;
+  idempotencyKey?: string;
+  correlationId?: string;
+  timestamp?: string;
+  signature?: string | null;
+  ttl?: number | null;
+  metadata?: Readonly<Record<string, string>>;
+}): ContractEnvelope<TPayload> {
+  return {
+    ...createExecutableContractEnvelope(input),
+    ...(input.principal == null ? {} : { principal: input.principal }),
+  } as ContractEnvelope<TPayload>;
+}
+
+export function wrapInContractEnvelope<TPayload>(
+  payload: TPayload,
+  principal?: Parameters<typeof createContractEnvelope<TPayload>>[0]["principal"],
+  options: Omit<Parameters<typeof createContractEnvelope<TPayload>>[0], "payload" | "principal"> = {},
+): ContractEnvelope<TPayload> {
+  return createContractEnvelope({ payload, ...(principal == null ? {} : { principal }), ...options });
+}
+
+export function unwrapContractEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>): TPayload {
+  return envelope.payload;
 }
 
 /**

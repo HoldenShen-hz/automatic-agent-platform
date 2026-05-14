@@ -25,7 +25,8 @@ function deriveKeyWithPbkdf2(password: Buffer, salt: Buffer): Buffer {
 
 function normalizeKeyInput(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
-  if (Buffer.isBuffer(key) && buffer.length < 16) {
+  const minimumLength = Buffer.isBuffer(key) ? 16 : 8;
+  if (buffer.length < minimumLength) {
     throw new ValidationError("security.encryption_key_too_weak", "security.encryption_key_too_weak");
   }
   return buffer;

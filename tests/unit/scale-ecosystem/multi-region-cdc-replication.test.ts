@@ -16,7 +16,7 @@ import {
   type CDCReplicationEvent,
   type RegionReplicationConfig,
   type ConflictResolutionStrategy,
-} from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+} from "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
 
 function createMockEvent(overrides: Partial<CDCReplicationEvent> = {}): CDCReplicationEvent {
   return {
@@ -602,7 +602,7 @@ test("CDCReplicationService.mergeEventsWithConflictResolution replaces conflicte
 test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs for all targets", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
-    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+    "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
   );
   const coordinator = new MultiRegionReplicationCoordinator(service);
 
@@ -621,7 +621,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs f
 test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
-    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+    "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
   );
   const coordinator = new MultiRegionReplicationCoordinator(service);
 
@@ -631,7 +631,7 @@ test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", 
 test("MultiRegionReplicationCoordinator uses default batch size and interval", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
-    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+    "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
   );
   const coordinator = new MultiRegionReplicationCoordinator(service);
 
@@ -646,7 +646,7 @@ test("MultiRegionReplicationCoordinator uses default batch size and interval", a
 test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown source", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
-    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+    "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
   );
   const coordinator = new MultiRegionReplicationCoordinator(service);
 

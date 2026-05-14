@@ -25,7 +25,7 @@ test("runSingleTaskExecution creates task in queued status", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -41,7 +41,7 @@ test("runSingleTaskExecution creates task in queued status", async () => {
     assert.equal(result.task.status, "done", "Task should complete");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -54,7 +54,7 @@ test("runSingleTaskExecution creates workflow and execution records", async () =
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -70,7 +70,7 @@ test("runSingleTaskExecution creates workflow and execution records", async () =
     assert.ok(result.executions && result.executions.length > 0, "Should have execution record");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -83,7 +83,7 @@ test("runSingleTaskExecution creates session record with streaming status", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -98,7 +98,7 @@ test("runSingleTaskExecution creates session record with streaming status", asyn
     assert.ok(result.session, "Should have session record");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -111,7 +111,7 @@ test("runSingleTaskExecution writes step output artifact", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -128,7 +128,7 @@ test("runSingleTaskExecution writes step output artifact", async () => {
     assert.equal(stepOutput.status, "succeeded", "Step output should succeed");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -141,7 +141,7 @@ test("runSingleTaskExecution uses synthetic output when stepOutputOverride provi
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const customResult = "Custom synthetic result";
     const result = await runSingleTaskExecution({
@@ -159,7 +159,7 @@ test("runSingleTaskExecution uses synthetic output when stepOutputOverride provi
     assert.equal(output.result, customResult, "Should use custom result");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -172,7 +172,7 @@ test("runSingleTaskExecution transitions through all lifecycle states", async ()
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     // This test verifies the happy path completes without error
     const result = await runSingleTaskExecution({
@@ -189,7 +189,7 @@ test("runSingleTaskExecution transitions through all lifecycle states", async ()
     assert.equal(result.task.status, "done", "Task should reach done state");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -202,7 +202,7 @@ test("runSingleTaskExecution handles tenantId option", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -218,7 +218,7 @@ test("runSingleTaskExecution handles tenantId option", async () => {
     assert.equal(result.task.tenantId, "test-tenant-123", "Should set tenant ID");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -231,7 +231,7 @@ test("runSingleTaskExecution includes cost record in snapshot", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -250,7 +250,7 @@ test("runSingleTaskExecution includes cost record in snapshot", async () => {
     assert.ok(costEvent.budgetScope, "Cost event should have budget scope");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -263,7 +263,7 @@ test("runSingleTaskExecution enforces budget reservation (INV-BUDGET-001)", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -284,7 +284,7 @@ test("runSingleTaskExecution enforces budget reservation (INV-BUDGET-001)", asyn
     }
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -297,7 +297,7 @@ test("runSingleTaskExecution creates precheck record before execution", async ()
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -316,7 +316,7 @@ test("runSingleTaskExecution creates precheck record before execution", async ()
     assert.ok(precheck.resolvedBudgetUsd !== undefined, "Precheck should have resolved budget");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -329,7 +329,7 @@ test("runSingleTaskExecution handles admission with backpressure snapshot", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -350,7 +350,7 @@ test("runSingleTaskExecution handles admission with backpressure snapshot", asyn
     assert.equal(result.task.status, "done", "Task should still complete");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -360,7 +360,7 @@ test("runSingleTaskExecution handles admission with backpressure snapshot", asyn
 });
 
 test("runSingleTaskExecution exports runPhase1AHappyPath alias", async () => {
-  const { runPhase1AHappyPath } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+  const { runPhase1AHappyPath } = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
   assert.ok(typeof runPhase1AHappyPath === "function", "runPhase1AHappyPath should be exported as function");
 });

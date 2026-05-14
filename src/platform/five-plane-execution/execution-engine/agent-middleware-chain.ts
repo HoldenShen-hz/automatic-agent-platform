@@ -102,6 +102,29 @@ export interface AfterAgentHook extends MiddlewareHook {
   run(ctx: MiddlewareContext, input: { response: unknown; toolsUsed: string[] }): MiddlewareResult | Promise<MiddlewareResult>;
 }
 
+export interface OnSucceededPayload {
+  taskId: string;
+  executionId: string;
+  output: unknown;
+  durationMs: number;
+}
+
+export interface OnFailedPayload {
+  taskId: string;
+  executionId: string;
+  errorCode: string;
+  errorMessage: string;
+  durationMs: number;
+}
+
+export interface OnSucceededHook extends MiddlewareHook {
+  run(payload: OnSucceededPayload): void | Promise<void>;
+}
+
+export interface OnFailedHook extends MiddlewareHook {
+  run(payload: OnFailedPayload): void | Promise<void>;
+}
+
 export class AgentMiddlewareChain {
   // C-04: Use copy-on-write pattern for atomic array updates
   // Array reassignment is atomic in JS, avoiding race conditions in sortedInsert
@@ -111,6 +134,8 @@ export class AgentMiddlewareChain {
   private _wrapModelCallHooks: WrapModelCallHook[] = [];
   private _wrapToolCallHooks: WrapToolCallHook[] = [];
   private _afterAgentHooks: AfterAgentHook[] = [];
+  private _onSucceededHooks: OnSucceededHook[] = [];
+  private _onFailedHooks: OnFailedHook[] = [];
 
   constructor(
     private readonly options: {
@@ -154,6 +179,8 @@ export class AgentMiddlewareChain {
     this._wrapModelCallHooks = [];
     this._wrapToolCallHooks = [];
     this._afterAgentHooks = [];
+    this._onSucceededHooks = [];
+    this._onFailedHooks = [];
   }
 
   registerBeforeAgent(hook: BeforeAgentHook): void {
@@ -178,6 +205,38 @@ export class AgentMiddlewareChain {
 
   registerAfterAgent(hook: AfterAgentHook): void {
     this._afterAgentHooks = this.sortedInsert(this._afterAgentHooks, hook);
+  }
+
+  registerOnSucceeded(hook: OnSucceededHook): void {
+    this._onSucceededHooks = this.sortedInsert(this._onSucceededHooks, hook);
+  }
+
+  registerOnFailed(hook: OnFailedHook): void {
+    this._onFailedHooks = this.sortedInsert(this._onFailedHooks, hook);
+  }
+
+  async triggerOnSucceeded(payload: OnSucceededPayload): Promise<void> {
+    await this.runLifecycleHooks(this._onSucceededHooks, payload);
+  }
+
+  async triggerOnFailed(payload: OnFailedPayload): Promise<void> {
+    await this.runLifecycleHooks(this._onFailedHooks, payload);
+  }
+
+  private async runLifecycleHooks<TPayload>(
+    hooks: readonly (MiddlewareHook & { run(payload: TPayload): void | Promise<void> })[],
+    payload: TPayload,
+  ): Promise<void> {
+    const orderedHooks = hooks.length <= 2 ? [...hooks] : [...hooks].sort((left, right) => right.priority - left.priority);
+    for (const hook of orderedHooks) {
+      try {
+        await hook.run(payload);
+      } catch (err) {
+        if (this.options.failOpen === false) {
+          throw err;
+        }
+      }
+    }
   }
 
   private logWarning(code: string, message: string, ctx: MiddlewareContext): void {
@@ -435,6 +494,8 @@ export class AgentMiddlewareChain {
     wrapModelCall: string[];
     wrapToolCall: string[];
     afterAgent: string[];
+    onSucceeded: string[];
+    onFailed: string[];
   } {
     return {
       beforeAgent: this._beforeAgentHooks.map((h: BeforeAgentHook) => h.name),
@@ -443,6 +504,8 @@ export class AgentMiddlewareChain {
       wrapModelCall: this._wrapModelCallHooks.map((h: WrapModelCallHook) => h.name),
       wrapToolCall: this._wrapToolCallHooks.map((h: WrapToolCallHook) => h.name),
       afterAgent: this._afterAgentHooks.map((h: AfterAgentHook) => h.name),
+      onSucceeded: this._onSucceededHooks.map((h: OnSucceededHook) => h.name),
+      onFailed: this._onFailedHooks.map((h: OnFailedHook) => h.name),
     };
   }
 }

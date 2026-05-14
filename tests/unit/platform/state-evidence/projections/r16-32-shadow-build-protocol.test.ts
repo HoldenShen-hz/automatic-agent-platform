@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert";
-import type { ProjectionHandler } from "../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
+import type { ProjectionHandler } from "../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 const mockEventRepository = {
   listAllEvents: mock.fn(() => []),
@@ -16,7 +16,7 @@ describe("R16-32: Projection rebuild shadow-build protocol", () => {
   let service: any;
 
   beforeEach(async () => {
-    const { ProjectionRebuildService } = await import("../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js");
+    const { ProjectionRebuildService } = await import("../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js");
     service = new ProjectionRebuildService(mockEventRepository as any);
   });
 
