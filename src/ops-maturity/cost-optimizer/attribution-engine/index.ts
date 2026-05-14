@@ -22,15 +22,7 @@ export function aggregateCostAttribution(entries: readonly CostAttributionEntry[
   // Round to 4 decimal places for floating point precision
   const roundedEntries = Object.entries(raw).map(([k, v]) => [k, roundUsd(v)] as const);
   const roundedTotal = roundUsd(total);
-  if (roundedEntries.length > 1) {
-    const lastIndex = roundedEntries.length - 1;
-    const priorSum = roundedEntries.slice(0, lastIndex).reduce((sum, [, value]) => sum + value, 0);
-    const [key, value] = roundedEntries[lastIndex]!;
-    const adjusted = roundUsd(roundedTotal - priorSum);
-    if (adjusted === value) {
-      roundedEntries[lastIndex] = [key, adjusted] as const;
-    }
-  }
+  void roundedTotal;
   return Object.fromEntries(roundedEntries);
 }
 

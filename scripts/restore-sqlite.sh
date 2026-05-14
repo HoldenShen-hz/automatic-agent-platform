@@ -10,6 +10,7 @@
 #
 # Environment variables:
 #   AA_DB_PATH   Target database path (default: data/sqlite/authoritative-demo.db)
+#   AA_BACKUP_ENCRYPTION_KEY_FILE  Required when restoring a .enc backup
 #
 # Arguments:
 #   BACKUP_PATH  Path to the .db backup file to restore from (required)
@@ -25,6 +26,7 @@ fi
 
 BACKUP_PATH="$1"
 DB_PATH="${2:-${AA_DB_PATH:-data/sqlite/authoritative-demo.db}}"
+DECRYPTED_BACKUP_PATH=""
 
 # Resolve absolute paths
 BACKUP_PATH="$(realpath "$BACKUP_PATH" 2>/dev/null)" || {
@@ -40,6 +42,20 @@ DB_PATH="$(realpath "$DB_PATH" 2>/dev/null)" || {
 if [ ! -f "$BACKUP_PATH" ]; then
   echo "ERROR: Backup file not found: $BACKUP_PATH" >&2
   exit 1
+fi
+
+if [[ "$BACKUP_PATH" == *.enc ]]; then
+  if [ -z "${AA_BACKUP_ENCRYPTION_KEY_FILE:-}" ] || [ ! -f "$AA_BACKUP_ENCRYPTION_KEY_FILE" ]; then
+    echo "ERROR: AA_BACKUP_ENCRYPTION_KEY_FILE is required to restore encrypted backups." >&2
+    exit 1
+  fi
+  DECRYPTED_BACKUP_PATH="$(mktemp "${TMPDIR:-/tmp}/aa-restore.XXXXXX.db")"
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+    -pass "file:${AA_BACKUP_ENCRYPTION_KEY_FILE}" \
+    -in "$BACKUP_PATH" \
+    -out "$DECRYPTED_BACKUP_PATH"
+  BACKUP_PATH="$DECRYPTED_BACKUP_PATH"
+  trap 'rm -f "$DECRYPTED_BACKUP_PATH"' EXIT
 fi
 
 # Verify backup integrity before restoring

@@ -286,7 +286,7 @@ export class FencingTokenService {
    */
   public clearAllFences(): void {
     FencingTokenService.activeFences.clear();
-    FencingTokenService.globalTokenCounter = 0;
+    Atomics.store(FencingTokenService.globalTokenCounter, 0, 0);
   }
 
   /**

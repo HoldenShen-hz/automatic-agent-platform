@@ -13,6 +13,7 @@ import type { DivisionRegistry } from "../../../domains/governance/division-load
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
 import { InspectService } from "../../shared/observability/inspect-service.js";
 import { DistributedRateLimiter, type RateLimitCheckResult } from "../ingress/distributed-rate-limiter.js";
+import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
 import { provideContext } from "../../shared/context/runtime-context.js";
 import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -40,6 +41,7 @@ import { AdminRuntimeDirectiveService } from "./admin-runtime-directive-service.
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import { readRequestId } from "./http-server/utils.js";
 import { createDeduplicationMiddleware } from "./middleware/request-deduplication.js";
+import { globalVersionRoutingMiddleware } from "./middleware/version-routing.js";
 import {
   createIdempotencyKeyMiddleware,
   extractIdempotencyKey,
@@ -174,7 +176,9 @@ export class HttpApiServer {
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
-    this.rateLimiter = options.rateLimiter ?? null;
+    this.rateLimiter = options.rateLimiter === undefined
+      ? createDefaultApiRateLimiter(process.env)
+      : options.rateLimiter;
     this.incidentService = options.incidentService ?? createNoOpIncidentFacadeService();
     this.packCatalogService = options.packCatalogService ?? new PackCatalogService();
     this.costReportService = options.costReportService ?? new CostReportService();
@@ -322,8 +326,21 @@ export class HttpApiServer {
     let payload: ApiResponsePayload;
 
     try {
+      const versionDecision = globalVersionRoutingMiddleware.selectVersion(
+        globalVersionRoutingMiddleware.parseAcceptVersion(headers["accept-version"] ?? null),
+      );
+      if (!versionDecision.acceptable) {
+        payload = this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
+          code: versionDecision.reasonCode,
+          message: "Requested API version is not supported.",
+          details: {
+            warnings: versionDecision.warnings,
+          },
+        });
+        payload.headers["x-api-version"] = versionDecision.version;
+      }
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
-      if ((request.method ?? "GET") === "OPTIONS") {
+      else if ((request.method ?? "GET") === "OPTIONS") {
         payload = {
           statusCode: 204,
           headers: buildPreflightHeaders(headers.origin, this.corsConfig),
@@ -348,6 +365,10 @@ export class HttpApiServer {
       // 3. No rate limiter — normal routing
       else {
         payload = await this.routeRequest(requestId, request, headers);
+      }
+      payload.headers["x-api-version"] ??= versionDecision.version;
+      if (versionDecision.warnings.length > 0) {
+        payload.headers["warning"] = versionDecision.warnings.join(", ");
       }
     } catch (error) {
       payload = this.handleError(error, requestId, {
@@ -860,4 +881,26 @@ function normalizeApiTimeout(value: number | undefined, fallback: number, max: n
     return fallback;
   }
   return Math.min(Math.trunc(value), max);
+}
+
+function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): DistributedRateLimiter | null {
+  if (env["AA_API_RATE_LIMIT_DISABLED"] === "1") {
+    return null;
+  }
+  const maxCalls = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_MAX_CALLS"]) ?? 100;
+  const windowMs = parsePositiveIntegerEnv(env["AA_API_RATE_LIMIT_WINDOW_MS"]) ?? 1000;
+  const redis = readRedisConnectionConfigFromEnv("AA_API_RATE_LIMIT_REDIS", env);
+  return new DistributedRateLimiter({
+    maxCalls,
+    windowMs,
+    ...(redis != null ? { redis } : {}),
+  });
+}
+
+function parsePositiveIntegerEnv(raw: string | undefined): number | null {
+  if (raw == null || raw.trim().length === 0) {
+    return null;
+  }
+  const parsed = Number(raw.trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }

@@ -74,12 +74,17 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxBackoffMs: 1000,
 };
 
+function normalizeApiVersionSegment(apiVersion: string): string {
+  const normalized = apiVersion.replace(/^\/+|\/+$/g, "");
+  return normalized.startsWith("api/") ? normalized : `api/${normalized}`;
+}
+
 /**
  * Build a versioned API URL with query parameters and tenant context.
  */
 export function buildApiUrl(config: ApiClientConfig, request: ApiRequestSpec): string {
   const baseUrl = config.baseUrl.replace(/\/+$/, "");
-  const apiVersion = config.apiVersion.replace(/^\/+|\/+$/g, "");
+  const apiVersion = normalizeApiVersionSegment(config.apiVersion);
   const path = request.path.replace(/^\/+/, "");
   const url = new URL(`${baseUrl}/${apiVersion}/${path}`);
 
@@ -323,7 +328,7 @@ export class RetryableApiClient {
     let abortController: AbortController | null = null;
 
     const buildSseUrl = () => {
-      const url = new URL(`${this.config.baseUrl.replace(/\/+$/, "")}/${this.config.apiVersion.replace(/^\/+|\/+$/g, "")}${path}`);
+      const url = new URL(`${this.config.baseUrl.replace(/\/+$/, "")}/${normalizeApiVersionSegment(this.config.apiVersion)}${path}`);
       if (this.config.tenantId?.trim()) {
         url.searchParams.set("tenantId", this.config.tenantId.trim());
       }
@@ -499,6 +504,7 @@ export class RetryableApiClient {
           statusCode: error.statusCode ?? 400,
           retryable: false,
         });
+      case ApiErrorCategory.VALIDATION:
       case ApiErrorCategory.CONTRACT:
         return new ValidationError("client_sdk.contract_violation", `Contract validation failed: ${error.message}`, {
           statusCode: error.statusCode ?? 400,
@@ -687,6 +693,7 @@ export type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promis
 export enum ApiErrorCategory {
   NETWORK = "network",
   AUTH = "auth",
+  VALIDATION = "validation",
   BUSINESS = "business",
   CONTRACT = "contract",
 }
@@ -715,6 +722,12 @@ export function classifyApiError(statusCode: number | null, message: string): Ap
   }
   if (statusCode === 401 || statusCode === 403) {
     return ApiErrorCategory.AUTH;
+  }
+  if (statusCode === 400 || statusCode === 422) {
+    return ApiErrorCategory.VALIDATION;
+  }
+  if (statusCode === 409 || statusCode === 412) {
+    return ApiErrorCategory.BUSINESS;
   }
   if (statusCode >= 500) {
     return ApiErrorCategory.NETWORK;

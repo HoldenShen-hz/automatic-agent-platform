@@ -125,7 +125,7 @@ test("buildPreflightHeaders includes CORS headers for allowed origin", () => {
   const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-allow-origin"], "https://example.com");
-  assert.equal(headers["access-control-allow-methods"], "GET, POST, OPTIONS");
+  assert.equal(headers["access-control-allow-methods"], "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   assert.equal(headers["access-control-allow-headers"], "content-type, authorization, x-request-id, x-api-key");
   assert.equal(headers["access-control-max-age"], "86400");
 });

@@ -64,17 +64,17 @@ test("parseArtifactBundlePreviewPayload parses valid payload", () => {
     artifacts: [
       {
         artifactId: "art_1",
+        harnessRunId: "hr_1",
         taskId: "task_123",
-        stepId: "step_1",
-        agentRole: "executor",
         type: "source_code",
         path: "/path/to/artifact",
-        contentHash: "abc123def456",
+        mimeType: "text/plain",
+        sizeBytes: 1024,
+        checksum: "abc123def456",
         version: 1,
-        parentArtifactId: null,
-        size: 1024,
         createdAt: "2024-01-01T00:00:00.000Z",
-        status: "committed",
+        publishStatus: "draft",
+        metadata: {},
       },
     ],
   });

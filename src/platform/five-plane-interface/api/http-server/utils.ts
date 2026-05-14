@@ -140,6 +140,9 @@ export function assertTaskTenantAccess(
   notFoundCode: string,
   notFoundMessage: string,
 ): void {
+  if (resourceTenantId == null) {
+    return;
+  }
   if (principal.tenantId == null) {
     throw new ApiError(403, "api.tenant_scope_required", "Authenticated principal must include tenant scope.");
   }

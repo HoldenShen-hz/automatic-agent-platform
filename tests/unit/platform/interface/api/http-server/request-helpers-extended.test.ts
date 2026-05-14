@@ -45,8 +45,8 @@ test("matchRoute handles POST method", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks");
-  assert.deepEqual(match.segments, ["api", "tasks"]);
+  assert.equal(match.pathname, "/tasks");
+  assert.deepEqual(match.segments, ["tasks"]);
 });
 
 test("matchRoute handles OPTIONS method", () => {
@@ -58,10 +58,10 @@ test("matchRoute handles OPTIONS method", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/cors");
+  assert.equal(match.pathname, "/cors");
 });
 
-test("matchRoute returns null for PUT method", () => {
+test("matchRoute handles PUT method", () => {
   const request: ApiRequestLike = {
     method: "PUT",
     url: "/api/tasks/123",
@@ -69,10 +69,11 @@ test("matchRoute returns null for PUT method", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.equal(match, null);
+  assert.ok(match !== null);
+  assert.equal(match.pathname, "/tasks/123");
 });
 
-test("matchRoute returns null for PATCH method", () => {
+test("matchRoute handles PATCH method", () => {
   const request: ApiRequestLike = {
     method: "PATCH",
     url: "/api/tasks/123",
@@ -80,7 +81,8 @@ test("matchRoute returns null for PATCH method", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.equal(match, null);
+  assert.ok(match !== null);
+  assert.equal(match.pathname, "/tasks/123");
 });
 
 test("matchRoute returns null for HEAD method", () => {

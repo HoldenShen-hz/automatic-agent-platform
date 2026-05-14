@@ -26,7 +26,9 @@ test("createHealthRoutes returns readiness, liveness, health, and OpenAPI routes
     missionControlService: createMockMissionControlService(),
   };
   const routes = createHealthRoutes(deps);
-  assert.equal(routes.length, 6);
+  assert.equal(routes.length, 8);
+  assert.ok(routes.some((route) => route.pathname === "/v1/version"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/handshake"));
 });
 
 test("GET /livez returns alive during shutdown without marking ready", async () => {
@@ -104,4 +106,26 @@ test("GET /v1/openapi.json returns OpenAPI document", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("openapi"));
+});
+
+test("GET /v1/version returns SDK compatibility metadata", async () => {
+  const routes = createHealthRoutes({
+    missionControlService: createMockMissionControlService(),
+  });
+  const route = routes.find((r) => r.pathname === "/v1/version")!;
+  const response = await route.handler(createMockContext());
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("minClientVersion"));
+});
+
+test("GET /v1/handshake returns accepted compatibility metadata", async () => {
+  const routes = createHealthRoutes({
+    missionControlService: createMockMissionControlService(),
+  });
+  const route = routes.find((r) => r.pathname === "/v1/handshake")!;
+  const response = await route.handler(createMockContext());
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("\"accepted\": true"));
 });

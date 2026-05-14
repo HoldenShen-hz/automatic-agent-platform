@@ -94,12 +94,11 @@ test("BrowserExecutor navigate validates URL protocol", async () => {
   const sessionId = executor.createSession(context);
 
   // Only http and https are allowed
-  await assert.rejects(
-    async () => executor.navigate(sessionId, context, {
-      url: "file:///etc/passwd",
-    }),
-    { message: /invalid_url_protocol/ },
-  );
+  const result = await executor.navigate(sessionId, context, {
+    url: "file:///etc/passwd",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /invalid_url_protocol/);
 });
 
 test("BrowserExecutor navigate validates URL format", async () => {
@@ -107,12 +106,11 @@ test("BrowserExecutor navigate validates URL format", async () => {
   const context = createTestContext();
   const sessionId = executor.createSession(context);
 
-  await assert.rejects(
-    async () => executor.navigate(sessionId, context, {
-      url: "not-a-valid-url",
-    }),
-    { message: /invalid_url/ },
-  );
+  const result = await executor.navigate(sessionId, context, {
+    url: "not-a-valid-url",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /invalid_url/);
 });
 
 test("BrowserExecutor navigate succeeds with valid https URL", async () => {
@@ -135,12 +133,11 @@ test("BrowserExecutor click validates empty selector", async () => {
   const context = createTestContext();
   const sessionId = executor.createSession(context);
 
-  await assert.rejects(
-    async () => executor.click(sessionId, context, {
-      selector: "   ",
-    }),
-    { message: /empty_selector/ },
-  );
+  const result = await executor.click(sessionId, context, {
+    selector: "   ",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /empty_selector/);
 });
 
 test("BrowserExecutor click succeeds with valid selector", async () => {
@@ -167,13 +164,12 @@ test("BrowserExecutor input validates empty selector", async () => {
   const context = createTestContext();
   const sessionId = executor.createSession(context);
 
-  await assert.rejects(
-    async () => executor.input(sessionId, context, {
-      selector: "",
-      text: "hello",
-    }),
-    { message: /empty_selector/ },
-  );
+  const result = await executor.input(sessionId, context, {
+    selector: "",
+    text: "hello",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /empty_selector/);
 });
 
 test("BrowserExecutor input succeeds with valid input", async () => {
@@ -214,12 +210,11 @@ test("BrowserExecutor evaluate rejects empty script", async () => {
   const context = createTestContext();
   const sessionId = executor.createSession(context);
 
-  await assert.rejects(
-    async () => executor.evaluate(sessionId, context, {
-      script: "   ",
-    }),
-    { message: /empty_script/ },
-  );
+  const result = await executor.evaluate(sessionId, context, {
+    script: "   ",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /empty_script/);
 });
 
 test("BrowserExecutor evaluate handles location.href script", async () => {
@@ -256,12 +251,11 @@ test("BrowserExecutor waitForSelector validates selector", async () => {
   const context = createTestContext();
   const sessionId = executor.createSession(context);
 
-  await assert.rejects(
-    async () => executor.waitForSelector(sessionId, context, {
-      selector: "",
-    }),
-    { message: /empty_selector/ },
-  );
+  const result = await executor.waitForSelector(sessionId, context, {
+    selector: "",
+  });
+  assert.equal(result.status, "error");
+  assert.match(result.error ?? "", /empty_selector/);
 });
 
 test("BrowserExecutor waitForSelector succeeds with valid selector", async () => {

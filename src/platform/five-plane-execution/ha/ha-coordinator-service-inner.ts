@@ -260,6 +260,9 @@ export class HaCoordinatorService {
       this.db.connection
         .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1`)
         .run();
+      this.db.connection
+        .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE status = 'active'`)
+        .run();
 
       // Insert new lease
       this.db.connection

@@ -12,27 +12,27 @@ import {
 import type { ApiResponsePayload } from "../../../../../src/platform/interface/api/http-server/types.js";
 
 test("DEFAULT_CORS_CONFIG has correct structure", () => {
-  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, ["*"]);
-  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedMethods, ["GET", "POST", "OPTIONS"]);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, []);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedMethods, ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedHeaders, ["content-type", "authorization", "x-request-id", "x-api-key"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"]);
   assert.equal(DEFAULT_CORS_CONFIG.maxAgeSeconds, 86_400);
-  assert.equal(DEFAULT_CORS_CONFIG.credentials, true);
+  assert.equal(DEFAULT_CORS_CONFIG.credentials, false);
 });
 
 test("parseAllowedOrigins returns default for undefined input", () => {
   const result = parseAllowedOrigins(undefined);
-  assert.deepEqual(result, ["*"]);
+  assert.deepEqual(result, []);
 });
 
 test("parseAllowedOrigins returns default for empty string", () => {
   const result = parseAllowedOrigins("");
-  assert.deepEqual(result, ["*"]);
+  assert.deepEqual(result, []);
 });
 
 test("parseAllowedOrigins returns default for whitespace string", () => {
   const result = parseAllowedOrigins("   ");
-  assert.deepEqual(result, ["*"]);
+  assert.deepEqual(result, []);
 });
 
 test("parseAllowedOrigins parses single origin", () => {
@@ -93,12 +93,12 @@ test("normalizeCorsConfig uses default when empty array provided", () => {
 });
 
 test("isOriginAllowed returns false for undefined origin", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], credentials: true };
   assert.equal(isOriginAllowed(undefined, config), false);
 });
 
 test("isOriginAllowed returns false for empty string origin", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], credentials: true };
   assert.equal(isOriginAllowed("", config), false);
 });
 
@@ -149,36 +149,36 @@ test("buildPreflightHeaders returns wildcard for credential-less wildcard config
   assert.equal(headers["access-control-allow-origin"], "*");
 });
 
-test("buildPreflightHeaders returns origin for credential-wildcard config", () => {
+test("buildPreflightHeaders rejects credential-wildcard config by omitting CORS headers", () => {
   const config = {
     ...DEFAULT_CORS_CONFIG,
     allowedOrigins: ["*"],
     credentials: true,
   };
   const headers = buildPreflightHeaders("https://example.com", config);
-  assert.equal(headers["access-control-allow-origin"], "https://example.com");
+  assert.equal(headers["access-control-allow-origin"], undefined);
 });
 
 test("buildPreflightHeaders includes allow methods", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, allowedMethods: ["GET", "POST"] };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], allowedMethods: ["GET", "POST"] };
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-allow-methods"], "GET, POST");
 });
 
 test("buildPreflightHeaders includes allow headers", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, allowedHeaders: ["content-type", "authorization"] };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], allowedHeaders: ["content-type", "authorization"] };
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-allow-headers"], "content-type, authorization");
 });
 
 test("buildPreflightHeaders includes max age", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, maxAgeSeconds: 3600 };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], maxAgeSeconds: 3600 };
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-max-age"], "3600");
 });
 
 test("buildPreflightHeaders includes credentials header when enabled", () => {
-  const config = { ...DEFAULT_CORS_CONFIG, credentials: true };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], credentials: true };
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-allow-credentials"], "true");
 });
@@ -190,7 +190,7 @@ test("buildPreflightHeaders does not include credentials header when disabled", 
 });
 
 test("buildPreflightHeaders includes vary header", () => {
-  const headers = buildPreflightHeaders("https://example.com", DEFAULT_CORS_CONFIG);
+  const headers = buildPreflightHeaders("https://example.com", { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] });
   assert.equal(headers["vary"], "Origin");
 });
 
@@ -234,7 +234,7 @@ test("decorateResponseHeaders adds CORS headers when origin allowed", () => {
     headers: {},
     body: "test",
   };
-  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], credentials: true };
   const result = decorateResponseHeaders(payload, "https://example.com", config);
   assert.equal(result.headers["access-control-allow-origin"], "https://example.com");
   assert.equal(result.headers["access-control-allow-credentials"], "true");

@@ -66,6 +66,16 @@ interface LeaderElectionCoordinatorCompat {
   releaseLeadership?: (...args: unknown[]) => unknown;
 }
 
+interface GracefulShutdownLike {
+  addHandler(handler: {
+    name: string;
+    handler: () => Promise<void>;
+    timeoutMs?: number;
+    critical?: boolean;
+    dependsOn?: readonly string[];
+  }): void;
+}
+
 /**
  * Leader election service options.
  */
@@ -261,6 +271,15 @@ export class LeaderElectionService extends EventEmitter {
       level: "info",
       message: "leader_election.service_stopped",
       data: { nodeId: this.effectiveNodeId },
+    });
+  }
+
+  public registerWithGracefulShutdown(shutdown: GracefulShutdownLike): void {
+    shutdown.addHandler({
+      name: `leader-election:${this.effectiveNodeId}`,
+      handler: () => this.stop(),
+      timeoutMs: this.config.leaseTtlMs,
+      critical: true,
     });
   }
 

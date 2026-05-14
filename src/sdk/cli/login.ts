@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -75,7 +75,29 @@ function saveOAuthTokens(tokens: {
 }, env: NodeJS.ProcessEnv = process.env): string {
   const credentialsPath = env.AA_CREDENTIALS_PATH ?? join(env.HOME ?? "/tmp", ".automatic-agent", "credentials.json");
   mkdirSync(dirname(credentialsPath), { recursive: true, mode: 0o700 });
-  writeFileSync(credentialsPath, JSON.stringify(tokens, null, 2), { encoding: "utf8", mode: 0o600 });
+  const payload = JSON.stringify(tokens, null, 2);
+  const encryptionKey = env.AA_CREDENTIALS_ENCRYPTION_KEY?.trim();
+  if (encryptionKey != null && encryptionKey.length > 0) {
+    const salt = randomBytes(16);
+    const iv = randomBytes(12);
+    const key = scryptSync(encryptionKey, salt, 32);
+    const cipher = createCipheriv("aes-256-gcm", key, iv);
+    const ciphertext = Buffer.concat([cipher.update(payload, "utf8"), cipher.final()]);
+    const envelope = {
+      version: "oauth-cred-v1",
+      algorithm: "aes-256-gcm",
+      salt: salt.toString("base64"),
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
+      ciphertext: ciphertext.toString("base64"),
+    };
+    writeFileSync(credentialsPath, JSON.stringify(envelope, null, 2), { encoding: "utf8", mode: 0o600 });
+    return credentialsPath;
+  }
+  if (env.NODE_ENV === "production") {
+    throw new ValidationError("oauth.credentials_encryption_key_required", "oauth.credentials_encryption_key_required");
+  }
+  writeFileSync(credentialsPath, payload, { encoding: "utf8", mode: 0o600 });
   return credentialsPath;
 }
 

@@ -36,6 +36,11 @@ export interface ModelCallProviderConfig {
     windowMs: number;
   } | null;
   distributedRateLimiter?: DistributedRateLimiterLike | null;
+  fallbackModels?: readonly string[];
+  retry?: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+  };
 }
 
 let modelCallProviderInstance: ModelCallProviderService | null = null;
@@ -82,6 +87,9 @@ export interface LlmModelCallResult {
 export class ModelCallProviderService {
   private readonly unifiedProvider: ReturnType<typeof createUnifiedChatProvider>;
   private readonly defaultModel: string;
+  private readonly fallbackModels: readonly string[];
+  private readonly retryMaxAttempts: number;
+  private readonly retryBaseDelayMs: number;
   private readonly callGovernance: CallGovernance | null;
   private readonly budgetGuard: BudgetGuard;
   private disposed = false;
@@ -110,6 +118,9 @@ export class ModelCallProviderService {
 
     this.unifiedProvider = createUnifiedChatProvider(providerConfig);
     this.defaultModel = config.defaultModel ?? "MiniMax-M2.7";
+    this.fallbackModels = resolveFallbackModels(config, env);
+    this.retryMaxAttempts = Math.max(1, config.retry?.maxAttempts ?? parsePositiveInteger(env.AA_MODEL_CALL_RETRY_MAX_ATTEMPTS) ?? 2);
+    this.retryBaseDelayMs = Math.max(0, config.retry?.baseDelayMs ?? parseNonNegativeInteger(env.AA_MODEL_CALL_RETRY_BASE_DELAY_MS) ?? 100);
     this.callGovernance = createModelCallGovernance(config, process.env);
     this.budgetGuard = new BudgetGuard();
   }
@@ -215,7 +226,7 @@ export class ModelCallProviderService {
     let budgetSettled = false;
     try {
       const startTime = Date.now();
-      const result = await this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+      const result = await this.executeGovernedCompletionWithFallback(request.model, req);
       const elapsedMs = Date.now() - startTime;
 
       // R2-6: Check duration constraint after call completes
@@ -227,7 +238,7 @@ export class ModelCallProviderService {
 
       const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
-        this.estimateActualLlmCallCost(result, request.model) ?? estimatedCostUsd,
+        this.estimateActualLlmCallCost(result, result.model) ?? estimatedCostUsd,
       );
       if (!settleResult.success) {
         throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {
@@ -434,6 +445,55 @@ export class ModelCallProviderService {
     return this.normalizeResult(result.data);
   }
 
+  private async executeGovernedCompletionWithFallback(
+    requestedModel: string,
+    request: ChatCompletionRequest,
+  ): Promise<LlmModelCallResult> {
+    const candidateModels = [...new Set([requestedModel, ...this.fallbackModels].filter((model) => model.trim().length > 0))];
+    let lastError: unknown = null;
+    for (const model of candidateModels) {
+      const attemptRequest = model === request.model ? request : { ...request, model };
+      try {
+        return await this.executeWithRetry(model, () => this.executeGovernedCompletion(buildModelGovernanceKey(model), attemptRequest));
+      } catch (error) {
+        lastError = error;
+        if (!isRetryableProviderError(error)) {
+          break;
+        }
+        logger.log({
+          level: "warn",
+          message: "LLM model candidate failed; trying fallback when available",
+          data: { model, error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
+    throw lastError;
+  }
+
+  private async executeWithRetry<T>(model: string, operation: () => Promise<T>): Promise<T> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= this.retryMaxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt >= this.retryMaxAttempts || !isRetryableProviderError(error)) {
+          throw error;
+        }
+        const delayMs = this.retryBaseDelayMs * (2 ** (attempt - 1));
+        logger.log({
+          level: "warn",
+          message: "Retrying LLM model call after retryable failure",
+          data: { model, attempt, nextAttempt: attempt + 1, delayMs, error: error instanceof Error ? error.message : String(error) },
+        });
+        if (delayMs > 0) {
+          await sleep(delayMs);
+        }
+      }
+    }
+    throw lastError;
+  }
+
   private getDefaultBudgetPolicy(): BudgetPolicy {
     return {
       maxTaskCostUsd: 10,
@@ -573,6 +633,32 @@ function resolveDistributedRateLimiter(
         ? { keyPrefix: readTrimmedEnvValue(env.AA_MODEL_CALL_RATE_LIMIT_REDIS_KEY_PREFIX)! }
         : {}),
     },
+  });
+}
+
+function resolveFallbackModels(config: ModelCallProviderConfig, env: NodeJS.ProcessEnv): readonly string[] {
+  if (config.fallbackModels !== undefined) {
+    return config.fallbackModels.map((model) => model.trim()).filter((model) => model.length > 0);
+  }
+  return (env.AA_MODEL_PROVIDER_FALLBACK_MODELS ?? "")
+    .split(",")
+    .map((model) => model.trim())
+    .filter((model) => model.length > 0);
+}
+
+function isRetryableProviderError(error: unknown): boolean {
+  if (error instanceof ProviderError) {
+    return error.retryable;
+  }
+  if (typeof error === "object" && error !== null && "retryable" in error) {
+    return (error as { retryable?: unknown }).retryable !== false;
+  }
+  return true;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
   });
 }
 

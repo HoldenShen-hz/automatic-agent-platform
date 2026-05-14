@@ -176,7 +176,7 @@ describe("ExecutionResourceCeilingGuard", () => {
 
     it("should handle null toolCallCount in sample", () => {
       const guard = new ExecutionResourceCeilingGuard({
-        maxToolCalls: 10,
+        maxToolCalls: 9,
       });
 
       const sample = createSample({ toolCallCount: null });
@@ -227,7 +227,7 @@ describe("ExecutionResourceCeilingGuard", () => {
 
     it("should include execution metadata in finding", () => {
       const guard = new ExecutionResourceCeilingGuard({
-        maxToolCalls: 10,
+        maxToolCalls: 9,
       });
 
       const sample = createSample({

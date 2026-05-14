@@ -445,7 +445,7 @@ export class TenantExecutionIsolationService {
 
     if (wouldExceed) {
       return {
-        allowed: quota.enforcementAction === "log_only",
+        allowed: false,
         currentUsage: usage,
         enforcementAction: quota.enforcementAction,
       };

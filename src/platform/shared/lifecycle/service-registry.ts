@@ -82,10 +82,7 @@ export class ServiceRegistry {
    * Gets the singleton registry instance.
    */
   public static getInstance(): ServiceRegistry {
-    if (!ServiceRegistry._instance) {
-      ServiceRegistry._instance = new ServiceRegistry();
-    }
-    return ServiceRegistry._instance;
+    return ServiceRegistry._instance ??= new ServiceRegistry();
   }
 
   /**

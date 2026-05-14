@@ -113,14 +113,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createAdminRoutes returns 16 routes", () => {
+test("createAdminRoutes returns all registered admin routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 16);
+  assert.equal(routes.length, 25);
 });
 
 test("GET /v1/stability returns stability panel", async () => {

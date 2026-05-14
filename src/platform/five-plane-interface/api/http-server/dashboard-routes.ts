@@ -136,7 +136,10 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
             complianceProgramCount: complianceProgramTemplateService.listTemplates().length,
           },
         });
-        const response: Record<string, unknown> = { workbench };
+        const operatorActions = "operatorActions" in workbench && Array.isArray((workbench as { operatorActions?: unknown }).operatorActions)
+          ? (workbench as { operatorActions: unknown[] }).operatorActions
+          : [];
+        const response: Record<string, unknown> = { ...workbench, operatorActions, workbench };
         if (nextCursor != null) {
           response.nextCursor = nextCursor;
         }

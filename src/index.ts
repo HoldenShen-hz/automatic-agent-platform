@@ -140,6 +140,14 @@ interface PlatformRootSummaryBuilderDeps {
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+function writeJsonToStdout(payload: unknown): void {
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function writeJsonToStderr(payload: unknown): void {
+  process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
 interface PlatformRootDemoLegacySnapshot {
   readonly task: {
     readonly id: string;
@@ -267,14 +275,12 @@ export async function runPlatformRootDemo(): Promise<void> {
     request: "Create the minimal stable single-agent execution baseline.",
   });
 
-  console.log(
-    JSON.stringify(buildPlatformRootDemoSummary(snapshot), null, 2),
-  );
+  writeJsonToStdout(buildPlatformRootDemoSummary(snapshot));
 }
 
 export async function runPlatformRootSummary(): Promise<void> {
   const summary = buildPlatformRootSummary();
-  console.log(JSON.stringify(summary, null, 2));
+  writeJsonToStdout(summary);
 }
 
 function safeBuildSection<T>(section: string, build: () => T, fallback: T): T {
@@ -426,7 +432,7 @@ export async function runPlatformStartupPlan(
 ): Promise<void> {
   const kernel = getPlatformApplicationKernel(registry);
   const plan = kernel.buildStartupPlan(targetKind);
-  console.log(JSON.stringify(plan, null, 2));
+  writeJsonToStdout(plan);
 }
 
 export async function main(): Promise<void> {
@@ -445,7 +451,7 @@ export async function main(): Promise<void> {
 if (isDirectExecution()) {
   void main().catch((error: unknown) => {
     const normalized = error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { message: String(error) };
-    console.error(JSON.stringify({ mode: resolveRootEntryMode(), error: normalized }, null, 2));
+    writeJsonToStderr({ mode: resolveRootEntryMode(), error: normalized });
     process.exitCode = 1;
   });
 }

@@ -787,7 +787,7 @@ test("R2011: RetryableApiClient throws NetworkError on 500 response", async () =
   }
 });
 
-test("R2011: RetryableApiClient throws BusinessError on 400 response", async () => {
+test("R2011: RetryableApiClient throws ValidationError on 400 response", async () => {
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
@@ -806,9 +806,9 @@ test("R2011: RetryableApiClient throws BusinessError on 400 response", async () 
     await assert.rejects(
       client.post("/test", { invalid: true }),
       (err: unknown) => {
-        // R2011 FIX: Should throw BusinessError with status 400
+        // 400 responses align with server-side validation category.
         if (err && typeof err === "object" && "code" in err && "statusCode" in err) {
-          return err.code === "client_sdk.business_error" && err.statusCode === 400;
+          return err.code === "client_sdk.contract_violation" && err.statusCode === 400;
         }
         return false;
       },

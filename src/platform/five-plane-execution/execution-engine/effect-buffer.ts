@@ -499,7 +499,12 @@ export class EffectBuffer {
   async flush(): Promise<readonly EffectScopeResult[]> {
     const results: EffectScopeResult[] = [];
 
-    for (const [scopeId, scope] of this.scopes) {
+    const scopesSnapshot = [...this.scopes.entries()];
+    for (const [scopeId, scope] of scopesSnapshot) {
+      if (this.scopes.get(scopeId) !== scope) {
+        this.log("scope_skipped_concurrent_change", { scopeId });
+        continue;
+      }
       if (scope.isRolledBack()) {
         this.log("scope_skipped_rolled_back", { scopeId });
         continue;

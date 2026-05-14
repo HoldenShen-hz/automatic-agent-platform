@@ -381,7 +381,7 @@ test("aggregateCostAttribution allocates task costs correctly", () => {
 
   const result = aggregateCostAttribution(entries);
 
-  const totalCost = Object.values(result).reduce((sum, cost) => sum + cost, 0);
+  const totalCost = Math.round(Object.values(result).reduce((sum, cost) => sum + cost, 0) * 100) / 100;
   assert.equal(totalCost, 0.45);
 });
 

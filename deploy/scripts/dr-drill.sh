@@ -233,6 +233,14 @@ perform_backup() {
 }
 EOF
 
+  if command -v shasum >/dev/null 2>&1; then
+    (cd "$backup_path" && find . -type f ! -name ".backup_manifest.sha256" -print0 | sort -z | xargs -0 shasum -a 256) > "$backup_path/.backup_manifest.sha256"
+  elif command -v sha256sum >/dev/null 2>&1; then
+    (cd "$backup_path" && find . -type f ! -name ".backup_manifest.sha256" -print0 | sort -z | xargs -0 sha256sum) > "$backup_path/.backup_manifest.sha256"
+  else
+    log_warn "No SHA-256 tool available; backup manifest skipped"
+  fi
+
   log_success "Backup completed in ${duration}s"
   echo "$backup_path"
 }
@@ -356,6 +364,20 @@ verify_data_integrity() {
   local errors=0
   local warnings=0
 
+  if [[ -f "${backup_path}/.backup_manifest.sha256" ]]; then
+    if command -v shasum >/dev/null 2>&1; then
+      (cd "$backup_path" && shasum -a 256 -c ".backup_manifest.sha256") || errors=$((errors + 1))
+    elif command -v sha256sum >/dev/null 2>&1; then
+      (cd "$backup_path" && sha256sum -c ".backup_manifest.sha256") || errors=$((errors + 1))
+    else
+      log_warn "No SHA-256 tool available; manifest verification skipped"
+      warnings=$((warnings + 1))
+    fi
+  else
+    log_warn "Backup manifest missing"
+    warnings=$((warnings + 1))
+  fi
+
   # Check event store
   if [[ -f "${restore_dir}/data/events.db" ]]; then
     if command -v sqlite3 &> /dev/null; then
@@ -384,6 +406,7 @@ verify_data_integrity() {
 
   local verification_end=$(date +%s.%N)
   local verification_duration=$(echo "$verification_end - $verification_start" | bc 2>/dev/null || echo "unknown")
+  log_info "Integrity verification completed in ${verification_duration}s with ${errors} errors and ${warnings} warnings"
 
   return $errors
 }

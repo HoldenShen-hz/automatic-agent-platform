@@ -12,6 +12,8 @@
 #   AA_DB_PATH      SQLite database path (default: data/sqlite/authoritative-demo.db)
 #   BACKUP_DIR     Backup directory (default: backups)
 #   RETENTION_DAYS Number of days to retain backups (default: 7)
+#   AA_BACKUP_ENCRYPTION_KEY_FILE  Optional OpenSSL passphrase file for AES-256 encryption
+#   AA_BACKUP_REMOTE_URI           Optional remote destination (rclone remote or s3:// bucket)
 # =============================================================================
 set -euo pipefail
 
@@ -27,6 +29,7 @@ DB_PATH="$(realpath "$DB_PATH" 2>/dev/null)" || {
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="${BACKUP_DIR}/backup_${TIMESTAMP}.db"
+ENCRYPTED_BACKUP_PATH="${BACKUP_PATH}.enc"
 PID_FILE="${BACKUP_DIR}/.backup_lock"
 
 # Ensure backup directory exists
@@ -72,10 +75,39 @@ fi
 BACKUP_SIZE=$(du -h "$BACKUP_PATH" | cut -f1)
 echo "Backup created: $BACKUP_PATH ($BACKUP_SIZE)"
 
+if [ -n "${AA_BACKUP_ENCRYPTION_KEY_FILE:-}" ]; then
+  if [ ! -f "$AA_BACKUP_ENCRYPTION_KEY_FILE" ]; then
+    echo "ERROR: AA_BACKUP_ENCRYPTION_KEY_FILE does not exist: $AA_BACKUP_ENCRYPTION_KEY_FILE" >&2
+    rm -f "$BACKUP_PATH"
+    exit 1
+  fi
+  openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+    -pass "file:${AA_BACKUP_ENCRYPTION_KEY_FILE}" \
+    -in "$BACKUP_PATH" \
+    -out "$ENCRYPTED_BACKUP_PATH"
+  chmod 0600 "$ENCRYPTED_BACKUP_PATH"
+  rm -f "$BACKUP_PATH"
+  BACKUP_PATH="$ENCRYPTED_BACKUP_PATH"
+  BACKUP_SIZE=$(du -h "$BACKUP_PATH" | cut -f1)
+  echo "Encrypted backup created: $BACKUP_PATH ($BACKUP_SIZE)"
+fi
+
+if [ -n "${AA_BACKUP_REMOTE_URI:-}" ]; then
+  if command -v rclone >/dev/null 2>&1; then
+    rclone copyto "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
+  elif command -v aws >/dev/null 2>&1 && [[ "$AA_BACKUP_REMOTE_URI" == s3://* ]]; then
+    aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
+  else
+    echo "ERROR: remote backup requested but neither rclone nor compatible aws s3 is available" >&2
+    exit 1
+  fi
+  echo "Remote backup copied to: ${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
+fi
+
 # Clean up backups older than RETENTION_DAYS
-COUNT_BEFORE=$(ls "$BACKUP_DIR"/backup_*.db 2>/dev/null | wc -l | tr -d ' ')
-find "$BACKUP_DIR" -name "backup_*.db" -mtime "+${RETENTION_DAYS}" -delete
-COUNT_AFTER=$(ls "$BACKUP_DIR"/backup_*.db 2>/dev/null | wc -l | tr -d ' ')
+COUNT_BEFORE=$(find "$BACKUP_DIR" -name "backup_*.db*" -type f 2>/dev/null | wc -l | tr -d ' ')
+find "$BACKUP_DIR" -name "backup_*.db*" -mtime "+${RETENTION_DAYS}" -delete
+COUNT_AFTER=$(find "$BACKUP_DIR" -name "backup_*.db*" -type f 2>/dev/null | wc -l | tr -d ' ')
 DELETED=$((COUNT_BEFORE - COUNT_AFTER))
 if [ "$DELETED" -gt 0 ]; then
   echo "Cleaned up $DELETED old backup(s) older than ${RETENTION_DAYS} days."

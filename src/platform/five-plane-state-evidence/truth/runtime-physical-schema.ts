@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS task_drafts (
   source TEXT NOT NULL,
   normalized_intent_json TEXT NOT NULL,
   risk_preview_json TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (task_draft_id) REFERENCES task_drafts(task_draft_id)
 );
 
 CREATE TABLE IF NOT EXISTS confirmed_task_specs (
@@ -29,7 +30,8 @@ CREATE TABLE IF NOT EXISTS request_envelopes (
   trace_id TEXT NOT NULL,
   idempotency_key TEXT NOT NULL UNIQUE,
   request_hash TEXT NOT NULL,
-  submitted_at TEXT NOT NULL
+  submitted_at TEXT NOT NULL,
+  FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id)
 );
 
 CREATE TABLE IF NOT EXISTS harness_runs (
@@ -50,7 +52,9 @@ CREATE TABLE IF NOT EXISTS harness_runs (
   current_seq INTEGER NOT NULL,
   created_at TEXT NOT NULL,
   fencing_token TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id),
+  FOREIGN KEY (request_envelope_id) REFERENCES request_envelopes(request_id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_graph_bundles (
@@ -59,7 +63,8 @@ CREATE TABLE IF NOT EXISTS plan_graph_bundles (
   graph_version INTEGER NOT NULL,
   graph_json TEXT NOT NULL,
   validation_report_json TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS graph_patches (
@@ -67,7 +72,8 @@ CREATE TABLE IF NOT EXISTS graph_patches (
   harness_run_id TEXT NOT NULL,
   base_graph_version INTEGER NOT NULL,
   new_graph_version INTEGER NOT NULL,
-  operations_json TEXT NOT NULL
+  operations_json TEXT NOT NULL,
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS node_runs (
@@ -79,7 +85,9 @@ CREATE TABLE IF NOT EXISTS node_runs (
   lease_id TEXT,
   fencing_token TEXT,
   current_seq INTEGER NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
+  FOREIGN KEY (plan_graph_bundle_id) REFERENCES plan_graph_bundles(plan_graph_bundle_id)
 );
 
 CREATE TABLE IF NOT EXISTS node_attempts (
@@ -88,7 +96,8 @@ CREATE TABLE IF NOT EXISTS node_attempts (
   attempt_no INTEGER NOT NULL,
   attempt_kind TEXT NOT NULL,
   executor_ref TEXT NOT NULL,
-  started_at TEXT NOT NULL
+  started_at TEXT NOT NULL,
+  FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS node_attempt_receipts (
@@ -98,7 +107,9 @@ CREATE TABLE IF NOT EXISTS node_attempt_receipts (
   receipt_kind TEXT NOT NULL,
   status TEXT NOT NULL,
   evidence_refs_json TEXT NOT NULL,
-  produced_at TEXT NOT NULL
+  produced_at TEXT NOT NULL,
+  FOREIGN KEY (node_attempt_id) REFERENCES node_attempts(node_attempt_id),
+  FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS side_effect_records (
@@ -109,7 +120,10 @@ CREATE TABLE IF NOT EXISTS side_effect_records (
   idempotency_key TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL,
   risk_class TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
+  FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id),
+  FOREIGN KEY (node_attempt_id) REFERENCES node_attempts(node_attempt_id)
 );
 
 CREATE TABLE IF NOT EXISTS budget_ledgers (
@@ -122,7 +136,8 @@ CREATE TABLE IF NOT EXISTS budget_ledgers (
   settled_amount REAL NOT NULL,
   released_amount REAL NOT NULL,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL
+  version INTEGER NOT NULL,
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS budget_reservations (
@@ -134,7 +149,10 @@ CREATE TABLE IF NOT EXISTS budget_reservations (
   resource_kind TEXT NOT NULL,
   status TEXT NOT NULL,
   expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (budget_ledger_id) REFERENCES budget_ledgers(budget_ledger_id),
+  FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
+  FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
 );
 
 CREATE TABLE IF NOT EXISTS budget_settlements (
@@ -142,7 +160,8 @@ CREATE TABLE IF NOT EXISTS budget_settlements (
   budget_reservation_id TEXT NOT NULL,
   actual_amount REAL NOT NULL,
   settlement_kind TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (budget_reservation_id) REFERENCES budget_reservations(budget_reservation_id)
 );
 
 CREATE TABLE IF NOT EXISTS mission_records (
@@ -198,7 +217,8 @@ CREATE TABLE IF NOT EXISTS mission_memberships (
   expires_at TEXT NULL,
   metadata_json TEXT NOT NULL,
   version INTEGER NOT NULL,
-  UNIQUE (mission_id, principal_type, principal_id)
+  UNIQUE (mission_id, principal_type, principal_id),
+  FOREIGN KEY (mission_id) REFERENCES mission_records(mission_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_mission_memberships_principal
@@ -218,7 +238,9 @@ CREATE TABLE IF NOT EXISTS mission_context_snapshots (
   trace_id TEXT NOT NULL,
   correlation_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  created_by TEXT NOT NULL
+  created_by TEXT NOT NULL,
+  FOREIGN KEY (mission_id) REFERENCES mission_records(mission_id),
+  FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_mission_snapshots_task

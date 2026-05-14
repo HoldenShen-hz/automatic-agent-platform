@@ -55,10 +55,10 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
           ? 0
           : sorted.findIndex((item) =>
               decodedCursor != null &&
-              (item.bundle.createdAt < decodedCursor.createdAt ||
-                (item.bundle.createdAt === decodedCursor.createdAt && item.bundle.bundleId < decodedCursor.bundleId))
+              item.bundle.createdAt === decodedCursor.createdAt &&
+              item.bundle.bundleId === decodedCursor.bundleId
             );
-        const normalizedStart = startIndex < 0 ? sorted.length : startIndex;
+        const normalizedStart = cursorStr == null ? 0 : startIndex < 0 ? sorted.length : startIndex + 1;
         const pageItems = sorted.slice(normalizedStart, normalizedStart + limit);
         const hasMore = normalizedStart + limit < sorted.length;
         const nextCursor = hasMore && pageItems.length > 0

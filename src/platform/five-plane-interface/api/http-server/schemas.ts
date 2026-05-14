@@ -161,7 +161,7 @@ const billingReconcilePayloadSchema = z.object({
 const artifactBundlePreviewPayloadSchema = z.object({
   taskId: nonEmptyStringSchema,
   domainId: nonEmptyStringSchema,
-  bundleType: z.enum(["release_bundle", "asset_bundle", "campaign_bundle", "incident"]),
+  bundleType: z.enum(["release_bundle", "asset_bundle", "campaign_bundle", "incident", "incident_bundle"]),
   artifacts: z.array(ArtifactRecordSchema),
 }).strict();
 
@@ -292,7 +292,7 @@ export function parseBillingReconcilePayload(body: unknown): BillingReconcilePay
 export interface ArtifactBundlePreviewPayload {
   taskId: string;
   domainId: string;
-  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident";
+  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident" | "incident_bundle";
   artifacts: ArtifactRecord[];
 }
 

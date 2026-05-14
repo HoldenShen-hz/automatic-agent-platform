@@ -101,11 +101,10 @@ const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   resuming: ["running", "failed", "cancelled", "aborted"],
   replanning: ["ready", "running", "failed", "cancelled", "aborted"],
   compensating: ["completed", "failed", "cancelled", "aborted"],
-  // Compatibility: recovery flows can reopen terminal harness runs into paused.
-  completed: ["paused"],
-  failed: ["paused"],
-  cancelled: ["paused"],
-  aborted: ["paused"],
+  completed: [],
+  failed: [],
+  cancelled: [],
+  aborted: [],
 };
 
 const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {

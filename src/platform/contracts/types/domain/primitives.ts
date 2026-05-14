@@ -7,7 +7,8 @@
  * Part of the domain.ts split (see src/core/types/domain/index.ts).
  */
 
-export type Timestamp = string;
+declare const TIMESTAMP_BRAND: unique symbol;
+export type Timestamp = string & { readonly [TIMESTAMP_BRAND]: "Timestamp" };
 
 // ---------------------------------------------------------------------------
 // Task-related primitives

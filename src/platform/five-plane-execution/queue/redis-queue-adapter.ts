@@ -661,7 +661,7 @@ export class RedisQueueAdapter implements QueueAdapter {
 
   async retryJobAsync(jobId: string): Promise<QueueJobRecord | null> {
     const job = await this.getJobAsync(jobId);
-    if (!job || (job.status !== "failed" && job.status !== "dead_letter" && job.status !== "waiting")) return null;
+    if (!job || (job.status !== "failed" && job.status !== "dead_letter")) return null;
     await this.client.hmset(this.jobKey(jobId), { status: "waiting", attempts: "0", last_error: "" });
     await this.client.srem(this.activeKey(job.queueName), jobId);
     await this.client.srem(this.deadLetterKey(job.queueName), jobId);
@@ -692,14 +692,14 @@ export class RedisQueueAdapter implements QueueAdapter {
   }
 
   async statsAsync(queueName: string): Promise<QueueStats> {
-    const [waiting, active, completed, deadLetter] = await Promise.all([
-      this.client.zcount(this.waitingKey(queueName), "-inf", Date.now()),
+    const [waitingTotal, delayed, active, completed, deadLetter] = await Promise.all([
+      this.client.zcard(this.waitingKey(queueName)),
+      this.client.zcount(this.waitingKey(queueName), Date.now(), "+inf"),
       this.client.scard(this.activeKey(queueName)),
       this.client.scard(this.completedKey(queueName)),
       this.client.scard(this.deadLetterKey(queueName)),
     ]);
-    const waitingTotal = await this.client.zcard(this.waitingKey(queueName));
-    const delayed = Math.max(0, waitingTotal - waiting);
+    const waiting = Math.max(0, waitingTotal - delayed);
     return {
       queueName,
       waiting,

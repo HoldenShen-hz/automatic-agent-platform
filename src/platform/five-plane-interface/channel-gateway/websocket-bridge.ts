@@ -167,9 +167,11 @@ export class WebSocketBridge {
     try {
       const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${params.token}` });
       principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
-    } catch {
+    } catch (error) {
       ws.close(4003, "Invalid token");
-      logger.warn("WebSocket connection rejected: invalid subprotocol token");
+      logger.warn("WebSocket connection rejected: invalid subprotocol token", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
 
@@ -208,7 +210,10 @@ export class WebSocketBridge {
           return;
         }
         this.handleMessage(ws, result.data);
-      } catch {
+      } catch (error) {
+        logger.warn("WebSocket message rejected: invalid payload", {
+          error: error instanceof Error ? error.message : String(error),
+        });
         ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Failed to parse message" }));
       }
     });

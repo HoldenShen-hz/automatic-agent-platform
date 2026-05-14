@@ -65,8 +65,8 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
         // R20-30: Support cursor-based pagination with nextToken
-        const urlStr = ctx.request.url;
-        const cursor = urlStr ? (new URL(urlStr).searchParams.get("cursor") ?? null) : null;
+        const urlStr = ctx.request.url ?? "/v1/incidents";
+        const cursor = new URL(urlStr, "http://localhost").searchParams.get("cursor") ?? null;
         const limit = readLimit(ctx.request, 50);
         const { incidents, nextToken } = deps.incidentService.listIncidentsPaginated(limit, tenantId, cursor);
 

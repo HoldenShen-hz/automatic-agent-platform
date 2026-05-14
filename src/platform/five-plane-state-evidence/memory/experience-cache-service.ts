@@ -73,6 +73,8 @@ export interface SimilarExperienceQuery {
   outcome?: ExperienceRecord["outcome"];
   minQualityScore?: number;
   limit?: number;
+  offset?: number;
+  scanLimit?: number;
 }
 
 /**
@@ -336,6 +338,8 @@ export class ExperienceCacheService {
    */
   public findSimilarExperiences(query: SimilarExperienceQuery): SimilarExperience[] {
     const limit = query.limit ?? 5;
+    const offset = Math.max(0, query.offset ?? 0);
+    const scanLimit = Math.min(Math.max(query.scanLimit ?? Math.max(limit * 20, 100), limit), 500);
 
     // Get all experiences that match basic criteria
     let sql = "SELECT * FROM experience_cache WHERE 1=1";
@@ -356,7 +360,8 @@ export class ExperienceCacheService {
       params.push(query.outcome);
     }
 
-    sql += " ORDER BY quality_score DESC, created_at DESC LIMIT 500";
+    sql += " ORDER BY quality_score DESC, created_at DESC LIMIT ?";
+    params.push(scanLimit);
 
     const rows = this.store.withConnection((connection) =>
       connection.prepare(sql).all(...params as (string | number | null)[]) as unknown as StoredExperience[],
@@ -420,7 +425,7 @@ export class ExperienceCacheService {
     // Sort by similarity score descending
     scoredExperiences.sort((a, b) => b.similarityScore - a.similarityScore);
 
-    return scoredExperiences.slice(0, limit);
+    return scoredExperiences.slice(offset, offset + limit);
   }
 
   /**

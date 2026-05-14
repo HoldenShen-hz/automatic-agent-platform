@@ -106,7 +106,7 @@ test("checkQuota rejects when over limit with reject enforcement", () => {
   }
 });
 
-test("checkQuota logs only when enforcement is log_only", () => {
+test("checkQuota reports log_only action but still blocks over-quota usage", () => {
   const h = createHarness("aa-quota-log-");
   try {
     const service = new TenantExecutionIsolationService(h.db);
@@ -130,8 +130,7 @@ test("checkQuota logs only when enforcement is log_only", () => {
     });
 
     const result = service.checkQuota("tenant-1", "executions_per_minute", 10);
-    // log_only always allows even when over
-    assert.equal(result.allowed, true);
+    assert.equal(result.allowed, false);
     assert.equal(result.enforcementAction, "log_only");
   } finally {
     h.db.close();

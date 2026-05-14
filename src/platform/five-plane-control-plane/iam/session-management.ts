@@ -88,6 +88,12 @@ const revokedAccessTokenIndex = new Map<string, string>(); // revoked tokenId ->
 // Index for rotated refresh tokens to enable refresh_token_reused error
 const rotatedRefreshTokenIndex = new Map<string, string>(); // old rotated tokenId -> sessionId
 
+function assertInMemorySessionStoreAllowed(): void {
+  if (process.env.NODE_ENV === "production" && process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE !== "1") {
+    throw new ValidationError("iam.session_store_distributed_required", "In-memory session store is not allowed in production without explicit opt-in.");
+  }
+}
+
 // ============================================================================
 // Token Generation
 // ============================================================================
@@ -115,6 +121,7 @@ export function createSession(input: {
   principalType: string;
   metadata?: Record<string, unknown>;
 }): Session {
+  assertInMemorySessionStoreAllowed();
   const sessionId = generateTokenId();
   const now = Date.now();
 

@@ -2,7 +2,7 @@ import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type IncidentStatus = "open" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
+export type IncidentStatus = "open" | "acknowledged" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
 
 export interface IncidentCase {
   incidentId: string;
@@ -56,6 +56,31 @@ export class IncidentCaseService {
       );
     }
     return this.update(incidentId, { ...incident, status: "triaged", owner, updatedAt: nowIso() });
+  }
+
+  /**
+   * Backward-compatible acknowledgement transition used by the HTTP facade.
+   */
+  public acknowledge(incidentId: string, owner: string): IncidentCase {
+    const incident = this.getRequired(incidentId);
+    if (incident.status !== "open") {
+      throw new ValidationError(
+        "incident.must_be_open_for_acknowledge",
+        "Incident must be in open state before it can be acknowledged.",
+      );
+    }
+    return this.update(incidentId, { ...incident, status: "acknowledged", owner, updatedAt: nowIso() });
+  }
+
+  public startMitigation(incidentId: string): IncidentCase {
+    const incident = this.getRequired(incidentId);
+    if (incident.status !== "acknowledged" && incident.status !== "triaged") {
+      throw new ValidationError(
+        "incident.must_be_acknowledged_for_mitigation",
+        "Incident must be acknowledged before mitigation can start.",
+      );
+    }
+    return this.update(incidentId, { ...incident, status: "mitigating", updatedAt: nowIso() });
   }
 
   /**

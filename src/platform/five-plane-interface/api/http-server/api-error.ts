@@ -74,7 +74,7 @@ export function normalizeError(error: unknown): AppError {
     return new ApiError(429, "gateway.rate_limited", API_ERROR_MESSAGES.gatewayRateLimited(error.channel));
   }
   if (error instanceof GatewayTargetNotFoundError) {
-    return new ApiError(404, "gateway.target_not_found", API_ERROR_MESSAGES.gatewayTargetNotFound);
+    return new ApiError(404, error.code, API_ERROR_MESSAGES.gatewayTargetNotFound);
   }
   if (error instanceof GatewayTargetAmbiguousError) {
     return new ApiError(409, "gateway.target_ambiguous", API_ERROR_MESSAGES.gatewayTargetAmbiguous);

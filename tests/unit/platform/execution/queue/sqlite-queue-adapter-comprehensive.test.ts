@@ -344,8 +344,12 @@ test("SqliteQueueAdapter purge removes old completed jobs", () => {
 
     // Old timestamp
     const oldTime = new Date(Date.now() - 100000).toISOString();
+    harness.db.connection
+      .prepare("UPDATE queue_jobs SET completed_at = ?, updated_at = ? WHERE id = ?")
+      .run(oldTime, oldTime, job.job.id);
+    const cutoff = new Date(Date.now() - 50000).toISOString();
 
-    const purged = adapter.purge("tasks", oldTime);
+    const purged = adapter.purge("tasks", cutoff);
     assert.equal(purged, 1);
 
     const stored = adapter.getJob(job.job.id);
@@ -366,10 +370,14 @@ test("SqliteQueueAdapter purge does not remove recent jobs", () => {
     assert.ok(dequeued);
     dequeued.ack();
 
-    // Future timestamp
-    const futureTime = new Date(Date.now() + 100000).toISOString();
+    // Recent timestamp
+    const recentTime = new Date().toISOString();
+    harness.db.connection
+      .prepare("UPDATE queue_jobs SET completed_at = ?, updated_at = ? WHERE id = ?")
+      .run(recentTime, recentTime, job.id);
+    const cutoff = new Date(Date.now() - 100000).toISOString();
 
-    const purged = adapter.purge("tasks", futureTime);
+    const purged = adapter.purge("tasks", cutoff);
     assert.equal(purged, 0);
 
     const stored = adapter.getJob(job.id);

@@ -167,6 +167,8 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   const outputPolicy = input.output_policy ?? { requiredEvidence: [], redactSensitiveData: false };
   const budgetEnvelope = input.budgetEnvelope ?? input.budget;
   const legacyBudget = input.budget;
+  const legacyToolPolicy = (input as { toolPolicy?: ConstraintToolPolicy }).toolPolicy;
+  const toolPolicy = input.tool_policy ?? legacyToolPolicy ?? { allowedTools: [] };
 
   const partial: {
     policyIds: readonly string[];
@@ -191,7 +193,7 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     approvalMode: input.approvalMode ?? "none",
     autonomyMode: normalizeConstraintPackAutonomyMode(input.autonomyMode ?? "semi_auto"),
     tool_policy: {
-      allowedTools: input.tool_policy?.allowedTools ? [...input.tool_policy.allowedTools] : [],
+      allowedTools: toolPolicy.allowedTools ? [...toolPolicy.allowedTools] : [],
     },
     risk_policy: {
       maxRiskScore: riskPolicy.maxRiskScore,
@@ -526,15 +528,18 @@ export interface HarnessRunRuntimeState {
  */
 export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalHarnessRun {
   const riskLevel = (state.riskLevel as RiskClass) ?? "medium";
-  const base: CanonicalHarnessRun = {
+  const base = {
     harnessRunId: state.harnessRunId,
+    runId: state.runId,
     tenantId: state.tenantId,
     orgId: state.tenantId,
     domainId: state.domainId,
+    taskId: state.taskId,
     confirmedTaskSpecId: state.confirmedTaskSpecId,
     requestEnvelopeId: state.requestEnvelopeId,
     requestHash: state.requestHash,
     status: state.status,
+    constraintPack: state.constraintPack,
     constraintPackRef: state.constraintPackRef,
     versionLockId: state.versionLockId,
     planGraphBundleId: state.planGraphBundle.planGraphBundleId,
@@ -552,6 +557,10 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     budgetEnvelope: { budgetLedgerId: state.budgetLedgerId, currency: "credits" },
     ...(state.leaseId != null ? { leaseId: state.leaseId } : {}),
     fencingToken: state.fencingToken ?? `fence:${state.harnessRunId}:${state.currentSeq}`,
+  } as CanonicalHarnessRun & {
+    readonly runId: string;
+    readonly taskId: string;
+    readonly constraintPack: ConstraintPack;
   };
   if (state.completedAt != null) {
     return { ...base, terminalAt: state.completedAt };
@@ -1425,6 +1434,7 @@ export class HarnessRuntimeService {
   }
 
   public runLoop(input: HarnessLoopInput): HarnessRunRuntimeState {
+    input = { ...input, constraintPack: normalizeConstraintPack(input.constraintPack) };
     const loop = new HarnessLoopController(input.constraintPack, {}, {
       iteration: Math.max(0, (input.iteration ?? 1) - 1),
     });

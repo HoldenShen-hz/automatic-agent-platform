@@ -11,7 +11,7 @@
  */
 
 import type { RouteDefinition } from "./types.js";
-import { buildJsonDocumentResponse, buildJsonResponse } from "./utils.js";
+import { buildJsonDocumentResponse, buildJsonErrorResponse, buildJsonResponse } from "./utils.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import { buildOpenApiDocument } from "../openapi-document.js";
 
@@ -19,6 +19,7 @@ const PLATFORM_API_VERSION = "v1";
 const PLATFORM_VERSION = process.env["AA_BUILD_VERSION"] ?? "0.1.0";
 const CONTRACT_VERSION = process.env["AA_CONTRACT_VERSION"] ?? "2026-04-01";
 const MIN_CLIENT_VERSION = process.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
+const OPENAPI_PUBLIC_OPT_IN_ENV = "AA_OPENAPI_PUBLIC";
 
 export interface HealthRouteDeps {
   missionControlService: MissionControlService;
@@ -72,7 +73,15 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
     {
       method: "GET",
       pathname: "/v1/openapi.json",
-      handler: (ctx) => buildJsonDocumentResponse(buildOpenApiDocument(), ctx.requestId),
+      handler: (ctx) => {
+        if (ctx.principal == null && process.env[OPENAPI_PUBLIC_OPT_IN_ENV] !== "1") {
+          return buildJsonErrorResponse(ctx.requestId, 401, {
+            code: "api.openapi_auth_required",
+            message: "OpenAPI document access requires authentication unless AA_OPENAPI_PUBLIC=1 is explicitly set.",
+          });
+        }
+        return buildJsonDocumentResponse(buildOpenApiDocument(), ctx.requestId);
+      },
     },
     {
       method: "GET",

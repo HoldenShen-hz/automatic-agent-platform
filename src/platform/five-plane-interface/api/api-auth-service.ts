@@ -204,7 +204,7 @@ export class ApiAuthService {
       if (item.apiKey.length !== apiKey.length) {
         return false;
       }
-      return timingSafeEqual(Buffer.from(item.apiKey), Buffer.from(apiKey));
+      return timingSafeEqual(Buffer.from(item.apiKey, "utf8"), Buffer.from(apiKey, "utf8"));
     });
     if (record == null) {
       throw new ApiAuthError(401, "api.invalid_api_key", "API key is invalid.");

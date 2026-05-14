@@ -19,6 +19,7 @@ export interface MigrationRunnerResult {
   status: MigrationRunnerSchemaStatus;
   rollbackSupported: boolean;
   rollbackReason: string | null;
+  rollbackProcedure: readonly string[];
 }
 
 export class MigrationRunner {
@@ -44,7 +45,7 @@ export class MigrationRunner {
         : await this.storage.postgres.getSchemaStatus();
     const rollbackSupported = false;
     const rollbackReason = action === "down"
-      ? "authoritative storage down migrations are not supported"
+      ? "authoritative storage down migrations are not supported and fail-closed; restore from a verified backup or promote a forward fix."
       : null;
     return {
       action,
@@ -58,6 +59,15 @@ export class MigrationRunner {
       },
       rollbackSupported,
       rollbackReason,
+      rollbackProcedure: action === "down"
+        ? [
+            "stop writers",
+            "verify latest backup manifest",
+            "restore backup into isolated database",
+            "run schema status check",
+            "promote restored database or apply forward fix",
+          ]
+        : [],
     };
   }
 }

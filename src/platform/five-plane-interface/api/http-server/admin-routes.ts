@@ -119,18 +119,20 @@ export interface AdminRouteDeps {
 }
 
 function matchesHarnessRunRoute(segments: string[], expectedTailLength: number): boolean {
+  const normalized = segments[0] === "api" ? segments.slice(1) : segments;
   return (
-    segments[0] === "v1"
-    && segments[1] === "harness-runs"
-    && segments.length === expectedTailLength + 1
+    normalized[0] === "v1"
+    && normalized[1] === "harness-runs"
+    && normalized.length === expectedTailLength + 1
   );
 }
 
 function matchesReplaySessionRoute(segments: string[], expectedTailLength: number): boolean {
+  const normalized = segments[0] === "api" ? segments.slice(1) : segments;
   return (
-    segments[0] === "v1"
-    && segments[1] === "replay-sessions"
-    && segments.length === expectedTailLength + 1
+    normalized[0] === "v1"
+    && normalized[1] === "replay-sessions"
+    && normalized.length === expectedTailLength + 1
   );
 }
 

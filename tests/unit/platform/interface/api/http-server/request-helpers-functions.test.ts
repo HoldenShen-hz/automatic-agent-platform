@@ -45,8 +45,8 @@ test("matchRoute parses OPTIONS request", () => {
   assert.equal(result.pathname, "/health");
 });
 
-test("matchRoute rejects non-GET/POST/OPTIONS methods", () => {
-  const methods = ["PUT", "DELETE", "PATCH", "HEAD"];
+test("matchRoute rejects unsupported methods", () => {
+  const methods = ["HEAD", "TRACE", "CONNECT"];
   for (const method of methods) {
     const request: ApiRequestLike = {
       method,

@@ -67,6 +67,8 @@ import { ValidationError } from "../../contracts/errors.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const DEFAULT_SINGLE_TASK_MAX_RETRIES = 2;
+const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "exponential";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
@@ -94,6 +96,8 @@ export interface HappyPathInput {
   crashInjection?: WorkflowCrashInjection;
   /** Optional override used by tests to force schema validation paths */
   stepOutputOverride?: Record<string, unknown>;
+  /** Optional logger injection for tests and embedding runtimes. */
+  logger?: Pick<StructuredLogger, "log">;
 }
 
 /**
@@ -142,6 +146,7 @@ function createContext(
 export async function runSingleTaskExecution(input: HappyPathInput) {
   initializeMiddleware();
   const middlewareChain = getGlobalMiddlewareChain();
+  const runLogger = input.logger ?? logger;
 
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
 
@@ -223,7 +228,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           };
         } catch (llmError) {
           // Fall back to synthetic output if LLM call fails
-          logger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
+          runLogger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
           stepData = {
             summary: `Analyzed request for ${input.title}`,
             result: `Single-agent happy path finished for: ${input.request}`,
@@ -328,8 +333,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
       allowedPathsJson: JSON.stringify([]),
-      maxRetries: 0,
-      retryBackoff: "none",
+      maxRetries: DEFAULT_SINGLE_TASK_MAX_RETRIES,
+      retryBackoff: DEFAULT_SINGLE_TASK_RETRY_BACKOFF,
       lastErrorCode: null,
       lastErrorMessage: null,
       startedAt: null,

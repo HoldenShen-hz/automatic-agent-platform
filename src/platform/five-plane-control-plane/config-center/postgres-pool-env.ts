@@ -55,7 +55,7 @@ export function loadPostgresPoolEnv(
   const poolMax = parseNonNegativeIntegerEnv(
     env,
     options.poolMaxKeys ?? ["AA_LOCK_POSTGRES_POOL_MAX", "AA_STORAGE_POSTGRES_POOL_MAX"],
-    options.defaultPoolMax ?? 10,
+    options.defaultPoolMax ?? 20,
     "lock.postgres.pool_max_invalid",
   );
   if (poolMin > poolMax) {

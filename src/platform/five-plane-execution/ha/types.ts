@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS leadership_leases (
 CREATE INDEX IF NOT EXISTS idx_leadership_leases_node ON leadership_leases(node_id);
 CREATE INDEX IF NOT EXISTS idx_leadership_leases_status ON leadership_leases(status);
 CREATE INDEX IF NOT EXISTS idx_leadership_leases_expires ON leadership_leases(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leadership_leases_single_active ON leadership_leases(status) WHERE status = 'active';
 
 CREATE TABLE IF NOT EXISTS leadership_epochs (
   epoch INTEGER PRIMARY KEY,

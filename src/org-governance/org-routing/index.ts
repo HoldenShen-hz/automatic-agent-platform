@@ -162,9 +162,10 @@ export class OrgRoutingService {
     requestedBudget?: number;
     crossTenantRequest?: boolean;
   }): OrgRoutingDecision {
-    const { requesterOrgNodeId, targetOrgNodeId, requestedBudget = 0, crossTenantRequest = false } = input;
+    const { requesterOrgNodeId, targetOrgNodeId, requestedBudget = 0 } = input;
 
     const tenantResolution = this.resolveTenant(requesterOrgNodeId);
+    const crossTenantRequest = this.crossesTenantBoundary(requesterOrgNodeId, targetOrgNodeId);
     const costCenterAllocation = this.resolveCostCenter(targetOrgNodeId, requestedBudget);
 
     const reasonCodes: string[] = [];

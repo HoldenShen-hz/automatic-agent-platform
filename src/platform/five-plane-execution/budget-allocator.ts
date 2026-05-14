@@ -391,7 +391,7 @@ export class BudgetAllocator {
     });
 
     // R11-07: Track reservation for expiry sweeper
-    this.activeReservations.set(result.reservation.budgetReservationId, result.reservation);
+    this.trackActiveReservation(result.reservation);
     this.persistLedger(input.ledger, result.ledger, input.expectedVersion);
     this.emitReserveSideEffects(result.ledger, input.amount, context);
 
@@ -423,7 +423,7 @@ export class BudgetAllocator {
       amount: input.reservation.amount + input.additionalAmount,
       expiresAt: newExpiresAt,
     };
-    this.activeReservations.set(input.reservation.budgetReservationId, updatedReservation);
+    this.trackActiveReservation(updatedReservation);
 
     return {
       reservationId: input.reservation.budgetReservationId,
@@ -448,14 +448,17 @@ export class BudgetAllocator {
     const releasedIds: string[] = [];
     const expiredIds: string[] = [];
 
-    for (const [reservationId, reservation] of this.activeReservations) {
+    for (const [reservationId, reservation] of this.snapshotActiveReservations()) {
+      if (this.activeReservations.get(reservationId) !== reservation) {
+        continue;
+      }
       const reservationExpiry = Date.parse(reservation.expiresAt);
 
       // Check if expired (past expiry time with safety margin)
       if (reservationExpiry + this.sweeperConfig.clockSkewSafetyMarginMs <= dbNow) {
         expiredIds.push(reservationId);
         releasedIds.push(reservationId);
-        this.activeReservations.delete(reservationId);
+        this.untrackActiveReservation(reservationId);
         continue;
       }
 
@@ -464,7 +467,7 @@ export class BudgetAllocator {
         const reservationAge = dbNow - Date.parse(reservation.createdAt);
         if (reservationAge > this.sweeperConfig.maxExpiryAgeMs) {
           releasedIds.push(reservationId);
-          this.activeReservations.delete(reservationId);
+          this.untrackActiveReservation(reservationId);
         }
       }
     }
@@ -480,7 +483,7 @@ export class BudgetAllocator {
    * R11-07: Get all tracked active reservations
    */
   public getActiveReservations(): readonly BudgetReservation[] {
-    return [...this.activeReservations.values()];
+    return this.snapshotActiveReservations().map(([, reservation]) => reservation);
   }
 
   /**
@@ -566,7 +569,7 @@ export class BudgetAllocator {
     const reservationResult = this.stateMachine.transition(reservationCommand);
 
     // R11-07: Remove from active reservations after settle
-    this.activeReservations.delete(input.reservation.budgetReservationId);
+    this.untrackActiveReservation(input.reservation.budgetReservationId);
 
     const ledger = {
       ...input.ledger,
@@ -654,7 +657,7 @@ export class BudgetAllocator {
     });
 
     // R11-07: Remove from active reservations after release
-    this.activeReservations.delete(input.reservation.budgetReservationId);
+    this.untrackActiveReservation(input.reservation.budgetReservationId);
 
     const ledger = {
       ...input.ledger,
@@ -708,7 +711,7 @@ export class BudgetAllocator {
         "budget_settlement.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
       );
     }
-    this.activeReservations.delete(input.reservation.budgetReservationId);
+    this.untrackActiveReservation(input.reservation.budgetReservationId);
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
       input.actualAmount <= input.reservation.amount &&
@@ -762,7 +765,7 @@ export class BudgetAllocator {
         "budget_release.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
       );
     }
-    this.activeReservations.delete(input.reservation.budgetReservationId);
+    this.untrackActiveReservation(input.reservation.budgetReservationId);
     const reservation = this.stateMachine.transition({
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
@@ -787,6 +790,26 @@ export class BudgetAllocator {
       context,
     });
     return { reservation, settlement, ledger };
+  }
+
+  private trackActiveReservation(reservation: BudgetReservation): void {
+    this.activeReservations = new Map(this.activeReservations).set(
+      reservation.budgetReservationId,
+      reservation,
+    );
+  }
+
+  private untrackActiveReservation(reservationId: string): void {
+    if (!this.activeReservations.has(reservationId)) {
+      return;
+    }
+    const nextReservations = new Map(this.activeReservations);
+    nextReservations.delete(reservationId);
+    this.activeReservations = nextReservations;
+  }
+
+  private snapshotActiveReservations(): readonly (readonly [string, BudgetReservation])[] {
+    return [...this.activeReservations.entries()];
   }
 
   private emitReserveSideEffects(ledger: BudgetLedger, amount: number, context: BudgetAllocatorContext): void {

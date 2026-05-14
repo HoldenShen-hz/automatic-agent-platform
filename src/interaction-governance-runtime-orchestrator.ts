@@ -19,6 +19,7 @@ import {
   GOVERNANCE_BOOTSTRAP_SERVICE_ID,
   registerGovernanceBootstrap,
 } from "./org-governance/governance-bootstrap.js";
+import { ValidationError } from "./platform/contracts/errors.js";
 
 export const INTERACTION_GOVERNANCE_RUNTIME_ORCHESTRATOR_SERVICE_ID = "w3.runtime.orchestrator";
 
@@ -55,7 +56,10 @@ function buildDependencyServiceIds(
   return step.dependsOnStepIds.map((dependencyStepId) => {
     const dependencyStep = plan.steps.find((candidate) => candidate.stepId === dependencyStepId);
     if (dependencyStep == null) {
-      throw new Error(`w3_startup_plan.missing_dependency:${dependencyStepId}`);
+      throw new ValidationError(
+        "w3_startup_plan.missing_dependency",
+        `w3_startup_plan.missing_dependency:${dependencyStepId}`,
+      );
     }
     return dependencyStep.bootstrapServiceId;
   });
