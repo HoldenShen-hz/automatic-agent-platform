@@ -113,7 +113,7 @@ export class CrossProviderJudgeService {
       }
     }
 
-    return buildConsensusResult(results, pipeline.consensusThreshold);
+    return buildConsensusResult(results, pipeline.consensusThreshold, evaluation);
   }
 
   public suggestMultipleJudges(input: {
@@ -204,6 +204,7 @@ function estimateLatencyRank(judge: JudgeProfileRecord): number {
 function buildConsensusResult(
   results: readonly MultiProviderJudgeResult[],
   threshold: number,
+  evaluation?: EvalDatasetEvaluationInput,
 ): ConsensusEvaluationResult {
   if (results.length === 0) {
     return {
@@ -217,6 +218,26 @@ function buildConsensusResult(
   const promoteCount = results.filter((r) => r.report.gateDecision === "promote").length;
   const holdCount = results.filter((r) => r.report.gateDecision === "hold").length;
   const rollbackCount = results.filter((r) => r.report.gateDecision === "rollback").length;
+  if (results.length > 0 && promoteCount === 0 && rollbackCount === 0 && holdCount === results.length) {
+    const signalValues = (evaluation?.results ?? []).flatMap((result) => Object.values(result.criterionSignals ?? {}));
+    const averageSignal = signalValues.length > 0
+      ? signalValues.reduce((sum, value) => sum + Number(value), 0) / signalValues.length
+      : 0.5;
+    if (averageSignal < 0.3) {
+      return {
+        consensusDecision: "rollback",
+        individualResults: results,
+        agreementScore: 1,
+        blockingFindings: [...new Set(results.flatMap((r) => r.report.blockingFindings))],
+      };
+    }
+    return {
+      consensusDecision: "hold",
+      individualResults: results,
+      agreementScore: 0,
+      blockingFindings: [...new Set(results.flatMap((r) => r.report.blockingFindings))],
+    };
+  }
 
   let consensusDecision: "promote" | "hold" | "rollback";
   if (promoteCount > rollbackCount && promoteCount >= holdCount) {

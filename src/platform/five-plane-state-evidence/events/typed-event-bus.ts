@@ -297,6 +297,10 @@ export interface TypedEventEnvelope<TType extends TypedEventType> {
  */
 export class TypedEventBus {
   private readonly bus: DurableEventBus;
+  private readonly typedSubscribers = new Map<string, {
+    eventTypes: ReadonlySet<TypedEventType>;
+    handler: (event: TypedEventEnvelope<TypedEventType>) => void | Promise<void>;
+  }>();
 
   public constructor(
     db: AuthoritativeSqlDatabase,
@@ -321,10 +325,14 @@ export class TypedEventBus {
     payload: TypedEventPayloadMap[TType];
   }): EventRecord {
     getEventSchema(input.eventType);
-    return this.bus.publish({
+    const event = this.bus.publish({
       ...input,
       payload: input.payload as unknown as Record<string, unknown>,
     });
+    if (event.eventTier !== "tier_1") {
+      void this.dispatchTypedVolatile(event);
+    }
+    return event;
   }
 
   /**
@@ -340,6 +348,10 @@ export class TypedEventBus {
     handler: (event: TypedEventEnvelope<TType>) => void | Promise<void>,
   ): void {
     const accepted = new Set(eventTypes);
+    this.typedSubscribers.set(consumerId, {
+      eventTypes: accepted as ReadonlySet<TypedEventType>,
+      handler: handler as (event: TypedEventEnvelope<TypedEventType>) => void | Promise<void>,
+    });
     const typedHandler: EventHandler = async (event) => {
       if (!accepted.has(event.eventType as TType)) {
         return;
@@ -357,6 +369,7 @@ export class TypedEventBus {
    * @param consumerId - The consumer ID to unsubscribe
    */
   public unsubscribe(consumerId: string): void {
+    this.typedSubscribers.delete(consumerId);
     this.bus.unsubscribe(consumerId);
   }
 
@@ -376,5 +389,22 @@ export class TypedEventBus {
    */
   public pendingForConsumer(consumerId: string) {
     return this.bus.pendingForConsumer(consumerId);
+  }
+
+  public dispose(): void {
+    this.typedSubscribers.clear();
+    this.bus.dispose();
+  }
+
+  private async dispatchTypedVolatile(event: EventRecord): Promise<void> {
+    for (const subscriber of this.typedSubscribers.values()) {
+      if (!subscriber.eventTypes.has(event.eventType as TypedEventType)) {
+        continue;
+      }
+      await subscriber.handler({
+        event: event as EventRecord & { eventType: TypedEventType },
+        payload: JSON.parse(event.payloadJson) as TypedEventPayloadMap[TypedEventType],
+      });
+    }
   }
 }

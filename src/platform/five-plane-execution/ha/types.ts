@@ -226,8 +226,8 @@ export interface HaLevelConfig {
 /**
  * Predefined HA level configurations.
  */
-export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = {
-  HA_1: {
+export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = Object.freeze({
+  HA_1: Object.freeze({
     haLevel: "HA_1",
     leaseRenewalIntervalMs: 0, // Not needed for single-node
     leaseTtlMs: 60_000,
@@ -239,8 +239,8 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = {
     walCheckpointIntervalMs: 0,
     walRetentionMs: 0,
     eventReplayEnabled: false,
-  },
-  HA_2: {
+  }),
+  HA_2: Object.freeze({
     haLevel: "HA_2",
     leaseRenewalIntervalMs: 5_000,
     leaseTtlMs: 15_000,
@@ -252,8 +252,8 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = {
     walCheckpointIntervalMs: 30_000,
     walRetentionMs: 86_400_000,
     eventReplayEnabled: true,
-  },
-  HA_3: {
+  }),
+  HA_3: Object.freeze({
     haLevel: "HA_3",
     leaseRenewalIntervalMs: 3_000,
     leaseTtlMs: 10_000,
@@ -265,8 +265,8 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = {
     walCheckpointIntervalMs: 15_000,
     walRetentionMs: 604_800_000,
     eventReplayEnabled: true,
-  },
-};
+  }),
+});
 
 // ── WAL Types ───────────────────────────────────────────────────────
 

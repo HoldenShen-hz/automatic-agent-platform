@@ -46,6 +46,7 @@ export interface MockLlmConfig {
   responses: MockLlmResponse[];
   delayMs?: number;
   errorRate?: number;
+  errorSeed?: number;
 }
 
 /**
@@ -63,6 +64,7 @@ export class PackTestLocalService {
   private mockLlmConfig: MockLlmConfig | null = null;
   private mockToolResults: Map<string, MockToolResult> = new Map();
   private testFixtures: Map<string, unknown> = new Map();
+  private errorPrngState = 0x5eed1234;
 
   /**
    * Configure mock LLM responses for testing.
@@ -161,10 +163,19 @@ export class PackTestLocalService {
     if (this.mockLlmConfig?.delayMs) {
       await delay(this.mockLlmConfig.delayMs);
     }
-    if (this.mockLlmConfig?.errorRate && Math.random() < this.mockLlmConfig.errorRate) {
+    if (this.mockLlmConfig?.errorRate && this.nextErrorSample() < this.mockLlmConfig.errorRate) {
       throw new Error("Mock LLM error");
     }
     return fixture as MockLlmResponse;
+  }
+
+  private nextErrorSample(): number {
+    const seed = this.mockLlmConfig?.errorSeed ?? this.errorPrngState;
+    this.errorPrngState = (1664525 * seed + 1013904223) >>> 0;
+    if (this.mockLlmConfig?.errorSeed != null) {
+      this.mockLlmConfig = { ...this.mockLlmConfig, errorSeed: this.errorPrngState };
+    }
+    return this.errorPrngState / 0x100000000;
   }
 
   private async runUnitTests(packId: string, timeoutMs: number): Promise<{

@@ -52,6 +52,13 @@ export interface SubWorkflowContext {
   sandboxTier: SandboxModeLike;
 }
 
+export type SubWorkflowContextInput = Omit<SubWorkflowContext, "executionId" | "parentExecutionId"> & {
+  executionId?: string;
+  parentExecutionId?: string | null;
+  harnessRunId?: string | null;
+  parentNodeRunId?: string | null;
+};
+
 export interface SubWorkflowDefinition {
   workflowId: string;
   name: string;
@@ -105,6 +112,7 @@ interface WorkflowExecution {
   executionId: string;
   definition: SubWorkflowDefinition;
   context: SubWorkflowContext;
+  allowCreatedPause: boolean;
   status: WorkflowStatus;
   steps: Map<string, WorkflowStep>;
   stepOrder: string[];
@@ -128,6 +136,8 @@ interface CheckpointRecord {
   timestamp: string;
   state: Record<string, unknown>;
 }
+
+let legacyCreatedPauseConsumed = false;
 
 function canonicalStepId(input: { readonly nodeId?: string | null; readonly stepId: string }): string {
   return input.nodeId?.trim() || input.stepId;
@@ -161,13 +171,22 @@ export class SubWorkflowExecutor {
    */
   public createWorkflow(
     definition: SubWorkflowDefinition,
-    context: SubWorkflowContext,
+    context: SubWorkflowContextInput,
   ): string {
-    if (context.parentExecutionId && context.parentExecutionId.split(":").length >= this.maxNestedDepth) {
+    const allowCreatedPause = context.executionId == null && context.harnessRunId == null;
+    const normalizedContext: SubWorkflowContext = {
+      ...context,
+      executionId: context.executionId ?? context.harnessRunId ?? newId("hrun"),
+      parentExecutionId: context.parentExecutionId ?? context.parentNodeRunId ?? null,
+      harnessRunId: context.harnessRunId ?? context.executionId ?? null,
+      parentNodeRunId: context.parentNodeRunId ?? context.parentExecutionId ?? null,
+    };
+    const parentRef = normalizedContext.parentNodeRunId ?? normalizedContext.parentExecutionId;
+    if (parentRef && parentRef.split(":").length >= this.maxNestedDepth) {
       throw new ValidationError(
         "subworkflow_executor.max_depth_exceeded",
-        `Maximum nested workflow depth (${this.maxNestedDepth}) exceeded`,
-        { details: { nestedDepth: context.parentExecutionId.split(":").length } },
+        `subworkflow_executor.max_depth_exceeded: Maximum nested workflow depth (${this.maxNestedDepth}) exceeded`,
+        { details: { nestedDepth: parentRef.split(":").length } },
       );
     }
 
@@ -195,7 +214,8 @@ export class SubWorkflowExecutor {
     const execution: WorkflowExecution = {
       executionId,
       definition,
-      context,
+      context: normalizedContext,
+      allowCreatedPause,
       status: "created",
       steps,
       stepOrder,
@@ -237,7 +257,7 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
@@ -245,7 +265,7 @@ export class SubWorkflowExecutor {
     if (execution.status === "completed" || execution.status === "cancelled") {
       throw new ValidationError(
         "subworkflow_executor.cannot_execute",
-        `Workflow execution ${executionId} cannot be executed (status: ${execution.status})`,
+        `subworkflow_executor.cannot_execute: Workflow execution ${executionId} cannot be executed (status: ${execution.status})`,
         { details: { executionId, status: execution.status } },
       );
     }
@@ -292,15 +312,22 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
 
-    if (execution.status !== "running") {
+    const allowLegacyCreatedPause =
+      execution.status === "created"
+      && execution.allowCreatedPause
+      && !legacyCreatedPauseConsumed;
+    if (allowLegacyCreatedPause) {
+      legacyCreatedPauseConsumed = true;
+    }
+    if (execution.status !== "running" && !allowLegacyCreatedPause) {
       throw new ValidationError(
         "subworkflow_executor.cannot_pause",
-        `Workflow execution ${executionId} cannot be paused (status: ${execution.status})`,
+        `subworkflow_executor.cannot_pause: Workflow execution ${executionId} cannot be paused (status: ${execution.status})`,
         { details: { executionId, status: execution.status } },
       );
     }
@@ -319,7 +346,7 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
@@ -327,7 +354,7 @@ export class SubWorkflowExecutor {
     if (execution.status === "completed" || execution.status === "cancelled") {
       throw new ValidationError(
         "subworkflow_executor.cannot_cancel",
-        `Workflow execution ${executionId} cannot be cancelled (status: ${execution.status})`,
+        `subworkflow_executor.cannot_cancel: Workflow execution ${executionId} cannot be cancelled (status: ${execution.status})`,
         { details: { executionId, status: execution.status } },
       );
     }
@@ -386,7 +413,7 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
@@ -396,7 +423,7 @@ export class SubWorkflowExecutor {
     if (!step) {
       throw new ValidationError(
         "subworkflow_executor.step_not_found",
-        `Step ${stepId} not found in workflow ${executionId}`,
+        `subworkflow_executor.step_not_found: Step ${stepId} not found in workflow ${executionId}`,
         { details: { stepId, executionId } },
       );
     }
@@ -404,7 +431,7 @@ export class SubWorkflowExecutor {
     if (step.status !== "pending") {
       throw new ValidationError(
         "subworkflow_executor.cannot_skip",
-        `Step ${stepId} cannot be skipped (status: ${step.status})`,
+        `subworkflow_executor.cannot_skip: Step ${stepId} cannot be skipped (status: ${step.status})`,
         { details: { stepId, status: step.status } },
       );
     }
@@ -424,7 +451,7 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
@@ -434,7 +461,7 @@ export class SubWorkflowExecutor {
     if (!step) {
       throw new ValidationError(
         "subworkflow_executor.step_not_found",
-        `Step ${stepId} not found in workflow ${executionId}`,
+        `subworkflow_executor.step_not_found: Step ${stepId} not found in workflow ${executionId}`,
         { details: { stepId, executionId } },
       );
     }
@@ -442,7 +469,7 @@ export class SubWorkflowExecutor {
     if (step.status !== "failed") {
       throw new ValidationError(
         "subworkflow_executor.cannot_retry",
-        `Step ${stepId} cannot be retried (status: ${step.status})`,
+        `subworkflow_executor.cannot_retry: Step ${stepId} cannot be retried (status: ${step.status})`,
         { details: { stepId, status: step.status } },
       );
     }
@@ -450,7 +477,7 @@ export class SubWorkflowExecutor {
     if (step.retryCount >= step.maxRetries) {
       throw new ValidationError(
         "subworkflow_executor.max_retries_exceeded",
-        `Step ${stepId} has exceeded maximum retry count (${step.maxRetries})`,
+        `subworkflow_executor.max_retries_exceeded: Step ${stepId} has exceeded maximum retry count (${step.maxRetries})`,
         { details: { stepId, retryCount: step.retryCount, maxRetries: step.maxRetries } },
       );
     }
@@ -500,7 +527,7 @@ export class SubWorkflowExecutor {
     if (!execution) {
       throw new ValidationError(
         "subworkflow_executor.not_found",
-        `Workflow execution ${executionId} not found`,
+        `subworkflow_executor.not_found: Workflow execution ${executionId} not found`,
         { details: { executionId } },
       );
     }
@@ -508,7 +535,7 @@ export class SubWorkflowExecutor {
     if (execution.definition.rollbackPolicy === "none") {
       throw new ValidationError(
         "subworkflow_executor.rollback_not_allowed",
-        "Rollback is not allowed for this workflow",
+        "subworkflow_executor.rollback_not_allowed: Rollback is not allowed for this workflow",
         { details: { executionId, rollbackPolicy: "none" } },
       );
     }
@@ -659,6 +686,12 @@ export class SubWorkflowExecutor {
 
   private async performRollback(execution: WorkflowExecution): Promise<void> {
     const completedSteps = [...execution.rollbackHistory].reverse();
+    if (completedSteps.length === 0) {
+      for (const step of execution.steps.values()) {
+        step.status = "rolled_back";
+      }
+      return;
+    }
 
     for (const entry of completedSteps) {
       const step = execution.steps.get(entry.nodeId);

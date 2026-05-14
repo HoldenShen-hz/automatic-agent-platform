@@ -208,12 +208,13 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
     const successCount = results.filter((r) => r.success).length;
     const successRateAfter = benchmarkCases > 0 ? successCount / benchmarkCases : 0;
     const baselineWeight = lockedBaselines.reduce((sum, entry) => sum + Math.max(entry.baseline.sampleCount, 1), 0);
-    const successRateBefore = baselineWeight > 0
-      ? lockedBaselines.reduce(
-        (sum, entry) => sum + (entry.baseline.successRate * Math.max(entry.baseline.sampleCount, 1)),
-        0,
-      ) / baselineWeight
-      : 0;
+    const successRateBefore = weightedPercentile(
+      lockedBaselines.map((entry) => ({
+        value: entry.baseline.successRate,
+        weight: Math.max(entry.baseline.sampleCount, 1),
+      })),
+      0.5,
+    );
     const avgCostBefore = baselineWeight > 0
       ? lockedBaselines.reduce(
         (sum, entry) => sum + (entry.baseline.avgCost * Math.max(entry.baseline.sampleCount, 1)),
@@ -303,4 +304,27 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
     if (kind.includes("workflow") && testCase.taskType.includes("workflow")) return true;
     return target.includes(testCase.taskType.toLowerCase()) || this.benchmarkCases.length === 1;
   }
+}
+
+function weightedPercentile(samples: readonly { value: number; weight: number }[], percentile: number): number {
+  if (samples.length === 0) {
+    return 0;
+  }
+  const normalizedPercentile = Math.min(Math.max(percentile, 0), 1);
+  const ordered = [...samples]
+    .filter((sample) => Number.isFinite(sample.value) && Number.isFinite(sample.weight) && sample.weight > 0)
+    .sort((a, b) => a.value - b.value);
+  const totalWeight = ordered.reduce((sum, sample) => sum + sample.weight, 0);
+  if (ordered.length === 0 || totalWeight <= 0) {
+    return 0;
+  }
+  const threshold = totalWeight * normalizedPercentile;
+  let cumulative = 0;
+  for (const sample of ordered) {
+    cumulative += sample.weight;
+    if (cumulative >= threshold) {
+      return sample.value;
+    }
+  }
+  return ordered[ordered.length - 1]!.value;
 }

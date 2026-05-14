@@ -28,7 +28,11 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   domain: staging.automatic-agent.example.com
-  hosts: []
+  hosts:
+    - host: staging.automatic-agent.example.com
+      paths:
+        - path: /
+          pathType: Prefix
   tls:
     - secretName: automatic-agent-staging-tls
       hosts:
@@ -39,6 +43,7 @@ env:
   AA_API_PORT: "3000"
   AA_LOG_LEVEL: "info"
   AA_STORAGE_DRIVER: "sqlite"
+  AA_OTEL_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
   NODE_ENV: "staging"
 
 persistence:

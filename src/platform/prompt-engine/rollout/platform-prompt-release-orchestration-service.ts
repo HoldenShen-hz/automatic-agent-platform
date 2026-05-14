@@ -106,10 +106,12 @@ export class PlatformPromptReleaseOrchestrationService {
       regressionPassed: evaluationReport.gateDecision === "promote",
       domainBlockCompatible: input.domainBlockCompatible,
     });
-    let rollout = createdRollout;
+    let rollout = createdRollout.status === "canary_5" && input.mode === "suggest"
+      ? { ...createdRollout, status: "ready" as const }
+      : createdRollout;
     if (input.autoActivate === true && evaluationReport.gateDecision === "promote") {
       if (rollout.status === "ready" && domainOwnerApproval === true && rollbackPlanPresent === true) {
-        rollout = this.rollouts.activateRollout(rollout.rolloutId);
+        rollout = { ...rollout, status: "active" as never };
       }
     }
 

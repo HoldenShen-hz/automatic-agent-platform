@@ -160,6 +160,8 @@ export interface PlanEvaluation {
   viable: boolean;
   riskLevel: UnifiedAssessment["risk"];
   issues: string[];
+  estimatedTokenBudget: number;
+  estimatedCostUsd: number;
 }
 
 export class PlanEvaluator {
@@ -193,6 +195,27 @@ export class PlanEvaluator {
       viable: issues.length === 0,
       riskLevel: assessment.risk,
       issues,
+      estimatedTokenBudget: tokenEstimation.totalTokens,
+      estimatedCostUsd: tokenEstimation.costEstimateUsd,
+    };
+  }
+
+  public produceEvaluationReport(plan: Plan, assessment: UnifiedAssessment) {
+    const evaluation = this.evaluate(plan, assessment);
+    const score = Math.max(0, Math.min(1, 1 - evaluation.issues.length * 0.2));
+    return {
+      evaluationId: `eval_report:${plan.planId}:${Date.now()}`,
+      passed: evaluation.viable,
+      score,
+      evaluatedAt: Date.now(),
+      issues: evaluation.issues,
+      recommendation: assessment.risk === "critical"
+        ? "require_human_approval"
+        : evaluation.viable
+          ? "proceed_to_execute"
+          : "revise_plan",
+      estimatedTokenBudget: evaluation.estimatedTokenBudget,
+      estimatedCostUsd: evaluation.estimatedCostUsd,
     };
   }
 }

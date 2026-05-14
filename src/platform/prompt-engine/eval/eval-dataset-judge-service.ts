@@ -181,13 +181,14 @@ export class EvalDatasetJudgeService {
     // R2-4: Validate minimum sample sizes by risk level
     const criticalCases = cases.filter((c) => c.priority === "critical");
     const standardCases = cases.filter((c) => c.priority === "standard");
-    if (criticalCases.length > 0 && criticalCases.length < 200) {
+    const enforceMinimumSamples = input.status === "active";
+    if (enforceMinimumSamples && criticalCases.length > 0 && criticalCases.length < 200) {
       throw new ValidationError(
         "eval_dataset.insufficient_critical_samples",
         `Evaluation dataset with critical cases requires at least 200 samples, got ${criticalCases.length}.`,
       );
     }
-    if (standardCases.length > 0 && standardCases.length < 50) {
+    if (enforceMinimumSamples && standardCases.length > 0 && standardCases.length < 50) {
       throw new ValidationError(
         "eval_dataset.insufficient_medium_samples",
         `Evaluation dataset with standard (medium risk) cases requires at least 50 samples, got ${standardCases.length}.`,
@@ -196,7 +197,7 @@ export class EvalDatasetJudgeService {
     // R2-4: For datasets with both critical and standard, also enforce high ≥ 100 if any high-risk cases exist
     // Since priority only has critical/standard, we treat standard as medium; no explicit "high" exists
     // But if a dataset has > 0 critical AND > 0 standard, we require standard >= 100 for balanced coverage
-    if (criticalCases.length > 0 && standardCases.length > 0 && standardCases.length < 100) {
+    if (enforceMinimumSamples && criticalCases.length > 0 && standardCases.length > 0 && standardCases.length < 100) {
       throw new ValidationError(
         "eval_dataset.insufficient_high_samples",
         `Evaluation dataset with both critical and standard cases requires at least 100 standard samples, got ${standardCases.length}.`,

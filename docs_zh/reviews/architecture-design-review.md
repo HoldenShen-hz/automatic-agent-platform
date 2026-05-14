@@ -84995,3 +84995,508 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 详情见 `.audit/quality.md`
 
 *Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十八轮 - 全量深度Review）
+
+### Review覆盖范围
+7个并行代理完成深度review:
+- src/platform/ (5层架构)
+- src/domains/ (40+领域)
+- src/sdk/ 和 CLI
+- tests/unit/ (关键测试文件)
+- config/ 和 deploy/
+- docs_zh/ 和 ui/
+- src/interaction/, org-governance/, ops-maturity/, scale-ecosystem/, core/
+
+---
+
+### 发现的新问题
+
+#### A. src/platform/ 发现 (18个问题)
+
+#### A1. [Orchestration] [高] `harness/index.ts` 2317行 - God Object
+- **文件**: `src/platform/five-plane-orchestration/harness/index.ts:1-2317`
+- **问题**: 单文件2317行违反单一职责原则，包含HarnessService、loop controllers、guardrails、evaluation logic
+- **代码片段**: Line 1423: `// @ts-ignore - appendEvidenceRecord may not exist on RuntimeRepository`
+- **建议**: 拆分为 `harness-run-controller.ts`, `harness-loop-controller.ts`, `harness-guardrails.ts`, `harness-evaluation.ts`
+
+#### A2. [Execution] [高] `durable-event-bus.ts` Map/Set积累无清理
+- **文件**: `src/platform/five-plane-state-evidence/events/durable-event-bus.ts:208-227`
+- **问题**: `subscribers`, `pollingTimers`, `pendingPartitionEvents` 等Map创建后无cleanup
+- **代码片段**: `private readonly disposed = false; // never checked`
+- **建议**: 添加 dispose() 方法取消所有 polling timers 并清空 maps
+
+#### A3. [State-Evidence] [高] `as unknown as T` 模式滥用
+- **文件**: `src/platform/five-plane-state-evidence/truth/sqlite/query-helper.ts:28,41,53,79`
+- **问题**: 到处使用双转型掩盖类型问题
+- **建议**: 创建强类型包装接口代替类型转换
+
+#### A4. [Execution] [中] `execution-dispatch-service.ts` 1067行
+- **文件**: `src/platform/five-plane-execution/dispatcher/execution-dispatch-service.ts`
+- **问题**: 大型dispatch service，违反单一职责
+- **建议**: 拆分为 `execution-dispatch-core.ts` 和 `execution-dispatch-health.ts`
+
+#### A5. [Control-Plane] [中] `startup-env-schema.ts` 硬 `process.exit(1)`
+- **文件**: `src/platform/five-plane-control-plane/config-center/startup-env-schema.ts:506`
+- **问题**: 验证失败后直接 `process.exit(1)` - 反模式
+- **建议**: 抛出错误让调用者决定退出码
+
+#### A6. [Execution] [中] `process-error-handlers.ts` 60秒超时后 exit
+- **文件**: `src/platform/five-plane-execution/startup/process-error-handlers.ts:105,169`
+- **问题**: `process.exit(1)` fallback 可能合理但需文档化
+- **建议**: 文档化为何需要60秒
+
+#### A7. [Control-Plane] [中] `secret-management-service.ts` setInterval无清理
+- **文件**: `src/platform/five-plane-control-plane/iam/secret-management-service.ts:663`
+- **问题**: rotationInterval 无 clearInterval 路径
+- **建议**: 确保 interval 在 service dispose 时清除
+
+#### A8. [Interface] [中] 多处 setInterval 无 visible cleanup
+- **文件**: `task-websocket-status-relay.ts:37`, `websocket-bridge.ts:109`, `channel-gateway-retry-executor.ts:76`
+- **建议**: 验证所有 interval 在 shutdown 路径有 clearInterval
+
+#### A9. [Orchestration] [低] TODO R4-27 - HarnessRun未持久化
+- **文件**: `src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts:270`
+- **问题**: `// TODO R4-27 [ARCHITECTURE]: HarnessRun must be persisted`
+- **建议**: 实现或创建 tracked issue
+
+#### A10. [State-Evidence] [中] `partitionSequenceNumbers` 模块级可变状态
+- **文件**: `src/platform/five-plane-state-evidence/events/durable-event-bus.ts:55`
+- **问题**: `const partitionSequenceNumbers = new Map<string, number>()` 跨实例共享
+- **建议**: 改为实例级或使用并发原语
+
+#### A11. [Orchestration] [高] `_placeholder: true` 模式
+- **文件**: `src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.ts:437,453,457,470`
+- **问题**: 使用 `{ _placeholder: true } as unknown as ConfirmedTaskSpec`
+- **建议**: 重设计类型需求
+
+#### A12. [Shared] [中] `slo-alerting-service.ts` 1270行
+- **文件**: `src/platform/shared/observability/slo-alerting-service.ts`
+- **建议**: 提取 alert dispatch 和 SLO calculation logic
+
+#### A13. [State-Evidence] [中] `event-registry.ts` 1077行
+- **文件**: `src/platform/five-plane-state-evidence/events/event-registry.ts`
+- **问题**: RAW_EVENT_SCHEMA_REGISTRY 常量包含所有 event schemas
+- **建议**: 按域组织到独立配置文件
+
+#### A14. [Control-Plane] [中] `approval-flow-engine.ts` 1031行
+- **文件**: `src/platform/five-plane-control-plane/approval-center/approval-flow-engine.ts`
+- **建议**: 提取 quorum calculator 和 escalation manager
+
+#### A15. [Execution] [低] `GracefulShutdown` 正确清理 listeners
+- **文件**: `src/platform/five-plane-execution/startup/graceful-shutdown.ts:117-121`
+- **问题**: 无 - 此文件正确清理 listeners
+- **建议**: 这是良好模式应推广
+
+#### A16. [Interface] [低] `sanitize.ts` 有 prototype pollution 防护
+- **文件**: `src/platform/five-plane-interface/api/middleware/sanitize.ts:3`
+- **问题**: 无 - 正确阻止 `__proto__`, `prototype`, `constructor`
+- **建议**: 确保应用于所有 JSON 入口点
+
+---
+
+#### B. src/domains/ 发现 (8个问题)
+
+#### B1. [DomainLifecycleState] [严重] 类型定义不一致
+- **文件**: `src/domains/architecture-remediation.ts:1` vs `src/domains/domain-specs.ts:115`
+- **问题**: 两套完全不同的值:
+  - architecture-remediation.ts: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (PascalCase)
+  - domain-specs.ts: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+- **建议**: 统一使用 domain-specs.ts 的定义（经过Zod验证）
+
+#### B2. [Plugin Runtime] [严重] sandboxRoot 未验证用于 process.chdir()
+- **文件**: `src/domains/registry/plugin-runtime-child.ts:89-93`
+- **问题**: `AA_PLUGIN_SANDBOX_ROOT` 直接用于 `process.chdir()` 无路径验证
+- **代码片段**:
+```typescript
+const sandboxRoot = process.env.AA_PLUGIN_SANDBOX_ROOT?.trim();
+if (sandboxRoot) {
+  process.chdir(sandboxRoot);  // 无验证!
+}
+```
+- **建议**: 使用 `checkSandboxPath()` 验证
+
+#### B3. [Plugin Runtime] [严重] child process 事件监听器未清理
+- **文件**: `src/domains/registry/plugin-runtime-host.ts:274-280`
+- **问题**: `stderr.on`, `stdout.on`, `message` 监听器在 stop() 时未移除
+- **建议**: 在 stop() 中调用 `removeAllListeners()`
+
+#### B4. [Plugin Runtime] [中] process.exit(0) 在库代码中
+- **文件**: `src/domains/registry/plugin-runtime-child.ts:175`
+- **问题**: 子进程强行 `process.exit(0)` 不给宿主清理机会
+- **建议**: 发送退出信号给父进程决定
+
+#### B5. [Plugin Runtime] [中] getProcessTracker().register 后无 unregister
+- **文件**: `src/domains/registry/plugin-runtime-host.ts:152`
+- **建议**: 在 stop() 中添加 unregister
+
+#### B6. [大型文件] [中] 超大型文件需要拆分
+- **文件**:
+  - `plugin-spi-registry.ts`: 948 行
+  - `plugin-runtime-host.ts`: 784 行
+  - `division-loader.ts`: 818 行
+  - `yono/index.ts`: 763 行
+- **建议**: 按职责拆分
+
+#### B7. [Event Listeners] [严重] 全局无 removeListener/off 调用
+- **文件**: 整个 `src/domains/` 目录
+- **问题**: `.on()`, `.once()`, `addEventListener()` 32处但 remove 调用为0
+- **建议**: 确保在销毁时调用移除方法
+
+#### B8. [DomainDescriptorOrchestrationService] [中] normalizeLifecycleState 映射不完整
+- **文件**: `src/domains/domain-descriptor-orchestration-service.ts:144-156`
+- **问题**: 映射表是单向的，状态回溯可能不一致
+- **建议**: 使用统一的 DomainLifecycleState 类型
+
+---
+
+#### C. src/sdk/ 和 CLI 发现 (9个问题)
+
+#### C1. [安全] [严重] 硬编码 CVE 绕过 SBOM 扫描
+- **文件**: `src/sdk/plugin-sdk/plugin-definition.ts:466-475`
+- **问题**: `inferRemoteSbomPackages()` 返回硬编码漏洞版本而非实际解析SBOM
+- **代码片段**:
+```typescript
+if (lowerPath.includes("lodash")) {
+  return [{ name: "lodash", version: "4.17.21" }];  // vulnerable!
+}
+```
+- **建议**: 删除此函数，始终获取/解析实际 SBOM 文件
+
+#### C2. [安全] [中] 弱 RSA 2048位密钥
+- **文件**: `src/sdk/pack-sdk/pack-manifest.ts:232-233`
+- **问题**: `modulusLength: 2048` 是最低阈值
+- **建议**: 使用 4096位 RSA 或 Ed25519/Ed448
+
+#### C3. [安全] [严重] OAuth tokens 明文存储
+- **文件**: `src/sdk/cli/login.ts:70-79`
+- **问题**: tokens 以 JSON 明文存储到文件
+- **建议**: 使用系统 keychain 或加密存储
+
+#### C4. [测试] [中] Math.random() 导致非确定性
+- **文件**: `src/sdk/fixture-redact.ts:174`
+- **问题**: `generateTestId()` 使用 Math.random()
+- **建议**: 使用 `crypto.randomUUID()`
+
+#### C5. [测试] [中] Math.random() 用于错误注入
+- **文件**: `src/sdk/pack-sdk/pack-test-local-service.ts:164`
+- **问题**: `playbackFixture()` 用 Math.random() 模拟错误率
+- **建议**: 使用 seeded PRNG
+
+#### C6. [CLI] [中] 手动参数解析无验证
+- **文件**: `src/sdk/cli/pack-validate.ts:19-36`, `pack-create.ts:23-57`, `pack-publish.ts:22-46`
+- **问题**: 手动 `process.argv` 解析，缺少 schema 验证
+- **建议**: 使用 `parseArgs` 或 yargs/commander
+
+#### C7. [类型安全] [中] @ts-ignore 滥用
+- **文件**: `src/sdk/harness-sdk/index.ts:477,490,576,596,620,643`
+- **问题**: 6个 @ts-ignore 隐藏类型错误
+- **建议**: 定义 proper discriminated union types
+
+#### C8. [类型安全] [中] any 类型滥用
+- **文件**: `src/sdk/cli/stable-runner-factory.ts:62-72`
+- **问题**: `StableRunner`, `StableReportWriter`, `FailedPredicate` 使用 `any`
+- **建议**: 使用泛型 `<T, R>`
+
+#### C9. [安全] [低] 不完整的漏洞数据库
+- **文件**: `src/sdk/plugin-sdk/plugin-definition.ts:133-148`
+- **问题**: `KNOWN_VULNERABILITIES` 只列出2个CVE (2021年)
+- **建议**: 集成 OSV/NVD 或删除不完整的 allowlist
+
+---
+
+#### D. tests/unit/ 发现 (10个问题)
+
+#### D1. [测试] [严重] budget-allocator.test.ts 缺少 throttle ratio 断言
+- **文件**: `tests/unit/platform/five-plane-execution/budget-allocator.test.ts:332-335`
+- **问题**: 计算了 throttled 结果但从未 assert
+- **建议**: 添加 `assert.equal(result.reservation.effectiveAmount, 50)`
+
+#### D2. [测试] [中] durable-event-bus-async.test.ts setTimeout 时序问题
+- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
+- **问题**: `setTimeout(resolve, 20)` 在负载高时可能不足
+- **建议**: 使用事件监听或轮询模式
+
+#### D3. [测试] [中] pendingForConsumer 返回值未验证
+- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:174-176`
+- **问题**: `pending` 变量无 assert
+- **建议**: 添加 `assert.ok(pending.length > 0)`
+
+#### D4. [类型安全] [低] 25+ 测试文件使用 @ts-nocheck
+- **文件**: `tests/unit/domains/recipes/recipe-registry.test.ts:11` 等
+- **问题**: 禁用类型检查阻碍 TypeScript 安全收益
+- **建议**: 逐文件修复或创建 tracking issue
+
+#### D5. [测试] [中] 30+ 处使用 Math.random() 生成测试 ID
+- **文件**: `tests/unit/org-governance/approval-routing-service-extended.test.ts:32` 等
+- **问题**: 非确定性使测试难以重现
+- **建议**: 使用确定性 ID 生成
+
+#### D6. [资源] [中] 部分测试缺少 bus.dispose() 调用
+- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
+- **问题**: publish/subscribe/pendingForConsumer 测试只调用 db.close() 但未 dispose bus
+- **建议**: 在 db.close() 前添加 `bus.dispose()`
+
+#### D7. [代码规范] [低] cleanupPath 与 db.close 顺序不一致
+- **文件**: `tests/unit/core/events/memory-leak.test.ts:22-24` vs durable-event-bus-async.test.ts
+- **建议**: 建立统一的清理顺序标准
+
+#### D8. [测试] [低] @ts-ignore 绕过类型检查
+- **文件**: `tests/unit/platform/shared/observability/structured-logger-edge-cases.test.ts:250` 等
+- **建议**: 使用 `// @ts-expect-error` 并添加说明
+
+#### D9. [测试] [中] plugin-spi-registry-invocation.test.ts 多处短时延
+- **文件**: `tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts:40,91,94,150,327,800,834`
+- **问题**: 5-25ms setTimeout 在慢速 CI 易失败
+- **建议**: 增加至 100ms+ 或使用轮询
+
+#### D10. [测试] [低] deliverPending 测试注释与实现不符
+- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:233-234`
+- **问题**: 注释暗示验证投递行为但实际只验证返回值类型
+- **建议**: 添加断言验证 delivered.length
+
+---
+
+#### E. config/ 和 deploy/ 发现 (11个问题)
+
+#### E1. [配置] [严重] config/security/ 缺少安全字段
+- **文件**: `config/security/*.json`
+- **问题**: 只有 `approvalMode`，缺少 `sandboxMode` 和 `remoteWorkerRegistration`
+- **建议**: 补充缺失的安全配置字段
+
+#### E2. [.gitignore] [中] 缺少 .audit/ 目录模式
+- **文件**: `.gitignore`
+- **问题**: `.audit/` 存在但未排除
+- **建议**: 添加 `.audit/`
+
+#### E3. [.gitignore] [中] 缺少 dist_* 和 :memory:* 模式
+- **文件**: `.gitignore`
+- **问题**: 缺少 `dist_*/`, `:memory:*`, `dist-test/`
+- **建议**: 补充
+
+#### E4. [Terraform] [中] orphaned 空 EKS cluster resource
+- **文件**: `deploy/terraform/modules/eks/main.tf:157-160`
+- **问题**: `count = 0` 的死代码
+- **建议**: 删除 orphaned resource block
+
+#### E5. [Terraform] [中] 硬编码 VPC CIDR
+- **文件**: `deploy/terraform/modules/rds/main.tf:80`, `elasticache/main.tf:62`
+- **问题**: `cidr_blocks = ["10.0.0.0/16"]` 硬编码
+- **建议**: 添加 `vpc_cidr` 变量
+
+#### E6. [Terraform] [低] backend region 不匹配
+- **文件**: `deploy/terraform/main.tf:14`
+- **问题**: S3 backend region `ap-southeast-1` vs provider `us-east-1`
+- **建议**: 使 backend region 可配置
+
+#### E7. [Helm] [中] pre-prod 使用 production NODE_ENV
+- **文件**: `deploy/helm/automatic-agent/values-pre-prod.yaml:43`
+- **问题**: `NODE_ENV: "production"` 应为 `"pre-production"`
+- **建议**: 修正
+
+#### E8. [部署] [中] 缺少 kubernetes/ 目录
+- **文件**: `deploy/`
+- **问题**: 无 `/deploy/kubernetes/manifests/`
+- **建议**: 添加 K8s YAML 模板或文档说明
+
+#### E9. [ECR] [低] repository name 无环境后缀
+- **文件**: `deploy/terraform/modules/ecr/main.tf:26`
+- **问题**: 所有环境共享同一 ECR repository
+- **建议**: 添加 environment suffix
+
+#### E10. [配置] [低] 环境间 storage driver 不一致
+- **文件**: `config/environments/*.json`
+- **问题**: dev/staging/test 引用 `config/runtime/default.json`
+- **建议**: 确保每个环境有适当的 storage 配置
+
+#### E11. [Config] [低] tsconfig.temp.json 命名误导
+- **文件**: `tsconfig.temp.json`
+- **问题**: "temp" 暗示临时但实际被使用
+- **建议**: 重命名为 `tsconfig.build-test.json`
+
+---
+
+#### F. docs_zh/ 和 ui/ 发现 (8个问题)
+
+#### F1. [UI] [严重] SharedWorkerWSClient 内存泄漏
+- **文件**: `ui/packages/shared/api-client/src/ws-client.ts:359`
+- **问题**: `message` 事件监听器在 disconnect() 时未移除
+- **建议**: 在 disconnect() 中添加 `removeEventListener` 并调用 `port.close()`
+
+#### F2. [UI] [中] 缺少全局 Error Boundary
+- **文件**: `ui/apps/web/src/main.tsx`
+- **问题**: 只有 FeatureErrorBoundary 包装单个组件，无全局保护
+- **建议**: 在 App 组件外添加全局 Error Boundary
+
+#### F3. [文档] [严重] 架构文档版本不一致
+- **文件**: `docs_zh/architecture/00-platform-architecture.md` (v4.3) vs `02-code-architecture-reference.md` (v13.0)
+- **问题**: 主要文档彼此引用过时版本
+- **建议**: 统一版本编号策略
+
+#### F4. [文档] [中] 缺少 API SDK 文档
+- **文件**: `docs_zh/reference/` 目录
+- **问题**: WSClient、RESTClient、interceptors 无 API 文档
+- **建议**: 新增 `api-client.md`
+
+#### F5. [文档] [低] Contract 文档与实现不同步
+- **文件**: `docs_zh/contracts/` 多个 .md 文件
+- **问题**: 文档声称 Implemented 但代码可能已演进
+- **建议**: 建立 contract 测试自动生成验证报告
+
+#### F6. [UI] [低] replayBufferByChannel 可能无限增长
+- **文件**: `ui/packages/shared/api-client/src/ws-client.ts:413,325`
+- **问题**: SharedWorkerWSClient 和 BrowserWSClient 的 replay buffer 只在连接时清理
+- **建议**: 在 disconnect() 时清理 replay buffer
+
+#### F7. [UI] [低] XSS 风险未发现
+- **文件**: UI 源码
+- **问题**: 无 `dangerouslySetInnerHTML`、`innerHTML` 直接赋值或 `eval`
+- **建议**: 保持当前模式
+
+#### F8. [文档] [低] src/core/ 未标注为 Legacy
+- **文件**: `docs_zh/architecture/01-code-structure.md`
+- **问题**: 文档未说明 `src/core/` 是 Legacy 兼容层
+- **建议**: 标注为 Legacy
+
+---
+
+#### G. src/interaction/, org-governance/, ops-maturity/, scale-ecosystem/, core/ 发现 (10个问题)
+
+#### G1. [ops-maturity] [中] Benchmark percentile 计算错误
+- **文件**: `src/ops-maturity/drift-detection/learning/benchmark-runner.ts:211-216`
+- **问题**: `successRateBefore` 是加权平均而非 proper percentile
+- **建议**: 如有 individual samples，排序后取百分位
+
+#### G2. [interaction] [中] `nl-gateway/index.ts` 1669行需要拆分
+- **文件**: `src/interaction/nl-gateway/index.ts`
+- **问题**: 包含 NL gateway、ambiguity handling、slot resolution、disambiguation、intent parsing
+- **建议**: 拆分为 NlGatewayService、IntentParserService、SlotResolverService 等
+
+#### G3. [interaction] [中] `workflow-builder-service.ts` 710行
+- **文件**: `src/interaction/ux/workflow-builder-service.ts`
+- **建议**: 提取 WorkflowStepBuilder、WorkflowValidator、ExecutionTracker
+
+#### G4. [scale-ecosystem] [中] `tenant-platform-service.ts` 1231行
+- **文件**: `src/scale-ecosystem/tenant-platform/tenant-platform-service.ts`
+- **建议**: 拆分为 TenantLifecycleService、TenantTopologyService、ComplianceProgramService、HaProgramService
+
+#### G5. [ops-maturity] [低] console.log 代替 StructuredLogger
+- **文件**: `src/ops-maturity/chaos/chaos-experiment-scheduler.ts:262,595,598,601,604`
+- **问题**: 多处 `console.log` 用于 chaos 实验事件
+- **建议**: 替换为 StructuredLogger
+
+#### G6. [scale-ecosystem] [低] TrustLevel 枚举重复定义
+- **文件**: `src/scale-ecosystem/federation/federation-gateway.ts:31` 和 `trust-relationship.ts:71`
+- **问题**: 两处定义相同的 `TrustLevel` 枚举
+- **建议**: 提取到 shared types file
+
+#### G7. [interaction] [低] replayBuffer 可能导致 GC pressure
+- **文件**: `src/interaction/dashboard/dashboard-websocket-server.ts:100,450-455`
+- **问题**: `shift()` 在高频时可能低效
+- **建议**: 考虑 ring buffer 或 Deque 实现
+
+#### G8. [interaction] [低] R4-38 修复需验证覆盖
+- **文件**: `src/interaction/dashboard/dashboard-websocket-server.ts:144-145,158`
+- **问题**: 注释表明过去有未授权访问漏洞
+- **建议**: 验证此修复有 integration tests 覆盖
+
+#### G9. [ops-maturity] [低] p50/p99 latency 计算使用估算
+- **文件**: `src/interaction/dashboard/health-scorer/index.ts:55-56`
+- **问题**: 基于 queue depth heuristics 而非实际测量
+- **建议**: 文档化为估算模式
+
+#### G10. [ops-maturity] [低] setInterval 中 async void
+- **文件**: `src/ops-maturity/chaos/chaos-experiment-scheduler.ts:866`
+- **问题**: async callback 中未捕获的 rejection 会终止进程
+- **建议**: 用 try/catch 包装 evaluator()
+
+---
+
+### 总结
+
+本次全量Review（第十八轮 - 2026-05-14）通过7个并行代理发现了**73个新问题**。
+
+**高优先级 (需要立即处理)**:
+1. SharedWorkerWSClient 内存泄漏 - 事件监听器未清理
+2. DomainLifecycleState 类型定义不一致 - 两套不同值
+3. plugin-runtime-child.ts sandboxRoot 无验证 - process.chdir() 安全漏洞
+4. plugin-runtime-host.ts child 事件监听器未清理 - 内存泄漏
+5. OAuth tokens 明文存储 - 安全风险
+6. 硬编码 CVE 绕过 SBOM 验证 - 虚假安全感
+7. config/security/ 缺少 sandboxMode/remoteWorkerRegistration
+8. budget-allocator.test.ts 缺少 throttle ratio 断言
+9. harness/index.ts 2317行 God Object
+10. durable-event-bus.ts Map/Set 积累无清理
+
+**中优先级**:
+1. 8个超大型文件需要拆分 (700-2317行)
+2. 30+ Math.random() 导致非确定性测试
+3. 25+ 测试文件使用 @ts-nocheck
+4. console.log 代替 StructuredLogger (5处)
+5. setInterval 无 clearInterval (6+处)
+6. as unknown as 双转型滥用 (25+处)
+7. @ts-ignore 滥用 (21+处)
+8. process.exit() 反模式 (4处)
+9. CLI 参数解析无验证
+10. 架构文档版本不一致
+
+**低优先级**:
+1. .gitignore 缺少 .audit/, dist_*, :memory:* 等
+2. Terraform orphaned EKS resource
+3. pre-prod NODE_ENV 设为 production
+4. TrustLevel 枚举重复定义
+5. ECR repository name 无环境后缀
+6. 缺少 kubernetes/ 目录
+7. tsconfig.temp.json 命名误导
+8. replayBuffer 可能 GC pressure
+9. XSS 防护良好保持
+10. src/core/ 未标注为 Legacy
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 87+10=97 | 96+8=104 | 57+10=67 | 268 |
+| 测试 | 12+1=13 | 18+2=20 | 12+1=13 | 46 |
+| 配置 | 11+1=12 | 40+1=41 | 39+4=43 | 96 |
+| 安全 | 20+2=22 | 18+1=19 | 3 | 44 |
+| 文档 | 2+1=3 | 8+1=9 | 3+1=4 | 16 |
+| UI | 0+1=1 | 4+1=5 | 4+1=5 | 11 |
+| 部署 | 1 | 12+1=13 | 6+1=7 | 21 |
+| **合计** | **146** | **211** | **139** | **496** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 修复 SharedWorkerWSClient 内存泄漏 (添加 removeEventListener)
+2. 统一 DomainLifecycleState 定义 (保留 domain-specs.ts)
+3. 修复 plugin-runtime-child.ts sandboxRoot 验证
+4. 清理 plugin-runtime-host.ts 事件监听器
+5. 实现 OAuth token 安全存储 (keychain 或加密)
+6. 删除硬编码 CVE 绕过 (plugin-definition.ts)
+7. 添加 sandboxMode/remoteWorkerRegistration 到 config/security/
+
+**短期内处理 (本月内)**:
+1. 拆分 harness/index.ts (2317行) 和其他 8 个超大型文件
+2. 修复 budget-allocator.test.ts throttle ratio 断言
+3. 消除 Math.random() 非确定性 (使用 crypto.randomUUID)
+4. 移除 25+ 测试文件的 @ts-nocheck
+5. 统一 console.log → StructuredLogger
+6. 添加所有 setInterval 的 clearInterval 路径
+7. 减少 as unknown as 和 @ts-ignore 使用
+
+**长期规划**:
+1. 重构所有 God Objects (8个超大型文件)
+2. 建立架构边界和接口契约
+3. 实现内存安全验证机制
+4. 建立代码质量门禁 (类型安全、测试覆盖)
+5. 统一版本编号策略 (架构文档)
+6. 完善文档和培训
+
+### 已知测试失败 (14 个文件，1620 个测试)
+
+详情见 `.audit/quality.md`
+
+*Review generated: 2026-05-14*

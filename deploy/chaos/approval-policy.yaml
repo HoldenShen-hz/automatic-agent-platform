@@ -1,0 +1,17 @@
+apiVersion: automatic-agent.io/v1
+kind: ChaosApprovalPolicy
+metadata:
+  name: default-chaos-approval
+spec:
+  requiredApprovers: 2
+  allowedWindows:
+    - name: business-hours-controlled
+      timezone: UTC
+      days: ["Mon", "Tue", "Wed", "Thu"]
+      start: "09:00"
+      end: "16:00"
+  blockedTargets:
+    - prod-control-plane
+    - prod-primary-database
+  maxAffectedPercent: 10
+  autoRollbackOnViolation: true

@@ -42,6 +42,11 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "CIDR block allowed to reach RDS from inside the VPC"
+  type        = string
+}
+
 variable "storage_encrypted" {
   description = "Whether to enable storage encryption"
   type        = bool
@@ -77,7 +82,7 @@ resource "aws_security_group" "rds" {
     from_port   = 5432
     to_port     = 5432
     protocol     = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = [var.vpc_cidr]
     description  = "PostgreSQL from VPC"
   }
 

@@ -47,9 +47,8 @@ export function toExecutionTerminalStatus(
 export function buildAgentExecutionRecord(
   store: AuthoritativeTaskStore,
   execution: NonNullable<ReturnType<AuthoritativeTaskStore["getExecution"]>>,
-  executionId: string,
-  occurredAt: string,
-  updates: {
+  executionIdOrOccurredAt: string,
+  occurredAtOrUpdates: string | {
     agentId: string;
     runtimeInstanceId: string | null;
     restartedFromRuntimeInstanceId: string | null;
@@ -60,9 +59,31 @@ export function buildAgentExecutionRecord(
     toolCallCount: number;
     progressMessage: string | null;
     lastErrorCode: string | null;
+    startedAt?: string | null;
+    completedAt?: string | null;
+  },
+  maybeUpdates?: {
+    agentId: string;
+    runtimeInstanceId: string | null;
+    restartedFromRuntimeInstanceId: string | null;
+    restartGeneration: number;
+    status: string;
+    currentStepId: string | null;
+    lastToolName: string | null;
+    toolCallCount: number;
+    progressMessage: string | null;
+    lastErrorCode: string | null;
+    startedAt?: string | null;
     completedAt?: string | null;
   },
 ): AgentExecutionRecord {
+  const legacySignature = typeof occurredAtOrUpdates !== "string";
+  const executionId = legacySignature ? execution.id : executionIdOrOccurredAt;
+  const occurredAt = legacySignature ? executionIdOrOccurredAt : occurredAtOrUpdates;
+  const updates = legacySignature ? occurredAtOrUpdates : maybeUpdates;
+  if (!updates) {
+    throw new TypeError("buildAgentExecutionRecord requires updates");
+  }
   const existing = store.worker.getAgentExecutionRecord(executionId);
   return {
     executionId,
@@ -89,10 +110,10 @@ export function buildAgentExecutionRecord(
     lastErrorCode: updates.lastErrorCode,
     retryCount: existing?.retryCount ?? Math.max(execution.attempt - 1, 0),
     progressMessage: updates.progressMessage,
-    startedAt: existing?.startedAt ?? execution.startedAt ?? occurredAt,
+    startedAt: updates.startedAt ?? existing?.startedAt ?? execution.startedAt ?? occurredAt,
     createdAt: existing?.createdAt ?? occurredAt,
     updatedAt: occurredAt,
-    completedAt: updates.completedAt ?? null,
+    completedAt: updates.completedAt === undefined ? (existing?.completedAt ?? null) : updates.completedAt,
   };
 }
 

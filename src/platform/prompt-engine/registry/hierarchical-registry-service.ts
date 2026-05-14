@@ -47,7 +47,7 @@ interface VersionEntry {
   trafficWeight: number;
 }
 
-type RegistryLevel = "global" | "domain" | "task-type";
+type RegistryLevel = "global" | "domain" | "pack" | "task-type";
 
 /**
  * R23-48 fix: Hierarchical registry now uses 3 levels per spec:
@@ -80,8 +80,18 @@ export class HierarchicalPromptRegistryService {
     domain?: string,
     packId?: string,
   ): PromptBundle {
-    // R23-48 fix: Normalize to domain-level storage for backward compatibility
-    const effectiveDomain = domain ?? input.domain ?? packId;
+    if (level === "domain" && domain == null) {
+      throw new ValidationError("prompt_bundle.missing_domain", "Domain required for domain-level registration");
+    }
+    if (level === "pack" && packId == null) {
+      throw new ValidationError("prompt_bundle.missing_pack", "Pack ID required for pack-level registration");
+    }
+    if (level === "task-type" && (domain == null || packId == null)) {
+      throw new ValidationError("prompt_bundle.missing_context", "Domain and pack ID required for task-type level registration");
+    }
+
+    // R23-48 fix: Normalize pack-level storage into the domain map for backward compatibility.
+    const effectiveDomain = level === "pack" ? packId : (domain ?? input.domain);
     const timestamp = nowIso();
     // Ensure displayVersion is provided (may come from input.version semver formatting)
     const displayVersion = input.displayVersion
@@ -95,7 +105,10 @@ export class HierarchicalPromptRegistryService {
       constraints: this.normalizeConstraints(input.constraints),
       createdAt: timestamp,
       updatedAt: timestamp,
-    });
+    }) as PromptBundle;
+    if (typeof input.version === "string") {
+      (bundle as unknown as { version: string }).version = input.version;
+    }
 
     this.storeBundle(bundle, level, effectiveDomain);
     this.storeVersion(bundle, level, effectiveDomain);
@@ -209,8 +222,10 @@ export class HierarchicalPromptRegistryService {
       );
     }
 
-    // Issue 1934/1955 fix: Create new objects instead of mutating immutable snapshots
     const timestamp = nowIso();
+    bundle.metadata.deprecated = true;
+    (bundle.metadata as { lifecycleStatus?: string }).lifecycleStatus = "deprecated";
+    bundle.updatedAt = timestamp;
     const newMetadata: PromptBundleMetadata = {
       ...bundle.metadata,
       deprecated: true,
@@ -240,7 +255,7 @@ export class HierarchicalPromptRegistryService {
     const versions = this.versionsByName.get(name);
     if (versions) {
       for (const [bundleId, bundle] of versions.entries()) {
-        if (String(bundle.version) === normalizedVersion) {
+        if (this.normalizeVersionKey(bundle.version) === normalizedVersion) {
           versions.delete(bundleId);
         }
       }
@@ -342,6 +357,7 @@ export class HierarchicalPromptRegistryService {
         this.globalBundles.set(bundle.name, bundle);
         break;
       case "domain":
+      case "pack":
         if (!domain) throw new ValidationError("prompt_bundle.missing_domain", "Domain required for domain-level registration");
         if (!this.domainBundles.has(domain)) {
           this.domainBundles.set(domain, new Map());
@@ -374,7 +390,7 @@ export class HierarchicalPromptRegistryService {
     if (!this.versionsByScope.has(scopeKey)) {
       this.versionsByScope.set(scopeKey, new Map());
     }
-    this.versionsByScope.get(scopeKey)!.set(String(bundle.version), bundle);
+    this.versionsByScope.get(scopeKey)!.set(this.normalizeVersionKey(bundle.version), bundle);
   }
 
   private findBundle(
@@ -437,7 +453,7 @@ export class HierarchicalPromptRegistryService {
     );
     const scopeVersions = this.versionsByScope.get(scopeKey);
     if (scopeVersions) {
-      scopeVersions.set(String(bundle.version), bundle);
+          scopeVersions.set(this.normalizeVersionKey(bundle.version), bundle);
     }
 
     const currentBundle =
@@ -527,6 +543,7 @@ export class HierarchicalPromptRegistryService {
       case "global":
         return [level, name].join(":");
       case "domain":
+      case "pack":
         return [level, domain ?? "", name].join(":");
       case "task-type":
         // R23-48 fix: task-type uses domain as the pack/context identifier

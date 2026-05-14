@@ -11,6 +11,7 @@ import test from "node:test";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { createSeededIntegrationContext } from "../../../helpers/integration-context.js";
 import {
+  evaluateMultiDimensionalQuota,
   evaluateQuota,
   isQuotaExceeded,
 } from "../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
@@ -67,10 +68,24 @@ test("budget-allocation: isQuotaExceeded returns true when projected usage excee
 });
 
 test("budget-allocation: Multi-dimensional quota evaluates all dimensions independently", () => {
-  // NOTE: evaluateMultiDimensionalQuota does not exist in the source.
-  // This test is skipped until the function is implemented.
-  // See: https://github.com/org/repo/issues/XXXX
-  return test.skip();
+  const decision = evaluateMultiDimensionalQuota({
+    scope: "tenant",
+    scopeId: "tenant-001",
+    workerUnits: { hardLimit: 10, softLimit: 8, burstLimit: 12, currentUsage: 5 },
+    qps: { hardLimit: 100, softLimit: 80, burstLimit: 120, currentUsage: 60 },
+    budgetUsd: { hardLimit: 50, softLimit: 40, burstLimit: 60, currentUsage: 10 },
+  }, {
+    workerUnits: 2,
+    qps: 25,
+    budgetUsd: 20,
+  });
+
+  assert.equal(decision.passed, true);
+  assert.deepEqual(decision.failedDimensions, []);
+  assert.deepEqual(decision.warningDimensions, ["qps"]);
+  assert.equal(decision.remainingByDimension.workerUnits, 5);
+  assert.equal(decision.remainingByDimension.qps, 35);
+  assert.equal(decision.remainingByDimension.budgetUsd, 30);
 });
 
 test("budget-allocation: Workflow execution tracks cost through lifecycle", () => {
@@ -231,9 +246,22 @@ test("budget-allocation: Execution budget limits are enforced", () => {
 });
 
 test("budget-allocation: Multi-resource quota with mixed pass/fail dimensions", () => {
-  // NOTE: evaluateMultiDimensionalQuota does not exist in the source.
-  // This test is skipped until the function is implemented.
-  return test.skip();
+  const decision = evaluateMultiDimensionalQuota({
+    scope: "tenant",
+    scopeId: "tenant-002",
+    workerUnits: { hardLimit: 10, softLimit: 8, burstLimit: 12, currentUsage: 9 },
+    qps: { hardLimit: 100, softLimit: 80, burstLimit: 120, currentUsage: 20 },
+    budgetUsd: { hardLimit: 50, softLimit: 40, burstLimit: 60, currentUsage: 55 },
+  }, {
+    workerUnits: 4,
+    qps: 10,
+    budgetUsd: 10,
+  });
+
+  assert.equal(decision.passed, false);
+  assert.deepEqual(decision.failedDimensions.sort(), ["budgetUsd", "workerUnits"].sort());
+  assert.equal(decision.exceeded, true);
+  assert.equal(decision.remainingUnits, 0);
 });
 
 test("budget-allocation: Quota policy schema validation", () => {
@@ -257,11 +285,69 @@ test("budget-allocation: Quota policy schema validation", () => {
 });
 
 test("budget-allocation: Reservation and settlement flow", () => {
-  // NOTE: This test requires workflow_state setup that is not present.
-  // The test queries step outputs via listStepOutputsByWorkflow which requires
-  // a workflow_state record linking task to workflow. This setup is missing.
-  // Skipping until proper test setup is implemented.
-  return test.skip();
+  const ctx = createSeededIntegrationContext("aa-budget-reservation-", {
+    taskId: "task-budget-reservation-001",
+    executionId: "exec-budget-reservation-001",
+  });
+  try {
+    const now = nowIso();
+    ctx.db.transaction(() => {
+      ctx.store.insertWorkflowState({
+        taskId: "task-budget-reservation-001",
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+      ctx.store.insertStepOutput({
+        id: "step-output-budget-reservation-001",
+        taskId: "task-budget-reservation-001",
+        nodeRunId: "node-run-budget-reservation-001",
+        stepId: "execute",
+        roleId: "general_executor",
+        status: "succeeded",
+        dataJson: JSON.stringify({ result: "settled" }),
+        summary: "Budgeted execution completed",
+        artifactsJson: "[]",
+        tokenCost: 125,
+        durationMs: 250,
+        validationJson: JSON.stringify({ valid: true }),
+        producedAt: now,
+      });
+      ctx.store.insertCostEvent({
+        id: "cost-budget-reservation-001",
+        taskId: "task-budget-reservation-001",
+        sessionId: "sess-budget-reservation-001",
+        executionId: "exec-budget-reservation-001",
+        agentId: "agent-seeded",
+        provider: "anthropic",
+        model: "claude-sonnet-4-20250514",
+        inputTokens: 1000,
+        outputTokens: 250,
+        costUsd: 0.0125,
+        budgetScope: "task_execution",
+        providerRequestId: null,
+        pricingVersion: null,
+        createdAt: now,
+      });
+    });
+
+    const stepOutputs = ctx.store.listStepOutputsByWorkflow("single_agent_minimal");
+    const costEvents = ctx.store.listCostEventsByTask("task-budget-reservation-001");
+
+    assert.equal(stepOutputs.length, 1);
+    assert.equal(stepOutputs[0].status, "succeeded");
+    assert.equal(costEvents.length, 1);
+    assert.equal(costEvents[0].costUsd, 0.0125);
+  } finally {
+    ctx.cleanup();
+  }
 });
 
 test("budget-allocation: Quota evaluation edge cases", () => {

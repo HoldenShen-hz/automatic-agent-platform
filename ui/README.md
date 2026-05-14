@@ -1,6 +1,9 @@
 # Cross-Platform UI Workspace
 
-This workspace implements the UI baseline described in `docs_zh/architecture/05-cross-platform-ui-architecture.md`.
+This workspace implements the UI baseline described in
+`../docs_zh/architecture/05-cross-platform-ui-architecture.md`.
+
+API client details are documented in `../docs_zh/reference/api-client.md`.
 
 ## Layout
 

@@ -2,10 +2,17 @@ import { z } from "zod";
 
 const DOMAIN_LIFECYCLE_STATE_ALIASES = {
   draft: "validating",
+  Draft: "validating",
   validated: "certified",
+  Validated: "certified",
   registered: "canary",
+  Registered: "canary",
   updating: "canary",
+  Updating: "canary",
+  Active: "active",
+  Deprecated: "deprecated",
   archived: "retired",
+  Archived: "retired",
 } as const;
 
 const DomainRecipeArchetypeSchemaInternal = z.enum([

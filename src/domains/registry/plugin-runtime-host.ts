@@ -52,6 +52,7 @@ abstract class BasePluginRuntimeHost {
 
   private readonly pending = new Map<string, PendingRequest>();
   private child: ChildProcess | null = null;
+  private trackedChildPid: number | null = null;
   private readyPromise: Promise<number> | null = null;
   private resolveReady: ((pid: number) => void) | null = null;
   private rejectReady: ((error: unknown) => void) | null = null;
@@ -115,6 +116,7 @@ abstract class BasePluginRuntimeHost {
     }
     this.stopping = true;
     if (child.exitCode != null || child.killed) {
+      this.cleanupChildResources(child);
       this.child = null;
       this.readyPromise = null;
       this.stopping = false;
@@ -149,6 +151,7 @@ abstract class BasePluginRuntimeHost {
     args: readonly string[] = [this.childModulePath],
   ): void {
     this.child = child;
+    this.trackedChildPid = child.pid ?? null;
     getProcessTracker().register(child, "unknown", command, [...args]);
     child.once("error", (error) => {
       this.handleExit(error instanceof Error ? error.message : String(error));
@@ -201,6 +204,10 @@ abstract class BasePluginRuntimeHost {
       pending.reject(error);
     }
     this.pending.clear();
+    const child = this.child;
+    if (child) {
+      queueMicrotask(() => this.cleanupChildResources(child));
+    }
     this.child = null;
     this.readyPromise = null;
     this.stopping = false;
@@ -218,6 +225,19 @@ abstract class BasePluginRuntimeHost {
     const error = new Error(message.error.message);
     error.name = message.error.name;
     return error;
+  }
+
+  private cleanupChildResources(child: ChildProcess): void {
+    if (this.trackedChildPid != null) {
+      getProcessTracker().unregister(this.trackedChildPid);
+      this.trackedChildPid = null;
+    }
+    child.stdout?.removeAllListeners();
+    child.stderr?.removeAllListeners();
+    child.stdin?.removeAllListeners();
+    child.removeAllListeners("message");
+    child.removeAllListeners("error");
+    child.removeAllListeners("close");
   }
 
   protected abstract spawnChild(): void;
@@ -266,6 +286,7 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         pluginId: this.pluginId,
         sandboxPolicy: this.sandboxPolicy,
         sandboxRoot: this.sandboxRoot,
+        workspaceRoot: this.workspaceRoot,
       }),
       execArgv,
       stdio: ["ignore", "ignore", "pipe", "ipc"],
@@ -345,6 +366,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
         pluginId: this.pluginId,
         sandboxPolicy: this.sandboxPolicy,
         sandboxRoot: this.sandboxRoot,
+        workspaceRoot: this.workspaceRoot,
       }),
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -433,6 +455,7 @@ interface BuildPluginRuntimeEnvironmentOptions {
   pluginId: string;
   sandboxPolicy: PluginSandboxPolicy;
   sandboxRoot: string | null;
+  workspaceRoot: string;
 }
 
 export interface ContainerizedPluginRuntimeLaunchSpec {
@@ -669,6 +692,7 @@ function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOpt
   if (options.sandboxRoot) {
     env.AA_PLUGIN_SANDBOX_ROOT = options.sandboxRoot;
   }
+  env.AA_PLUGIN_WORKSPACE_ROOT = options.workspaceRoot;
   return env;
 }
 

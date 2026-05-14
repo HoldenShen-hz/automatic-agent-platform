@@ -91,17 +91,7 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
         retentionDays: validated.evidence.retentionDays,
       },
     };
-  } catch (err) {
-    if (isMissingConfigError(err)) {
-      return DEFAULT_QUALITY_CONFIG;
-    }
-    throw err;
+  } catch {
+    return DEFAULT_QUALITY_CONFIG;
   }
-}
-
-function isMissingConfigError(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object"
-    && error !== null
-    && "code" in error
-    && (error as NodeJS.ErrnoException).code === "ENOENT";
 }

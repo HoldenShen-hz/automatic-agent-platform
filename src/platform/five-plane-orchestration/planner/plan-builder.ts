@@ -1,6 +1,6 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
-import { createAssessmentRef, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
+import { createAssessmentRef, type Plan, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
 import { TaskDecompositionService } from "./task-decomposition-service.js";
 import { PlanDagValidator } from "./plan-dag-validator.js";
 import { PlanStrategySelector } from "./plan-strategy-selector.js";
@@ -24,6 +24,7 @@ export interface PlanBuilderInput {
   version?: number;
   parentVersion?: number;
   graphPatch?: import("../../contracts/executable-contracts/index.js").GraphPatch;
+  riskProfile?: RiskPreview;
 }
 
 export interface BuildPlanOptions {
@@ -42,22 +43,24 @@ export class PlanBuilder {
    * Builds a PlanGraphBundle from the workflow input.
    * This is the canonical output format per R8-03 replacing legacy Plan(steps array).
    */
-  public build(input: PlanBuilderInput, options: BuildPlanOptions = {}): PlanGraphBundle {
+  public build(input: PlanBuilderInput, options: BuildPlanOptions = {}): PlanGraphBundle & Plan {
+    const workflowSteps = input.workflow.executionSteps ?? [];
     const decomposed = this.decomposition.decompose(input.workflow);
-    const steps: PlanStep[] = decomposed.map((item, index) => ({
-      stepId: input.workflow.executionSteps[index]?.stepId ?? `step_${index + 1}`,
-      action: item.toolNames[0] ?? (index === 0 ? "read" : "execute"),
-      title: item.title,
+    const sourceSteps = workflowSteps.length > 0 ? workflowSteps : decomposed;
+    const steps: PlanStep[] = sourceSteps.map((item: any, index) => ({
+      stepId: item.stepId ?? `step_${index + 1}`,
+      action: item.action ?? item.toolNames?.[0] ?? (index === 0 ? "read" : "execute"),
+      title: item.title ?? item.name ?? `Step ${index + 1}`,
       inputs: {
-        ownerRoleId: item.ownerRoleId,
-        inputKeys: [...(input.workflow.executionSteps[index]?.inputKeys ?? [])],
+        ownerRoleId: item.ownerRoleId ?? item.roleId,
+        inputKeys: [...(item.inputKeys ?? [])],
       },
-      outputs: input.workflow.executionSteps[index]?.outputKey != null ? [input.workflow.executionSteps[index].outputKey] : [],
-      dependencies: item.dependsOn,
+      outputs: item.outputKey != null ? [item.outputKey] : [],
+      dependencies: item.dependsOn ?? item.dependsOnStepIds ?? [],
       status: "pending",
-      timeout: input.workflow.executionSteps[index]?.timeoutMs ?? 60000,
+      timeout: item.timeoutMs ?? item.timeout ?? 60000,
       retryPolicy: {
-        maxRetries: Math.max(0, (input.workflow.executionSteps[index]?.maxAttempts ?? 1) - 1),
+        maxRetries: Math.max(0, (item.maxAttempts ?? 1) - 1),
         backoffMs: 250 * (index + 1),
       },
     }));
@@ -88,7 +91,16 @@ export class PlanBuilder {
     }
 
     // Convert steps to PlanNodes
-    const nodes: PlanNode[] = normalizedSteps.map((step, index) => {
+    const graphSteps = normalizedSteps.map((step, index) => ({
+      ...step,
+      stepId: `step_${String.fromCharCode(97 + index)}`,
+      dependencies: step.dependencies.map((dep) => {
+        const depIndex = normalizedSteps.findIndex((candidate) => candidate.stepId === dep);
+        return depIndex >= 0 ? `step_${String.fromCharCode(97 + depIndex)}` : dep;
+      }),
+    }));
+
+    const nodes: PlanNode[] = graphSteps.map((step, index) => {
       // step.inputs is Record<string, unknown>, access inputKeys property
       const inputsRecord = step.inputs as Record<string, unknown>;
       const inputKeysArray = Array.isArray(inputsRecord.inputKeys) ? inputsRecord.inputKeys as readonly string[] : [];
@@ -115,9 +127,9 @@ export class PlanBuilder {
 
     // Convert dependencies to PlanEdges
     const edges: PlanEdge[] = [];
-    const stepIdToNodeId = new Map(normalizedSteps.map((s) => [s.stepId, s.stepId]));
+    const stepIdToNodeId = new Map(graphSteps.map((s) => [s.stepId, s.stepId]));
 
-    for (const step of normalizedSteps) {
+    for (const step of graphSteps) {
       for (const dep of step.dependencies ?? []) {
         const depNodeId = stepIdToNodeId.get(dep);
         if (depNodeId) {
@@ -142,7 +154,7 @@ export class PlanBuilder {
 
     // Compute graph hash
     const graphHash = createHash("sha256")
-      .update(JSON.stringify({ nodes, edges }))
+      .update(JSON.stringify({ harnessRunId: input.harnessRunId ?? null, nodes, edges }))
       .digest("hex");
 
     const harnessRunId = input.harnessRunId ?? newId("hr");
@@ -156,15 +168,15 @@ export class PlanBuilder {
       entryNodeIds,
       terminalNodeIds,
       joinStrategy: "all",
-      graphHash,
+      graphHash: `${input.harnessRunId ?? "harness"}:${graphHash}`,
     };
 
-    const riskProfile: RiskPreview = {
+    const riskProfile: RiskPreview = input.riskProfile ?? {
       riskClass: input.assessment.risk,
       reasons: ["assessment_complete"],
     };
 
-    return createPlanGraphBundle({
+    const bundle = createPlanGraphBundle({
       planGraphBundleId,
       harnessRunId,
       graphVersion: 1,
@@ -173,7 +185,7 @@ export class PlanBuilder {
         policyId: "scheduler:oapeflir.deterministic_fifo",
         strategy: "deterministic_fifo",
       },
-      budgetPlanRef: `budget://${planGraphBundleId}`,
+      budgetPlanRef: `budget:plan.${planGraphBundleId}`,
       riskProfile,
       validationReport: dagValidation.valid
         ? { valid: true, findings: [] }
@@ -181,6 +193,16 @@ export class PlanBuilder {
       artifactRefs: [],
       createdAt: nowIso(),
     });
+    return Object.assign(bundle, {
+      planId: `plan:${planGraphBundleId}`,
+      taskId: input.observation.taskId,
+      version: input.version ?? 1,
+      assessmentRef: createAssessmentRef(input.assessment),
+      strategy: (input.version ?? 1) > 1 ? "replanned" : "linear",
+      steps: normalizedSteps,
+      createdAt: Date.parse(bundle.createdAt),
+      ...(input.parentVersion != null ? { parentVersion: input.parentVersion } : {}),
+    } satisfies Plan);
   }
 
   public buildGraphBundle(input: PlanBuilderInput, options: BuildPlanOptions = {}): PlanGraphBundle {
@@ -190,11 +212,12 @@ export class PlanBuilder {
   /**
    * Replans from a previous PlanGraphBundle.
    */
-  public replan(previousPlan: PlanGraphBundle, input: Omit<PlanBuilderInput, "version" | "parentVersion">, options: BuildPlanOptions = {}): PlanGraphBundle {
+  public replan(previousPlan: PlanGraphBundle | Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">, options: BuildPlanOptions = {}): PlanGraphBundle & Plan {
+    const previousVersion = "graphVersion" in previousPlan ? previousPlan.graphVersion : previousPlan.version;
     return this.build({
       ...input,
-      version: previousPlan.graphVersion + 1,
-      parentVersion: previousPlan.graphVersion,
+      version: previousVersion + 1,
+      parentVersion: previousVersion,
     }, options);
   }
 

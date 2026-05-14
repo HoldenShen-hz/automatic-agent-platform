@@ -463,17 +463,6 @@ function filterVulnerabilities(
   });
 }
 
-function inferRemoteSbomPackages(sbomUrl: URL): Array<{ name: string; version: string }> {
-  const lowerPath = sbomUrl.pathname.toLowerCase();
-  if (lowerPath.includes("lodash")) {
-    return [{ name: "lodash", version: "4.17.21" }];
-  }
-  if (lowerPath.includes("axios")) {
-    return [{ name: "axios", version: "0.21.1" }];
-  }
-  return [];
-}
-
 export class DefaultSbomScanner implements SbomScanner {
   async scan(sbomRef: string, options: SbomVerificationOptions = {}): Promise<SbomVerificationResult> {
     const scannedAt = new Date().toISOString();
@@ -508,9 +497,15 @@ export class DefaultSbomScanner implements SbomScanner {
     }
 
     try {
-      const packages = parsed.protocol === "file:"
-        ? normalizePackageRecords(JSON.parse(readFileSync(fileURLToPath(parsed), "utf8")))
-        : inferRemoteSbomPackages(parsed);
+      if (parsed.protocol !== "file:") {
+        return {
+          valid: false,
+          scannedAt,
+          vulnerabilities: [],
+          scanErrors: ["Remote SBOM scanning requires a supplied SBOM fetcher; heuristic package inference is disabled."],
+        };
+      }
+      const packages = normalizePackageRecords(JSON.parse(readFileSync(fileURLToPath(parsed), "utf8")));
       const vulnerabilities = filterVulnerabilities(packages, minSeverity(options.minSeverity));
       return {
         valid: vulnerabilities.length === 0,

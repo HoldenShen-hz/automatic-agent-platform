@@ -353,6 +353,7 @@ export class SharedWorkerWSClient implements WSClient {
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
   private readonly port: MessagePort;
   private readonly replayBufferByChannel = new Map<string, WSEventEnvelope[]>();
+  private disconnected = false;
 
   public constructor(worker: SharedWorkerLike) {
     this.port = worker.port;
@@ -365,7 +366,13 @@ export class SharedWorkerWSClient implements WSClient {
   }
 
   public disconnect(): void {
+    this.disconnected = true;
     this.port.postMessage({ action: "disconnect" });
+    this.port.removeEventListener("message", this.handleMessage);
+    this.replayBufferByChannel.clear();
+    this.handlers.clear();
+    this.statusHandlers.clear();
+    this.port.close();
   }
 
   public subscribe(channel: string, handler: EventHandler): () => void {
@@ -403,6 +410,9 @@ export class SharedWorkerWSClient implements WSClient {
   }
 
   private readonly handleMessage = (event: MessageEvent<WorkerMessage>): void => {
+    if (this.disconnected) {
+      return;
+    }
     const message = event.data;
     if (message.type === "status") {
       for (const handler of this.statusHandlers) {

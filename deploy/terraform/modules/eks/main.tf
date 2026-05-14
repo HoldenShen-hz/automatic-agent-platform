@@ -154,11 +154,6 @@ resource "aws_eks_node_group" "main" {
   tags = local.tags
 }
 
-resource "aws_eks_cluster" "this" {
-  count = 0
-  # Placeholder for additional cluster configuration
-}
-
 output "cluster_name" {
   description = "EKS cluster name"
   value       = aws_eks_cluster.main.name

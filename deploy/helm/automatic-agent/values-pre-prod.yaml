@@ -28,7 +28,11 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   domain: preprod.automatic-agent.example.com
-  hosts: []
+  hosts:
+    - host: preprod.automatic-agent.example.com
+      paths:
+        - path: /
+          pathType: Prefix
   tls:
     - secretName: automatic-agent-preprod-tls
       hosts:
@@ -40,7 +44,8 @@ env:
   AA_METRICS_PORT: "9090"
   AA_LOG_LEVEL: "info"
   AA_STORAGE_DRIVER: "postgres"
-  NODE_ENV: "production"
+  AA_OTEL_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
+  NODE_ENV: "pre-production"
 
 externalSecret:
   enabled: true

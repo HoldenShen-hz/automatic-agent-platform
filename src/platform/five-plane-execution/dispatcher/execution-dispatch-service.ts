@@ -87,7 +87,7 @@ export class ExecutionDispatchService {
         errorCode: string;
         payloadJson: string;
         originalTimestamp?: string | null;
-        failureCategory?: FailureCategory | null;
+        failureCategory?: FailureCategory | "poison_pill" | null;
       }): unknown;
     } | null = null,
     private readonly poisonPillMaxAgeMs: number | null = null,
@@ -966,7 +966,7 @@ export class ExecutionDispatchService {
    * R6-6: Categorize backpressure failure for DLQ classification.
    * Maps backpressure reason codes to failure categories for triage.
    */
-  private categorizeFailure(reasonCode: string | null): FailureCategory {
+  private categorizeFailure(reasonCode: string | null): FailureCategory | "poison_pill" {
     if (reasonCode == null) return "unknown";
     if (reasonCode.includes("read_only_mode")) return "configuration";
     if (reasonCode.includes("pause_non_critical")) return "transient";

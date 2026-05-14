@@ -145,6 +145,16 @@ export class WorkerDrainProtocol {
     if (new Date(observedAt).getTime() > new Date(request.deadlineAt).getTime()) {
       return this.terminateProgress(request, this.createProgress(request, WorkerDrainPhase.DRAIN, "draining", request.requestedAt), observedAt, "deadline_exceeded");
     }
+    const longObservationMs = this.drainTimeoutMs + this.quiesceTimeoutMs + this.terminateTimeoutMs;
+    if (elapsedMs > longObservationMs && request.activeLeases.length === 0) {
+      return this.createProgress(request, WorkerDrainPhase.QUIESCE, "drained", observedAt);
+    }
+    if (elapsedMs > longObservationMs && request.activeLeases.every((lease) => !lease.handoverRequired)) {
+      return this.createProgress(request, WorkerDrainPhase.DRAIN, "draining", observedAt);
+    }
+    if (request.activeLeases.some((lease) => lease.handoverRequired) && elapsedMs >= this.drainTimeoutMs + this.quiesceTimeoutMs) {
+      return this.terminateProgress(request, this.createProgress(request, WorkerDrainPhase.QUIESCE, "quiescing", request.requestedAt), observedAt, "terminated");
+    }
     if (elapsedMs >= this.drainTimeoutMs + this.quiesceTimeoutMs) {
       return this.terminateProgress(request, this.createProgress(request, WorkerDrainPhase.QUIESCE, "quiescing", request.requestedAt), observedAt, "terminated");
     }

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist_*/
+:memory:*
 
 data/
 data/sqlite/
@@ -24,6 +26,8 @@ data/validation/
 .DS_Store
 coverage/
 .aa-tool-artifacts/
+.audit/
+.claude/scheduled_tasks.json
 .stryker-tmp/
 dist_temp/
 dist_test

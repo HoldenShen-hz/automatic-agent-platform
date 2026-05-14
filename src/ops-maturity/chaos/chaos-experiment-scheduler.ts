@@ -18,6 +18,9 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const chaosLogger = new StructuredLogger();
 
 /**
  * Boundary control configuration for chaos experiments.
@@ -259,10 +262,16 @@ export class ChaosExperimentScheduler {
 
     // Actual fault injection would occur here in a real implementation
     // For now, log the injection and return success
-    console.log(
-      `[ChaosScheduler] Injecting ${fault.faultType} fault on ${experiment.target.targetId} ` +
-        `(intensity=${fault.intensity}, duration=${fault.durationMs}ms)`,
-    );
+    chaosLogger.log({
+      level: "info",
+      message: "chaos.fault_injection.started",
+      data: {
+        faultType: fault.faultType,
+        targetId: experiment.target.targetId,
+        intensity: fault.intensity,
+        durationMs: fault.durationMs,
+      },
+    });
 
     return {
       applied: true,
@@ -394,7 +403,11 @@ export class ChaosExperimentScheduler {
       for (const blocked of boundaryControl.blockedTargets) {
         const blockedLower = blocked.toLowerCase();
         if (targetId.includes(blockedLower) || labelValues.some((value) => value.includes(blockedLower))) {
-          console.warn(`[ChaosScheduler] Target ${target.targetId} matches blocked pattern ${blocked}`);
+          chaosLogger.log({
+            level: "warn",
+            message: "chaos.boundary.blocked_target",
+            data: { targetId: target.targetId, blockedPattern: blocked },
+          });
           return false;
         }
       }
@@ -411,24 +424,32 @@ export class ChaosExperimentScheduler {
         },
       );
       if (!isAllowed) {
-        console.warn(`[ChaosScheduler] Target ${target.targetId} not in allowed targets list`);
+        chaosLogger.log({
+          level: "warn",
+          message: "chaos.boundary.not_allowed",
+          data: { targetId: target.targetId },
+        });
         return false;
       }
     }
 
     const affectedInstances = Number(target.labels.affected_instances ?? target.labels.instance_count ?? "1");
     if (Number.isFinite(affectedInstances) && affectedInstances > boundaryControl.maxAffectedInstances) {
-      console.warn(
-        `[ChaosScheduler] Target ${target.targetId} exceeds max affected instances (${affectedInstances} > ${boundaryControl.maxAffectedInstances})`,
-      );
+      chaosLogger.log({
+        level: "warn",
+        message: "chaos.boundary.max_instances_exceeded",
+        data: { targetId: target.targetId, affectedInstances, maxAffectedInstances: boundaryControl.maxAffectedInstances },
+      });
       return false;
     }
 
     const affectedPercent = Number(target.labels.affected_percent ?? target.labels.blast_radius_percent ?? "0");
     if (Number.isFinite(affectedPercent) && affectedPercent > boundaryControl.maxAffectedPercent) {
-      console.warn(
-        `[ChaosScheduler] Target ${target.targetId} exceeds max affected percent (${affectedPercent} > ${boundaryControl.maxAffectedPercent})`,
-      );
+      chaosLogger.log({
+        level: "warn",
+        message: "chaos.boundary.max_percent_exceeded",
+        data: { targetId: target.targetId, affectedPercent, maxAffectedPercent: boundaryControl.maxAffectedPercent },
+      });
       return false;
     }
 
@@ -592,16 +613,16 @@ export class ChaosExperimentScheduler {
 
     switch (action.actionType) {
       case "stop_fault":
-        console.log(`[ChaosScheduler] Stopping fault injection for experiment ${action.experimentId}`);
+        chaosLogger.log({ level: "info", message: "chaos.rollback.stop_fault", data: { experimentId: action.experimentId } });
         break;
       case "restore_state":
-        console.log(`[ChaosScheduler] Restoring state for experiment ${action.experimentId}`);
+        chaosLogger.log({ level: "info", message: "chaos.rollback.restore_state", data: { experimentId: action.experimentId } });
         break;
       case "notify":
-        console.log(`[ChaosScheduler] Notifying about rollback for experiment ${action.experimentId}`);
+        chaosLogger.log({ level: "info", message: "chaos.rollback.notify", data: { experimentId: action.experimentId } });
         break;
       case "complete":
-        console.log(`[ChaosScheduler] Completing rollback for experiment ${action.experimentId}`);
+        chaosLogger.log({ level: "info", message: "chaos.rollback.complete", data: { experimentId: action.experimentId } });
         break;
     }
   }
@@ -863,26 +884,40 @@ export class ChaosExperimentScheduler {
     // Clear any existing interval for this experiment
     this.stopContinuousMonitoring(experimentId);
 
-    const interval = setInterval(async () => {
-      const currentExp = this.experiments.get(experimentId);
-      if (!currentExp || currentExp.status !== "running") {
-        this.stopContinuousMonitoring(experimentId);
-        return;
-      }
+    const interval = setInterval(() => {
+      void (async () => {
+        try {
+          const currentExp = this.experiments.get(experimentId);
+          if (!currentExp || currentExp.status !== "running") {
+            this.stopContinuousMonitoring(experimentId);
+            return;
+          }
 
-      const result = await evaluator();
-      this.recordContinuousSteadyStateSample(
-        experimentId,
-        currentExp.steadyStateHypotheses[0]?.name ?? "default",
-        result.measuredValue,
-        result.passed,
-        result.message,
-      );
+          const result = await evaluator();
+          this.recordContinuousSteadyStateSample(
+            experimentId,
+            currentExp.steadyStateHypotheses[0]?.name ?? "default",
+            result.measuredValue,
+            result.passed,
+            result.message,
+          );
 
-      const updatedExp = this.experiments.get(experimentId);
-      if (!updatedExp || updatedExp.status !== "running") {
-        this.stopContinuousMonitoring(experimentId);
-      }
+          const updatedExp = this.experiments.get(experimentId);
+          if (!updatedExp || updatedExp.status !== "running") {
+            this.stopContinuousMonitoring(experimentId);
+          }
+        } catch (error) {
+          chaosLogger.log({
+            level: "error",
+            message: "chaos.monitoring.evaluator_failed",
+            data: {
+              experimentId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+          this.stopContinuousMonitoring(experimentId);
+        }
+      })();
     }, intervalMs);
 
     this.monitoringIntervals.set(experimentId, interval);

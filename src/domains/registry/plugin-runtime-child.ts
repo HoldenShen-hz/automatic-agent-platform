@@ -1,4 +1,6 @@
 import { createRequire, syncBuiltinESMExports } from "node:module";
+import { existsSync, mkdirSync, realpathSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { format } from "node:util";
 
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
@@ -89,7 +91,7 @@ async function handleRequest(request: PluginRuntimeRequest): Promise<unknown> {
 function installRuntimeGuards(): void {
   const sandboxRoot = process.env.AA_PLUGIN_SANDBOX_ROOT?.trim();
   if (sandboxRoot) {
-    process.chdir(sandboxRoot);
+    process.chdir(resolveValidatedSandboxRoot(sandboxRoot));
   }
   if (process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "true") {
     return;
@@ -172,7 +174,10 @@ function handleRuntimeMessage(message: unknown): void {
   }
   if (payload?.type === "shutdown") {
     process.disconnect?.();
-    setImmediate(() => process.exit(0));
+    process.exitCode = 0;
+    setImmediate(() => {
+      process.emit("beforeExit", 0);
+    });
     return;
   }
   const request = payload as PluginRuntimeRequest;
@@ -204,3 +209,23 @@ sendRuntimeMessage({
   type: "ready",
   pid: process.pid,
 });
+
+function resolveValidatedSandboxRoot(rawSandboxRoot: string): string {
+  const workspaceRoot = resolve(process.env.AA_PLUGIN_WORKSPACE_ROOT ?? process.cwd());
+  const sandboxBase = resolve(workspaceRoot, "data", "plugin-runtime-sandboxes");
+  const candidate = resolve(rawSandboxRoot);
+  if (!candidate.startsWith(`${sandboxBase}/`) && candidate !== sandboxBase) {
+    throw new Error("plugin_runtime.sandbox_root_outside_workspace");
+  }
+  if (!existsSync(candidate)) {
+    mkdirSync(candidate, { recursive: true });
+  }
+  const realCandidate = realpathSync(candidate);
+  if (!realCandidate.startsWith(`${sandboxBase}/`) && realCandidate !== sandboxBase) {
+    throw new Error("plugin_runtime.sandbox_root_symlink_escape");
+  }
+  if (!statSync(realCandidate).isDirectory()) {
+    throw new Error("plugin_runtime.sandbox_root_not_directory");
+  }
+  return realCandidate;
+}

@@ -68,14 +68,6 @@ export interface TrustEvent {
   metadata?: Record<string, unknown>;
 }
 
-export enum TrustLevel {
-  NONE = "none",
-  AUDIT_ONLY = "audit_only",
-  READ = "read",
-  WRITE = "write",
-  ADMIN = "admin",
-}
-
 export interface TrustRelationship {
   id: string;
   sourceOrgId: string;
@@ -541,3 +533,4 @@ export class TrustRelationshipManager {
 export function createTrustRelationshipManager(policies?: TrustPolicy[]): TrustRelationshipManager {
   return new TrustRelationshipManager(policies);
 }
+import { TrustLevel } from "./trust-level.js";

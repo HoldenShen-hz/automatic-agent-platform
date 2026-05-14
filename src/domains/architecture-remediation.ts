@@ -1,4 +1,9 @@
-export type DomainLifecycleState = "Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived";
+import {
+  DomainLifecycleStateSchema,
+  type DomainLifecycleState,
+} from "./domain-specs.js";
+
+export type { DomainLifecycleState } from "./domain-specs.js";
 export type DomainPluginType = "tool" | "adapter" | "retriever" | "evaluator";
 export type DomainRecipeArchetype =
   | "intake_triage"
@@ -67,20 +72,19 @@ export interface PluginManifestBoundary {
 
 export function canTransitionDomain(from: DomainLifecycleState, to: DomainLifecycleState): boolean {
   const allowed: Record<DomainLifecycleState, readonly DomainLifecycleState[]> = {
-    Draft: ["Validated", "Archived"],
-    Validated: ["Registered", "Draft"],
-    Registered: ["Active", "Deprecated"],
-    Active: ["Updating", "Deprecated"],
-    Updating: ["Active", "Deprecated"],
-    Deprecated: ["Archived"],
-    Archived: [],
+    validating: ["certified", "retired"],
+    certified: ["canary", "validating"],
+    canary: ["active", "deprecated"],
+    active: ["canary", "deprecated"],
+    deprecated: ["retired"],
+    retired: [],
   };
-  return allowed[from].includes(to);
+  return allowed[DomainLifecycleStateSchema.parse(from)].includes(DomainLifecycleStateSchema.parse(to));
 }
 
 export function validateActiveDomainDescriptor(descriptor: DomainDescriptorProfile): readonly string[] {
   const findings: string[] = [];
-  if (descriptor.lifecycleState !== "Active") findings.push("domain_descriptor.not_active");
+  if (DomainLifecycleStateSchema.parse(descriptor.lifecycleState) !== "active") findings.push("domain_descriptor.not_active");
   if (descriptor.planningMode !== "plan_graph_required") findings.push("domain_descriptor.plan_graph_required");
   if (descriptor.hotPathMode === "llm_allowed" && descriptor.executionMode === "full_auto") {
     findings.push("domain_descriptor.full_auto_hot_path_requires_deterministic_mode");

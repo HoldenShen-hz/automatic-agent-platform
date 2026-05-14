@@ -26,8 +26,10 @@ export interface ResidencyPolicy {
   readonly allowedJurisdictions: readonly string[];
   readonly blockedRegionIds?: readonly string[];
   readonly requiredCapabilities?: readonly string[];
+  readonly allowCrossBorder?: boolean;
+  readonly dataCategories?: readonly string[];
   /** Cross-border transfer classification - 5-step chain: local_only < jurisdiction_approved < contractual_safeguards < adequacy_decision < free_transfer */
-  readonly crossBorderTransferClass: "local_only" | "jurisdiction_approved" | "contractual_safeguards" | "adequacy_decision" | "free_transfer";
+  readonly crossBorderTransferClass?: "local_only" | "jurisdiction_approved" | "contractual_safeguards" | "adequacy_decision" | "free_transfer";
 }
 
 export interface CrossRegionRouteRequest {
@@ -54,6 +56,7 @@ export interface CrossRegionRouteDecision {
     readonly replicationTargets: readonly string[];
   };
   readonly blockedRegions: readonly string[];
+  readonly crossBorderTransferChain?: CrossBorderTransferChain;
   /** Read replica routing decision when read replica service is integrated */
   readonly readReplicaDecision?: {
     readonly replicaId: string | null;
@@ -61,6 +64,39 @@ export interface CrossRegionRouteDecision {
     readonly waitForReplication: boolean;
     readonly consistencyLevel: CrossRegionConsistencyLevel;
   };
+}
+
+export interface CrossBorderTransferChain {
+  readonly chainStepResults: {
+    readonly jurisdictionClassification: {
+      readonly sourceJurisdiction: string;
+      readonly targetJurisdiction: string;
+      readonly crossBorderRequired: boolean;
+    };
+    readonly impactAssessment: {
+      readonly impactScore: number;
+      readonly dataCategories: readonly string[];
+      readonly regulatoryFlags: readonly string[];
+    };
+    readonly mechanismSelection: {
+      readonly selectedMechanism: "local_only" | "encrypted_pipeline" | "contractual_safeguards" | "federated_query";
+      readonly encryptionRequired: boolean;
+      readonly auditLoggingRequired: boolean;
+      readonly allowedByPolicy: boolean;
+    };
+    readonly dataMinimization: {
+      readonly fieldsToRedact: readonly string[];
+      readonly aggregationLevel: "none" | "pseudonymized" | "fully_aggregated";
+      readonly minimizationApplied: boolean;
+    };
+    readonly outputScan: {
+      readonly passed: boolean;
+      readonly violations: readonly string[];
+    };
+  };
+  readonly overallDecision: "allowed" | "blocked" | "requires_review";
+  readonly blockedReason: string | null;
+  readonly auditTrail: readonly string[];
 }
 
 function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities: readonly string[]): boolean {
@@ -149,11 +185,14 @@ export class CrossRegionRoutingService {
         .map((region) => region.regionId),
     });
 
+    const crossBorderClass = request.policy.crossBorderTransferClass ?? (request.policy.allowCrossBorder === false ? "local_only" : "free_transfer");
+    const crossBorderTransferChain = this.buildCrossBorderTransferChain(request, selectedRegion);
     const auditTrail = [
       `policy:${request.policy.policyId}`,
       `operation:${operationType}`,
-      `cross_border_class:${request.policy.crossBorderTransferClass}`,
+      `cross_border_class:${crossBorderClass}`,
       `blocked:${blockedRegions.join(",") || "none"}`,
+      ...(crossBorderTransferChain?.auditTrail ?? []),
     ];
     return {
       decisionId: `cross_region_decision:${request.policy.policyId}:${selectedRegion?.regionId ?? "blocked"}`,
@@ -173,7 +212,102 @@ export class CrossRegionRoutingService {
             .map((region) => region.regionId),
       },
       blockedRegions,
+      crossBorderTransferChain,
     };
+  }
+
+  private buildCrossBorderTransferChain(
+    request: CrossRegionRouteRequest,
+    selectedRegion: RegionDescriptor | null,
+  ): CrossBorderTransferChain | undefined {
+    const sourceRegion = request.primaryRegionId == null
+      ? request.regions[0] ?? null
+      : request.regions.find((region) => region.regionId === request.primaryRegionId) ?? request.regions[0] ?? null;
+    if (sourceRegion == null) {
+      return undefined;
+    }
+
+    const targetRegion = this.resolveCrossBorderTarget(request, sourceRegion, selectedRegion);
+    if (targetRegion == null) {
+      return undefined;
+    }
+
+    const crossBorderRequired = sourceRegion.jurisdiction !== targetRegion.jurisdiction;
+    if (!crossBorderRequired) {
+      return undefined;
+    }
+
+    const dataCategories = request.policy.dataCategories ?? (request as CrossRegionRouteRequest & { dataCategories?: readonly string[] }).dataCategories ?? ["personal"];
+    const containsSensitiveData = dataCategories.some((category) => ["health", "financial", "biometric"].includes(category));
+    const impactScore = containsSensitiveData ? 0.9 : 0.7;
+    const regulatoryFlags = [
+      ...(targetRegion.jurisdiction === "EU" ? ["GDPR_ARTICLE_44"] : []),
+      ...(containsSensitiveData ? ["SENSITIVE_DATA_TRANSFER"] : []),
+    ];
+    const policyAllowsCrossBorder = request.policy.allowCrossBorder ?? request.policy.crossBorderTransferClass !== "local_only";
+    const selectedMechanism = !policyAllowsCrossBorder
+      ? "local_only"
+      : containsSensitiveData
+        ? "federated_query"
+        : "encrypted_pipeline";
+    const violations = policyAllowsCrossBorder ? [] : ["Cross-border transfer not allowed by policy"];
+    const auditTrail = [
+      `step1_jurisdiction:${sourceRegion.jurisdiction}->${targetRegion.jurisdiction}`,
+      `step2_impact:${impactScore}`,
+      `step3_mechanism:${selectedMechanism}`,
+      `step4_minimization:${selectedMechanism === "federated_query" ? "fully_aggregated" : "pseudonymized"}`,
+      `step5_outputscan:${violations.length === 0 ? "passed" : "blocked"}`,
+    ];
+
+    return {
+      chainStepResults: {
+        jurisdictionClassification: {
+          sourceJurisdiction: sourceRegion.jurisdiction,
+          targetJurisdiction: targetRegion.jurisdiction,
+          crossBorderRequired,
+        },
+        impactAssessment: {
+          impactScore,
+          dataCategories,
+          regulatoryFlags,
+        },
+        mechanismSelection: {
+          selectedMechanism,
+          encryptionRequired: selectedMechanism !== "local_only",
+          auditLoggingRequired: true,
+          allowedByPolicy: policyAllowsCrossBorder,
+        },
+        dataMinimization: {
+          fieldsToRedact: selectedMechanism === "local_only" ? [] : ["email", "phone", "address"],
+          aggregationLevel: selectedMechanism === "federated_query" ? "fully_aggregated" : selectedMechanism === "local_only" ? "none" : "pseudonymized",
+          minimizationApplied: selectedMechanism !== "local_only",
+        },
+        outputScan: {
+          passed: violations.length === 0,
+          violations,
+        },
+      },
+      overallDecision: violations.length === 0 ? "allowed" : "blocked",
+      blockedReason: violations[0] ?? null,
+      auditTrail,
+    };
+  }
+
+  private resolveCrossBorderTarget(
+    request: CrossRegionRouteRequest,
+    sourceRegion: RegionDescriptor,
+    selectedRegion: RegionDescriptor | null,
+  ): RegionDescriptor | null {
+    if (selectedRegion != null && selectedRegion.jurisdiction !== sourceRegion.jurisdiction) {
+      return selectedRegion;
+    }
+    if (request.preferredRegionId != null) {
+      const preferred = request.regions.find((region) => region.regionId === request.preferredRegionId) ?? null;
+      if (preferred != null && preferred.jurisdiction !== sourceRegion.jurisdiction) {
+        return preferred;
+      }
+    }
+    return request.regions.find((region) => region.jurisdiction !== sourceRegion.jurisdiction) ?? null;
   }
 
   private selectWriteRegion(

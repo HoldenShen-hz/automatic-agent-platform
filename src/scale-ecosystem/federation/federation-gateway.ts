@@ -5,6 +5,9 @@
 
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
+import { TrustLevel } from "./trust-level.js";
+
+export { TrustLevel } from "./trust-level.js";
 
 // Types
 export interface FederationOrg {
@@ -26,14 +29,6 @@ export interface TrustRelationship {
   grantedAt: Date;
   expiresAt?: Date;
   metadata?: Record<string, unknown>;
-}
-
-export enum TrustLevel {
-  NONE = "none",
-  AUDIT_ONLY = "audit_only", // Read-only audit access
-  READ = "read", // Read access to specified capabilities
-  WRITE = "write", // Write access to delegated capabilities
-  ADMIN = "admin", // Full administrative trust
 }
 
 export interface CapabilityGrant {

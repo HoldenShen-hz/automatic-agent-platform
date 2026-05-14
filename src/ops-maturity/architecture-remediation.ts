@@ -134,7 +134,7 @@ export function transitionAgentLifecycle(from: AgentLifecycleState, to: AgentLif
     draft: ["testing", "canary", "archived"],
     testing: ["staging", "draft"],
     staging: ["canary", "testing"],
-    canary: ["active", "staging", "paused", "deprecated"],
+    canary: ["active", "staging", "deprecated"],
     active: ["paused", "deprecated"],
     paused: ["active", "deprecated"],
     deprecated: ["archived"],

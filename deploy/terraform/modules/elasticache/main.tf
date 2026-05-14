@@ -36,6 +36,11 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "CIDR block allowed to reach Redis from inside the VPC"
+  type        = string
+}
+
 locals {
   tags = {
     Project     = var.project_name
@@ -59,7 +64,7 @@ resource "aws_security_group" "redis" {
     from_port   = 6379
     to_port     = 6379
     protocol     = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = [var.vpc_cidr]
     description  = "Redis from VPC"
   }
 

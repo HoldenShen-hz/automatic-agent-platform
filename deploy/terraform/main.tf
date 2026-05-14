@@ -11,7 +11,7 @@ terraform {
   backend "s3" {
     bucket         = "automatic-agent-terraform-state"
     key            = "infra/terraform.tfstate"
-    region         = "ap-southeast-1"
+    region         = "us-east-1"
     dynamodb_table = "terraform-locks"
     encrypt        = true
   }
@@ -224,6 +224,7 @@ module "rds" {
   db_subnet_group     = aws_db_subnet_group.main.name
   db_security_group_id = aws_security_group.rds.id
   vpc_id              = aws_vpc.main.id
+  vpc_cidr            = var.vpc_cidr
 }
 
 resource "aws_db_subnet_group" "main" {
@@ -268,6 +269,7 @@ module "elasticache" {
   subnet_group   = aws_elasticache_subnet_group.main.name
   security_group_id = aws_security_group.redis.id
   vpc_id         = aws_vpc.main.id
+  vpc_cidr       = var.vpc_cidr
 }
 
 resource "aws_elasticache_subnet_group" "main" {

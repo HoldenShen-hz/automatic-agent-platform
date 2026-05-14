@@ -27,8 +27,7 @@ function createTestRegion(overrides: Partial<{
 }
 
 describe("cross-region-routing", () => {
-  // TODO: Cross-border 5-step chain per R3-30 - feature not yet implemented
-  describe.skip("Cross-border 5-step chain per R3-30", () => {
+  describe("Cross-border 5-step chain per R3-30", () => {
     it("executes all 5 steps in cross-border transfer chain", () => {
       const service = new CrossRegionRoutingService();
       const request: CrossRegionRouteRequest = {

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automatic-agent-smoke
+  labels:
+    app.kubernetes.io/name: automatic-agent
+    app.kubernetes.io/component: smoke
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: automatic-agent
+      app.kubernetes.io/component: smoke
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: automatic-agent
+        app.kubernetes.io/component: smoke
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/holdenshen-hz/automatic-agent-platform:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AA_STORAGE_DRIVER
+              value: sqlite
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: automatic-agent-smoke
+spec:
+  selector:
+    app.kubernetes.io/name: automatic-agent
+    app.kubernetes.io/component: smoke
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

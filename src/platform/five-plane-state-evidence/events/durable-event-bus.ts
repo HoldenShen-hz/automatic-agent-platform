@@ -49,12 +49,6 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 export const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
- * R12-01: Sequence number tracker per partition for ordering guarantees.
- * Events with the same partition key are delivered in FIFO order.
- */
-const partitionSequenceNumbers = new Map<string, number>();
-
-/**
  * Calculates exponential backoff delay with jitter for retry intervals.
  * Uses exponential increase with a cap and adds random jitter to prevent thundering herd.
  * @param attemptIndex - The current retry attempt number (0-based)
@@ -215,8 +209,9 @@ export class DurableEventBus {
   private readonly activeConsumerRefCounts: Map<string, number>;
   private readonly consumerGroups = new Map<string, ConsumerGroup>();
   private readonly adaptivePolling = new AdaptivePollingInterval();
-  private readonly disposed = false;
+  private disposed = false;
   private readonly runSequenceNumbers = new Map<string, number>();
+  private readonly partitionSequenceNumbers = new Map<string, number>();
 
   // R12-01: Pending events per partition for FIFO ordering
   // Maps partitionKey -> array of events awaiting delivery
@@ -332,7 +327,6 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    // @ts-expect-error - mutating readonly for disposal
     this.disposed = true;
     for (const consumerId of this.subscribers.keys()) {
       this.unregisterActiveConsumer(consumerId);
@@ -541,9 +535,6 @@ export class DurableEventBus {
    * @returns Array of pending events with their ack records
    */
   public pendingForConsumer(consumerId: string): PendingAckEvent[] {
-    if (this.disposed) {
-      return [];
-    }
     this.assertNotDisposed();
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     if (this.subscribers.has(consumerId) || this.activeConsumerRefCounts.has(consumerId)) {
@@ -693,12 +684,8 @@ export class DurableEventBus {
           reprocessResult: null,
         });
       }
-      this.store.event.markEventDeadLettered({
-        eventId: item.event.id,
-        consumerId: item.ack.consumerId,
-        occurredAt: deadLetteredAt,
-        errorCode: errorMessage,
-      });
+      // Keep the consumer ack in "failed" so retry workers and operator
+      // inspection can still query the failed delivery alongside the DLQ row.
     } catch (dlqError) {
       eventBusLogger.error("event_bus.dlq_persist_failed", {
         eventId: item.event.id,
@@ -741,6 +728,9 @@ export class DurableEventBus {
   private scheduleFanOut(): void {
     if (this.disposed) {
       return;
+    }
+    for (const partitionKey of this.pendingPartitionEvents.keys()) {
+      this.processPartitionQueue(partitionKey);
     }
     for (const consumerId of this.subscribers.keys()) {
       this.scheduleDelivery(consumerId);
@@ -955,7 +945,7 @@ export class DurableEventBus {
       }
 
       const consumerPartitionKey = `${partitionKey}:${consumerId}`;
-      const expectedSeq = partitionSequenceNumbers.get(consumerPartitionKey);
+      const expectedSeq = this.partitionSequenceNumbers.get(consumerPartitionKey);
       if (expectedSeq !== undefined && nextEntry.sequence < expectedSeq) {
         nextEntry.pendingConsumers.delete(consumerId);
         eventBusLogger.debug("event_bus.out_of_sequence_skip", {
@@ -979,7 +969,7 @@ export class DurableEventBus {
       const next = Promise.resolve()
         .then(async () => {
           this.assertNotDisposed();
-          partitionSequenceNumbers.set(consumerPartitionKey, nextEntry.sequence + 1);
+          this.partitionSequenceNumbers.set(consumerPartitionKey, nextEntry.sequence + 1);
 
           try {
             await subscriber.handler(nextEntry.event);

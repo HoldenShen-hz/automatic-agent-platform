@@ -78,8 +78,12 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     // ── v1 task read routes (also reached via /api/v1/* through matchRoute normalization) ──
     {
       method: "GET",
-      pathname: "/v1/tasks",
+      pathname: null,
+      segments: true,
       handler: (ctx) => {
+        if (!matchesRoute(ctx.route.segments, "tasks")) {
+          return null;
+        }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         // R29-37: For internal/tenant users, use higher limit within bounds
         const limit = principal.tenantId != null
@@ -100,8 +104,12 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/workflows",
+      pathname: null,
+      segments: true,
       handler: (ctx) => {
+        if (!matchesRoute(ctx.route.segments, "workflows")) {
+          return null;
+        }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = principal.tenantId != null
           ? 25
@@ -124,7 +132,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
           return null;
         }
@@ -143,7 +151,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (
           segments[0] !== "v1"
           || segments[1] !== "tasks"
@@ -167,7 +175,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (
           segments[0] !== "v1"
           || segments[1] !== "tasks"
@@ -191,7 +199,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (segments[0] !== "v1" || segments[1] !== "workflows" || segments.length !== 3) {
           return null;
         }
@@ -221,10 +229,14 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
      */
     {
       method: "POST",
-      pathname: "/v1/tasks",
+      pathname: null,
+      segments: true,
       handler: (ctx) => {
+        if (!matchesRoute(ctx.route.segments, "tasks")) {
+          return null;
+        }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
+        const payload = parseCreateTaskPayload(readRequestBody(ctx.request.body));
         const tenantId = principal.tenantId ?? null;
         const missionResolution = resolveMissionForTask({
           repository: deps.missionRepository ?? null,
@@ -316,13 +328,13 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const taskId = validateTaskId(segments[2], "PATCH task");
-        const payload = parseUpdateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
+        const payload = parseUpdateTaskPayload(readRequestBody(ctx.request.body));
 
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
@@ -353,7 +365,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
+        const segments = normalizeRouteSegments(ctx.route.segments);
         if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
           return null;
         }
@@ -376,6 +388,21 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       },
     },
   ];
+}
+
+function normalizeRouteSegments(segments: readonly string[]): readonly string[] {
+  return segments[0] === "api" && segments[1] === "v1" ? segments.slice(1) : segments;
+}
+
+function matchesRoute(segments: readonly string[], resource: "tasks" | "workflows"): boolean {
+  const normalized = normalizeRouteSegments(segments);
+  return normalized[0] === "v1" && normalized[1] === resource && normalized.length === 2;
+}
+
+function readRequestBody(body: unknown): unknown {
+  return typeof body === "string" || body == null
+    ? readValidatedJsonBody(body, (value) => value)
+    : body;
 }
 
 function resolveMissionForTask(input: {

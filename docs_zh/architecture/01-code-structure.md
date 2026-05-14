@@ -35,6 +35,8 @@
 
 ## 三、顶层目录总览
 
+> **当前实现说明（2026-05-14）**：`src/core/` 在新平台中只作为 Legacy 兼容与迁移重导出层保留，新的运行时、契约、执行、状态、治理能力以 `src/platform/*`、`src/domains/*`、`src/interaction/*`、`src/org-governance/*`、`src/scale-ecosystem/*`、`src/ops-maturity/*` 为权威实现位置。新增代码不得再把 `src/core/` 当作新能力入口。
+
 ```
 new-platform/
 ├── src/
