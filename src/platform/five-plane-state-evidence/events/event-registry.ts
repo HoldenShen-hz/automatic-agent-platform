@@ -141,6 +141,48 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "runtime_state_machine",
     consumers: ["truth_projector", "audit_projection"],
   },
+  "platform.harness_run.admitted": {
+    type: "platform.harness_run.admitted",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.planning": {
+    type: "platform.harness_run.planning",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.ready": {
+    type: "platform.harness_run.ready",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.pausing": {
+    type: "platform.harness_run.pausing",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.replanning": {
+    type: "platform.harness_run.replanning",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.compensating": {
+    type: "platform.harness_run.compensating",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.aborted": {
+    type: "platform.harness_run.aborted",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
   "platform.harness_run.completed": {
     type: "platform.harness_run.completed",
     tier: "tier_1",

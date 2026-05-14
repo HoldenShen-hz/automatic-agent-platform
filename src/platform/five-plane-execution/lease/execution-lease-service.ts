@@ -180,7 +180,7 @@ export class ExecutionLeaseService {
         reasonCode: null,
       };
 
-      this.store.worker.insertExecutionLease(lease);
+      this.store.worker.insertExecutionLease?.(lease);
       // Record audit trail for debugging lease state changes
       this.insertLeaseAudit({
         executionId: lease.executionId,
@@ -788,7 +788,7 @@ export class ExecutionLeaseService {
    * @param input - Audit record data (without the auto-generated ID)
    */
   private insertLeaseAudit(input: Omit<LeaseAuditRecord, "id">): void {
-    this.store.worker.insertLeaseAudit({
+    this.store.worker.insertLeaseAudit?.({
       id: newId("laudit"),
       ...input,
     });

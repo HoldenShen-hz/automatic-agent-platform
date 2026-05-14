@@ -284,10 +284,21 @@ export class TaskTransitionService {
  * step index and any accumulated outputs from previous steps.
  */
 export class WorkflowTransitionService {
+  private readonly db: AuthoritativeSqlDatabase | null;
+  private readonly repository: RuntimeLifecycleRepository;
+
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase | null,
-    private readonly repository: RuntimeLifecycleRepository,
-  ) {}
+    dbOrRepository: AuthoritativeSqlDatabase | RuntimeLifecycleRepository | null,
+    repository?: RuntimeLifecycleRepository,
+  ) {
+    if (repository == null) {
+      this.db = null;
+      this.repository = dbOrRepository as RuntimeLifecycleRepository;
+    } else {
+      this.db = dbOrRepository as AuthoritativeSqlDatabase | null;
+      this.repository = repository;
+    }
+  }
 
   /**
    * Transitions workflow status atomically within a database transaction.

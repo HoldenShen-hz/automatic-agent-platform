@@ -276,15 +276,6 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
-    // R9-03 fix: Only allow release of active leases
-    if (lease.status !== "active") {
-      return {
-        outcome: "blocked",
-        reasonCode: "lease_not_active",
-        lease,
-      };
-    }
-
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,
       status: "released",

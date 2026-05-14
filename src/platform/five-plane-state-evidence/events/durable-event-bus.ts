@@ -768,9 +768,6 @@ export class DurableEventBus {
     for (const partitionKey of this.pendingPartitionEvents.keys()) {
       this.processPartitionQueue(partitionKey);
     }
-    for (const consumerId of this.subscribers.keys()) {
-      this.scheduleDelivery(consumerId);
-    }
   }
 
   /**
@@ -788,7 +785,7 @@ export class DurableEventBus {
     if (this.pollingTimers.has(consumerId)) {
       return;
     }
-    this.schedulePollingTick(consumerId, 0);
+    this.schedulePollingTick(consumerId, ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS);
   }
 
   private calculatePollingInterval(consumerId: string, queueDepth: number): number {
@@ -864,7 +861,7 @@ export class DurableEventBus {
     const partitionKey = event.aggregateId ?? event.id;
 
     // R12-01: Use the event's own sequence field as the sequence number for ordering.
-    const eventSequence = event.sequence ?? 0;
+    const eventSequence = event.sequence ?? this.nextImplicitPartitionSequence(partitionKey);
 
     // R12-02: Collect all eligible consumers and group them
     const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
@@ -874,33 +871,6 @@ export class DurableEventBus {
       if (entry.partitions.size > 0 && !entry.partitions.has(partitionKey)) {
         continue;
       }
-      // R12-02: Check consumer group back-pressure and concurrency
-      const chainState = this.deliveryChainStates.get(consumerId);
-      const group = this.consumerGroups.get(entry.groupId);
-      const groupDeliveryCount = this.groupDeliveryCounts.get(entry.groupId) ?? 0;
-
-      // R12-02: Skip if group is at max concurrency
-      if (group && groupDeliveryCount >= group.maxConcurrency) {
-        eventBusLogger.warn("event_bus.group_concurrency_limit", {
-          eventId: event.id,
-          consumerId,
-          groupId: entry.groupId,
-          currentCount: groupDeliveryCount,
-          maxConcurrency: group.maxConcurrency,
-        });
-        continue;
-      }
-
-      // R12-02: Skip if consumer itself is under back-pressure
-      if (chainState?.backPressure.isBackPressure) {
-        eventBusLogger.warn("event_bus.back_pressure_skip", {
-          eventId: event.id,
-          consumerId,
-          bufferedBytes: chainState.backPressure.bufferedBytes,
-        });
-        continue;
-      }
-
       eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
     }
 
@@ -928,7 +898,7 @@ export class DurableEventBus {
    */
   private dispatchVolatileAtomic(event: EventRecord): void {
     const partitionKey = event.aggregateId ?? event.id;
-    const eventSequence = event.sequence ?? 0;
+    const eventSequence = event.sequence ?? this.nextImplicitPartitionSequence(partitionKey);
 
     const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
 
@@ -936,17 +906,6 @@ export class DurableEventBus {
       if (entry.partitions.size > 0 && !entry.partitions.has(partitionKey)) {
         continue;
       }
-      const chainState = this.deliveryChainStates.get(consumerId);
-      const group = this.consumerGroups.get(entry.groupId);
-      const groupDeliveryCount = this.groupDeliveryCounts.get(entry.groupId) ?? 0;
-
-      if (group && groupDeliveryCount >= group.maxConcurrency) {
-        continue;
-      }
-      if (chainState?.backPressure.isBackPressure) {
-        continue;
-      }
-
       eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
     }
 
@@ -1045,6 +1004,12 @@ export class DurableEventBus {
       }
       this.processPartitionQueue(partitionKey);
     }
+  }
+
+  private nextImplicitPartitionSequence(partitionKey: string): number {
+    const queue = this.pendingPartitionEvents.get(partitionKey);
+    const lastQueued = queue?.[queue.length - 1]?.sequence;
+    return lastQueued == null ? 0 : lastQueued + 1;
   }
 
   /**

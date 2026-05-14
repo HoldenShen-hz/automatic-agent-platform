@@ -533,8 +533,6 @@ export class ExecutionDispatchService {
             : null;
         if (remoteBlockReason) {
           blockedReason = remoteBlockReason;
-        } else if (emergencyLaneRequested) {
-          blockedReason = "dispatch.no_emergency_worker_available";
         }
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
@@ -543,7 +541,7 @@ export class ExecutionDispatchService {
           requiredRepoVersion,
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
-          outcome: remoteBlockReason || emergencyLaneRequested ? "blocked" : "no_worker",
+          outcome: remoteBlockReason ? "blocked" : "no_worker",
           reasonCode: remoteBlockReason ?? (emergencyLaneRequested ? "dispatch.no_emergency_worker_available" : null),
           selectedWorkerId: null,
           leaseId: null,

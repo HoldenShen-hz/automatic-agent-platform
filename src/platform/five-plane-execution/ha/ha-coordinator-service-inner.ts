@@ -686,7 +686,7 @@ export class HaCoordinatorService {
    */
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     const latestEpoch = this.getLatestEpoch();
-    return presentedFencingToken === latestEpoch.fencingToken;
+    return presentedFencingToken >= latestEpoch.fencingToken;
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────

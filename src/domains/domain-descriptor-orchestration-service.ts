@@ -142,5 +142,11 @@ export class DomainDescriptorOrchestrationService {
 }
 
 function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainLifecycleState {
+  if (value === "validating") {
+    return "validated";
+  }
+  if (value === "canary") {
+    return "registered";
+  }
   return DomainLifecycleStateSchema.parse(value);
 }

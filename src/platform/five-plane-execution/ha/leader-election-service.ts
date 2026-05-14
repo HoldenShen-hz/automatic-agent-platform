@@ -684,7 +684,7 @@ export class LeaderElectionService extends EventEmitter {
     );
   }
 
-  private async queryLeadershipCompat(): Promise<LeadershipQueryResult> {
+  private queryLeadershipCompat(): LeadershipQueryResult | Promise<LeadershipQueryResult> {
     const query = this.coordinatorCompat.queryLeadership;
     if (typeof query !== "function") {
       return {
@@ -699,7 +699,7 @@ export class LeaderElectionService extends EventEmitter {
     const result = query.length >= 1
       ? query.call(this.coordinator, this.effectiveNodeId)
       : query.call(this.coordinator);
-    return await Promise.resolve(result);
+    return result as LeadershipQueryResult | Promise<LeadershipQueryResult>;
   }
 
   private async acquireLeadershipCompat(forceAcquire: boolean): Promise<{
