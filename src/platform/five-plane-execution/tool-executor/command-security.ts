@@ -254,6 +254,9 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     }
     // Only block inline code execution flags (-c, -e), not all dash-prefixed args.
     // This allows legitimate uses like "sed -n '1p' file" or "bash -n script.sh".
+    if (scriptPath === "-lc") {
+      return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
+    }
     if (scriptPath === "-c" || scriptPath === "-e") {
       return deniedAssessment("tool.inline_code_denied", "critical");
     }

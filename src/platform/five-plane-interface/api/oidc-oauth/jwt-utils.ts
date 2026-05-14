@@ -26,13 +26,6 @@ export function parseJwtHeader(value: unknown): { kid?: string; alg?: string } {
   if (!isRecord(value)) {
     throwOidcValidationError("jwt.header_invalid");
   }
-  if ("kid" in value && value.kid != null && typeof value.kid !== "string") {
-    throwOidcValidationError("jwt.header_invalid");
-  }
-  if ("alg" in value && value.alg != null && typeof value.alg !== "string") {
-    throwOidcValidationError("jwt.header_invalid");
-  }
-
   return {
     ...(typeof value.kid === "string" ? { kid: value.kid } : {}),
     ...(typeof value.alg === "string" ? { alg: value.alg } : {}),
@@ -53,7 +46,7 @@ export function parseFederatedTokenClaims(value: unknown): FederatedTokenClaims 
   let aud: string | string[];
   if (typeof value.aud === "string") {
     aud = value.aud;
-  } else if (Array.isArray(value.aud) && value.aud.every((item) => typeof item === "string")) {
+  } else if (Array.isArray(value.aud) && value.aud.length > 0 && value.aud.every((item) => typeof item === "string")) {
     aud = value.aud;
   } else {
     throwOidcValidationError("jwt.payload_invalid");

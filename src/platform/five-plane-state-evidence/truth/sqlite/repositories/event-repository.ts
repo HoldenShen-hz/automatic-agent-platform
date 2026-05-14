@@ -729,7 +729,8 @@ export class EventRepository {
   }
 
   public createTier1StatusEvent(input: {
-    taskId: string;
+    taskId: string | null;
+    sessionId?: string | null;
     executionId: string | null;
     eventType: string;
     traceId: string;
@@ -738,7 +739,7 @@ export class EventRepository {
     const eventRecord = this.insertEvent({
       id: newId("evt"),
       taskId: input.taskId,
-      sessionId: null,
+      sessionId: input.sessionId ?? null,
       executionId: input.executionId,
       eventType: input.eventType,
       eventTier: "tier_1",
@@ -754,9 +755,11 @@ export class EventRepository {
       eventId: eventRecord.id,
       eventType: input.eventType,
       taskId: input.taskId,
+      sessionId: input.sessionId ?? null,
       executionId: input.executionId,
       payload: input.payload,
     };
+    const aggregateId = input.taskId ?? input.sessionId ?? input.executionId ?? eventRecord.id;
 
     this.conn
       .prepare(
@@ -767,8 +770,8 @@ export class EventRepository {
       )
       .run(
         outboxId,
-        "task",
-        input.taskId,
+        input.taskId == null ? input.sessionId == null ? "event" : "session" : "task",
+        aggregateId,
         input.eventType,
         JSON.stringify(outboxPayload),
         input.traceId,

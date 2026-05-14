@@ -122,7 +122,7 @@ export class ReconciliationWorker {
     const window = windowMs ?? this.defaultReconciliationWindowMs;
     const createdAt = new Date(reconciliationCreatedAt).getTime();
     const now = Date.now();
-    return now - createdAt > window;
+    return now - createdAt >= window;
   }
 
   /**

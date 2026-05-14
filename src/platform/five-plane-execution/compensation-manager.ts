@@ -104,7 +104,7 @@ export class CompensationManager {
       sideEffectId,
       harnessRunId,
       planRef,
-      ...(status !== undefined ? { status } : {}),
+      status: status ?? "running",
     });
   }
 
@@ -174,17 +174,17 @@ export class CompensationManager {
   public validateCompensationPreconditions(
     sideEffect: SideEffectRecord,
   ): { valid: boolean; reason?: string } {
-    if (!this.isCompensatable(sideEffect)) {
-      return {
-        valid: false,
-        reason: `Side effect ${sideEffect.sideEffectId} is not in a compensatable state (current: ${sideEffect.status})`,
-      };
-    }
-
     if (sideEffect.status === "compensated") {
       return {
         valid: false,
         reason: `Side effect ${sideEffect.sideEffectId} has already been compensated`,
+      };
+    }
+
+    if (!this.isCompensatable(sideEffect)) {
+      return {
+        valid: false,
+        reason: `Side effect ${sideEffect.sideEffectId} is not in a compensatable state (current: ${sideEffect.status})`,
       };
     }
 

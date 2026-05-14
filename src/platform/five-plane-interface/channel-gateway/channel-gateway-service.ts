@@ -117,12 +117,16 @@ function normalizeChannelAdapter(adapter: ChannelAdapter | { readonly channel: s
     readonly channel: string;
     send(input: { targetId: string; externalTargetId: string | null; text: string; metadata?: Record<string, unknown> }): Promise<GatewayDeliveryReceipt>;
   };
-  return {
+  return Object.assign(legacy, {
     channelType: legacy.channel,
-    channel: legacy.channel,
-    supports: (channel) => channel === legacy.channel,
-    sendMessage: (input) => legacy.send(input),
-  } as ChannelAdapter;
+    supports: (channel: string) => channel === legacy.channel,
+    sendMessage: (input: {
+      targetId: string;
+      externalTargetId: string | null;
+      text: string;
+      metadata?: Record<string, unknown>;
+    }) => legacy.send(input),
+  }) as ChannelAdapter;
 }
 
 export function createDefaultChannelAdapterRegistry(): ChannelAdapterRegistry {

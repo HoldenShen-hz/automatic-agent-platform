@@ -183,7 +183,7 @@ export class SideEffectManager {
       },
     } satisfies JsonValue;
     const event = createPlatformFactEvent({
-      eventType: `platform.side_effect.${toStatus}`,
+      eventType: "platform.side_effect.status_changed",
       aggregateType: "SideEffectRecord",
       aggregateId: sideEffect.sideEffectId,
       aggregateSeq: 1,
@@ -235,7 +235,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "compensate":
       return "compensation_required";
     case "escalate_hitl":
-      return "manual_review_required";
+      return "ambiguous";
     case "mark_failed":
       return "failed";
   }

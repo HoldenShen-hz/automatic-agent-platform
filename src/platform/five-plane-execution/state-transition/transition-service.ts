@@ -214,6 +214,10 @@ type TaskTerminalTransitionInput = {
   taskOutputJson: string;
   outputsJson: string;
   context: TransitionAuditContext;
+  expectedTaskUpdatedAt?: string;
+  expectedWorkflowStepIndex?: number;
+  expectedSessionUpdatedAt?: string;
+  expectedExecutionUpdatedAt?: string;
 };
 
 /**
@@ -345,6 +349,13 @@ export class WorkflowTransitionService {
         `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    this.repository.createTier1StatusEvent({
+      taskId: command.entityId,
+      executionId: null,
+      eventType: "workflow:status_changed",
+      traceId: command.traceId,
+      payload: buildStatusTransitionEventPayload(command),
+    });
   }
 }
 
@@ -384,6 +395,18 @@ export class SessionTransitionService {
         `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    const repositoryWithSession = this.repository as RuntimeLifecycleRepository & {
+      getSession?: (sessionId: string) => { taskId?: string | null } | null;
+    };
+    const session = repositoryWithSession.getSession?.(command.entityId) ?? null;
+    repositoryWithSession.createTier1StatusEvent({
+      taskId: session?.taskId ?? null,
+      executionId: null,
+      sessionId: command.entityId,
+      eventType: "session:status_changed",
+      traceId: command.traceId,
+      payload: buildStatusTransitionEventPayload(command),
+    } as Parameters<RuntimeLifecycleRepository["createTier1StatusEvent"]>[0]);
   }
 }
 
@@ -436,6 +459,17 @@ export class ExecutionTransitionService {
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    const repositoryWithExecution = this.repository as RuntimeLifecycleRepository & {
+      getExecution?: (executionId: string) => { taskId?: string | null } | null;
+    };
+    const execution = repositoryWithExecution.getExecution?.(command.entityId) ?? null;
+    repositoryWithExecution.createTier1StatusEvent({
+      taskId: execution?.taskId ?? null,
+      executionId: command.entityId,
+      eventType: "execution:status_changed",
+      traceId: command.traceId,
+      payload: buildStatusTransitionEventPayload(command),
+    });
   }
 }
 
@@ -538,7 +572,24 @@ class TaskTerminalTransitionService {
       executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
     }
 
-    this.repository.updateTaskOutput(input.taskId, input.taskOutputJson, input.context.occurredAt);
+    const repositoryWithOutput = this.repository as RuntimeLifecycleRepository & {
+      updateTaskOutputCas?: (taskId: string, expectedUpdatedAt: string, expectedStatus: TaskStatus, outputJson: string, updatedAt: string) => number;
+      updateTaskOutput?: (taskId: string, outputJson: string, updatedAt: string) => void;
+    };
+    if (repositoryWithOutput.updateTaskOutputCas) {
+      const outputAffected = repositoryWithOutput.updateTaskOutputCas(
+        input.taskId,
+        input.expectedTaskUpdatedAt ?? input.context.occurredAt,
+        input.currentTaskStatus,
+        input.taskOutputJson,
+        input.context.occurredAt,
+      );
+      if (outputAffected === 0) {
+        throw new Error(`task.output_cas_failed:${input.taskId}`);
+      }
+    } else {
+      repositoryWithOutput.updateTaskOutput?.(input.taskId, input.taskOutputJson, input.context.occurredAt);
+    }
     // R9-02 fix: Use CAS update to detect concurrent modifications
     const taskAffected = this.repository.updateTaskStatusCas(
       input.taskId,

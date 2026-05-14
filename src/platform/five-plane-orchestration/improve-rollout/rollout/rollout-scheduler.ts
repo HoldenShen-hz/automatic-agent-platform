@@ -28,10 +28,12 @@ export interface RolloutSchedulerOptions {
   minimumStageDwellMs?: Partial<Record<RolloutStatus, number>>;
 }
 
-const NEXT_PROGRESSIVE_STATUS: Readonly<Partial<Record<RolloutStatus, RolloutStatus>>> = {
+const NEXT_PROGRESSIVE_STATUS: Readonly<Record<string, RolloutStatus>> = {
+  shadow: "canary_5",
   evaluation_enabled: "canary_5",
   canary_5: "partial_25",
   partial_25: "stable_75",
+  partial_75: "stable" as RolloutStatus,
   stable_75: "stable_100",
   stable_100: "released",
 };
@@ -100,13 +102,23 @@ export class RolloutScheduler {
       };
     }
 
-    return {
-      action: "promote",
-      record: this.rolloutService.promote(input.candidate, input.record, nextStatus as Exclude<RolloutStatus, "candidate_created" | "under_review" | "approved" | "rejected" | "rolled_back" | "paused">, metrics ?? undefined, input.approvedBy),
-      nextStatus,
-      reasonCodes: gate.reasonCodes.length > 0 ? gate.reasonCodes : ["rollout.scheduler_advanced"],
-      metrics,
-    };
+    try {
+      return {
+        action: "promote",
+        record: this.rolloutService.promote(input.candidate, input.record, nextStatus as Exclude<RolloutStatus, "candidate_created" | "under_review" | "approved" | "rejected" | "rolled_back" | "paused">, metrics ?? undefined, input.approvedBy),
+        nextStatus,
+        reasonCodes: gate.reasonCodes.length > 0 ? gate.reasonCodes : ["rollout.scheduler_advanced"],
+        metrics,
+      };
+    } catch (error) {
+      return {
+        action: "blocked",
+        record: input.record,
+        nextStatus,
+        reasonCodes: [error instanceof Error ? error.message : "rollout.scheduler_blocked"],
+        metrics,
+      };
+    }
   }
 
   public async advanceMany(inputs: readonly ScheduledRollout[]): Promise<RolloutSchedulerDecision[]> {

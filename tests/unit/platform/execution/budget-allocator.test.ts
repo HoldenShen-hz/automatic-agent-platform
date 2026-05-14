@@ -78,7 +78,7 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.budget_hard_cap_not_satisfied",
+      error.code === "budget_settlement.actual_amount_exceeds_reservation",
   );
 });
 

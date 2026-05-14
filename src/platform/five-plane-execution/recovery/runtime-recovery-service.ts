@@ -816,7 +816,14 @@ function toRecoveryEvent(event: EventRecord): TaskRuntimeRecoveryView["recentRec
   };
 }
 
-function findLatestCheckpoint(_artifacts: ArtifactRecord[]): WorkflowStepCheckpointSummary | null {
+function findLatestCheckpoint(artifacts: ArtifactRecord[]): WorkflowStepCheckpointSummary | null {
+  for (const artifact of [...artifacts].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
+    const checkpoint = readWorkflowStepCheckpoint(artifact);
+    if (checkpoint) {
+      return summarizeWorkflowStepCheckpoint(artifact.artifactId, checkpoint);
+    }
+  }
+
   return null;
 }
 

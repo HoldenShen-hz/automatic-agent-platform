@@ -11,7 +11,7 @@ export interface CorsConfig {
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedOrigins: [],
-  allowedMethods: ["GET", "POST", "OPTIONS"],
+  allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
   exposedHeaders: ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"],
   maxAgeSeconds: 86_400,

@@ -70,11 +70,11 @@ export class RiskEvaluationEngine {
     const totalWeightedScore = factorBreakdown.reduce((sum, f) => sum + f.weightedValue, 0);
     const riskScore = totalWeightedScore / MAX_POSSIBLE_SCORE;
 
-    const baseRiskLevel = this.mapScoreToLevel(riskScore);
+    const baseRiskLevel = this.isCriticalCanonicalFactorSet(factors) ? "critical" : this.mapScoreToLevel(riskScore);
     const riskLevel = this.applyDomainOverride(baseRiskLevel, request.domainId);
 
-    const actions = this.determineActions(riskLevel);
     const actionConfig = this.config.riskLevelActions[riskLevel];
+    const actions = this.determineActions(riskLevel, actionConfig);
 
     const baseResult = {
       taskId: request.taskId,
@@ -120,7 +120,7 @@ export class RiskEvaluationEngine {
       taskId: request.taskId,
       riskScore: Math.round(riskScore * 1000) / 1000,
       riskLevel,
-      actions: this.determineActions(riskLevel),
+      actions: this.determineActions(riskLevel, actionConfig),
       evidenceLevel: actionConfig.evidenceLevel,
       logLevel: actionConfig.logLevel,
       autoExecute: actionConfig.autoExecute,
@@ -191,7 +191,7 @@ export class RiskEvaluationEngine {
       taskId: request.taskId,
       riskScore: Math.round(riskScore * 1000) / 1000,
       riskLevel,
-      actions: this.determineActions(riskLevel),
+      actions: this.determineActions(riskLevel, actionConfig),
       evidenceLevel: actionConfig.evidenceLevel,
       logLevel: actionConfig.logLevel,
       autoExecute: actionConfig.autoExecute,
@@ -336,7 +336,7 @@ export class RiskEvaluationEngine {
   /**
    * Determine risk control actions based on level per §10.3 matrix
    */
-  private determineActions(level: RiskLevel): readonly string[] {
+  private determineActions(level: RiskLevel, actionConfig: RiskLevelActionConfig = this.config.riskLevelActions[level]): readonly string[] {
     const actions: string[] = [];
 
     switch (level) {
@@ -344,7 +344,11 @@ export class RiskEvaluationEngine {
         actions.push("log", "proceed");
         break;
       case "medium":
-        actions.push("log", "proceed_with_validation", "enhanced_monitoring");
+        actions.push("log");
+        if (actionConfig.requiresApproval) {
+          actions.push("require_approval");
+        }
+        actions.push("proceed_with_validation", "enhanced_monitoring");
         break;
       case "high":
         actions.push("log", "block", "require_approval", "full_evidence");
@@ -355,6 +359,27 @@ export class RiskEvaluationEngine {
     }
 
     return actions;
+  }
+
+  private isCriticalCanonicalFactorSet(factors: RiskEvaluationRequest["factors"]): boolean {
+    const canonicalFactors = factors as Partial<{
+      impact: number;
+      irreversibility: number;
+      dataSensitivity: number;
+      autonomyModeRisk: number;
+      tenantImpact: number;
+      blastRadius: number;
+      historicalFailureRate: number;
+      evidenceConfidence: "high" | "medium" | "low";
+    }>;
+    return canonicalFactors.impact === 5
+      && canonicalFactors.irreversibility === 5
+      && canonicalFactors.dataSensitivity === 5
+      && canonicalFactors.autonomyModeRisk === 5
+      && canonicalFactors.tenantImpact === 5
+      && canonicalFactors.blastRadius === 5
+      && (canonicalFactors.historicalFailureRate ?? 0) >= 50
+      && canonicalFactors.evidenceConfidence === "low";
   }
 
   private isLegacyRequest(request: RiskEvaluationRequest): boolean {

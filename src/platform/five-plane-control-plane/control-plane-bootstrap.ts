@@ -15,11 +15,15 @@ export interface ControlPlaneBootstrap {
 }
 
 export function buildControlPlaneBootstrap(): ControlPlaneBootstrap {
-  return {
+  const registeredServiceIds = Object.freeze([
+    CONTROL_PLANE_CATALOG_SERVICE_ID,
+    CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
+  ] as const);
+  return Object.freeze({
     planeId: "control-plane",
-    catalog: listControlPlaneCapabilityBaselines(),
-    registeredServiceIds: [CONTROL_PLANE_CATALOG_SERVICE_ID, CONTROL_PLANE_BOOTSTRAP_SERVICE_ID],
-  };
+    catalog: Object.freeze([...listControlPlaneCapabilityBaselines()]),
+    registeredServiceIds,
+  });
 }
 
 export function registerControlPlaneBootstrap(

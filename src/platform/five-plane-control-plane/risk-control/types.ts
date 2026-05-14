@@ -25,10 +25,11 @@ export const DataClassRiskSchema = z.enum(["public", "internal", "confidential",
 export type DataClassRisk = z.infer<typeof DataClassRiskSchema>;
 
 /**
- * Blast radius scope per §10.2
+ * Canonical blast radius factor per ADR-026 v4.3.
  */
-export const BlastRadiusSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
+export const BlastRadiusSchema = z.number().min(1).max(5);
 export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
+const LegacyBlastRadiusSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
 
 /**
  * Confidence level per §10.2
@@ -57,7 +58,7 @@ export const LegacyRiskFactorsSchema = z.object({
   stepTypeRisk: StepTypeRiskSchema,
   targetSystemRisk: TargetSystemRiskSchema,
   dataClassRisk: DataClassRiskSchema,
-  blastRadius: BlastRadiusSchema,
+  blastRadius: LegacyBlastRadiusSchema,
   priorFailureRatePercent: z.number().min(0).max(100),
   confidence: ConfidenceLevelSchema,
 });

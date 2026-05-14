@@ -199,7 +199,8 @@ export function calculateBackoffForAttempt(
   config: DeliveryGuaranteeConfig,
   attemptNumber: number,
 ): number {
-  const backoff = config.initialBackoffMs * Math.pow(config.backoffMultiplier, attemptNumber - 1);
+  const normalizedAttempt = Math.max(1, attemptNumber);
+  const backoff = config.initialBackoffMs * Math.pow(config.backoffMultiplier, normalizedAttempt - 1);
   return Math.min(backoff, config.maxBackoffMs);
 }
 

@@ -118,11 +118,11 @@ function safeParsePayload(payloadJson: string): Record<string, unknown> | null {
 }
 
 function compareEventsByOccurrence(left: EventRecord, right: EventRecord): number {
-  const byTimestamp = getEventOccurrence(right).localeCompare(getEventOccurrence(left));
+  const byTimestamp = getEventOccurrence(left).localeCompare(getEventOccurrence(right));
   if (byTimestamp !== 0) {
     return byTimestamp;
   }
-  return right.id.localeCompare(left.id);
+  return left.id.localeCompare(right.id);
 }
 
 function getEventOccurrence(event: EventRecord): string {

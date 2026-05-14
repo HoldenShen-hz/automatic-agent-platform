@@ -507,8 +507,8 @@ export class BudgetAllocator {
     }
 
     const context = normalizeContext(input.context);
-    if (input.actualAmount > input.reservation.amount && shouldUseBudgetValidationErrors(input.context)) {
-      throw new ValidationError(
+    if (input.actualAmount > input.reservation.amount) {
+      throw new WorkflowStateError(
         "budget_settlement.actual_amount_exceeds_reservation",
         "budget_settlement.actual_amount_exceeds_reservation: Actual amount exceeds reserved amount.",
       );

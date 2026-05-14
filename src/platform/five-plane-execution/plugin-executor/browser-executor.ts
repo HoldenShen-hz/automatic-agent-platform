@@ -159,7 +159,7 @@ export class BrowserExecutor {
     if (!session) {
       throw new ValidationError(
         "browser_executor.session_not_found",
-        `Browser session ${sessionId} not found`,
+        `browser_executor.session_not_found: Browser session ${sessionId} not found`,
         { details: { sessionId } },
       );
     }
@@ -213,6 +213,9 @@ export class BrowserExecutor {
 
       return this.buildResult(context, "navigate", "ok", { url: options.url }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "navigate", error, startTime);
     }
   }
@@ -246,6 +249,9 @@ export class BrowserExecutor {
         clickCount: options.clickCount ?? 1,
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "click", error, startTime);
     }
   }
@@ -279,6 +285,9 @@ export class BrowserExecutor {
         cleared: options.clear ?? false,
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "input", error, startTime);
     }
   }
@@ -335,7 +344,7 @@ export class BrowserExecutor {
       if (!options.script || options.script.trim().length === 0) {
         throw new ValidationError(
           "browser_executor.empty_script",
-          "Script cannot be empty",
+          "browser_executor.empty_script: Script cannot be empty",
         );
       }
 
@@ -349,6 +358,9 @@ export class BrowserExecutor {
         result,
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "evaluate", error, startTime);
     }
   }
@@ -381,6 +393,9 @@ export class BrowserExecutor {
         state: options.state ?? "visible",
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "waitForSelector", error, startTime);
     }
   }
@@ -414,6 +429,9 @@ export class BrowserExecutor {
         value: attributeValue,
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "getAttribute", error, startTime);
     }
   }
@@ -449,6 +467,9 @@ export class BrowserExecutor {
         y: options.y ?? 0,
       }, startTime);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       return this.buildErrorResult(context, "scroll", error, startTime);
     }
   }
@@ -476,14 +497,14 @@ export class BrowserExecutor {
     if (!session) {
       throw new ValidationError(
         "browser_executor.session_not_found",
-        `Browser session ${sessionId} not found`,
+        `browser_executor.session_not_found: Browser session ${sessionId} not found`,
         { details: { sessionId } },
       );
     }
     if (!session.isActive) {
       throw new ValidationError(
         "browser_executor.session_inactive",
-        `Browser session ${sessionId} is not active`,
+        `browser_executor.session_inactive: Browser session ${sessionId} is not active`,
         { details: { sessionId } },
       );
     }
@@ -496,7 +517,7 @@ export class BrowserExecutor {
       if (!["http:", "https:"].includes(parsed.protocol)) {
         throw new ValidationError(
           "browser_executor.invalid_url_protocol",
-          "Only http and https URLs are allowed",
+          "browser_executor.invalid_url_protocol: Only http and https URLs are allowed",
           { details: { url, protocol: parsed.protocol } },
         );
       }
@@ -506,7 +527,7 @@ export class BrowserExecutor {
       }
       throw new ValidationError(
         "browser_executor.invalid_url",
-        "Invalid URL format",
+        "browser_executor.invalid_url: Invalid URL format",
         { details: { url } },
       );
     }
@@ -516,7 +537,7 @@ export class BrowserExecutor {
     if (!selector || selector.trim().length === 0) {
       throw new ValidationError(
         "browser_executor.empty_selector",
-        "Selector cannot be empty",
+        "browser_executor.empty_selector: Selector cannot be empty",
       );
     }
   }

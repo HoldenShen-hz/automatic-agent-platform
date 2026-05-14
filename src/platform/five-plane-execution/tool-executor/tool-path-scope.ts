@@ -9,7 +9,7 @@
  * path scope determines if it falls within the execution's declared boundaries.
  */
 
-import { realpathSync } from "node:fs";
+import { lstatSync, realpathSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
@@ -38,11 +38,19 @@ function normalizePath(path: string): string {
   try {
     return realpathSync.native(resolvedPath);
   } catch (err) {
-    // R32-02 fix: Fail closed when symlink resolution fails. Falling back to resolve()
-    // would allow symlinks to bypass path scope restrictions. Deny access when we
-    // cannot canonicalize the path.
-    toolPathScopeLogger.debug("tool_path_scope: realpathSync.native failed, denying path", { error: err instanceof Error ? err.message : String(err), path: resolvedPath });
-    throw new Error(`tool.path_scope_canonicalization_failed:${resolvedPath}`);
+    try {
+      if (lstatSync(resolvedPath).isSymbolicLink()) {
+        throw err;
+      }
+    } catch (statErr) {
+      const code = typeof statErr === "object" && statErr != null && "code" in statErr
+        ? (statErr as { code?: unknown }).code
+        : null;
+      if (code !== "ENOENT") {
+        throw err;
+      }
+    }
+    return resolvedPath;
   }
 }
 
@@ -91,6 +99,15 @@ export function checkToolPathScope(
   inputPath: string,
   roots: readonly string[] | null | undefined,
 ): ToolPathScopeCheckResult {
+  const normalizedRoots = normalizeToolPathScopeRoots(roots);
+  if (normalizedRoots.length === 0) {
+    return {
+      allowed: true,
+      normalizedPath: resolve(inputPath),
+      reasonCode: null,
+    };
+  }
+
   let normalizedPath: string;
   try {
     normalizedPath = normalizePath(inputPath);
@@ -100,16 +117,6 @@ export function checkToolPathScope(
       allowed: false,
       normalizedPath: inputPath,
       reasonCode: "tool.path_scope_denied",
-    };
-  }
-  const normalizedRoots = normalizeToolPathScopeRoots(roots);
-
-  // No restrictions if no roots specified
-  if (normalizedRoots.length === 0) {
-    return {
-      allowed: true,
-      normalizedPath,
-      reasonCode: null,
     };
   }
 

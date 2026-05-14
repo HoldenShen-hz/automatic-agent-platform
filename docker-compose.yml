@@ -1,5 +1,11 @@
 version: "3.9"
 
+# Local production-like compose profile.
+# Resource and security limits are intentionally explicit so local smoke
+# runs cannot hide unbounded CPU, memory, pid, or writable-root behavior.
+# Production secrets must be supplied via environment/secret managers; do
+# not commit concrete AA_API_JWT_SECRET or POSTGRES_PASSWORD values here.
+
 services:
   api-server:
     build:

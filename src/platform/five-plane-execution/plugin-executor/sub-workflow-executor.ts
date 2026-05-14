@@ -85,6 +85,7 @@ export interface WorkflowStepDefinition {
 }
 
 export interface SubWorkflowExecutionResult {
+  subWorkflowRunId: string;
   executionId: string;
   harnessRunId: string | null;
   planGraphBundleId: string | null;
@@ -718,6 +719,7 @@ export class SubWorkflowExecutor {
     error?: string,
   ): SubWorkflowExecutionResult {
     const result: SubWorkflowExecutionResult = {
+      subWorkflowRunId: execution.executionId,
       executionId: execution.executionId,
       harnessRunId: execution.context.harnessRunId ?? execution.context.executionId,
       planGraphBundleId: execution.definition.workflowId,

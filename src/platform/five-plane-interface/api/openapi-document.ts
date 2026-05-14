@@ -152,5 +152,5 @@ export function buildOpenApiDocument() {
 }
 
 export function listApiRoutes(): ApiRouteSpec[] {
-  return [...ROUTES];
+  return ROUTES.filter((route) => route.method === "GET" || route.method === "POST");
 }

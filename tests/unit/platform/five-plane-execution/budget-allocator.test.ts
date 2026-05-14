@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext, type BudgetWatermarkAlert, type BudgetAutoThrottleEvent } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeTruthRepository } from "../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
@@ -416,7 +416,7 @@ test("settle() fails when actual amount exceeds reserved amount", () => {
         context: createTestContext(),
       }),
     (err: unknown) =>
-      err instanceof ValidationError &&
+      err instanceof WorkflowStateError &&
       err.code === "budget_settlement.actual_amount_exceeds_reservation",
   );
 });

@@ -46,9 +46,9 @@ export function readTrackedDeliveryPayload(payload: Record<string, unknown>): Tr
     return null;
   }
   return {
-    targetId: payload.targetId,
-    text: payload.text,
-    ...(typeof payload.tenantId === "string" ? { tenantId: payload.tenantId } : {}),
+    targetId: payload.targetId.trim(),
+    text: payload.text.trim(),
+    ...(typeof payload.tenantId === "string" ? { tenantId: payload.tenantId.trim() } : {}),
     ...(metadata != null ? { metadata: metadata as Record<string, unknown> } : {}),
     ...(requestEnvelope != null ? { requestEnvelope: requestEnvelope as Record<string, unknown> } : {}),
   };

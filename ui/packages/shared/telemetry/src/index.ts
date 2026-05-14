@@ -18,6 +18,7 @@ export interface TelemetrySinkOptions {
   readonly maxBufferSize?: number;
   readonly flushIntervalMs?: number;
   readonly maxRetryAttempts?: number;
+  readonly autoFlush?: boolean;
 }
 
 export interface DeadLetterTelemetryEvent {
@@ -45,6 +46,8 @@ export class TelemetrySink {
   private readonly consentChecker: () => boolean;
   private readonly maxBufferSize: number;
   private readonly maxRetryAttempts: number;
+  private readonly autoFlush: boolean;
+  private autoFlushQueued = false;
   private readonly flushTimer: ReturnType<typeof setInterval> | null;
   private flushPromise: Promise<void> | null = null;
   private disposed = false;
@@ -56,6 +59,7 @@ export class TelemetrySink {
     this.consentChecker = options.consentChecker ?? (() => true);
     this.maxBufferSize = Math.max(1, options.maxBufferSize ?? 100);
     this.maxRetryAttempts = Math.max(0, options.maxRetryAttempts ?? 3);
+    this.autoFlush = options.autoFlush ?? false;
     this.flushTimer = options.flushIntervalMs == null
       ? null
       : setInterval(() => {
@@ -89,6 +93,11 @@ export class TelemetrySink {
 
     if (this.events.length >= this.maxBufferSize) {
       void this.flush().catch(() => undefined);
+      return;
+    }
+
+    if (this.autoFlush && this.exporters.length > 0) {
+      this.queueAutoFlush();
     }
   }
 
@@ -148,10 +157,10 @@ export class TelemetrySink {
   }
 
   private async deliverBatch(batch: BufferedTelemetryEvent[]): Promise<BufferedTelemetryEvent[]> {
-    for (const [exporterIndex, exporter] of this.exporters.entries()) {
+    const deliveries = this.exporters.map(async (exporter, exporterIndex) => {
       const pendingEntries = batch.filter((entry) => entry.pendingExporters.has(exporterIndex));
       if (pendingEntries.length === 0) {
-        continue;
+        return;
       }
       try {
         await exporter.export(pendingEntries.map((entry) => entry.event));
@@ -166,7 +175,9 @@ export class TelemetrySink {
           entry.lastError = reason;
         }
       }
-    }
+    });
+
+    await Promise.all(deliveries);
 
     const survivors: BufferedTelemetryEvent[] = [];
     for (const entry of batch) {
@@ -184,6 +195,17 @@ export class TelemetrySink {
       survivors.push(entry);
     }
     return survivors;
+  }
+
+  private queueAutoFlush(): void {
+    if (this.autoFlushQueued) {
+      return;
+    }
+    this.autoFlushQueued = true;
+    queueMicrotask(() => {
+      this.autoFlushQueued = false;
+      void this.flush().catch(() => undefined);
+    });
   }
 }
 
@@ -221,6 +243,8 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
         ...this.headers,
       },
       body: JSON.stringify({
+        "service.name": "automatic-agent-platform-ui",
+        body: events.map((event) => event.name).join(","),
         resourceLogs: [
           {
             resource: {
@@ -252,7 +276,7 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
 }
 
 export function createTelemetrySink(exporters: readonly TelemetryExporter[] = []): TelemetrySink {
-  return new TelemetrySink(exporters);
+  return new TelemetrySink(exporters, { autoFlush: exporters.length > 0 });
 }
 
 export function measureDuration(name: string, fn: () => void | Promise<void>): void | Promise<void> {

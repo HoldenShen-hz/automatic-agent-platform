@@ -48,6 +48,16 @@ function createFailingHandler(name: string, errorMsg = "Handler failed"): Shutdo
   };
 }
 
+function createTrackedFailingHandler(name: string, executionOrder: string[], errorMsg = "Handler failed"): ShutdownHandler {
+  return {
+    name,
+    handler: async () => {
+      executionOrder.push(name);
+      throw new Error(errorMsg);
+    },
+  };
+}
+
 function createSlowHandler(name: string, delayMs: number, handlerTimeoutMs?: number): ShutdownHandler {
   return {
     name,
@@ -243,7 +253,7 @@ test("shutdown() continues executing handlers after a failure", async () => {
         name: "handler-1",
         handler: async () => { executionOrder.push("handler-1"); },
       },
-      createFailingHandler("handler-2"),
+      createTrackedFailingHandler("handler-2", executionOrder),
       {
         name: "handler-3",
         handler: async () => { executionOrder.push("handler-3"); },

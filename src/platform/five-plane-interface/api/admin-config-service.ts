@@ -26,6 +26,8 @@ export interface DeleteAdminConfigInput {
 
 export class AdminConfigService {
   private readonly records = new Map<string, AdminConfigRecord>();
+  private readonly recordOrder = new Map<string, number>();
+  private nextRecordOrder = 0;
 
   public applyUpdate(input: ApplyAdminConfigInput): AdminConfigRecord {
     const record: AdminConfigRecord = {
@@ -37,13 +39,22 @@ export class AdminConfigService {
       updatedAt: nowIso(),
     };
     this.records.set(record.updateId, record);
+    this.recordOrder.set(record.updateId, ++this.nextRecordOrder);
     return record;
   }
 
   public listUpdates(limit = 50, tenantId?: string | null): AdminConfigRecord[] {
     return [...this.records.values()]
       .filter((record) => !record.deletedAt && (tenantId == null || record.tenantId === tenantId))
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .sort((left, right) => {
+        const timeOrder = right.updatedAt.localeCompare(left.updatedAt);
+        if (timeOrder !== 0) {
+          return timeOrder;
+        }
+        const leftOrder = this.recordOrder.get(left.updateId) ?? 0;
+        const rightOrder = this.recordOrder.get(right.updateId) ?? 0;
+        return rightOrder - leftOrder;
+      })
       .slice(0, Math.max(0, limit));
   }
 

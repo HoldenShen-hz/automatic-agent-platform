@@ -13,7 +13,7 @@
 import { nowIso } from "../../contracts/types/ids.js";
 import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
 
-export type IncidentSeverity = UnifiedSeverity;
+export type IncidentSeverity = UnifiedSeverity | "p1" | "p2" | "p3" | "p4";
 export type IncidentStatus = "open" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
 export type IncidentCategory =
   | "system_health"
@@ -70,7 +70,7 @@ export class IncidentDetector {
       if (check.status === "fail_closed") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "SEV1",
+          severity: "p1",
           title: `Critical failure in ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
@@ -81,7 +81,7 @@ export class IncidentDetector {
       } else if (check.status === "degraded") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "SEV2",
+          severity: "p2",
           title: `Degraded ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
@@ -128,7 +128,7 @@ export class IncidentDetector {
       incidentId: this.generateIncidentId(),
       detectedAt: nowIso(),
       category: input.category,
-      severity: normalizeIncidentSeverity(input.severity),
+      severity: input.severity,
       status: "open",
       title: input.title,
       description: input.description,
@@ -151,6 +151,8 @@ export class IncidentDetector {
       case "SEV3":
         return "medium";
       case "SEV4":
+        return "low";
+      default:
         return "low";
     }
   }

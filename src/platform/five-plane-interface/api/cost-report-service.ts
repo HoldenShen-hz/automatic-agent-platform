@@ -6,6 +6,9 @@ export interface CostReportResourceCost {
   readonly costUsd: number;
   readonly currency: string;
   readonly metadata?: Record<string, unknown>;
+  readonly domainId?: string;
+  readonly teamId?: string;
+  readonly orgId?: string;
 }
 
 export interface CostReportRecord {
@@ -73,6 +76,50 @@ export class CostReportService {
       .slice(0, Math.max(0, limit));
   }
 
+  public computeDomainBreakdown(limit = 50, tenantId?: string | null): Array<{ dimensionType: "domain"; dimensionId: string; costUsd: number; percentageOfTotal: number }> {
+    return this.computeBreakdown("domain", "domainId", limit, tenantId);
+  }
+
+  public computeTeamBreakdown(limit = 50, tenantId?: string | null): Array<{ dimensionType: "team"; dimensionId: string; costUsd: number; percentageOfTotal: number }> {
+    return this.computeBreakdown("team", "teamId", limit, tenantId);
+  }
+
+  public computeOrgBreakdown(limit = 50, tenantId?: string | null): Array<{ dimensionType: "org"; dimensionId: string; costUsd: number; percentageOfTotal: number }> {
+    return this.computeBreakdown("org", "orgId", limit, tenantId);
+  }
+
+  private computeBreakdown<TType extends "domain" | "team" | "org">(
+    dimensionType: TType,
+    field: "domainId" | "teamId" | "orgId",
+    limit: number,
+    tenantId?: string | null,
+  ): Array<{ dimensionType: TType; dimensionId: string; costUsd: number; percentageOfTotal: number }> {
+    const totals = new Map<string, number>();
+    let grandTotal = 0;
+    for (const report of this.reports.values()) {
+      if (tenantId != null && report.tenantId !== tenantId) {
+        continue;
+      }
+      for (const cost of report.resourceCosts) {
+        const dimensionId = cost[field];
+        if (typeof dimensionId !== "string" || dimensionId.trim().length === 0) {
+          continue;
+        }
+        totals.set(dimensionId, (totals.get(dimensionId) ?? 0) + cost.costUsd);
+        grandTotal += cost.costUsd;
+      }
+    }
+    return [...totals.entries()]
+      .map(([dimensionId, costUsd]) => ({
+        dimensionType,
+        dimensionId,
+        costUsd,
+        percentageOfTotal: grandTotal > 0 ? costUsd / grandTotal : 0,
+      }))
+      .sort((left, right) => right.costUsd - left.costUsd)
+      .slice(0, Math.max(0, limit));
+  }
+
   public listBudgetSummaries(limit = 50, tenantId?: string | null): BudgetSummaryRecord[] {
     const summaries = new Map<string, BudgetSummaryRecord>();
     for (const report of this.reports.values()) {
@@ -95,7 +142,7 @@ export class CostReportService {
         continue;
       }
       const latestSubmittedAt = report.submittedAt.localeCompare(current.latestSubmittedAt) > 0 ? report.submittedAt : current.latestSubmittedAt;
-      const earliestPeriodStart = report.periodStart.localeCompare(current.periodStart) < 0 ? report.periodStart : current.periodStart;
+      const earliestPeriodStart = report.periodStart.localeCompare(current.periodStart) > 0 ? report.periodStart : current.periodStart;
       const latestPeriodEnd = report.periodEnd.localeCompare(current.periodEnd) > 0 ? report.periodEnd : current.periodEnd;
       summaries.set(key, {
         ...current,

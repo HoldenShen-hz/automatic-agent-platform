@@ -329,9 +329,6 @@ export class TypedEventBus {
       ...input,
       payload: input.payload as unknown as Record<string, unknown>,
     });
-    if (event.eventTier !== "tier_1") {
-      void this.dispatchTypedVolatile(event);
-    }
     return event;
   }
 

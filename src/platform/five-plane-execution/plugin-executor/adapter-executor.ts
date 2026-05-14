@@ -81,7 +81,7 @@ export class AdapterExecutor {
 
   public register(descriptor: AdapterDescriptor): void {
     if (this.descriptors.has(descriptor.adapterId)) {
-      throw new ValidationError("adapter_executor.adapter_already_registered", "Adapter descriptor is already registered.", {
+      throw new ValidationError("adapter_executor.adapter_already_registered", "adapter_executor.adapter_already_registered: Adapter descriptor is already registered.", {
         details: { adapterId: descriptor.adapterId },
       });
     }
@@ -95,13 +95,13 @@ export class AdapterExecutor {
   public async execute(adapterId: string, request: AdapterExecutionRequest): Promise<AdapterExecutionResult> {
     const descriptor = this.descriptors.get(adapterId);
     if (descriptor == null) {
-      throw new ValidationError("adapter_executor.adapter_not_found", "Adapter descriptor is not registered.", {
+      throw new ValidationError("adapter_executor.adapter_not_found", "adapter_executor.adapter_not_found: Adapter descriptor is not registered.", {
         details: { adapterId },
       });
     }
 
     const maxAttempts = Math.max(1, descriptor.retryPolicy?.maxAttempts ?? 1);
-    const baseBackoffMs = Math.max(0, descriptor.retryPolicy?.backoffMs ?? 100);
+    const baseBackoffMs = Math.max(0, descriptor.retryPolicy?.backoffMs ?? 0);
     const backoffMultiplier = Math.max(1, descriptor.retryPolicy?.backoffMultiplier ?? 2);
     const backoffMaxMs = Math.max(baseBackoffMs, descriptor.retryPolicy?.backoffMaxMs ?? 30_000);
     const jitterPercent = Math.max(0, Math.min(100, descriptor.retryPolicy?.jitterPercent ?? 10));
@@ -145,6 +145,9 @@ export class AdapterExecutor {
 
         return result;
       } catch (error) {
+        if (error instanceof ValidationError && error.code === "adapter_executor.mq_dispatcher_missing") {
+          throw error;
+        }
         lastError = error;
         if (attempt < maxAttempts) {
           // Calculate exponential backoff with jitter
@@ -166,6 +169,7 @@ export class AdapterExecutor {
       output: {
         error: lastError instanceof Error ? lastError.message : String(lastError),
         // R4-48: Include retry exhaustion details for incident/DLQ handling
+        error_code: "RETRY_EXHAUSTED",
         retryExhausted: true,
         maxAttempts,
         lastErrorCode: lastError instanceof Error ? lastError.name : undefined,
@@ -209,14 +213,15 @@ export class AdapterExecutor {
       case "mq":
         return this.invokeMq(descriptor, request);
       default:
-        throw new ValidationError("adapter_executor.protocol_not_supported", "Adapter protocol is not supported.", {
+        throw new ValidationError("adapter_executor.protocol_not_supported", "adapter_executor.protocol_not_supported: Adapter protocol is not supported.", {
           details: { adapterId: descriptor.adapterId, protocol: descriptor.protocol },
         });
     }
   }
 
   private async invokeRest(descriptor: AdapterDescriptor, request: AdapterExecutionRequest): Promise<unknown> {
-    const response = await this.fetchImpl(descriptor.endpoint, {
+    const timeoutMs = descriptor.timeoutMs ?? 5_000;
+    const response = await withTimeout(this.fetchImpl(descriptor.endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -227,8 +232,8 @@ export class AdapterExecutor {
         context: request.context,
         payload: request.payload,
       }),
-      signal: AbortSignal.timeout(descriptor.timeoutMs ?? 5_000),
-    });
+      signal: AbortSignal.timeout(timeoutMs),
+    }), timeoutMs);
     if (response.status === 204 || response.status === 205) {
       if (!response.ok) {
         throw new Error(`adapter_executor.rest_failed:${response.status}`);
@@ -267,10 +272,26 @@ export class AdapterExecutor {
 
   private async invokeMq(descriptor: AdapterDescriptor, request: AdapterExecutionRequest): Promise<unknown> {
     if (this.mqDispatcher == null) {
-      throw new ValidationError("adapter_executor.mq_dispatcher_missing", "MQ adapter requires a dispatcher.", {
+      throw new ValidationError("adapter_executor.mq_dispatcher_missing", "adapter_executor.mq_dispatcher_missing: MQ adapter requires a dispatcher.", {
         details: { adapterId: descriptor.adapterId },
       });
     }
     return this.mqDispatcher(descriptor, request);
+  }
+}
+
+async function withTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("adapter_executor.timeout")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer != null) {
+      clearTimeout(timer);
+    }
   }
 }

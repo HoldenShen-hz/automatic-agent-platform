@@ -204,8 +204,16 @@ export function translateMessage(
 }
 
 export function translateFeatureCopy(featureId: string): FeatureTranslationCopy {
+  const defaultTitle = featureId
+    .split("-")
+    .filter((part) => part.length > 0)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+  const defaultSummary = `${defaultTitle || "Feature"} workspace`;
+  const title = translateMessage(`ui.feature.${featureId}.title`);
+  const summary = translateMessage(`ui.feature.${featureId}.summary`);
   return {
-    title: translateMessage(`ui.feature.${featureId}.title`),
-    summary: translateMessage(`ui.feature.${featureId}.summary`),
+    title: title === `ui.feature.${featureId}.title` ? defaultTitle : title,
+    summary: summary === `ui.feature.${featureId}.summary` ? defaultSummary : summary,
   };
 }

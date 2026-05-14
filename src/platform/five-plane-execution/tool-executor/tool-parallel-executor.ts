@@ -334,23 +334,26 @@ export async function executeToolsInParallel<T>(
 
   const executeBatch = async (indices: number[]): Promise<void> => {
     if (indices.length === 0) return;
-    const batchFns = indices
-      .map(i => toolFunctions[i])
-      .filter((fn): fn is () => Promise<T> => fn != null);
-    const batchResults = await Promise.allSettled(batchFns.map(fn => fn()));
-    for (let i = 0; i < batchResults.length; i++) {
-      const settledResult = batchResults[i];
-      if (settledResult == null) continue;
-      const originalIndex = indices[i];
-      if (originalIndex == null) continue;
-      if (settledResult.status === "fulfilled") {
-        results[originalIndex] = settledResult.value;
-      } else {
-        errors.push({
-          index: originalIndex,
-          toolName: toolMetadatas[originalIndex]?.toolName ?? "unknown",
-          error: settledResult.reason,
-        });
+    for (let offset = 0; offset < indices.length; offset += maxParallelism) {
+      const chunk = indices.slice(offset, offset + maxParallelism);
+      const batchFns = chunk
+        .map(i => toolFunctions[i])
+        .filter((fn): fn is () => Promise<T> => fn != null);
+      const batchResults = await Promise.allSettled(batchFns.map(fn => fn()));
+      for (let i = 0; i < batchResults.length; i++) {
+        const settledResult = batchResults[i];
+        if (settledResult == null) continue;
+        const originalIndex = chunk[i];
+        if (originalIndex == null) continue;
+        if (settledResult.status === "fulfilled") {
+          results[originalIndex] = settledResult.value;
+        } else {
+          errors.push({
+            index: originalIndex,
+            toolName: toolMetadatas[originalIndex]?.toolName ?? "unknown",
+            error: settledResult.reason,
+          });
+        }
       }
     }
   };

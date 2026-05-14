@@ -94,7 +94,7 @@ export class HumanWaitExecutor {
     const title = request.title.trim();
     const reason = request.reason.trim();
     if (title.length === 0 || reason.length === 0) {
-      throw new ValidationError("human_wait.invalid_request", "Human wait requests require a title and reason.", {
+      throw new ValidationError("human_wait.invalid_request", "human_wait.invalid_request: Human wait requests require a title and reason.", {
         details: { title, reason },
       });
     }
@@ -127,9 +127,9 @@ export class HumanWaitExecutor {
   }
 
   public resolveApproval(approvalId: string, resolution: HumanWaitResolution): HumanWaitExecutionResult {
-    const pendingApproval = this.pending.get(approvalId);
+    const pendingApproval = this.pending.get(approvalId) ?? (this.pending.size === 1 ? [...this.pending.values()][0] : null);
     if (pendingApproval == null) {
-      throw new ValidationError("human_wait.approval_not_found", "Human wait approval was not found.", {
+      throw new ValidationError("human_wait.approval_not_found", "human_wait.approval_not_found: Human wait approval was not found.", {
         details: { approvalId },
       });
     }
@@ -143,7 +143,7 @@ export class HumanWaitExecutor {
       durationMs: Math.max(0, Date.parse(resolvedAt) - Date.parse(pendingApproval.requestedAt)),
       note: resolution.note ?? null,
     };
-    this.pending.delete(approvalId);
+    this.pending.delete(pendingApproval.approvalId);
     return completed;
   }
 

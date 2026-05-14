@@ -107,7 +107,7 @@ export class RuntimeRecoveryDecisionService {
    * @returns The recovery decision record
    * @throws Error if execution or candidate not found
    */
-  public async decide(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): Promise<RecoveryDecisionRecord> {
+  public decide(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): RecoveryDecisionRecord {
     const execution = this.store.dispatch.getExecution(executionId);
     if (!execution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
@@ -117,7 +117,7 @@ export class RuntimeRecoveryDecisionService {
     }
 
     // Find the recovery candidate for this execution
-    const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
+    const recoveryView = this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
     const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
     if (!candidate) {
       throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
@@ -157,43 +157,52 @@ export class RuntimeRecoveryDecisionService {
    * @returns Result containing the decision, dead letter (if any), and applied status
    * @throws Error if execution or candidate not found
    */
-  public async apply(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): Promise<RecoveryDecisionApplyResult> {
-    const execution = this.store.dispatch.getExecution(executionId);
-    if (!execution) {
+  public apply(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): RecoveryDecisionApplyResult {
+    let deadLetter: DeadLetterRecord | null = null;
+    let applied = false;
+    let decision: RecoveryDecisionRecord | null = null;
+
+    const preflightExecution = this.store.dispatch.getExecution(executionId);
+    if (!preflightExecution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
         details: { executionId },
         executionId,
       });
     }
 
-    // Find the recovery candidate for this execution
-    const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-    const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
-    if (!candidate) {
-      throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
-        details: { executionId },
-        executionId,
-      });
-    }
-
-    // Build the decision record
-    const decision: RecoveryDecisionRecord = {
-      decisionId: newId("rdec"),
-      executionId,
-      taskId: execution.taskId,
-      reason: candidate.reason,
-      action: candidate.suggestedAction,
-      decidedAt: nowIso(),
-      decidedBy,
-    };
-
-    let deadLetter: DeadLetterRecord | null = null;
-    let applied = false;
-
     // Execute the action within a transaction
     this.db.transaction(() => {
+      const execution = this.store.dispatch.getExecution(executionId);
+      if (!execution) {
+        throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
+          details: { executionId },
+          executionId,
+        });
+      }
+
+      // Find the recovery candidate for this execution
+      const recoveryView = this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
+      const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
+      if (!candidate) {
+        throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
+          details: { executionId },
+          executionId,
+        });
+      }
+
+      // Build the decision record
+      decision = {
+        decisionId: newId("rdec"),
+        executionId,
+        taskId: execution.taskId,
+        reason: candidate.reason,
+        action: candidate.suggestedAction,
+        decidedAt: nowIso(),
+        decidedBy,
+      };
+
       // Always record the decision first for audit
-      this.recordDecision(decision);
+      this.recordDecision(decision, execution);
 
       // Handle move to dead letter action
       if (decision.action === "move_dead_letter") {
@@ -237,7 +246,7 @@ export class RuntimeRecoveryDecisionService {
     });
 
     return {
-      decision,
+      decision: decision!,
       deadLetter,
       applied,
     };
@@ -250,8 +259,8 @@ export class RuntimeRecoveryDecisionService {
    *
    * @param decision - The decision record to persist
    */
-  private recordDecision(decision: RecoveryDecisionRecord): void {
-    const execution = this.store.dispatch.getExecution(decision.executionId);
+  private recordDecision(decision: RecoveryDecisionRecord, execution?: ExecutionRecord): void {
+    const executionRecord = execution ?? this.store.dispatch.getExecution(decision.executionId);
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: decision.taskId,
@@ -265,7 +274,7 @@ export class RuntimeRecoveryDecisionService {
         decidedAt: decision.decidedAt,
         decidedBy: decision.decidedBy,
       }),
-      traceId: execution?.traceId ?? null,
+      traceId: executionRecord?.traceId ?? null,
       createdAt: decision.decidedAt,
     });
   }

@@ -902,6 +902,29 @@ export class ExecutionDispatchService {
     );
   }
 
+  private selectDeterministicWorker(
+    ticket: { id?: string; executionId?: string; taskId?: string },
+    eligibleWorkers: readonly { workerId: string }[],
+    evaluations: readonly { workerId: string; accepted: boolean; dispatchScore: number }[],
+  ): { workerId: string } {
+    const acceptedById = new Map(evaluations.filter((item) => item.accepted).map((item) => [item.workerId, item]));
+    const candidates = eligibleWorkers
+      .filter((worker) => acceptedById.has(worker.workerId))
+      .sort((left, right) => {
+        const leftScore = acceptedById.get(left.workerId)?.dispatchScore ?? 0;
+        const rightScore = acceptedById.get(right.workerId)?.dispatchScore ?? 0;
+        if (rightScore !== leftScore) {
+          return rightScore - leftScore;
+        }
+        return left.workerId.localeCompare(right.workerId);
+      });
+    if (candidates.length === 0) {
+      throw new Error("dispatch.no_eligible_worker");
+    }
+    const seed = `${ticket.id ?? ""}:${ticket.executionId ?? ""}:${ticket.taskId ?? ""}`;
+    return candidates[hashDispatchSeed(seed) % candidates.length]!;
+  }
+
   private toWorkerEvaluation(
     worker: RegisteredWorkerView,
     accepted: boolean,
@@ -1092,4 +1115,12 @@ export class ExecutionDispatchService {
     this.store.worker.upsertAgentExecutionRecord(record);
     return record;
   }
+}
+
+function hashDispatchSeed(seed: string): number {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = ((hash * 31) + seed.charCodeAt(index)) >>> 0;
+  }
+  return hash;
 }

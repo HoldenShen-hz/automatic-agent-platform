@@ -765,6 +765,9 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
+    for (const consumerId of this.subscribers.keys()) {
+      this.scheduleDelivery(consumerId);
+    }
     for (const partitionKey of this.pendingPartitionEvents.keys()) {
       this.processPartitionQueue(partitionKey);
     }

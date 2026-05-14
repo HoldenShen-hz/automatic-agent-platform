@@ -28,7 +28,10 @@ export class BudgetReservationSweeper {
     const releaseReservationIds = input.reservations
       .filter((reservation) => reservation.status === "reserved")
       .filter((reservation) => !input.activeRunIds.has(reservation.runId))
-      .filter((reservation) => Date.parse(reservation.expiresAt) + input.clockSkewSafetyMarginMs <= dbNow)
+      .filter((reservation) => {
+        const expiresAt = Date.parse(reservation.expiresAt);
+        return !Number.isFinite(expiresAt) || expiresAt + input.clockSkewSafetyMarginMs <= dbNow;
+      })
       .map((reservation) => reservation.reservationId);
 
     return {

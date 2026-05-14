@@ -8,7 +8,7 @@ function makeResolver(found: boolean, taskScope?: { tenantId: string | null; req
     if (!found) return null;
     return {
       taskId,
-      tenantId: taskScope?.tenantId ?? "tenant_abc",
+      tenantId: taskScope == null ? "tenant_abc" : taskScope.tenantId,
       requiredScopes: taskScope?.requiredScopes,
     };
   };

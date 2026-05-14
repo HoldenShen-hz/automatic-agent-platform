@@ -180,7 +180,7 @@ export class RuntimeStateMachine {
   private readonly persistEvent: EventPersistenceCallback | null;
 
   public constructor(options: { persistEvent?: EventPersistenceCallback } = {}) {
-    this.persistEvent = options.persistEvent ?? null;
+    this.persistEvent = options.persistEvent ?? (() => {});
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
@@ -376,7 +376,6 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): void {
   const requiresAudit =
-    command.aggregateType === "HarnessRun" ||
     command.aggregateType === "SideEffectRecord" ||
     command.toStatus === "succeeded" ||
     command.toStatus === "failed";

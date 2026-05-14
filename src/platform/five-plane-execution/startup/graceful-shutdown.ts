@@ -170,7 +170,7 @@ export class GracefulShutdown {
   /**
    * Execute all shutdown handlers
    */
-  public async shutdown(): Promise<ShutdownResult> {
+  public shutdown(): Promise<ShutdownResult> {
     if (this.shutdownPromise != null) {
       return this.shutdownPromise;
     }
@@ -210,6 +210,7 @@ export class GracefulShutdown {
     this.isShuttingDown = false;
     this.shutdownPromise = null;
     this.shutdownResult = null;
+    this.handlers.length = 0;
   }
 
   private async executeShutdown(): Promise<ShutdownResult> {
@@ -228,6 +229,7 @@ export class GracefulShutdown {
       const handlerTimeout = timeoutMs ?? this.timeoutMs;
       const abortController = new AbortController();
       let timer: NodeJS.Timeout | null = null;
+      handlersRun++;
       try {
         const timeoutPromise = new Promise<void>((_, reject) => {
           timer = setTimeout(() => {
@@ -238,7 +240,6 @@ export class GracefulShutdown {
         });
 
         await Promise.race([handler(abortController.signal), timeoutPromise]);
-        handlersRun++;
         this.logger.log({
           level: "debug",
           message: "Shutdown handler completed",

@@ -70,8 +70,7 @@ test("DurableEventBusAsync.subscribe registers handler", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for async delivery
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await bus.deliverPending("task_projection");
 
     assert.equal(seen.length, 1);
     assert.equal(seen[0], "task:status_changed");
@@ -101,7 +100,7 @@ test("DurableEventBusAsync.unsubscribe removes handler", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await bus.deliverPending("task_projection");
     assert.equal(seen.length, 1);
 
     bus.unsubscribe("task_projection");

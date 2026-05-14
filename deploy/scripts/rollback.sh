@@ -31,7 +31,7 @@ usage() {
   echo "Usage: $0 <environment> [revision]"
   echo ""
   echo "Arguments:"
-  echo "  environment  Environment to rollback (dev, staging, prod)"
+  echo "  environment  Environment to rollback (dev, test, staging, pre-prod, prod)"
   echo "  revision     Helm revision to rollback to (default: 0 = previous)"
   exit 1
 }
@@ -53,12 +53,15 @@ if [[ -z "${ENVIRONMENT}" ]]; then
   usage
 fi
 
-if [[ ! "${ENVIRONMENT}" =~ ^(dev|staging|prod)$ ]]; then
-  error "Environment must be one of: dev, staging, prod"
+if [[ ! "${ENVIRONMENT}" =~ ^(dev|test|staging|pre-prod|prod)$ ]]; then
+  error "Environment must be one of: dev, test, staging, pre-prod, prod"
   usage
 fi
 
 NAMESPACE="automatic-agent-${ENVIRONMENT}"
+if [[ "${ENVIRONMENT}" == "pre-prod" ]]; then
+  NAMESPACE="automatic-agent-preprod"
+fi
 
 info "Rolling back automatic-agent in ${ENVIRONMENT} to revision ${REVISION}"
 
@@ -71,7 +74,8 @@ fi
 CURRENT_REVISION=$(helm history automatic-agent \
   --namespace "${NAMESPACE}" \
   --output json 2>/dev/null | \
-  jq -r '.[] | select(.status=="deployed") | .revision' 2>/dev/null || echo "unknown")
+  node -e 'const rows=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=rows.find((row)=>row.status==="deployed"); process.stdout.write(String(deployed?.revision ?? "unknown"));' \
+  2>/dev/null || echo "unknown")
 
 info "Current deployed revision: ${CURRENT_REVISION}"
 
@@ -92,9 +96,20 @@ helm "${helm_args[@]}"
 set +x
 
 # Wait for rollback to complete
-kubectl rollout status deployment/automatic-agent \
+if ! kubectl rollout status deployment/automatic-agent \
   --namespace "${NAMESPACE}" \
-  --timeout=300s
+  --timeout=300s; then
+  error "Rollback rollout status failed"
+  exit 1
+fi
+
+ENDPOINT_COUNT=$(kubectl get endpoints automatic-agent \
+  --namespace "${NAMESPACE}" \
+  --output jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | awk '{print NF}')
+if [[ "${ENDPOINT_COUNT:-0}" -lt 1 ]]; then
+  error "Rollback completed but automatic-agent has no ready endpoints"
+  exit 1
+fi
 
 info "Rollback complete!"
 info "Previous revision: ${CURRENT_REVISION}"
