@@ -18,6 +18,7 @@ import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authorit
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
 import { ExecutionLeaseService, type ExecutionLeaseDecision } from "../lease/execution-lease-service.js";
+import { MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "../lease/types.js";
 import { ExecutionPriorityPreemptionService } from "./execution-priority-preemption-service.js";
 import {
   computeEffectiveActiveLeaseCount,
@@ -79,6 +80,17 @@ export class ExecutionDispatchService {
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
     // R19-45: Optional health provider - if not provided, uses no-op provider
     healthProvider: HealthReportProvider | null = null,
+    private readonly dlqService: {
+      enqueue(input: {
+        sourceEventId: string;
+        consumerId: string;
+        errorCode: string;
+        payloadJson: string;
+        originalTimestamp?: string | null;
+        failureCategory?: FailureCategory | null;
+      }): unknown;
+    } | null = null,
+    private readonly poisonPillMaxAgeMs: number | null = null,
   ) {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
@@ -372,6 +384,7 @@ export class ExecutionDispatchService {
           fallbackApplied: false,
           evaluations: [],
         });
+        this.enqueueDispatchDlq(ticket, occurredAt, blockedByBackpressure, lastTrace);
         this.db.transaction(() => {
           const execution = this.store.dispatch.getExecution(ticket.executionId);
           this.store.event.insertEvent({
@@ -379,6 +392,25 @@ export class ExecutionDispatchService {
             taskId: ticket.taskId,
             executionId: ticket.executionId,
             eventType: "dispatch:backpressure_rejected",
+            eventTier: "tier_2",
+            payloadJson: JSON.stringify({
+              ticketId: ticket.id,
+              executionId: ticket.executionId,
+              taskId: ticket.taskId,
+              queueName: ticket.queueName,
+              priority: ticket.priority,
+              riskClass: ticket.riskClass,
+              reasonCode: blockedByBackpressure,
+              backpressureSnapshot: backpressure,
+            }),
+            traceId: execution?.traceId ?? null,
+            createdAt: occurredAt,
+          });
+          this.store.event.insertEvent({
+            id: newId("evt"),
+            taskId: ticket.taskId,
+            executionId: ticket.executionId,
+            eventType: "dispatch.backpressure_rejected",
             eventTier: "tier_2",
             payloadJson: JSON.stringify({
               ticketId: ticket.id,
@@ -426,7 +458,12 @@ export class ExecutionDispatchService {
       let eligibleWorkers = selection.workers;
       let preemptionTrace: DispatchDecisionTrace["preemption"] = null;
       // R6-5: Emergency lane for critical/urgent NodeRun - allow preemption for both urgent priority AND critical risk class
-      if (eligibleWorkers.length === 0 && (ticket.priority === "urgent" || ticket.priority === "high" || ticket.riskClass === "critical")) {
+      const emergencyLaneRequested =
+        ticket.priority === "critical"
+        || ticket.priority === "urgent"
+        || ticket.priority === "high"
+        || ticket.riskClass === "critical";
+      if (eligibleWorkers.length === 0 && emergencyLaneRequested) {
         const preemption = this.preemption.preemptForUrgentTicket({
           ticket,
           dispatchTarget,
@@ -468,6 +505,17 @@ export class ExecutionDispatchService {
         }
       }
       if (eligibleWorkers.length === 0) {
+        if (this.shouldInvalidatePoisonPill(ticket, occurredAt)) {
+          const trace = this.invalidatePoisonPillTicket(ticket, occurredAt, evaluations);
+          return {
+            outcome: "blocked",
+            reasonCode: "dispatch.poison_pill_abandoned",
+            ticket,
+            worker: null,
+            leaseId: null,
+            trace,
+          };
+        }
         const remoteBlockReason =
           dispatchTarget === "require_remote"
             ? remoteTrustReason
@@ -485,6 +533,8 @@ export class ExecutionDispatchService {
             : null;
         if (remoteBlockReason) {
           blockedReason = remoteBlockReason;
+        } else if (emergencyLaneRequested) {
+          blockedReason = "dispatch.no_emergency_worker_available";
         }
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
@@ -493,14 +543,17 @@ export class ExecutionDispatchService {
           requiredRepoVersion,
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
-          outcome: remoteBlockReason ? "blocked" : "no_worker",
-          reasonCode: remoteBlockReason,
+          outcome: remoteBlockReason || emergencyLaneRequested ? "blocked" : "no_worker",
+          reasonCode: remoteBlockReason ?? (emergencyLaneRequested ? "dispatch.no_emergency_worker_available" : null),
           selectedWorkerId: null,
           leaseId: null,
           fallbackApplied: false,
           preemption: preemptionTrace,
           evaluations,
         });
+        if (remoteBlockReason) {
+          this.enqueueDispatchDlq(ticket, occurredAt, remoteBlockReason, lastTrace);
+        }
         continue;
       }
 
@@ -515,7 +568,7 @@ export class ExecutionDispatchService {
         leaseResult = this.leases.acquireLeaseWithinTransaction({
           executionId: ticket.executionId,
           workerId: selectedWorker.workerId,
-          ttlMs: options.leaseTtlMs,
+          ttlMs: Math.min(Math.max(options.leaseTtlMs, MIN_LEASE_TTL_MS), MAX_LEASE_TTL_MS),
           queueName: ticket.queueName,
           occurredAt,
         });
@@ -635,8 +688,8 @@ export class ExecutionDispatchService {
 
     const candidates =
       options.preferredWorkerId == null
-        ? this.workers.listWorkers()
-        : [this.workers.getWorker(options.preferredWorkerId)].filter((worker): worker is RegisteredWorkerView => worker != null);
+        ? this.listCandidateWorkers()
+        : [this.getCandidateWorker(options.preferredWorkerId)].filter((worker): worker is RegisteredWorkerView => worker != null);
 
     return candidates.map((worker) => {
         // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
@@ -700,7 +753,7 @@ export class ExecutionDispatchService {
   ): DispatchWorkerEvaluation[] {
     const acceptedSignals = evaluations
       .filter((evaluation) => evaluation.accepted)
-      .map((evaluation) => this.workers.getWorker(evaluation.workerId))
+      .map((evaluation) => this.getCandidateWorker(evaluation.workerId))
       .filter((worker): worker is RegisteredWorkerView => worker != null)
       .map((worker) => ({
         worker,
@@ -822,7 +875,7 @@ export class ExecutionDispatchService {
     evaluations.splice(0, evaluations.length, ...rankedEvaluations);
     const eligibleWorkers = rankedEvaluations
       .filter((evaluation) => evaluation.accepted)
-      .map((evaluation) => this.workers.getWorker(evaluation.workerId))
+      .map((evaluation) => this.getCandidateWorker(evaluation.workerId))
       .filter((worker): worker is RegisteredWorkerView => worker != null);
     if (dispatchTarget !== "prefer_remote") {
       return {
@@ -865,9 +918,11 @@ export class ExecutionDispatchService {
     input: Omit<DispatchDecisionTrace, "ticketId" | "executionId" | "taskId" | "queueName">,
   ): DispatchDecisionTrace {
     // R6-7: Build ready_set and selected_node_ids from evaluations for trace
-    const readySet = input.evaluations.map((e) => e.workerId);
+    const readySet = input.outcome === "dispatched" && input.evaluations.length > 0
+      ? input.evaluations.map((e) => e.workerId)
+      : [ticket.id];
     const selectedNodeIds = input.selectedWorkerId ? [input.selectedWorkerId] : [];
-    const orderingPolicyVersion = "1.0"; // R6-7: Version of ordering policy per §14.9
+    const orderingPolicyVersion = "dispatch.partial-deterministic.v2"; // R6-7: Version of ordering policy per §14.9
 
     const trace: DispatchDecisionTrace = {
       ticketId: ticket.id,
@@ -879,6 +934,7 @@ export class ExecutionDispatchService {
       readySet,
       selectedNodeIds,
       orderingPolicyVersion,
+      workerPoolSnapshotRef: `worker_pool://dispatch/${ticket.queueName ?? "default"}/snapshot/${occurredAt}`,
     };
     const execution = this.store.dispatch.getExecution(ticket.executionId);
 
@@ -914,10 +970,113 @@ export class ExecutionDispatchService {
     if (reasonCode == null) return "unknown";
     if (reasonCode.includes("read_only_mode")) return "configuration";
     if (reasonCode.includes("pause_non_critical")) return "transient";
+    if (reasonCode.includes("poison_pill")) return "poison_pill";
     if (reasonCode.includes("starvation_protection")) return "resource";
     if (reasonCode.includes("queue_only")) return "transient";
     if (reasonCode.includes("budget")) return "resource";
     return "unknown";
+  }
+
+  private listCandidateWorkers(): RegisteredWorkerView[] {
+    const workerStore = this.store.worker as unknown as {
+      listWorkers?: () => RegisteredWorkerView[];
+    };
+    const directWorkers = workerStore.listWorkers?.();
+    if (directWorkers && directWorkers.length > 0) {
+      return directWorkers;
+    }
+    return this.workers.listWorkers();
+  }
+
+  private getCandidateWorker(workerId: string): RegisteredWorkerView | null {
+    const workerStore = this.store.worker as unknown as {
+      getWorker?: (id: string) => RegisteredWorkerView | null;
+      listWorkers?: () => RegisteredWorkerView[];
+    };
+    const directWorker = workerStore.getWorker?.(workerId) ?? null;
+    if (directWorker) {
+      return directWorker;
+    }
+    const listedWorker = workerStore.listWorkers?.().find((worker) => worker.workerId === workerId) ?? null;
+    return listedWorker ?? this.workers.getWorker(workerId);
+  }
+
+  private enqueueDispatchDlq(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    reasonCode: string | null,
+    trace: DispatchDecisionTrace | null,
+  ): void {
+    if (!this.dlqService || !reasonCode) {
+      return;
+    }
+    this.dlqService.enqueue({
+      sourceEventId: ticket.id,
+      consumerId: "execution-dispatch-service",
+      errorCode: reasonCode,
+      payloadJson: JSON.stringify({ ticket, trace }),
+      originalTimestamp: ticket.createdAt,
+      failureCategory: this.categorizeFailure(reasonCode),
+    });
+    const execution = this.store.dispatch.getExecution(ticket.executionId);
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: ticket.taskId,
+      executionId: ticket.executionId,
+      eventType: "dispatch.dlq_enqueue",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({ ticketId: ticket.id, reasonCode }),
+      traceId: execution?.traceId ?? null,
+      createdAt: occurredAt,
+    });
+  }
+
+  private shouldInvalidatePoisonPill(ticket: ExecutionTicketRecord, occurredAt: string): boolean {
+    if (this.poisonPillMaxAgeMs == null || this.poisonPillMaxAgeMs < 0) {
+      return false;
+    }
+    const ageMs = Date.parse(occurredAt) - Date.parse(ticket.updatedAt || ticket.createdAt);
+    return Number.isFinite(ageMs) && ageMs > this.poisonPillMaxAgeMs;
+  }
+
+  private invalidatePoisonPillTicket(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    evaluations: DispatchWorkerEvaluation[],
+  ): DispatchDecisionTrace {
+    this.store.worker.invalidateExecutionTicket?.({
+      ticketId: ticket.id,
+      status: "cancelled",
+      invalidatedAt: occurredAt,
+    });
+    this.store.execution.updateExecutionStatus(ticket.executionId, "failed", "dispatch.poison_pill_abandoned", occurredAt);
+    const trace = this.recordDecisionEvent(ticket, occurredAt, {
+      dispatchTarget: resolveDispatchTarget(ticket.dispatchTarget),
+      remoteAvailability: null,
+      requiredIsolationLevel: resolveRequiredIsolationLevel(ticket.requiredIsolationLevel),
+      requiredRepoVersion: resolveRequiredRepoVersion(ticket.requiredRepoVersion),
+      preferredWorkerId: null,
+      requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+      outcome: "blocked",
+      reasonCode: "dispatch.poison_pill_detected",
+      selectedWorkerId: null,
+      leaseId: null,
+      fallbackApplied: false,
+      evaluations,
+    });
+    const execution = this.store.dispatch.getExecution(ticket.executionId);
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: ticket.taskId,
+      executionId: ticket.executionId,
+      eventType: "dispatch:poison_pill_detected",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({ ticketId: ticket.id, reasonCode: "dispatch.poison_pill_abandoned" }),
+      traceId: execution?.traceId ?? null,
+      createdAt: occurredAt,
+    });
+    this.enqueueDispatchDlq(ticket, occurredAt, "dispatch.poison_pill_abandoned", trace);
+    return trace;
   }
 
   private upsertAgentExecutionRecord(

@@ -5,7 +5,7 @@
       "cron": "*/20 * * * *",
       "prompt": "请review 整个项目 包括 src tests ui docs config bash， review出来的问题，尽可能详细 追加到 docs_zh/reviews/architecture-design-review.md 文档的最后",
       "createdAt": 1778690270814,
-      "lastFiredAt": 1778718584935,
+      "lastFiredAt": 1778722808438,
       "recurring": true,
       "createdBySessionId": "8e4129e3-ad62-4152-a7f5-9188cf9a9dfb",
       "createdByPid": 26743,

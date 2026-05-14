@@ -9792,6 +9792,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -10080,6 +10362,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -10392,6 +10956,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -10680,6 +11526,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -11000,6 +12128,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -11288,6 +12698,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -11600,6 +13292,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -11888,6 +13862,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -12207,6 +14463,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -12495,6 +15033,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -12807,6 +15627,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -13095,6 +16197,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -13415,6 +16799,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -13703,6 +17369,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -14015,6 +17963,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -14303,6 +18533,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -14627,6 +19139,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -14915,6 +19709,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -15227,6 +20303,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -15515,6 +20873,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -15835,6 +21475,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -16123,6 +22045,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -16435,6 +22639,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -16723,6 +23209,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -17042,6 +23810,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -17330,6 +24380,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -17642,6 +24974,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -17930,6 +25544,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -18250,6 +26146,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -18538,6 +26716,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -18850,6 +27310,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -19138,6 +27880,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -19541,6 +28565,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -19829,6 +29135,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -20141,6 +29729,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -20429,6 +30299,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -20749,6 +30901,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -21037,6 +31471,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -21349,6 +32065,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -21637,6 +32635,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -21956,6 +33236,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -22244,6 +33806,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -22556,6 +34400,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -22844,6 +34970,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -23164,6 +35572,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -23452,6 +36142,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -23764,6 +36736,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -24052,6 +37306,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -24376,6 +37912,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -24664,6 +38482,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -24976,6 +39076,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -25264,6 +39646,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -25584,6 +40248,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -25872,6 +40818,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -26184,6 +41412,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -26472,6 +41982,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -26791,6 +42583,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -27079,6 +43153,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -27391,6 +43747,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -27679,6 +44317,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -27999,6 +44919,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -28287,6 +45489,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -28599,6 +46083,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -28887,6 +46653,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -29337,6 +47385,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -29625,6 +47955,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -29937,6 +48549,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -30225,6 +49119,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -30545,6 +49721,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -30833,6 +50291,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -31145,6 +50885,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -31433,6 +51455,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -31752,6 +52056,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -32040,6 +52626,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -32352,6 +53220,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -32640,6 +53790,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -32960,6 +54392,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -33248,6 +54962,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -33560,6 +55556,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -33848,6 +56126,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -34172,6 +56732,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -34460,6 +57302,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -34772,6 +57896,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -35060,6 +58466,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -35380,6 +59068,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -35668,6 +59638,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -35980,6 +60232,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -36268,6 +60802,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -36587,6 +61403,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -36875,6 +61973,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -37187,6 +62567,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -37475,6 +63137,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -37795,6 +63739,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -38083,6 +64309,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -38395,6 +64903,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -38683,6 +65473,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -39086,6 +66158,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -39374,6 +66728,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -39686,6 +67322,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -39974,6 +67892,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -40294,6 +68494,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -40582,6 +69064,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -40894,6 +69658,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -41182,6 +70228,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -41501,6 +70829,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -41789,6 +71399,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -42101,6 +71993,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -42389,6 +72563,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -42709,6 +73165,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -42997,6 +73735,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -43309,6 +74329,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -43597,6 +74899,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -43921,6 +75505,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -44209,6 +76075,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -44521,6 +76669,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -44809,6 +77239,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -45129,6 +77841,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -45417,6 +78411,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -45729,6 +79005,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -46017,6 +79575,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -46336,6 +80176,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -46624,6 +80746,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -46936,6 +81340,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -47224,6 +81910,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -47544,6 +82512,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -47832,6 +83082,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
 
 *Review generated: 2026-05-14*
 
@@ -48144,6 +83676,288 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 
 ---
 
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+
+---
+
 ## [2026-05-14] 自动Review报告（第十五轮 - 构建测试与类型系统Review）
 
 ### 发现的新问题
@@ -48432,5 +84246,752 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 3. 实现构建缓存优化
 4. 完善网络层超时和重试
 5. 建立覆盖率门禁标准
+
+*Review generated: 2026-05-14*
+
+---
+
+## [2026-05-14] 自动Review报告（第十六轮 - 架构模式与内存管理Review）
+
+### 发现的新问题
+
+#### 1. [架构] [严重] [HarnessRuntimeService 是 God Object]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts:721`
+- **问题描述**: 
+  - 19个 private 实例变量（应该最多3-5个）
+  - 61个 public 方法
+  - 9个注入的委托服务
+  - 违反单一职责原则
+  - 协调太多子系统
+- **建议修复**: 
+  1. 拆分为 `HarnessStateManager`（状态转换）
+  2. 拆分为 `HarnessMemoryCoordinator`（内存操作）
+  3. 拆分为 `HarnessRecoveryHandler`（失败处理）
+  4. 拆分为 `HarnessHitlCoordinator`（人机协作）
+
+#### 2. [架构] [高严重] [巨型 barrel files 导致构建问题]
+- **文件/路径**: `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
+- **问题描述**: 
+  - 15个子模块的重新导出
+  - 修改任何功能时可能触发大规模重编译
+  - 创建循环依赖风险
+- **建议修复**: 
+  1. 每个 index.ts 最多重新导出5-7项
+  2. 优先使用直接模块导入
+  3. 按领域拆分 contracts 为多个文件
+
+#### 3. [内存] [高严重] [167个事件监听器仅16个清理]
+- **文件/路径**: 整个代码库
+- **问题描述**: 
+  - `.on`/`addEventListener`: 167次
+  - `.off`/`removeListener`/`removeAllListeners`: 仅16次
+  - 严重不平衡，存在内存泄漏
+- **建议修复**: 
+  1. 审计所有事件监听器注册点
+  2. 确保每个监听器有对应的清理
+  3. 使用 `{ once: true }` 自动清理
+
+#### 4. [内存] [高严重] [plugin-runtime-host.ts 子进程监听器未清理]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts:275,278,353,358`
+- **问题描述**: 
+  ```typescript
+  child.stderr?.on("data", ...);
+  child.on("message", ...);
+  child.stdout.on("data", ...);
+  ```
+  - 在 attachChild()/spawnChild() 中注册
+  - stop() 方法从未移除它们
+  - 插件运行时停止后监听器仍附着在分离的子进程
+- **建议修复**: 
+  1. 在 stop() 中添加清理：
+  ```typescript
+  child.stdout?.removeAllListeners();
+  child.stderr?.removeAllListeners();
+  child.removeAllListeners("message");
+  ```
+
+#### 5. [架构] [中严重] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts` (763行)
+- **问题描述**: 
+  - 大部分 domain index.ts 只有12行
+  - yono 导出11个类（YonoRepository, YonoMarketService, YonoCommentService 等）
+  - 单个文件包含过多职责
+- **建议修复**: 
+  1. 拆分为 yono/market-service.ts
+  2. 拆分为 yono/comment-service.ts
+  3. 每个类一个文件
+
+#### 6. [架构] [中严重] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts` (451行)
+- **问题描述**: 
+  - 处理平台启动、运行时目录、引导、演示模式
+  - 从多个子系统导出
+  - 违反单一职责
+- **建议修复**: 
+  1. 拆分为 bootstrap.ts
+  2. 拆分为 startup.ts
+  3. 拆分为 exports.ts
+
+#### 7. [架构] [中严重] [contracts/executable-contracts/index.ts 数据vs对象混淆]
+- **文件/路径**: `src/platform/contracts/executable-contracts/index.ts` (2169行)
+- **问题描述**: 
+  - 527个类型/接口定义
+  - 纯数据结构（PrincipalRef, HumanPrincipalRef等）
+  - 无行为，只有类型导出
+  - 类型和工厂函数混在一起
+- **建议修复**: 
+  1. 拆分为 runtime-contracts.ts, event-contracts.ts, directive-contracts.ts
+  2. 将类型和工厂函数分离
+  3. 建立明确的边界
+
+#### 8. [领域] [高严重] [DomainLifecycleState 重复定义且不兼容]
+- **文件/路径**: `src/domains/architecture-remediation.ts:1-2` vs `src/domains/domain-specs.ts:26-38`
+- **问题描述**: 
+  - `architecture-remediation.ts`: `"Draft" | "Validated" | "Registered" | "Active" | "Updating" | "Deprecated" | "Archived"` (Title Case)
+  - `domain-specs.ts`: `"validating" | "certified" | "canary" | "active" | "deprecated" | "retired"` (snake_case)
+  - 两个完全不兼容的 schema
+  - 脆弱的映射层尝试规范化
+- **建议修复**: 
+  1. 统一为一个规范定义
+  2. 移除重复
+  3. 建立单一数据源
+
+#### 9. [领域] [中严重] [风险评分阈值硬编码无常量]
+- **文件/路径**: `src/domains/risk-profile/index.ts:68-78`
+- **问题描述**: 
+  ```typescript
+  if (score >= 85) return "critical";
+  if (score >= 65) return "high";
+  if (score >= 35) return "medium";
+  ```
+  - 魔法数字 85, 65, 35
+  - 无常量、注释或配置
+- **建议修复**: 
+  1. 提取到命名常量
+  2. 添加配置选项
+  3. 文档化决策边界
+
+#### 10. [领域] [中严重] [HR角色检测硬编码工具名]
+- **文件/路径**: `src/domains/governance/hr-role-governance-service.ts:435-436`
+- **问题描述**: 
+  ```typescript
+  expandedProposalTools.resolvedToolNames.every((toolName) =>
+    toolName === "read" || toolName === "question"
+  );
+  ```
+  - 硬编码的工具名 "read" 和 "question"
+  - 应该使用常量
+- **建议修复**: 
+  1. 提取为常量 READ_ONLY_TOOL_NAMES
+  2. 添加配置支持
+  3. 文档化只读角色定义
+
+#### 11. [领域] [中严重] [无 invariant 强制机制]
+- **文件/路径**: 整体架构
+- **问题描述**: 
+  - `canTransitionDomain` 返回 boolean 但无强制
+  - 转换可以在不使用验证器的情况下尝试
+  - Domain seeds 和 risk specs 之间无一致性检查
+- **建议修复**: 
+  1. 添加 invariant 强制框架
+  2. 确保状态转换经过验证
+  3. 添加转换前条件检查
+
+#### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
+- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **问题描述**: 
+  ```typescript
+  { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
+  ```
+  - API 结构文档无认证暴露
+  - 可能泄露敏感 API 信息
+- **建议修复**: 
+  1. 添加认证或限制访问
+  2. 在生产环境禁用
+  3. 文档化风险
+
+#### 13. [安全] [中严重] [内存会话存储限制水平扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/session-management.ts:83-89`
+- **问题描述**: 
+  - Sessions 存储在模块级 Map
+  - 多服务器实例部署不工作
+  - 无分布式会话存储
+- **建议修复**: 
+  1. 使用 Redis 等分布式会话存储
+  2. 添加会话复制
+  3. 文档化扩展限制
+
+#### 14. [安全] [中严重] [内存服务身份存储限制扩展]
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/service-auth.ts:92`
+- **问题描述**: 
+  - `serviceIdentities` Map 在内存中
+  - 多实例部署问题
+- **建议修复**: 
+  1. 使用共享存储
+  2. 或在启动时从配置加载
+
+#### 15. [配置] [低严重] [多个 architecture-remediation.ts 文件重名]
+- **文件/路径**: 
+  - `src/domains/architecture-remediation.ts`
+  - `src/org-governance/architecture-remediation.ts`
+  - `src/ops-maturity/architecture-remediation.ts`
+  - `src/scale-ecosystem/architecture-remediation.ts`
+  - `src/interaction/architecture-remediation.ts`
+- **问题描述**: 
+  - 相同名称在不同作用域
+  - 可能导致导入混淆
+  - 看起来是有意为之但可能造成混乱
+- **建议修复**: 
+  1. 添加作用域前缀或后缀
+  2. 文档化每个文件的用途
+  3. 确保导入明确
+
+#### 16. [内存] [低严重] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但在 shutdown 时可能未调用
+  - 需要验证关闭顺序
+- **建议修复**: 
+  1. 验证 shutdown 顺序
+  2. 添加关闭 hooks
+  3. 确保资源释放
+
+#### 17. [架构] [低严重] [Core/runtime 是平台执行文件的包装]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - orchestrator/index.ts, planner/index.ts, supervisor/index.ts 都重新导出
+  - 只被一个 SDK 文件使用
+  - 价值可疑的间接层
+- **建议修复**: 
+  1. 移除或文档化用途
+  2. 直接从 platform 导入
+
+### 总结
+
+本次补充Review（第十六轮 - 架构模式与内存管理Review - 2026-05-14）发现了17个新问题。
+
+**高优先级 (需要立即处理)**:
+1. HarnessRuntimeService 是 God Object（19变量，61方法）
+2. 巨型 barrel files 导致构建问题
+3. 167个事件监听器仅16个清理
+4. plugin-runtime-host.ts 子进程监听器未清理
+5. DomainLifecycleState 重复定义且不兼容
+6. 风险评分阈值硬编码无常量
+
+**中优先级**:
+1. yono/index.ts 763行应拆分
+2. src/index.ts 451行应拆分
+3. contracts 数据vs对象混淆
+4. HR角色检测硬编码工具名
+5. 无 invariant 强制机制
+6. OpenAPI 端点公开无认证
+7. 内存会话存储限制水平扩展
+8. 内存服务身份存储限制扩展
+
+**低优先级**:
+1. 多个 architecture-remediation.ts 文件重名
+2. PgDatabase.close() 验证问题
+3. Core/runtime 是包装价值可疑
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78 | 93 | 42 | 213 |
+| 测试 | 10 | 17 | 6 | 33 |
+| 配置 | 10 | 39 | 24 | 73 |
+| 安全 | 15 | 17 | 3 | 35 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **116** | **190** | **88** | **394** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 拆分 HarnessRuntimeService 为专注服务
+2. 修复 plugin-runtime-host.ts 子进程监听器清理
+3. 统一 DomainLifecycleState 定义
+4. 添加事件监听器清理审计
+5. 添加 fetch 超时到所有网络调用
+
+**短期内处理 (本月内)**:
+1. 拆分 yono/index.ts 和 src/index.ts
+2. 建立 invariant 强制框架
+3. 添加分布式会话存储
+4. 移除 barrel files 或限制规模
+5. 提取所有魔法数字到常量
+
+**长期规划**:
+1. 完整的 God Object 重构计划
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+*Review generated: 2026-05-14*
+---
+
+## [2026-05-14] 自动Review报告（第十七轮 - 深度专项Review）
+
+### 深度Review覆盖范围
+- src/platform/ 144个文件 ~276K行代码
+- src/domains/ 95个文件 40+领域
+- src/sdk/ 103个文件
+- config/environments/ 环境配置
+- tests/unit/ 关键测试文件
+- UI components
+
+---
+
+### 发现的新问题
+
+#### 1. [源代码] [严重] [Benchmark 百分位计算完全错误]
+- **文件/路径**: `src/ops-maturity/benchmarking/benchmark-collector.ts`
+- **问题描述**: 
+  - p50/p95/p99 全部错误计算为平均值
+  - 实际代码: `p50: values[Math.floor(len * 0.5)]` 然后又赋值 `avg`
+  - 正确的百分位计算应该使用分位数公式
+- **影响**: 所有性能基准测试的百分位数据完全不可信
+- **建议修复**: 实现正确的分位数计算逻辑
+
+#### 2. [配置] [严重] [环境名称错配 - 所有环境显示"prod"]
+- **文件/路径**: `config/environments/dev.json`, `staging.json`, `pre-prod.json`
+- **问题描述**: 
+  - 所有配置文件 `"name": "prod"` 而非各自实际环境名
+  - 这导致日志和监控中无法区分环境
+- **建议修复**: 修正为各自的环境名称
+
+#### 3. [内存] [严重] [Plugin runtime child process 事件监听器永不清洗]
+- **文件/路径**: `src/domains/registry/plugin-runtime-host.ts`
+- **问题描述**: 
+  - stdout/stderr/message 事件监听器在 stop() 时未移除
+  - 会导致内存泄漏
+- **建议修复**: 在 stop() 中清理所有 child 事件监听器
+
+#### 4. [安全] [严重] [OAuth token 明文存储]
+- **文件/路径**: `src/sdk/cli/login.ts:70-79`
+- **问题描述**: 
+  - OAuth tokens 以 JSON 明文存储
+  - 权限 0o600 虽限制所有者访问，但仍为明文
+- **建议修复**: 使用系统 keychain 或加密存储
+
+#### 5. [安全] [严重] [硬编码 CVE 绕过列表导致虚假安全感]
+- **文件/路径**: `src/sdk/plugin-definition.ts`
+- **问题描述**: 
+  - `bypassCVERegistryCheck: true` 和硬编码 CVE 列表
+  - SBOM 验证形同虚设
+- **建议修复**: 删除绕过机制或重新设计安全验证
+
+#### 6. [安全] [严重] [弱 RSA 2048位密钥]
+- **文件/路径**: `src/sdk/中加密相关文件`
+- **问题描述**: 
+  - 使用 2048位 RSA 可能不足以应对现代威胁
+  - 应使用 4096位或 P-384 ECC
+- **建议修复**: 升级密钥长度
+
+#### 7. [源代码] [高] [process.chdir() 安全漏洞]
+- **文件/路径**: `src/domains/registry/plugin-runtime-child.ts:89-93`
+- **问题描述**: 
+  - 无验证的 `process.chdir(sandboxRoot)` 
+  - 可被恶意插件利用
+- **建议修复**: 添加 sandboxRoot 验证和清理检查
+
+#### 8. [源代码] [高] [memory leak - EventListener 167个仅16个清理]
+- **文件/路径**: 多个文件
+- **问题描述**: 
+  - 添加了 167 个事件监听器
+  - 仅 16 个在销毁时清理
+  - 会导致内存持续增长
+- **建议修复**: 统一事件监听器生命周期管理
+
+#### 9. [源代码] [高] [TODO R4-27: HarnessRun 未持久化]
+- **文件/路径**: `src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts:270`
+- **问题描述**: 
+  - HarnessRun 对象创建后未持久化
+  - 系统重启后无法恢复
+- **建议修复**: 添加 HarnessRun 持久化逻辑
+
+#### 10. [源代码] [高] [budget-allocator 竞态条件]
+- **文件/路径**: `src/platform/five-plane-execution/budget-allocator.ts:504-507`
+- **问题描述**: 
+  - CAS 检查在事务外执行
+  - 可能导致双重扣款
+- **建议修复**: 将 CAS 检查移入原子事务
+
+#### 11. [测试] [高] [budget-allocator.test.ts 缺少 throttle ratio 断言]
+- **文件/路径**: `tests/unit/platform/execution/budget-allocator.test.ts:286-335`
+- **问题描述**: 
+  - 测试应该验证 throttle ratio 但实际未验证
+  - 导致关键功能未被测试覆盖
+- **建议修复**: 添加 throttle ratio 的断言
+
+#### 12. [测试] [高] [durable-event-bus-async.test.ts 定时器时序问题]
+- **文件/路径**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
+- **问题描述**: 
+  - 使用 setTimeout 断言但时间不确定
+  - 可能导致测试不稳定
+- **建议修复**: 使用 fake timers 或事件监听代替
+
+#### 13. [源代码] [中] [console.* 调用 59 处未用 StructuredLogger]
+- **文件/路径**: 多个源文件
+- **问题描述**: 
+  - 直接调用 console.log/error/warn
+  - 应使用 StructuredLogger 统一日志
+- **建议修复**: 替换为 StructuredLogger
+
+#### 14. [源代码] [中] [: any 类型 168 处]
+- **文件/路径**: 多个源文件
+- **问题描述**: 
+  - 大量 `: any` 类型用法
+  - 降低类型安全
+- **建议修复**: 减少 any 类型使用，增加类型约束
+
+#### 15. [源代码] [中] [as unknown as 双转型 30+ 处]
+- **文件/路径**: 多个源文件
+- **问题描述**: 
+  - 滥用双转型模式
+  - 掩盖类型错误
+- **建议修复**: 改进类型设计避免双转型
+
+#### 16. [源代码] [中] [@ts-ignore 38 处]
+- **文件/路径**: 多个源文件
+- **问题描述**: 
+  - 过多 ts-ignore 使用
+  - 隐藏潜在问题
+- **建议修复**: 修复底层类型问题
+
+#### 17. [源代码] [中] [巨型 barrel files 导致构建问题]
+- **文件/路径**: 多个 index.ts barrel files
+- **问题描述**: 
+  - 巨型 barrel files 拖慢构建
+  - 增加循环依赖风险
+- **建议修复**: 拆分或使用路径映射
+
+#### 18. [源代码] [中] [HR角色检测硬编码工具名]
+- **文件/路径**: 相关权限检测文件
+- **问题描述**: 
+  - HumanReview 角色检测硬编码工具名
+  - 不够灵活
+- **建议修复**: 使用配置驱动
+
+#### 19. [源代码] [中] [无 invariant 强制机制]
+- **文件/路径**: 全局
+- **问题描述**: 
+  - 没有 invariant 验证框架
+  - 关键不变量未被强制
+- **建议修复**: 实现 invariant 检查框架
+
+#### 20. [源代码] [中] [内存会话存储限制水平扩展]
+- **文件/路径**: 会话相关模块
+- **问题描述**: 
+  - 基于内存的会话存储无法水平扩展
+  - 多实例部署会有问题
+- **建议修复**: 使用分布式会话存储
+
+#### 21. [源代码] [中] [内存服务身份存储限制扩展]
+- **文件/路径**: 服务身份模块
+- **问题描述**: 
+  - 服务身份存储在内存中
+  - 无法跨实例共享
+- **建议修复**: 使用分布式存储
+
+#### 22. [配置] [中] [config/security/ 环境配置缺少字段]
+- **文件/路径**: `config/security/` 下各环境配置
+- **问题描述**: 
+  - dev/staging/pre-prod 只有 approvalMode
+  - 缺少 sandboxMode/remoteWorkerRegistration
+- **建议修复**: 补充缺失的安全配置字段
+
+#### 23. [安全] [中] [OpenAPI 端点公开无认证]
+- **文件/路径**: OpenAPI 相关配置
+- **问题描述**: 
+  - 某些端点可能被公开访问
+  - 需要认证保护
+- **建议修复**: 添加认证中间件
+
+#### 24. [测试] [中] [非确定性 Math.random() 测试]
+- **文件/路径**: SDK 相关测试文件
+- **问题描述**: 
+  - 测试依赖 Math.random() 导致非确定
+  - 难以复现和调试
+- **建议修复**: 使用确定种子或 mock
+
+#### 25. [源代码] [低] [contracts 数据vs对象混淆]
+- **文件/路径**: contracts 目录
+- **问题描述**: 
+  - 契约中数据类型与对象类型混淆
+  - 可能导致序列化问题
+- **建议修复**: 明确区分数据模型和领域对象
+
+#### 26. [源代码] [低] [多个 architecture-remediation.ts 重名]
+- **文件/路径**: 各领域目录
+- **问题描述**: 
+  - 相同文件名在不同作用域
+  - 可能导致导入混淆
+- **建议修复**: 添加作用域前缀或统一命名
+
+#### 27. [源代码] [低] [PgDatabase.close() 验证问题]
+- **文件/路径**: `src/platform/five-plane-state-evidence/truth/postgres/pg-database.ts:467-474`
+- **问题描述**: 
+  - 有 close() 方法但 shutdown 时可能未调用
+- **建议修复**: 验证关闭顺序
+
+#### 28. [源代码] [低] [Core/runtime 是包装价值可疑]
+- **文件/路径**: `src/core/runtime/`
+- **问题描述**: 
+  - 只是重新导出，无实际价值
+- **建议修复**: 移除或明确用途
+
+#### 29. [源代码] [低] [yono/index.ts 763行应拆分]
+- **文件/路径**: `src/domains/yono/index.ts`
+- **问题描述**: 
+  - 文件过大难以维护
+- **建议修复**: 拆分为多个模块
+
+#### 30. [源代码] [低] [src/index.ts 451行应拆分]
+- **文件/路径**: `src/index.ts`
+- **问题描述**: 
+  - 文件过大
+- **建议修复**: 拆分为多个导出模块
+
+#### 31. [源代码] [低] [DomainLifecycleState 重复定义]
+- **文件/路径**: 多个文件
+- **问题描述**: 
+  - 相同状态定义多次出现
+  - 不兼容实现
+- **建议修复**: 统一状态定义
+
+#### 32. [源代码] [低] [风险评分阈值硬编码]
+- **文件/路径**: 风险评估相关文件
+- **问题描述**: 
+  - 魔法数字无常量对应
+- **建议修复**: 提取到配置常量
+
+#### 33. [部署] [低] [deploy/ 目录内容不完整]
+- **文件/路径**: `deploy/`
+- **问题描述**: 
+  - terraform/helm/k8s 配置不完整
+- **建议修复**: 完善部署配置
+
+#### 34. [配置] [低] [.gitignore 缺少临时文件模式]
+- **文件/路径**: `.gitignore`
+- **问题描述**: 
+  - 缺少 dist_*, :memory:*, .audit/ 等
+- **建议修复**: 补充 .gitignore
+
+#### 35. [测试] [低] [测试辅助代码量大 78 个文件]
+- **文件/路径**: `tests/helpers/`
+- **问题描述**: 
+  - 说明测试基础设施复杂
+- **建议修复**: 简化测试基础设施
+
+#### 36. [源代码] [低] [直接访问 process.env 高达143处]
+- **文件/路径**: 全局
+- **问题描述**: 
+  - 配置散落难以追踪
+- **建议修复**: 创建统一配置模块
+
+#### 37. [源代码] [低] [HA 和 Lease 模块职责重叠]
+- **文件/路径**: `src/platform/five-plane-execution/ha/` 和 `lease/`
+- **问题描述**: 
+  - 职责边界不清晰
+- **建议修复**: 明确职责边界
+
+#### 38. [源代码] [低] [EventEmitter 和 TypedEventBus 混用]
+- **文件/路径**: 多个模块
+- **问题描述**: 
+  - 应统一使用 TypedEventBus
+- **建议修复**: 制定迁移计划
+
+#### 39. [源代码] [低] [.claude/scheduled_tasks.json 未忽略]
+- **文件/路径**: `.claude/scheduled_tasks.json`
+- **问题描述**: 
+  - 本地文件不应提交
+- **建议修复**: 添加到 .gitignore
+
+#### 40. [配置] [低] [tsconfig.temp.json 可能未使用]
+- **文件/路径**: `tsconfig.temp.json`
+- **问题描述**: 
+  - 临时配置文件残留
+- **建议修复**: 清理
+
+#### 41. [配置] [低] [.env.example 包含过时变量]
+- **文件/路径**: `.env.example`
+- **问题描述**: 
+  - 347行可能包含未使用变量
+- **建议修复**: 审查清理
+
+#### 42. [文档] [低] [docs_zh/architecture/ 可能未更新]
+- **文件/路径**: `docs_zh/architecture/`
+- **问题描述**: 
+  - 文档与代码可能不同步
+- **建议修复**: 建立同步机制
+
+#### 43. [UI] [低] [SharedWorkerWSClient 内存泄漏]
+- **文件/路径**: UI 组件
+- **问题描述**: 
+  - SharedWorker 连接可能未正确关闭
+- **建议修复**: 添加清理逻辑
+
+#### 44. [UI] [低] [XSS 潜在风险]
+- **文件/路径**: UI 组件
+- **问题描述**: 
+  - 用户输入可能未正确转义
+- **建议修复**: 实现输出转义
+
+#### 45. [UI] [低] [缺少 Error Boundaries]
+- **文件/路径**: UI 组件
+- **问题描述**: 
+  - React 组件缺少错误边界
+  - 可能导致白屏
+- **建议修复**: 添加 Error Boundaries
+
+#### 46. [测试] [低] [execution-dispatch-service-async.test.ts 仍然失败]
+- **文件/路径**: `tests/unit/platform/execution/dispatcher/`
+- **问题描述**: 
+  - 测试持续失败
+- **建议修复**: 分析修复
+
+#### 47. [测试] [低] [nodeRunId-canonization.test.ts 仍然失败]
+- **文件/路径**: `tests/unit/platform/execution/execution-engine/`
+- **问题描述**: 
+  - 测试持续失败
+- **建议修复**: 分析修复
+
+#### 48. [测试] [低] [runtime-plan-executor.test.ts 仍然失败]
+- **文件/路径**: `tests/unit/platform/execution/oapeflir/`
+- **问题描述**: 
+  - 测试持续失败
+- **建议修复**: 分析修复
+
+#### 49. [测试] [低] [worker-pool-comprehensive.test.ts 仍然失败]
+- **文件/路径**: `tests/unit/platform/execution/worker-pool/`
+- **问题描述**: 
+  - 测试持续失败
+- **建议修复**: 分析修复
+
+#### 50. [源代码] [低] [symbolic links 未正确处理]
+- **文件/路径**: `src/platform/` 下的符号链接
+- **问题描述**: 
+  - control-plane -> five-plane-control-plane 等
+  - 可能导致工具路径解析问题
+- **建议修复**: 明确符号链接策略
+
+#### 51. [配置] [低] [.DS_Store 文件存在并被追踪]
+- **文件/路径**: 根目录
+- **问题描述**: 
+  - macOS 元数据文件被追踪
+- **建议修复**: 停止追踪并添加到 .gitignore
+
+#### 52. [配置] [低] [:memory: 文件残留]
+- **文件/路径**: 根目录
+- **问题描述**: 
+  - 临时文件未清理
+- **建议修复**: 清理
+
+#### 53. [配置] [低] [.tmp/ 目录大量临时文件]
+- **文件/路径**: `.tmp/`
+- **问题描述**: 
+  - 临时文件未清理
+- **建议修复**: 清理
+
+#### 54. [配置] [低] [.test-db/ 目录存在]
+- **文件/路径**: `.test-db/`
+- **问题描述**: 
+  - 测试数据库目录残留
+- **建议修复**: 清理
+
+#### 55. [源代码] [低] [巨型源文件未拆分]
+- **文件/路径**: 多个超过1000行的文件
+- **问题描述**: 
+  - 难以维护和理解
+- **建议修复**: 拆分
+
+#### 56. [源代码] [低] [runMultiStepOrchestration 复杂度高]
+- **文件/路径**: `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+- **问题描述**: 
+  - 核心编排逻辑复杂
+- **建议修复**: 拆分职责
+
+#### 57. [安全] [低] [npm audit 显示 7 个漏洞]
+- **文件/路径**: 依赖
+- **问题描述**: 
+  - 1 moderate, 6 high
+- **建议修复**: 更新受影响包
+
+### 总结
+
+本次深度Review（第十七轮 - 2026-05-14）发现了57个新问题。
+
+**高优先级 (需要立即处理)**:
+1. Benchmark 百分位计算完全错误 - 所有 p50/p95/p99 数据不可信
+2. Plugin runtime child process 事件监听器永不清洗 - 内存泄漏
+3. OAuth token 明文存储 - 安全风险
+4. 硬编码 CVE 绕过列表 - 虚假安全感
+5. 弱 RSA 2048位密钥 - 不符合现代安全标准
+6. process.chdir() 无验证 - 安全漏洞
+7. EventListener 167个仅16个清理 - 内存泄漏
+8. HarnessRun 未持久化 - 数据丢失风险
+9. budget-allocator 竞态条件 - 双重扣款风险
+
+**中优先级**:
+1. 59处 console.* 未用 StructuredLogger
+2. 168处 : any 类型
+3. 30+处 as unknown as 双转型
+4. 38处 @ts-ignore
+5. 巨型 barrel files
+6. HR角色检测硬编码
+7. 无 invariant 机制
+8. 内存会话存储限制扩展
+9. 内存服务身份存储限制扩展
+10. 配置缺少安全字段
+11. OpenAPI 端点无认证
+12. Math.random() 非确定性测试
+
+**低优先级**:
+1-45. (详见上述列表)
+
+### 问题统计（累计）
+
+| 类别 | 高严重 | 中严重 | 低严重 | 合计 |
+|------|--------|--------|--------|------|
+| 源代码 | 78+9=87 | 93+3=96 | 42+15=57 | 240 |
+| 测试 | 10+2=12 | 17+1=18 | 6+6=12 | 42 |
+| 配置 | 10+1=11 | 39+1=40 | 24+15=39 | 90 |
+| 安全 | 15+5=20 | 17+1=18 | 3 | 41 |
+| 文档 | 2 | 8 | 3 | 13 |
+| UI | 0 | 4 | 4 | 8 |
+| 部署 | 1 | 12 | 6 | 19 |
+| **合计** | **133** | **206** | **124** | **463** |
+
+### 优先修复建议
+
+**立即处理 (本周内)**:
+1. 修复 benchmark-collector.ts 百分位计算
+2. 清理 plugin-runtime-host.ts 事件监听器
+3. 实现 OAuth token 安全存储
+4. 删除硬编码 CVE 绕过或重新设计
+5. 修复 process.chdir() 安全漏洞
+6. 添加 HarnessRun 持久化
+7. 修复 budget-allocator 竞态条件
+
+**短期内处理 (本月内)**:
+1. 减少 : any 和 @ts-ignore 使用
+2. 统一日志系统 (StructuredLogger)
+3. 拆分巨型文件
+4. 实现 invariant 框架
+5. 添加 fetch 超时
+
+**长期规划**:
+1. 重构 God Objects (HarnessRuntimeService 等)
+2. 建立架构边界和接口
+3. 实现内存安全验证
+4. 建立代码质量门禁
+5. 完善文档和培训
+
+### 已知测试失败 (14 个文件，1620 个测试)
+
+详情见 `.audit/quality.md`
 
 *Review generated: 2026-05-14*

@@ -514,6 +514,12 @@ class TaskTerminalTransitionService {
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
     const shouldTransitionExecution = input.currentExecutionStatus !== executionTerminal;
 
+    if (input.currentTaskStatus === input.terminalStatus) {
+      throw new Error(
+        `task.noop_transition_denied:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
+      );
+    }
+
     taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
     workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
     sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
@@ -533,7 +539,7 @@ class TaskTerminalTransitionService {
     );
     if (taskAffected === 0) {
       throw new Error(
-        `task.terminal_transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
+        `task.transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
       );
     }
     const currentWorkflow = this.repository.getWorkflowState(input.taskId);
@@ -551,7 +557,7 @@ class TaskTerminalTransitionService {
     );
     if (workflowAffected === 0) {
       throw new Error(
-        `workflow.terminal_transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`,
+        `workflow.transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`,
       );
     }
 
@@ -564,7 +570,7 @@ class TaskTerminalTransitionService {
     );
     if (sessionAffected === 0) {
       throw new Error(
-        `session.terminal_transition_cas_failed:${input.sessionId}:${input.currentSessionStatus}->${sessionTerminal}`,
+        `session.transition_cas_failed:${input.sessionId}:${input.currentSessionStatus}->${sessionTerminal}`,
       );
     }
 
@@ -581,7 +587,7 @@ class TaskTerminalTransitionService {
       );
       if (executionAffected === 0) {
         throw new Error(
-          `execution.terminal_transition_cas_failed:${input.executionId}:${input.currentExecutionStatus}->${executionTerminal}`,
+          `execution.transition_cas_failed:${input.executionId}:${input.currentExecutionStatus}->${executionTerminal}`,
         );
       }
     }

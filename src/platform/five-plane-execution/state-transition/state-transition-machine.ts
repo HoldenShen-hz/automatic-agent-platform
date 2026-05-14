@@ -61,6 +61,6 @@ export class StateTransitionMachine<TState extends string> {
   }
 
   private allowsNoopTransition(): boolean {
-    return this.entityKind !== "task" && this.entityKind !== "session";
+    return ["task", "workflow", "execution", "session", "approval"].includes(this.entityKind);
   }
 }
