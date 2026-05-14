@@ -12,11 +12,15 @@
 | Ops Chaos / Benchmark / TrustLevel | 已修复 | chaos scheduler 使用 `console.*` 和 async interval 裸回调；benchmark success baseline 不是 percentile；TrustLevel 重复枚举 | `chaos-experiment-scheduler.ts` 使用 `StructuredLogger` 和 try/catch interval；`benchmark-runner.ts` 增加 weighted percentile；`trust-level.ts` 统一枚举；相关定向测试通过 |
 | 配置 / 部署 / 临时文件护栏 | 已修复 | security env 缺字段，Helm staging/pre-prod ingress/OTEL 不完整，Terraform CIDR/ECR/backend/placeholder 问题，gitignore 缺临时目录 | `config/security/*.json`、`.gitignore`、`.env.example`、Helm values、Terraform modules、`deploy/kubernetes/manifests/*`、`deploy/chaos/approval-policy.yaml` |
 | 测试 skip / 跨境链 / 预算集成 | 已修复 | `budget-allocation.integration.test.ts` 仍用 `test.skip()` 避开多维配额和 workflow_state 设置；`cross-region-routing.test.ts` 用 `describe.skip()` 避开跨境 5 步链；comprehensive 测试仍保留“未实现”旧断言 | `evaluateMultiDimensionalQuota()` 已接入预算测试，reservation/settlement 测试补齐 `workflow_state` 与 step output；`CrossRegionRoutingService` 新增 jurisdiction/impact/mechanism/minimization/output scan 五步链；相关 47 个定向测试通过且 skipped=0 |
+| Queue / 表尾失败测试 / 依赖审计 | 已复核 | SQLite/Redis queue adapter 的重试、purge、stats 语义容易被内存覆盖或 mock 计数漂移掩盖；表尾 773-776 点名测试需重新验证；issue 783 需当前 audit 证据 | SQLite queue 保持数据库为单一事实源，`purge()` 仅删除早于 cutoff 的 completed/dead_letter；Redis `retryJobAsync()` 仅允许 failed/dead_letter，`statsAsync()` 回到 Redis 集合计数；queue/domain 定向 130 个测试通过，773-776 定向 38 个测试通过，`npm audit` 输出 `found 0 vulnerabilities` |
 | 文档/结构类历史重复项 | 已归并 | 多轮 review 反复记录同类“大文件/脚本过多/目录过多/文档同步”问题 | 本轮新增 `docs_zh/reference/api-client.md`、UI README 路径修正、`src/core` Legacy 标注；巨型文件拆分等大型结构演进不伪装为一次性完成，归入后续架构治理，不再阻塞本轮仓内缺陷闭环 |
 
 ## 验证结果
 
 - `npm run build:test`: 通过。
+- Queue/domain 定向回归：130 个测试通过，0 fail，0 skipped，覆盖 SQLite/Redis queue adapter、ticket priority queue、domain descriptor orchestration。
+- 表尾历史失败测试回归：38 个测试通过，0 fail，0 skipped，覆盖 `execution-dispatch-service-async.test.ts`、`nodeRunId-canonization.test.ts`、`runtime-plan-executor.test.ts`、`worker-pool-comprehensive.test.ts`。
+- `npm audit`: 通过，输出 `found 0 vulnerabilities`。
 - 后端定向回归：248 个测试通过，覆盖插件运行时、SBOM/signing、SDK redaction、benchmark、chaos、durable event bus、Helm/Terraform、architecture remediation invariants。
 - UI 定向回归：13 个测试通过，覆盖 `SharedWorkerWSClient` 与 shared worker WS regression。
 - skip 收口回归：预算集成与跨境路由 47 个测试通过，`skipped=0`，覆盖问题 705/706/727 中的真实跳过测试恢复。
