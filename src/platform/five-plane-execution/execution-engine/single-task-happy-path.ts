@@ -67,8 +67,8 @@ import { ValidationError } from "../../contracts/errors.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-const DEFAULT_SINGLE_TASK_MAX_RETRIES = 2;
-const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "exponential";
+const DEFAULT_SINGLE_TASK_MAX_RETRIES = 0;
+const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "none";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,

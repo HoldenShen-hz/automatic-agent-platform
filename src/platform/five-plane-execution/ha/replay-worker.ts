@@ -60,16 +60,13 @@ export class ReplayWorker implements RecoveryWorker {
       this.assertReplayPolicySafe(this.replayPolicy);
       const taskIds = [...await this.options.listTaskIds()];
 
-      // R4-29 (INV-REPLAY-001): Integrate ReplayBoundaryGuard to prevent real side effects during replay
-      // Build replay operations from task replay reports
-      const replayOperations: ReplayOperation[] = taskIds.map((taskId) => ({
-        operationId: `replay:${taskId}`,
+      const reports = await Promise.all(taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt)));
+      const replayOperations: ReplayOperation[] = reports.map((report) => ({
+        operationId: `replay:${report.taskId}`,
         resourceKind: "tool" as const,
-        hasRealSideEffect: this.replayPolicy.mode !== "isolated_sandbox",
+        hasRealSideEffect: report.outcome === "repair_pending" && this.replayPolicy.mode !== "isolated_sandbox",
         tombstoneReplay: false,
       }));
-
-      // Evaluate whether replay operations are safe before proceeding
       const replayMode: ReplayMode = this.replayPolicy.mode === "trace_only" ? "trace_replay" : "reexecution_replay";
       const boundaryDecision = this.boundaryGuard.evaluate(replayMode, replayOperations);
 
@@ -89,7 +86,6 @@ export class ReplayWorker implements RecoveryWorker {
         };
       }
 
-      const reports = await Promise.all(taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt)));
       const recoveryActiveCount = reports.filter((report) => report.outcome !== "no_recovery_activity").length;
 
       return {

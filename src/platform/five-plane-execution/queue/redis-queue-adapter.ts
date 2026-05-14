@@ -1,11 +1,11 @@
 import { createRequire } from "node:module";
-import { EventEmitter } from "node:events";
 
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -41,7 +41,7 @@ interface RedisLike {
   };
 }
 
-class InMemoryRedisLike extends EventEmitter implements RedisLike {
+class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> implements RedisLike {
   public status = "ready";
   private readonly hashes = new Map<string, Map<string, string>>();
   private readonly sets = new Map<string, Set<string>>();
@@ -50,10 +50,6 @@ class InMemoryRedisLike extends EventEmitter implements RedisLike {
   connect(): Promise<void> {
     this.status = "ready";
     return Promise.resolve();
-  }
-
-  override on(event: "error", listener: (error: unknown) => void): this {
-    return super.on(event, listener);
   }
 
   disconnect(): void {

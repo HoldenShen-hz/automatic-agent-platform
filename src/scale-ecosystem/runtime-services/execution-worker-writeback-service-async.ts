@@ -16,8 +16,6 @@
  * @see ExecutionWorkerWritebackService for the sync implementation
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type {
@@ -27,6 +25,7 @@ import type {
 } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
 import { ExecutionWorkerWritebackService } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export type {
   WorkerWritebackInput,
@@ -153,7 +152,7 @@ const logger = new StructuredLogger({ retentionLimit: 200 });
  * This async version provides the same functionality as ExecutionWorkerWritebackService
  * but with enterprise-grade async patterns for reliable distributed operation.
  */
-export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
+export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly sync: ExecutionWorkerWritebackService;
   private readonly options: Required<ExecutionWorkerWritebackServiceAsyncOptions>;
 

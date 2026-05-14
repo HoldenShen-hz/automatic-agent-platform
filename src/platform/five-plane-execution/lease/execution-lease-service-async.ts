@@ -209,6 +209,13 @@ export class ExecutionLeaseServiceAsync {
         lease,
       };
     }
+    if (lease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        lease,
+      };
+    }
 
     if (lease.status !== "active") {
       return {
@@ -272,6 +279,13 @@ export class ExecutionLeaseServiceAsync {
       return {
         outcome: "blocked",
         reasonCode: "worker_mismatch",
+        lease,
+      };
+    }
+    if (lease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
         lease,
       };
     }

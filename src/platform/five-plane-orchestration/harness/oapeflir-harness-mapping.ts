@@ -21,7 +21,7 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
     return "feedback";
   }
   if (role === "hitl_operator") {
-    return "assess";
+    return "feedback";
   }
   if (role === "loop_controller") {
     return "improve";

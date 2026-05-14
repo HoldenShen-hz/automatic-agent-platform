@@ -45,7 +45,7 @@ export class SideEffectManager {
     reconciliation: ReconciliationRecord,
     context: SideEffectManagerContext,
   ): RuntimeTransitionResult<SideEffectRecord> {
-    return this.transitionSideEffect(sideEffect, targetStatusForReconciliation(reconciliation), {
+    return this.transitionSideEffect(sideEffect, targetStatusForReconciliation(sideEffect, reconciliation), {
       ...context,
       reasonCode: `reconciliation.${reconciliation.result}.${reconciliation.nextAction}`,
     });
@@ -226,7 +226,7 @@ export class SideEffectManager {
   }
 }
 
-function targetStatusForReconciliation(reconciliation: ReconciliationRecord): SideEffectStatus {
+function targetStatusForReconciliation(sideEffect: SideEffectRecord, reconciliation: ReconciliationRecord): SideEffectStatus {
   switch (reconciliation.nextAction) {
     case "mark_confirmed":
       return "confirmed";
@@ -235,7 +235,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "compensate":
       return "compensation_required";
     case "escalate_hitl":
-      return "manual_review_required";
+      return sideEffect.status === "ambiguous" ? "manual_review_required" : "ambiguous";
     case "mark_failed":
       return "failed";
   }

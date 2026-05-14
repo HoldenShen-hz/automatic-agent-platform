@@ -16,11 +16,10 @@
  * @see docs_zh/contracts/ha_coordinator_and_leader_election_contract.md
  */
 
-import { EventEmitter } from "node:events";
-
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { RuntimeError } from "../../contracts/errors.js";
+import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 import type { HaLevel, HaLevelConfig, LeadershipQueryResult } from "./types.js";
 import { HA_LEVEL_CONFIGS, type LeaderLease } from "./types.js";
 import type { HaCoordinatorService } from "./ha-coordinator-service-inner.js";
@@ -105,7 +104,7 @@ export interface LeaderElectionServiceOptions {
  * Uses a state machine to track election progress and handles graceful
  * transitions between leader and follower roles.
  */
-export class LeaderElectionService extends EventEmitter {
+export class LeaderElectionService extends LocalTypedEventEmitter<Record<string, unknown>> {
   // State
   private state: LeaderElectionState = "stopped";
   private currentLease: LeaderLease | null = null;

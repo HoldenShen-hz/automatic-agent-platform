@@ -16,14 +16,13 @@
  * @see DurableEventBus for the sync implementation
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { EventRecord, TraceContext } from "../../platform/contracts/types/domain.js";
 import type { PendingAckEvent } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import { DurableEventBus, type EventHandler } from "../../platform/state-evidence/events/durable-event-bus.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export type { EventHandler } from "../../platform/state-evidence/events/durable-event-bus.js";
 
@@ -140,7 +139,7 @@ const MAX_EVENT_PAYLOAD_SIZE = 1_000_000;
  * This async version provides the same functionality as DurableEventBus
  * but with enterprise-grade async patterns for distributed operation.
  */
-export class DurableEventBusAsync extends EventEmitter {
+export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly sync: DurableEventBus;
   private readonly options: Required<DurableEventBusAsyncOptions>;
 

@@ -3,9 +3,9 @@
  * Cross-org trust and capability delegation
  */
 
-import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
 import { TrustLevel } from "./trust-level.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export { TrustLevel } from "./trust-level.js";
 
@@ -286,7 +286,7 @@ const DEFAULT_CONFIG: FederationGatewayConfig = {
  * FederationGateway manages cross-organization trust relationships
  * and capability delegation for the federation mesh.
  */
-export class FederationGateway extends EventEmitter {
+export class FederationGateway extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly config: FederationGatewayConfig;
   private readonly organizations: Map<string, FederationOrg> = new Map();
   private readonly trustRelationships: Map<string, TrustRelationship> = new Map();

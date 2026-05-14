@@ -46,6 +46,13 @@ artifacts/
 dist-checkpoints/
 session-replay/
 
+# Legacy five-plane compatibility symlinks under src/platform/
+src/platform/control-plane
+src/platform/execution
+src/platform/interface
+src/platform/orchestration
+src/platform/state-evidence
+
 # Test artifacts (UUID-named task/artifact directories)
 tests/**/artifacts/
 tests/golden/snapshots/

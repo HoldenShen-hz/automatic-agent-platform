@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EventEmitter } from "node:events";
 
 import { ExecutionWorkerHandshakeServiceAsync } from "../../../../src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.js";
 import type { WorkerHandshakeDecision } from "../../../../src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.js";
@@ -8,8 +7,11 @@ import type { WorkerHandshakeDecision } from "../../../../src/scale-ecosystem/ru
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("ExecutionWorkerHandshakeServiceAsync is an EventEmitter subclass", () => {
-  assert.ok(new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never) instanceof EventEmitter);
+test("ExecutionWorkerHandshakeServiceAsync exposes typed emitter methods", () => {
+  const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
+  assert.equal(typeof service.on, "function");
+  assert.equal(typeof service.once, "function");
+  assert.equal(typeof service.off, "function");
 });
 
 test("ExecutionWorkerHandshakeServiceAsync default options are applied", () => {

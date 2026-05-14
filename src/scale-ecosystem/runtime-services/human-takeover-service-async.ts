@@ -16,14 +16,13 @@
  * @see HumanTakeoverService for the sync implementation
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { TaskTerminalStatus } from "../../platform/contracts/types/status.js";
 import type { TakeoverActionResult } from "../../platform/control-plane/incident-control/human-takeover-service.js";
 import { HumanTakeoverService } from "../../platform/control-plane/incident-control/human-takeover-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export type { TakeoverActionResult } from "../../platform/control-plane/incident-control/human-takeover-service.js";
 
@@ -136,7 +135,7 @@ const logger = new StructuredLogger({ retentionLimit: 200 });
  * This async version provides the same functionality as HumanTakeoverService
  * but with enterprise-grade async patterns for reliable distributed operation.
  */
-export class HumanTakeoverServiceAsync extends EventEmitter {
+export class HumanTakeoverServiceAsync extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly sync: HumanTakeoverService;
   private readonly options: Required<HumanTakeoverServiceAsyncOptions>;
 

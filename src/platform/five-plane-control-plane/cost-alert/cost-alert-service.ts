@@ -10,12 +10,11 @@
  * @see docs_zh/architecture/00-platform-architecture.md §18
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import { StorageError } from "../../contracts/errors.js";
+import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 import type {
   BudgetPolicy,
   CostAccumulator,
@@ -52,7 +51,7 @@ const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
  * 3. Call recordCost() after each LLM call to update accumulators
  * 4. Listen for `cost.threshold.exceeded` events to trigger automated responses
  */
-export class CostAlertService extends EventEmitter {
+export class CostAlertService extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
   private config: CostAlertConfig;
   // C-11: TTL-based eviction to prevent memory leaks

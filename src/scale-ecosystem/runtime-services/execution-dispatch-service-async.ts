@@ -14,8 +14,6 @@
  * @see ExecutionDispatchService for the sync implementation
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AdmissionBackpressureSnapshot } from "../../platform/execution/dispatcher/admission-controller.js";
@@ -29,6 +27,7 @@ import type {
 import { ExecutionDispatchService } from "../../platform/execution/dispatcher/execution-dispatch-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export type {
   CreateExecutionTicketInput,
@@ -111,7 +110,7 @@ const logger = new StructuredLogger({ retentionLimit: 200 });
  * This service wraps the synchronous ExecutionDispatchService and adds
  * enterprise-grade async patterns for reliable distributed operation.
  */
-export class ExecutionDispatchServiceAsync extends EventEmitter {
+export class ExecutionDispatchServiceAsync extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly sync: ExecutionDispatchService;
   private readonly options: Required<ExecutionDispatchServiceAsyncOptions>;
 

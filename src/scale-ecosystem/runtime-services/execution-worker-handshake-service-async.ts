@@ -15,8 +15,6 @@
  * @see ExecutionWorkerHandshakeService for the sync implementation
  */
 
-import { EventEmitter } from "node:events";
-
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type {
@@ -28,6 +26,7 @@ import type {
 } from "../../platform/execution/worker-pool/execution-worker-handshake-types.js";
 import { ExecutionWorkerHandshakeService } from "../../platform/execution/worker-pool/execution-worker-handshake-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
 export type {
   ExecutionWorkerHandshakeServiceOptions,
@@ -140,7 +139,7 @@ const logger = new StructuredLogger({ retentionLimit: 200 });
  * This async version provides the same functionality as ExecutionWorkerHandshakeService
  * but with async/await interface, retry logic, timeout handling, and queue-based processing.
  */
-export class ExecutionWorkerHandshakeServiceAsync extends EventEmitter {
+export class ExecutionWorkerHandshakeServiceAsync extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly sync: ExecutionWorkerHandshakeService;
   private readonly options: Required<ExecutionWorkerHandshakeServiceAsyncOptions>;
 

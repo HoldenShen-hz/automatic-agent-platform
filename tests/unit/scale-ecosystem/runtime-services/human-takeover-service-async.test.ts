@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EventEmitter } from "node:events";
 
 import { HumanTakeoverServiceAsync } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
 import type { TakeoverActionResult } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
@@ -8,8 +7,11 @@ import type { TakeoverActionResult } from "../../../../src/scale-ecosystem/runti
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("HumanTakeoverServiceAsync is an EventEmitter subclass", () => {
-  assert.ok(new HumanTakeoverServiceAsync({} as never, {} as never) instanceof EventEmitter);
+test("HumanTakeoverServiceAsync exposes typed emitter methods", () => {
+  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
+  assert.equal(typeof service.on, "function");
+  assert.equal(typeof service.once, "function");
+  assert.equal(typeof service.off, "function");
 });
 
 test("HumanTakeoverServiceAsync default options are applied correctly", () => {
