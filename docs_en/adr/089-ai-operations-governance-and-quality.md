@@ -47,7 +47,7 @@ Corresponding implementation boundaries:
 
 - `src/platform/model-gateway/*`
 - `src/platform/prompt-engine/*`
-- `src/platform/control-plane/*`
+- `src/platform/five-plane-control-plane/*`
 - `src/domains/eval-framework/*`
 - `src/ops-maturity/cost-optimizer/*`
 

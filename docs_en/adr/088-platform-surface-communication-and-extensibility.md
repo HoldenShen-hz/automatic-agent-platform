@@ -46,7 +46,7 @@ Corresponding authoritative contracts:
 Corresponding implementation boundaries:
 
 - `src/gateway/*`
-- `src/platform/state-evidence/events/*`
+- `src/platform/five-plane-state-evidence/events/*`
 - `src/domains/registry/*`
 - `src/plugins/*`
 - `src/scale-ecosystem/marketplace/*`

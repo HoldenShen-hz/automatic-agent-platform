@@ -51,10 +51,10 @@ Corresponding authoritative contracts:
 
 Corresponding implementation boundaries:
 
-- `src/platform/execution/*`
-- `src/platform/state-evidence/*`
+- `src/platform/five-plane-execution/*`
+- `src/platform/five-plane-state-evidence/*`
 - `src/platform/shared/stability/*`
-- `src/platform/control-plane/config-center/*`
+- `src/platform/five-plane-control-plane/config-center/*`
 - `config/*`
 
 ## Testing Requirements

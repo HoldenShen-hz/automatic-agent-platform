@@ -44,7 +44,7 @@ Each pillar must have independent code entry, testing, and acceptance evidence; 
 
 ## Consequences
 
-- `src/platform/orchestration/harness` must organize directories and export surfaces around the eight pillars
+- `src/platform/five-plane-orchestration/harness` must organize directories and export surfaces around the eight pillars
 - Ring 2 acceptance must be broken down by pillar
 - Gaps in Harness during review use pillar as the minimum remediation unit
 
