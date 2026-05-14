@@ -235,7 +235,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "compensate":
       return "compensation_required";
     case "escalate_hitl":
-      return "ambiguous";
+      return "manual_review_required";
     case "mark_failed":
       return "failed";
   }

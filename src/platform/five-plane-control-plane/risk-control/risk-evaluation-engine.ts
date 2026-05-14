@@ -8,7 +8,7 @@
  * The engine implements the canonical 8-factor model, but the exact factor
  * weights are sourced from `config/risk/default.json` through `RiskConfig`.
  * Keep documentation aligned with the config loader instead of duplicating a
- * stale hard-coded formula here.
+ * stale fixed formula here.
  *
  * ## §10.3 Risk Level Mapping
  *

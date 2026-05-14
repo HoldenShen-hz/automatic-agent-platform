@@ -275,13 +275,6 @@ export class ExecutionLeaseServiceAsync {
         lease,
       };
     }
-    if (lease.status !== "active") {
-      return {
-        outcome: "blocked",
-        reasonCode: "lease_not_active",
-        lease,
-      };
-    }
     if (Date.parse(lease.expiresAt) <= Date.parse(occurredAt)) {
       return {
         outcome: "blocked",

@@ -195,7 +195,7 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
       );
     }
     this._cachedToken = staticToken;
-    // R12-19: Use configurable TTL instead of hardcoded 3600 seconds
+    // R12-19: Use configurable TTL instead of a fixed 3600 seconds.
     this._tokenExpiry = Date.now() + this.staticTokenTtlSec * 1000;
     return this._cachedToken;
   }

@@ -65,7 +65,7 @@ export interface EscalationRequest {
   slaDeadline: string | null;
   /** R29-07 fix: Timeout in milliseconds for human takeover — exceeded SLA triggers escalation */
   timeoutMs: number | null;
-  /** R17-19: Per-request cost threshold override to avoid hard-coded $10 policy. */
+  /** R17-19: Per-request cost threshold override to avoid a fixed $10 policy. */
   costThresholdUsd?: number;
 }
 

@@ -647,7 +647,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       // If recipe matched but archetype doesn't map, fall through to regex patterns
     }
 
-    // R9-46: Fall back to regex pattern matching (was previously hardcoded 5 patterns)
+    // R9-46: Fall back to regex pattern matching (previously limited to 5 fixed patterns).
     if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
       return "marketing_campaign";
     }

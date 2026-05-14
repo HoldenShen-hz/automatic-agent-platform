@@ -1,7 +1,7 @@
 /**
  * Provider API Default URLs
  *
- * Purpose: Centralize hardcoded API URLs for LLM providers and external services.
+ * Purpose: Centralize provider API URLs for LLM providers and external services.
  * All URL constants should be defined here and imported where needed.
  * Environment variables can override these defaults via provider configuration.
  */

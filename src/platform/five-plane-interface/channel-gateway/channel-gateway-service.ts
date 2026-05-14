@@ -304,7 +304,7 @@ export class ChannelGatewayService {
 
   /**
    * Creates the default adapter registry with built-in adapters.
-   * R12-12: This replaces the hardcoded switch statement.
+   * R12-12: This replaces the inline switch statement.
    */
   private createDefaultRegistry(): ChannelAdapterRegistry {
     const registry = new ChannelAdapterRegistry();

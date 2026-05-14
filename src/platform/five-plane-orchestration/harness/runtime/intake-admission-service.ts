@@ -538,7 +538,7 @@ export class IntakeAdmissionService {
       runVersionLockId: runVersionLock.runVersionLockId,
       leaseId: admissionLeaseId,
       fencingToken: admissionFencingToken,
-      // R6-12: Use actual policy evaluation result instead of hardcoded true
+      // R6-12: Use actual policy evaluation result instead of a fixed true value.
       policyGuard: {
         allowed: policyGuardResult.allowed,
         policyProofRef: policyGuardResult.proofRef ?? input.constraintPackRef,

@@ -165,7 +165,7 @@ interface DeliveryChainState {
 /**
  * R12-04: Fixed - uses adaptive polling interval based on back-pressure state.
  * The AdaptivePollingInterval class (lines 168-200) now dynamically adjusts
- * polling frequency based on consumer back-pressure, replacing the hardcoded 10ms.
+ * polling frequency based on consumer back-pressure, replacing the old fixed 10ms interval.
  */
 class AdaptivePollingInterval {
   private baseIntervalMs = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS;

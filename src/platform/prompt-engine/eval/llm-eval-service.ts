@@ -580,7 +580,7 @@ export class LlmEvalService {
     const improvement = controlAvg > 0 ? (treatmentAvg - controlAvg) / controlAvg : 0;
 
     // Issue #1959 FIX: Use proper Welch's t-test for statistical significance
-    // The old calculateAbPValue was a crude approximation using hardcoded thresholds.
+    // The old calculateAbPValue was a crude approximation using fixed thresholds.
     // Now we use actual Welch's t-test with individual scores.
     const { pValue, zScore } = calculateWelchTTtest(controlScores, treatmentScores);
 
@@ -895,7 +895,7 @@ function calculateVariance(values: number[]): number {
  * Issue #1959 FIX: Welch's t-test for comparing two independent sample means.
  *
  * This replaces the old `calculateAbPValue` which used a crude approximation
- * based on hardcoded 0.85/0.90 thresholds that made the statistical test meaningless.
+ * based on fixed 0.85/0.90 thresholds that made the statistical test meaningless.
  *
  * Welch's t-test does not assume equal variances and is appropriate for A/B testing
  * where control and treatment may have different variance characteristics.

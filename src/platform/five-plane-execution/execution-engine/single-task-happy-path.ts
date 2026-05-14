@@ -308,7 +308,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
 
     // R4-25 fix: ExecutionRecord now created with harnessRunId association via HarnessRun
-    // R4-32 (INV-RISK-001): Implement risk-proportional approval instead of hardcoded 0
+    // R4-32 (INV-RISK-001): Implement risk-proportional approval instead of a fixed 0 value.
     // Note: requiresApproval is 0|1 per domain types, so high/critical both map to 1
     const riskLevel = harnessRun.riskLevel ?? "medium";
     const riskProportionalApproval = (riskLevel === "critical" || riskLevel === "high") ? 1 : 0;

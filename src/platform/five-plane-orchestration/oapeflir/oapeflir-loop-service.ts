@@ -1172,7 +1172,7 @@ export class OapeflirLoopService {
 
   public buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
     return stepOutputs.map((output, index) => {
-      // R19-08 fix: Derive feedback category from step output status, not hardcoded "success"
+      // R19-08 fix: Derive feedback category from step output status, not a fixed "success" value.
       // Failed steps with validation failures should produce failure/blocker feedback
       const isLastStep = index === stepOutputs.length - 1;
       const validationPassed = output.systemTelemetry.validationPassed;

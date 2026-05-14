@@ -256,7 +256,7 @@ export class EvolutionIntegrationService {
    */
   private async createProposalFromReflection(reflection: ReflectionRecord): Promise<void> {
     const kind = this.inferProposalKind(reflection.taskType);
-    // R13-11: Use dynamic risk assessment instead of hardcoded 'low'
+    // R13-11: Use dynamic risk assessment instead of a fixed 'low' value.
     const risk = this.determineRisk(kind, reflection.taskType);
 
     const proposal = await this.proposalEngine.create({

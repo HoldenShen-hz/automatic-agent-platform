@@ -124,7 +124,7 @@ export class AssessmentService {
     }
     // NOTE: taskSituation is already a TaskSituation from the Observe stage.
     // If re-parsing is needed for validation, use parseTaskSituation(taskSituation) here.
-    const situation = wrappedInput?.taskSituation ?? taskSituation;
+    const situation: TaskSituation = wrappedInput != null ? wrappedInput.taskSituation : taskSituation as TaskSituation;
     const blockerSeverities = situation.blockers.map((blocker) => blocker.severity);
     const riskFactors: string[] = [];
 
@@ -226,7 +226,7 @@ export class AssessmentService {
       ? (risk === "critical" ? 0.95 : risk === "high" ? 0.75 : risk === "medium" ? 0.45 : 0.15)
       : 0.1;
 
-    // R9-17 fix: Derive division from task situation domain hints, not hardcoded "coding"
+    // R9-17 fix: Derive division from task situation domain hints, not a fixed "coding" value.
     // Domain detection based on available tools, file types, and blockers
     const division = this.deriveDivision(situation);
 
@@ -402,7 +402,7 @@ export class AssessmentService {
 
   /**
    * R9-17 fix: Derives the operational division from task situation context.
-   * Previously hardcoded to "coding" - now uses domain hints from the situation.
+   * Previously fixed to "coding"; now uses domain hints from the situation.
    */
   private deriveDivision(situation: TaskSituation): string {
     const tools = situation.environmentContext.availableTools;

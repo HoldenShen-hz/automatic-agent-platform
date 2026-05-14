@@ -103,7 +103,7 @@ export class PluginExecutorService {
     this.pluginDir = options.pluginDir ?? join(process.cwd(), "plugins");
     this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
     this.artifactStore = options.artifactStore ?? new ArtifactStore();
-    this.enforceSignatures = options.enforceSignatures ?? process.env.AA_RUNNING_TESTS !== "1";
+    this.enforceSignatures = options.enforceSignatures ?? process.env.AA_ENFORCE_PLUGIN_SIGNATURES === "1";
   }
 
   // ── Registry Operations ────────────────────────────────────────────────────

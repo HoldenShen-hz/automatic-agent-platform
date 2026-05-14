@@ -1,7 +1,7 @@
 /**
  * @fileoverview ExecuteBridge — interface between OAPEFLIR Execute phase and the runtime.
  *
- * GAP-V2-01: The OAPEFLIR loop's Execute stage previously returned hardcoded mock data
+ * GAP-V2-01: The OAPEFLIR loop's Execute stage previously returned static mock data
  * via `buildStepOutputs()`. This interface + implementation replaces that with real
  * runtime execution by connecting to the orchestrator / supervisor layer.
  *

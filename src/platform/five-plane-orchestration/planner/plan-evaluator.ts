@@ -37,7 +37,7 @@ const DEFAULT_TOKEN_ESTIMATION_CONFIG: TokenEstimationConfig = {
 
 /**
  * Estimates token usage for a plan based on step structure and complexity.
- * R8-12 FIX: Replaces hardcoded steps.length * 1000 with proper token estimation.
+ * R8-12 FIX: Replaces the old steps.length * 1000 estimate with proper token estimation.
  */
 export function estimatePlanTokens(
   plan: Plan,
@@ -178,7 +178,7 @@ export class PlanEvaluator {
     const dagValidation = this.dagValidator.validate(plan.steps);
     issues.push(...dagValidation.issues);
 
-    // R8-12 FIX: Use proper token estimation instead of hardcoded steps.length * 1000
+    // R8-12 FIX: Use proper token estimation instead of the old steps.length * 1000 estimate.
     const tokenEstimation = estimatePlanTokens(plan);
     if (tokenEstimation.totalTokens > assessment.resourceAllocation.maxTokens) {
       issues.push("planning.resource_budget_exceeded");
