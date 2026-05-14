@@ -55,6 +55,17 @@ export type LeaderElectionEvent =
   | "abdication"
   | "follower_elected";
 
+interface LeaderElectionCoordinatorCompat {
+  getCurrentLeader?(): { nodeId: string } | null;
+  getActiveLease?(): LeaderLease | null;
+  updateNodeHeartbeat?(nodeId: string, status: string): void;
+  registerNode?(nodeId: string, region: string, metadata?: Record<string, unknown>): void;
+  queryLeadership: (...args: unknown[]) => LeadershipQueryResult | Promise<LeadershipQueryResult>;
+  acquireLeadership: (...args: unknown[]) => unknown;
+  renewLeadership?: (...args: unknown[]) => unknown;
+  releaseLeadership?: (...args: unknown[]) => unknown;
+}
+
 /**
  * Leader election service options.
  */
@@ -140,6 +151,10 @@ export class LeaderElectionService extends EventEmitter {
         config: this.config,
       },
     });
+  }
+
+  private get coordinatorCompat(): LeaderElectionCoordinatorCompat {
+    return this.coordinator as unknown as LeaderElectionCoordinatorCompat;
   }
 
   // ── Public API ────────────────────────────────────────────────────
@@ -313,8 +328,8 @@ export class LeaderElectionService extends EventEmitter {
     if (this.config.haLevel === "HA_1") {
       return this.state === "leader" ? this.effectiveNodeId : null;
     }
-    const leader = typeof (this.coordinator as any).getCurrentLeader === "function"
-      ? (this.coordinator as any).getCurrentLeader()
+    const leader = typeof this.coordinatorCompat.getCurrentLeader === "function"
+      ? this.coordinatorCompat.getCurrentLeader()
       : null;
     return leader?.nodeId ?? null;
   }
@@ -445,8 +460,8 @@ export class LeaderElectionService extends EventEmitter {
       if (leadership.leaderNodeId === this.effectiveNodeId) {
         // We're already the leader (lease might have been refreshed)
         this.state = "leader";
-        this.currentLease = typeof (this.coordinator as any).getActiveLease === "function"
-          ? (this.coordinator as any).getActiveLease()
+        this.currentLease = typeof this.coordinatorCompat.getActiveLease === "function"
+          ? this.coordinatorCompat.getActiveLease()
           : this.currentLease;
         this.currentEpoch = leadership.epoch;
         this.currentFencingToken = leadership.fencingToken;
@@ -575,8 +590,8 @@ export class LeaderElectionService extends EventEmitter {
 
     // Heartbeat every 5 seconds
     this.heartbeatIntervalHandle = setInterval(() => {
-      if (typeof (this.coordinator as any).updateNodeHeartbeat === "function") {
-        (this.coordinator as any).updateNodeHeartbeat(this.effectiveNodeId, "active");
+      if (typeof this.coordinatorCompat.updateNodeHeartbeat === "function") {
+        this.coordinatorCompat.updateNodeHeartbeat(this.effectiveNodeId, "active");
       }
     }, 5_000);
     this.heartbeatIntervalHandle.unref?.();
@@ -659,10 +674,10 @@ export class LeaderElectionService extends EventEmitter {
   }
 
   private registerNode(): void {
-    if (typeof (this.coordinator as any).registerNode !== "function") {
+    if (typeof this.coordinatorCompat.registerNode !== "function") {
       return;
     }
-    (this.coordinator as any).registerNode(
+    this.coordinatorCompat.registerNode(
       this.effectiveNodeId,
       this.effectiveRegion,
       this.nodeMetadata,
@@ -670,7 +685,7 @@ export class LeaderElectionService extends EventEmitter {
   }
 
   private async queryLeadershipCompat(): Promise<LeadershipQueryResult> {
-    const query = (this.coordinator as any).queryLeadership;
+    const query = this.coordinatorCompat.queryLeadership;
     if (typeof query !== "function") {
       return {
         isLeader: false,
@@ -694,8 +709,8 @@ export class LeaderElectionService extends EventEmitter {
     fencingToken: number;
     cause?: string;
   }> {
-    const acquire = (this.coordinator as any).acquireLeadership;
-    const usesObjectInput = typeof (this.coordinator as any).getCurrentLeader === "function";
+    const acquire = this.coordinatorCompat.acquireLeadership;
+    const usesObjectInput = typeof this.coordinatorCompat.getCurrentLeader === "function";
     const result = !usesObjectInput
       ? acquire.call(this.coordinator, this.effectiveNodeId, this.config.leaseTtlMs)
       : acquire.call(this.coordinator, {
@@ -704,14 +719,21 @@ export class LeaderElectionService extends EventEmitter {
           forceAcquire,
         });
     const resolved = await Promise.resolve(result);
-    if (resolved?.acquired !== undefined) {
-      return resolved;
+    if (isObjectRecord(resolved) && "acquired" in resolved) {
+      return resolved as {
+        acquired: boolean;
+        lease: LeaderLease;
+        epoch: number;
+        fencingToken: number;
+        cause?: string;
+      };
     }
+    const lease = resolved as LeaderLease;
     return {
       acquired: resolved != null,
-      lease: resolved,
-      epoch: resolved?.epoch ?? 0,
-      fencingToken: resolved?.fencingToken ?? 1,
+      lease,
+      epoch: lease?.epoch ?? 0,
+      fencingToken: (lease as LeaderLease & { fencingToken?: number })?.fencingToken ?? 1,
     };
   }
 
@@ -720,29 +742,34 @@ export class LeaderElectionService extends EventEmitter {
     lease: LeaderLease | null;
     fencingToken: number;
   } {
-    const renew = (this.coordinator as any).renewLeadership;
+    const renew = this.coordinatorCompat.renewLeadership;
     if (typeof renew !== "function") {
       return { renewed: false, lease: null, fencingToken: this.currentFencingToken };
     }
-    const usesObjectInput = typeof (this.coordinator as any).getActiveLease === "function";
+    const usesObjectInput = typeof this.coordinatorCompat.getActiveLease === "function";
     const result = !usesObjectInput
       ? renew.call(this.coordinator, this.effectiveNodeId, this.currentLease?.leaseId)
       : renew.call(this.coordinator, {
           nodeId: this.effectiveNodeId,
           ttlMs: this.config.leaseTtlMs,
         });
-    if (result?.renewed !== undefined) {
-      return result;
+    if (isObjectRecord(result) && "renewed" in result) {
+      return result as {
+        renewed: boolean;
+        lease: LeaderLease | null;
+        fencingToken: number;
+      };
     }
+    const lease = result as LeaderLease | null;
     return {
       renewed: result != null,
-      lease: result ?? null,
-      fencingToken: result?.fencingToken ?? this.currentFencingToken,
+      lease: lease ?? null,
+      fencingToken: (lease as (LeaderLease & { fencingToken?: number }) | null)?.fencingToken ?? this.currentFencingToken,
     };
   }
 
   private async releaseLeadershipCompat(): Promise<boolean> {
-    const release = (this.coordinator as any).releaseLeadership;
+    const release = this.coordinatorCompat.releaseLeadership;
     if (typeof release !== "function") {
       return false;
     }
@@ -752,6 +779,10 @@ export class LeaderElectionService extends EventEmitter {
     const resolved = await Promise.resolve(result);
     return resolved === undefined ? true : Boolean(resolved);
   }
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 // ── Factory ─────────────────────────────────────────────────────────

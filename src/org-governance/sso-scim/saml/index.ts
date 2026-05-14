@@ -42,16 +42,15 @@ export function validateXmlSignature(
   } = {},
 ): { valid: boolean; error?: string } {
   try {
-    const sig = new SignedXml(null, {
+    const signedXmlOptions: ConstructorParameters<typeof SignedXml>[0] = {
       signatureAlgorithm: options.signatureAlgorithm ?? "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-    });
+    };
+    if (options.keyProviderFn) {
+      signedXmlOptions.getCertFromKeyInfo = (keyInfo) => options.keyProviderFn?.(keyInfo ?? "") ?? null;
+    }
+    const sig = new SignedXml(signedXmlOptions);
 
     sig.loadSignature(signature);
-
-    // Set up key resolution if provider function is provided
-    if (options.keyProviderFn) {
-      (sig as any).keyProviderFn = options.keyProviderFn;
-    }
 
     const isValid = sig.checkSignature(xml);
     if (!isValid) {

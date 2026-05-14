@@ -335,7 +335,7 @@ export class CDCReplicationService {
     };
 
     this.checkpoints.set(key, checkpoint);
-    this.processedEventCounts.set(key, (this.processedEventCounts.get(key) ?? 0) + batch.events.length);
+    this.processedEventCounts.set(key, Math.max(this.processedEventCounts.get(key) ?? 0, batch.endSequence));
     this.removeBatchFromQueue(key, batch.batchId);
   }
 
@@ -403,15 +403,15 @@ export class CDCReplicationService {
     totalSourceEvents: number,
   ): number {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    const checkpoint = this.checkpoints.get(key);
+    if (checkpoint != null) {
+      return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
+    }
     const processedEventCount = this.processedEventCounts.get(key);
     if (processedEventCount != null) {
       return Math.max(0, totalSourceEvents - processedEventCount);
     }
-    const checkpoint = this.checkpoints.get(key);
-    if (checkpoint == null) {
-      return totalSourceEvents;
-    }
-    return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
+    return totalSourceEvents;
   }
 
   public getQueueDepth(sourceRegionId: string, targetRegionId: string): number {

@@ -231,15 +231,44 @@ export class RegionHealthCheckService {
       return null;
     }
 
-    const status = result?.status ?? "unknown";
-    const isHealthyForFailover = status === "healthy" || status === "degraded";
+    const snapshotStatus = result == null && config.metricSnapshot != null
+      ? this.determineStatus([
+        {
+          metricName: "latency",
+          value: config.metricSnapshot.latencyMs ?? 0,
+          threshold: config.thresholds.maxLatencyMs,
+          isHealthy: (config.metricSnapshot.latencyMs ?? 0) <= config.thresholds.maxLatencyMs,
+        },
+        {
+          metricName: "error_rate",
+          value: config.metricSnapshot.errorRate ?? 0,
+          threshold: config.thresholds.maxErrorRate,
+          isHealthy: (config.metricSnapshot.errorRate ?? 0) <= config.thresholds.maxErrorRate,
+        },
+        {
+          metricName: "cpu_usage",
+          value: config.metricSnapshot.cpuUsage ?? 0,
+          threshold: config.thresholds.maxCpuUsage,
+          isHealthy: (config.metricSnapshot.cpuUsage ?? 0) <= config.thresholds.maxCpuUsage,
+        },
+        {
+          metricName: "memory_usage",
+          value: config.metricSnapshot.memoryUsage ?? 0,
+          threshold: config.thresholds.maxMemoryUsage,
+          isHealthy: (config.metricSnapshot.memoryUsage ?? 0) <= config.thresholds.maxMemoryUsage,
+        },
+      ], config.metricSnapshot.latencyMs ?? 0, config.thresholds.maxLatencyMs)
+      : null;
+    const status = result?.status ?? snapshotStatus ?? "unknown";
+    const isHealthyForFailover = status === "healthy";
+    const latencyMetric = result?.metrics.find((metric) => metric.metricName === "latency");
 
     return {
       regionId,
       status,
       lastCheckedAt: lastChecked ?? nowIso(),
       consecutiveFailures: failures,
-      overallLatencyMs: result?.latencyMs ?? 0,
+      overallLatencyMs: latencyMetric?.value ?? config.metricSnapshot?.latencyMs ?? result?.latencyMs ?? 0,
       isHealthyForFailover,
     };
   }
@@ -254,7 +283,7 @@ export class RegionHealthCheckService {
     }
 
     // Failover if unhealthy or consecutive failures exceed threshold
-    if (summary.status === "unhealthy") {
+    if (summary.status === "unhealthy" || summary.status === "degraded") {
       return true;
     }
 

@@ -13,12 +13,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a76f5601-2947-4a56-b0ac-df4357e44cb3",
-    "createdAt": "2026-05-14T02:08:48.453Z"
+    "id": "dlg_audit_ef088072-c905-4045-8be1-88069bb3a0b0",
+    "createdAt": "2026-05-14T03:32:25.595Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_0a54808e-a5a9-4560-b186-a956525dfcc7",
+    "delegationId": "dlg_0ead8289-02c6-4ccb-848d-d44956b77ad1",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -26,8 +26,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_cb20a68a-b5c5-46fb-a43f-c8eb95f2dc98",
-    "createdAt": "2026-05-14T02:08:48.454Z"
+    "id": "dlg_audit_d67a96bd-dc76-4489-a0bb-5b9638000594",
+    "createdAt": "2026-05-14T03:32:25.599Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -43,12 +43,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_b5461d35-ea09-4363-9505-926ae4c228f7",
-    "createdAt": "2026-05-14T02:08:48.455Z"
+    "id": "dlg_audit_b877b450-3423-4f8f-8101-224f4da22eaa",
+    "createdAt": "2026-05-14T03:32:25.601Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_92f27944-b745-498d-8809-20e6c2045fe6",
+    "delegationId": "dlg_6bbd872c-59e2-47ef-847e-ad2b93945de5",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -56,128 +56,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8bdcd82b-98ea-463c-9d5a-74e3115e7450",
-    "createdAt": "2026-05-14T02:08:48.455Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_0fbbc27e-fa0e-4fdd-98d9-b84286e56c0f",
-    "createdAt": "2026-05-14T02:08:48.455Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_c5d0b69a-b010-490b-90c4-d03fea0e7b09",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b4610b6a-8446-4143-ada5-daffde7f00d7",
-    "createdAt": "2026-05-14T02:08:48.455Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_0316a3c7-553e-4750-b213-72829b591ecc",
-    "createdAt": "2026-05-14T02:08:48.456Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_06bc6f05-c56e-42b1-bb40-e2317e543260",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_63eb8bf2-0a00-42fe-a143-506ded47ef38",
-    "createdAt": "2026-05-14T02:08:48.456Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_88d9857b-8262-4c37-b9b4-176069b4cbd4",
-    "createdAt": "2026-05-14T02:08:48.456Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_e8fbea6e-9c69-419f-b907-fd784eb99ba0",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_1118d19b-f2a5-4b98-a995-0b622a9f6564",
-    "createdAt": "2026-05-14T02:08:48.456Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_2b12f627-f7f1-433e-b1d4-745dcd180772",
-    "createdAt": "2026-05-14T02:08:48.457Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_fe3a66e6-5574-4a03-a718-d5ae247efc6d",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_5f056f42-8303-40a3-98fa-3a74c33c88cd",
-    "createdAt": "2026-05-14T02:08:48.457Z"
+    "id": "dlg_audit_88027158-3901-4a8e-b602-19100edd01a2",
+    "createdAt": "2026-05-14T03:32:25.601Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -193,12 +73,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8c5253cb-bc4e-4f3c-9530-d705d4a59562",
-    "createdAt": "2026-05-14T02:08:48.457Z"
+    "id": "dlg_audit_bcf1cd23-b3ed-4564-8231-beb2ce804cb8",
+    "createdAt": "2026-05-14T03:32:25.601Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_1cbe8191-3308-47ad-8d94-3f91bcb7ec00",
+    "delegationId": "dlg_1f2f40d8-20e3-4045-8994-c8d8344da4f7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -206,8 +86,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ce328b84-fce4-4b69-b138-359db1268620",
-    "createdAt": "2026-05-14T02:08:48.457Z"
+    "id": "dlg_audit_a209e62e-2ea6-4223-bab0-6fb1ceb34221",
+    "createdAt": "2026-05-14T03:32:25.602Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -223,12 +103,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a305351c-939d-4e64-b351-a46135cdda2e",
-    "createdAt": "2026-05-14T02:08:48.457Z"
+    "id": "dlg_audit_ee29c90f-7289-460c-a4c3-3a24abc5b2dc",
+    "createdAt": "2026-05-14T03:32:25.602Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_63217ff7-0511-479a-95ae-1bf10a32a019",
+    "delegationId": "dlg_493f6283-c625-4f7a-a396-f3d956d79afd",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -236,263 +116,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_60733d4e-92a7-425c-99b9-e4a18372d14e",
-    "createdAt": "2026-05-14T02:08:48.457Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_54cf74f7-8862-4f52-9788-05edc42d87fa",
-    "createdAt": "2026-05-14T02:08:48.458Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_f66d1890-b59c-4c75-bed4-8f7da817289e",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_dd789688-9d03-4bad-aeb8-ab29306640f7",
-    "createdAt": "2026-05-14T02:08:48.458Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "child-1",
-    "childAgentId": "grandchild-1",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "child-1",
-    "actorType": "agent",
-    "id": "dlg_audit_3a149e11-0cf1-4da5-9ad0-70a8a21212cb",
-    "createdAt": "2026-05-14T02:08:48.458Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_43c161c1-467b-4d77-9b42-b8b4cf7574a3",
-    "parentAgentId": "child-1",
-    "childAgentId": "grandchild-1",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "child-1",
-    "actorType": "agent",
-    "id": "dlg_audit_712fd400-1dd7-48ef-ade5-d73228081248",
-    "createdAt": "2026-05-14T02:08:48.458Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_34d710fe-f35f-4da2-80cd-3e71f768fee6",
-    "createdAt": "2026-05-14T02:08:48.459Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_8d6d51de-032b-433c-8173-34517255139e",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_5f62736c-c3fb-4414-bf37-90fa3dbfab49",
-    "createdAt": "2026-05-14T02:08:48.459Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_352473a2-ad05-4139-b6be-a1eb6e344361",
-    "createdAt": "2026-05-14T02:08:48.459Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_f38119df-d00d-4480-8d32-2f5f169c987d",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_bd781dcd-819b-446d-af6c-44e58edfbea7",
-    "createdAt": "2026-05-14T02:08:48.462Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_ee6a5aad-82b3-4222-b9e1-99b99a489f48",
-    "createdAt": "2026-05-14T02:08:48.462Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_01aed978-3bb6-4056-bfea-c87d4f6d9949",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_48a702c2-1c26-4fac-a946-311d85b70b88",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_af2ddc29-8b1e-40ed-9d1f-716ab75eaaf9",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_9fc55e44-8a31-4d0a-8086-1b0a5518a24c",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_330cf4ff-e627-4bac-b090-c1a503394e1a",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.failed",
-    "delegationId": "dlg_01aed978-3bb6-4056-bfea-c87d4f6d9949",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 0,
-    "reasonCode": "delegation.failed",
-    "metadata": {
-      "error": "test error"
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_fccdb309-5d21-4115-a58c-fe0d7e2faccc",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_e6fe34d9-251e-46ee-9866-a7409ef2b056",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_590a5fc2-ad35-4028-a642-f0ba413ddfcf",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_a5cfc261-7134-46df-ba68-76a67f231904",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_f1eae1e7-4997-4e94-9041-64abb587dbc7",
-    "createdAt": "2026-05-14T02:08:48.463Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_a9b94176-4794-4173-b2e1-00906df1d3c7",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_043e54ea-eeef-4a2b-8c03-8e942f146fdf",
-    "createdAt": "2026-05-14T02:08:48.463Z"
+    "id": "dlg_audit_dcf5afa8-c1ba-4ffd-b990-2b73f29fd62c",
+    "createdAt": "2026-05-14T03:32:25.603Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -508,12 +133,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_82be8e17-9aef-4f25-a546-e80e4dbc366c",
-    "createdAt": "2026-05-14T02:08:48.464Z"
+    "id": "dlg_audit_5578d5a2-7ea3-4dfd-92a8-6fc5cba1e65a",
+    "createdAt": "2026-05-14T03:32:25.604Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_9ead952a-93ea-470f-98e9-77dc9365fa9e",
+    "delegationId": "dlg_9242aca0-e662-4424-89d9-50b20c88cdc7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -521,8 +146,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7f4be234-542b-4647-9140-a08efba78879",
-    "createdAt": "2026-05-14T02:08:48.464Z"
+    "id": "dlg_audit_141aad3a-3930-410d-bc7c-03d276abc4f8",
+    "createdAt": "2026-05-14T03:32:25.605Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -538,12 +163,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_54f9be08-85a8-4a21-bad9-fc7b156f51cb",
-    "createdAt": "2026-05-14T02:08:48.464Z"
+    "id": "dlg_audit_513d8af5-aa41-430d-92a4-8661f95bd881",
+    "createdAt": "2026-05-14T03:32:25.606Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_27796ac0-a988-4560-96cc-0d016e25bf18",
+    "delegationId": "dlg_13ccbbae-a4a9-4500-8351-484b3cc0f3a3",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -551,295 +176,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_67e57c2f-67df-4770-9cab-9a0f0ccefd55",
-    "createdAt": "2026-05-14T02:08:48.464Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_03b52763-a0fb-4207-8b39-1c4b6dba7882",
-    "createdAt": "2026-05-14T02:08:48.464Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_9458166e-53c4-4582-acb9-408572931bc9",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_f4f936a4-39e5-430b-b509-87dfc54853f4",
-    "createdAt": "2026-05-14T02:08:48.464Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_38827cac-dd36-4aa7-b807-ced0559743b8",
-    "createdAt": "2026-05-14T02:08:48.464Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_c2a3445f-c7c7-4afd-b2ef-683ea4132015",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_a041eb9f-b7b0-4538-acd1-2dfdd35a57ca",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_ef25e01c-c09f-448a-8dc5-78670eeb3f47",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_b2c78c32-30f2-46ed-b224-e333b8599bc3",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_cfb9aec8-7469-47d2-b636-4dbb4ee08ce5",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_5d47b5c0-b61b-4a15-abad-d69040ba7134",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_a504ba6a-c523-484e-8871-f4b144037dfa",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_221fe534-3cba-4cb2-9709-2e6a65b927df",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b9d6a692-d84c-4bef-bd02-a00b253fcb9a",
-    "createdAt": "2026-05-14T02:08:48.465Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c4d39a60-fbe8-44cc-ab41-a6b5452d9f05",
-    "createdAt": "2026-05-14T02:08:48.466Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_11dbf8ac-9d7a-48bc-ba19-7db686deffca",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_7dacc586-5818-4fd7-89b4-bbdc7a43848d",
-    "createdAt": "2026-05-14T02:08:48.466Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_8809b0c9-240e-40d6-89a4-6efea8fdd2f6",
-    "createdAt": "2026-05-14T02:08:48.467Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_f717707e-15ec-45f4-a383-6e3fe097b3d8",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_d89aa032-8663-458c-8a16-9888f6fbd6f4",
-    "createdAt": "2026-05-14T02:08:48.468Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_8f571515-d60a-4d98-8fc7-97bdbdc8ca0b",
-    "createdAt": "2026-05-14T02:08:48.478Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_eb68554e-b286-473d-b154-419c115e806e",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_08c9ca73-e1da-40e9-9a10-ad13c9ee59a0",
-    "createdAt": "2026-05-14T02:08:48.478Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_5a57e2f4-cc2f-486c-9cc0-5f54938a355f",
-    "createdAt": "2026-05-14T02:08:48.478Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_d06cef30-e697-4cc5-a8ea-403fd37ad031",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_6d016b83-dd87-4693-9bb2-68e0465fff2c",
-    "createdAt": "2026-05-14T02:08:48.478Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_35239294-c0ad-49ce-91b7-822163b11e18",
-    "createdAt": "2026-05-14T02:08:48.503Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_d946856c-ac2a-45da-9407-e35967994d11",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_8ed1bf94-46f6-4d86-b50e-72db7ff33eaf",
-    "createdAt": "2026-05-14T02:08:48.506Z"
+    "id": "dlg_audit_022a160c-0d37-4b98-a59d-158503660f1c",
+    "createdAt": "2026-05-14T03:32:25.606Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -855,8 +193,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2663c896-11c4-4583-86d6-0d1c576746c3",
-    "createdAt": "2026-05-14T02:08:48.507Z"
+    "id": "dlg_audit_c02515d8-4459-4d69-abec-19f3309c74a6",
+    "createdAt": "2026-05-14T03:32:25.607Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -872,14 +210,44 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8e4084d6-a48e-4135-9988-e81c35fc9e65",
-    "createdAt": "2026-05-14T02:08:48.507Z"
+    "id": "dlg_audit_7fe39635-0766-4898-aa32-139641f9fd6d",
+    "createdAt": "2026-05-14T03:32:25.607Z"
   },
   {
     "eventType": "delegation.governance.approved",
     "delegationId": null,
     "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_a6917b40-69b2-4d2f-9288-eb9917ae7b4e",
+    "createdAt": "2026-05-14T03:32:25.608Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_776a6e20-3ac7-4d41-9722-efba6866ca84",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_c2cca09f-1e61-4afd-bc7b-80165bcffa6d",
+    "createdAt": "2026-05-14T03:32:25.608Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "child-agent",
+    "childAgentId": "grandchild-1",
     "depth": 2,
     "reasonCode": "delegation.allowed",
     "metadata": {
@@ -887,30 +255,30 @@
         "allow_default"
       ]
     },
-    "actorId": "parent-agent",
+    "actorId": "child-agent",
     "actorType": "agent",
-    "id": "dlg_audit_998f6547-50c5-4309-b421-5e32944d1556",
-    "createdAt": "2026-05-14T02:08:48.508Z"
+    "id": "dlg_audit_96bb9e24-a920-4989-8284-5ce9c72754d9",
+    "createdAt": "2026-05-14T03:32:25.608Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_4fdad11e-be8b-42a6-95ca-5cda0f19401b",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
+    "delegationId": "dlg_3ad99edd-5da4-4b28-9c24-aca767b7be6b",
+    "parentAgentId": "child-agent",
+    "childAgentId": "grandchild-1",
     "depth": 2,
     "reasonCode": "delegation.allowed",
     "metadata": {},
-    "actorId": "parent-agent",
+    "actorId": "child-agent",
     "actorType": "agent",
-    "id": "dlg_audit_f86e08a4-4ee8-4c85-9187-c7c4c076618d",
-    "createdAt": "2026-05-14T02:08:48.508Z"
+    "id": "dlg_audit_05fe7cb6-1709-44a2-8c05-a750a98a0c1b",
+    "createdAt": "2026-05-14T03:32:25.608Z"
   },
   {
     "eventType": "delegation.governance.approved",
     "delegationId": null,
     "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 2,
+    "childAgentId": "child-agent",
+    "depth": 4,
     "reasonCode": "delegation.allowed",
     "metadata": {
       "evaluatedRules": [
@@ -919,8 +287,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_51cf3077-9e32-4bba-bda2-b40ab7360986",
-    "createdAt": "2026-05-14T02:08:48.508Z"
+    "id": "dlg_audit_aca2d1ac-eeeb-4895-b33f-0e9658cbdafb",
+    "createdAt": "2026-05-14T03:32:25.609Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -936,12 +304,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_360327a9-746d-45e3-9ac9-48b4b86014fc",
-    "createdAt": "2026-05-14T02:08:48.508Z"
+    "id": "dlg_audit_c2825baa-84b8-46f7-a4a8-5d9525a063f6",
+    "createdAt": "2026-05-14T03:32:25.609Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_92b9ff7f-68fb-44ab-a46c-22002398dfbb",
+    "delegationId": "dlg_998b9d77-9a48-49ad-8376-eb79cc0d5432",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -949,8 +317,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_3b743507-9226-4c45-aec8-b05deab09c58",
-    "createdAt": "2026-05-14T02:08:48.508Z"
+    "id": "dlg_audit_410c89f3-b4ed-4cdb-85ca-205508b53d10",
+    "createdAt": "2026-05-14T03:32:25.610Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -966,12 +334,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5e668288-3ef5-441f-b780-681f084c363d",
-    "createdAt": "2026-05-14T02:08:48.509Z"
+    "id": "dlg_audit_3b5b3618-5a5b-4da4-aa80-7e07175127e7",
+    "createdAt": "2026-05-14T03:32:25.610Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_f6f88724-3495-4833-ba88-75345ffbcac4",
+    "delegationId": "dlg_75c17e7d-179d-4bf6-8878-1cfe8c10adef",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -979,42 +347,12 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_85ad2681-5cdf-4607-a7bd-197fde728224",
-    "createdAt": "2026-05-14T02:08:48.509Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4b194850-70f2-42dc-9651-46af09e36461",
-    "createdAt": "2026-05-14T02:08:48.511Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_04407c02-48f2-4f39-a0ac-fa677904b3a6",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_d17e7621-f131-4316-9a93-7e9c648b2c5c",
-    "createdAt": "2026-05-14T02:08:48.512Z"
+    "id": "dlg_audit_cdac64c3-334c-44bc-98d2-6d50969c80b7",
+    "createdAt": "2026-05-14T03:32:25.611Z"
   },
   {
     "eventType": "delegation.failed",
-    "delegationId": "dlg_04407c02-48f2-4f39-a0ac-fa677904b3a6",
+    "delegationId": "dlg_75c17e7d-179d-4bf6-8878-1cfe8c10adef",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 0,
@@ -1024,8 +362,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_d93a4b05-d2db-4114-8033-bba372735d23",
-    "createdAt": "2026-05-14T02:08:48.512Z"
+    "id": "dlg_audit_db2c6899-3a7c-4176-87d6-550e1c39dbd1",
+    "createdAt": "2026-05-14T03:32:25.611Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -1041,12 +379,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0dae77b7-14c8-445d-a326-c6adb52dbaee",
-    "createdAt": "2026-05-14T02:08:48.512Z"
+    "id": "dlg_audit_b450437f-47b1-49b2-a5bd-5b10523c56a6",
+    "createdAt": "2026-05-14T03:32:25.611Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_19f3a505-1fb3-4748-a149-9e91bf0b2685",
+    "delegationId": "dlg_8a22e795-4b35-4b4f-996b-3761bad643de",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -1054,8 +392,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ca7ab165-b059-4fb4-8d5f-686f1f25de58",
-    "createdAt": "2026-05-14T02:08:48.512Z"
+    "id": "dlg_audit_a2b2e8fc-1fbf-4dc4-b0eb-59927172691b",
+    "createdAt": "2026-05-14T03:32:25.611Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -1071,12 +409,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_644dfa6a-6b14-4a74-91d0-ff56df11678b",
-    "createdAt": "2026-05-14T02:08:48.513Z"
+    "id": "dlg_audit_8619aa7f-1a94-44bc-8b59-1b56db540a13",
+    "createdAt": "2026-05-14T03:32:25.612Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_c2b2ac13-f690-4c2e-9ac9-b44f2a49b3b7",
+    "delegationId": "dlg_784e64c5-fd2f-435c-92b2-cc0cf1f525fc",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -1084,8 +422,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e55c8c5a-0d1b-4c95-8611-d667e43ac531",
-    "createdAt": "2026-05-14T02:08:48.513Z"
+    "id": "dlg_audit_3a2241a4-1037-477c-92d7-782ec43fe501",
+    "createdAt": "2026-05-14T03:32:25.612Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -1101,12 +439,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_892970d0-93e3-400f-af66-36d32c1cf5f4",
-    "createdAt": "2026-05-14T02:08:48.513Z"
+    "id": "dlg_audit_5cbe03b3-19b0-4ce4-8a45-33326ab1cef7",
+    "createdAt": "2026-05-14T03:32:25.612Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3caabda7-87bd-418b-9a4d-0adb08bb3381",
+    "delegationId": "dlg_b1c99b38-4b3b-419b-94b4-235909df6e07",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -1114,1149 +452,12 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6c971ac0-7471-4031-87ab-6933632671a1",
-    "createdAt": "2026-05-14T02:08:48.514Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_fb881ebb-04ab-4c59-abbe-807cb7ab5f7f",
-    "createdAt": "2026-05-14T02:08:48.514Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_4f0d12a8-0eb4-4f3f-af43-ad3da77859ed",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_48db5427-b777-4f01-887a-5cda81d0b60f",
-    "createdAt": "2026-05-14T02:08:48.514Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_9f694815-e44b-41a2-b840-97291f1831a9",
-    "createdAt": "2026-05-14T02:08:48.515Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_4b51a11f-51a2-4258-a6f0-4391b879b712",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4133e783-0434-42d8-b21e-fb41364c22c1",
-    "createdAt": "2026-05-14T02:08:48.515Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_58c7a0b5-1fc6-457b-ab3f-180f75f1414b",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_32e10b68-1f51-4bc1-b067-b6585ecd32a2",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_2ae7475b-ea96-4670-b16b-4384bc1fde70",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_6dcf7042-9e8b-4c45-9462-cfe9327b7898",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_1b521a53-aa89-4403-b617-bb70d08ca191",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_0ba69e73-47f1-4e44-a1fd-7e569cab678e",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4c7eca9b-13fc-494c-afef-8b2bc8fc16a3",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b57c5388-9e47-48ce-87fd-a63c038566c0",
-    "createdAt": "2026-05-14T02:08:48.516Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_122b65cd-0a44-4c8a-9805-5047005752b4",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_06ac011e-17fb-46ae-8a5c-d1592f0de5ff",
-    "createdAt": "2026-05-14T02:08:48.517Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_188fcd18-be77-4d31-ac24-b241e176b054",
-    "createdAt": "2026-05-14T02:08:48.517Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_b29e9b04-8c68-4b56-96c1-06937c036c5d",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_00278634-cead-4562-9d26-c291e86142b5",
-    "createdAt": "2026-05-14T02:08:48.517Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_94ac7e27-a844-44f3-ac82-bd95098c9bbf",
-    "createdAt": "2026-05-14T02:08:48.517Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_8734ba4d-3ee7-4211-b00a-345fd8aef906",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_12f0be54-b312-47db-b447-213b7002e846",
-    "createdAt": "2026-05-14T02:08:48.517Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_7df8d6eb-37d7-4c65-8ad5-927b33b44771",
-    "createdAt": "2026-05-14T02:08:48.518Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_2772e906-3710-4c88-a591-72be62adf316",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_1bb02781-f03c-4d12-9fa1-c23c10d1052d",
-    "createdAt": "2026-05-14T02:08:48.518Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_89f4b76f-3ac2-48ee-a695-d6df7b85cf7d",
-    "createdAt": "2026-05-14T02:08:48.518Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_2d93c129-29fa-4575-b98b-8956c8bdbfff",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_dcfc1bb1-4dda-4098-8603-3e36d4fedd3e",
-    "createdAt": "2026-05-14T02:08:48.518Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_fb60ca38-4b13-426d-8f49-34d114e7c79d",
-    "createdAt": "2026-05-14T02:08:48.529Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_9639738b-10f1-429b-a05c-3630f1f8751a",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4ac055fb-ea58-4bfb-af8b-91f315ddd6bb",
-    "createdAt": "2026-05-14T02:08:48.529Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4b5d3f46-69e7-4bd8-b32b-fe26d4291ab2",
-    "createdAt": "2026-05-14T02:08:48.529Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_f473df3f-6fde-4717-8e8f-e952d93aab47",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_51c14cae-7b30-4584-a91f-4c93af7452f8",
-    "createdAt": "2026-05-14T02:08:48.529Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b16a9c32-72a8-4028-813c-1d6da366f8be",
-    "createdAt": "2026-05-14T02:08:48.541Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_a64468db-439e-416f-a645-ac7279c19d77",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_917b30d6-0023-489b-aef8-551c1953dcd4",
-    "createdAt": "2026-05-14T02:08:48.541Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_86425d01-e654-4eff-b600-d7094926f56b",
-    "createdAt": "2026-05-14T02:08:48.541Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_be215d46-e76f-4fa0-b87b-68639e3d0e41",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_a98cb37f-59e4-4d84-a0f0-a934f469d412",
-    "createdAt": "2026-05-14T02:08:48.541Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-0",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b40c723b-748c-4b10-9fe1-3dd63afd6990",
-    "createdAt": "2026-05-14T02:08:48.553Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_3e0ca901-1385-4359-8a4b-ae2ba52e62d6",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-0",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_e187e6d5-0a6a-4172-87f5-94cda8322d31",
-    "createdAt": "2026-05-14T02:08:48.553Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_74dd6ef7-9ad0-4526-afa5-1f3162493a9e",
-    "createdAt": "2026-05-14T02:08:48.553Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_97a39508-28e7-4c3e-83f4-98f35c8fc2d8",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_19f1e81b-eab9-45b6-b705-732b325abbd1",
-    "createdAt": "2026-05-14T02:08:48.554Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c2f6b817-b84b-46d0-8df5-c667546ea479",
-    "createdAt": "2026-05-14T02:08:48.554Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_dbe186de-06ba-4486-bc60-5b571387a1f6",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c01a01d9-959e-44fd-b173-207c1de73513",
-    "createdAt": "2026-05-14T02:08:48.554Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-forever",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c4963f43-90a1-44c5-bfc9-b988dfc4dbff",
-    "createdAt": "2026-05-14T02:08:48.554Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_116b59c0-ea64-4eb5-9e85-b19e85042654",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-forever",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_426a9a2c-0bc8-4b87-b23e-6ea9ee12f4c6",
-    "createdAt": "2026-05-14T02:08:48.554Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_e44e89c8-f496-49b8-aead-1abb45e0b7a5",
-    "createdAt": "2026-05-14T02:08:48.566Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4a66af61-e6bb-4dcc-8b19-9d0a3707ac4c",
-    "createdAt": "2026-05-14T02:08:48.567Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_08e3465a-7d52-464a-bf59-0cc8b504b0f8",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_3e9e24de-21bd-416a-92dd-842d5286e017",
-    "createdAt": "2026-05-14T02:08:48.567Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "child-agent",
-    "childAgentId": "child-agent-2",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "child-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_6abf2409-3c2d-43ad-a75b-852948c33be0",
-    "createdAt": "2026-05-14T02:08:48.567Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_3945faf4-4446-4a9e-8f8f-34e5e01104e7",
-    "parentAgentId": "child-agent",
-    "childAgentId": "child-agent-2",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "child-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c4800d82-7706-42c3-9ede-6f10141d667e",
-    "createdAt": "2026-05-14T02:08:48.567Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "child-agent-2",
-    "childAgentId": "child-agent-3",
-    "depth": 3,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "child-agent-2",
-    "actorType": "agent",
-    "id": "dlg_audit_477c6a65-b0bd-4236-89db-f0a5d142607f",
-    "createdAt": "2026-05-14T02:08:48.568Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_1acb2ea3-f392-4b4f-8794-792e89765816",
-    "parentAgentId": "child-agent-2",
-    "childAgentId": "child-agent-3",
-    "depth": 3,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "child-agent-2",
-    "actorType": "agent",
-    "id": "dlg_audit_6b9ba60e-ce8f-46b0-9b8f-1fa2ab298254",
-    "createdAt": "2026-05-14T02:08:48.568Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "child-agent-3",
-    "childAgentId": "child-agent-4",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "child-agent-3",
-    "actorType": "agent",
-    "id": "dlg_audit_c234459f-4f9a-49e2-af33-f139506939b7",
-    "createdAt": "2026-05-14T02:08:48.568Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_11b29921-c388-4b70-a93d-a2140ccba68e",
-    "createdAt": "2026-05-14T02:08:58.526Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_0e6c2192-4504-451c-9171-c3d3733b8e1b",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_73c0fae7-f43d-42b0-bf1c-c8a182a5ea89",
-    "createdAt": "2026-05-14T02:08:58.527Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_012f51ad-696b-4a35-9355-cee4ecef441d",
-    "createdAt": "2026-05-14T02:25:18.524Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_db5a4f91-b6f9-4502-8cc3-1af307e437e7",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c7d4e767-0701-47c5-b347-1d8b8790ca20",
-    "createdAt": "2026-05-14T02:25:18.526Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_c14e3f78-c3e3-49ab-89f9-770a448577d8",
-    "createdAt": "2026-05-14T02:25:18.527Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_70aa8829-dc1b-4d3e-a0dd-d7ea1cf0bc76",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_95b1af61-99a1-4ad9-9d1e-77a205602084",
-    "createdAt": "2026-05-14T02:25:18.527Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_a2e1d430-2f29-4a8e-a984-f89c2f3bafd7",
-    "createdAt": "2026-05-14T02:25:18.527Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_8cce7897-4003-44b5-b1bd-276e7ffccd86",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_ad61cce5-6be4-40f7-ad03-bcf7d391963c",
-    "createdAt": "2026-05-14T02:25:18.527Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_29cd4fc8-92e1-425d-81cf-c65fa571d108",
-    "createdAt": "2026-05-14T02:25:18.528Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_bbae1b7f-b962-4d4a-8fc2-851a67e0a963",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_04117983-a262-47c1-9b74-50474862237d",
-    "createdAt": "2026-05-14T02:25:18.531Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b235b040-65a3-40da-a40e-8305359543ad",
-    "createdAt": "2026-05-14T02:25:18.531Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_774c0e08-638c-4de0-9efb-74e2339686cc",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_ee77df3d-5972-43be-afa3-28da67b8141f",
-    "createdAt": "2026-05-14T02:25:18.532Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_67ccd78c-22d1-4625-8b31-2665f16d133c",
-    "createdAt": "2026-05-14T02:25:18.532Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_8768bc1d-a676-40dd-8bd9-369aeb22b946",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_490f703f-cb86-4723-a937-3b7da0b3f137",
-    "createdAt": "2026-05-14T02:25:18.532Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 3,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_9e76eba1-fcda-4ae8-bbae-33a6c6a448df",
-    "createdAt": "2026-05-14T02:25:18.533Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_e610ef41-7b69-4ef9-b01c-ce7c8652dafa",
-    "createdAt": "2026-05-14T02:25:18.533Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_f18a19cf-4cc4-46da-acb2-9444374de84f",
-    "createdAt": "2026-05-14T02:25:18.534Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_24d4c5b5-c201-4f9d-9361-863d9fb4905a",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_63753b86-faed-498a-9d06-6ad23ec2bcf6",
-    "createdAt": "2026-05-14T02:25:18.534Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "child-agent",
-    "childAgentId": "grandchild-1",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "child-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_bd3fd189-7ee5-41f0-877a-d4c0829e10cc",
-    "createdAt": "2026-05-14T02:25:18.535Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_7a1f9f8a-6fc5-43f8-b996-47e20f451f81",
-    "parentAgentId": "child-agent",
-    "childAgentId": "grandchild-1",
-    "depth": 2,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "child-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_490eabbc-a6b2-4a68-9e4e-d08169aaf026",
-    "createdAt": "2026-05-14T02:25:18.535Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 4,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_e2323280-dd25-4488-abec-97868a016742",
-    "createdAt": "2026-05-14T02:25:18.535Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_8574ffd7-07c7-4db9-a5d3-bb44393f6089",
-    "createdAt": "2026-05-14T02:25:18.536Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_1e3ebea7-2fb8-4a55-bee7-f71849846099",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_b0e010b1-2fb5-4d63-8250-1d0d5812f00a",
-    "createdAt": "2026-05-14T02:25:18.537Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_1cba662f-2414-4f50-8b66-22092ece62b1",
-    "createdAt": "2026-05-14T02:25:18.537Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_0e481194-8a48-4372-8694-bb366f8a7fb3",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_432aee26-baf6-49b1-995a-2659f3aea3de",
-    "createdAt": "2026-05-14T02:25:18.537Z"
+    "id": "dlg_audit_70efca54-eee7-4f68-8339-9f7f378296d7",
+    "createdAt": "2026-05-14T03:32:25.613Z"
   },
   {
     "eventType": "delegation.failed",
-    "delegationId": "dlg_0e481194-8a48-4372-8694-bb366f8a7fb3",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 0,
-    "reasonCode": "delegation.failed",
-    "metadata": {
-      "error": "Test error"
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_60b34c80-f0ce-477f-b6e8-2f25b6cc3112",
-    "createdAt": "2026-05-14T02:25:18.538Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_fc352e16-91c7-4c25-997c-b398ecdb8257",
-    "createdAt": "2026-05-14T02:25:18.538Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_592c629b-466a-46a9-a31c-733a40decbbb",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_4c54d8de-7532-48bc-a3a7-8d3623425fad",
-    "createdAt": "2026-05-14T02:25:18.538Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_d8a03ece-c2b2-46e1-8a0b-75476044a38e",
-    "createdAt": "2026-05-14T02:25:18.538Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_bbafe356-feb5-4ce9-a5d7-e8f37117a7c4",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_bbfc056a-61a2-462f-8a61-60babc3bd5c8",
-    "createdAt": "2026-05-14T02:25:18.538Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_2c051664-ce3e-4e37-a93d-1dad5b14fa62",
-    "createdAt": "2026-05-14T02:25:18.539Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_ff0aad0d-a8db-4c74-a4d4-c4fed302fd5d",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-agent",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_fb04844e-44f9-453d-ab95-fbe8e67d3850",
-    "createdAt": "2026-05-14T02:25:18.539Z"
-  },
-  {
-    "eventType": "delegation.failed",
-    "delegationId": "dlg_ff0aad0d-a8db-4c74-a4d4-c4fed302fd5d",
+    "delegationId": "dlg_b1c99b38-4b3b-419b-94b4-235909df6e07",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 0,
@@ -2266,8 +467,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_18998608-a317-4d97-9532-8083a7da39f1",
-    "createdAt": "2026-05-14T02:25:18.539Z"
+    "id": "dlg_audit_a6b0457d-cfd3-4870-a8bd-0520bc71ea56",
+    "createdAt": "2026-05-14T03:32:25.613Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2283,12 +484,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_f7bfe969-9356-4d54-a81e-a83016505d39",
-    "createdAt": "2026-05-14T02:25:18.539Z"
+    "id": "dlg_audit_6e58c49e-4e46-4372-89c4-e53dd0251ed3",
+    "createdAt": "2026-05-14T03:32:25.613Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_1531993c-c28a-463f-91bf-a40b3027c4fe",
+    "delegationId": "dlg_a462da2b-1055-453e-8d37-d4d85c0f2853",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -2296,8 +497,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_88642c28-6463-4654-a7ea-65a12b64652e",
-    "createdAt": "2026-05-14T02:25:18.539Z"
+    "id": "dlg_audit_b1f3a664-0417-41ab-ba37-c01196d1c6ce",
+    "createdAt": "2026-05-14T03:32:25.613Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2313,12 +514,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0c6bdcf7-14e9-4a23-b9c4-dfcb6e019f50",
-    "createdAt": "2026-05-14T02:25:18.541Z"
+    "id": "dlg_audit_c06d8ca4-86d1-4156-b8cd-e3e687d54c5d",
+    "createdAt": "2026-05-14T03:32:25.615Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_5da8b816-f738-4d69-9b58-16df9fbb8bd3",
+    "delegationId": "dlg_e697f39b-50d3-4b5c-b254-bd94e0515068",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -2326,8 +527,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_1a5dc108-a583-4bb6-aad9-4633f59d2a62",
-    "createdAt": "2026-05-14T02:25:18.541Z"
+    "id": "dlg_audit_c1071049-bb3c-444d-acdf-b712820d3296",
+    "createdAt": "2026-05-14T03:32:25.615Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2343,12 +544,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8d035e0e-799d-48d9-afc7-7c327a83fd45",
-    "createdAt": "2026-05-14T02:25:18.543Z"
+    "id": "dlg_audit_0e7a9075-ec86-4737-9cd3-03ed4ef2e21a",
+    "createdAt": "2026-05-14T03:32:25.615Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_9e5151d5-44a5-47c4-9f1a-eaa562619331",
+    "delegationId": "dlg_e63c9432-078d-47ea-b9bc-2449f7aa1db8",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -2356,8 +557,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_f73f4f49-3e92-4761-8153-a6ef9155e959",
-    "createdAt": "2026-05-14T02:25:18.543Z"
+    "id": "dlg_audit_a58db60b-4e55-46d0-a8b6-e79df02f5c5b",
+    "createdAt": "2026-05-14T03:32:25.616Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2373,12 +574,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_b2e219cb-c99e-4556-b2b5-d0d93b1a7216",
-    "createdAt": "2026-05-14T02:25:18.557Z"
+    "id": "dlg_audit_9ec7ae88-fa72-4617-a08c-48f138e3ffc5",
+    "createdAt": "2026-05-14T03:32:25.625Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_17c7b9ac-3372-4243-9e01-e94086fe05ea",
+    "delegationId": "dlg_891057a2-32b0-4d53-b53c-81bff3dd2686",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -2386,8 +587,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_64baa43e-335d-4b6a-81b8-06a6118994c9",
-    "createdAt": "2026-05-14T02:25:18.558Z"
+    "id": "dlg_audit_d2bbc722-9595-4b85-802d-5e39af30930e",
+    "createdAt": "2026-05-14T03:32:25.626Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2403,12 +604,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_550906d5-ae79-46ef-9147-bc4a10a604e9",
-    "createdAt": "2026-05-14T02:25:18.568Z"
+    "id": "dlg_audit_d948ad17-e01b-4d42-ab1b-f1daab5ad08d",
+    "createdAt": "2026-05-14T03:32:25.637Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_75ccf66a-a7d8-45be-b415-d72da339bf61",
+    "delegationId": "dlg_cd4088fa-c484-49a0-9251-cd5a4ffabe13",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2416,8 +617,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ec676f50-1eb6-4266-9faa-73c61c434f71",
-    "createdAt": "2026-05-14T02:25:18.568Z"
+    "id": "dlg_audit_5821878c-484b-44b9-b444-ece302358c1e",
+    "createdAt": "2026-05-14T03:32:25.638Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2433,12 +634,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_147f7914-4c6d-4c58-b2b3-f9d139884c88",
-    "createdAt": "2026-05-14T02:25:18.569Z"
+    "id": "dlg_audit_17c5d947-ad5d-4ca5-a5d9-ec3e7f5a5af5",
+    "createdAt": "2026-05-14T03:32:25.638Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_5b676c25-4eca-4609-b401-3c48d5c12bc6",
+    "delegationId": "dlg_5b8b250c-94fc-4fc6-bcb8-0f0e9fc865e3",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2446,8 +647,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_d0570e60-d7b0-4551-86a9-3b6798ba7300",
-    "createdAt": "2026-05-14T02:25:18.569Z"
+    "id": "dlg_audit_8144f7b6-323d-47f1-8fae-6396a3610520",
+    "createdAt": "2026-05-14T03:32:25.638Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2463,12 +664,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e0bd2370-ddd4-48ab-a183-b384867e87b7",
-    "createdAt": "2026-05-14T02:25:18.581Z"
+    "id": "dlg_audit_eefd89f4-37e8-4f67-9e47-92895454caf5",
+    "createdAt": "2026-05-14T03:32:25.651Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_e94c1673-fe13-4f34-ba3d-10428dbea37a",
+    "delegationId": "dlg_4402dcef-5b2e-41fb-bf21-093e829728f6",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-0",
     "depth": 1,
@@ -2476,8 +677,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_d7284d08-e3ba-42a3-9097-1bae37410e8c",
-    "createdAt": "2026-05-14T02:25:18.581Z"
+    "id": "dlg_audit_08aab99b-fc52-4f1a-99ec-ac4cfbb85c8e",
+    "createdAt": "2026-05-14T03:32:25.651Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2493,12 +694,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5db7ee82-039a-4bf2-8b2d-cc9ad97775e2",
-    "createdAt": "2026-05-14T02:25:18.581Z"
+    "id": "dlg_audit_8a9b4d5b-d9a9-457d-bde0-ab3e00682e4f",
+    "createdAt": "2026-05-14T03:32:25.651Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_163eea64-bd51-4f8a-bd89-0b0f88ff9b5b",
+    "delegationId": "dlg_74bda847-33d3-4cba-92c9-1281b9525301",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2506,8 +707,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_92637fa5-969f-4588-81a7-be086cbdf826",
-    "createdAt": "2026-05-14T02:25:18.581Z"
+    "id": "dlg_audit_d1e1fc84-965b-420d-bda2-76e9bbe07eaa",
+    "createdAt": "2026-05-14T03:32:25.651Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2523,12 +724,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2dfc0118-a7ad-4f04-8506-84a91d034b14",
-    "createdAt": "2026-05-14T02:25:18.581Z"
+    "id": "dlg_audit_634b2fc1-91c2-4f1a-9825-d0ad1cca9f6f",
+    "createdAt": "2026-05-14T03:32:25.652Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_a3420a5c-31c3-4db1-bf8e-cfc62d68864f",
+    "delegationId": "dlg_47e8a96f-42eb-4e8a-916e-375ac8a4ee47",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2536,8 +737,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c8560881-8b38-4c45-a774-1ee2153d3d8b",
-    "createdAt": "2026-05-14T02:25:18.582Z"
+    "id": "dlg_audit_88e991de-45a5-4a6c-ac1b-59936cb0dab4",
+    "createdAt": "2026-05-14T03:32:25.652Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2553,12 +754,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a1d567c0-7e1a-4b78-8847-3bbfe3cbac8b",
-    "createdAt": "2026-05-14T02:25:18.582Z"
+    "id": "dlg_audit_6f1b0c45-6e19-47d4-8485-2a73a5a7cb45",
+    "createdAt": "2026-05-14T03:32:25.652Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_6230ba7b-6700-454b-9e8e-9ee1ab69733e",
+    "delegationId": "dlg_f1c88bf4-c230-4dff-9405-89cc7ca66426",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-forever",
     "depth": 1,
@@ -2566,8 +767,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_f2b721b4-b320-447f-8cbf-b2addb83a8ad",
-    "createdAt": "2026-05-14T02:25:18.582Z"
+    "id": "dlg_audit_b2a95153-3c68-4829-b60e-86b86161b93b",
+    "createdAt": "2026-05-14T03:32:25.652Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2583,12 +784,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7ceb9997-c89c-4640-8dd1-a96c248047b1",
-    "createdAt": "2026-05-14T02:25:18.593Z"
+    "id": "dlg_audit_a32738f0-62a8-4471-ae89-d7ab447a225a",
+    "createdAt": "2026-05-14T03:32:25.665Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_05b2caf4-d9dc-4d70-87a2-9b992cdaf4d9",
+    "delegationId": "dlg_5d8f2ffd-6280-4be7-9538-dfafb81d692e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2596,8 +797,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_44975fcb-a167-4b87-82f9-e6e491e99b80",
-    "createdAt": "2026-05-14T02:25:18.594Z"
+    "id": "dlg_audit_828a5ab7-6575-41a1-bac7-d49f87158b41",
+    "createdAt": "2026-05-14T03:32:25.666Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2613,12 +814,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_aaa83855-6dff-4c6f-a041-5ea65800615e",
-    "createdAt": "2026-05-14T02:25:18.605Z"
+    "id": "dlg_audit_0948308d-ae27-4a42-99e2-eea2c7e0749e",
+    "createdAt": "2026-05-14T03:32:25.680Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_6fdb9c8c-49a7-4f04-879d-0a73c59c7d4b",
+    "delegationId": "dlg_94d90329-0c28-471c-8cc3-eb968e3f1446",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2626,8 +827,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9da4f10f-a708-4dad-9889-56c7183d97ff",
-    "createdAt": "2026-05-14T02:25:18.605Z"
+    "id": "dlg_audit_03691f3a-e872-4e10-9f05-3f34be46f316",
+    "createdAt": "2026-05-14T03:32:25.681Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2643,12 +844,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ff43fcdb-0210-4706-a4a7-7ffb8cba01ac",
-    "createdAt": "2026-05-14T02:25:18.605Z"
+    "id": "dlg_audit_00e1ea59-1ecc-46ac-8197-1d0b145ac162",
+    "createdAt": "2026-05-14T03:32:25.681Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_755ba20a-f7a2-4694-8342-039901a24903",
+    "delegationId": "dlg_d08872b6-a770-4932-903f-9ae72bcfeba5",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2656,8 +857,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a150a792-ef9b-46d1-85aa-2ad61a46255f",
-    "createdAt": "2026-05-14T02:25:18.605Z"
+    "id": "dlg_audit_31c9465f-36c5-4e99-884f-9c2f3879e5d9",
+    "createdAt": "2026-05-14T03:32:25.682Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2673,12 +874,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ca546f29-0b90-4a04-a360-2d62a9052dcb",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_ef20feef-49f7-469c-a26c-b7fa9575e66c",
+    "createdAt": "2026-05-14T03:32:25.683Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3c62a144-fe82-43d9-b3d6-4dabe6718422",
+    "delegationId": "dlg_bf365388-c8db-4685-b961-0a8a5d2188f5",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-exclude-1",
     "depth": 1,
@@ -2686,8 +887,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_1a18cdfa-1e4b-4f89-afa1-f4af78e5ea71",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_23af389c-1d1a-4d99-93d7-57fe97ef155b",
+    "createdAt": "2026-05-14T03:32:25.683Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2703,12 +904,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_fe28139d-8341-481d-ab7d-ddf90db3b241",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_b005dcf9-8af3-4a57-8237-a14388379357",
+    "createdAt": "2026-05-14T03:32:25.684Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_b0b83a67-d10d-4041-b5a5-d409f82f77d4",
+    "delegationId": "dlg_bc02b914-676e-4905-9ade-5ca4ea194e7e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-exclude-2",
     "depth": 1,
@@ -2716,8 +917,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0454e590-23ad-45ad-bcb4-0980aed1ed88",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_c7dea0e1-8dd3-4393-bda7-ac8ce2d3d7f5",
+    "createdAt": "2026-05-14T03:32:25.684Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2733,12 +934,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_02dc4be2-a2b0-410f-b202-46adfdad6982",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_df663b68-c1c8-41b2-96bd-ae7443b09554",
+    "createdAt": "2026-05-14T03:32:25.684Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_67683142-3b1f-4c52-ab9d-05a92885886c",
+    "delegationId": "dlg_5bd59b22-68cc-4ad6-b3ff-3484eea2a4d8",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2746,8 +947,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a4e026c4-5190-4c02-8e9b-f9dafad1e893",
-    "createdAt": "2026-05-14T02:25:18.606Z"
+    "id": "dlg_audit_018f3348-881a-491d-9505-481fa9365423",
+    "createdAt": "2026-05-14T03:32:25.684Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2763,12 +964,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_38e2186e-6a7f-44a5-bec2-89e0eb19ff8d",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_7e638fde-2664-417c-b7a2-a2d1dbd77cac",
+    "createdAt": "2026-05-14T03:32:25.684Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3f581222-5f38-4b90-a31b-6877b443ae4e",
+    "delegationId": "dlg_ec6936a6-999d-4149-9eae-81bc584aee59",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2776,12 +977,12 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_bc9e7e28-ff8e-41e9-a43d-3a4877305277",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_6540cffe-8dab-4f4c-8daa-66b0c5c58c03",
+    "createdAt": "2026-05-14T03:32:25.685Z"
   },
   {
     "eventType": "delegation.failed",
-    "delegationId": "dlg_67683142-3b1f-4c52-ab9d-05a92885886c",
+    "delegationId": "dlg_5bd59b22-68cc-4ad6-b3ff-3484eea2a4d8",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 0,
@@ -2791,8 +992,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8b672155-ea8f-4229-ac46-b575b76f3f88",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_61c5fd40-1e2c-4587-b6a2-53cfd2f3f575",
+    "createdAt": "2026-05-14T03:32:25.685Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2808,12 +1009,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6c2da89a-5204-47f6-832f-2d25a86e8b77",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_445e4692-2a13-4940-bb76-de195b14844b",
+    "createdAt": "2026-05-14T03:32:25.685Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_6258a65e-0dc9-481c-81a6-2ad538c604a4",
+    "delegationId": "dlg_93a1fd7e-1f06-4126-991f-5b3d8cbc40f7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2821,8 +1022,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_1b8be46b-50ee-49b4-94aa-c05e9535db76",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_6248a699-9794-45ad-8bf0-8fe44860b72f",
+    "createdAt": "2026-05-14T03:32:25.685Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2838,12 +1039,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_452a0660-3d6a-4144-9009-6b49e76eb17f",
-    "createdAt": "2026-05-14T02:25:18.607Z"
+    "id": "dlg_audit_8d237592-7f18-46a8-b0e1-4b9a21f6cc2d",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_7bbfc058-d5c9-4483-aa67-c5919e6c14f1",
+    "delegationId": "dlg_5f74074b-55b6-4c4e-bb94-aeaee2cf5a3e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2851,8 +1052,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c837b125-2a2e-4016-b986-23245dcb312f",
-    "createdAt": "2026-05-14T02:25:18.608Z"
+    "id": "dlg_audit_2596899c-1a85-4d8a-9609-2a541598d279",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2868,12 +1069,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c64f2d1d-06c5-4192-938b-8675627d963d",
-    "createdAt": "2026-05-14T02:25:18.608Z"
+    "id": "dlg_audit_202cb9ca-7410-45be-ac39-6e115582c71a",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_9d3326d6-ced0-4280-9071-50fefff0ead2",
+    "delegationId": "dlg_4b93614e-f644-4097-a380-2db620289dd0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2881,8 +1082,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7697dac3-ac7a-40e8-bedd-7b126115861d",
-    "createdAt": "2026-05-14T02:25:18.608Z"
+    "id": "dlg_audit_f2db3e30-0772-4490-b801-526806f641d9",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2898,12 +1099,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c60b6475-3e3f-4e64-a416-b4054c57e9b0",
-    "createdAt": "2026-05-14T02:25:18.608Z"
+    "id": "dlg_audit_da6a4e2e-15f8-46d7-982c-9f16cc613026",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8c762b10-1bc5-4230-ac04-21370ff9e4d6",
+    "delegationId": "dlg_d07e1699-c56f-4ff4-b85a-a0f0e1c49eac",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -2911,8 +1112,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6a3e1115-a351-48c0-b34a-1f4079932be1",
-    "createdAt": "2026-05-14T02:25:18.608Z"
+    "id": "dlg_audit_352c1b9c-d8e1-4043-a953-c0481038ed2b",
+    "createdAt": "2026-05-14T03:32:25.686Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2928,12 +1129,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_20601306-a3fc-4e83-89b0-903e63c2b235",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_012411d6-beb2-4d57-9f06-be3b3846ab1a",
+    "createdAt": "2026-05-14T03:32:25.687Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_a63faf83-00e4-4fc7-a541-9f90425cb3da",
+    "delegationId": "dlg_5f63922f-e9b3-4af9-89de-fd594bf89496",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -2941,8 +1142,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_14453f6e-97f5-4b6a-8503-1fb6cf5f2dc7",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_d98be964-4f45-4125-8c85-506296f9e3a2",
+    "createdAt": "2026-05-14T03:32:25.687Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2958,12 +1159,12 @@
     },
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_4450e7ff-ee11-4c2a-b9bd-b901695753be",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_5d3bcd3c-d02d-4ad1-96bb-898d2367747b",
+    "createdAt": "2026-05-14T03:32:25.687Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_0cb80909-912f-4e4c-813c-69c38e638181",
+    "delegationId": "dlg_7db13d53-9415-428d-b91d-ce248e489fe0",
     "parentAgentId": "child-1",
     "childAgentId": "grandchild-1",
     "depth": 2,
@@ -2971,8 +1172,8 @@
     "metadata": {},
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_307d2551-1f23-4d19-a391-0faa474c7d1d",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_43d3a414-8aff-4377-9a6c-bc6c368574c0",
+    "createdAt": "2026-05-14T03:32:25.687Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -2988,12 +1189,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_dee45e41-fbec-4530-8459-d40a19633d87",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_1289ba4e-c4b0-42cc-9ed7-2f81b23497ea",
+    "createdAt": "2026-05-14T03:32:25.687Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8771f880-858e-4a2c-9e88-4dc9012f9c09",
+    "delegationId": "dlg_b2e8b749-01e4-4002-8046-407fdbe08c2f",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -3001,8 +1202,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ce519f2b-b62a-4c39-9d0b-645420ac1c8d",
-    "createdAt": "2026-05-14T02:25:18.609Z"
+    "id": "dlg_audit_ce49e33d-8207-4456-9d67-19e46e831dbd",
+    "createdAt": "2026-05-14T03:32:25.688Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3018,12 +1219,12 @@
     },
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_2652ee24-6f65-43eb-b445-45f4bda608d2",
-    "createdAt": "2026-05-14T02:25:18.610Z"
+    "id": "dlg_audit_dfdb74cd-4b2b-455b-85ad-8d9f495c5f03",
+    "createdAt": "2026-05-14T03:32:25.689Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3d34b542-46ac-4c53-9be5-53381d99a25e",
+    "delegationId": "dlg_231f4304-d631-4d0d-8a59-151c64996532",
     "parentAgentId": "child-1",
     "childAgentId": "grandchild-1",
     "depth": 2,
@@ -3031,8 +1232,8 @@
     "metadata": {},
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_cee654c7-0b84-487c-8953-6753e014d69a",
-    "createdAt": "2026-05-14T02:25:18.610Z"
+    "id": "dlg_audit_82516e41-1365-4790-9354-f7569a78318a",
+    "createdAt": "2026-05-14T03:32:25.689Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3048,12 +1249,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_f53d4d1d-ae75-4db0-aa83-9b131923bfff",
-    "createdAt": "2026-05-14T02:26:12.681Z"
+    "id": "dlg_audit_1af0ffb9-10f1-4da4-a7f2-af0a3dfba1dc",
+    "createdAt": "2026-05-14T03:32:25.769Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_6c7cd744-d62d-4552-89b2-03f68a3ef77e",
+    "delegationId": "dlg_b00ed8e8-cde0-4feb-ba3e-604718b5c774",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3061,8 +1262,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_543e4159-f75d-41c8-a80f-265ab6fb9930",
-    "createdAt": "2026-05-14T02:26:12.682Z"
+    "id": "dlg_audit_a96631e2-e83d-474f-a481-53336a444275",
+    "createdAt": "2026-05-14T03:32:25.773Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3078,12 +1279,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c8b7355c-231c-43eb-ab17-b56962ce8bcc",
-    "createdAt": "2026-05-14T02:26:12.719Z"
+    "id": "dlg_audit_10ebeab3-e7e0-4386-ba20-88b99ee9704d",
+    "createdAt": "2026-05-14T03:32:25.774Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_ce25c151-f3be-4b88-9ba3-42de5e1f97cf",
+    "delegationId": "dlg_4c6947f2-ecaf-4ff6-baf9-5b82e7fc05d7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3091,8 +1292,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_be974671-cf8d-4869-bec4-017dc787f029",
-    "createdAt": "2026-05-14T02:26:12.720Z"
+    "id": "dlg_audit_0c95d21a-6918-4d04-b973-ef4aa025d6c0",
+    "createdAt": "2026-05-14T03:32:25.775Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3108,12 +1309,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_200de784-e2e2-4bde-9b16-b7975906b8e0",
-    "createdAt": "2026-05-14T02:26:12.723Z"
+    "id": "dlg_audit_c924149c-45f1-48de-b619-c469495c16b6",
+    "createdAt": "2026-05-14T03:32:25.775Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_ac23cd83-6024-45a0-8d4b-a979f79420c8",
+    "delegationId": "dlg_a8f074e6-9347-47e6-ba0c-29e1efc54850",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3121,8 +1322,308 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0436a37c-ce22-4b76-8d1e-c203ce3e22fc",
-    "createdAt": "2026-05-14T02:26:12.723Z"
+    "id": "dlg_audit_089226aa-69c1-4cee-b52b-5495068fd57d",
+    "createdAt": "2026-05-14T03:32:25.775Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_7fdf8c4e-2791-40eb-8925-722b4bf8f3da",
+    "createdAt": "2026-05-14T03:32:25.776Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_d0b995c9-4688-4df2-b414-c6061f8270e6",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_2a84d913-04ab-4011-889f-11b5572280cc",
+    "createdAt": "2026-05-14T03:32:25.776Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_4f3204a6-1ddb-4498-87b5-1bfae0a70b9c",
+    "createdAt": "2026-05-14T03:32:25.776Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_a01db7d3-a548-4aa9-928a-a7d82a1edede",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_af93218c-ee4a-422b-9243-7c15281db40c",
+    "createdAt": "2026-05-14T03:32:25.776Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_2ac79fe3-fba7-46af-87a5-77a01d172ebe",
+    "createdAt": "2026-05-14T03:32:25.777Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_408e020b-5108-4ccd-8014-992325e43b7b",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_b6327345-0f4c-46ae-b1d0-0f48f0353811",
+    "createdAt": "2026-05-14T03:32:25.777Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_0f70da72-4fef-4f06-9164-54c506d840d1",
+    "createdAt": "2026-05-14T03:32:25.777Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_26adc66b-c57e-4b6d-b0aa-e6fc9400a9c4",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_7dd15443-45c0-4a5d-bf1d-112fe395ac33",
+    "createdAt": "2026-05-14T03:32:25.777Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_8ff14116-3d95-457f-bf95-081b2c8e8b22",
+    "createdAt": "2026-05-14T03:32:25.777Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_e17716f5-57b8-4c04-9b61-1e6a53505a4c",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_107b950b-9521-4732-810f-24c6200ae30f",
+    "createdAt": "2026-05-14T03:32:25.778Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_1d20e1bf-cbfc-4441-ac6a-8d463e4b1009",
+    "createdAt": "2026-05-14T03:32:25.778Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_8eeb06c6-18e5-4c5b-9418-0e16ec46cdf5",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_53b0ccb1-f6c8-4528-85c2-83a9ce04e905",
+    "createdAt": "2026-05-14T03:32:25.779Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_27e9642f-ac23-4922-b745-028063d52994",
+    "createdAt": "2026-05-14T03:32:25.779Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_9c004390-e84f-474b-a29e-215969855d0a",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_4c56846f-e6ac-4449-9091-a8c8678e4065",
+    "createdAt": "2026-05-14T03:32:25.779Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_a75c8ec1-ca95-453e-919b-784cadd3dd00",
+    "createdAt": "2026-05-14T03:33:23.582Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_ff138de4-6304-43f5-bdf9-b63109651858",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_8f04d6d6-2ec0-4af2-a139-2845b3d58dcd",
+    "createdAt": "2026-05-14T03:33:23.584Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_f98b5e41-33e9-4f72-ae6a-cc0e5de6b827",
+    "createdAt": "2026-05-14T03:33:23.660Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_5775e7d5-ce2f-47b9-83c7-59448ebe083b",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_7ef0335f-fcab-4ffc-88b7-44ba72918e4d",
+    "createdAt": "2026-05-14T03:33:23.661Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_a6577412-ba0e-4a4f-9e1d-44691a7714ff",
+    "createdAt": "2026-05-14T03:33:23.663Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_8808e054-84a5-4e0f-b45f-2302d23764c5",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_34ba8582-093f-4ada-b9b0-3c665f3f31bb",
+    "createdAt": "2026-05-14T03:33:23.663Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3139,8 +1640,8 @@
     },
     "actorId": "system",
     "actorType": "system",
-    "id": "dlg_audit_29603c40-97b8-407b-8a6a-823aea445fc2",
-    "createdAt": "2026-05-14T02:26:26.919Z"
+    "id": "dlg_audit_57c1314f-c98a-436f-a5f1-c9d99211d1a1",
+    "createdAt": "2026-05-14T03:33:36.801Z"
   },
   {
     "eventType": "delegation.governance.denied",
@@ -3156,8 +1657,8 @@
     },
     "actorId": "system",
     "actorType": "system",
-    "id": "dlg_audit_7c564b89-fa86-4b06-824a-75d4668adcda",
-    "createdAt": "2026-05-14T02:26:26.921Z"
+    "id": "dlg_audit_4088ba0e-ac2a-4753-9cd2-e8cc1a15ad03",
+    "createdAt": "2026-05-14T03:33:36.803Z"
   },
   {
     "eventType": "delegation.governance.evaluated",
@@ -3173,8 +1674,8 @@
     },
     "actorId": "admin",
     "actorType": "user",
-    "id": "dlg_audit_c9ae1b8d-fb89-4eaf-9d6f-1a424a3dd23a",
-    "createdAt": "2026-05-14T02:26:26.922Z"
+    "id": "dlg_audit_b0d74f71-51c9-4999-9690-14894fa65048",
+    "createdAt": "2026-05-14T03:33:36.803Z"
   },
   {
     "eventType": "delegation.created",
@@ -3186,8 +1687,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_2617d01d-051f-4230-8e6b-f822facee7ad",
-    "createdAt": "2026-05-14T02:26:26.922Z"
+    "id": "dlg_audit_3e4cd84f-363d-410e-8fb7-e2bb115fed9c",
+    "createdAt": "2026-05-14T03:33:36.804Z"
   },
   {
     "eventType": "delegation.completed",
@@ -3201,8 +1702,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_418b755a-4a64-4a5d-a71f-87ddf4fc5e39",
-    "createdAt": "2026-05-14T02:26:26.923Z"
+    "id": "dlg_audit_12444d73-6f4d-4a69-92b9-a02603574b3e",
+    "createdAt": "2026-05-14T03:33:36.804Z"
   },
   {
     "eventType": "delegation.failed",
@@ -3216,8 +1717,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_1a2cf182-c0db-433b-b79d-f40a04006ceb",
-    "createdAt": "2026-05-14T02:26:26.923Z"
+    "id": "dlg_audit_f3552bc5-918b-4fec-b42a-c2ad27d3d261",
+    "createdAt": "2026-05-14T03:33:36.805Z"
   },
   {
     "eventType": "delegation.permission_narrowed",
@@ -3250,8 +1751,8 @@
     },
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_ef89739f-605a-433b-ba27-5420563ff385",
-    "createdAt": "2026-05-14T02:26:26.924Z"
+    "id": "dlg_audit_b99c2d2f-ad08-44c2-b712-1e990b654574",
+    "createdAt": "2026-05-14T03:33:36.806Z"
   },
   {
     "eventType": "delegation.created",
@@ -3263,8 +1764,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_73286f4a-bd03-4213-9567-952c5b3c0f27",
-    "createdAt": "2026-05-14T02:26:26.925Z"
+    "id": "dlg_audit_6f6ad429-08f2-420f-acf5-f95e61aeb4bc",
+    "createdAt": "2026-05-14T03:33:36.808Z"
   },
   {
     "eventType": "delegation.completed",
@@ -3278,8 +1779,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_e32d864e-6aad-48b7-80df-864c3d197ec9",
-    "createdAt": "2026-05-14T02:26:26.925Z"
+    "id": "dlg_audit_0749061d-0c91-4d99-8ee9-6443ce994c0e",
+    "createdAt": "2026-05-14T03:33:36.808Z"
   },
   {
     "eventType": "delegation.created",
@@ -3291,8 +1792,8 @@
     "metadata": {},
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_9632dbbe-c21a-463d-b86e-cbc921a46a50",
-    "createdAt": "2026-05-14T02:26:26.925Z"
+    "id": "dlg_audit_c7e3b8df-71ac-4808-b9fe-ca4290278972",
+    "createdAt": "2026-05-14T03:33:36.809Z"
   },
   {
     "eventType": "delegation.created",
@@ -3304,8 +1805,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_d2e73f37-a79a-4d19-ad76-9925ec9a9223",
-    "createdAt": "2026-05-14T02:26:26.927Z"
+    "id": "dlg_audit_4e48bb3e-4fbd-4e4a-848a-34454b9a2a23",
+    "createdAt": "2026-05-14T03:33:36.810Z"
   },
   {
     "eventType": "delegation.completed",
@@ -3319,8 +1820,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_2a2fd624-893a-4636-81e3-580d20809a0a",
-    "createdAt": "2026-05-14T02:26:26.927Z"
+    "id": "dlg_audit_067fee6b-92b7-4d29-9fb2-5bbc98cc85e0",
+    "createdAt": "2026-05-14T03:33:36.811Z"
   },
   {
     "eventType": "delegation.created",
@@ -3332,8 +1833,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_4cd98247-1d09-435b-a8c5-6ff97217bed6",
-    "createdAt": "2026-05-14T02:26:26.928Z"
+    "id": "dlg_audit_e9588cf8-b28b-481f-954d-1c0d2f2fc79a",
+    "createdAt": "2026-05-14T03:33:36.815Z"
   },
   {
     "eventType": "delegation.created",
@@ -3345,8 +1846,8 @@
     "metadata": {},
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_f1957e5e-1905-4220-a74c-2c51b78d07a4",
-    "createdAt": "2026-05-14T02:26:26.928Z"
+    "id": "dlg_audit_dd6e7b48-cef2-4d75-b009-49628477668e",
+    "createdAt": "2026-05-14T03:33:36.816Z"
   },
   {
     "eventType": "delegation.created",
@@ -3358,8 +1859,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_4552700a-0646-41c6-9520-e73f8fa04bc3",
-    "createdAt": "2026-05-14T02:26:26.934Z"
+    "id": "dlg_audit_96f461f6-610e-4ec5-8cc8-5f7ba7251857",
+    "createdAt": "2026-05-14T03:33:36.826Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3373,8 +1874,8 @@
     },
     "actorId": "system",
     "actorType": "system",
-    "id": "dlg_audit_221fe9cb-46c9-4c66-8447-322154b67b8b",
-    "createdAt": "2026-05-14T02:26:26.934Z"
+    "id": "dlg_audit_06fe265a-bb85-47ca-9b39-0d2a2d760698",
+    "createdAt": "2026-05-14T03:33:36.826Z"
   },
   {
     "eventType": "delegation.created",
@@ -3386,8 +1887,8 @@
     "metadata": {},
     "actorId": "agent_1",
     "actorType": "agent",
-    "id": "dlg_audit_f0e90de9-122b-4664-9f28-ed4e4e1c8c84",
-    "createdAt": "2026-05-14T02:26:26.935Z"
+    "id": "dlg_audit_6a93baaf-ff4b-4e95-8287-f1f93ab30672",
+    "createdAt": "2026-05-14T03:33:36.827Z"
   },
   {
     "eventType": "delegation.completed",
@@ -3401,8 +1902,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_61fea0d9-eec9-4889-8706-87d3b6c6d8d3",
-    "createdAt": "2026-05-14T02:26:26.935Z"
+    "id": "dlg_audit_08f819fd-0364-49fd-8005-c2f88fbc0ea2",
+    "createdAt": "2026-05-14T03:33:36.827Z"
   },
   {
     "eventType": "delegation.failed",
@@ -3416,8 +1917,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_0f9e6592-9cf3-45ec-84f0-76c3e8b4d1a8",
-    "createdAt": "2026-05-14T02:26:26.936Z"
+    "id": "dlg_audit_055a3945-f211-4df9-8a46-a0bb894ff9c5",
+    "createdAt": "2026-05-14T03:33:36.828Z"
   },
   {
     "eventType": "delegation.completed",
@@ -3431,8 +1932,8 @@
     },
     "actorId": "agent_2",
     "actorType": "agent",
-    "id": "dlg_audit_076ae074-df54-4633-a28b-c0aff71aeb9a",
-    "createdAt": "2026-05-14T02:26:26.936Z"
+    "id": "dlg_audit_4f240950-06ae-4c75-988b-8c0f1116dd74",
+    "createdAt": "2026-05-14T03:33:36.828Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3448,12 +1949,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_485eb0c7-809c-40ea-9692-e9739d15e8a1",
-    "createdAt": "2026-05-14T02:26:27.068Z"
+    "id": "dlg_audit_51db9979-0a82-47bf-97b8-fe86693254f5",
+    "createdAt": "2026-05-14T03:33:36.880Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_d8729fc2-a0f3-4b70-8b74-bd9f3cf9e0d7",
+    "delegationId": "dlg_1c909107-a77f-4471-94d7-877a1f380203",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3461,310 +1962,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_57e275b6-9e3d-4450-a26b-57caa5beb01b",
-    "createdAt": "2026-05-14T02:26:27.069Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_1ce5c4b0-e27b-4164-81bd-574b0492b672",
-    "createdAt": "2026-05-14T02:26:27.076Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_091781f2-fa4b-4242-8a9a-77b2bceaabb2",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_ab4650a6-b19e-4dbd-a5c4-e0f217d9f493",
-    "createdAt": "2026-05-14T02:26:27.078Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 3,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_27701157-d146-4d39-94bf-eaed25f936bc",
-    "createdAt": "2026-05-14T02:26:27.079Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_b83965cd-c035-419b-8ac2-9878841a98e3",
-    "createdAt": "2026-05-14T02:26:27.080Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_143db1b9-8709-44f5-9451-3adecab577bf",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_f73e0412-8bab-4284-b8d5-4e8ad6b0619e",
-    "createdAt": "2026-05-14T02:26:27.081Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_44546e9e-a57d-43c8-8248-141b52adcc60",
-    "createdAt": "2026-05-14T02:26:27.081Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_85affe17-4e82-4bc8-999b-af6e8abac100",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_129b1d01-4290-495d-abfa-4c79dbb50954",
-    "createdAt": "2026-05-14T02:26:27.082Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_99daa206-67d7-4744-aa57-4fff4c9ee5ae",
-    "createdAt": "2026-05-14T02:26:27.082Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_db9160a7-dc5e-4f41-80e5-5e913c11d225",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_55056e79-08ea-4f33-9929-f04766519a6e",
-    "createdAt": "2026-05-14T02:26:27.082Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_8bfc8989-5e14-417b-907c-92e28f628952",
-    "createdAt": "2026-05-14T02:26:27.082Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_dddacc4a-e7a7-483b-a8ee-bb23bb42289f",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_b49a730a-4e0a-466f-8d72-8596fa778256",
-    "createdAt": "2026-05-14T02:26:27.083Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_c6abe16b-a6a8-490d-8e2b-36cf852ad3f1",
-    "createdAt": "2026-05-14T02:26:27.084Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_17117836-37a1-456e-91a8-e4ea5e441512",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_15ec6db7-cb9e-4abe-a2b3-23f5a9f0f26d",
-    "createdAt": "2026-05-14T02:26:27.084Z"
-  },
-  {
-    "eventType": "delegation.failed",
-    "delegationId": "dlg_17117836-37a1-456e-91a8-e4ea5e441512",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 0,
-    "reasonCode": "delegation.failed",
-    "metadata": {
-      "error": "Something went wrong"
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_4ad7c96d-8f44-44e1-9f65-94ae86a105d0",
-    "createdAt": "2026-05-14T02:26:27.084Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_af776ed0-2f5e-4530-a76e-d7161269d416",
-    "createdAt": "2026-05-14T02:26:27.085Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_cf10cafe-3a14-49bb-be4e-8f88e2eaecac",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_ba7c7376-0a33-49d2-a96d-18b5223418c2",
-    "createdAt": "2026-05-14T02:26:27.085Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_c4fdc08f-09d5-4d93-b5c3-2f1f58185173",
-    "createdAt": "2026-05-14T02:26:27.086Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_18c9b285-d7ac-4f52-ade4-04024d686521",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_b8be48f3-16fa-4798-96ec-1907c537a7ed",
-    "createdAt": "2026-05-14T02:26:27.086Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_ac512543-63ac-44f0-93e9-5033e93f6771",
-    "createdAt": "2026-05-14T02:26:27.087Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_efed52b4-b688-482a-bbe8-f069c71454ea",
-    "parentAgentId": "agent-1",
-    "childAgentId": "agent-2",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "agent-1",
-    "actorType": "agent",
-    "id": "dlg_audit_8dc91cac-d896-45bb-b588-e2c71f40cf93",
-    "createdAt": "2026-05-14T02:26:27.087Z"
+    "id": "dlg_audit_66c5df2f-23cc-42aa-9be8-12dcc6fb7605",
+    "createdAt": "2026-05-14T03:33:36.881Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3780,12 +1979,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ef8ddaa5-ea2c-4941-8d11-5f002142964a",
-    "createdAt": "2026-05-14T02:26:27.094Z"
+    "id": "dlg_audit_9443dfa7-0909-4cae-8657-1be4ab87ec62",
+    "createdAt": "2026-05-14T03:33:36.883Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_500323e5-240c-4580-a0ba-32665560f37b",
+    "delegationId": "dlg_72fac199-527a-4526-9105-84e5e4a4d353",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3793,8 +1992,38 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c45704f5-8b21-4b6e-a681-2cd99db749de",
-    "createdAt": "2026-05-14T02:26:27.098Z"
+    "id": "dlg_audit_e41d2ad8-52bc-4868-8da2-a735b1e3044b",
+    "createdAt": "2026-05-14T03:33:36.884Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "agent-1",
+    "childAgentId": "agent-2",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "agent-1",
+    "actorType": "agent",
+    "id": "dlg_audit_1b4f20bd-9b4d-4b01-bed7-c8a3fa2bef8b",
+    "createdAt": "2026-05-14T03:33:36.915Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_985d7a84-a7ee-41f7-a0f0-af3ff4e304e9",
+    "parentAgentId": "agent-1",
+    "childAgentId": "agent-2",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "agent-1",
+    "actorType": "agent",
+    "id": "dlg_audit_ba34b72e-e30a-42a6-b732-e5a0b095bf39",
+    "createdAt": "2026-05-14T03:33:36.917Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3810,12 +2039,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8eadbf85-3dcf-4361-8e9c-0af5da397651",
-    "createdAt": "2026-05-14T02:26:27.099Z"
+    "id": "dlg_audit_8b742509-a735-4b51-90c6-1d541bed4651",
+    "createdAt": "2026-05-14T03:33:36.922Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_a17e0a08-94d8-4361-b6fb-b3756a4ac24d",
+    "delegationId": "dlg_8f2109a9-84ae-4b9c-ab09-6f1a3b4efb8d",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3823,8 +2052,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_468a172b-d8db-42f7-8419-6867115d1b71",
-    "createdAt": "2026-05-14T02:26:27.100Z"
+    "id": "dlg_audit_64b8e985-3346-4e3e-a54c-11cf23f56a80",
+    "createdAt": "2026-05-14T03:33:36.923Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3840,12 +2069,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7fc9bba3-79d4-45bb-b785-8f0faa530321",
-    "createdAt": "2026-05-14T02:26:27.100Z"
+    "id": "dlg_audit_8272315e-fcad-41bc-97a8-46859a1c0aac",
+    "createdAt": "2026-05-14T03:33:36.924Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_5ba074fd-70c2-448b-bb20-f8134c3ac860",
+    "delegationId": "dlg_07b51399-ab55-455c-b027-d1c816b617f7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3853,8 +2082,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_80e8e98b-813d-4770-beef-f422f171dbb4",
-    "createdAt": "2026-05-14T02:26:27.102Z"
+    "id": "dlg_audit_30f72fd9-bb02-4201-9039-af2ecba02805",
+    "createdAt": "2026-05-14T03:33:36.926Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3870,12 +2099,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ce09a570-0805-4f69-931f-8733ead47621",
-    "createdAt": "2026-05-14T02:26:27.103Z"
+    "id": "dlg_audit_3e07072d-b698-4ba1-bcb5-642a7176b4ac",
+    "createdAt": "2026-05-14T03:33:36.927Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_d18f036f-b811-44d3-a667-392effe47e86",
+    "delegationId": "dlg_56848bb7-7b38-4fad-bf27-c34384e1c080",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3883,8 +2112,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_97db07f2-4189-4d3b-8e98-c25be6528962",
-    "createdAt": "2026-05-14T02:26:27.103Z"
+    "id": "dlg_audit_4cc5f079-706e-4b11-9053-85a4ab092ae1",
+    "createdAt": "2026-05-14T03:33:36.928Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3900,12 +2129,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8d0e6e7c-e46f-4275-8300-da7e0c06e907",
-    "createdAt": "2026-05-14T02:26:27.103Z"
+    "id": "dlg_audit_32566d84-58ee-4215-b695-e1b0e2a6d455",
+    "createdAt": "2026-05-14T03:33:36.928Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3f97efa8-d59c-44d4-9182-5f259b64d039",
+    "delegationId": "dlg_4ae824b1-f9b5-4530-b2fa-24ce70a96913",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3913,8 +2142,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9d21d28b-608e-43e1-a7fd-97d1d8970936",
-    "createdAt": "2026-05-14T02:26:27.104Z"
+    "id": "dlg_audit_9569f4b5-f301-4952-a264-a38065b2e28e",
+    "createdAt": "2026-05-14T03:33:36.928Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3930,12 +2159,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c9c0d5c5-15aa-46d4-a2d0-f685ede35599",
-    "createdAt": "2026-05-14T02:26:27.104Z"
+    "id": "dlg_audit_246a8104-cb5f-488e-b13f-c919bde4536e",
+    "createdAt": "2026-05-14T03:33:36.929Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_cd554341-d4a7-448c-9a31-5320fbcc36cc",
+    "delegationId": "dlg_9c851020-7bb7-4d1f-8f2a-066086da4ed2",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -3943,8 +2172,38 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8fe2f852-a69e-4f07-aeac-58c3c6cf3d6c",
-    "createdAt": "2026-05-14T02:26:27.104Z"
+    "id": "dlg_audit_9af6766b-9a9c-4c76-aa9c-280e8f4d3848",
+    "createdAt": "2026-05-14T03:33:36.929Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_dc21e04b-f7a1-418b-99bc-a455987d5745",
+    "createdAt": "2026-05-14T03:33:36.930Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_874f1273-0481-4d65-884e-a5764f641592",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-agent",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_912d268f-70d0-419d-b445-c4c0adaf0e8c",
+    "createdAt": "2026-05-14T03:33:36.931Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3960,12 +2219,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_280d21b2-0161-4f66-9cc8-8033b31931ad",
-    "createdAt": "2026-05-14T02:26:27.105Z"
+    "id": "dlg_audit_ec3e5cfb-801e-4c2a-8963-76eb33c5afae",
+    "createdAt": "2026-05-14T03:33:36.931Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_54562982-b995-46c4-afc0-127054286fa9",
+    "delegationId": "dlg_eaceac73-55b6-4d5c-8342-65f13cfda0b6",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -3973,8 +2232,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7736b926-9719-45a7-a289-aae892affdc6",
-    "createdAt": "2026-05-14T02:26:27.105Z"
+    "id": "dlg_audit_5f42ef1e-886f-407f-894a-123945af60f7",
+    "createdAt": "2026-05-14T03:33:36.931Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -3990,12 +2249,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ff9d0099-44f1-4640-a56b-774960fcd119",
-    "createdAt": "2026-05-14T02:26:27.105Z"
+    "id": "dlg_audit_184887db-4dce-4f57-b44a-0f346ed7666a",
+    "createdAt": "2026-05-14T03:33:36.932Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8cffa9a0-f1e4-4ac2-a141-e8ada64fefab",
+    "delegationId": "dlg_2c19f51f-8978-4469-b2cc-1779e02cef81",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -4003,8 +2262,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_acdc9090-96e7-434c-9ee7-695188aac5fa",
-    "createdAt": "2026-05-14T02:26:27.105Z"
+    "id": "dlg_audit_23d310d8-830d-4f22-bd4f-93a25eb0716e",
+    "createdAt": "2026-05-14T03:33:36.932Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4020,12 +2279,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_96d7e6f7-c78b-45b6-9001-8bab5cf99c03",
-    "createdAt": "2026-05-14T02:26:27.106Z"
+    "id": "dlg_audit_40267c44-9db2-4d37-b47e-8b329ff914db",
+    "createdAt": "2026-05-14T03:33:36.932Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_99649bf5-6a9e-4b5f-a334-5773511dfeeb",
+    "delegationId": "dlg_951b2800-5c7d-4d0f-93c9-dbe849d63bc6",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4033,8 +2292,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ac9a8474-2261-45d4-9af0-77ffd34b9a4b",
-    "createdAt": "2026-05-14T02:26:27.106Z"
+    "id": "dlg_audit_304ee468-72dc-40af-800d-cb50efa0bc1d",
+    "createdAt": "2026-05-14T03:33:36.933Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4050,12 +2309,12 @@
     },
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_c8d5fb98-3dd5-4b8e-a129-e4f9c35136cb",
-    "createdAt": "2026-05-14T02:26:27.107Z"
+    "id": "dlg_audit_c085469d-843a-46f2-b1ed-ceae235110ae",
+    "createdAt": "2026-05-14T03:33:36.933Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_0137bf71-cfbd-4ee2-b213-1326fbc15b2d",
+    "delegationId": "dlg_4473d5e2-6ac5-4148-8bf0-b5b39bd74730",
     "parentAgentId": "child-1",
     "childAgentId": "grandchild-1",
     "depth": 2,
@@ -4063,8 +2322,8 @@
     "metadata": {},
     "actorId": "child-1",
     "actorType": "agent",
-    "id": "dlg_audit_e24af946-c4a7-499e-b08f-df1f7216a187",
-    "createdAt": "2026-05-14T02:26:27.107Z"
+    "id": "dlg_audit_e5b7426f-86d0-4229-bb16-b5f499d59146",
+    "createdAt": "2026-05-14T03:33:36.934Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4080,12 +2339,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_702581f8-de88-49b3-bac9-cf098add972e",
-    "createdAt": "2026-05-14T02:26:27.107Z"
+    "id": "dlg_audit_34dac78e-f190-4d84-b207-61c5aba6b5f9",
+    "createdAt": "2026-05-14T03:33:36.934Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_1e9fa05d-4a98-40df-973e-03b76c26ac2c",
+    "delegationId": "dlg_222b0446-3e86-463d-8cf2-41b716131b4e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4093,8 +2352,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_93051854-dd02-4805-b27f-79b5d03830dc",
-    "createdAt": "2026-05-14T02:26:27.108Z"
+    "id": "dlg_audit_63851619-bac6-438b-a628-6f660a68a4dd",
+    "createdAt": "2026-05-14T03:33:36.934Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4110,12 +2369,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0e5842e9-0374-4ed2-a630-108834b1e528",
-    "createdAt": "2026-05-14T02:26:27.109Z"
+    "id": "dlg_audit_24869a0a-ca97-40fb-b4a0-03db0fbd5de6",
+    "createdAt": "2026-05-14T03:33:36.934Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3ec6ad5c-39d9-4d6c-b3ba-7ae65790212c",
+    "delegationId": "dlg_632eb175-f285-4d29-89f8-9215b0e41c69",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -4123,8 +2382,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a6af5394-7021-466a-9b2b-1fb3e218664d",
-    "createdAt": "2026-05-14T02:26:27.109Z"
+    "id": "dlg_audit_8c205696-6bac-4cb5-9fa1-79703804fa58",
+    "createdAt": "2026-05-14T03:33:36.935Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4140,12 +2399,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_81287377-1b36-4192-9449-3f300e85fa13",
-    "createdAt": "2026-05-14T02:26:27.110Z"
+    "id": "dlg_audit_9b633262-6979-427c-917a-21227d565f99",
+    "createdAt": "2026-05-14T03:33:36.935Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_d8897478-1bef-414c-987b-962bba594bdc",
+    "delegationId": "dlg_d9595dac-1273-4ef7-8e4a-99958cac05e0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4153,8 +2412,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_96a25c3f-e1d4-4e93-adf6-805f77615643",
-    "createdAt": "2026-05-14T02:26:27.110Z"
+    "id": "dlg_audit_e403db57-0bda-4142-9ed1-5fc019679526",
+    "createdAt": "2026-05-14T03:33:36.935Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4170,12 +2429,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_114e9e76-6d3e-451e-aabb-28f81a02827c",
-    "createdAt": "2026-05-14T02:26:27.110Z"
+    "id": "dlg_audit_5cac43ad-7978-425c-b8f6-5663981deff8",
+    "createdAt": "2026-05-14T03:33:36.936Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_57176f08-1454-4b3c-bfbb-a16e80869cb1",
+    "delegationId": "dlg_894210f2-ee13-4eca-897f-7dc2b5794202",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -4183,12 +2442,12 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8289edb8-2f92-4185-8475-91d122b0e490",
-    "createdAt": "2026-05-14T02:26:27.110Z"
+    "id": "dlg_audit_6a82e79c-8232-441c-b1fa-c8e790ca89e0",
+    "createdAt": "2026-05-14T03:33:36.936Z"
   },
   {
     "eventType": "delegation.failed",
-    "delegationId": "dlg_d8897478-1bef-414c-987b-962bba594bdc",
+    "delegationId": "dlg_d9595dac-1273-4ef7-8e4a-99958cac05e0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 0,
@@ -4198,8 +2457,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e54a5082-dbb2-4037-bf4d-b65d1e326509",
-    "createdAt": "2026-05-14T02:26:27.111Z"
+    "id": "dlg_audit_c0c84d89-e966-476e-ad18-c32454ab4bec",
+    "createdAt": "2026-05-14T03:33:36.936Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4215,12 +2474,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5ce27e52-cd9b-4077-90dd-31e7b9622b6d",
-    "createdAt": "2026-05-14T02:26:27.111Z"
+    "id": "dlg_audit_be206e33-1601-4f8f-a9a8-783259c97e68",
+    "createdAt": "2026-05-14T03:33:36.937Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_2ea5665d-7253-4dac-a210-9605a88a66e7",
+    "delegationId": "dlg_0b379006-15d7-450a-9cc5-d3e198f632a7",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4228,8 +2487,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_3788fb12-87c5-4cb7-b589-1026413ae935",
-    "createdAt": "2026-05-14T02:26:27.111Z"
+    "id": "dlg_audit_a04a8d56-b966-4b18-be8e-90f538d81448",
+    "createdAt": "2026-05-14T03:33:36.938Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4245,12 +2504,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_4739c9f4-fa57-4021-9c22-311af0f44262",
-    "createdAt": "2026-05-14T02:26:27.111Z"
+    "id": "dlg_audit_b2a52181-65e3-4691-8bf7-e271ae0cb172",
+    "createdAt": "2026-05-14T03:33:36.938Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_54d56219-05f9-4347-8589-dcc865af1436",
+    "delegationId": "dlg_ba313b78-1e7b-4b2d-9a64-743f6e4e765e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -4258,8 +2517,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_ba5589ef-db18-4aff-a910-68797d396c0a",
-    "createdAt": "2026-05-14T02:26:27.112Z"
+    "id": "dlg_audit_bc966588-5712-46ff-975d-aa41391182b1",
+    "createdAt": "2026-05-14T03:33:36.938Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4275,12 +2534,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e86ab20d-234a-4eac-93c6-b6438869dfea",
-    "createdAt": "2026-05-14T02:26:27.112Z"
+    "id": "dlg_audit_3480b7b4-62c5-4533-bae5-4045c63bc337",
+    "createdAt": "2026-05-14T03:33:36.939Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_f907322b-0929-45fd-89d6-942d8bd6aa84",
+    "delegationId": "dlg_ff3df370-dc51-46bf-a762-e23ec155cbac",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4288,8 +2547,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_bd3730b2-ce7d-4c52-9c96-099192e32614",
-    "createdAt": "2026-05-14T02:26:27.112Z"
+    "id": "dlg_audit_be3dc327-130f-47c1-aff9-9916bf365957",
+    "createdAt": "2026-05-14T03:33:36.941Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4305,12 +2564,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9c337ad9-7e53-4845-90dc-6fff8a768ce2",
-    "createdAt": "2026-05-14T02:26:27.112Z"
+    "id": "dlg_audit_2f320c6a-6ee2-4290-8470-742e65315fff",
+    "createdAt": "2026-05-14T03:33:36.942Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_d7987ad8-f142-40a6-b546-9e5799351c51",
+    "delegationId": "dlg_584a64cd-5a9f-4422-93df-d323638262ce",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4318,8 +2577,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_743c39ed-d5f8-4084-bedc-36752647fb61",
-    "createdAt": "2026-05-14T02:26:27.113Z"
+    "id": "dlg_audit_f4189cc9-44a7-4519-97b9-29de99b51747",
+    "createdAt": "2026-05-14T03:33:36.942Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4335,12 +2594,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c52a8b2f-047b-4e86-8a91-a383bd9f2ea7",
-    "createdAt": "2026-05-14T02:26:27.113Z"
+    "id": "dlg_audit_6d38ede6-e240-4a18-94b5-a78713b1ffc9",
+    "createdAt": "2026-05-14T03:33:36.943Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_d3313c82-250c-4ac3-8262-83f4a533e9a0",
+    "delegationId": "dlg_b3abde3a-53da-479b-9b94-83cab6be8ed9",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4348,8 +2607,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0d783d54-7116-4714-8f79-2a12fef46213",
-    "createdAt": "2026-05-14T02:26:27.113Z"
+    "id": "dlg_audit_e074554b-86fe-4a03-b9f7-3fc7f2262b76",
+    "createdAt": "2026-05-14T03:33:36.943Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4365,12 +2624,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0fe32c7c-5a27-4760-a9b8-86eab69774ba",
-    "createdAt": "2026-05-14T02:26:27.113Z"
+    "id": "dlg_audit_bb9c1df8-cdd2-4a7a-9a9c-8838eee6d3c0",
+    "createdAt": "2026-05-14T03:33:36.943Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_9c1273cb-fbe5-4195-b805-97d551b0617b",
+    "delegationId": "dlg_55f67385-0568-40f2-baf5-4ac3608984b0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4378,8 +2637,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_cd87c934-817a-4bca-ae9a-9e68ff8acbcb",
-    "createdAt": "2026-05-14T02:26:27.114Z"
+    "id": "dlg_audit_307dff89-3f7e-4a22-bede-434336643a91",
+    "createdAt": "2026-05-14T03:33:36.943Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4395,12 +2654,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_72b475ef-c19b-4712-b65b-58a8a0f92e8b",
-    "createdAt": "2026-05-14T02:26:27.114Z"
+    "id": "dlg_audit_b0dec180-aab0-407e-9cec-f95375235c60",
+    "createdAt": "2026-05-14T03:33:36.943Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_0735988f-e87d-4e4f-870b-5265ed13f2b4",
+    "delegationId": "dlg_182a91ce-37ba-49ad-b44e-375838e4012c",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -4408,8 +2667,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_31ab4a49-f342-4e3e-bfb0-b1f49415dfc7",
-    "createdAt": "2026-05-14T02:26:27.114Z"
+    "id": "dlg_audit_8f568900-8c2e-4abb-98ff-c1ccb81d7134",
+    "createdAt": "2026-05-14T03:33:36.944Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4425,8 +2684,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_d8a7f147-0f7a-41aa-8f82-acc96912d861",
-    "createdAt": "2026-05-14T02:26:27.114Z"
+    "id": "dlg_audit_0efbc40c-7a7b-4306-a90c-8fc426cbe7b2",
+    "createdAt": "2026-05-14T03:33:36.944Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4442,12 +2701,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_99b970c3-e586-4687-b55d-c81162f8ba15",
-    "createdAt": "2026-05-14T02:26:27.115Z"
+    "id": "dlg_audit_7f194772-6ae6-4295-95e0-284ce6639724",
+    "createdAt": "2026-05-14T03:33:36.944Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_cbf6faa3-e087-4761-99cc-53f096084f66",
+    "delegationId": "dlg_ba7017a9-e464-42d5-81e0-0331815d2e07",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 4,
@@ -4455,8 +2714,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_22b76ff6-aca3-495a-8015-75d354281014",
-    "createdAt": "2026-05-14T02:26:27.115Z"
+    "id": "dlg_audit_ed69aea3-26ab-40eb-adfb-c49edd0db68c",
+    "createdAt": "2026-05-14T03:33:36.945Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4472,12 +2731,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_874db549-bd08-4710-9736-8930e0a1e467",
-    "createdAt": "2026-05-14T02:26:27.115Z"
+    "id": "dlg_audit_df2261c4-be70-49f0-8ba4-765c800da54d",
+    "createdAt": "2026-05-14T03:33:36.945Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_b7290356-61f2-4145-85b5-6890bc10a48c",
+    "delegationId": "dlg_472b1af9-88c2-4a5d-a67a-cc69324cd488",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4485,38 +2744,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_b2e2531a-d116-43f8-a7af-2e4059e16243",
-    "createdAt": "2026-05-14T02:26:27.115Z"
-  },
-  {
-    "eventType": "delegation.governance.approved",
-    "delegationId": null,
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {
-      "evaluatedRules": [
-        "allow_default"
-      ]
-    },
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_96718dc3-8cf4-41a2-b5aa-06c155fc2367",
-    "createdAt": "2026-05-14T02:26:27.116Z"
-  },
-  {
-    "eventType": "delegation.created",
-    "delegationId": "dlg_f2f96f1f-a01b-4fba-8376-559be385e99d",
-    "parentAgentId": "parent-agent",
-    "childAgentId": "child-1",
-    "depth": 1,
-    "reasonCode": "delegation.allowed",
-    "metadata": {},
-    "actorId": "parent-agent",
-    "actorType": "agent",
-    "id": "dlg_audit_04fbe1fb-aa97-4a57-8282-e3427ba69c48",
-    "createdAt": "2026-05-14T02:26:27.117Z"
+    "id": "dlg_audit_29c1ecc6-b2da-43ef-ba78-3edad7c2e3ee",
+    "createdAt": "2026-05-14T03:33:36.945Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4532,12 +2761,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_77917737-95e8-4128-ad27-0dfa7c01e7be",
-    "createdAt": "2026-05-14T02:26:27.131Z"
+    "id": "dlg_audit_8bbc740e-ef0e-439c-8b60-639fceab4d5c",
+    "createdAt": "2026-05-14T03:33:36.947Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8d0c5b94-90bc-48da-a4c8-b87a074be4fa",
+    "delegationId": "dlg_43ce55d0-e4c0-4729-8343-6be3e77a05e8",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4545,8 +2774,38 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c97949e9-8004-4966-92fd-e94a617800d4",
-    "createdAt": "2026-05-14T02:26:27.132Z"
+    "id": "dlg_audit_52c9e902-265d-4247-8117-35206435730e",
+    "createdAt": "2026-05-14T03:33:36.947Z"
+  },
+  {
+    "eventType": "delegation.governance.approved",
+    "delegationId": null,
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-1",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {
+      "evaluatedRules": [
+        "allow_default"
+      ]
+    },
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_6f2b8dd1-8399-4d04-9a30-c796edfcb890",
+    "createdAt": "2026-05-14T03:33:36.957Z"
+  },
+  {
+    "eventType": "delegation.created",
+    "delegationId": "dlg_64807cf6-a8ea-4bc1-a229-5d4bd3d81dd0",
+    "parentAgentId": "parent-agent",
+    "childAgentId": "child-1",
+    "depth": 1,
+    "reasonCode": "delegation.allowed",
+    "metadata": {},
+    "actorId": "parent-agent",
+    "actorType": "agent",
+    "id": "dlg_audit_4c7786d2-5a4e-4fb8-a401-f2c92baa585d",
+    "createdAt": "2026-05-14T03:33:36.958Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4562,12 +2821,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_18f647cb-422e-47d8-aef0-91c4688d84e3",
-    "createdAt": "2026-05-14T02:26:27.132Z"
+    "id": "dlg_audit_238e5c6d-6091-41ac-b21b-f2d48e15d998",
+    "createdAt": "2026-05-14T03:33:36.958Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_f0c3f381-2e97-45df-857a-744e812e2783",
+    "delegationId": "dlg_ac00e211-20ca-451c-8ac7-951ecadfcbad",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4575,8 +2834,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_548c4c49-a051-4c55-a8f4-84d25758d019",
-    "createdAt": "2026-05-14T02:26:27.132Z"
+    "id": "dlg_audit_555a4a7c-c493-4b24-a2a4-dc94c831cf2d",
+    "createdAt": "2026-05-14T03:33:36.959Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4592,12 +2851,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_d4701858-f845-4966-bb01-83acebc8ad09",
-    "createdAt": "2026-05-14T02:26:27.154Z"
+    "id": "dlg_audit_def706c2-4400-42d1-9b39-02271c94604c",
+    "createdAt": "2026-05-14T03:33:37.036Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_ee765faf-e99b-4e75-8261-0aef2b8aa4cc",
+    "delegationId": "dlg_04cb0116-2d1a-4f4e-b694-6df2b9183d24",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4605,8 +2864,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0640e23c-edf8-4c3c-ba3f-e142883922ea",
-    "createdAt": "2026-05-14T02:26:27.157Z"
+    "id": "dlg_audit_496f3fc5-9120-420e-ad3d-074f4059cec8",
+    "createdAt": "2026-05-14T03:33:37.037Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4622,8 +2881,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c2bfc4a2-5568-421e-be26-e64d51132b1e",
-    "createdAt": "2026-05-14T02:26:27.158Z"
+    "id": "dlg_audit_8de21781-fef2-432b-b185-a1d991bc83c4",
+    "createdAt": "2026-05-14T03:33:37.038Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4639,8 +2898,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_18f8c365-af91-4d58-a27d-b0dc24cf5558",
-    "createdAt": "2026-05-14T02:26:27.158Z"
+    "id": "dlg_audit_662ecdf1-9bdf-47c0-a8aa-531fecaf535c",
+    "createdAt": "2026-05-14T03:33:37.039Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4656,12 +2915,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6471470e-e7b2-4d14-ac52-1a497abe8bfd",
-    "createdAt": "2026-05-14T02:26:27.159Z"
+    "id": "dlg_audit_5b637e8f-60f8-49bb-b88c-fac5c315f39b",
+    "createdAt": "2026-05-14T03:33:37.039Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_22c50db6-89a3-452c-816a-ed1f8ef2b534",
+    "delegationId": "dlg_4f57ae20-3868-4d56-81d3-e2a47f2d1dc2",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 2,
@@ -4669,8 +2928,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_34c95740-c96d-4eaa-9835-a4148594d13b",
-    "createdAt": "2026-05-14T02:26:27.159Z"
+    "id": "dlg_audit_b9377612-e911-49a1-acac-c08330bd9dc1",
+    "createdAt": "2026-05-14T03:33:37.039Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4686,8 +2945,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a9214133-5cb4-42c7-8933-f33121b50859",
-    "createdAt": "2026-05-14T02:26:27.159Z"
+    "id": "dlg_audit_866e4803-d0e1-4d33-a71e-5fd61acaa3f1",
+    "createdAt": "2026-05-14T03:33:37.040Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4703,12 +2962,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_fbb0d1c6-f3d3-49e3-9cc0-1e93059ce5d8",
-    "createdAt": "2026-05-14T02:26:27.160Z"
+    "id": "dlg_audit_b66280cb-acf9-4e03-b216-83cae6d0897e",
+    "createdAt": "2026-05-14T03:33:37.040Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_1e205bbe-a049-431e-b6bf-5c65660e95e4",
+    "delegationId": "dlg_172a4cef-fb50-4bde-a19e-4fd049841ba9",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4716,8 +2975,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5012f7da-3844-41b6-935c-352147a592fb",
-    "createdAt": "2026-05-14T02:26:27.160Z"
+    "id": "dlg_audit_c4de29fa-a92c-488b-bdd8-270ffef6500d",
+    "createdAt": "2026-05-14T03:33:37.041Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4733,12 +2992,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_45d44f98-67ff-4020-9cfc-e2844d1a6b63",
-    "createdAt": "2026-05-14T02:26:27.161Z"
+    "id": "dlg_audit_62f30986-bfde-4a23-b93b-a7f1585b228e",
+    "createdAt": "2026-05-14T03:33:37.041Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_fad34a71-24f5-4526-9044-cb14862854cf",
+    "delegationId": "dlg_874077e0-2cd2-439c-9181-2d13e074da84",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4746,8 +3005,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6c8c3309-3b15-414a-bd8f-7f001b7efa95",
-    "createdAt": "2026-05-14T02:26:27.161Z"
+    "id": "dlg_audit_a36439fd-ee09-44ed-91bc-881af875087e",
+    "createdAt": "2026-05-14T03:33:37.042Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4763,12 +3022,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_a3abc11b-09f1-4de1-9703-57087b781070",
-    "createdAt": "2026-05-14T02:26:27.163Z"
+    "id": "dlg_audit_04e5f2b5-81ac-4d4b-a126-a38ab2745427",
+    "createdAt": "2026-05-14T03:33:37.043Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_f22cfcd8-620b-42c7-89d2-8320f67d2785",
+    "delegationId": "dlg_760e9d69-98f4-4769-aaa5-550715f11d9e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4776,12 +3035,12 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e2232e30-f218-4b7c-ae9f-3a403b8f81cb",
-    "createdAt": "2026-05-14T02:26:27.163Z"
+    "id": "dlg_audit_84ca7973-65b6-4ad8-a4c5-ed806f1879a0",
+    "createdAt": "2026-05-14T03:33:37.043Z"
   },
   {
     "eventType": "delegation.failed",
-    "delegationId": "dlg_f22cfcd8-620b-42c7-89d2-8320f67d2785",
+    "delegationId": "dlg_760e9d69-98f4-4769-aaa5-550715f11d9e",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 0,
@@ -4791,8 +3050,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2430235a-97d5-40b5-ae0f-7bf1cce96904",
-    "createdAt": "2026-05-14T02:26:27.163Z"
+    "id": "dlg_audit_1c753c2e-0ac1-4aef-8ee1-a2b96faaa4cc",
+    "createdAt": "2026-05-14T03:33:37.044Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4808,12 +3067,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2801b5e4-6c4c-402c-a7f2-e3bf895b81c2",
-    "createdAt": "2026-05-14T02:26:27.164Z"
+    "id": "dlg_audit_f0d5baa2-acce-4c8e-b7ae-9f0ac04ec162",
+    "createdAt": "2026-05-14T03:33:37.044Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_4eff94c7-055e-4ba1-9d40-33dfdb0ab182",
+    "delegationId": "dlg_81d322da-214a-40e5-81f3-621e5eed0109",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4821,8 +3080,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5a2aa961-97c5-4835-9208-d37986aaaf03",
-    "createdAt": "2026-05-14T02:26:27.164Z"
+    "id": "dlg_audit_55a474f4-1a77-4408-96ac-c6845b0d4520",
+    "createdAt": "2026-05-14T03:33:37.044Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4838,12 +3097,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_59d1981e-e79f-44dd-bd21-0c2a37fda1db",
-    "createdAt": "2026-05-14T02:26:27.165Z"
+    "id": "dlg_audit_3a4a977a-8161-48f1-bdc9-4cc65916c523",
+    "createdAt": "2026-05-14T03:33:37.045Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_ed0a3c3b-d33f-477c-a04b-0857ca70abfb",
+    "delegationId": "dlg_8744a383-5b80-4b23-9e63-c63d2798c48b",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4851,8 +3110,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9a20a17f-55d7-418a-8911-fc557526a27f",
-    "createdAt": "2026-05-14T02:26:27.166Z"
+    "id": "dlg_audit_cc399f02-bd46-471b-bc21-04a24e5c3407",
+    "createdAt": "2026-05-14T03:33:37.045Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4868,12 +3127,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c79e5635-111c-47a0-9dc6-ad04ff09d8c8",
-    "createdAt": "2026-05-14T02:26:27.168Z"
+    "id": "dlg_audit_b58ef170-16c5-4302-9cbd-eddd2a9e3792",
+    "createdAt": "2026-05-14T03:33:37.045Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_320c28f8-6ebe-4413-aaca-0dfcd2148687",
+    "delegationId": "dlg_f146b346-3d30-4ab6-ac5f-5990c8bcf0d0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4881,8 +3140,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_de4132f7-955d-403c-b2dd-2cd6887323e1",
-    "createdAt": "2026-05-14T02:26:27.169Z"
+    "id": "dlg_audit_11cdea43-fbf8-430b-be67-5f1d879374bf",
+    "createdAt": "2026-05-14T03:33:37.046Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4898,12 +3157,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c0f11e46-2a13-408a-8534-e31cad65dbd7",
-    "createdAt": "2026-05-14T02:26:27.169Z"
+    "id": "dlg_audit_38587eff-e6c6-4279-89d8-22ee6ca5320f",
+    "createdAt": "2026-05-14T03:33:37.046Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_3ea22c6a-a489-4ed2-8fc6-c592c042963e",
+    "delegationId": "dlg_10b78428-c67b-4115-a63c-7ece1a5d2060",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4911,8 +3170,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5ee0094c-76ef-4fc4-96c7-308300f77788",
-    "createdAt": "2026-05-14T02:26:27.170Z"
+    "id": "dlg_audit_cd3560c7-40f0-4c04-b5e6-df2473ae2438",
+    "createdAt": "2026-05-14T03:33:37.047Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4928,12 +3187,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_b908c933-4cd5-4a4f-93b1-fada4ab22a55",
-    "createdAt": "2026-05-14T02:26:27.170Z"
+    "id": "dlg_audit_9032f092-cd56-4a64-859a-4ad36d2a4866",
+    "createdAt": "2026-05-14T03:33:37.048Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_78910468-16a7-44cf-b7cc-0d8896254ba1",
+    "delegationId": "dlg_bc4e25b3-e1aa-42ff-b1b0-faa0fc3327ee",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -4941,8 +3200,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_69fa2e4f-fa93-4bd7-aae9-7efada76be78",
-    "createdAt": "2026-05-14T02:26:27.170Z"
+    "id": "dlg_audit_248c9f79-8c5c-4ff5-87c3-221ef372b2cd",
+    "createdAt": "2026-05-14T03:33:37.048Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4958,12 +3217,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_eac7b8d8-90f3-4b5c-91ad-f7d9e6c9222a",
-    "createdAt": "2026-05-14T02:26:27.171Z"
+    "id": "dlg_audit_6a3845eb-0a30-4c61-9769-584c44269a7a",
+    "createdAt": "2026-05-14T03:33:37.049Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_4bbda2ce-8141-4f8f-8fd9-d844b428bf4e",
+    "delegationId": "dlg_41eff17a-020e-4119-b13e-300ebc676c27",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -4971,8 +3230,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_df8b4f68-6e8c-456b-aaa5-2ee8616991a1",
-    "createdAt": "2026-05-14T02:26:27.171Z"
+    "id": "dlg_audit_ec4b5f69-a05a-4aa5-8064-95ab4f73bb5e",
+    "createdAt": "2026-05-14T03:33:37.049Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -4988,8 +3247,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_90d1fef1-9a85-4603-8a28-7f2896ed9054",
-    "createdAt": "2026-05-14T02:26:27.172Z"
+    "id": "dlg_audit_745a469a-7f48-4bb4-b7c0-6248bd96d0b9",
+    "createdAt": "2026-05-14T03:33:37.049Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5005,12 +3264,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_3bd70a0c-a564-489d-a583-cfabaf626154",
-    "createdAt": "2026-05-14T02:26:27.172Z"
+    "id": "dlg_audit_6975e88e-832d-4998-8a98-87c38d0ccc51",
+    "createdAt": "2026-05-14T03:33:37.050Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_dc36101c-c0d1-416c-857f-606bb69f053e",
+    "delegationId": "dlg_5b830d8c-b13d-4027-9361-5c29017b42f4",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 2,
@@ -5018,8 +3277,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_96fd55b7-6fb2-4337-8386-6652155bdf9a",
-    "createdAt": "2026-05-14T02:26:27.172Z"
+    "id": "dlg_audit_0e087b98-53fb-4683-bf2e-dc588e4aa0d7",
+    "createdAt": "2026-05-14T03:33:37.050Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5035,12 +3294,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_953ee33b-6cbf-4176-a0f8-cb7da13584fa",
-    "createdAt": "2026-05-14T02:26:27.173Z"
+    "id": "dlg_audit_b25f04da-aed0-4d50-9662-1eb5e28029f0",
+    "createdAt": "2026-05-14T03:33:37.050Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_0e94935d-8677-4bc7-bc2a-638036bb3022",
+    "delegationId": "dlg_8face4fa-9c07-4c5a-924f-174499e188a6",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5048,8 +3307,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_51e2e47f-7f82-4191-bbdb-106cef269ade",
-    "createdAt": "2026-05-14T02:26:27.173Z"
+    "id": "dlg_audit_f7d9fc0f-0260-4771-9357-c90210d04ccf",
+    "createdAt": "2026-05-14T03:33:37.050Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5065,12 +3324,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0d10cfab-0bb3-4f82-89b5-b637ea947d6f",
-    "createdAt": "2026-05-14T02:26:27.173Z"
+    "id": "dlg_audit_0d4ae673-d1d1-4124-b114-25ffa1d118b6",
+    "createdAt": "2026-05-14T03:33:37.050Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_12357414-8ae6-4ebc-bf51-a58216e061d9",
+    "delegationId": "dlg_5ecb1fcb-f873-42e2-b971-f6dffd5fd98f",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5078,8 +3337,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_84ff0f86-62fa-492d-a087-fd545019dabe",
-    "createdAt": "2026-05-14T02:26:27.174Z"
+    "id": "dlg_audit_4a06737b-0b62-44c4-a9c5-1a70e6b3f145",
+    "createdAt": "2026-05-14T03:33:37.051Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5095,12 +3354,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0543f4fb-1e5a-448c-8fc8-ee9923a5f2c1",
-    "createdAt": "2026-05-14T02:26:27.174Z"
+    "id": "dlg_audit_7316fba6-d41f-4aed-9f86-7f5a7f593b9e",
+    "createdAt": "2026-05-14T03:33:37.051Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_e5b39f86-8721-42af-85f3-c006b3e20d9b",
+    "delegationId": "dlg_82fe4af1-98ca-424c-bc53-f0a838a31763",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5108,8 +3367,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_960adddf-0090-442c-89e8-0e2217cfb9f6",
-    "createdAt": "2026-05-14T02:26:27.175Z"
+    "id": "dlg_audit_b8fc7d67-80d3-465f-80bb-2f0727dd76d8",
+    "createdAt": "2026-05-14T03:33:37.051Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5125,12 +3384,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2b78eea3-a32c-4b00-a189-c86953925e3c",
-    "createdAt": "2026-05-14T02:26:27.175Z"
+    "id": "dlg_audit_7d6111a6-fe21-4a06-b5b9-2a8870f2d879",
+    "createdAt": "2026-05-14T03:33:37.052Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_b09d2b01-a3f8-4eda-be82-8ffd0b910cd7",
+    "delegationId": "dlg_24c63f40-7249-4fe0-a6a0-fdf3547c820f",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5138,8 +3397,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9e2636fd-30f8-4a68-959d-0cce2f23a6ea",
-    "createdAt": "2026-05-14T02:26:27.175Z"
+    "id": "dlg_audit_adcedb06-8315-471a-8757-d22a3e87d109",
+    "createdAt": "2026-05-14T03:33:37.052Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5155,12 +3414,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_7f926d9a-3cec-4d98-a6fe-facb29ea726d",
-    "createdAt": "2026-05-14T02:26:27.176Z"
+    "id": "dlg_audit_3e14d12a-ace0-455d-bddd-e5331d5c7cc9",
+    "createdAt": "2026-05-14T03:33:37.052Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_303646d1-cdd9-41a6-84c3-31cafef78530",
+    "delegationId": "dlg_2fb9fb7a-86d1-4a9d-a9b2-5e43e2f5d170",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5168,8 +3427,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_1c719e89-9040-4ed0-86ac-c610cfd8fc2b",
-    "createdAt": "2026-05-14T02:26:27.176Z"
+    "id": "dlg_audit_cdaeeefe-8341-4559-90dc-2102a57357ae",
+    "createdAt": "2026-05-14T03:33:37.052Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5185,12 +3444,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c4ef0a84-e646-4d95-ba31-4f1cc07ee827",
-    "createdAt": "2026-05-14T02:26:27.187Z"
+    "id": "dlg_audit_7de88c9d-a4b7-4505-9554-4b5728de612f",
+    "createdAt": "2026-05-14T03:33:37.066Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8bde9932-8135-41ac-9070-a0731b18a4ca",
+    "delegationId": "dlg_c48fe7f8-ec45-4665-be34-a485e28da5ac",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5198,8 +3457,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_e42ee6bd-34c7-46aa-89d0-b9d45efd3032",
-    "createdAt": "2026-05-14T02:26:27.189Z"
+    "id": "dlg_audit_646facf8-8c76-45d1-a952-7a8a2d1f2b75",
+    "createdAt": "2026-05-14T03:33:37.066Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5215,12 +3474,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_2dac7d85-5477-41f4-b914-ee31bb6163bc",
-    "createdAt": "2026-05-14T02:26:27.190Z"
+    "id": "dlg_audit_b1679966-188a-424c-9382-cd7304a84440",
+    "createdAt": "2026-05-14T03:33:37.067Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_02b6da49-7c89-4ac3-8fed-1cd8fe290e69",
+    "delegationId": "dlg_da7643b5-edcf-4f3a-97a2-b43e4daa21fc",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5228,8 +3487,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_3a0189a7-7fb0-486b-a2e8-44b05e74ff64",
-    "createdAt": "2026-05-14T02:26:27.190Z"
+    "id": "dlg_audit_b00dd00c-cb17-4e43-be5d-7a860aacd1c6",
+    "createdAt": "2026-05-14T03:33:37.067Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5245,12 +3504,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_dd191470-adc1-486a-8757-e866e3c6de77",
-    "createdAt": "2026-05-14T02:26:27.202Z"
+    "id": "dlg_audit_e4ebf7df-28ba-441f-a721-4433e4bff301",
+    "createdAt": "2026-05-14T03:33:37.085Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_b1c7a63b-e874-4237-a2af-7c193035be48",
+    "delegationId": "dlg_b44283ab-b4a8-46d9-8cc1-c37c021701e0",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5258,8 +3517,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0f3ea221-db2f-43c2-8034-9fc449a1bdab",
-    "createdAt": "2026-05-14T02:26:27.203Z"
+    "id": "dlg_audit_8db8508b-0e69-4bd0-b624-9ef023660a01",
+    "createdAt": "2026-05-14T03:33:37.085Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5275,12 +3534,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_507cbe92-bc57-43f9-94f6-8159fd57d4aa",
-    "createdAt": "2026-05-14T02:26:27.203Z"
+    "id": "dlg_audit_2208408f-7d6b-448b-9f2c-2b220e2e7912",
+    "createdAt": "2026-05-14T03:33:37.085Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_acd34406-6123-4d68-9552-00a922aea084",
+    "delegationId": "dlg_f16156d5-e84a-4ee6-a652-aa0887e4b8c8",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -5288,8 +3547,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_0bb52717-d841-4d14-9673-5cbbb582e631",
-    "createdAt": "2026-05-14T02:26:27.203Z"
+    "id": "dlg_audit_4ae5a6c5-36a8-4fc0-8fc1-595ecdb5e9d5",
+    "createdAt": "2026-05-14T03:33:37.086Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5305,12 +3564,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_8e14c87b-b33f-4a30-9057-e5a6107a93a8",
-    "createdAt": "2026-05-14T02:26:27.216Z"
+    "id": "dlg_audit_c722ddd7-eb5c-4086-aaa6-cda5aa3da9e6",
+    "createdAt": "2026-05-14T03:33:37.099Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_8956f68f-9213-4fc0-b0cb-9a2f1627938e",
+    "delegationId": "dlg_3772f423-645c-47ac-9cd7-9ac3c23e562c",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-0",
     "depth": 1,
@@ -5318,8 +3577,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_9d19d26c-f0fd-4884-b7f7-4d6e225e5703",
-    "createdAt": "2026-05-14T02:26:27.217Z"
+    "id": "dlg_audit_1aa42cea-ede9-4917-8ea7-9c380230f7bd",
+    "createdAt": "2026-05-14T03:33:37.101Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5335,12 +3594,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_6c81eda8-44ba-48bf-9efd-29df81916117",
-    "createdAt": "2026-05-14T02:26:27.218Z"
+    "id": "dlg_audit_513cd427-49b3-44b5-a284-5d9402595986",
+    "createdAt": "2026-05-14T03:33:37.101Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_89cdb7e1-d667-4736-8554-654a88f70b6e",
+    "delegationId": "dlg_c59843f7-cef2-4a89-bb53-a47452dafb87",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-1",
     "depth": 1,
@@ -5348,8 +3607,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_c17d6b63-baf5-4f66-ac5c-5370e0d85e40",
-    "createdAt": "2026-05-14T02:26:27.219Z"
+    "id": "dlg_audit_7b67200d-3dba-447f-b7b0-69d22d3100a5",
+    "createdAt": "2026-05-14T03:33:37.101Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5365,12 +3624,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_b63b552b-3542-4037-9112-1935af9bac79",
-    "createdAt": "2026-05-14T02:26:27.220Z"
+    "id": "dlg_audit_1908e22f-8c94-43f8-b4b2-2ddbc253074a",
+    "createdAt": "2026-05-14T03:33:37.101Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_6f7c9bb1-ec17-47c9-bf84-8f93ee9a358b",
+    "delegationId": "dlg_9521d487-6225-4e99-8aa9-950262cfeb90",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-2",
     "depth": 1,
@@ -5378,8 +3637,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_17918099-acdc-4962-94b6-2d72896e95d2",
-    "createdAt": "2026-05-14T02:26:27.221Z"
+    "id": "dlg_audit_407a7116-9de9-4f84-98f2-d752f867fe9a",
+    "createdAt": "2026-05-14T03:33:37.102Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5395,12 +3654,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5b909a87-a708-4efe-8bdb-05460fafa210",
-    "createdAt": "2026-05-14T02:26:27.221Z"
+    "id": "dlg_audit_e6e1878d-358e-4ad9-be9a-f46de088a6da",
+    "createdAt": "2026-05-14T03:33:37.102Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_b8c9d89e-5e09-451d-9bbc-d764dbc4bc21",
+    "delegationId": "dlg_83923eeb-4642-4906-a6ec-81f427c8d407",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-forever",
     "depth": 1,
@@ -5408,8 +3667,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_5fed2708-86a7-4b29-a096-9e692ea6d028",
-    "createdAt": "2026-05-14T02:26:27.221Z"
+    "id": "dlg_audit_58c9ca39-2b66-42fd-ab45-34cc45341a81",
+    "createdAt": "2026-05-14T03:33:37.102Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5425,8 +3684,8 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_80ecc539-4ba3-4431-b91f-30d23cf26119",
-    "createdAt": "2026-05-14T02:26:27.234Z"
+    "id": "dlg_audit_1b29dbc2-adee-409f-acef-4266837ef3d6",
+    "createdAt": "2026-05-14T03:33:37.115Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5442,12 +3701,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_09e47d76-d034-452e-888a-2350f5cb3145",
-    "createdAt": "2026-05-14T02:26:27.234Z"
+    "id": "dlg_audit_999d5c2a-5acb-4c74-9947-282395e5b5a6",
+    "createdAt": "2026-05-14T03:33:37.115Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_9e99011a-b82b-4a89-95dc-0b7274ce2332",
+    "delegationId": "dlg_de306181-a98f-42da-b697-84d212bb6c40",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5455,8 +3714,8 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_3e2b63c7-faca-4a35-812e-b45fade81e05",
-    "createdAt": "2026-05-14T02:26:27.235Z"
+    "id": "dlg_audit_eae11b16-ff0f-4052-8140-17d7606fa212",
+    "createdAt": "2026-05-14T03:33:37.116Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5472,12 +3731,12 @@
     },
     "actorId": "child-agent",
     "actorType": "agent",
-    "id": "dlg_audit_bf259903-e253-4f6a-a726-4f8dc9083111",
-    "createdAt": "2026-05-14T02:26:27.235Z"
+    "id": "dlg_audit_8968f4de-ecbd-479d-b54c-9f84213bec42",
+    "createdAt": "2026-05-14T03:33:37.116Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_1ea57cd3-07a3-429d-98dc-966a1c3ba3f7",
+    "delegationId": "dlg_d1a8957b-255b-4a10-a1e0-0729de4c9908",
     "parentAgentId": "child-agent",
     "childAgentId": "child-agent-2",
     "depth": 2,
@@ -5485,8 +3744,8 @@
     "metadata": {},
     "actorId": "child-agent",
     "actorType": "agent",
-    "id": "dlg_audit_03c38979-9a38-4234-9de2-26c1e590ad27",
-    "createdAt": "2026-05-14T02:26:27.235Z"
+    "id": "dlg_audit_a2dafbb9-370f-4c2d-a594-7671729cc3eb",
+    "createdAt": "2026-05-14T03:33:37.116Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5502,12 +3761,12 @@
     },
     "actorId": "child-agent-2",
     "actorType": "agent",
-    "id": "dlg_audit_114e6d5a-8d4e-4ec8-8497-c1aa4acc2939",
-    "createdAt": "2026-05-14T02:26:27.236Z"
+    "id": "dlg_audit_292f4525-c24f-4f6f-9123-ce13f63b1433",
+    "createdAt": "2026-05-14T03:33:37.117Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_c08405b0-4551-41cc-a7d9-bc2cfd66d4fb",
+    "delegationId": "dlg_676371de-86f0-4537-938b-31514a9c4906",
     "parentAgentId": "child-agent-2",
     "childAgentId": "child-agent-3",
     "depth": 3,
@@ -5515,8 +3774,8 @@
     "metadata": {},
     "actorId": "child-agent-2",
     "actorType": "agent",
-    "id": "dlg_audit_1760f839-ea9d-47ea-8954-acf70a81e755",
-    "createdAt": "2026-05-14T02:26:27.236Z"
+    "id": "dlg_audit_9070aa42-077f-4d8b-ab9c-a5efe924e919",
+    "createdAt": "2026-05-14T03:33:37.117Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5532,8 +3791,8 @@
     },
     "actorId": "child-agent-3",
     "actorType": "agent",
-    "id": "dlg_audit_0d39794f-dc6f-432b-a868-c50fbd594a4a",
-    "createdAt": "2026-05-14T02:26:27.236Z"
+    "id": "dlg_audit_78c9bb73-8ba7-4e30-afc7-786023e95773",
+    "createdAt": "2026-05-14T03:33:37.117Z"
   },
   {
     "eventType": "delegation.governance.approved",
@@ -5549,12 +3808,12 @@
     },
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_459e0df8-ce37-4205-be9d-f00e9663ecf0",
-    "createdAt": "2026-05-14T02:26:37.035Z"
+    "id": "dlg_audit_7c1f67df-32b3-4ba8-8050-d4cd395e1ba8",
+    "createdAt": "2026-05-14T03:33:47.519Z"
   },
   {
     "eventType": "delegation.created",
-    "delegationId": "dlg_a3740389-df32-4185-8c69-73f6bc41c2e7",
+    "delegationId": "dlg_35ba555d-5fcc-4b8d-8ef2-389d72258632",
     "parentAgentId": "parent-agent",
     "childAgentId": "child-agent",
     "depth": 1,
@@ -5562,7 +3821,7 @@
     "metadata": {},
     "actorId": "parent-agent",
     "actorType": "agent",
-    "id": "dlg_audit_4a440146-85f3-48a7-854a-44de2802f580",
-    "createdAt": "2026-05-14T02:26:37.036Z"
+    "id": "dlg_audit_9bf6eb7d-02d7-454a-ac52-0bc6636e5c62",
+    "createdAt": "2026-05-14T03:33:47.520Z"
   }
 ]

@@ -156,7 +156,8 @@ export class CrossRegionRoutingService {
   public route(request: CrossRegionRouteRequest): CrossRegionRouteDecision {
     const operationType = request.operationType ?? "read";
     const blockedRegionIds = new Set(request.policy.blockedRegionIds ?? []);
-    const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? request.primaryRegionId ?? null : null;
+    const inferredPrimaryRegionId = request.primaryRegionId ?? request.regions[0]?.regionId ?? null;
+    const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? inferredPrimaryRegionId : null;
     const allowedJurisdictions = new Set(request.policy.allowedJurisdictions);
     const requiredCapabilities = request.policy.requiredCapabilities ?? [];
     const blockedRegions = request.regions
@@ -184,6 +185,7 @@ export class CrossRegionRoutingService {
         .filter((region) => region.regionId !== selectedRegion?.regionId)
         .map((region) => region.regionId),
     });
+    const failoverRegionId = failover.targetRegionId ?? (!request.primaryRegionHealthy ? selectedRegion?.regionId ?? null : null);
 
     const crossBorderClass = request.policy.crossBorderTransferClass ?? (request.policy.allowCrossBorder === false ? "local_only" : "free_transfer");
     const crossBorderTransferChain = this.buildCrossBorderTransferChain(request, selectedRegion);
@@ -203,8 +205,8 @@ export class CrossRegionRoutingService {
       policyRef: request.policy.policyId,
       auditTrail,
       recoveryTopology: {
-        primaryRegionId: request.primaryRegionId ?? selectedRegion?.regionId ?? null,
-        failoverRegionId: failover.targetRegionId,
+        primaryRegionId: inferredPrimaryRegionId ?? selectedRegion?.regionId ?? null,
+        failoverRegionId,
         replicationTargets: request.replicationPolicy == null
           ? []
           : candidateDescriptors
@@ -212,7 +214,7 @@ export class CrossRegionRoutingService {
             .map((region) => region.regionId),
       },
       blockedRegions,
-      crossBorderTransferChain,
+      ...(crossBorderTransferChain == null ? {} : { crossBorderTransferChain }),
     };
   }
 

@@ -294,7 +294,7 @@ export class RegionFailoverController {
     const existingState = this.stateByPartition.get(partitionKey);
     const previous = existingState ?? {
       partitionKey,
-      fencingEpoch: input.currentLeaderRegionId == null ? 0 : 1,
+      fencingEpoch: 0,
       leaderRegionId: input.currentLeaderRegionId ?? null,
       demotedLeaderRegionId: null,
     };

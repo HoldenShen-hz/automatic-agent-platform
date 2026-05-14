@@ -338,7 +338,7 @@ test("budget-allocation: Reservation and settlement flow", () => {
       });
     });
 
-    const stepOutputs = ctx.store.listStepOutputsByWorkflow("single_agent_minimal");
+    const stepOutputs = ctx.store.workflow.listStepOutputsByWorkflow("single_agent_minimal");
     const costEvents = ctx.store.listCostEventsByTask("task-budget-reservation-001");
 
     assert.equal(stepOutputs.length, 1);

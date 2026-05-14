@@ -71,6 +71,19 @@ export interface PluginManifestBoundary {
 }
 
 export function canTransitionDomain(from: DomainLifecycleState, to: DomainLifecycleState): boolean {
+  const legacyAllowed: Record<string, readonly string[]> = {
+    Draft: ["Validated", "Archived"],
+    Validated: ["Registered", "Draft"],
+    Registered: ["Active", "Deprecated"],
+    Active: ["Updating", "Deprecated"],
+    Updating: ["Active", "Deprecated"],
+    Deprecated: ["Archived"],
+    Archived: [],
+  };
+  if (from in legacyAllowed || to in legacyAllowed) {
+    return legacyAllowed[String(from)]?.includes(String(to)) ?? false;
+  }
+
   const allowed: Record<DomainLifecycleState, readonly DomainLifecycleState[]> = {
     validating: ["certified", "retired"],
     certified: ["canary", "validating"],

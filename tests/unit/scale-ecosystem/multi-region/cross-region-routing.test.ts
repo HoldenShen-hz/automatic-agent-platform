@@ -99,9 +99,8 @@ describe("cross-region-routing", () => {
       };
 
       const decision = service.route(request);
-      const classification = decision.crossBorderTransferChain?.chainStepResults.jurisdictionClassification;
 
-      assert.strictEqual(classification?.crossBorderRequired, false);
+      assert.strictEqual(decision.crossBorderTransferChain, undefined);
     });
 
     it("Step 2: TransferImpactAssessor sets correct impact score for cross-border", () => {

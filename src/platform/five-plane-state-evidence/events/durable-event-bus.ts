@@ -142,6 +142,8 @@ interface PartitionSubscriber {
   partitions: ReadonlySet<string>;
   /** R12-02: Consumer group ID for delivery isolation */
   groupId: string;
+  /** Monotonic version used to ignore stale in-flight deliveries after handler replacement. */
+  generation: number;
 }
 
 /**
@@ -242,10 +244,25 @@ export class DurableEventBus {
     this.assertNotDisposed();
     // R12-02: Use provided groupId or default
     const effectiveGroupId = groupId ?? "default";
+    const existing = this.subscribers.get(consumerId);
+    if (existing?.partitions.size) {
+      for (const partition of existing.partitions) {
+        this.partitionSubscribers.get(partition)?.delete(consumerId);
+      }
+    }
+    this.pendingDeliveryErrors.delete(consumerId);
     // R12-01: Store partition-aware subscriber with group assignment
-    this.subscribers.set(consumerId, { handler, partitions: partitions ?? new Set(), groupId: effectiveGroupId });
-    // R12-02: Register with consumer group
-    this.registerActiveConsumer(consumerId);
+    this.subscribers.set(consumerId, {
+      handler,
+      partitions: partitions ?? new Set(),
+      groupId: effectiveGroupId,
+      generation: (existing?.generation ?? 0) + 1,
+    });
+    // R12-02: Register with consumer group. Re-subscribing the same consumer replaces
+    // the handler rather than creating another active consumer ref.
+    if (!existing) {
+      this.registerActiveConsumer(consumerId);
+    }
     this.registerConsumerGroup({ groupId: effectiveGroupId, maxConcurrency: 10, backPressureThresholdBytes: 1_000_000 });
     // Initialize delivery chain state with group
     if (!this.deliveryChainStates.has(consumerId)) {
@@ -563,7 +580,7 @@ export class DurableEventBus {
     let deadLetteredCount = 0;
 
     for (const item of pending) {
-      const result = await this.deliverOneWithResult(item, handler.handler);
+      const result = await this.deliverOneWithResult(item, handler.handler, consumerId, handler.generation);
       if (result.delivered) {
         delivered++;
       } else if (result.deadLettered) {
@@ -589,7 +606,7 @@ export class DurableEventBus {
    * @param handler - The handler to deliver the event to
    */
   private async deliverOne(item: PendingAckEvent, handler: EventHandler): Promise<void> {
-    const result = await this.deliverOneWithResult(item, handler);
+    const result = await this.deliverOneWithResult(item, handler, item.ack.consumerId, null);
     if (result.deadLettered) {
       throw new WorkflowStateError(
         `event_delivery.failed: event ${item.event.id} dead-lettered after ${MAX_DELIVERY_RETRIES} retries`,
@@ -606,13 +623,24 @@ export class DurableEventBus {
    * @param handler - The handler to deliver the event to
    * @returns Result indicating delivered or deadLettered status
    */
-  private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler): Promise<{ delivered: boolean; deadLettered: boolean }> {
+  private async deliverOneWithResult(
+    item: PendingAckEvent,
+    handler: EventHandler,
+    consumerId: string,
+    generation: number | null,
+  ): Promise<{ delivered: boolean; deadLettered: boolean }> {
     let lastError: Error | null = null;
 
     // R31-18 FIX: Loop 0..MAX_DELIVERY_RETRIES-1 executes exactly MAX_DELIVERY_RETRIES times
     for (let attempt = 0; attempt < MAX_DELIVERY_RETRIES; attempt++) {
+      if (!this.isCurrentSubscriberGeneration(consumerId, generation)) {
+        return { delivered: false, deadLettered: false };
+      }
       try {
         await handler(item.event);
+        if (!this.isCurrentSubscriberGeneration(consumerId, generation)) {
+          return { delivered: false, deadLettered: false };
+        }
         this.store.event.markEventAck({
           eventId: item.event.id,
           consumerId: item.ack.consumerId,
@@ -628,6 +656,10 @@ export class DurableEventBus {
           await sleep(backoffDelay);
         }
       }
+    }
+
+    if (!this.isCurrentSubscriberGeneration(consumerId, generation)) {
+      return { delivered: false, deadLettered: false };
     }
 
     // All retries exhausted - mark as failed before moving the delivery to DLQ.
@@ -720,6 +752,10 @@ export class DurableEventBus {
     });
 
     return { delivered: false, deadLettered: true };
+  }
+
+  private isCurrentSubscriberGeneration(consumerId: string, generation: number | null): boolean {
+    return generation == null || this.subscribers.get(consumerId)?.generation === generation;
   }
 
   /**
