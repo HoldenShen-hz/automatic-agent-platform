@@ -8,6 +8,7 @@ import {
   EscalationLevelSchema,
   ApprovalRuleSchema,
   DomainRiskProfileSchema,
+  DOMAIN_RISK_SCORE_THRESHOLDS,
   computeDomainRiskLevel,
   type DomainRiskProfile,
 } from "../../../../src/domains/risk-profile/index.js";
@@ -245,4 +246,12 @@ test("computeDomainRiskLevel handles boundary values correctly", () => {
   assert.equal(computeDomainRiskLevel(profile, 65), "high");
   assert.equal(computeDomainRiskLevel(profile, 84.99), "high");
   assert.equal(computeDomainRiskLevel(profile, 85), "critical");
+});
+
+test("computeDomainRiskLevel uses exported score thresholds", () => {
+  assert.deepEqual(DOMAIN_RISK_SCORE_THRESHOLDS, {
+    medium: 35,
+    high: 65,
+    critical: 85,
+  });
 });

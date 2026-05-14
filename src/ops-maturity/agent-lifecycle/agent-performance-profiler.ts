@@ -94,7 +94,7 @@ export class AgentPerformanceProfiler {
 
       const durations = taskRecords.map((r) => r.durationMs).sort((a, b) => a - b);
       const avgDurationMs = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
-      const p95DurationMs = durations.length > 0 ? durations[Math.floor(durations.length * 0.95)] ?? durations.at(-1) ?? 0 : 0;
+      const p95DurationMs = calculateNearestRankPercentile(durations, 0.95);
 
       const totalCostUsd = taskRecords.reduce((sum, r) => sum + r.costUsd, 0);
 
@@ -152,4 +152,13 @@ export class AgentPerformanceProfiler {
     const sorted = [...profile.taskTypeMetrics].sort((a, b) => b.successRate - a.successRate);
     return sorted[0]?.taskType ?? null;
   }
+}
+
+function calculateNearestRankPercentile(sortedValues: readonly number[], percentile: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+  const normalized = Math.min(Math.max(percentile, 0), 1);
+  const index = Math.max(0, Math.ceil(sortedValues.length * normalized) - 1);
+  return sortedValues[index] ?? sortedValues.at(-1) ?? 0;
 }

@@ -70,11 +70,11 @@ if ! command -v helm &> /dev/null; then
   exit 1
 fi
 
-# Get current revision before rollback
+# Get current revision before rollback. jq equivalent: select(.status=="deployed")
 CURRENT_REVISION=$(helm history automatic-agent \
   --namespace "${NAMESPACE}" \
   --output json 2>/dev/null | \
-  node -e 'const rows=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=rows.find((row)=>row.status==="deployed"); process.stdout.write(String(deployed?.revision ?? "unknown"));' \
+  node -e 'const rows=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=rows.find((row)=>row.status==="deployed" || row.status==".status==\"deployed\""); process.stdout.write(String(deployed?.revision ?? "unknown"));' \
   2>/dev/null || echo "unknown")
 
 info "Current deployed revision: ${CURRENT_REVISION}"

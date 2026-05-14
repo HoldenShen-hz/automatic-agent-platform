@@ -51,10 +51,7 @@ function sleepSync(ms: number): void {
   if (ms <= 0) {
     return;
   }
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    // busy-wait to avoid blocking the event loop properly while still being synchronous
-  }
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 function computeRetryBackoffMs(

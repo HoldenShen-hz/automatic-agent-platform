@@ -37,7 +37,7 @@ const DEFAULT_MAX_SIZE = 100;
 
 export class ImprovementCandidateRegistry {
   private readonly candidates = new Map<string, ImprovementCandidate>();
-  private readonly accessOrder: string[] = [];
+  private readonly accessOrder = new Set<string>();
   private readonly createdAt = new Map<string, number>();
   /** R23-45 fix: Optional persistence store for durable storage */
   private readonly persistenceStore: CandidatePersistenceStore | undefined;
@@ -45,15 +45,16 @@ export class ImprovementCandidateRegistry {
   private readonly ttlMs: number;
   private readonly maxSize: number;
 
-  public constructor(options?: Partial<CandidateTtlConfig> & { store?: CandidatePersistenceStore }) {
-    this.ttlMs = options?.ttlMs ?? DEFAULT_TTL_MS;
-    this.maxSize = options?.maxSize ?? DEFAULT_MAX_SIZE;
-    this.persistenceStore = options?.store;
+  public constructor(options?: number | (Partial<CandidateTtlConfig> & { store?: CandidatePersistenceStore })) {
+    const normalizedOptions = typeof options === "number" ? { maxSize: options } : options;
+    this.ttlMs = normalizedOptions?.ttlMs ?? DEFAULT_TTL_MS;
+    this.maxSize = normalizedOptions?.maxSize ?? DEFAULT_MAX_SIZE;
+    this.persistenceStore = normalizedOptions?.store;
     // R23-45 fix: Load persisted candidates on startup
     if (this.persistenceStore) {
       for (const candidate of this.persistenceStore.loadCandidates()) {
         this.candidates.set(candidate.candidateId, candidate);
-        this.accessOrder.push(candidate.candidateId);
+        this.accessOrder.add(candidate.candidateId);
         this.createdAt.set(candidate.candidateId, new Date(candidate.createdAt).getTime());
       }
     }
@@ -98,7 +99,7 @@ export class ImprovementCandidateRegistry {
   public list(): ImprovementCandidate[] {
     // R23-45 fix: Evict expired entries before listing
     this.evictExpired();
-    return this.accessOrder
+    return [...this.accessOrder]
       .map((candidateId) => this.candidates.get(candidateId))
       .filter((candidate): candidate is ImprovementCandidate => candidate != null);
   }
@@ -159,10 +160,7 @@ export class ImprovementCandidateRegistry {
   private removeCandidate(candidateId: string): void {
     this.candidates.delete(candidateId);
     this.createdAt.delete(candidateId);
-    const index = this.accessOrder.indexOf(candidateId);
-    if (index >= 0) {
-      this.accessOrder.splice(index, 1);
-    }
+    this.accessOrder.delete(candidateId);
     // R23-45 fix: Also remove from persistence store
     try {
       this.persistenceStore?.deleteCandidate(candidateId);
@@ -238,18 +236,17 @@ export class ImprovementCandidateRegistry {
   }
 
   private touch(candidateId: string): void {
-    const existingIndex = this.accessOrder.indexOf(candidateId);
-    if (existingIndex >= 0) {
-      this.accessOrder.splice(existingIndex, 1);
-    }
-    this.accessOrder.push(candidateId);
+    this.accessOrder.delete(candidateId);
+    this.accessOrder.add(candidateId);
   }
 
   private evictIfNeeded(): void {
-    while (this.accessOrder.length > this.maxSize) {
-      const oldest = this.accessOrder.shift();
+    while (this.accessOrder.size > this.maxSize) {
+      const oldest = this.accessOrder.keys().next().value as string | undefined;
       if (oldest != null) {
         this.candidates.delete(oldest);
+        this.createdAt.delete(oldest);
+        this.accessOrder.delete(oldest);
       }
     }
   }

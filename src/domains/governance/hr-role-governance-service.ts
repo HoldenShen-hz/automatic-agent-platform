@@ -157,6 +157,7 @@ export interface RegisterApprovedHrRoleRequest {
 
 /** Tool names that are forbidden in HR roles for security reasons */
 const FORBIDDEN_HR_TOOL_NAMES = new Set(["spawn_agent", "send_message"]);
+const HR_READ_ONLY_TOOL_NAMES = new Set(["read", "question"]);
 /** Tool names related to command execution that require special scope boundaries */
 const COMMAND_RELATED_TOOL_NAMES = new Set(["bash", "command_exec"]);
 
@@ -433,7 +434,7 @@ export class HrRoleGovernanceService {
 
     // Check if role is read-only (only uses read/question tools)
     const isReadOnlyRole = expandedProposalTools.resolvedToolNames.length > 0 &&
-      expandedProposalTools.resolvedToolNames.every((toolName) => toolName === "read" || toolName === "question");
+      expandedProposalTools.resolvedToolNames.every((toolName) => HR_READ_ONLY_TOOL_NAMES.has(toolName));
     if (isReadOnlyRole) {
       warnings.push("hr.read_only_role");
     }

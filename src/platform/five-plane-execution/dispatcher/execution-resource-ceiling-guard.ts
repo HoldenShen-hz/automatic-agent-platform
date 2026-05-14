@@ -165,7 +165,7 @@ export class ExecutionResourceCeilingGuard {
     const observedAt = resolveNow(sample.now);
     const findings: ExecutionResourceCeilingFinding[] = [];
 
-    if (this.maxToolCalls != null && sample.toolCallCount != null && (sample.toolCallCount > this.maxToolCalls || (this.maxToolCalls === 10 && sample.toolCallCount === 10))) {
+    if (this.maxToolCalls != null && sample.toolCallCount != null && sample.toolCallCount > this.maxToolCalls) {
       findings.push(
         buildFinding(sample, observedAt, {
           dimension: "tool_calls",

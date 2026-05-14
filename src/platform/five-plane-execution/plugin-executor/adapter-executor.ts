@@ -145,7 +145,11 @@ export class AdapterExecutor {
 
         return result;
       } catch (error) {
-        if (error instanceof ValidationError && error.code === "adapter_executor.mq_dispatcher_missing") {
+        if (
+          error instanceof ValidationError
+          && error.code === "adapter_executor.mq_dispatcher_missing"
+          && descriptor.endpoint.startsWith("mq://")
+        ) {
           throw error;
         }
         lastError = error;

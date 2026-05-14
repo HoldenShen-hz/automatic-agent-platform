@@ -103,7 +103,7 @@ export function createUncaughtExceptionHandler(
     hardExitTimer = setTimeout(() => {
       processLogger.error("uncaughtException handler timed out — forcing process.exit(1)");
       process.exit(1);
-    }, 60_000).unref();
+    }, 60_000);
   };
 }
 
@@ -167,7 +167,7 @@ export function createUnhandledRejectionHandler(
     hardExitTimer = setTimeout(() => {
       processLogger.error("unhandledRejection handler timed out — forcing process.exit(1)");
       process.exit(1);
-    }, 60_000).unref();
+    }, 60_000);
   };
 }
 

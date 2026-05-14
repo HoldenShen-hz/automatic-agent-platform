@@ -78,6 +78,35 @@ test("OidcIdentityService validates access token", async () => {
   assert.equal(session!.userId, userInfo!.sub);
 });
 
+test("OidcIdentityService fetchUserInfo uses timeout AbortSignal", async () => {
+  const originalFetch = globalThis.fetch;
+  let sawAbortSignal = false;
+
+  try {
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sawAbortSignal = init?.signal instanceof AbortSignal;
+      return new Response(JSON.stringify({
+        sub: "user-1",
+        email: "user@example.com",
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const service = new OidcIdentityService(createOidcConfig(), undefined, {
+      allowMockFallback: false,
+      fetchTimeoutMs: 10,
+    });
+    const userInfo = await service.fetchUserInfo("access-token");
+
+    assert.equal(sawAbortSignal, true);
+    assert.equal(userInfo?.sub, "user-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("OidcIdentityService returns null for invalid access token", () => {
   const service = new OidcIdentityService(createOidcConfig());
 

@@ -141,10 +141,10 @@ export function assertTaskTenantAccess(
   notFoundMessage: string,
 ): void {
   if (principal.tenantId == null) {
-    return;
+    throw new ApiError(403, "api.tenant_scope_required", "Authenticated principal must include tenant scope.");
   }
   if (resourceTenantId !== principal.tenantId) {
-    throw new ApiError(404, notFoundCode, notFoundMessage);
+    throw new ApiError(403, "api.tenant_scope_mismatch", "Authenticated principal cannot access another tenant scope.");
   }
 }
 
@@ -204,11 +204,12 @@ export function buildJsonErrorResponse(
   };
 }
 
-export function buildJsonDocumentResponse(payload: unknown): ApiResponsePayload {
+export function buildJsonDocumentResponse(payload: unknown, requestId?: string): ApiResponsePayload {
   return {
     statusCode: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
+      ...(requestId != null ? { "x-request-id": requestId } : {}),
     },
     body: JSON.stringify(payload, null, 2),
   };

@@ -425,6 +425,7 @@ test("BrowserExecutor.evaluate() returns innerHTML result", async () => {
   assert.equal(result.status, "ok");
   const output = getOutput(result);
   assert.equal(output.result, "<div>content</div>");
+  assert.equal(String(output.result).includes("<script"), false);
 });
 
 test("BrowserExecutor.evaluate() handles arbitrary scripts", async () => {

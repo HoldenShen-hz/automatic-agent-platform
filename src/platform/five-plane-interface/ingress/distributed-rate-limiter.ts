@@ -12,6 +12,8 @@ import { RedisRateLimiter } from "./redis-rate-limiter.js";
 export interface RateLimiterConfig {
   /** Redis configuration for distributed rate limiting */
   redis?: RedisRateLimiterConfig;
+  /** Explicitly allow local fallback in production-like deployments */
+  allowLocalFallbackInProduction?: boolean;
   /** In-memory fallback limit (used when Redis is not configured) */
   maxCalls?: number;
   /** In-memory fallback window in ms (used when Redis is not configured) */
@@ -41,6 +43,9 @@ export class DistributedRateLimiter {
     if (config.redis) {
       this.redisLimiter = new RedisRateLimiter(config.redis);
     } else {
+      if (process.env["NODE_ENV"] === "production" && config.allowLocalFallbackInProduction !== true) {
+        throw new Error("rate_limiter.redis_required_in_production");
+      }
       this.redisLimiter = null;
     }
   }

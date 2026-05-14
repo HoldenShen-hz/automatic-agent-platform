@@ -17,7 +17,7 @@ import {
   MissionResolver,
 } from "../../../five-plane-control-plane/mission/index.js";
 import type { ApiAuthService } from "../api-auth-service.js";
-import { readJsonBody, requirePrincipal, buildJsonResponse } from "./utils.js";
+import { readJsonBody, requirePrincipal, buildJsonResponse, buildJsonErrorResponse } from "./utils.js";
 import type { RouteDefinition } from "./types.js";
 
 export interface MissionRouteDeps {
@@ -98,7 +98,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const mission = repository.getMission(segments[2]!);
         if (mission == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
         return buildJsonResponse(ctx.requestId, 200, { mission });
       },
@@ -115,12 +115,13 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const current = repository.getMission(segments[2]!);
         if (current == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
         const ifMatch = ctx.request.headers["if-match"];
         if (ifMatch == null || ifMatch !== current.etag) {
-          return buildJsonResponse(ctx.requestId, ifMatch == null ? 428 : 409, {
-            error: { code: ifMatch == null ? "MISSION_IF_MATCH_REQUIRED" : "MISSION_VERSION_CONFLICT" },
+          return buildJsonErrorResponse(ctx.requestId, ifMatch == null ? 428 : 409, {
+            code: ifMatch == null ? "MISSION_IF_MATCH_REQUIRED" : "MISSION_VERSION_CONFLICT",
+            message: ifMatch == null ? "Mission update requires If-Match." : "Mission version conflict.",
           });
         }
         const body = readJsonBody(ctx.request.body) as Record<string, unknown>;
@@ -158,7 +159,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const mission = repository.getMission(segments[2]!);
         if (mission == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
         switch (segments[3]) {
           case "members":
@@ -194,7 +195,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const mission = repository.getMission(segments[2]!);
         if (mission == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
         const body = readJsonBody(ctx.request.body) as Record<string, unknown>;
         const permissions = readPermissions(body["permissions"]);
@@ -241,7 +242,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
           ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
         );
         if (member == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_MEMBER_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_MEMBER_NOT_FOUND", message: "Mission member not found." });
         }
         return buildJsonResponse(ctx.requestId, 200, { member });
       },
@@ -263,7 +264,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
         }
         const current = repository.getMission(missionId);
         if (current == null) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "MISSION_NOT_FOUND" } });
+          return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
         const mission = lifecycle.transition({
           missionId,

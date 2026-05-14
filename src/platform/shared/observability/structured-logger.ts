@@ -52,6 +52,7 @@ export interface StructuredLogEntry {
   stepId?: string;
   tenantId?: string;
   harnessRunId?: string;
+  requestId?: string;
   traceId?: string;
   spanId?: string;
   parentSpanId?: string;
@@ -263,6 +264,7 @@ export class StructuredLogger {
     const stepId = entry.stepId ?? readStringField(rawData, "stepId");
     const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
     const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
+    const requestId = entry.requestId ?? readStringField(rawData, "requestId");
     const traceId = entry.traceId ?? readStringField(rawData, "traceId") ?? activeTelemetryContext?.traceId;
     const spanId = entry.spanId ?? activeTelemetryContext?.spanId;
     // Note: ActiveTelemetryContext.parentSpanId is string | null, but StructuredLogEntry.parentSpanId is string | undefined
@@ -281,7 +283,7 @@ export class StructuredLogger {
       : undefined;
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
-    const data = rawData;
+    const data = sanitizeLogData(rawData);
 
     const record: StructuredLogEntry = {
       ...entry,
@@ -294,6 +296,7 @@ export class StructuredLogger {
       ...(stepId !== undefined ? { stepId } : {}),
       ...(tenantId !== undefined ? { tenantId } : {}),
       ...(harnessRunId !== undefined ? { harnessRunId } : {}),
+      ...(requestId !== undefined ? { requestId } : {}),
       ...(traceId !== undefined ? { traceId } : {}),
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
@@ -596,6 +599,44 @@ function normalizeStructuredService(value: string | undefined): string {
 function readStringField(record: Record<string, unknown> | undefined, key: string): string | undefined {
   const value = record?.[key];
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+const SENSITIVE_LOG_KEY_PATTERN = /(?:authorization|token|secret|password|api[_-]?key|cookie|set-cookie|email)/i;
+const REDACTED_LOG_VALUE = "[REDACTED]";
+
+function sanitizeLogData(value: unknown, depth = 0): Record<string, unknown> | undefined {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return value === undefined ? undefined : { value: sanitizeLogValue(value, depth) };
+  }
+  return sanitizeLogObject(value as Record<string, unknown>, depth);
+}
+
+function sanitizeLogObject(record: Record<string, unknown>, depth: number): Record<string, unknown> {
+  if (depth > 6) {
+    return { truncated: true };
+  }
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (SENSITIVE_LOG_KEY_PATTERN.test(key)) {
+      sanitized[key] = REDACTED_LOG_VALUE;
+      continue;
+    }
+    sanitized[key] = sanitizeLogValue(value, depth + 1);
+  }
+  return sanitized;
+}
+
+function sanitizeLogValue(value: unknown, depth: number): unknown {
+  if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeLogValue(item, depth + 1));
+  }
+  if (typeof value === "object") {
+    return sanitizeLogObject(value as Record<string, unknown>, depth + 1);
+  }
+  return String(value);
 }
 
 function inferStructuredPlane(explicitSourceFile?: string): StructuredPlane {

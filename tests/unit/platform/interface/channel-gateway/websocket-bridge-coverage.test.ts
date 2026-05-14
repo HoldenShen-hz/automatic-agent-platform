@@ -384,6 +384,165 @@ test("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
   });
 });
 
+test("WebSocketBridge rejects connections above configured cap", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { maxConnections: 1 });
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const first = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+      const second = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+
+      first.on("open", () => {
+        assert.equal(bridge.getClientCount(), 1);
+      });
+      second.on("close", (code: number) => {
+        assert.equal(code, 1013);
+        first.close();
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      first.on("error", reject);
+      second.on("error", () => {
+        // Expected close after the upgrade is rejected by the bridge.
+      });
+    });
+  });
+});
+
+test("WebSocketBridge enforces global subscription cap and exposes metrics", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { maxTotalSubscriptions: 1 });
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+
+      ws.on("open", () => {
+        const serverSideSocket = Array.from((bridge as any).clients.keys())[0];
+        assert.equal((bridge as any).subscribeToTask(serverSideSocket, "task-one"), "subscribed");
+        assert.equal((bridge as any).subscribeToTask(serverSideSocket, "task-two"), "subscription_limit_exceeded");
+        assert.deepEqual(bridge.getMetrics(), {
+          clientCount: 1,
+          totalSubscriptionCount: 1,
+          slowConsumerCount: 0,
+          pendingAckCount: 0,
+          taskHistoryCount: 0,
+        });
+        ws.close();
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", reject);
+    });
+  });
+});
+
+test("WebSocketBridge clears pending acknowledgements on disconnect", async () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+  const fakeWs = {
+    removeAllListeners: (() => {}) as WebSocket["removeAllListeners"],
+  } as unknown as WebSocket;
+  const pendingAcks = new Map([[1, { eventId: "evt-1", taskId: "task-a", sentAt: new Date().toISOString() }]]);
+
+  (bridge as any).clients.set(fakeWs, {
+    webSocket: fakeWs,
+    principal: { actorId: "actor-1", tenantId: "tenant-1", scopes: ["user"] },
+    subscribedTasks: new Set(["task-a"]),
+    lastEventId: "evt-1",
+    nextExpectedSequenceNum: 2,
+    lastAcknowledgedSequenceNum: 0,
+    pendingAcks,
+    bufferedEventCount: 1,
+    isAlive: true,
+    connectedAt: Date.now(),
+    lastActivityAt: Date.now(),
+  });
+  (bridge as any).taskSubscribers.set("task-a", new Set([fakeWs]));
+
+  (bridge as any).handleDisconnection(fakeWs);
+
+  assert.equal(pendingAcks.size, 0);
+  assert.equal(bridge.getMetrics().pendingAckCount, 0);
+  await bridge.close();
+  server.close();
+});
+
+test("WebSocketBridge evicts task event history by task count and per-task count", async () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, {
+    maxTaskEventHistoryTasks: 2,
+    maxTaskEventHistoryPerTask: 2,
+  });
+
+  const event: TaskWebSocketEvent = {
+    eventType: "status_changed",
+    taskId: "task-a",
+    status: "queued",
+    timestamp: new Date().toISOString(),
+  };
+
+  bridge.broadcastToTask("task-a", event, "evt-a-1");
+  bridge.broadcastToTask("task-a", event, "evt-a-2");
+  bridge.broadcastToTask("task-a", event, "evt-a-3");
+  bridge.broadcastToTask("task-b", { ...event, taskId: "task-b" }, "evt-b-1");
+  bridge.broadcastToTask("task-c", { ...event, taskId: "task-c" }, "evt-c-1");
+
+  const history = (bridge as any).taskEventHistory as Map<string, Array<{ eventId: string }>>;
+  assert.equal(history.has("task-a"), false);
+  assert.equal(history.size, 2);
+  assert.deepEqual(history.get("task-b")?.map((item) => item.eventId), ["evt-b-1"]);
+  assert.deepEqual(history.get("task-c")?.map((item) => item.eventId), ["evt-c-1"]);
+  await bridge.close();
+  server.close();
+});
+
+test("WebSocketBridge closes idle clients during heartbeat sweep", async () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { idleTimeoutMs: 1 });
+  let closeCode: number | undefined;
+
+  const fakeWs = {
+    OPEN: 1,
+    readyState: 1,
+    close(code: number) {
+      closeCode = code;
+    },
+    removeAllListeners: (() => {}) as WebSocket["removeAllListeners"],
+  } as unknown as WebSocket;
+
+  (bridge as any).clients.set(fakeWs, {
+    webSocket: fakeWs,
+    principal: { actorId: "actor-1", tenantId: "tenant-1", scopes: ["user"] },
+    subscribedTasks: new Set(),
+    lastEventId: null,
+    nextExpectedSequenceNum: 0,
+    lastAcknowledgedSequenceNum: -1,
+    pendingAcks: new Map(),
+    bufferedEventCount: 0,
+    isAlive: true,
+    connectedAt: Date.now() - 10_000,
+    lastActivityAt: Date.now() - 10_000,
+  });
+
+  (bridge as any).runHeartbeatSweep();
+
+  assert.equal(closeCode, 4000);
+  assert.equal(bridge.getClientCount(), 0);
+  await bridge.close();
+  server.close();
+});
+
 test("WebSocketBridge removes listeners and subscriptions on disconnect", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -408,6 +567,9 @@ test("WebSocketBridge removes listeners and subscriptions on disconnect", async 
     lastAcknowledgedSequenceNum: -1,
     pendingAcks: new Map(),
     bufferedEventCount: 0,
+    isAlive: true,
+    connectedAt: Date.now(),
+    lastActivityAt: Date.now(),
   });
   (bridge as any).taskSubscribers.set("task-a", new Set([fakeWs]));
   (bridge as any).taskSubscribers.set("task-b", new Set([fakeWs]));

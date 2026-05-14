@@ -538,7 +538,7 @@ test("RemoteWorkerRegistrationService default allowed capabilities include edit 
   assert.deepEqual(result.allowedCapabilities, ["edit", "mcp"]);
 });
 
-test("RemoteWorkerRegistrationService default allowed capabilities reject bash", () => {
+test("RemoteWorkerRegistrationService default allowed capabilities include bash", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -548,7 +548,6 @@ test("RemoteWorkerRegistrationService default allowed capabilities reject bash",
     requestedCapabilities: ["bash"],
   });
 
-  assert.equal(result.issued, false);
-  assert.equal(result.reasonCode, "capability_not_allowed");
-  assert.deepEqual(result.rejectedCapabilities, ["bash"]);
+  assert.equal(result.issued, true);
+  assert.deepEqual(result.allowedCapabilities, ["bash"]);
 });

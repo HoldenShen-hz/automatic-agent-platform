@@ -19,8 +19,12 @@ const WS_PATH = "/ws/v1/stream";
 const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
 const CLOSE_TIMEOUT_MS = 100;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
+const DEFAULT_MAX_CONNECTIONS = 1_000;
+const DEFAULT_MAX_TOTAL_SUBSCRIPTIONS = 10_000;
 const MAX_TASK_EVENT_HISTORY = 200;
+const DEFAULT_MAX_TASK_EVENT_HISTORY_TASKS = 1_000;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
+const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_PAYLOAD_BYTES = 64 * 1024;
 // R12-07: Configurable back-pressure threshold
 const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
@@ -75,13 +79,29 @@ interface ClientConnection {
   pendingAcks: Map<number, { eventId: string; taskId: string; sentAt: string }>;
   bufferedEventCount: number;
   isAlive: boolean;
+  connectedAt: number;
+  lastActivityAt: number;
 }
 
 type SubscriptionResult = "subscribed" | "scope_denied" | "subscription_limit_exceeded";
 
 export interface WebSocketBridgeOptions {
   heartbeatIntervalMs?: number;
+  idleTimeoutMs?: number;
   maxPayloadBytes?: number;
+  maxConnections?: number;
+  maxSubscriptionsPerClient?: number;
+  maxTotalSubscriptions?: number;
+  maxTaskEventHistoryTasks?: number;
+  maxTaskEventHistoryPerTask?: number;
+}
+
+export interface WebSocketBridgeMetrics {
+  readonly clientCount: number;
+  readonly totalSubscriptionCount: number;
+  readonly slowConsumerCount: number;
+  readonly pendingAckCount: number;
+  readonly taskHistoryCount: number;
 }
 
 export class WebSocketBridge {
@@ -92,6 +112,12 @@ export class WebSocketBridge {
   private readonly slowConsumers = new Set<WebSocket>();
   private readonly tenantScopeFilter: TenantScopeFilter | null;
   private readonly heartbeatTimer: NodeJS.Timeout;
+  private readonly idleTimeoutMs: number;
+  private readonly maxConnections: number;
+  private readonly maxSubscriptionsPerClient: number;
+  private readonly maxTotalSubscriptions: number;
+  private readonly maxTaskEventHistoryTasks: number;
+  private readonly maxTaskEventHistoryPerTask: number;
 
   public constructor(
     server: Server,
@@ -100,6 +126,12 @@ export class WebSocketBridge {
     options: WebSocketBridgeOptions = {},
   ) {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
+    this.idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+    this.maxConnections = options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
+    this.maxSubscriptionsPerClient = options.maxSubscriptionsPerClient ?? MAX_SUBSCRIPTIONS_PER_CLIENT;
+    this.maxTotalSubscriptions = options.maxTotalSubscriptions ?? DEFAULT_MAX_TOTAL_SUBSCRIPTIONS;
+    this.maxTaskEventHistoryTasks = options.maxTaskEventHistoryTasks ?? DEFAULT_MAX_TASK_EVENT_HISTORY_TASKS;
+    this.maxTaskEventHistoryPerTask = options.maxTaskEventHistoryPerTask ?? MAX_TASK_EVENT_HISTORY;
     this.wss = new WebSocketServer({
       server,
       path: WS_PATH,
@@ -115,6 +147,14 @@ export class WebSocketBridge {
   }
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
+    if (this.clients.size >= this.maxConnections) {
+      ws.close(1013, "Connection limit exceeded");
+      logger.warn("WebSocket connection rejected: connection limit exceeded", {
+        maxConnections: this.maxConnections,
+      });
+      return;
+    }
+
     const params = this.extractConnectionParams(req);
 
     if (!params.token) {
@@ -145,6 +185,8 @@ export class WebSocketBridge {
       pendingAcks: new Map(),
       bufferedEventCount: 0,
       isAlive: true,
+      connectedAt: Date.now(),
+      lastActivityAt: Date.now(),
     };
     this.clients.set(ws, client);
 
@@ -156,6 +198,7 @@ export class WebSocketBridge {
       const liveClient = this.clients.get(ws);
       if (liveClient != null) {
         liveClient.isAlive = true;
+        liveClient.lastActivityAt = Date.now();
       }
       try {
         const parsed = JSON.parse(data.toString());
@@ -176,6 +219,7 @@ export class WebSocketBridge {
       const liveClient = this.clients.get(ws);
       if (liveClient != null) {
         liveClient.isAlive = true;
+        liveClient.lastActivityAt = Date.now();
       }
     });
     ws.on("error", (error) => {
@@ -188,6 +232,9 @@ export class WebSocketBridge {
 
   private handleMessage(ws: WebSocket, message: WebSocketMessageType): void {
     const client = this.clients.get(ws);
+    if (client != null) {
+      client.lastActivityAt = Date.now();
+    }
     switch (message.type) {
       case "ping":
         ws.send(JSON.stringify({ type: "pong" }));
@@ -213,7 +260,7 @@ export class WebSocketBridge {
                 code: result === "scope_denied" ? "scope_denied" : "subscription_limit_exceeded",
                 message: result === "scope_denied"
                   ? "Task scope denied"
-                  : `Subscription limit of ${MAX_SUBSCRIPTIONS_PER_CLIENT} tasks exceeded`,
+                  : `Subscription limit of ${this.maxSubscriptionsPerClient} tasks exceeded`,
               }));
         }
         return;
@@ -241,7 +288,10 @@ export class WebSocketBridge {
     if (scopeDecision != null && !scopeDecision.allowed) {
       return "scope_denied";
     }
-    if (!client.subscribedTasks.has(taskId) && client.subscribedTasks.size >= MAX_SUBSCRIPTIONS_PER_CLIENT) {
+    if (!client.subscribedTasks.has(taskId) && client.subscribedTasks.size >= this.maxSubscriptionsPerClient) {
+      return "subscription_limit_exceeded";
+    }
+    if (!client.subscribedTasks.has(taskId) && this.getTotalSubscriptionCount() >= this.maxTotalSubscriptions) {
       return "subscription_limit_exceeded";
     }
     client.subscribedTasks.add(taskId);
@@ -276,6 +326,9 @@ export class WebSocketBridge {
         this.taskSubscribers.delete(taskId);
       }
     }
+    client.pendingAcks.clear();
+    client.subscribedTasks.clear();
+    client.bufferedEventCount = 0;
     this.slowConsumers.delete(ws);
     ws.removeAllListeners?.();
     this.clients.delete(ws);
@@ -321,6 +374,20 @@ export class WebSocketBridge {
     return this.slowConsumers.size;
   }
 
+  public getMetrics(): WebSocketBridgeMetrics {
+    let pendingAckCount = 0;
+    for (const client of this.clients.values()) {
+      pendingAckCount += client.pendingAcks.size;
+    }
+    return {
+      clientCount: this.clients.size,
+      totalSubscriptionCount: this.getTotalSubscriptionCount(),
+      slowConsumerCount: this.slowConsumers.size,
+      pendingAckCount,
+      taskHistoryCount: this.taskEventHistory.size,
+    };
+  }
+
   public async close(): Promise<void> {
     clearInterval(this.heartbeatTimer);
     for (const [ws] of this.clients) {
@@ -356,6 +423,16 @@ export class WebSocketBridge {
         } else {
           ws.close(4000, "Heartbeat timeout");
         }
+        continue;
+      }
+      if (Date.now() - client.lastActivityAt > this.idleTimeoutMs) {
+        logger.warn("WebSocket idle timeout", {
+          actorId: client.principal.actorId,
+          tenantId: client.principal.tenantId,
+          idleTimeoutMs: this.idleTimeoutMs,
+        });
+        this.handleDisconnection(ws);
+        ws.close(4000, "Idle timeout");
         continue;
       }
       client.isAlive = false;
@@ -548,9 +625,24 @@ export class WebSocketBridge {
   private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {
     const history = this.taskEventHistory.get(taskId) ?? [];
     history.push({ eventId, event });
-    while (history.length > MAX_TASK_EVENT_HISTORY) {
+    while (history.length > this.maxTaskEventHistoryPerTask) {
       history.shift();
     }
     this.taskEventHistory.set(taskId, history);
+    while (this.taskEventHistory.size > this.maxTaskEventHistoryTasks) {
+      const oldestTaskId = this.taskEventHistory.keys().next().value as string | undefined;
+      if (oldestTaskId == null) {
+        break;
+      }
+      this.taskEventHistory.delete(oldestTaskId);
+    }
+  }
+
+  private getTotalSubscriptionCount(): number {
+    let count = 0;
+    for (const subscribers of this.taskSubscribers.values()) {
+      count += subscribers.size;
+    }
+    return count;
   }
 }

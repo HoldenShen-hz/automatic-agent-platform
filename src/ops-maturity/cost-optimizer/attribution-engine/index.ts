@@ -26,8 +26,8 @@ export function aggregateCostAttribution(entries: readonly CostAttributionEntry[
     const lastIndex = roundedEntries.length - 1;
     const priorSum = roundedEntries.slice(0, lastIndex).reduce((sum, [, value]) => sum + value, 0);
     const [key, value] = roundedEntries[lastIndex]!;
-    const adjusted = roundedTotal - priorSum;
-    if (roundUsd(adjusted) === value) {
+    const adjusted = roundUsd(roundedTotal - priorSum);
+    if (adjusted === value) {
       roundedEntries[lastIndex] = [key, adjusted] as const;
     }
   }

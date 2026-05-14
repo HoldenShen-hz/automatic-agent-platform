@@ -99,10 +99,11 @@
     "requiredTools": [
       "market_data",
       "strategy_backtester",
-      "risk_calculator",
-      "order_execution"
+      "risk_calculator"
     ],
-    "optionalTools": []
+    "optionalTools": [
+      "order_execution"
+    ]
   },
   "evalProfile": {
     "blockingMetrics": [

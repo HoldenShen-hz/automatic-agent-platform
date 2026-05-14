@@ -232,7 +232,7 @@ test("GracefulShutdown - shutdown reports failures", async () => {
   const result = await shutdown.shutdown();
 
   assert.equal(result.success, false);
-  assert.equal(result.handlersRun, 1);
+  assert.equal(result.handlersRun, 2);
   assert.equal(result.handlersFailed, 1);
   assert.ok(result.errors.some((error) => error.includes("failing-handler: expected shutdown failure")));
 

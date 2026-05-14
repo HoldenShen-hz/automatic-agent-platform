@@ -1,8 +1,94 @@
 {
   "domainId": "user-operations",
+  "name": "User Operations",
+  "description": "User lifecycle operations with opt-in compliance and delivery success controls.",
+  "version": 1,
+  "status": "active",
   "phase": "9a",
+  "ringId": "ring1",
   "divisionId": "support",
   "latencyTier": "near_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "medium",
+    "maxAutonomyLevel": "reviewed"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": false
+  },
+  "workflows": [
+    {
+      "workflowId": "user-operations.primary",
+      "name": "User Operations Primary Workflow",
+      "triggerConditions": {
+        "domainId": "user-operations"
+      },
+      "steps": [
+        {
+          "stepName": "segment_sync",
+          "toolHints": [
+            "crm_sync",
+            "segment_builder"
+          ],
+          "requiresReview": true,
+          "timeoutMs": 60000
+        },
+        {
+          "stepName": "journey_schedule",
+          "toolHints": [
+            "journey_scheduler"
+          ],
+          "timeoutMs": 45000
+        }
+      ]
+    }
+  ],
+  "toolBundles": [
+    {
+      "bundleId": "user-operations.tools",
+      "tools": [
+        { "toolName": "crm_sync", "enabled": true },
+        { "toolName": "segment_builder", "enabled": true },
+        { "toolName": "journey_scheduler", "enabled": true }
+      ]
+    }
+  ],
+  "outputContracts": [
+    {
+      "contractId": "user-operations.delivery-readiness",
+      "name": "Delivery Readiness Evidence",
+      "schema": {
+        "required": [
+          "opt_in_compliance",
+          "delivery_success",
+          "suppression_list_check"
+        ]
+      },
+      "validationLevel": "strict"
+    }
+  ],
+  "capabilities": {
+    "supportedTaskTypes": [
+      "segment_sync",
+      "journey_schedule"
+    ],
+    "requiredTools": [
+      "crm_sync",
+      "segment_builder",
+      "journey_scheduler"
+    ],
+    "optionalTools": [],
+    "modelPreferences": {
+      "planning": "high_reasoning",
+      "delivery": "deterministic_summary"
+    },
+    "budgetLimits": {
+      "maxTokensPerTask": 6000,
+      "maxCostPerTask": 10
+    },
+    "securityLevel": "standard"
+  },
   "workflowProfile": {
     "workflowId": "user-operations.primary",
     "rollout": "baseline"

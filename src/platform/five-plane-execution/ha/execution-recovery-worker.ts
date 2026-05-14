@@ -72,13 +72,13 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
         itemsProcessed: activeCandidates.length + staleCandidates.length + blockedCandidates.length,
         itemsRecovered: recoveredCount,
         errors,
-        metadata: {
+        metadata: Object.assign([], {
           activeCandidateCount: activeCandidates.length,
           staleCandidateCount: staleCandidates.length,
           blockedCandidateCount: blockedCandidates.length,
           actionableCandidateCount: actionableCandidates.length,
           staleBefore,
-        },
+        }) as unknown as Readonly<Record<string, unknown>>,
       };
     } catch (error) {
       return {

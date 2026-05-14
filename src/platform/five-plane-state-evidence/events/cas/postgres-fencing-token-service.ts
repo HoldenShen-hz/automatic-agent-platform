@@ -10,12 +10,7 @@ function buildFenceKey(executionId: string, nodeId: string): string {
 }
 
 export class AsyncFencingTokenService {
-  private static readonly globalTokenCounter = {
-    value: 0,
-    getAndIncrement(): number {
-      return ++this.value;
-    },
-  };
+  private static readonly globalTokenCounter = new Int32Array(new SharedArrayBuffer(4));
 
   public constructor(
     private readonly database: AsyncSqlDatabase,
@@ -23,7 +18,7 @@ export class AsyncFencingTokenService {
   ) {}
 
   public generateFencingToken(executionId: string, nodeId: string): string {
-    const counter = AsyncFencingTokenService.globalTokenCounter.getAndIncrement();
+    const counter = Atomics.add(AsyncFencingTokenService.globalTokenCounter, 0, 1) + 1;
     const timestamp = Date.now();
     return [
       encodeURIComponent(executionId),
@@ -69,14 +64,15 @@ export class AsyncFencingTokenService {
       await this.lockExecutionFence(conn, executionId);
       const repo = new PostgresFenceRepository(conn);
       await repo.deleteExpired(new Date());
+      const fences = await repo.getFencesForExecution(executionId);
 
-      for (const fence of await repo.getFencesForExecution(executionId)) {
+      for (const fence of fences) {
         if (fence.ownerNodeId === this.nodeId && (fence.mode === "exclusive" || mode === "exclusive")) {
           return fence;
         }
       }
 
-      for (const fence of await repo.getFencesForExecution(executionId)) {
+      for (const fence of fences) {
         if (fence.ownerNodeId !== this.nodeId && (fence.mode === "exclusive" || mode === "exclusive")) {
           return null;
         }

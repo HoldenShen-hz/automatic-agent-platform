@@ -61,6 +61,14 @@ export class QueueMetricCollector {
     this.failureReasons = this.failureReasons.filter((e) => e.timestamp > cutoff);
   }
 
+  public evictExpiredWaitTimes(): void {
+    const cutoff = Date.now() - this.ttlMs;
+    this.waitTimes = this.waitTimes.filter((entry) => entry.value > cutoff);
+    if (this.waitTimes.length > this.maxSize) {
+      this.waitTimes = this.waitTimes.slice(-this.maxSize);
+    }
+  }
+
   public recordEnqueue(): void {
     this.enqueued += 1;
   }

@@ -13,6 +13,7 @@ const PBKDF2_DIGEST = "sha256";
 const SALT_LENGTH = 16;
 const ENVELOPE_VERSION = "fe1";
 const KEY_ID_HEX_LENGTH = 16;
+const FIELD_ENCRYPTION_KEY_ENV = "AA_FIELD_ENCRYPTION_KEY";
 
 /**
  * R10-05: Derives a cryptographic key from a password using PBKDF2 (RFC 8018).
@@ -30,6 +31,14 @@ function normalizeKeyInput(key: Buffer | string): Buffer {
     throw new ValidationError("security.encryption_key_too_weak", "security.encryption_key_too_weak");
   }
   return buffer;
+}
+
+export function loadFieldEncryptionKeyFromEnv(env: NodeJS.ProcessEnv = process.env): Buffer {
+  const value = env[FIELD_ENCRYPTION_KEY_ENV];
+  if (!value?.trim()) {
+    throw new ValidationError("security.field_encryption_key_required", "security.field_encryption_key_required");
+  }
+  return normalizeKeyInput(value.trim());
 }
 
 function buildKeyId(key: Buffer): string {

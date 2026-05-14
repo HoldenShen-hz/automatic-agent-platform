@@ -781,7 +781,10 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    void this.enqueueDelivery(consumerId, true);
+    const timer = setTimeout(() => {
+      void this.enqueueDelivery(consumerId, true);
+    }, 0);
+    timer.unref?.();
   }
 
   private ensurePolling(consumerId: string): void {

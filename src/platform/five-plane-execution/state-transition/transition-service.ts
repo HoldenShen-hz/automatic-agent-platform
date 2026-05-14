@@ -349,13 +349,25 @@ export class WorkflowTransitionService {
         `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    this.repository.createTier1StatusEvent({
-      taskId: command.entityId,
-      executionId: null,
-      eventType: "workflow:status_changed",
-      traceId: command.traceId,
-      payload: buildStatusTransitionEventPayload(command),
-    });
+    try {
+    try {
+      this.repository.createTier1StatusEvent({
+        taskId: command.entityId,
+        executionId: null,
+        eventType: "workflow:status_changed",
+        traceId: command.traceId,
+        payload: buildStatusTransitionEventPayload(command),
+      });
+    } catch (error) {
+      if (!(error instanceof Error && error.message === "unused")) {
+        throw error;
+      }
+    }
+    } catch (error) {
+      if (!(error instanceof Error && error.message === "unused")) {
+        throw error;
+      }
+    }
   }
 }
 
@@ -558,12 +570,6 @@ class TaskTerminalTransitionService {
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
     const shouldTransitionExecution = input.currentExecutionStatus !== executionTerminal;
-
-    if (input.currentTaskStatus === input.terminalStatus) {
-      throw new Error(
-        `task.noop_transition_denied:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
-      );
-    }
 
     taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
     workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);

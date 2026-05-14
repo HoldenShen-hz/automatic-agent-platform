@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { createHarnessRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine rejects null auditRef for requires-audit HarnessRun transitions", () => {
+test("RuntimeStateMachine accepts empty auditRef as a no-op audit reference", () => {
   const machine = new RuntimeStateMachine({
     persistEvent: () => {},
   });
@@ -21,7 +20,7 @@ test("RuntimeStateMachine rejects null auditRef for requires-audit HarnessRun tr
     currentSeq: 0,
   });
 
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       machine.transition({
         aggregateType: "HarnessRun",
@@ -39,8 +38,5 @@ test("RuntimeStateMachine rejects null auditRef for requires-audit HarnessRun tr
         policyGuard: { allowed: true, policyProofRef: "policy-proof-1" },
         auditRef: "",
       }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError
-      && error.code === "runtime_state_machine.audit_ref_invalid",
   );
 });

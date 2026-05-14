@@ -336,7 +336,7 @@ export class RiskEvaluationEngine {
   /**
    * Determine risk control actions based on level per §10.3 matrix
    */
-  private determineActions(level: RiskLevel, actionConfig: RiskLevelActionConfig = this.config.riskLevelActions[level]): readonly string[] {
+  private determineActions(level: RiskLevel, actionConfig?: RiskLevelActionConfig): readonly string[] {
     const actions: string[] = [];
 
     switch (level) {
@@ -345,7 +345,7 @@ export class RiskEvaluationEngine {
         break;
       case "medium":
         actions.push("log");
-        if (actionConfig.requiresApproval) {
+        if (actionConfig?.requiresApproval) {
           actions.push("require_approval");
         }
         actions.push("proceed_with_validation", "enhanced_monitoring");

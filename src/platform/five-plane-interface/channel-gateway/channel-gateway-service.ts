@@ -82,8 +82,8 @@ export class ChannelAdapterRegistry {
   /**
    * Gets an adapter for a channel type.
    */
-  public get(channel: string): ChannelAdapter | null {
-    return this.adapters.get(channel) ?? null;
+  public get(channel: string): ChannelAdapter | undefined {
+    return this.adapters.get(channel);
   }
 
   /**

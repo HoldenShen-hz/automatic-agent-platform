@@ -275,6 +275,20 @@ export class ExecutionLeaseServiceAsync {
         lease,
       };
     }
+    if (lease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        lease,
+      };
+    }
+    if (Date.parse(lease.expiresAt) <= Date.parse(occurredAt)) {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_expired",
+        lease,
+      };
+    }
 
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,
@@ -450,6 +464,24 @@ export class ExecutionLeaseServiceAsync {
       return {
         outcome: "blocked",
         reasonCode: "worker_mismatch",
+        previousLease,
+        lease: null,
+      };
+    }
+
+    if (previousLease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        previousLease,
+        lease: null,
+      };
+    }
+
+    if (Date.parse(previousLease.expiresAt) <= Date.parse(occurredAt)) {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_expired",
         previousLease,
         lease: null,
       };

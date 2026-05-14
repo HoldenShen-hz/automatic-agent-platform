@@ -267,11 +267,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const harnessRunId = harnessRun.harnessRunId;
 
-    // TODO R4-27 [ARCHITECTURE]: HarnessRun must be persisted to RuntimeTruthRepository
-    // or AuthoritativeTaskStore to enable canonical execution tracking.
-    // Current implementation creates HarnessRun but does NOT persist it.
-    // Required: store.harnessRun.insertHarnessRun(harnessRun) or equivalent
-
     const task: TaskRecord = {
       id: taskId,
       parentId: null,

@@ -101,8 +101,8 @@ test("shutdown reports errors but continues", async () => {
   const result = await shutdown.shutdown();
 
   assert.strictEqual(result.handlersFailed, 1);
-  // Only successful handlers are counted in handlersRun
-  assert.strictEqual(result.handlersRun, 1);
+  // handlersRun counts attempted handlers; failures are tracked separately.
+  assert.strictEqual(result.handlersRun, 2);
   assert.ok(result.errors.length > 0);
   assert.ok(result.success === false);
 });

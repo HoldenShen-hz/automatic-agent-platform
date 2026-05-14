@@ -1,8 +1,94 @@
 {
   "domainId": "marketing",
+  "name": "Marketing",
+  "description": "Campaign planning and measurement workflows with brand and approval controls.",
+  "version": 1,
+  "status": "active",
   "phase": "9f",
+  "ringId": "ring1",
   "divisionId": "content",
   "latencyTier": "near_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "medium",
+    "maxAutonomyLevel": "reviewed"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": false
+  },
+  "workflows": [
+    {
+      "workflowId": "marketing.primary",
+      "name": "Marketing Primary Workflow",
+      "triggerConditions": {
+        "domainId": "marketing"
+      },
+      "steps": [
+        {
+          "stepName": "campaign_plan",
+          "toolHints": [
+            "calendar_planner",
+            "content_router"
+          ],
+          "requiresReview": true,
+          "timeoutMs": 60000
+        },
+        {
+          "stepName": "measurement_review",
+          "toolHints": [
+            "measurement_dashboard"
+          ],
+          "timeoutMs": 45000
+        }
+      ]
+    }
+  ],
+  "toolBundles": [
+    {
+      "bundleId": "marketing.tools",
+      "tools": [
+        { "toolName": "calendar_planner", "enabled": true },
+        { "toolName": "content_router", "enabled": true },
+        { "toolName": "measurement_dashboard", "enabled": true }
+      ]
+    }
+  ],
+  "outputContracts": [
+    {
+      "contractId": "marketing.campaign-approval",
+      "name": "Campaign Approval Evidence",
+      "schema": {
+        "required": [
+          "brand_consistency",
+          "approval_completeness",
+          "measurement_plan"
+        ]
+      },
+      "validationLevel": "strict"
+    }
+  ],
+  "capabilities": {
+    "supportedTaskTypes": [
+      "campaign_plan",
+      "measurement_review"
+    ],
+    "requiredTools": [
+      "calendar_planner",
+      "content_router",
+      "measurement_dashboard"
+    ],
+    "optionalTools": [],
+    "modelPreferences": {
+      "planning": "high_reasoning",
+      "measurement": "deterministic_summary"
+    },
+    "budgetLimits": {
+      "maxTokensPerTask": 6000,
+      "maxCostPerTask": 12
+    },
+    "securityLevel": "standard"
+  },
   "workflowProfile": {
     "workflowId": "marketing.primary",
     "rollout": "baseline"

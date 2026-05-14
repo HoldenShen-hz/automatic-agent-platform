@@ -15,12 +15,45 @@ import { buildJsonDocumentResponse, buildJsonResponse } from "./utils.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import { buildOpenApiDocument } from "../openapi-document.js";
 
+const PLATFORM_API_VERSION = "v1";
+const PLATFORM_VERSION = process.env["AA_BUILD_VERSION"] ?? "0.1.0";
+const CONTRACT_VERSION = process.env["AA_CONTRACT_VERSION"] ?? "2026-04-01";
+const MIN_CLIENT_VERSION = process.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
+
 export interface HealthRouteDeps {
   missionControlService: MissionControlService;
+  isShuttingDown?: () => boolean;
+}
+
+function healthStatusCode(report: Record<string, unknown>, shuttingDown: boolean): number {
+  if (shuttingDown) {
+    return 503;
+  }
+  return report["status"] === "ok" || report["status"] === "healthy" ? 200 : 503;
 }
 
 export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
   return [
+    {
+      method: "GET",
+      pathname: "/livez",
+      handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
+        status: "alive",
+        shuttingDown: deps.isShuttingDown?.() ?? false,
+      }),
+    },
+    {
+      method: "GET",
+      pathname: "/readyz",
+      handler: async (ctx) => {
+        const report = await deps.missionControlService.getHealthReportAsync() as unknown as Record<string, unknown>;
+        const shuttingDown = deps.isShuttingDown?.() ?? false;
+        return buildJsonResponse(ctx.requestId, healthStatusCode(report, shuttingDown), {
+          ...report,
+          readiness: shuttingDown ? "shutting_down" : "ready",
+        });
+      },
+    },
     {
       method: "GET",
       pathname: "/healthz",
@@ -39,7 +72,29 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
     {
       method: "GET",
       pathname: "/v1/openapi.json",
-      handler: () => buildJsonDocumentResponse(buildOpenApiDocument()),
+      handler: (ctx) => buildJsonDocumentResponse(buildOpenApiDocument(), ctx.requestId),
+    },
+    {
+      method: "GET",
+      pathname: "/v1/version",
+      handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
+        accepted: true,
+        apiVersion: PLATFORM_API_VERSION,
+        platformVersion: PLATFORM_VERSION,
+        contractVersion: CONTRACT_VERSION,
+        minClientVersion: MIN_CLIENT_VERSION,
+      }),
+    },
+    {
+      method: "GET",
+      pathname: "/v1/handshake",
+      handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
+        accepted: true,
+        apiVersion: PLATFORM_API_VERSION,
+        platformVersion: PLATFORM_VERSION,
+        contractVersion: CONTRACT_VERSION,
+        minClientVersion: MIN_CLIENT_VERSION,
+      }),
     },
   ];
 }

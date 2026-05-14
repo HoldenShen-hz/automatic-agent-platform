@@ -542,10 +542,9 @@ export function resolveCanonicalVerticalDomainId(domainId: VerticalDomainId | Le
 
 export function getVerticalDomainBaseline(domainId: VerticalDomainId | LegacyVerticalDomainId | string): DomainBaseline {
   const canonicalDomainId = resolveCanonicalVerticalDomainId(domainId);
-  if (canonicalDomainId == null) {
-    throw new Error(`vertical_domain.not_found:${domainId}`);
-  }
-  const baseline = VERTICAL_DOMAIN_BASELINES.find((item) => item.domainId === canonicalDomainId);
+  const baseline = canonicalDomainId == null
+    ? undefined
+    : VERTICAL_DOMAIN_BASELINES.find((item) => item.domainId === canonicalDomainId);
   if (baseline == null) {
     throw new Error(`vertical_domain.not_found:${domainId}`);
   }

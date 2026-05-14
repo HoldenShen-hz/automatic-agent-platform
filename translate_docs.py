@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Translate Chinese markdown files in docs_en/ to English."""
+"""Translate Chinese markdown files in docs_en/ to English.
+
+Maintenance notes:
+- This is a legacy batch translation helper for archived docs, not a CI gate.
+- Keep the file list explicit so bulk translation scope is reviewable.
+- Do not place API tokens or provider credentials in this script; use the
+  provider's local credential mechanism when running it manually.
+"""
 
 import os
 import re

@@ -51,6 +51,25 @@ function createMockDb(rows: MockRow[] = []) {
             };
             rowStore.push(newRow);
           }
+          if (sql.includes("SET status = 'dead_letter'")) {
+            const jobId = String(_args[2]);
+            const row = rowStore.find((r) => r.id === jobId);
+            if (row) {
+              row.status = "dead_letter";
+              row.last_error = _args[0] as string | null;
+              row.updated_at = String(_args[1]);
+            }
+          }
+          if (sql.includes("SET status = 'waiting', attempts = 0")) {
+            const jobId = String(_args[1]);
+            const row = rowStore.find((r) => r.id === jobId);
+            if (row) {
+              row.status = "waiting";
+              row.attempts = 0;
+              row.last_error = null;
+              row.updated_at = String(_args[0]);
+            }
+          }
           return { changes: 1 };
         },
       }),

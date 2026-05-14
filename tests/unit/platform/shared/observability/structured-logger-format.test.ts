@@ -129,6 +129,41 @@ test("StructuredLogger - tenantId and harnessRunId formatting", () => {
   assert.equal(entry.harnessRunId, "run-abc");
 });
 
+test("StructuredLogger - requestId is promoted from structured data", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.info("request scoped log", {
+    requestId: "req-123",
+    taskId: "task-123",
+  });
+
+  assert.equal(entry.requestId, "req-123");
+  assert.equal(entry.taskId, "task-123");
+});
+
+test("StructuredLogger - sensitive data fields are redacted recursively", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.info("sensitive log", {
+    authorization: "Bearer token",
+    nested: {
+      password: "secret",
+      safe: "visible",
+      tokens: [{ apiKey: "key-1" }],
+    },
+  });
+
+  assert.deepEqual(entry.data, {
+    authorization: "[REDACTED]",
+    nested: {
+      password: "[REDACTED]",
+      safe: "visible",
+      tokens: "[REDACTED]",
+    },
+  });
+  assert.deepEqual(entry.structuredPayload, entry.data);
+});
+
 test("StructuredLogger - plane field is correctly set", () => {
   const loggerP1 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/interface/api/index.ts" });
   const loggerP2 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/control-plane/iam/service.ts" });

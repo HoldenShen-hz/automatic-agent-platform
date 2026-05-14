@@ -27,6 +27,8 @@ import {
   BulkheadTimeoutError,
 } from "../stability/bulkhead-isolation.js";
 
+export const INTER_PLANE_CONTRACT_SCHEMA_VERSION = "v4.3";
+
 /**
  * Plane names in the five-plane architecture.
  */
@@ -181,7 +183,7 @@ export class InterPlaneContractGateway {
     return createContractEnvelope({
       payload: input.payload,
       envelopeId: newId("ipenv"),
-      schemaVersion: "v4.3",
+      schemaVersion: INTER_PLANE_CONTRACT_SCHEMA_VERSION,
       commandId: newId("ipcmd"),
       idempotencyKey: input.idempotencyKey ?? newId("ipidem"),
       correlationId: input.correlationId ?? newId("ipcorr"),

@@ -531,8 +531,11 @@ export class ExecutionDispatchService {
                     : null
               )
             : null;
-        if (remoteBlockReason) {
-          blockedReason = remoteBlockReason;
+        const noEmergencyWorkerReason = ticket.priority === "critical" || ticket.priority === "urgent" || ticket.priority === "high"
+          ? "dispatch.no_emergency_worker_available"
+          : null;
+        if (remoteBlockReason || noEmergencyWorkerReason) {
+          blockedReason = remoteBlockReason ?? noEmergencyWorkerReason;
         }
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
@@ -541,16 +544,16 @@ export class ExecutionDispatchService {
           requiredRepoVersion,
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
-          outcome: remoteBlockReason ? "blocked" : "no_worker",
-          reasonCode: remoteBlockReason ?? (emergencyLaneRequested ? "dispatch.no_emergency_worker_available" : null),
+          outcome: remoteBlockReason || noEmergencyWorkerReason ? "blocked" : "no_worker",
+          reasonCode: remoteBlockReason ?? noEmergencyWorkerReason,
           selectedWorkerId: null,
           leaseId: null,
           fallbackApplied: false,
           preemption: preemptionTrace,
           evaluations,
         });
-        if (remoteBlockReason) {
-          this.enqueueDispatchDlq(ticket, occurredAt, remoteBlockReason, lastTrace);
+        if (remoteBlockReason || noEmergencyWorkerReason) {
+          this.enqueueDispatchDlq(ticket, occurredAt, remoteBlockReason ?? noEmergencyWorkerReason, lastTrace);
         }
         continue;
       }

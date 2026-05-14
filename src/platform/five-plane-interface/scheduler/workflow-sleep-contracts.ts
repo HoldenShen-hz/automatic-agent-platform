@@ -56,7 +56,8 @@ export function toWorkflowSleepLease(record: WorkflowSuspensionRecord): Workflow
 
 export function toWorkflowResumeWindow(record: WorkflowSuspensionRecord, now: string): WorkflowResumeWindow {
   const expired = record.expiresAt != null && record.expiresAt <= now;
-  const due = !expired && record.resumeAfter != null && record.resumeAfter <= now;
+  const resumeWindowLeadMs = 30 * 60 * 1000;
+  const due = !expired && record.resumeAfter != null && Date.parse(record.resumeAfter) - Date.parse(now) <= resumeWindowLeadMs;
   return {
     suspensionId: record.suspensionId,
     taskId: record.taskId,

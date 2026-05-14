@@ -27,7 +27,10 @@ export type DataClassRisk = z.infer<typeof DataClassRiskSchema>;
 /**
  * Canonical blast radius factor per ADR-026 v4.3.
  */
-export const BlastRadiusSchema = z.number().min(1).max(5);
+export const BlastRadiusSchema = z.union([
+  z.number().min(1).max(5),
+  z.enum(["single_task", "workflow", "tenant", "platform"]),
+]);
 export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
 const LegacyBlastRadiusSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
 

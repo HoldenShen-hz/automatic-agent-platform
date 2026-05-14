@@ -108,6 +108,9 @@ export class LongRunningWorkflowService {
       if (record.status !== "active" || record.resumeAfter == null || record.resumeAfter > now) {
         continue;
       }
+      if (record.expiresAt != null && record.expiresAt <= now) {
+        continue;
+      }
       const updated = { ...record, status: "resumable" as const };
       this.suspensions.set(record.suspensionId, updated);
       this.emitWorkflowEvent("workflow:resume_due", updated.taskId, updated.executionId, updated);

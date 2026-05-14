@@ -10,6 +10,8 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 export interface ChannelGatewayRetryExecutorOptions {
   /** How often to poll for retryable messages (milliseconds). Default: 15000 */
   pollIntervalMs?: number;
+  /** Maximum random jitter added to each poll interval. Default: 10% of pollIntervalMs */
+  pollJitterMs?: number;
   /** Maximum messages to process per polling pass. Default: 25 */
   batchSize?: number;
   /** If true, starts polling immediately on construction. Default: false */
@@ -43,9 +45,11 @@ export interface ChannelGatewayRetryPassResult extends GatewayRetryQueueSummary 
  */
 export class ChannelGatewayRetryExecutor {
   private readonly pollIntervalMs: number;
+  private readonly pollJitterMs: number;
   private readonly batchSize: number;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  private pollingEnabled = false;
 
   /**
    * Creates a new retry executor.
@@ -58,6 +62,7 @@ export class ChannelGatewayRetryExecutor {
     options: ChannelGatewayRetryExecutorOptions = {},
   ) {
     this.pollIntervalMs = options.pollIntervalMs ?? 15_000;
+    this.pollJitterMs = options.pollJitterMs ?? Math.floor(this.pollIntervalMs * 0.1);
     this.batchSize = options.batchSize ?? 25;
     if (options.autoStart) {
       void this.runOnce();
@@ -73,11 +78,8 @@ export class ChannelGatewayRetryExecutor {
     if (this.intervalHandle != null) {
       return;
     }
-    this.intervalHandle = setInterval(() => {
-      void this.runOnce();
-    }, this.pollIntervalMs);
-    // Allow the timer to not keep the process alive
-    this.intervalHandle.unref();
+    this.pollingEnabled = true;
+    this.scheduleNextPoll();
   }
 
   /**
@@ -85,10 +87,24 @@ export class ChannelGatewayRetryExecutor {
    * Has no effect if not running.
    */
   public stop(): void {
+    this.pollingEnabled = false;
     if (this.intervalHandle != null) {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
     }
+  }
+
+  private scheduleNextPoll(): void {
+    if (!this.pollingEnabled) {
+      return;
+    }
+    const delayMs = this.pollIntervalMs + Math.floor(Math.random() * Math.max(1, this.pollJitterMs + 1));
+    this.intervalHandle = setTimeout(() => {
+      this.intervalHandle = null;
+      void this.runOnce();
+      this.scheduleNextPoll();
+    }, delayMs);
+    this.intervalHandle.unref();
   }
 
   /**

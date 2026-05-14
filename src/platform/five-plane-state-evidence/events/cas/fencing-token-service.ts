@@ -70,11 +70,11 @@ export class FencingTokenService {
   // Active fences are process-wide so multiple service instances can enforce exclusivity.
   private static readonly activeFences = new Map<string, FenceInfo>();
   private static readonly FENCING_TOKEN_SEPARATOR = "::";
-  private static globalTokenCounter = 0;
+  private static readonly globalTokenCounter = new Int32Array(new SharedArrayBuffer(4));
 
   // Exposed as a getter for test visibility; the authoritative counter is process-wide.
   public get tokenCounter(): number {
-    return FencingTokenService.globalTokenCounter;
+    return Atomics.load(FencingTokenService.globalTokenCounter, 0);
   }
 
   // Node ID for this instance
@@ -94,12 +94,12 @@ export class FencingTokenService {
    * @returns A unique fencing token string
    */
   public generateFencingToken(executionId: string, nodeId: string): string {
-    FencingTokenService.globalTokenCounter += 1;
+    const counter = Atomics.add(FencingTokenService.globalTokenCounter, 0, 1) + 1;
     const timestamp = Date.now();
     return [
       encodeURIComponent(executionId),
       encodeURIComponent(nodeId),
-      String(FencingTokenService.globalTokenCounter),
+      String(counter),
       String(timestamp),
     ].join(FencingTokenService.FENCING_TOKEN_SEPARATOR);
   }

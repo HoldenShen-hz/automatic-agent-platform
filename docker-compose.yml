@@ -20,7 +20,6 @@ services:
       AA_PG_DSN: ${AA_PG_DSN:-}
       AA_REDIS_HOST: redis
       AA_REDIS_PORT: "6379"
-      # AA_API_JWT_SECRET: ${AA_API_JWT_SECRET}  # Uncomment and set in production
     volumes:
       - phase1a-data:/app/data
     read_only: true

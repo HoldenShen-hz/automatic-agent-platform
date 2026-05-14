@@ -892,7 +892,7 @@ test("BlastRadiusSchema accepts valid values", () => {
 test("BlastRadiusSchema rejects invalid values", () => {
   assert.throws(() => BlastRadiusSchema.parse(0));
   assert.throws(() => BlastRadiusSchema.parse(6));
-  assert.throws(() => BlastRadiusSchema.parse("single_task"));
+  assert.throws(() => BlastRadiusSchema.parse("global"));
 });
 
 test("ConfidenceLevelSchema accepts valid values", () => {

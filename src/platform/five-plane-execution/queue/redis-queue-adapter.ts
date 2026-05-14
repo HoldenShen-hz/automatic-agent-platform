@@ -253,6 +253,13 @@ class RedisQueueClient {
     this.db = config.db ?? 0;
     this.prefix = config.prefix ?? "aa:";
     if (process.env.AA_RUNNING_TESTS === "1") {
+      if (process.env.NODE_ENV === "production") {
+        throw new StorageError(
+          "queue.redis_test_memory_forbidden_in_production",
+          "queue.redis_test_memory_forbidden_in_production",
+          { retryable: false },
+        );
+      }
       this.redis = new InMemoryRedisLike();
     } else {
       const require = createRequire(import.meta.url);
@@ -654,7 +661,7 @@ export class RedisQueueAdapter implements QueueAdapter {
 
   async retryJobAsync(jobId: string): Promise<QueueJobRecord | null> {
     const job = await this.getJobAsync(jobId);
-    if (!job || (job.status !== "failed" && job.status !== "dead_letter")) return null;
+    if (!job || (job.status !== "failed" && job.status !== "dead_letter" && job.status !== "waiting")) return null;
     await this.client.hmset(this.jobKey(jobId), { status: "waiting", attempts: "0", last_error: "" });
     await this.client.srem(this.activeKey(job.queueName), jobId);
     await this.client.srem(this.deadLetterKey(job.queueName), jobId);
@@ -685,16 +692,17 @@ export class RedisQueueAdapter implements QueueAdapter {
   }
 
   async statsAsync(queueName: string): Promise<QueueStats> {
-    const [waitingTotal, active, completed, deadLetter] = await Promise.all([
-      this.client.zcard(this.waitingKey(queueName)),
+    const [waiting, active, completed, deadLetter] = await Promise.all([
+      this.client.zcount(this.waitingKey(queueName), "-inf", Date.now()),
       this.client.scard(this.activeKey(queueName)),
       this.client.scard(this.completedKey(queueName)),
       this.client.scard(this.deadLetterKey(queueName)),
     ]);
-    const delayed = await this.client.zcount(this.waitingKey(queueName), "-inf", Date.now());
+    const waitingTotal = await this.client.zcard(this.waitingKey(queueName));
+    const delayed = Math.max(0, waitingTotal - waiting);
     return {
       queueName,
-      waiting: Math.max(0, waitingTotal - delayed),
+      waiting,
       delayed,
       active,
       completed,

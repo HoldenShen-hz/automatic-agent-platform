@@ -108,6 +108,7 @@ export interface OidcServiceConfig {
   readonly sessionTtlMs: number;
   readonly refreshThresholdMs: number;
   readonly maxSessionAgeMs: number;
+  readonly fetchTimeoutMs: number;
   /** §48: Disable mock fallback in production */
   readonly allowMockFallback: boolean;
 }
@@ -116,6 +117,7 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
   sessionTtlMs: 3600000, // 1 hour
   refreshThresholdMs: 300000, // 5 minutes
   maxSessionAgeMs: 86400000, // 24 hours
+  fetchTimeoutMs: 10_000,
   allowMockFallback: false, // §48: Disabled in production
 };
 
@@ -269,7 +271,7 @@ export class OidcIdentityService {
   public async fetchUserInfo(accessToken: string): Promise<OidcUserInfo | null> {
     const userInfoEndpoint = this.providerConfig.userInfoEndpoint ?? `${this.providerConfig.issuer}/userinfo`;
     try {
-      const response = await fetch(userInfoEndpoint, {
+      const response = await this.fetchWithTimeout(userInfoEndpoint, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -562,7 +564,7 @@ export class OidcIdentityService {
       ...(input.codeVerifier ? { code_verifier: input.codeVerifier } : {}),
     });
     try {
-      const response = await fetch(tokenEndpoint, {
+      const response = await this.fetchWithTimeout(tokenEndpoint, {
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
@@ -612,6 +614,17 @@ export class OidcIdentityService {
       return input.grantType === "authorization_code"
         ? this.simulateTokenResponse(input.code ?? "", input.nonce ?? "")
         : this.simulateRefreshResponse(input.refreshToken ?? "");
+    }
+  }
+
+  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.fetchTimeoutMs);
+    timeout.unref?.();
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

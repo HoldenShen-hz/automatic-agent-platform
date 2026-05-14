@@ -44,7 +44,13 @@ export interface WorkerDrainProgress {
   readonly terminationDeadline: string | null;
   readonly runTerminationCleanupRequired: boolean;
   readonly forcedHandoffCount: number;
-  readonly phaseHistory: readonly { readonly phase: WorkerDrainPhase; readonly at: string }[];
+  readonly phaseHistory: readonly {
+    readonly phase: WorkerDrainPhase;
+    readonly at: string;
+    readonly enteredAt: string;
+    readonly exitedAt: string | null;
+    readonly leasesCompleted: number;
+  }[];
 }
 
 export type WorkerDrainReceipt = WorkerDrainProgress;
@@ -122,6 +128,7 @@ export class WorkerDrainProtocol {
         ...progress,
         phase: WorkerDrainPhase.QUIESCE,
         status: "quiescing",
+        runTerminationCleanupRequired: request.activeLeases.some((lease) => lease.handoverRequired),
         phaseHistory: this.appendPhase(progress, WorkerDrainPhase.QUIESCE, now),
       };
     }
@@ -221,9 +228,15 @@ export class WorkerDrainProtocol {
       handoverLeaseIds: this.getHandoverLeases(request),
       quiesceDeadline: this.addMs(request.requestedAt, this.quiesceTimeoutMs),
       terminationDeadline: phase === WorkerDrainPhase.TERMINATE ? at : null,
-      runTerminationCleanupRequired: false,
+      runTerminationCleanupRequired: request.activeLeases.some((lease) => lease.handoverRequired) && phase !== WorkerDrainPhase.DRAIN,
       forcedHandoffCount: 0,
-      phaseHistory: [{ phase: WorkerDrainPhase.DRAIN, at: request.requestedAt }],
+      phaseHistory: [{
+        phase: WorkerDrainPhase.DRAIN,
+        at: request.requestedAt,
+        enteredAt: request.requestedAt,
+        exitedAt: null,
+        leasesCompleted: completedLeaseCount,
+      }],
     };
   }
 
@@ -265,7 +278,18 @@ export class WorkerDrainProtocol {
     phase: WorkerDrainPhase,
     at: string,
   ): WorkerDrainProgress["phaseHistory"] {
-    return [...progress.phaseHistory, { phase, at }];
+    const history = progress.phaseHistory.map((entry, index, entries) =>
+      index === entries.length - 1 && entry.exitedAt == null
+        ? { ...entry, exitedAt: at }
+        : entry,
+    );
+    return [...history, {
+      phase,
+      at,
+      enteredAt: at,
+      exitedAt: null,
+      leasesCompleted: progress.completedLeaseCount,
+    }];
   }
 
   private addMs(value: string, ms: number): string {

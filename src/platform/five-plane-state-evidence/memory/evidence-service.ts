@@ -216,6 +216,8 @@ export class EvidenceService {
    * @returns Matching evidence records
    */
   public query(query: EvidenceQuery): EvidenceRecord[] {
+    this.evictOldRecords();
+
     let candidateIds: Set<string> | null = null;
 
     // Build candidate set from indexes
@@ -290,6 +292,8 @@ export class EvidenceService {
    * @returns Integration result with learning signals
    */
   public integrateWithLearning(evidenceIds?: string[]): LearningIntegrationResult {
+    this.evictOldRecords();
+
     const signals: LearningSignal[] = [];
     const errors: string[] = [];
     const toIntegrate = evidenceIds ?? this.query({ status: "processed" }).map(r => r.id);
@@ -328,6 +332,7 @@ export class EvidenceService {
    * Gets an evidence record by ID
    */
   public get(id: string): EvidenceRecord | null {
+    this.evictOldRecords();
     return this.records.get(id) ?? null;
   }
 
@@ -342,6 +347,8 @@ export class EvidenceService {
    * Updates evidence record status
    */
   public updateStatus(id: string, status: EvidenceStatus): boolean {
+    this.evictOldRecords();
+
     const record = this.records.get(id);
     if (!record) return false;
 

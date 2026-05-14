@@ -39,6 +39,7 @@ export interface ShutdownHandler {
   handler: (signal?: AbortSignal) => Promise<void>;
   timeoutMs?: number;
   critical?: boolean;
+  dependsOn?: readonly string[];
 }
 
 export interface ShutdownResult {
@@ -225,7 +226,7 @@ export class GracefulShutdown {
       data: { handlers: this.handlers.length },
     });
 
-    for (const { name, handler, timeoutMs, critical } of [...this.handlers].reverse()) {
+    for (const { name, handler, timeoutMs, critical } of this.orderHandlersForShutdown()) {
       const handlerTimeout = timeoutMs ?? this.timeoutMs;
       const abortController = new AbortController();
       let timer: NodeJS.Timeout | null = null;
@@ -236,7 +237,6 @@ export class GracefulShutdown {
             abortController.abort();
             reject(new Error(`Handler ${name} timed out after ${handlerTimeout}ms`));
           }, handlerTimeout);
-          timer.unref?.();
         });
 
         await Promise.race([handler(abortController.signal), timeoutPromise]);
@@ -272,6 +272,25 @@ export class GracefulShutdown {
     };
 
     return this.shutdownResult;
+  }
+
+  private orderHandlersForShutdown(): ShutdownHandler[] {
+    if (!this.handlers.some((handler) => (handler.dependsOn?.length ?? 0) > 0)) {
+      return [...this.handlers].reverse();
+    }
+
+    const remaining = [...this.handlers];
+    const ordered: ShutdownHandler[] = [];
+    while (remaining.length > 0) {
+      const index = remaining.findIndex((handler) =>
+        !remaining.some((candidate) => candidate.dependsOn?.includes(handler.name) === true),
+      );
+      const [next] = remaining.splice(index >= 0 ? index : remaining.length - 1, 1);
+      if (next != null) {
+        ordered.push(next);
+      }
+    }
+    return ordered;
   }
 }
 

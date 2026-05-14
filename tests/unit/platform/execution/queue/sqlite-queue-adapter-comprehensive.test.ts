@@ -372,7 +372,7 @@ test("SqliteQueueAdapter purge does not remove recent jobs", () => {
     const purged = adapter.purge("tasks", futureTime);
     assert.equal(purged, 0);
 
-    const stored = adapter.getJob(job.job.id);
+    const stored = adapter.getJob(job.id);
     assert.ok(stored);
   } finally {
     harness.db.close();
@@ -388,6 +388,7 @@ test("SqliteQueueAdapter stats returns accurate counts", () => {
     // Add various jobs
     adapter.enqueue({ queueName: "tasks", payload: { id: "w1" } });
     adapter.enqueue({ queueName: "tasks", payload: { id: "w2" } });
+    adapter.enqueue({ queueName: "tasks", payload: { id: "w3" } });
 
     const d1 = adapter.dequeue("tasks");
     assert.ok(d1);

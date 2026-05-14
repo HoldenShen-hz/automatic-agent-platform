@@ -70,7 +70,7 @@ export class IncidentDetector {
       if (check.status === "fail_closed") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "p1",
+          severity: "SEV1",
           title: `Critical failure in ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
@@ -81,7 +81,7 @@ export class IncidentDetector {
       } else if (check.status === "degraded") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "p2",
+          severity: "SEV2",
           title: `Degraded ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
@@ -128,7 +128,7 @@ export class IncidentDetector {
       incidentId: this.generateIncidentId(),
       detectedAt: nowIso(),
       category: input.category,
-      severity: input.severity,
+      severity: normalizeIncidentSeverity(input.severity),
       status: "open",
       title: input.title,
       description: input.description,

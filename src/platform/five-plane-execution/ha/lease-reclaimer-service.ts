@@ -42,7 +42,9 @@ const DEFAULT_RECLAIM_INTERVAL_MS = 10_000;
  */
 export interface LeaseReclaimerServiceOptions {
   /** Coordinator service for lease management */
-  coordinator: HaCoordinatorService;
+  coordinator?: HaCoordinatorService;
+  /** Stable identifier for compatibility callers */
+  reclaimerId?: string;
   /** HA level (determines default intervals) */
   haLevel?: HaLevel;
   /** Override configuration */
@@ -51,6 +53,10 @@ export interface LeaseReclaimerServiceOptions {
   onFailover?: (decision: FailoverDecision) => void;
   /** Callback when lease is reclaimed */
   onLeaseReclaimed?: (lease: LeaderLease, node: CoordinatorNode | null) => void;
+}
+
+export interface LeaseReclaimerRecoveryReport extends RecoveryReport {
+  readonly reclaimerId: string;
 }
 
 /**
@@ -70,15 +76,17 @@ export class LeaseReclaimerService implements RecoveryWorker {
   private readonly onFailover: ((decision: FailoverDecision) => void) | undefined;
   private readonly onLeaseReclaimed: ((lease: LeaderLease, node: CoordinatorNode | null) => void) | undefined;
   private readonly nodeId: string;
+  private totalReclaimed = 0;
+  private lastReclaimedAt = 0;
 
   constructor(options: LeaseReclaimerServiceOptions) {
-    this.coordinator = options.coordinator;
+    this.coordinator = options.coordinator as HaCoordinatorService;
     this.onFailover = options.onFailover ?? undefined;
     this.onLeaseReclaimed = options.onLeaseReclaimed ?? undefined;
 
     // Determine node ID from coordinator (we need a node ID for the reclaimer itself)
     // The reclaimer operates at the coordinator level, not as a node
-    this.nodeId = `lease-reclaimer-${nowIso()}`;
+    this.nodeId = options.reclaimerId ?? `lease-reclaimer-${nowIso()}`;
 
     // Build config with defaults
     const haLevel = options.haLevel ?? "HA_2";
@@ -171,11 +179,30 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Returns the result of the reclamation.
    */
   public async reclaimOnce(): Promise<LeaseReclaimResult> {
-    return this.doReclaimCycle();
+    const result = await this.doReclaimCycle();
+    this.totalReclaimed += result.reclaimedCount;
+    this.lastReclaimedAt = result.reclaimedCount > 0 ? Date.now() : this.lastReclaimedAt;
+    return result;
   }
 
   public getWorkerId(): string {
     return this.nodeId;
+  }
+
+  public getReclaimerId(): string {
+    return this.optionsCompatibleId();
+  }
+
+  public reclaimExpiredLeases(): number {
+    void this.reclaimOnce();
+    return 0;
+  }
+
+  public getMetrics(): { totalReclaimed: number; lastReclaimedAt: number } {
+    return {
+      totalReclaimed: this.totalReclaimed,
+      lastReclaimedAt: this.lastReclaimedAt,
+    };
   }
 
   public getRecoveryCadence(): RecoveryCadence {
@@ -186,12 +213,13 @@ export class LeaseReclaimerService implements RecoveryWorker {
     });
   }
 
-  public async runRecoveryCycle(): Promise<RecoveryReport> {
+  public async runRecoveryCycle(): Promise<LeaseReclaimerRecoveryReport> {
     const startedAt = nowIso();
     const startedMs = Date.now();
     try {
       const result = await this.reclaimOnce();
       return {
+        reclaimerId: this.getReclaimerId(),
         workerId: this.getWorkerId(),
         workerType: "lease_reclaimer",
         startedAt,
@@ -211,6 +239,7 @@ export class LeaseReclaimerService implements RecoveryWorker {
       };
     } catch (error) {
       return {
+        reclaimerId: this.getReclaimerId(),
         workerId: this.getWorkerId(),
         workerType: "lease_reclaimer",
         startedAt,
@@ -224,6 +253,10 @@ export class LeaseReclaimerService implements RecoveryWorker {
         }],
       };
     }
+  }
+
+  public async runReclaimerCycle(): Promise<LeaseReclaimerRecoveryReport> {
+    return this.runRecoveryCycle();
   }
 
   /**
@@ -267,7 +300,7 @@ export class LeaseReclaimerService implements RecoveryWorker {
       failedNodeIds: [],
     };
 
-    if (!this.running || this.disposed) {
+    if (!this.running || this.disposed || this.coordinator == null) {
       return result;
     }
 
@@ -459,6 +492,10 @@ export class LeaseReclaimerService implements RecoveryWorker {
     });
 
     return decision;
+  }
+
+  private optionsCompatibleId(): string {
+    return this.nodeId.startsWith("lease-reclaimer-") ? "lease-reclaimer" : this.nodeId;
   }
 }
 

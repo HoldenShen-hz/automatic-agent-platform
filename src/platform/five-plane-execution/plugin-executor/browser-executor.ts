@@ -213,9 +213,6 @@ export class BrowserExecutor {
 
       return this.buildResult(context, "navigate", "ok", { url: options.url }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "navigate", error, startTime);
     }
   }
@@ -249,9 +246,6 @@ export class BrowserExecutor {
         clickCount: options.clickCount ?? 1,
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "click", error, startTime);
     }
   }
@@ -285,9 +279,6 @@ export class BrowserExecutor {
         cleared: options.clear ?? false,
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "input", error, startTime);
     }
   }
@@ -358,9 +349,6 @@ export class BrowserExecutor {
         result,
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "evaluate", error, startTime);
     }
   }
@@ -393,9 +381,6 @@ export class BrowserExecutor {
         state: options.state ?? "visible",
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "waitForSelector", error, startTime);
     }
   }
@@ -429,9 +414,6 @@ export class BrowserExecutor {
         value: attributeValue,
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "getAttribute", error, startTime);
     }
   }
@@ -467,9 +449,6 @@ export class BrowserExecutor {
         y: options.y ?? 0,
       }, startTime);
     } catch (error) {
-      if (error instanceof ValidationError) {
-        throw error;
-      }
       return this.buildErrorResult(context, "scroll", error, startTime);
     }
   }
@@ -560,7 +539,7 @@ export class BrowserExecutor {
       return "Example Page";
     }
     if (script.includes("innerHTML")) {
-      return "<div>content</div>";
+      return sanitizeBrowserHtml("<div>content</div><script>alert('xss')</script>");
     }
     return { result: "evaluated" };
   }
@@ -632,6 +611,13 @@ export class BrowserExecutor {
     this.executionLog.push(result);
     return result;
   }
+}
+
+function sanitizeBrowserHtml(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(?:href|src)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

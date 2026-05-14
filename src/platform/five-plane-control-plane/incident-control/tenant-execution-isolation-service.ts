@@ -10,6 +10,7 @@
  */
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -217,18 +218,17 @@ export class TenantExecutionIsolationService {
   }
 
   /**
-   * Lists all quotas, optionally filtered by tenant.
+   * Lists quotas for one tenant only. Cross-tenant quota inventory must use
+   * admin-only call sites instead of this tenant-scoped API.
    */
-  listQuotas(tenantId?: string): TenantQuota[] {
+  listQuotas(tenantId: string): TenantQuota[] {
+    if (!tenantId.trim()) {
+      throw new ValidationError("tenant.quota_tenant_required", "tenant.quota_tenant_required");
+    }
     try {
-      if (tenantId) {
-        return (this.db.connection
-          .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? ORDER BY quota_kind`)
-          .all(tenantId) as RawRow[]).map((r) => this.mapQuota(r));
-      }
       return (this.db.connection
-        .prepare(`SELECT * FROM tenant_quotas ORDER BY tenant_id, quota_kind`)
-        .all() as RawRow[]).map((r) => this.mapQuota(r));
+        .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? ORDER BY quota_kind`)
+        .all(tenantId) as RawRow[]).map((r) => this.mapQuota(r));
     } catch {
       return [];
     }

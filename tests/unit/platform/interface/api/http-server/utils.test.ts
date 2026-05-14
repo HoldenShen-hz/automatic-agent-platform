@@ -260,9 +260,12 @@ test("assertGlobalTenantScopeSupported throws for tenant-scoped principal", () =
 
 // assertTaskTenantAccess tests
 
-test("assertTaskTenantAccess does nothing when principal has no tenant", () => {
+test("assertTaskTenantAccess rejects principal with no tenant", () => {
   const principal = makePrincipal(null);
-  assert.doesNotThrow(() => assertTaskTenantAccess(principal, "tenant_abc", "not_found", "Not found"));
+  assert.throws(
+    () => assertTaskTenantAccess(principal, "tenant_abc", "not_found", "Not found"),
+    /tenant scope/,
+  );
 });
 
 test("assertTaskTenantAccess does nothing when tenant matches", () => {
@@ -274,19 +277,18 @@ test("assertTaskTenantAccess throws when tenant does not match", () => {
   const principal = makePrincipal("tenant_xyz");
   assert.throws(
     () => assertTaskTenantAccess(principal, "tenant_abc", "not_found", "Not found"),
-    /Not found/,
+    /another tenant scope/,
   );
 });
 
-test("assertTaskTenantAccess throws with correct code and message", () => {
+test("assertTaskTenantAccess throws 403 with tenant mismatch code", () => {
   const principal = makePrincipal("tenant_xyz");
   try {
     assertTaskTenantAccess(principal, "tenant_abc", "api.task_not_found", "Task not found.");
     assert.fail("Expected error to be thrown");
   } catch (error: any) {
-    assert.equal(error.code, "api.task_not_found");
-    assert.equal(error.message, "Task not found.");
-    assert.equal(error.statusCode, 404);
+    assert.equal(error.code, "api.tenant_scope_mismatch");
+    assert.equal(error.statusCode, 403);
   }
 });
 

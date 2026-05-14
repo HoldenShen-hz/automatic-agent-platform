@@ -21,12 +21,38 @@ function createMockContext(): RouteContext {
   };
 }
 
-test("createHealthRoutes returns 4 routes", () => {
+test("createHealthRoutes returns readiness, liveness, health, and OpenAPI routes", () => {
   const deps = {
     missionControlService: createMockMissionControlService(),
   };
   const routes = createHealthRoutes(deps);
-  assert.equal(routes.length, 4);
+  assert.equal(routes.length, 6);
+});
+
+test("GET /livez returns alive during shutdown without marking ready", async () => {
+  const deps = {
+    missionControlService: createMockMissionControlService({ status: "ok" }),
+    isShuttingDown: () => true,
+  };
+  const routes = createHealthRoutes(deps);
+  const livezRoute = routes.find((r) => r.pathname === "/livez")!;
+  const response = await livezRoute.handler(createMockContext());
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("alive"));
+});
+
+test("GET /readyz returns 503 while shutting down", async () => {
+  const deps = {
+    missionControlService: createMockMissionControlService({ status: "ok" }),
+    isShuttingDown: () => true,
+  };
+  const routes = createHealthRoutes(deps);
+  const readyzRoute = routes.find((r) => r.pathname === "/readyz")!;
+  const response = await readyzRoute.handler(createMockContext());
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 503);
+  assert.ok(response.body.includes("shutting_down"));
 });
 
 test("GET /healthz returns health status", async () => {

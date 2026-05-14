@@ -33,12 +33,18 @@ import { createHash, createHmac } from "node:crypto";
 
 import type { EventRecord } from "../../contracts/types/domain.js";
 
-/**
- * R12-16: HMAC secret key for audit event integrity.
- * In production, this should come from a secure secrets manager.
- * This is a module-level constant for the HMAC key derivation.
- */
-const AUDIT_INTEGRITY_HMAC_KEY = process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ?? "audit-integrity-secret-key-32-bytes!";
+const DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY = "audit-integrity-secret-key-32-bytes!";
+
+function resolveAuditIntegrityHmacKey(): string {
+  const configured = process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"]?.trim();
+  if (configured != null && configured.length >= 32) {
+    return configured;
+  }
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error("audit_integrity.hmac_key_required");
+  }
+  return DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY;
+}
 
 /**
  * Integrity record stored alongside each Tier 1 audit event.
@@ -277,7 +283,7 @@ export function verifyTier1AuditIntegrity(
  * @returns Hex-encoded HMAC-SHA256 string
  */
 function hmacSha256(value: string): string {
-  return createHmac("sha256", AUDIT_INTEGRITY_HMAC_KEY).update(value, "utf8").digest("hex");
+  return createHmac("sha256", resolveAuditIntegrityHmacKey()).update(value, "utf8").digest("hex");
 }
 
 /**

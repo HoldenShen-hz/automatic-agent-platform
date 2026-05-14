@@ -65,14 +65,20 @@ export type EscalationLevel = z.infer<typeof EscalationLevelSchema>;
 export type ApprovalRule = z.infer<typeof ApprovalRuleSchema>;
 export type DomainRiskProfile = z.infer<typeof DomainRiskProfileSchema>;
 
+export const DOMAIN_RISK_SCORE_THRESHOLDS = Object.freeze({
+  medium: 35,
+  high: 65,
+  critical: 85,
+});
+
 export function computeDomainRiskLevel(profile: DomainRiskProfile, score: number): DomainRiskLevel {
-  if (score >= 85) {
+  if (score >= DOMAIN_RISK_SCORE_THRESHOLDS.critical) {
     return "critical";
   }
-  if (score >= 65) {
+  if (score >= DOMAIN_RISK_SCORE_THRESHOLDS.high) {
     return "high";
   }
-  if (score >= 35) {
+  if (score >= DOMAIN_RISK_SCORE_THRESHOLDS.medium) {
     return "medium";
   }
   return profile.defaultRiskLevel === "critical" ? "medium" : "low";

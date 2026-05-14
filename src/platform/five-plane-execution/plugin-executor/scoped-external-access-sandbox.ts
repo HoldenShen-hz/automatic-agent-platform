@@ -29,6 +29,8 @@ export interface ScopedExternalAccessConfig {
   sensitiveHeaders: readonly string[];
   /** Egress proxy URL (optional) */
   egressProxyUrl?: string;
+  /** Request timeout in milliseconds */
+  requestTimeoutMs?: number;
 }
 
 export interface ExternalAccessRequest {
@@ -66,6 +68,7 @@ const DEFAULT_CONFIG: ScopedExternalAccessConfig = {
     "set-cookie",
     "www-authenticate",
   ],
+  requestTimeoutMs: 10_000,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,9 +279,14 @@ export class ScopedExternalAccessSandbox {
       ...request.headers,
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.requestTimeoutMs ?? DEFAULT_CONFIG.requestTimeoutMs);
+    timeout.unref?.();
+
     const options: RequestInit = {
       method: request.method,
       headers,
+      signal: controller.signal,
     };
 
     if (request.body && ["POST", "PUT", "PATCH"].includes(request.method)) {
@@ -286,7 +294,12 @@ export class ScopedExternalAccessSandbox {
       headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
     }
 
-    const response = await fetch(targetUrl, options);
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, options);
+    } finally {
+      clearTimeout(timeout);
+    }
 
     let body: unknown;
     const contentType = response.headers.get("content-type") ?? "";

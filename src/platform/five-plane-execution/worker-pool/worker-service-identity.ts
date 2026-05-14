@@ -46,6 +46,14 @@ export class WorkerServiceIdentityRegistry {
   }
 
   public register(identity: WorkerServiceIdentity): WorkerServiceIdentity {
+    const existingVerified = this.loadVerifiedWorkerSnapshot(identity.workerId);
+    if (
+      existingVerified != null
+      && existingVerified.mtlsPeerFingerprint !== identity.mtlsPeerFingerprint
+    ) {
+      throw new Error(`Cannot overwrite verified worker identity fingerprint for ${identity.workerId}.`);
+    }
+
     // R13-19 fix: Store in memory map for coordinator restarts
     this.memoryStore.set(identity.workerId, identity);
 
@@ -68,6 +76,30 @@ export class WorkerServiceIdentityRegistry {
       }
     }
     return identity;
+  }
+
+  private loadVerifiedWorkerSnapshot(workerId: string): { mtlsPeerFingerprint: string } | null {
+    if (!this.store) {
+      return null;
+    }
+    try {
+      const snapshot = (this.store.worker as typeof this.store.worker & {
+        getWorkerSnapshot?: (workerId: string) => unknown;
+      }).getWorkerSnapshot?.(workerId);
+      if (snapshot == null || typeof snapshot !== "object") {
+        return null;
+      }
+      const record = snapshot as {
+        registrationVerifiedAt?: unknown;
+        mtlsPeerFingerprint?: unknown;
+      };
+      if (typeof record.registrationVerifiedAt === "string" && typeof record.mtlsPeerFingerprint === "string") {
+        return { mtlsPeerFingerprint: record.mtlsPeerFingerprint };
+      }
+    } catch {
+      return null;
+    }
+    return null;
   }
 
   public evaluateClaim(claim: WorkerNodeRunClaim): WorkerIdentityDecision {

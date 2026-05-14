@@ -108,6 +108,9 @@ export class OidcOAuthService {
     skipSignatureVerification = false,
   ) {
     this.fetchImpl = fetchImpl ?? fetch;
+    if (skipSignatureVerification && process.env["NODE_ENV"] === "production") {
+      throwOidcValidationError("oidc.skip_signature_verification_forbidden", { audience });
+    }
     this._skipSignatureVerification = skipSignatureVerification;
     for (const provider of providers) {
       this.providers.set(provider.issuer, provider);

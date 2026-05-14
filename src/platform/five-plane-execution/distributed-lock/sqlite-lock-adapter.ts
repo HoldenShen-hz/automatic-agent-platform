@@ -14,6 +14,12 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
     if (row?.max_token != null) this.fencingCounter = row.max_token;
   }
 
+  private nextFencingToken(): number {
+    const row = this.db.prepare(`SELECT MAX(fencing_token) as max_token FROM distributed_locks`).get() as { max_token: number | null } | undefined;
+    this.fencingCounter = Math.max(this.fencingCounter, row?.max_token ?? 0) + 1;
+    return this.fencingCounter;
+  }
+
   acquire(input: AcquireLockInput): AcquireLockResult {
     const { lockKey, owner, ttlMs = 30000 } = input;
     const existing = this.db.prepare(`SELECT * FROM distributed_locks WHERE lock_key = ?`).get(lockKey) as { owner: string; fencing_token: number; status: string; acquired_at: string; ttl_ms: number } | undefined;
@@ -45,8 +51,7 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
         data: { lockKey, previousOwner: existing.owner, expiresAt },
       });
     }
-    this.fencingCounter += 1;
-    const fencingToken = this.fencingCounter;
+    const fencingToken = this.nextFencingToken();
     const acquiredAt = new Date().toISOString();
     try {
       this.db.prepare(`INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms) VALUES (?, ?, ?, 'held', ?, ?)`)
@@ -71,8 +76,7 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   extend(lockKey: string, owner: string, additionalMs: number): LockRecord | null {
     try {
       // Increment fencing token to prevent late-renewal problem
-      this.fencingCounter += 1;
-      const newFencingToken = this.fencingCounter;
+      const newFencingToken = this.nextFencingToken();
       const result = this.db.prepare(`UPDATE distributed_locks SET ttl_ms = ttl_ms + ?, fencing_token = ? WHERE lock_key = ? AND owner = ?`).run(additionalMs, newFencingToken, lockKey, owner);
       if (result.changes === 0) return null;
       return this.inspect(lockKey);
@@ -85,8 +89,7 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   forceSteal(lockKey: string, newOwner: string, reason: string): LockRecord {
     try {
       this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ?`).run(lockKey);
-      this.fencingCounter += 1;
-      const fencingToken = this.fencingCounter;
+      const fencingToken = this.nextFencingToken();
       const now = new Date().toISOString();
       const ttlMs = 30000;
       const metadata = JSON.stringify({ forceStealReason: reason });

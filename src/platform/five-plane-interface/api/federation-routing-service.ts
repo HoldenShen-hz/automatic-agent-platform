@@ -9,6 +9,9 @@
 
 import { z } from "zod";
 
+export const FEDERATION_API_DEFAULT_VERSION = "2026-04-01";
+export const FEDERATION_API_MINIMUM_VERSION = "2026-01-01";
+
 /**
  * Federation partner status
  */

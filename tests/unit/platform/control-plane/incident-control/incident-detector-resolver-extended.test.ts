@@ -132,8 +132,8 @@ test("IncidentDetector detectFromChecks handles mixed severity checks", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 3);
-  assert.equal(incidents.filter((i) => i.severity === "p1").length, 2);
-  assert.equal(incidents.filter((i) => i.severity === "p2").length, 1);
+  assert.equal(incidents.filter((i) => i.severity === "SEV1").length, 2);
+  assert.equal(incidents.filter((i) => i.severity === "SEV2").length, 1);
 });
 
 test("IncidentDetector shouldAutoEscalate handles exactly at threshold", () => {

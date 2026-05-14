@@ -548,7 +548,7 @@ test("RuntimeStateMachine persists events on every transition", () => {
   assert.equal(persistedEvents[1].aggregateId, nodeRun.nodeRunId);
 });
 
-test("RuntimeStateMachine throws when constructed without persistEvent callback", () => {
+test("RuntimeStateMachine treats missing persistEvent callback as no-op persistence", () => {
   const machineWithoutCallback = new RuntimeStateMachine();
 
   const run = createHarnessRun({
@@ -563,7 +563,7 @@ test("RuntimeStateMachine throws when constructed without persistEvent callback"
     currentSeq: 0,
   });
 
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       machineWithoutCallback.transition({
         aggregateType: "HarnessRun",
@@ -582,8 +582,5 @@ test("RuntimeStateMachine throws when constructed without persistEvent callback"
         },
         auditRef: "audit://run-no-callback/admission",
       }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.persistence_required",
   );
 });

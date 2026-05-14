@@ -340,14 +340,9 @@ export class HttpApiServer {
             code: "api.rate_limit_exceeded",
             message: "Too many requests. Please retry later.",
           });
-          if (result.retryAfterMs != null) {
-            payload = {
-              ...payload,
-              headers: { ...payload.headers, "retry-after-ms": String(result.retryAfterMs) },
-            };
-          }
+          payload = this.attachRateLimitHeaders(payload, result);
         } else {
-          payload = await this.routeRequest(requestId, request, headers);
+          payload = this.attachRateLimitHeaders(await this.routeRequest(requestId, request, headers), result);
         }
       }
       // 3. No rate limiter — normal routing
@@ -791,6 +786,21 @@ export class HttpApiServer {
           ...(error.details != null ? { details: error.details } : {}),
         },
       }, null, 2),
+    };
+  }
+
+  private attachRateLimitHeaders(payload: ApiResponsePayload, result: RateLimitCheckResult): ApiResponsePayload {
+    const headers: Record<string, string> = {
+      ...payload.headers,
+      "x-ratelimit-remaining": String(result.remaining),
+    };
+    if (result.retryAfterMs != null) {
+      headers["retry-after-ms"] = String(result.retryAfterMs);
+      headers["retry-after"] = String(Math.ceil(result.retryAfterMs / 1000));
+    }
+    return {
+      ...payload,
+      headers,
     };
   }
 

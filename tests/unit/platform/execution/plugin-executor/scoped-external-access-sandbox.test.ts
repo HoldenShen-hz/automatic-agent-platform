@@ -119,6 +119,36 @@ test("ScopedExternalAccessSandbox handles rate limit for never-seen domain", asy
   assert.equal(result, true);
 });
 
+test("ScopedExternalAccessSandbox passes AbortSignal and blocks timed-out requests", async () => {
+  const sandbox = new ScopedExternalAccessSandbox({
+    allowedDomains: ["api.example.com"],
+    rateLimitPerMinute: 60,
+    requestTimeoutMs: 1,
+  });
+  const originalFetch = globalThis.fetch;
+  let sawAbortSignal = false;
+
+  try {
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sawAbortSignal = init?.signal instanceof AbortSignal;
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    }) as typeof fetch;
+
+    const result = await sandbox.executeScopedRequest({
+      url: "https://api.example.com/resource",
+      method: "GET",
+    });
+
+    assert.equal(sawAbortSignal, true);
+    assert.equal(result.blocked, true);
+    assert.equal(result.blockedReason, "request_failed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("ScopedExternalAccessSandbox handles rate limit count overflow boundary", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
