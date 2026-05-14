@@ -138,14 +138,14 @@ X1 is not a separate directory, but rather a **cross-cutting capability band** c
 
 | Capability | Implementation Location |
 |------------|-------------------------|
-| AuthN/Z · Sandbox | `platform/control-plane/iam/` |
+| AuthN/Z · Sandbox | `platform/five-plane-control-plane/iam/` |
 | Circuit Breaker | `platform/model-gateway/provider-registry/` · `platform/shared/stability/` |
-| Rate Limit · Backpressure | `platform/interface/ingress/` · `platform/execution/dispatcher/` |
-| DLQ | `platform/state-evidence/dlq/` |
-| Secrets · Egress | `platform/control-plane/iam/` |
+| Rate Limit · Backpressure | `platform/five-plane-interface/ingress/` · `platform/five-plane-execution/dispatcher/` |
+| DLQ | `platform/five-plane-state-evidence/dlq/` |
+| Secrets · Egress | `platform/five-plane-control-plane/iam/` |
 | Observability | `platform/shared/observability/` |
-| Recovery · Stability Rehearsal | `platform/execution/recovery/` · `platform/shared/stability/` |
-| Policy · Compliance | `platform/control-plane/policy-center/` · `platform/compliance/` |
+| Recovery · Stability Rehearsal | `platform/five-plane-execution/recovery/` · `platform/shared/stability/` |
+| Policy · Compliance | `platform/five-plane-control-plane/policy-center/` · `platform/compliance/` |
 
 ---
 
@@ -216,7 +216,7 @@ platform/
 > **Diagram type: Structure diagram** — Expresses P1 internal module ownership and the division of three responsibility areas. Does not express runtime invocation order or code dependencies.
 
 ```text
-platform/interface/
+platform/five-plane-interface/
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       P1 Interface Plane                             │
 │                                                                      │
@@ -264,7 +264,7 @@ platform/interface/
 > **Diagram type: Structure diagram** — Expresses P2 internal module ownership and four responsibility areas. Does not express runtime invocation order.
 
 ```text
-platform/control-plane/
+platform/five-plane-control-plane/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            P2 Control Plane                                  │
 │                                                                              │
@@ -334,7 +334,7 @@ platform/control-plane/
 | `escalation/` | Escalation handling | "How to escalate when exceptions exceed current capability" |
 
 ```text
-platform/orchestration/
+platform/five-plane-orchestration/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                       P3 Orchestration Plane                                 │
 │                                                                              │
@@ -375,7 +375,7 @@ platform/orchestration/
 > **Diagram type: Structure diagram** — Expresses the ownership and grouping of 14 BC-level modules within P4. Does not express runtime invocation order.
 
 ```text
-platform/execution/
+platform/five-plane-execution/
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ┌────── Scheduling & Worker ──────────────────────────────────┐      │
 │  │  dispatcher/  │  lease/  │  worker-pool/                    │      │
@@ -462,7 +462,7 @@ plugin-executor
 ### §7.1 BC Grouping Structure Diagram
 
 ```text
-platform/state-evidence/
+platform/five-plane-state-evidence/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     P5 State & Evidence Plane                                │
 │                                                                              │
@@ -1243,7 +1243,7 @@ Dependency direction rules: Upper layers can depend on lower layers, lower layer
 ### §19.1 BC Ownership and Dependency Diagram
 
 ```text
-platform/execution/
+platform/five-plane-execution/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    P4 Execution Plane — 12 Bounded Contexts                  │
 │                                                                              │
@@ -1327,7 +1327,7 @@ Wave 4 (Cleanup)      BC1 + BC10 refine as runtime/ core   5,171 lines  17%
 ### §20.1 BC Ownership Diagram
 
 ```text
-platform/state-evidence/
+platform/five-plane-state-evidence/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │               P5 — AuthoritativeTaskStore 7 BC Split                        │
 │                                                                              │
@@ -1435,7 +1435,7 @@ Wave 4 (Cleanup)      Remove Facade; BC1 Core Task Engine becomes independent
 └──────────────┘
 
 Cross-cutting capability delivery methods:
-  X1 → platform/shared/stability/ + platform/execution/ various BCs embedded
+  X1 → platform/shared/stability/ + platform/five-plane-execution/ various BCs embedded
   X2 → platform/shared/observability/ unified injection (structured-logger · otel · metrics)
   X3 → platform/compliance/ + org-governance/compliance-engine/
 ```
@@ -1458,22 +1458,22 @@ utils ────────────────────────�
 lifecycle ─────────────────────────▶ platform/shared/lifecycle
 cache ─────────────────────────────▶ platform/shared/cache
 
-config ────────────────────────────▶ platform/control-plane/config-center (P2)
-api ───────────────────────────────▶ platform/interface/api (P1)
-storage ────────────────────────────▶ platform/state-evidence/ (P5, 7 BC split)
-events ────────────────────────────▶ platform/state-evidence/events (P5 BC3)
-locking ────────────────────────────▶ platform/execution/ (P4)
-queue ─────────────────────────────▶ platform/execution/ (P4)
-resource ──────────────────────────▶ platform/execution/ (P4)
+config ────────────────────────────▶ platform/five-plane-control-plane/config-center (P2)
+api ───────────────────────────────▶ platform/five-plane-interface/api (P1)
+storage ────────────────────────────▶ platform/five-plane-state-evidence/ (P5, 7 BC split)
+events ────────────────────────────▶ platform/five-plane-state-evidence/events (P5 BC3)
+locking ────────────────────────────▶ platform/five-plane-execution/ (P4)
+queue ─────────────────────────────▶ platform/five-plane-execution/ (P4)
+resource ──────────────────────────▶ platform/five-plane-execution/ (P4)
 
-runtime ───────────────────────────▶ platform/execution/ (P4, 12 BC split)
-agent-loop ────────────────────────▶ platform/orchestration/oapeflir (P3)
-planning ──────────────────────────▶ platform/orchestration/planner (P3)
-orchestration ─────────────────────▶ platform/orchestration/routing (P3)
+runtime ───────────────────────────▶ platform/five-plane-execution/ (P4, 12 BC split)
+agent-loop ────────────────────────▶ platform/five-plane-orchestration/oapeflir (P3)
+planning ──────────────────────────▶ platform/five-plane-orchestration/planner (P3)
+orchestration ─────────────────────▶ platform/five-plane-orchestration/routing (P3)
 providers ─────────────────────────▶ platform/model-gateway/
-tools ─────────────────────────────▶ platform/execution/tool-executor/
-workflow ──────────────────────────▶ platform/orchestration/oapeflir/workflow/
-artifacts ─────────────────────────▶ platform/state-evidence/artifacts (P5 BC7)
+tools ─────────────────────────────▶ platform/five-plane-execution/tool-executor/
+workflow ──────────────────────────▶ platform/five-plane-orchestration/oapeflir/workflow/
+artifacts ─────────────────────────▶ platform/five-plane-state-evidence/artifacts (P5 BC7)
 feedback ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 learning ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 evaluation ────────────────────────▶ platform/prompt-engine/eval/ (L7)
@@ -1482,12 +1482,12 @@ domain-registry ───────────────────▶ dom
 divisions ─────────────────────────▶ domains/governance (L3)
 plugins ───────────────────────────▶ plugins/ (cross-layer)
 
-memory ────────────────────────────▶ platform/state-evidence/memory/ (L5)
+memory ────────────────────────────▶ platform/five-plane-state-evidence/memory/ (L5)
 knowledge ─────────────────────────▶ interaction/knowledge (L4, new wrapper)
 messages ──────────────────────────▶ interaction/message (L4)
 gateway ───────────────────────────▶ platform/interface (P1) + interaction/nl-gw (L4)
 
-security ──────────────────────────▶ platform/control-plane/iam/ (L5)
+security ──────────────────────────▶ platform/five-plane-control-plane/iam/ (L5)
 approvals ─────────────────────────▶ org-governance/approval-routing (L5)
 compliance ────────────────────────▶ org-governance/compliance-engine (L5)
 cost ──────────────────────────────▶ org-governance/cost (L5)

@@ -17,7 +17,7 @@ The current more accurate assessment is:
 
 - The seven-layer directory structure is now stable, and all five upper capability domains have formed the main closed loop of ADR -> contract -> src -> tests.
 - `docs_zh/analysis/00-architecture-coverage-matrix.md` has become the authoritative coverage entry point; most v2.7 chapter statuses are `exists`, with the remaining gaps concentrated in `partial` rather than `missing` or `skeleton`.
-- `src/core/runtime/` has converged to a compatibility shim; the canonical multi-step orchestration implementation is located in `src/platform/execution/execution-engine/`.
+- `src/core/runtime/` has converged to a compatibility shim; the canonical multi-step orchestration implementation is located in `src/platform/five-plane-execution/execution-engine/`.
 
 ## 2. Convergence Items Confirmed Complete This Round
 
@@ -31,20 +31,20 @@ The current more accurate assessment is:
 
 The following organization items have been completed in the current codebase:
 
-- `src/platform/execution/execution-engine/` added directory-level `index.ts`
+- `src/platform/five-plane-execution/execution-engine/` added directory-level `index.ts`
 - `src/domains/governance/`
 - `src/interaction/ux/`
 - `src/org-governance/*` five secondary directories
 - `src/scale-ecosystem/*` five secondary directories
 - `src/ops-maturity/*` ten secondary directories
 - `src/sdk/cli/index.ts`
-- `src/platform/interface/ingress/index.ts` correctly exports two rate limiter modules
+- `src/platform/five-plane-interface/ingress/index.ts` correctly exports two rate limiter modules
 
 ### 2.3 `core/runtime` Convergence Status
 
 The current positioning of `src/core/runtime/` has changed from "residual real implementation" to "compatibility re-export layer":
 
-- `orchestrator/index.ts` → re-exports `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+- `orchestrator/index.ts` → re-exports `src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts`
 - `orchestrator/types.ts` → re-exports `multi-step-orchestration-types.ts`
 - `planner/index.ts` → re-exports agent round loop / tool definitions / utils
 - `supervisor/index.ts` → re-exports `multi-step-supervisor.ts`

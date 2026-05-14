@@ -63,7 +63,7 @@ new-platform/
 |------------|--------------|-------------------|
 | `src/core/` (42 flat modules) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | Flat core/ split into 6 top-level directories organized by seven-layer architecture |
 | `src/cli/` (78 scripts) | `src/sdk/cli/` | CLI belongs to SDK layer |
-| `src/gateway/` (13 files) | `src/platform/interface/` + `src/interaction/nl-gateway/` | API gateway belongs to P1 Interface, NL gateway belongs to Layer 4 |
+| `src/gateway/` (13 files) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway belongs to P1 Interface, NL gateway belongs to Layer 4 |
 | `src/plugins/` (20 files) | `src/plugins/` | Remained independent, structure unchanged |
 | `src/index.ts` | `src/index.ts` | Retained |
 
@@ -77,53 +77,53 @@ new-platform/
 | `core/results/` | `platform/contracts/result-envelope/` | Cross-layer Contract |
 | `core/utils/` | `platform/shared/utils/` | Cross-layer Shared |
 | `core/lifecycle/` | `platform/shared/lifecycle/` | Cross-layer Shared |
-| `core/config/` | `platform/control-plane/config-center/` | P2 Control Plane |
-| `core/storage/` | `platform/state-evidence/truth/` | P5 State & Evidence |
-| `core/events/` | `platform/state-evidence/events/` | P5 State & Evidence |
-| `core/locking/` | `platform/execution/distributed-lock/` | P4 Execution Plane |
-| `core/queue/` | `platform/execution/queue/` | P4 Execution Plane |
+| `core/config/` | `platform/five-plane-control-plane/config-center/` | P2 Control Plane |
+| `core/storage/` | `platform/five-plane-state-evidence/truth/` | P5 State & Evidence |
+| `core/events/` | `platform/five-plane-state-evidence/events/` | P5 State & Evidence |
+| `core/locking/` | `platform/five-plane-execution/distributed-lock/` | P4 Execution Plane |
+| `core/queue/` | `platform/five-plane-execution/queue/` | P4 Execution Plane |
 | `core/cache/` | `platform/shared/cache/` | Cross-layer Shared |
-| `core/api/` | `platform/interface/api/` | P1 Interface Plane |
-| `core/resource/` | `platform/execution/resource/` | P4 Execution Plane |
-| `core/runtime/` → Dispatch | `platform/execution/dispatcher/` | P4 Execution Plane |
-| `core/runtime/` → Lease | `platform/execution/lease/` | P4 Execution Plane |
-| `core/runtime/` → Worker | `platform/execution/worker-pool/` | P4 Execution Plane |
-| `core/runtime/` → HA | `platform/execution/ha/` | P4 Execution Plane |
-| `core/runtime/` → Recovery | `platform/execution/recovery/` | P4 Execution Plane |
-| `core/runtime/` → HotUpgrade | `platform/execution/hot-upgrade/` | P4 Execution Plane |
-| `core/runtime/` → StateMachine | `platform/execution/state-transition/` | P4 Execution Plane |
-| `core/runtime/` → AgentExec | `platform/execution/execution-engine/` | P4 Execution Plane |
-| `core/runtime/` → HITL | `platform/orchestration/hitl/` | P3 Orchestration Plane |
-| `core/runtime/` → Orchestration | `platform/orchestration/routing/` | P3 Orchestration Plane |
-| `core/agent-loop/` | `platform/orchestration/oapeflir/` | P3 Orchestration Plane |
-| `core/planning/` | `platform/orchestration/planner/` | P3 Orchestration Plane |
-| `core/orchestration/` | `platform/orchestration/routing/` | P3 Orchestration Plane |
+| `core/api/` | `platform/five-plane-interface/api/` | P1 Interface Plane |
+| `core/resource/` | `platform/five-plane-execution/resource/` | P4 Execution Plane |
+| `core/runtime/` → Dispatch | `platform/five-plane-execution/dispatcher/` | P4 Execution Plane |
+| `core/runtime/` → Lease | `platform/five-plane-execution/lease/` | P4 Execution Plane |
+| `core/runtime/` → Worker | `platform/five-plane-execution/worker-pool/` | P4 Execution Plane |
+| `core/runtime/` → HA | `platform/five-plane-execution/ha/` | P4 Execution Plane |
+| `core/runtime/` → Recovery | `platform/five-plane-execution/recovery/` | P4 Execution Plane |
+| `core/runtime/` → HotUpgrade | `platform/five-plane-execution/hot-upgrade/` | P4 Execution Plane |
+| `core/runtime/` → StateMachine | `platform/five-plane-execution/state-transition/` | P4 Execution Plane |
+| `core/runtime/` → AgentExec | `platform/five-plane-execution/execution-engine/` | P4 Execution Plane |
+| `core/runtime/` → HITL | `platform/five-plane-orchestration/hitl/` | P3 Orchestration Plane |
+| `core/runtime/` → Orchestration | `platform/five-plane-orchestration/routing/` | P3 Orchestration Plane |
+| `core/agent-loop/` | `platform/five-plane-orchestration/oapeflir/` | P3 Orchestration Plane |
+| `core/planning/` | `platform/five-plane-orchestration/planner/` | P3 Orchestration Plane |
+| `core/orchestration/` | `platform/five-plane-orchestration/routing/` | P3 Orchestration Plane |
 | `core/providers/` | `platform/model-gateway/provider-registry/` | AI Operations |
-| `core/tools/` | `platform/execution/tool-executor/` | P4 Execution Plane |
-| `core/workflow/` | `platform/orchestration/oapeflir/workflow/` | P3 Orchestration Plane |
-| `core/artifacts/` | `platform/state-evidence/artifacts/` | P5 State & Evidence |
+| `core/tools/` | `platform/five-plane-execution/tool-executor/` | P4 Execution Plane |
+| `core/workflow/` | `platform/five-plane-orchestration/oapeflir/workflow/` | P3 Orchestration Plane |
+| `core/artifacts/` | `platform/five-plane-state-evidence/artifacts/` | P5 State & Evidence |
 | `core/feedback/` | `scale-ecosystem/feedback-loop/` | Layer 6 |
-| `core/learning/` | `platform/orchestration/oapeflir/learn/` | P3 Orchestration Plane |
+| `core/learning/` | `platform/five-plane-orchestration/oapeflir/learn/` | P3 Orchestration Plane |
 | `core/evaluation/` | `platform/prompt-engine/eval/` | AI Operations |
-| `core/memory/` | `platform/state-evidence/memory/` | P5 State & Evidence |
-| `core/knowledge/` | `platform/state-evidence/knowledge/` | P5 State & Evidence |
+| `core/memory/` | `platform/five-plane-state-evidence/memory/` | P5 State & Evidence |
+| `core/knowledge/` | `platform/five-plane-state-evidence/knowledge/` | P5 State & Evidence |
 | `core/messages/` | `platform/model-gateway/messages/` | AI Operations |
 | `core/domain-registry/` | `domains/registry/` | Layer 3 |
 | `core/divisions/` | `domains/governance/` | Layer 3 |
-| `core/security/` | `platform/control-plane/iam/` | P2 Control Plane |
-| `core/approvals/` | `platform/control-plane/approval-center/` | P2 Control Plane |
+| `core/security/` | `platform/five-plane-control-plane/iam/` | P2 Control Plane |
+| `core/approvals/` | `platform/five-plane-control-plane/approval-center/` | P2 Control Plane |
 | `core/compliance/` | `platform/compliance/` | AI Operations |
 | `core/cost/` | `platform/model-gateway/cost-tracker/` | AI Operations |
 | `core/hr/` | `org-governance/org-model/` | Layer 5 |
-| `core/deployment/` | `platform/control-plane/rollout-controller/` | P2 Control Plane |
-| `core/improvement/` | `platform/orchestration/oapeflir/improve-rollout/` | P3 Orchestration Plane |
+| `core/deployment/` | `platform/five-plane-control-plane/rollout-controller/` | P2 Control Plane |
+| `core/improvement/` | `platform/five-plane-orchestration/oapeflir/improve-rollout/` | P3 Orchestration Plane |
 | `core/observability/` | `platform/shared/observability/` | Cross-layer Shared |
-| `core/ops/` | `platform/control-plane/incident-control/` | P2 Control Plane |
+| `core/ops/` | `platform/five-plane-control-plane/incident-control/` | P2 Control Plane |
 | `core/stability/` | `platform/shared/stability/` | Cross-layer Shared |
 | `core/evolution/` | `ops-maturity/drift-detection/` | Layer 7 |
-| `core/reliability/` | `platform/execution/recovery/` | P4 Execution Plane |
+| `core/reliability/` | `platform/five-plane-execution/recovery/` | P4 Execution Plane |
 | `core/product/` | `scale-ecosystem/marketplace/` | Layer 6 |
-| `gateway/` | `platform/interface/` (split) | P1 Interface Plane |
+| `gateway/` | `platform/five-plane-interface/` (split) | P1 Interface Plane |
 | `plugins/` | `plugins/` | Cross-layer |
 | `cli/` | `sdk/cli/` | Cross-layer SDK |
 
@@ -1172,11 +1172,11 @@ src/sdk/
 
 ```
 src/apps/
-├── api/                    # API Server Entry (assembles platform/interface/ modules)
+├── api/                    # API Server Entry (assembles platform/five-plane-interface/ modules)
 │   └── index.ts
 ├── console/                # Console UI Backend Entry
 │   └── index.ts
-└── workers/                # Worker Process Entry (assembles platform/execution/ modules)
+└── workers/                # Worker Process Entry (assembles platform/five-plane-execution/ modules)
     └── index.ts
 ```
 

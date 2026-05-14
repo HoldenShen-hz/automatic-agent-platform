@@ -4959,7 +4959,7 @@ Platform auto-adjusts UX complexity based on user count:
 
 **Audit and Testing**: Auto-run axe-core scan before every frontend release; WCAG AA violations are treated as release blockers.
 
-**Frontend Implementation Requirement**: WCAG 2.1 AA compliance requires actual frontend UI implementation (React/Vue/Angular etc.). The platform TypeScript code provides data models, color contrast tokens (`getSeverityColorTokens()`), and accessibility label builder functions (`buildAccessibleLabel()`), but actual UI components must be implemented in the specific frontend framework. §21 HITL notification component (`src/platform/interface/console/hitl/notification.ts`) provides TypeScript logic with color values meeting WCAG AA contrast requirements (≥4.5:1), but rendering and interaction implementation is handled by the frontend.
+**Frontend Implementation Requirement**: WCAG 2.1 AA compliance requires actual frontend UI implementation (React/Vue/Angular etc.). The platform TypeScript code provides data models, color contrast tokens (`getSeverityColorTokens()`), and accessibility label builder functions (`buildAccessibleLabel()`), but actual UI components must be implemented in the specific frontend framework. §21 HITL notification component (`src/platform/five-plane-interface/console/hitl/notification.ts`) provides TypeScript logic with color values meeting WCAG AA contrast requirements (≥4.5:1), but rendering and interaction implementation is handled by the frontend.
 
 ---
 
@@ -6201,7 +6201,7 @@ Production execution data
 
 **Design Decision: 3D FeedbackSignal Structure vs Flat Enum**
 
-The `FeedbackSignalType` in the architecture doc uses a flat 9-type enum. The actual implementation (`src/platform/orchestration/oapeflir/types/feedback-signal.ts`) adopts a 3D orthogonal structure:
+The `FeedbackSignalType` in the architecture doc uses a flat 9-type enum. The actual implementation (`src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.ts`) adopts a 3D orthogonal structure:
 
 **Why 3D instead of flat 9-type enum:**
 

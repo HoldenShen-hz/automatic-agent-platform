@@ -383,10 +383,10 @@ Each stage is wrapped with `startActiveSpan()` (OpenTelemetry) and metrics are r
 | Dependency Target | Purpose |
 | --- | --- |
 | `platform/shared/observability/` | Task/system situation building, OTel tracing, freeze manager |
-| `platform/execution/` | MultiStepOrchestrationResult, StepOutputRecord |
+| `platform/five-plane-execution/` | MultiStepOrchestrationResult, StepOutputRecord |
 | `platform/prompt-engine/eval/` | Execution result evaluator, quality gate |
-| `platform/state-evidence/knowledge/` | Knowledge plane (Learn stage knowledge promotion) |
-| `platform/state-evidence/events/` | TypedEventPublisher (learning event publishing) |
+| `platform/five-plane-state-evidence/knowledge/` | Knowledge plane (Learn stage knowledge promotion) |
+| `platform/five-plane-state-evidence/events/` | TypedEventPublisher (learning event publishing) |
 | `platform/contracts/` | ID generation, timestamps, error types |
 | `platform/model-gateway/` | LLM improvement generation |
 | `scale-ecosystem/feedback-loop/` | FeedbackCollector, FeedbackModel |
@@ -552,9 +552,9 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 | Module | Async Files | Lines | Missing Sync |
 | --- | --- | --- | --- |
 | `scale-ecosystem/marketplace/` | 9 | 4,215 | **5** |
-| `platform/execution/` (across 4 subdirectories) | 7 | 1,766 | 0 |
-| `platform/control-plane/incident-control/` | 1 | 784 | 0 |
-| `platform/state-evidence/events/` | 1 | 121 | 0 |
+| `platform/five-plane-execution/` (across 4 subdirectories) | 7 | 1,766 | 0 |
+| `platform/five-plane-control-plane/incident-control/` | 1 | 784 | 0 |
+| `platform/five-plane-state-evidence/events/` | 1 | 121 | 0 |
 | `ops-maturity/drift-detection/` | 1 | 48 | 0 |
 
 > **Risk**: The 5 sync-less async files in marketplace/ (human-takeover/handshake/writeback/dispatch/event-bus) account for 61% of total async lines. These files directly implement PG-specific logic rather than wrapping existing sync services.
@@ -727,7 +727,7 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 #### 10.1.1 Status Updates (2026-04-24)
 
 - **TD-1 status**: Core gap resolved. Added `src/scale-ecosystem/runtime-services/` submodule; marketplace/ root's 5 async entries previously lacking sync counterparts have all been supplemented with compatible sync/sync-shim; orphan mirror count `5 -> 0`.
-- **TD-2 status**: First-phase boundary split completed. Added `src/platform/orchestration/learn/` and `src/platform/orchestration/improve-rollout/` top-level export surfaces; `learn/` + `improve-rollout/` no longer only under `oapeflir/` internal paths.
+- **TD-2 status**: First-phase boundary split completed. Added `src/platform/five-plane-orchestration/learn/` and `src/platform/five-plane-orchestration/improve-rollout/` top-level export surfaces; `learn/` + `improve-rollout/` no longer only under `oapeflir/` internal paths.
 - **TD-3 status**: Guard tightened. `stub-count-ratchet` now excludes pure compatibility facade/re-export modules, avoiding miscounting compatibility layers as stubs; current ratchet baseline tightened to `111`.
 - **TD-4 status**: The 4 `1000+` files listed in the document have been eliminated this round. Current line counts are `DomainBaselineCatalog 599`, `WorkerRepository 711`, `SloAlerting 992`, `ApprovalFlow 885`.
 - **TD-5 status**: Resolved. `.coverage-baseline.json` now has numeric thresholds, and `compareAgainstBaseline()` now errors directly on `null/missing/invalid` baseline; the "null threshold but CI passes" loophole no longer exists.
@@ -735,7 +735,7 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 - **TD-7 status**: Top-level split entry completed. Added `src/platform/stability/index.ts` and package subpath export; `shared/stability/` now has independent top-level consumer surface; physical migration can continue.
 - **TD-8 status**: Partially resolved. Heavy runtime async implementations in `marketplace/` have been moved to `runtime-services/`; current `marketplace/` is approximately `7,537` lines, significantly reduced from table's `11,972` lines.
 - **TD-9 status**: Resolved. `package.json` added selective subpath exports; root `src/index.ts` changed to named exports + namespace exports combination, no longer relying solely on full barrel for architecture surface.
-- **TD-2追加 status**: Physical split completed. Implementation files from `oapeflir/learn/` and `oapeflir/improve-rollout/` moved to `src/platform/orchestration/learn/` and `src/platform/orchestration/improve-rollout/`; old paths retain compatible re-export shims; after migration, `tsc` and all related 281 unit tests and 15 integration/e2e tests passed.
+- **TD-2追加 status**: Physical split completed. Implementation files from `oapeflir/learn/` and `oapeflir/improve-rollout/` moved to `src/platform/five-plane-orchestration/learn/` and `src/platform/five-plane-orchestration/improve-rollout/`; old paths retain compatible re-export shims; after migration, `tsc` and all related 281 unit tests and 15 integration/e2e tests passed.
 - **TD-7追加 status**: Physical split completed. 34 implementation files from `shared/stability/` moved to `src/platform/stability/`; old directory only retains compatibility shim; current `src/platform/stability/` is approximately `13,642` lines, `src/platform/shared/stability/` reduced to `35` lines; all related 384 stability tests passed.
 - **TD-6追加 status**: Test quality guard continued tightening. E2E guard upgraded from "file/case count" to four-dimensional check: file count + case count + named flow count + skip=0; current `tests/e2e/` is `24` files, `231` `test/it` cases, `229` named flows, `0` `test.skip / it.skip / describe.skip`; already meets `50+` real flow coverage threshold, no longer停留在 early `~21` flow scale.
 - **TD-8追加 status**: Structural de-imbalance completed. billing, tenant-platform, intelligence, enterprise, operations in `marketplace/` split as independent top-level submodules under `src/scale-ecosystem/`; old path shim compatibility retained; current `marketplace/` implementation lines approximately `1,202`, accounting for approximately `7.66%` of `scale-ecosystem/` implementation lines; no longer single-directory swallowing scale.

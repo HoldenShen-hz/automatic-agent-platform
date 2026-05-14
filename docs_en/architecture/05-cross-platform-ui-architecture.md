@@ -2128,7 +2128,7 @@ The following 6 `[Planned]` modules have been incorporated into the information 
 | WS Needs | `workflow.updated` · `workflow.published` · `workflow.validation_result` |
 | Offline Rule | Canvas editing allows offline queuing (local draft); publishing/verification must be online |
 | API Endpoint | `CRUD /api/v1/workflows` · `POST /api/v1/workflows/{id}/validate` · `POST /api/v1/workflows/{id}/publish` |
-| Authoritative Source | `WorkflowDefinitionService` (src/platform/orchestration/) |
+| Authoritative Source | `WorkflowDefinitionService` (src/platform/five-plane-orchestration/) |
 | Derived Source | `MissionControlService.getWorkflowCockpit()` → workflow summary (non-authoritative, projected only) |
 | Projection Owner | Front-end `feature-workflow-builder` module |
 
