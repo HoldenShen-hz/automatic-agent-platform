@@ -249,5 +249,5 @@ const canonicalStages = [
   "feedback",
   "learn",
   "improve",
-  "repeat",
+  "release",
 ] as const;

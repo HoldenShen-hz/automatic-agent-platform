@@ -85,9 +85,9 @@ export class ReconciliationWorker {
       case "not_found":
         return riskClass === "low" ? "mark_failed" : "compensate";
       case "ambiguous":
-        return "retry_probe";
+        return riskClass === "high" || riskClass === "critical" ? "escalate_hitl" : "retry_probe";
       case "failed":
-        return riskClass === "critical" ? "escalate_hitl" : "compensate";
+        return riskClass === "high" || riskClass === "critical" ? "escalate_hitl" : riskClass === "low" ? "mark_failed" : "compensate";
     }
   }
 

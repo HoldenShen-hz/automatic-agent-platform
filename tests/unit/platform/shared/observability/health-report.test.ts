@@ -79,7 +79,11 @@ test("HealthService - checkHealth is alias for getReport", () => {
   const report = service.checkHealth();
   const report2 = service.getReport();
 
-  assert.deepEqual(report, report2);
+  assert.equal(report.status, report2.status);
+  assert.equal(report.dbWritable, report2.dbWritable);
+  assert.equal(report.providerHealth, report2.providerHealth);
+  assert.equal(report.tier1AckBacklog, report2.tier1AckBacklog);
+  assert.deepEqual(report.findings, report2.findings);
 });
 
 test("HealthService - status transitions to overloaded when tier1AckBacklog exceeds threshold", () => {

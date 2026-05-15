@@ -78,6 +78,7 @@ test("Every transition appends event to event log", () => {
     traceId: "trace_event_test",
     reasonCode: "test.transition",
     emittedBy: "INV-TRUTH-001-test",
+    auditRef: "audit://harness/hrn_event_test/failed",
   });
 
   const afterSnapshot = repo.snapshot();
@@ -118,6 +119,7 @@ test("Event envelope contains required platform fact fields", () => {
     traceId: "trace_envelope_test",
     reasonCode: "test.envelope",
     emittedBy: "INV-TRUTH-001-test",
+    auditRef: "audit://harness/hrn_envelope_test/failed",
   });
 
   const snapshot = repo.snapshot();
@@ -309,6 +311,8 @@ test("BudgetLedger transitions emit budget events", () => {
       reservationId: "res_test",
       hardCapSatisfied: true,
     },
+    leaseId: "lease-budget-truth",
+    fencingToken: "fence-budget-truth",
   });
 
   const afterSnapshot = repo.snapshot();
@@ -335,6 +339,8 @@ test("SideEffectRecord transitions emit audit trail", () => {
       uri: "artifact://se",
       hash: "sha256:se",
     },
+    leaseId: "lease-se-truth",
+    fencingToken: "fence-se-truth",
   });
 
   repo.seed("SideEffectRecord", sideEffect);
@@ -360,6 +366,8 @@ test("SideEffectRecord transitions emit audit trail", () => {
       humanApprovalRef: "human://approval/se_truth",
     },
     auditRef: "audit://side-effects/se_truth/commit",
+    leaseId: "lease-se-truth",
+    fencingToken: "fence-se-truth",
   });
 
   const afterSnapshot = repo.snapshot();

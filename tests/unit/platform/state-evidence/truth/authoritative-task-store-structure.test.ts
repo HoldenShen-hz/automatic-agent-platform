@@ -7,7 +7,7 @@ const LEGACY_COMPAT_PATH = join(
   process.cwd(),
   "src",
   "platform",
-  "state-evidence",
+  "five-plane-state-evidence",
   "truth",
   "sqlite",
   "authoritative-task-store-legacy-compat.ts",
@@ -16,7 +16,7 @@ const DELEGATING_CORE_PATH = join(
   process.cwd(),
   "src",
   "platform",
-  "state-evidence",
+  "five-plane-state-evidence",
   "truth",
   "sqlite",
   "authoritative-task-store-delegating-core.ts",
@@ -25,7 +25,7 @@ const DELEGATING_BASE_PATH = join(
   process.cwd(),
   "src",
   "platform",
-  "state-evidence",
+  "five-plane-state-evidence",
   "truth",
   "sqlite",
   "authoritative-task-store-delegating-base.ts",
@@ -35,7 +35,7 @@ const DELEGATING_METHOD_PATHS = [
   "authoritative-task-store-delegating-engagement.ts",
   "authoritative-task-store-delegating-governance.ts",
   "authoritative-task-store-delegating-runtime.ts",
-].map((filename) => join(process.cwd(), "src", "platform", "state-evidence", "truth", "sqlite", filename));
+].map((filename) => join(process.cwd(), "src", "platform", "five-plane-state-evidence", "truth", "sqlite", filename));
 const DELETED_METHOD_PATHS = [
   "authoritative-task-store-methods-01.ts",
   "authoritative-task-store-methods-01b.ts",
@@ -51,12 +51,12 @@ const DELETED_METHOD_PATHS = [
   "authoritative-task-store-methods-11.ts",
   "authoritative-task-store-methods-12.ts",
   "authoritative-task-store-methods-13.ts",
-].map((filename) => join(process.cwd(), "src", "platform", "state-evidence", "truth", "sqlite", filename));
+].map((filename) => join(process.cwd(), "src", "platform", "five-plane-state-evidence", "truth", "sqlite", filename));
 const LEGACY_ADAPTER_PATH = join(
   process.cwd(),
   "src",
   "platform",
-  "state-evidence",
+  "five-plane-state-evidence",
   "truth",
   "sqlite",
   "repositories",
@@ -100,6 +100,9 @@ function listTypeScriptFiles(root: string): string[] {
     const candidate = join(root, entry.name);
     if (entry.isDirectory()) {
       if (candidate.includes(`${join("src", "platform", "state-evidence", "truth", "sqlite")}`)) {
+        continue;
+      }
+      if (candidate.includes(`${join("src", "platform", "five-plane-state-evidence", "truth", "sqlite")}`)) {
         continue;
       }
       results.push(...listTypeScriptFiles(candidate));
@@ -187,6 +190,11 @@ test("AuthoritativeTaskStore consumers use repository accessors instead of legac
     "set(",
     "invalidateByTag(",
     "invalidateNamespace(",
+    "getGatewayTarget(",
+    "upsertGatewayTarget(",
+    "listGatewayTargets(",
+    "listGatewaySessionTargetCandidates(",
+    "listTasks(",
   ]);
   const offenders: string[] = [];
 

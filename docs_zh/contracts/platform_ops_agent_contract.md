@@ -27,11 +27,12 @@
 - `observe_only`
 - `suggest_only`
 - `supervised_execution`
-- `trusted_automation`
+- `guarded_automation`
 
 ## 5. 规则
 
 - 自运维 Agent 不能绕过 panic、budget、policy 和 rollout。
+- 自运维 Agent 的默认 rollout guard 为 `no_rollout`；未审批的 proposal 不得进入发布或灰度。
 - 所有运维动作必须先形成 `OpsActionProposal`。
 - 高影响运维动作默认需要人工批准。
 
@@ -40,4 +41,3 @@
 - unit：proposal validation、guardrail checks、maturity gating
 - integration：health monitor -> proposal -> approval / execute
 - contract：未批准的高风险运维动作不得自动生效
-

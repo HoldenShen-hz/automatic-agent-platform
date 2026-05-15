@@ -62,8 +62,8 @@ Decision 呈现最小结构：
 ## 4. 人工接管动作
 
 - 手动改上下文
-- 手动替换步骤输出
-- 手动重试指定 step
+- 手动替换 `NodeAttempt` 输出
+- 手动重试指定 `NodeRun` / `NodeAttempt`
 - 手动指定 worker
 - 手动降级运行模式
 - 结束任务并归档原因
@@ -119,3 +119,5 @@ Decision 呈现最小结构：
 - 降噪后的审批体验
 - 正式的人类接管入口
 - 可审计、可读懂的关键决策解释
+
+Canonical runtime reference: HITL 操作必须绑定 `NodeRun` 与 `NodeAttempt`，不得以旧的 step 级标识作为权威执行引用。

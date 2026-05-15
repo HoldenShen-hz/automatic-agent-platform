@@ -26,6 +26,7 @@ export interface AdmissionPolicy {
   maxActiveExecutions: number;
   maxTier1AckBacklog: number;
   urgentQueueHeadroom: number;
+  criticalQueueHeadroom?: number;
   riskClassIsolationEnabled?: boolean;
   maxRiskClassTasks?: Partial<Record<"low" | "medium" | "high" | "critical", number>>;
   tenantQuotaEnabled?: boolean;
@@ -98,6 +99,15 @@ const DEFAULT_POLICY: AdmissionPolicy = {
   maxActiveExecutions: 10,
   maxTier1AckBacklog: 25,
   urgentQueueHeadroom: 2,
+  criticalQueueHeadroom: 2,
+  riskClassIsolationEnabled: true,
+  tenantQuotaEnabled: true,
+  sandboxMatchingEnabled: true,
+  capabilityClassGateEnabled: true,
+  maxRiskClassTasks: { critical: 2, high: 5 },
+  tenantTaskQuota: 50,
+  sandboxAvailability: { standard: 10, hardened: 5, strict: 2 },
+  capabilityClassCapacity: { default: 20, sandboxed: 10, privileged: 5 },
 };
 
 function isPriorityElevated(priority: TaskPriority): boolean {
@@ -158,8 +168,8 @@ export class AdmissionController {
       tier1AckBacklog: this.store.event.countPendingTier1Acks(),
       riskClassDistribution,
       tenantUsage,
-      sandboxAvailability: { ...(this.policy.sandboxAvailability ?? { standard: 10, strict: 2, sandboxed: 5 }) },
-      capabilityClassCapacity: { ...(this.policy.capabilityClassCapacity ?? { default: 10, privileged: 5, sandboxed: 3 }) },
+      sandboxAvailability: { ...(this.policy.sandboxAvailability ?? DEFAULT_POLICY.sandboxAvailability) },
+      capabilityClassCapacity: { ...(this.policy.capabilityClassCapacity ?? DEFAULT_POLICY.capabilityClassCapacity) },
     };
   }
 
@@ -293,7 +303,7 @@ export class AdmissionController {
 
     if (snapshot.activeExecutions >= this.policy.maxActiveExecutions) {
       // R6-3: High/critical risk tasks get headroom even when at capacity
-      if (isElevatedRisk && snapshot.queuedTasks < this.policy.maxQueuedTasks + this.policy.urgentQueueHeadroom) {
+      if (isElevatedRisk && snapshot.queuedTasks < this.policy.maxQueuedTasks + (this.policy.criticalQueueHeadroom ?? this.policy.urgentQueueHeadroom)) {
         return {
           decision: "queue",
           reasonCode: "admission.queue_overloaded",
@@ -315,7 +325,7 @@ export class AdmissionController {
         isElevatedRisk
       ) {
         // R6-3: High/critical risk tasks get urgent queue headroom
-        const maxQueueWithHeadroom = this.policy.maxQueuedTasks + this.policy.urgentQueueHeadroom;
+        const maxQueueWithHeadroom = this.policy.maxQueuedTasks + (this.policy.criticalQueueHeadroom ?? this.policy.urgentQueueHeadroom);
         if (snapshot.queuedTasks < maxQueueWithHeadroom) {
           return {
             decision: "queue",

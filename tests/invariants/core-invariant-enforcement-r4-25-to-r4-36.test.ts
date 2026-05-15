@@ -291,6 +291,7 @@ test("R4-27 (INV-RUN-001): HarnessRun transitions follow valid state machine", (
     runVersionLockId: harnessRun.versionLockId,
     leaseId: `lease:${harnessRun.harnessRunId}`,
     fencingToken,
+    auditRef: "audit://harness/hrn-002/admitted",
   });
 
   assert.equal(admitted.aggregate.status, "admitted");
@@ -310,6 +311,7 @@ test("R4-27 (INV-RUN-001): HarnessRun transitions follow valid state machine", (
     reasonCode: "harness.planning_started",
     emittedBy: "R4-27-test",
     fencingToken,
+    auditRef: "audit://harness/hrn-002/planning",
   });
 
   assert.equal(planning.aggregate.status, "planning");
@@ -391,6 +393,7 @@ test("R4-28 (INV-STATE-001): Every truth mutation must append platform fact even
     traceId: harnessRun.traceId,
     reasonCode: "test.state_mutation",
     emittedBy: "R4-28-test",
+    auditRef: "audit://harness/state-001/failed",
   });
 
   // Event must be produced
@@ -462,6 +465,8 @@ test("R4-28 (INV-STATE-001): BudgetLedger transitions emit budget events", () =>
       reservationId: "res-state-001",
       hardCapSatisfied: true,
     },
+    leaseId: "lease-budget-state",
+    fencingToken: "fence-budget-state",
   });
 
   assert.ok(result.event !== undefined, "BudgetLedger transition must emit event");
@@ -672,6 +677,7 @@ test("R4-30 (INV-FENCING): HarnessRun critical transitions require fencing", () 
         traceId: "trace-fencing-002",
         reasonCode: "harness.planning",
         emittedBy: "R4-30-test",
+        auditRef: "audit://harness/fencing/planning",
         // Missing fencingToken
       }),
     /fencing|token.*required/i,
@@ -714,6 +720,7 @@ test("R4-30 (INV-FENCING): SideEffectRecord commit transitions require fencing",
           preCommitPolicyProofRef: sideEffect.preCommitPolicyProofRef.uri,
           humanApprovalRef: "human://approval/se-fencing",
         },
+        auditRef: "audit://side-effects/se-fencing/commit",
         // Missing fencingToken
       }),
     /fencing|token.*required/i,
@@ -806,6 +813,8 @@ test("R4-33 (INV-SIDEEFFECT-001): SideEffectRecord transitions emit audit trail"
     status: "approved",
     riskClass: "high",
     preCommitPolicyProofRef: { artifactId: "art-audit", uri: "memory://policy" },
+    leaseId: "lease-se-audit",
+    fencingToken: "fencing-se-audit",
   });
 
   const result = stateMachine.transition({
@@ -827,6 +836,7 @@ test("R4-33 (INV-SIDEEFFECT-001): SideEffectRecord transitions emit audit trail"
       humanApprovalRef: "human://approval/se-audit",
     },
     auditRef: "audit://side-effects/se-audit/commit",
+    leaseId: "lease-se-audit",
     fencingToken: "fencing-se-audit",
   });
 

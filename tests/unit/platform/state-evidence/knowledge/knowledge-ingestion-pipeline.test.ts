@@ -32,7 +32,7 @@ test("KnowledgeIngestionPipeline ingests documents and serves keyword queries", 
 
   assert.equal(result.chunks.length, 2);
   assert.ok(pipeline.query("rollback", { domainId: "ops" }).length >= 1);
-  assert.equal(result.source.trustLevel, "authoritative");
+  assert.equal(result.source.trustLevel, "verified");
   assert.equal(pipeline.query("rollback", { domainId: "coding" }).length >= 1, true);
   assert.equal(result.document.status, "indexed");
 });

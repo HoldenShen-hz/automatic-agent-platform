@@ -2,6 +2,7 @@ import { StructuredLogger } from "../../../shared/observability/structured-logge
 import type { AuthoritativeTaskStore } from "../authoritative-task-store.js";
 
 const authoritativeTaskStoreDecoratorLogger = new StructuredLogger({ retentionLimit: 100 });
+const decoratorMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
 
 export interface AuthoritativeTaskStoreDecoratorOperationMetrics {
   calls: number;
@@ -70,15 +71,18 @@ function computeRetryBackoffMs(
   return exponentialDelay + jitter;
 }
 
-// R14-22: These functions are deprecated since metrics are now per-decorator-instance.
-// They are kept for backward compatibility but return empty results.
 export function getAuthoritativeTaskStoreDecoratorMetricsSnapshot():
 Record<string, AuthoritativeTaskStoreDecoratorOperationMetrics> {
-  return {};
+  return Object.fromEntries(
+    [...decoratorMetrics.entries()].map(([operation, metrics]) => [
+      operation,
+      { ...metrics },
+    ]),
+  );
 }
 
 export function resetAuthoritativeTaskStoreDecoratorMetrics(): void {
-  // No-op: metrics are now per-decorator-instance, not global
+  decoratorMetrics.clear();
 }
 
 export interface DecoratedAuthoritativeTaskStoreOptions {
@@ -95,8 +99,6 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
 ): T {
   const logger = options.logger ?? authoritativeTaskStoreDecoratorLogger;
   const maxAttempts = Math.max(1, Math.trunc(options.maxRetryAttempts ?? 3));
-  // R14-22: Per-decorator-instance metrics map instead of global singleton
-  const instanceMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
 
   return new Proxy(store, {
     get(target, property, receiver) {
@@ -110,7 +112,7 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
         const startedAt = Date.now();
         let attempt = 0;
         let totalBackoffMs = 0;
-        const metrics = getOrCreateOperationMetrics(instanceMetrics, operation);
+        const metrics = getOrCreateOperationMetrics(decoratorMetrics, operation);
         metrics.calls += 1;
 
         while (true) {

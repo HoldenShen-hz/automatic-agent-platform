@@ -20,6 +20,8 @@
 | 4 | full_auto | 完全自动化 |
 | 5 | autonomous | 自主决策（仅在高成熟度域可用） |
 
+交互自主权枚举需保留 `suggestion` 与 `frozen` 两端：`suggestion` 表示只给建议、不自动执行；`frozen` 表示因风险、panic 或治理策略冻结交互推进。该枚举只描述 interaction autonomy，不等同于 `UnifiedRuntimeMode`。
+
 规则：
 
 - `full_auto` 不代表无限制自动化。

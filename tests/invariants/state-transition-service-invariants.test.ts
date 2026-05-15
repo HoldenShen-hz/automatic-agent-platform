@@ -86,6 +86,7 @@ test("INV-STATE-001: RuntimeStateMachine requires event emission for state trans
     traceId: "trace-test",
     reasonCode: "test.transition",
     emittedBy: "INV-STATE-001-test",
+    auditRef: "audit://harness/hrn_test/failed",
   });
 
   assert.ok(result.event !== undefined, "State transition must emit event");

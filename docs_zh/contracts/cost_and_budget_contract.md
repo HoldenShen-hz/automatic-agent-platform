@@ -39,9 +39,11 @@
 | `max_context_tokens` | `number` | 输入上下文 token 上限 |
 | `max_output_tokens` | `number` | 输出 token 上限 |
 | `max_steps` | `number` | 允许完成的 node 数上限 |
+| `max_node_runs` | `number` | 允许创建的 NodeRun 数上限 |
 | `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
 | `runtime_mode` | `full_auto \| supervised_auto \| manual_only \| incident-mode` | 预算生效时的运行模式（与 sandbox 隔离级别正交） |
+| `rollout_guard` | `no_rollout \| approval_required \| rollout_allowed` | 预算超阈值时的发布保护 |
 | `sandbox_policy_mode` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | 执行沙箱隔离级别（与 runtime_mode 正交，组合使用时需通过 PolicyEngine 校验合法性） |
 
 兼容说明：

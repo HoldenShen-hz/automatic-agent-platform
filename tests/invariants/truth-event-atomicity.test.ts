@@ -24,11 +24,12 @@ test("INV-STATE-001: State transitions require platform fact event append", () =
       tenantId: "tenant-state",
     },
     fromStatus: "created",
-    toStatus: "running",
+    toStatus: "admitted",
     tenantId: "tenant-state",
     traceId: "trace-state-001",
     reasonCode: "test.transition",
     emittedBy: "INV-STATE-001-test",
+    runVersionLockId: "rvl-state-001",
   });
 
   // Transition must produce event
@@ -37,7 +38,7 @@ test("INV-STATE-001: State transitions require platform fact event append", () =
 });
 
 test("INV-STATE-001: Reject truth mutation without event append", () => {
-  const stateMachine = new RuntimeStateMachine();
+  const stateMachine = new RuntimeStateMachine({ persistEvent: null });
 
   // Attempt to mutate state without proper event context
   // This should be rejected if no event is emitted
@@ -47,19 +48,20 @@ test("INV-STATE-001: Reject truth mutation without event append", () => {
         aggregateType: "HarnessRun",
         aggregate: {
           harnessRunId: "run-state-002",
-          status: "running",
+          status: "created",
           tenantId: "tenant-state",
         },
         fromStatus: "created",
-        toStatus: "running",
+        toStatus: "admitted",
         tenantId: "tenant-state",
         traceId: "trace-state-002",
         reasonCode: "test.mutation_without_event",
         emittedBy: "INV-STATE-001-test",
+        runVersionLockId: "rvl-state-002",
         // Intentionally not providing event append capability
       });
     },
-    /event_required/,
+    /persistence callback/,
     "Truth mutation without event append must be rejected",
   );
 });
@@ -74,6 +76,8 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
       harnessRunId: "run-state-003",
       status: "created",
       tenantId: "tenant-state",
+      leaseId: "lease-node-state",
+      fencingToken: "fence-node-state",
     },
     fromStatus: "created",
     toStatus: "ready",
@@ -81,6 +85,8 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
     traceId: "trace-state-003",
     reasonCode: "node.dispatch",
     emittedBy: "INV-STATE-001-test",
+    leaseId: "lease-node-state",
+    fencingToken: "fence-node-state",
   });
 
   // NodeRun transitions must emit events
@@ -110,6 +116,8 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
       preCommitPolicyProofRef: { uri: "policy://test" },
     },
     auditRef: "audit://side-effects/se-state-001/commit",
+    leaseId: "lease-se-state",
+    fencingToken: "fence-se-state",
   });
 
   // Side effect transitions must emit audit trail
@@ -140,6 +148,8 @@ test("INV-STATE-001: BudgetLedger transitions emit budget events", () => {
       amount: 50,
       resourceKind: "llm",
     },
+    leaseId: "lease-ledger-state",
+    fencingToken: "fence-ledger-state",
   });
 
   // Budget transitions must emit financial events

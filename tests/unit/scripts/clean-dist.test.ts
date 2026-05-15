@@ -58,7 +58,7 @@ test("clean-dist prunes stale compiled tests even when dist is preserved", () =>
       JSON.stringify({
         version: 3,
         file: "operator-governance-integration.test.js",
-        sources: ["../../../../../tests/integration/platform/five-plane-control-plane/operator-governance-integration.test.ts"],
+        sources: ["../../../../../tests/integration/platform/control-plane/operator-governance-integration.test.ts"],
         names: [],
         mappings: "",
       }),

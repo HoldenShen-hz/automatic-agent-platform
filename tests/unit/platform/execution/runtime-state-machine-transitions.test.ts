@@ -324,6 +324,8 @@ test("RuntimeStateMachine allows SideEffectRecord simple transitions", () => {
       status: from,
       riskClass: "low",
       preCommitPolicyProofRef: {} as any,
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
     });
 
     const result = machine.transition({
@@ -392,6 +394,8 @@ test("RuntimeStateMachine allows SideEffectRecord commit-path transitions with s
       sideEffectSafety: {
         preCommitPolicyProofRef: "proof-ref-1",
       },
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);

@@ -43,6 +43,10 @@ interface SdkReleaseDescriptor {
 interface ApiClient {
   get(path: string, params?: Record<string, string | number | boolean>): Promise<unknown>;
   post(path: string, body?: unknown): Promise<unknown>;
+  getTaskCockpitByHarnessRunId(harnessRunId: string): Promise<unknown>;
+  getWorkflowCockpitByHarnessRunId(harnessRunId: string): Promise<unknown>;
+  getAdminTakeoverConsoleByHarnessRunId(harnessRunId: string): Promise<unknown>;
+  getTaskCockpitByTaskId(taskId: string): Promise<unknown>;
 }
 ```
 

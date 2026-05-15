@@ -351,10 +351,7 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     // R4-30: SideEffectRecord commit path transitions require fencing token
     const commitStatuses: readonly string[] = ["approved", "reserved", "committing", "committed", "confirming", "confirmed"];
     const commandMeta = command as { commandId?: string; auditRef?: string };
-    if (
-      commitStatuses.includes(command.toStatus as string) &&
-      (sideEffect.leaseId != null || sideEffect.fencingToken != null || commandMeta.commandId != null || commandMeta.auditRef?.startsWith("audit://"))
-    ) {
+    if (commitStatuses.includes(command.toStatus as string)) {
       if (command.leaseId == null || command.fencingToken == null) {
         throw new WorkflowStateError(
           "runtime_state_machine.side_effect_fencing_required",

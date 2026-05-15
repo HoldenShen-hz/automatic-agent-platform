@@ -22,7 +22,7 @@ function makeEvent(
   };
 }
 
-test("subtask:failed records failed step without immediately failing workflow", () => {
+test("subtask:failed records failed step and fails workflow", () => {
   const subtaskFailed = makeEvent(
     "evt_subtask_failed",
     "subtask:failed",
@@ -32,9 +32,10 @@ test("subtask:failed records failed step without immediately failing workflow", 
 
   const afterSubtask = workflowRunProjectionHandler(null, subtaskFailed) as unknown as WorkflowRunState;
 
-  assert.equal(afterSubtask.status, "pending");
+  assert.equal(afterSubtask.status, "failed");
   assert.deepEqual(afterSubtask.failedSteps, ["step-1"]);
   assert.equal(afterSubtask.error?.code, "worker_error");
+  assert.equal(afterSubtask.failedAt, "2026-05-01T00:00:00.000Z");
 
   const workflowFailed = makeEvent(
     "evt_task_failed",

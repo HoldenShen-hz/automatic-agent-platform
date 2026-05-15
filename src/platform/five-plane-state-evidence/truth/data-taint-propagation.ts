@@ -101,6 +101,8 @@ export interface ComputeTaintPropagationOptions {
   sourceObjectId: string;
   /** Classification levels of all inputs to the transformation */
   inputDataClasses: readonly DataClassificationLevel[];
+  /** Explicit desired output class. Lower outputs require downgrade approval. */
+  outputDataClass?: DataClassificationLevel;
   /** Taint labels from input objects */
   inputTaintLabels?: readonly DataTaintLabel[];
   /** Optional redaction report reference if sanitization was applied */
@@ -146,16 +148,14 @@ export class DataTaintPropagationService {
     // Compute output class - must be at least max input unless approved
     let outputDataClass: DataClassificationLevel;
 
+    const requestedOutputDataClass = options.outputDataClass ?? this.defaultOutputClass(maxInputDataClass);
+
     if (options.inputDataClasses.length === 0) {
       // No inputs - output inherits source plugin trust level default
       outputDataClass = "internal";
     } else if (downgradeApproved) {
       // Downgrade was approved with proper evidence
-      outputDataClass = options.inputDataClasses.includes("confidential")
-        ? "internal"
-        : options.inputDataClasses.includes("restricted")
-          ? "confidential"
-          : maxInputDataClass;
+      outputDataClass = requestedOutputDataClass;
     } else {
       // Fail-closed: output cannot be lower than max input
       outputDataClass = maxInputDataClass;
@@ -322,11 +322,8 @@ export class DataTaintPropagationService {
     options: ComputeTaintPropagationOptions,
     maxInput: DataClassificationLevel,
   ): boolean {
-    // Check if we actually need a downgrade
-    // Default output is maxInput unless we have explicit approval
-    const needsDowngrade = options.inputDataClasses.some(
-      (l) => this.rankLevel(l) > this.rankLevel(maxInput),
-    );
+    const requestedOutputDataClass = options.outputDataClass ?? this.defaultOutputClass(maxInput);
+    const needsDowngrade = this.rankLevel(requestedOutputDataClass) < this.rankLevel(maxInput);
     if (!needsDowngrade) {
       return false;
     }
@@ -337,6 +334,17 @@ export class DataTaintPropagationService {
     const hasReviewerDecision = !!options.reviewerDecisionRef;
 
     return hasRedactionReport && hasDesensitizationEvidence && hasReviewerDecision;
+  }
+
+  private defaultOutputClass(maxInput: DataClassificationLevel): DataClassificationLevel {
+    switch (maxInput) {
+      case "restricted":
+        return "confidential";
+      case "confidential":
+        return "internal";
+      default:
+        return maxInput;
+    }
   }
 
   /**
@@ -373,7 +381,8 @@ export class DataTaintPropagationService {
   ): TaintViolation[] {
     const violations: TaintViolation[] = [];
 
-    const outputRank = this.rankLevel(record.outputDataClass);
+    const requestedOutputDataClass = options.outputDataClass ?? this.defaultOutputClass(record.maxInputDataClass);
+    const outputRank = this.rankLevel(requestedOutputDataClass);
     const maxInputRank = this.rankLevel(record.maxInputDataClass);
 
     if (outputRank < maxInputRank && !downgradeApproved) {

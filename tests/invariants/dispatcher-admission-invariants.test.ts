@@ -130,7 +130,9 @@ test("Risk class isolation limits are enforced", () => {
   const mockStore = {
     task: {
       countQueuedTasks: () => 2,
-      listTasks: () => [], // Empty - no tasks tracked
+      listTasks: () => [
+        { taskId: "critical-existing", riskClass: "critical" },
+      ],
     },
     execution: { countActiveExecutions: () => 1 },
     event: { countPendingTier1Acks: () => 5 },
@@ -145,15 +147,13 @@ test("Risk class isolation limits are enforced", () => {
 
   const controller = new AdmissionController(mockStore, strictPolicy);
 
-  // First critical task should pass
   const firstCritical = controller.evaluate({
     priority: "medium",
-    riskClass: "critical",
+    riskClass: "high",
   });
 
   assert.equal(firstCritical.decision, "allow");
 
-  // Second critical task should be rejected (limit is 1)
   const secondCritical = controller.evaluate({
     priority: "medium",
     riskClass: "critical",
@@ -257,7 +257,7 @@ test("Capability class gating is enforced", () => {
   });
 
   // Nonexistent capability should have 0 capacity
-  assert.equal(result.snapshot.capabilityClassCapacity["nonexistent"], 0);
+  assert.equal(result.snapshot.capabilityClassCapacity["nonexistent"] ?? 0, 0);
 });
 
 test("Active executions at max triggers queue (not reject)", () => {

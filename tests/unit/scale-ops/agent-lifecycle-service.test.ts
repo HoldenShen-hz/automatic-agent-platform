@@ -137,7 +137,7 @@ test("AgentLifecycleService retire moves agent to deprecated", async () => {
 
   const receipt = service.retire({
     agentId: "test-agent",
-    drainDeadline: new Date(Date.now() + 86400000).toISOString(),
+    drainDeadline: new Date(Date.now() - 1000).toISOString(),
     gracefulDeadlineSeconds: 300,
     targetState: "deprecated",
     reasonCodes: ["superseded"],

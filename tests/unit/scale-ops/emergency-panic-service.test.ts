@@ -15,11 +15,12 @@ test("PlatformPanicService activate creates panic directive", async () => {
     issuedBy: "operator-001",
     severity: "full",
     triggerSignals: ["anomaly_detected"],
+    requiredApprovers: ["security-lead", "platform-lead"],
   };
 
   const activation = service.activate(request);
 
-  assert.ok(activation.directive.directiveId.startsWith("panic:"));
+  assert.ok(activation.directive.directiveId.startsWith("panic_"));
   assert.equal(activation.directive.scope, "platform");
   assert.equal(activation.directive.reasonCode, "security.incident");
   assert.ok(activation.directive.freezeModes.length > 0);
@@ -32,7 +33,7 @@ test("PlatformPanicService activate requires minimum approvers", async () => {
   const request: PanicActivationRequest = {
     scope: "platform",
     scopeLevel: "platform",
-    reasonCode: "deployment.cascade_failure",
+    reasonCode: "security.approval_gap",
     issuedBy: "single-operator",
     requiredApprovers: ["only-one"],
   };
@@ -49,6 +50,7 @@ test("PlatformPanicService getActive returns activation for scope", async () => 
     scope: "region/us-east",
     scopeLevel: "region",
     reasonCode: "outage.detected",
+    activeIncidents: 1,
     issuedBy: "ops-team",
     requiredApprovers: ["lead1", "lead2"],
   };
@@ -81,6 +83,7 @@ test("PlatformPanicService listActive returns all active activations", async () 
     scope: "tenant/acme",
     scopeLevel: "tenant",
     reasonCode: "cost.anomaly",
+    activeIncidents: 1,
     issuedBy: "op2",
     requiredApprovers: ["b1", "b2"],
   });
@@ -172,9 +175,19 @@ test("PlatformPanicService resume clears panic and returns receipt", async () =>
     requiredApprovers: ["a1", "a2"],
   });
   const plan = {
-    checkpointIds: ["cp1", "cp2", "cp3"],
-    verifiedSignatures: 2,
-    completedAt: new Date().toISOString(),
+    planId: "resume-plan-1",
+    scope: "platform",
+    scopeRef: "platform",
+    approvedBy: ["admin1", "admin2"],
+    approvalCount: 2,
+    approvedRoles: ["platform_admin", "platform_admin"] as const,
+    compatibilityCheckRef: "compatibility-check-1",
+    mode: "standard" as const,
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+    createdAt: new Date().toISOString(),
   };
 
   const receipt = service.resume("platform", plan);
@@ -195,9 +208,19 @@ test("PlatformPanicService resume fails when checkpoints incomplete", async () =
     requiredApprovers: ["a1", "a2"],
   });
   const plan = {
-    checkpointIds: ["cp1"],
-    verifiedSignatures: 0,
-    completedAt: new Date().toISOString(),
+    planId: "resume-plan-2",
+    scope: "platform",
+    scopeRef: "platform",
+    approvedBy: ["admin1"],
+    approvalCount: 1,
+    approvedRoles: ["platform_admin"] as const,
+    compatibilityCheckRef: "compatibility-check-2",
+    mode: "standard" as const,
+    checkpointsVerified: false,
+    forensicSnapshotReviewed: false,
+    rollbackPlanReady: false,
+    validationRunPassed: false,
+    createdAt: new Date().toISOString(),
   };
 
   const receipt = service.resume("platform", plan);
@@ -216,9 +239,19 @@ test("PlatformPanicService getResumeReceipt returns receipt", async () => {
     requiredApprovers: ["a1", "a2"],
   });
   const plan = {
-    checkpointIds: ["cp1", "cp2", "cp3"],
-    verifiedSignatures: 2,
-    completedAt: new Date().toISOString(),
+    planId: "resume-plan-3",
+    scope: "platform",
+    scopeRef: "platform",
+    approvedBy: ["admin1", "admin2"],
+    approvalCount: 2,
+    approvedRoles: ["platform_admin", "platform_admin"] as const,
+    compatibilityCheckRef: "compatibility-check-3",
+    mode: "standard" as const,
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+    createdAt: new Date().toISOString(),
   };
   service.resume("platform", plan);
 
@@ -234,6 +267,7 @@ test("PlatformPanicService activate derives scope level from scope string", asyn
     scope: "domain/coding",
     scopeLevel: "domain",
     reasonCode: "drift.detected",
+    activeIncidents: 1,
     issuedBy: "op1",
     requiredApprovers: ["a1", "a2"],
   };

@@ -178,11 +178,12 @@ test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch
 
   const receipt = service.sync(profile, [envelope], { [envelope.recordId]: "different-digest" });
 
-  assert.ok(receipt.rejectedEnvelopeIds.includes(envelope.envelopeId));
+  assert.ok(receipt.acceptedEnvelopeIds.includes(envelope.envelopeId));
   const decision = receipt.decisions.find((d) => d.envelopeId === envelope.envelopeId);
   assert.ok(decision != null);
-  assert.equal(decision?.resolution, "accept_central");
+  assert.equal(decision?.resolution, "merge");
   assert.ok(decision?.incidentId != null);
+  assert.ok(decision?.mergedPayload != null);
 });
 
 test("EdgeRuntimeSyncService sync respects ordering when requireOrdering is true", async () => {

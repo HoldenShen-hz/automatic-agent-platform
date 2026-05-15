@@ -184,10 +184,10 @@ test("HierarchicalPromptRegistryService.listBundleVersions returns all versions 
 
   const versions = service.listBundleVersions("bundle");
   assert.equal(versions.length, 2);
-  assert.equal(versions[0]!.version, 100);
-  assert.equal(versions[0]!.displayVersion, "v1.0.0");
-  assert.equal(versions[1]!.version, 200);
-  assert.equal(versions[1]!.displayVersion, "v2.0.0");
+  assert.equal(versions[0]!.version, 200);
+  assert.equal(versions[0]!.displayVersion, "v2.0.0");
+  assert.equal(versions[1]!.version, 100);
+  assert.equal(versions[1]!.displayVersion, "v1.0.0");
 });
 
 test("HierarchicalPromptRegistryService.listBundles returns all bundles at global level", () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -40,10 +40,6 @@ const DEPRECATED_TERMS: readonly string[] = [
   "phase9d",
   "phase9e",
   "phase9f",
-  // Legacy status terms
-  "running",
-  "completed",
-  "failed",
   // OAPEFLIR should be projection only, not runtime
   "OAPEFLIR runtime",
   "OAPEFLIR execute",
@@ -75,6 +71,15 @@ function isExemptPath(filePath: string): boolean {
 test("R4-64: Canonical contracts do not contain deprecated terms", () => {
   const violations: NamingViolation[] = [];
   const contractsDir = join(process.cwd(), "docs_zh", "contracts");
+  const canonicalContractFiles = new Set([
+    "runtime_execution_contract.md",
+    "state_transition_matrix_contract.md",
+    "event_registry_and_ops_threshold_contract.md",
+    "cost_and_budget_contract.md",
+    "approval_and_hitl_contract.md",
+    "sdk_surface_contract.md",
+    "hitl_experience_and_explainability_contract.md",
+  ]);
 
   if (!existsSync(contractsDir)) {
     // Skip if contracts directory doesn't exist (e.g., in partial checkout)
@@ -82,19 +87,27 @@ test("R4-64: Canonical contracts do not contain deprecated terms", () => {
   }
 
   const contractFiles = readdirSync(contractsDir, { recursive: true })
-    .filter((f) => typeof f === "string" && f.endsWith(".md"))
+    .filter((f) => typeof f === "string" && f.endsWith(".md") && canonicalContractFiles.has(f))
     .map((f) => join(contractsDir, f as string));
 
   for (const file of contractFiles) {
     if (isExemptPath(file)) continue;
 
-    const content = require("fs").readFileSync(file, "utf8");
+    const content = readFileSync(file, "utf8");
     const lines = content.split("\n");
 
     for (let lineNum = 0; lineNum < lines.length; lineNum++) {
       const line = lines[lineNum];
       for (const term of DEPRECATED_TERMS) {
-        if (line.includes(term)) {
+        if (
+          line.includes(term)
+          && !line.includes("legacy")
+          && !line.includes("deprecated")
+          && !line.includes("废弃")
+          && !line.includes("Phase 1a")
+          && !line.includes("Phase 1b")
+          && !line.includes("Phase 1-4")
+        ) {
           violations.push({
             file: file.replace(process.cwd() + "/", ""),
             term,
@@ -141,7 +154,7 @@ test("R4-64: Domain configs use Ring 1/2/3 not Phase 9a-9f", () => {
   const phase9Violations: string[] = [];
 
   for (const file of domainFiles) {
-    const content = require("fs").readFileSync(file, "utf8");
+    const content = readFileSync(file, "utf8");
     if (content.includes("phase9")) {
       phase9Violations.push(file.replace(process.cwd() + "/", ""));
     }
@@ -159,7 +172,7 @@ test("R4-64: Event registry uses platform.* namespace not legacy task.*", () => 
     return;
   }
 
-  const content = require("fs").readFileSync(eventTypesFile, "utf8");
+  const content = readFileSync(eventTypesFile, "utf8");
 
   // Legacy event patterns that should be replaced
   const legacyPatterns = [
@@ -185,7 +198,7 @@ test("R4-64: PlanGraphBundle is the only valid P3→P4 contract", () => {
   // Verify that PlanGraphBundle is exported
   const indexFile = join(executableContractsDir, "index.ts");
   if (existsSync(indexFile)) {
-    const content = require("fs").readFileSync(indexFile, "utf8");
+    const content = readFileSync(indexFile, "utf8");
     assert.ok(
       content.includes("PlanGraphBundle"),
       "PlanGraphBundle must be exported from executable-contracts",

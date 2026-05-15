@@ -29,8 +29,11 @@ test("tauri macOS adapter helpers preserve platform wiring", () => {
 });
 
 test("open_deep_link rejects non-http(s) schemes", () => {
-  assert.ok(rustSource.includes("scheme.eq_ignore_ascii_case(\"http\")"));
-  assert.ok(rustSource.includes("scheme.eq_ignore_ascii_case(\"https\")"));
+  assert.ok(rustSource.includes("ALLOWED_DEEP_LINK_SCHEMES"));
+  assert.ok(rustSource.includes("\"aa://\""));
+  assert.ok(rustSource.includes("\"https://\""));
+  assert.ok(rustSource.includes("\"http://\""));
+  assert.ok(rustSource.includes("allowed.eq_ignore_ascii_case(&scheme)"));
   assert.ok(rustSource.includes("rejected:invalid_scheme"));
 });
 

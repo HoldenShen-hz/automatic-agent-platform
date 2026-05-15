@@ -45,6 +45,13 @@ export class SideEffectManager {
     reconciliation: ReconciliationRecord,
     context: SideEffectManagerContext,
   ): RuntimeTransitionResult<SideEffectRecord> {
+    const targetStatus = targetStatusForReconciliation(sideEffect, reconciliation);
+    if (
+      ["confirmed", "compensation_required", "compensating", "compensated"].includes(targetStatus)
+      && (sideEffect.leaseId == null || sideEffect.fencingToken == null)
+    ) {
+      throw new Error("Side effect reconciliation requires an active lease and fencing token");
+    }
     return this.transitionSideEffect(sideEffect, targetStatusForReconciliation(sideEffect, reconciliation), {
       ...context,
       reasonCode: `reconciliation.${reconciliation.result}.${reconciliation.nextAction}`,

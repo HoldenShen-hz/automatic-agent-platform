@@ -8,7 +8,7 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
-test("durable event bus only creates pending acks for consumers registered to the event type", () => {
+test("durable event bus creates pending acks for active dynamic subscribers", () => {
   const workspace = createTempWorkspace("aa-event-bus-consumer-filter-");
 
   try {
@@ -32,7 +32,7 @@ test("durable event bus only creates pending acks for consumers registered to th
       },
     });
 
-    assert.equal(bus.pendingForConsumer("custom_projection").length, 0);
+    assert.equal(bus.pendingForConsumer("custom_projection").length, 1);
 
     bus.dispose();
     db.close();

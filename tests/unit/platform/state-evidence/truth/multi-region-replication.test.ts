@@ -596,11 +596,9 @@ test("Multi-region replication end-to-end: register, prepare, confirm, verify la
   lag = service.getReplicationLag("us-east", "us-west", 100);
   assert.equal(lag, 95);
 
-  // Status remains syncing because batches remain in queue after confirmBatch
-  // (confirmBatch updates checkpoint but does not dequeue)
-  // This is expected behavior - queue persists until explicitly pruned
+  // Status returns to idle once all prepared batches have been confirmed.
   const status = service.getStatus("us-east", "us-west");
-  assert.equal(status, "syncing");
+  assert.equal(status, "idle");
 });
 
 test("Multi-region replication handles concurrent regional pairs", () => {

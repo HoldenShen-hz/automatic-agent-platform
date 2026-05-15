@@ -177,7 +177,7 @@ test("KnowledgeIngestionPipeline ingest applies trust level from input", () => {
     trustLevel: "verified",
   });
 
-  assert.equal(result.source.trustLevel, "authoritative");
+  assert.equal(result.source.trustLevel, "verified");
 });
 
 test("KnowledgeIngestionPipeline ingest applies trust level default", () => {

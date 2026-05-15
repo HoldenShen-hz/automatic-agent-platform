@@ -92,7 +92,7 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.budget_hard_cap_not_satisfied",
+      error.code === "budget_settlement.actual_amount_exceeds_reservation",
   );
 });
 

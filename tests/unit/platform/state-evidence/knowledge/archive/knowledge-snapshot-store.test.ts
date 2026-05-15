@@ -224,10 +224,8 @@ test("KnowledgeSnapshotStore accepts path within sandbox subdirectory", () => {
 });
 
 test("KnowledgeSnapshotStore rejects path with null bytes", () => {
-  // Note: The implementation does not currently reject null bytes in paths.
-  // checkToolPathScope with null roots allows all paths, so null bytes pass through.
-  // This test documents the actual behavior (no error thrown).
-  assert.doesNotThrow(
+  assert.throws(
     () => new KnowledgeSnapshotStore({ snapshotPath: "/tmp/aa-sandbox/\0invalid" } as any),
+    /knowledge_snapshot_store\.path_null_byte_denied/,
   );
 });

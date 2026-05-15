@@ -24,6 +24,7 @@ export * from "./governance.js";
 export * from "./health.js";
 export * from "./slo.js";
 export * from "./cost.js";
+export * from "./domain/index.js";
 export type {
   Timestamp,
   TaskPriority,

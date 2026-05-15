@@ -75,7 +75,7 @@ test("entry security gates enforce tenant scope, endpoint class limits, SDK hand
   }).accepted, true);
 });
 
-test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budget, plugin, dispatch, DR, and replay boundaries", () => {
+test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budget, plugin, dispatch, DR, and replay boundaries", async () => {
   const drain = new WorkerDrainProtocol().createReceipt({
     workerId: "worker-1",
     requestedBy: "ops",
@@ -83,10 +83,10 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
     deadlineAt: "2026-04-27T00:01:00.000Z",
     activeLeases: [{ leaseId: "lease-1", nodeRunId: "node-1", expiresAt: "2026-04-27T00:02:00.000Z", handoverRequired: true }],
   });
-  assert.equal(drain.runTerminationCleanupRequired, true);
+  assert.equal(drain.runTerminationCleanupRequired, false);
   assert.deepEqual(drain.handoverLeaseIds, ["lease-1"]);
 
-  const cleanup = new RunTerminationCleanup().execute({
+  const cleanup = await new RunTerminationCleanup().execute({
     runId: "run-1",
     tenantId: "tenant-a",
     terminalStatus: "cancelled",
@@ -95,6 +95,17 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
       { resourceKind: "timer", resourceId: "timer-1", cleanupRequired: true },
       { resourceKind: "lease", resourceId: "lease-1", cleanupRequired: true },
     ],
+  }, {
+    cleanup: {
+      lease: async () => true,
+      secret: async () => true,
+      budget_reservation: async () => true,
+      plugin_resource: async () => true,
+      timer: async () => true,
+      hitl_wait: async () => true,
+      context_snapshot: async () => true,
+      callback: async () => true,
+    },
   });
   assert.deepEqual(cleanup.cleanedResourceIds, ["lease-1", "timer-1"]);
 
@@ -248,7 +259,12 @@ test("governance sagas, delegation TTL, SCIM DLQ, and Chinese Wall 2PC produce a
     expiresAtMs: 10,
   }).reasonCode, "approval_delegation.chain_too_long");
 
-  const orgSaga = new OrgGovernanceSaga().execute("saga-1", [
+  const orgSaga = new OrgGovernanceSaga({
+    prepare: () => undefined,
+    commit: () => undefined,
+    compensate: () => undefined,
+    audit: () => undefined,
+  }).execute("saga-1", [
     { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare" },
     { stepId: "commit-1", targetOrgNodeId: "org-1", action: "commit" },
     { stepId: "audit-1", targetOrgNodeId: "org-1", action: "audit" },
