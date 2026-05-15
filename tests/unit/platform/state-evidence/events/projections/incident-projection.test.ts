@@ -47,7 +47,7 @@ test("createEmptyIncidentState returns correct initial state", () => {
   assert.deepEqual(state.affectedRollouts, []);
   assert.deepEqual(state.affectedRepairJobs, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.equal(state.firstEventAt, null);
   assert.equal(state.lastEventAt, null);
   assert.equal(state.detectedAt, null);
@@ -566,7 +566,7 @@ test("incidentProjectionHandler is idempotent - same event applied twice", () =>
   const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as IncidentState;
 
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idempotent"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idempotent"]));
   assert.equal(state2.incidentId, "inc_001");
   assert.equal(state2.severity, "high");
 });
@@ -584,7 +584,7 @@ test("incidentProjectionHandler deduplicates event_ids", () => {
   const state3 = incidentProjectionHandler(state2 as unknown as Record<string, unknown>, event) as unknown as IncidentState;
 
   assert.equal(state3.eventCount, 1);
-  assert.deepEqual(state3.processedEventIds, ["evt_dedup"]);
+  assert.deepEqual(state3.processedEventIds, new Set(["evt_dedup"]));
 });
 
 test("incidentProjectionHandler is replay-safe - events in order", () => {
@@ -1027,7 +1027,7 @@ test("incidentProjectionHandler handles unknown event types gracefully", () => {
   // Should still update basic tracking
   assert.equal(state.eventCount, 1);
   assert.equal(state.timeline.length, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_unknown"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_unknown"]));
   assert.equal(state.status, "detected");
 });
 
@@ -1648,7 +1648,7 @@ test("incidentProjectionHandler creates new timeline array", () => {
   assert.ok(state.timeline !== originalEmpty.timeline);
 });
 
-test("incidentProjectionHandler creates new processedEventIds array", () => {
+test("incidentProjectionHandler creates new processedEventIds Set", () => {
   const event = makeEvent(
     "evt_new_processed",
     "incident:created",
@@ -1658,7 +1658,7 @@ test("incidentProjectionHandler creates new processedEventIds array", () => {
 
   const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
-  // Verify the processedEventIds is a new array
+  // Verify the processedEventIds is a new Set
   const originalEmpty = createEmptyIncidentState();
   assert.ok(state.processedEventIds !== originalEmpty.processedEventIds);
 });

@@ -59,9 +59,8 @@ export interface WorkflowTimelineState {
   statusTransitions: StatusTransitionEntry[];
   /** Count of all events processed */
   eventCount: number;
-  // R12-10: Set of processed event IDs for O(1) idempotency check
-  // R20-07: Changed to Map to track insertion order for eviction when size exceeds limit
-  processedEventIds: ReadonlyMap<string, boolean>;
+  // R12-10/R20-07: Set of processed event IDs for O(1) idempotency and insertion-order eviction.
+  processedEventIds: ReadonlySet<string>;
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
@@ -188,7 +187,7 @@ export function createEmptyWorkflowTimelineState(): WorkflowTimelineState {
     eventCount: 0,
     // R12-10: Use Map instead of Set for O(1) idempotency lookup + insertion order tracking
     // R20-07: Map preserves insertion order enabling oldest-entry eviction
-    processedEventIds: new Map<string, boolean>(),
+    processedEventIds: new Set<string>(),
     firstEventAt: null,
     lastEventAt: null,
     // R12-11: Initialize freshness tracking
@@ -353,14 +352,14 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   // R12-10: Mark event as processed using Map for O(1) lookup
   // R20-07: Evict oldest entries when size exceeds limit to prevent unbounded growth
   // Map preserves insertion order, so keys().next().value gives the oldest entry
-  const processedEventIds = new Map(newState.processedEventIds);
+  const processedEventIds = new Set(newState.processedEventIds);
   while (processedEventIds.size >= MAX_PROCESSED_EVENT_IDS) {
     const oldestKey = processedEventIds.keys().next().value;
     if (oldestKey !== undefined) {
       processedEventIds.delete(oldestKey);
     }
   }
-  processedEventIds.set(event.eventId, true);
+  processedEventIds.add(event.eventId);
   newState.processedEventIds = processedEventIds;
   newState.eventCount = newState.eventCount + 1;
 

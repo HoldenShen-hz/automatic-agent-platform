@@ -46,7 +46,7 @@ test("createEmptyApprovalQueueState returns correct initial state", () => {
   assert.equal(state.respondedAt, null);
   assert.deepEqual(state.timeline, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.equal(state.firstEventAt, null);
   assert.equal(state.lastEventAt, null);
   assert.equal(state.decisionType, null);
@@ -184,7 +184,7 @@ test("approvalQueueProjectionHandler is idempotent - same event applied twice", 
   const state2 = approvalQueueProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as ApprovalQueueState;
 
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idem"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idem"]));
 });
 
 test("approvalQueueProjectionHandler builds timeline in order", () => {
@@ -221,7 +221,7 @@ test("approvalQueueProjectionHandler handles unknown event types gracefully", ()
 
   assert.equal(state.eventCount, 1);
   assert.equal(state.timeline.length, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_unknown"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_unknown"]));
 });
 
 test("createApprovalQueueProjectionHandler returns handler function", () => {

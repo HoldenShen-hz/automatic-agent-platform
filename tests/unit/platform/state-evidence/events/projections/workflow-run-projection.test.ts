@@ -37,7 +37,7 @@ test("workflowRunProjectionHandler initializes state correctly", () => {
   assert.equal(state.taskId, "task_1");
   assert.equal(state.status, "running");
   assert.equal(state.eventCount, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_1"]));
   assert.equal(state.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(state.lastEventAt, "2026-04-19T10:00:00.000Z");
 });
@@ -217,7 +217,7 @@ test("workflowRunProjectionHandler is idempotent - same event applied twice", ()
 
   // Should only count once
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idempotent"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idempotent"]));
   assert.deepEqual(state2.completedSteps, ["step_1"]);
 });
 
@@ -254,7 +254,7 @@ test("workflowRunProjectionHandler deduplicates event_ids", () => {
 
   // Should only count once
   assert.equal(state3.eventCount, 1);
-  assert.deepEqual(state3.processedEventIds, ["evt_dedup"]);
+  assert.deepEqual(state3.processedEventIds, new Set(["evt_dedup"]));
   assert.deepEqual(state3.completedSteps, ["step_1"]);
 });
 
@@ -301,7 +301,7 @@ test("createEmptyWorkflowRunState returns correct initial state", () => {
   assert.deepEqual(state.completedSteps, []);
   assert.deepEqual(state.failedSteps, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.equal(state.firstEventAt, null);
   assert.equal(state.lastEventAt, null);
   assert.equal(state.error, null);
@@ -327,7 +327,7 @@ test("workflowRunProjectionHandler handles unknown event types gracefully", () =
   // Should still update basic tracking
   assert.equal(state.eventCount, 1);
   assert.equal(state.timeline.length, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_unknown"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_unknown"]));
 });
 
 test("workflowRunProjectionHandler extracts workflowId from payload when available", () => {

@@ -15,7 +15,7 @@ test("workerStatusProjectionHandler records processed event IDs", () => {
     createdAt: "2026-05-04T00:00:00.000Z",
   }) as unknown as ReturnType<typeof createEmptyWorkerStatusState>;
 
-  assert.deepEqual(state.processedEventIds, ["evt-1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt-1"]));
 });
 
 test("workerStatusProjectionHandler skips duplicate events", () => {
@@ -36,5 +36,5 @@ test("workerStatusProjectionHandler skips duplicate events", () => {
   }) as unknown as ReturnType<typeof createEmptyWorkerStatusState>;
 
   assert.equal(replayed.eventCount, 1);
-  assert.deepEqual(replayed.processedEventIds, ["evt-dup"]);
+  assert.deepEqual(replayed.processedEventIds, new Set(["evt-dup"]));
 });
