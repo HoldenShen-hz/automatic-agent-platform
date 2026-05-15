@@ -87,12 +87,37 @@ export class HarnessMemoryManager {
     const recordKey = `${namespace}:${scopeId}:${key}`;
     const record = this.memoryRecords.get(recordKey);
     if (record) {
-      // Update access metadata
-      this.memoryRecords.set(recordKey, {
+      // Update access metadata and trigger tier evaluation
+      const updatedRecord: InternalMemoryRecord = {
         ...record,
         accessCount: record.accessCount + 1,
         lastAccessedAt: new Date().toISOString(),
-      });
+      };
+      this.memoryRecords.set(recordKey, updatedRecord);
+      // Evaluate promotion/demotion after read access
+      this.evaluateTierChanges(recordKey, updatedRecord);
+    } else {
+      // Record not in memoryRecords - check if it exists in namespace (was previously evicted)
+      const scoped = this.namespaces[namespace].get(scopeId);
+      const value = scoped?.get(key);
+      if (value !== undefined) {
+        // Recreate the record with initial tier settings
+        const newRecord: InternalMemoryRecord = {
+          namespace,
+          scopeId,
+          key,
+          value,
+          tier: this.inferInitialTier(namespace),
+          accessCount: 1,
+          lastAccessedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          promotionScore: 0,
+          demotionScore: 0,
+        };
+        this.memoryRecords.set(recordKey, newRecord);
+        // Evaluate tier changes for newly recreated record
+        this.evaluateTierChanges(recordKey, newRecord);
+      }
     }
     return this.namespaces[namespace].get(scopeId)?.get(key) ?? null;
   }
@@ -244,9 +269,9 @@ export class HarnessMemoryManager {
       this.memoryRecords.delete(oldestKey);
       const scoped = this.namespaces[oldestRecord.namespace].get(oldestRecord.scopeId);
       scoped?.delete(oldestRecord.key);
-      if (scoped != null && scoped.size === 0) {
-        this.namespaces[oldestRecord.namespace].delete(oldestRecord.scopeId);
-      }
+      // Note: We intentionally do NOT delete the scope entry from namespaces when it becomes empty.
+      // This allows subsequent reads on previously evicted records to recreate them with initial tier settings.
+      // This is necessary for proper tier promotion on re-access of evicted working tier records.
     }
   }
 

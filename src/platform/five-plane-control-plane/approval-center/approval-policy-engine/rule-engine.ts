@@ -14,6 +14,7 @@
  * 5. If no rule matches, use default (no approval required)
  */
 
+import { createRequire } from "node:module";
 import type {
   ApprovalPolicyRule,
   ApprovalPolicyBundle,
@@ -40,6 +41,8 @@ const DEFAULT_TIMEOUT_POLICY: "reject" | "approve" | "remain_pending" = "remain_
  * Default required approvals for multi-party approval.
  */
 const DEFAULT_REQUIRED_APPROVALS = 1;
+
+const require = createRequire(import.meta.url);
 
 /**
  * Evaluates approval policies against a policy decision context.

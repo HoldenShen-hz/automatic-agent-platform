@@ -178,7 +178,7 @@ function resolveAuthProfileId(
   registry: ModelMetadataRegistry,
   providerId: string,
 ): string {
-  const authMethod = registry.providers[providerId]?.authMethods[0] ?? "default";
+  const authMethod = registry.providers[providerId]?.authMethods?.[0] ?? "default";
   return `${providerId}:${authMethod}`;
 }
 

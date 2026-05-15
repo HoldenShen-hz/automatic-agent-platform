@@ -11,6 +11,7 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PanicFreezeMode, PanicScopeLevel } from "../../ops-maturity/platform-panic/index.js";
 import { PlatformPanicService } from "../../ops-maturity/platform-panic/index.js";
+import { ApprovalService } from "../../five-plane-control-plane/approval-center/approval-service.js";
 
 export type EscalationRiskLevel = "low" | "medium" | "high" | "critical";
 export type EscalationDecisionType = "none" | "approval" | "takeover" | "panic_stop" | "panic_activate";
@@ -144,20 +145,100 @@ export class EscalationService {
   private readonly hitlTakeoverHandler: ((request: EscalationTakeoverRequest) => EscalationTakeoverRequest) | null;
   private readonly activatePanicOnCriticalProduction: boolean;
 
-  public constructor(options: EscalationServiceOptions | PlatformPanicService = {}) {
-    if (options instanceof PlatformPanicService) {
-      this.panicService = options;
+  /**
+   * Duck-type check to detect ApprovalService without circular import issues.
+   */
+  private isApprovalServiceLike(options: unknown): options is ApprovalService {
+    return options !== null && typeof options === "object" && "createRequest" in options && typeof (options as Record<string, unknown>).createRequest === "function";
+  }
+
+  /**
+   * Construct EscalationService with optional panic service and/or approval service.
+   *
+   * Overloaded signatures:
+   * - new EscalationService() - defaults, no approval handling
+   * - new EscalationService(panicService) - with PlatformPanicService for critical production
+   * - new EscalationService(options) - EscalationServiceOptions object
+   * - new EscalationService(panicService, approvalService) - both services for HITL approval
+   * - new EscalationService(undefined, approvalService) - approval service only (test pattern)
+   */
+  public constructor(panicOptions?: EscalationServiceOptions | PlatformPanicService | ApprovalService, approvalService?: ApprovalService) {
+    // Duck-type check for ApprovalService FIRST - test pattern passes ApprovalService as second argument
+    // e.g., new EscalationService(undefined, approvalService)
+    if (approvalService && this.isApprovalServiceLike(approvalService)) {
+      this.panicService = panicOptions instanceof PlatformPanicService ? panicOptions : new PlatformPanicService();
+      this.approvalRequestHandler = (request) => {
+        const created = approvalService.createRequest({
+          taskId: request.taskId,
+          executionId: request.executionId,
+          sourceAgentId: "escalation_service",
+          reason: request.reasonCode,
+          riskLevel: request.riskLevel,
+          stageViewRef: request.stage,
+          options: [],
+          context: { escalationRequestId: request.approvalRequestId },
+          timeoutPolicy: "remain_pending",
+        });
+        return {
+          ...request,
+          approvalRequestId: created.approvalId,
+        };
+      };
+      this.operatorNotificationHandler = null;
+      this.hitlTakeoverHandler = null;
+      this.activatePanicOnCriticalProduction = false;
+      return;
+    }
+    // Duck-type check for ApprovalService passed as first argument
+    if (this.isApprovalServiceLike(panicOptions)) {
+      const svc = panicOptions;
+      this.panicService = new PlatformPanicService();
+      this.approvalRequestHandler = (request) => {
+        const created = svc.createRequest({
+          taskId: request.taskId,
+          executionId: request.executionId,
+          sourceAgentId: "escalation_service",
+          reason: request.reasonCode,
+          riskLevel: request.riskLevel,
+          stageViewRef: request.stage,
+          options: [],
+          context: { escalationRequestId: request.approvalRequestId },
+          timeoutPolicy: "remain_pending",
+        });
+        return {
+          ...request,
+          approvalRequestId: created.approvalId,
+        };
+      };
+      this.operatorNotificationHandler = null;
+      this.hitlTakeoverHandler = null;
+      this.activatePanicOnCriticalProduction = false;
+      return;
+    }
+    if (panicOptions instanceof PlatformPanicService) {
+      this.panicService = panicOptions;
       this.approvalRequestHandler = null;
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
       this.activatePanicOnCriticalProduction = true;
       return;
     }
-    this.panicService = options.panicService ?? new PlatformPanicService();
-    this.approvalRequestHandler = options.approvalRequestHandler ?? null;
-    this.operatorNotificationHandler = options.operatorNotificationHandler ?? null;
-    this.hitlTakeoverHandler = options.hitlTakeoverHandler ?? null;
-    this.activatePanicOnCriticalProduction = options.panicService != null;
+    // Handle null/undefined panicOptions (default case)
+    if (panicOptions == null) {
+      this.panicService = new PlatformPanicService();
+      this.approvalRequestHandler = null;
+      this.operatorNotificationHandler = null;
+      this.hitlTakeoverHandler = null;
+      this.activatePanicOnCriticalProduction = false;
+      return;
+    }
+    // options is now EscalationServiceOptions
+    const opts = panicOptions as EscalationServiceOptions;
+    this.panicService = opts.panicService ?? new PlatformPanicService();
+    this.approvalRequestHandler = opts.approvalRequestHandler ?? null;
+    this.operatorNotificationHandler = opts.operatorNotificationHandler ?? null;
+    this.hitlTakeoverHandler = opts.hitlTakeoverHandler ?? null;
+    this.activatePanicOnCriticalProduction = opts.panicService != null;
   }
 
   /**

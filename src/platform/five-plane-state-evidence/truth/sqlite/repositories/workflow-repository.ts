@@ -77,15 +77,15 @@ export class WorkflowRepository {
       )
       .run(
         workflow.taskId,
-        workflow.divisionId,
-        workflow.workflowId,
+        workflow.divisionId ?? "general_ops",
+        workflow.workflowId ?? workflow.taskId,
         workflow.currentStepIndex,
         workflow.status,
         workflow.outputsJson,
-        workflow.lastErrorCode,
-        workflow.retryCount,
-        workflow.resumableFromStep,
-        workflow.startedAt,
+        workflow.lastErrorCode ?? null,
+        workflow.retryCount ?? 0,
+        workflow.resumableFromStep ?? null,
+        workflow.startedAt ?? workflow.updatedAt,
         workflow.updatedAt,
       );
   }

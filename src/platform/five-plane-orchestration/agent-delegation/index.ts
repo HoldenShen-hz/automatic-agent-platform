@@ -52,4 +52,7 @@ export { DelegationTracker, createDelegationTracker, type DelegationTreeNode, ty
 // Re-export delegation manager types
 export type { DelegationExpirationConfig, ExpirationScanResult } from "./delegation-manager.service.js";
 
+// Re-export governance service
+export { DelegationGovernanceService } from "./delegation-governance-service.js";
+
 export * from "./collaboration-protocol/index.js";

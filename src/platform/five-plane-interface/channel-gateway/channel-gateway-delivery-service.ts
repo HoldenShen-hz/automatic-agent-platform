@@ -29,6 +29,7 @@ function safeJsonParsePayload(jsonString: string, errorContext: string): Record<
   }
 }
 import {
+  CHANNEL_DELIVERY_DDL,
   buildDeadLetterCountQuery,
   buildDeadLetterQuery,
   calculateBackoffForAttempt,
@@ -67,6 +68,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 export class ChannelGatewayDeliveryService {
   private readonly deliveryConfig: DeliveryGuaranteeConfig;
   private readonly rateLimitConfig: RateLimitConfig;
+  private _deliverySchemaInitialized = false;
 
   constructor(
     /** SQLite database connection for persistence */
@@ -91,6 +93,18 @@ export class ChannelGatewayDeliveryService {
   }
 
   /**
+   * Ensures the delivery schema tables exist in the database.
+   * Uses lazy initialization to avoid requiring external schema setup.
+   */
+  private ensureDeliverySchema(): void {
+    if (this._deliverySchemaInitialized) {
+      return;
+    }
+    this.db.connection.exec(CHANNEL_DELIVERY_DDL);
+    this._deliverySchemaInitialized = true;
+  }
+
+  /**
    * Checks whether a message can be sent under rate limits for the given channel.
    *
    * GW-04: Implements per-channel rate limiting to prevent hitting provider limits.
@@ -100,6 +114,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Result indicating if allowed and current counts
    */
   checkRateLimit(channel: string, tenantId: string | null = null): RateLimitResult {
+    this.ensureDeliverySchema();
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
     const bucket = this.buildRateLimitBucket(channel, tenantId);
@@ -144,6 +159,7 @@ export class ChannelGatewayDeliveryService {
    * @param channel - Channel that was used
    */
   recordRateLimitHit(channel: string, tenantId: string | null = null): void {
+    this.ensureDeliverySchema();
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
     const bucket = this.buildRateLimitBucket(channel, tenantId);
@@ -172,6 +188,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Current count, limit, and window for each channel
    */
   getRateLimitStatus(tenantId: string | null = null): Record<string, { currentCount: number; limit: number; windowMs: number }> {
+    this.ensureDeliverySchema();
     const result: Record<string, { currentCount: number; limit: number; windowMs: number }> = {};
     const now = Date.now();
 
@@ -335,6 +352,7 @@ export class ChannelGatewayDeliveryService {
     payload: Record<string, unknown>,
     maxRetries?: number,
   ): DeliveryReceipt {
+    this.ensureDeliverySchema();
     const messageId = newId("dlvmsg");
     const now = nowIso();
 
@@ -388,6 +406,7 @@ export class ChannelGatewayDeliveryService {
     errorMessage?: string,
     providerMessageId?: string | null,
   ): DeliveryAttempt {
+    this.ensureDeliverySchema();
     const now = nowIso();
     const attemptId = newId("dlvatt");
 
@@ -552,6 +571,7 @@ export class ChannelGatewayDeliveryService {
    */
   getPendingDeliveries(limit = 100): Array<{
   } & PendingDelivery> {
+    this.ensureDeliverySchema();
     const rows = this.db.connection
       .prepare(
         `SELECT message_id, channel, target_id, payload_json, attempts, max_retries, created_at
@@ -580,6 +600,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Receipt with final status, or null if not found
    */
   getDeliveryReceipt(messageId: string): DeliveryReceipt | null {
+    this.ensureDeliverySchema();
     const row = this.db.connection
       .prepare(
         `SELECT message_id, channel, target_id, status, attempts, created_at, completed_at
@@ -627,6 +648,7 @@ export class ChannelGatewayDeliveryService {
    * @param errorMessage - Reason for failure
    */
   markPermanentFailure(messageId: string, _errorMessage: string): void {
+    this.ensureDeliverySchema();
     const now = nowIso();
     this.db.connection
       .prepare(
@@ -724,6 +746,7 @@ export class ChannelGatewayDeliveryService {
    */
   getDeadLetters(channel?: string, limit = 100): Array<{
   } & DeadLetterEntry> {
+    this.ensureDeliverySchema();
     const { query, params } = buildDeadLetterQuery(channel, limit);
     const rows = this.db.connection.prepare(query).all(...params) as Array<Record<string, unknown>>;
 
@@ -753,6 +776,7 @@ export class ChannelGatewayDeliveryService {
    */
   getRetryableMessages(limit = 100): Array<{
   } & RetryableDelivery> {
+    this.ensureDeliverySchema();
     const now = nowIso();
 
     const rows = this.db.connection
@@ -793,6 +817,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Map of channel to dead letter count
    */
   getDeadLetterCount(channel?: string): Record<string, number> {
+    this.ensureDeliverySchema();
     const { query, params } = buildDeadLetterCountQuery(channel);
     const rows = this.db.connection.prepare(query).all(...params) as Array<{ channel: string; count: number }>;
 

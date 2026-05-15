@@ -132,8 +132,8 @@ export class TaskRepository {
     taskId: string,
     status: string,
     updatedAt: string,
-    errorCode: string | null,
-    completedAt: string | null,
+    errorCode: string | null = null,
+    completedAt: string | null = null,
   ): void {
     execute(
       this.conn,
@@ -142,8 +142,8 @@ export class TaskRepository {
        WHERE id = ?`,
       status,
       updatedAt,
-      errorCode,
-      completedAt,
+      errorCode ?? null,
+      completedAt ?? null,
       taskId,
     );
   }
@@ -153,8 +153,8 @@ export class TaskRepository {
     expectedStatus: string,
     status: string,
     updatedAt: string,
-    errorCode: string | null,
-    completedAt: string | null,
+    errorCode: string | null = null,
+    completedAt: string | null = null,
   ): number {
     return execute(
       this.conn,
@@ -163,8 +163,8 @@ export class TaskRepository {
        WHERE id = ? AND status = ?`,
       status,
       updatedAt,
-      errorCode,
-      completedAt,
+      errorCode ?? null,
+      completedAt ?? null,
       taskId,
       expectedStatus,
     );

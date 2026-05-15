@@ -29,7 +29,7 @@ const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus
   approved: ["shadow", "shadow_running", "evaluation_enabled", "rejected", "paused"],
   accepted: ["shadow", "shadow_running", "evaluation_enabled", "deployed", "rejected", "paused"],
   shadow_running: ["evaluation_enabled", "canary_5", "rolled_back", "paused"],
-  evaluation_enabled: ["canary_5", "rolled_back", "paused"],
+  evaluation_enabled: ["canary_5", "shadow", "rolled_back", "paused"],
   canary_5: ["partial_25", "rolled_back", "paused"],
   partial_25: ["partial_50", "partial_75", "stable_75", "rolled_back", "paused"],
   partial_50: ["partial_75", "stable_75", "rolled_back", "paused"],

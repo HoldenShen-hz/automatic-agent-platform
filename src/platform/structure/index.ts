@@ -5,8 +5,11 @@
  * and export requirements across the platform surface.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 // ---------------------------------------------------------------------------
 // Types

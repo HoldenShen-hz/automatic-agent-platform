@@ -271,7 +271,7 @@ export class MemoryDecayService {
     for (const memory of memories) {
       const freshness = this.calculateFreshness(memory, evaluatedAt);
       const config = this.getDecayConfig(memory);
-      const layer = memory.scope as SixLayerMemoryType;
+      const layer = mapScopeToSixLayer(memory.scope);
 
       totalFreshness += freshness;
 
