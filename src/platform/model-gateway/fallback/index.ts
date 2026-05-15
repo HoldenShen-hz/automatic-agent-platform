@@ -48,9 +48,12 @@ export class ModelGatewayFallbackService {
     );
     // Respect explicit fallback priority first, then primary-tier affinity, then cost.
     const tierOrder: Record<string, number> = { reasoning: 0, balanced: 1, coding: 2, fast: 3 };
+    // R16-24 fix: Check hasFullTierLadder only among ELIGIBLE candidates (healthy, not excluded, not primary)
     const hasFullTierLadder = eligible.some((candidate) => candidate.tier === "coding");
     const costs = eligible.map((candidate) => candidate.inputCostPer1kUsd).filter((cost) => cost > 0);
-    const costPriorityMode = !hasFullTierLadder && costs.length > 0 && Math.max(...costs) / Math.min(...costs) >= 3;
+    // R16-24 fix: When cost ratio >= 3, cost takes priority over affinity (value optimization)
+    // When cost ratio < 3, affinity takes priority (tier preservation)
+    const costPriorityMode = costs.length > 0 && Math.max(...costs) / Math.min(...costs) >= 3;
     const sorted = [...eligible].sort((left, right) => {
       if (left.fallbackPriority !== undefined && right.fallbackPriority !== undefined) {
         const priorityDiff = left.fallbackPriority - right.fallbackPriority;
@@ -60,13 +63,19 @@ export class ModelGatewayFallbackService {
       } else if (right.fallbackPriority !== undefined) {
         return 1;
       }
+      // R16-24 fix: In cost priority mode (cost ratio >= 3), check cost FIRST before affinity
+      if (costPriorityMode) {
+        const costDiff = left.inputCostPer1kUsd - right.inputCostPer1kUsd;
+        if (costDiff !== 0) return costDiff;
+      }
       const affinityDiff = primaryTier == null
         ? 0
         : getTierAffinityRank(left.tier, primaryTier) - getTierAffinityRank(right.tier, primaryTier);
       if (affinityDiff !== 0) {
         return affinityDiff;
       }
-      if (costPriorityMode) {
+      // R16-24 fix: When NOT in cost priority mode, check cost after affinity
+      if (!costPriorityMode) {
         const costDiff = left.inputCostPer1kUsd - right.inputCostPer1kUsd;
         if (costDiff !== 0) return costDiff;
       }
@@ -80,8 +89,14 @@ export class ModelGatewayFallbackService {
       return left.inputCostPer1kUsd - right.inputCostPer1kUsd;
     });
     const selected = sorted[0] ?? null;
+    // attemptedProfiles: primary + all other candidates in original order (includes excluded/unhealthy, for traceability)
+    const attemptedProfiles = [
+      input.primaryProfileName,
+      ...input.candidates
+        .filter((c) => c.profileName !== input.primaryProfileName)
+        .map((c) => c.profileName),
+    ];
     const fallbackChain = [input.primaryProfileName, ...sorted.map((c) => c.profileName)];
-    const attemptedProfiles = sorted.map((candidate) => candidate.profileName);
     return {
       selectedProfileName: selected?.profileName ?? null,
       reasonCode: selected == null ? "fallback.no_candidate_available" : "fallback.healthy_alternative_selected",

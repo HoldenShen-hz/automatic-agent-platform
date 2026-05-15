@@ -16,7 +16,24 @@ import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/f
 
 function seedConfigTree(root: string): void {
   const files: Record<string, string> = {
-    "bootstrap/default.json": JSON.stringify({ appName: "aa", phase: "phase_3", stableCoreEnabled: true }, null, 2),
+    "bootstrap/default.json": JSON.stringify({
+      appName: "aa",
+      phase: "phase_3",
+      stableCoreEnabled: true,
+      dependencyOrder: ["bootstrap", "gateways", "providers", "runtime", "security", "workflows"],
+      readinessGates: ["config_bundle_loaded", "provider_registry_loaded"],
+      degradationPolicy: {
+        onReadinessFailure: "block_startup",
+        allowSummaryMode: true,
+      },
+      healthCheckTimeoutMs: 10000,
+      readinessProbe: {
+        initialDelayMs: 1000,
+        intervalMs: 5000,
+        timeoutMs: 2000,
+        failureThreshold: 3,
+      },
+    }, null, 2),
     "gateways/default.json": JSON.stringify({ defaultGateway: "cli", sseEnabled: true }, null, 2),
     "providers/default.json": JSON.stringify({ defaultProvider: "minimax", defaultModelProfile: "reasoning-medium" }, null, 2),
     "providers/models.json": JSON.stringify({
@@ -35,7 +52,27 @@ function seedConfigTree(root: string): void {
         },
       },
     }, null, 2),
-    "runtime/default.json": JSON.stringify({ maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 }, null, 2),
+    "runtime/default.json": JSON.stringify({
+      configVersion: "test-runtime-v1",
+      configSchemaVersion: "1.0.0",
+      maxConcurrentTasks: 2,
+      defaultTaskTimeoutMs: 300000,
+      defaultStepTimeoutMs: 120000,
+      apiDefaultTimeoutMs: 30000,
+      apiMaxTimeoutMs: 120000,
+      retryMax: 3,
+      circuitBreaker: {
+        enabled: true,
+        threshold: 5,
+      },
+      rateLimit: {
+        enabled: true,
+        requestsPerMinute: 120,
+      },
+      configDriftReconciler: {
+        interval: 60000,
+      },
+    }, null, 2),
     "security/default.json": JSON.stringify({
       approvalMode: "supervised",
       sandboxMode: "workspace_write",

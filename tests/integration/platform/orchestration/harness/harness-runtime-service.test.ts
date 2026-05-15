@@ -162,8 +162,8 @@ test("HarnessRuntimeService integration: resolveHitlReview approved resumes exec
 
   assert.equal(run.status, "running");
   assert.equal(run.pauseReason, null);
-  assert.equal(run.hitlRequest?.status, "resolved");
-  assert.equal(run.hitlRequest?.resolution, "approved");
+  assert.equal(run.hitlRequest?.status, "approved");
+  assert.equal(run.hitlRequest?.resolvedBy, "operator-001");
 });
 
 test("HarnessRuntimeService integration: resolveHitlReview rejected aborts execution", () => {
@@ -179,7 +179,7 @@ test("HarnessRuntimeService integration: resolveHitlReview rejected aborts execu
   run = service.openHitlReview(run, "Need approval", ["evidence-1"]);
   run = service.resolveHitlReview(run, "rejected", "operator-002");
 
-  assert.equal(run.status, "aborted");
+  assert.equal(run.status, "cancelled");
   assert.ok(run.completedAt != null);
 });
 
@@ -366,6 +366,6 @@ test("HarnessRuntimeService integration: createAsyncService returns functional a
   const asyncService = service.createAsyncService();
 
   assert.ok(asyncService != null);
-  assert.equal(typeof asyncService.submitRun, "function");
-  assert.equal(typeof asyncService.waitForRun, "function");
+  assert.equal(typeof asyncService.createRun, "function");
+  assert.equal(typeof asyncService.execute, "function");
 });

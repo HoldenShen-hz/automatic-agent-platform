@@ -1043,7 +1043,7 @@ export class HarnessRuntimeService {
       ...paused,
       pauseReason: "recovery",
       recoveryCheckpoint: {
-        checkpointId: newId("recovery_checkpoint"),
+        checkpointId: newId("harness_checkpoint"),
         runId: run.runId,
         lastCompletedStepId: run.steps.at(-1)?.stepId ?? null,
         statusBeforeRecovery: run.status,

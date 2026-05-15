@@ -7,6 +7,7 @@ import {
   createRunVersionLock,
   createTaskDraft,
   type BudgetIntent,
+  type BudgetResourceKind,
   type ConfirmedTaskSpec,
   type HarnessRun,
   type JsonValue,
@@ -315,10 +316,32 @@ export class IntakeAdmissionService {
       return existing;
     }
 
+    // R6-12: Evaluate policy guard first to determine if bypass conditions apply
+    const policyGuardResult = evaluatePolicyGuard({
+      constraintPackRef: input.constraintPackRef,
+      riskClass: input.riskPreview.riskClass,
+      tenantId: input.tenantId,
+      principal: input.principal,
+    });
+
+    if (!policyGuardResult.allowed) {
+      throw new Error(
+        `admission.policy_denied: Policy evaluation failed: ${policyGuardResult.reasonCode}`,
+      );
+    }
+
     // R6-2: Enforce confirmationReceipt mandatory for high/critical tasks per §39.6
+    // Only require confirmation when policy doesn't provide a bypass condition
+    // Bypass conditions: admin/operator principal OR pre_approved constraint pack
     const requiresMandatoryConfirmation =
       input.riskPreview.riskClass === "high" || input.riskPreview.riskClass === "critical";
-    if (requiresMandatoryConfirmation && input.confirmationReceipt == null) {
+    const hasPolicyBypass = policyGuardResult.reasonCode === "policy.admin_authorized"
+      || policyGuardResult.reasonCode === "policy.pre_approved_critical";
+    // R6-12: For policy-bypassed cases, create a synthetic confirmation receipt to satisfy contract requirements
+    const effectiveConfirmationReceipt = input.confirmationReceipt ?? (hasPolicyBypass
+      ? { receiptId: `policy-bypass:${input.idempotencyKey}`, confirmedAt: new Date().toISOString(), confirmedBy: input.principal, scope: `policy:${policyGuardResult.reasonCode}`, riskClass: input.riskPreview.riskClass, state: "confirmed" as const, expiresAt: undefined, riskPreviewVersion: undefined, actor: undefined, timestamp: undefined }
+      : null);
+    if (requiresMandatoryConfirmation && !hasPolicyBypass && input.confirmationReceipt == null) {
       throw new Error(
         `admission.confirmation_required: High/critical risk task requires confirmationReceipt per §39.6: riskClass=${input.riskPreview.riskClass}`,
       );
@@ -326,8 +349,9 @@ export class IntakeAdmissionService {
 
     // R6-1: Add ClarificationSession stage per §5.3
     // Determine if clarification session is needed based on ambiguity policy
+    // Use effectiveConfirmationReceipt so policy bypass still allows clarification detection
     const ambiguityFlags = detectAmbiguityFlags(input);
-    const needsClarification = input.confirmationReceipt == null
+    const needsClarification = effectiveConfirmationReceipt == null
       && input.riskPreview.riskClass !== "low"
       && ambiguityFlags.length > 0;
     const clarificationSession: ClarificationSession | null = needsClarification
@@ -342,21 +366,6 @@ export class IntakeAdmissionService {
         }
       : null;
 
-    // R6-12: Actually evaluate policyGuard instead of hardcoding true
-    // Policy evaluation based on constraintPackRef and risk class
-    const policyGuardResult = evaluatePolicyGuard({
-      constraintPackRef: input.constraintPackRef,
-      riskClass: input.riskPreview.riskClass,
-      tenantId: input.tenantId,
-      principal: input.principal,
-    });
-
-    if (!policyGuardResult.allowed) {
-      throw new Error(
-        `admission.policy_denied: Policy evaluation failed: ${policyGuardResult.reasonCode}`,
-      );
-    }
-
     const domainId = input.domainId ?? "general";
 
     const taskDraft = createTaskDraft({
@@ -370,12 +379,20 @@ export class IntakeAdmissionService {
         inputs: input.inputs ?? {},
       },
       riskPreview: input.riskPreview,
-      ambiguityPolicy: input.confirmationReceipt == null ? "require_confirmation" : "safe_default",
+      ambiguityPolicy: effectiveConfirmationReceipt == null ? "require_confirmation" : "safe_default",
     });
 
     // R6-1: If clarification session exists and is still pending, return with clarification needed
     // Per §5.3, ClarificationSession stage must gate the creation of ConfirmedTaskSpec
     if (clarificationSession != null && clarificationSession.stage === "pending_clarification") {
+      // Create a budget ledger for the clarification session
+      const clarificationBudgetLedger = createBudgetLedger({
+        tenantId: input.tenantId,
+        harnessRunId: `clarify:${input.idempotencyKey}`,
+        currency: input.budgetIntent.currency,
+        hardCap: input.budgetIntent.amount,
+        resourceKinds: input.budgetIntent.resourceKinds as readonly BudgetResourceKind[],
+      });
       // Create a placeholder harnessRun for persistence - will be replaced after confirmation
       const pendingHarnessRun = createHarnessRun({
         tenantId: input.tenantId,
@@ -388,7 +405,7 @@ export class IntakeAdmissionService {
         requestHash: `request:${input.idempotencyKey}`,
         constraintPackRef: input.constraintPackRef,
         versionLockId: `pending:${input.idempotencyKey}`,
-        budgetLedgerId: `pending:${input.idempotencyKey}`,
+        budgetLedgerId: clarificationBudgetLedger.budgetLedgerId,
       });
       this.clarificationRepository.save({
         session: clarificationSession,
@@ -482,7 +499,7 @@ export class IntakeAdmissionService {
       inputs: (input.inputs ?? {}) as JsonValue,
       constraintPackRef: input.constraintPackRef,
       riskClass: input.riskPreview.riskClass,
-      ...(input.confirmationReceipt != null ? { confirmationReceipt: input.confirmationReceipt } : {}),
+      ...(effectiveConfirmationReceipt != null ? { confirmationReceipt: effectiveConfirmationReceipt } : {}),
       idempotencyKey: input.idempotencyKey,
       traceId: input.traceId,
     });

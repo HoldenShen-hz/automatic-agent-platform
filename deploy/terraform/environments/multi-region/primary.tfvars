@@ -1,0 +1,11 @@
+environment          = "prod-primary"
+aws_region           = "us-east-1"
+vpc_cidr             = "10.40.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+db_instance_class    = "db.t3.large"
+db_storage_gb        = 100
+redis_node_type      = "cache.t3.medium"
+eks_desired_nodes    = 3
+eks_min_nodes        = 2
+eks_max_nodes        = 10
+eks_node_instance_types = ["t3.medium", "t3.large"]

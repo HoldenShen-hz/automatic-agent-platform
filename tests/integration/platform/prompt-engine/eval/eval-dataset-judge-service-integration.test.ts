@@ -52,9 +52,9 @@ function generateCasesByPriority(
 
 function createIntegrationDataset(service: EvalDatasetJudgeService): void {
   const cases: EvalDatasetCase[] = [
-    ...generateCasesByPriority("critical", 200, "int-", "exact_match"),
-    ...generateCasesByPriority("critical", 100, "int-", "contains"),
-    ...generateCasesByPriority("standard", 20, "int-", "llm_judge"),
+    ...generateCasesByPriority("critical", 200, "int-em-", "exact_match"),
+    ...generateCasesByPriority("critical", 100, "int-co-", "contains"),
+    ...generateCasesByPriority("standard", 100, "int-std-", "llm_judge"),
   ];
 
   service.registerDataset({
@@ -70,7 +70,7 @@ function createIntegrationDataset(service: EvalDatasetJudgeService): void {
 
 function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string): void {
   const cases: EvalDatasetCase[] = [
-    ...generateCasesByPriority("standard", 20, `${datasetId}-`, "exact_match"),
+    ...generateCasesByPriority("standard", 50, `${datasetId}-`, "exact_match"),
   ];
 
   service.registerDataset({
@@ -97,27 +97,27 @@ test("EvalDatasetJudgeService integration: full evaluation pipeline", () => {
 
   // Create results for all critical cases with passing output
   const criticalResults = Array.from({ length: 200 }, (_, i) => ({
-    caseId: `int-critical-${i}`,
+    caseId: `int-em-critical-${i}`,
     output: "ok",
     latencyMs: 100,
     costUsd: 0.001,
   }));
   const highResults = Array.from({ length: 100 }, (_, i) => ({
-    caseId: `int-high-${i}`,
+    caseId: `int-co-critical-${i}`,
     output: "ok",
     latencyMs: 90,
     costUsd: 0.0009,
   }));
   const mediumResults = Array.from({ length: 50 }, (_, i) => ({
-    caseId: `int-medium-${i}`,
+    caseId: `int-std-standard-${i}`,
     output: { status: "ok" },
     latencyMs: 80,
     costUsd: 0.0008,
   }));
-  const standardResults = Array.from({ length: 20 }, (_, i) => ({
-    caseId: `int-standard-${i}`,
+  const standardResults = Array.from({ length: 100 }, (_, i) => ({
+    caseId: `int-std-standard-${i}`,
     output: "ok",
-    criterionSignals: { [`llm-crit-int-standard-${i}`]: 0.85 },
+    criterionSignals: { [`llm-crit-int-std-standard-${i}`]: 0.85 },
     latencyMs: 70,
     costUsd: 0.0007,
   }));
@@ -177,7 +177,7 @@ test("EvalDatasetJudgeService integration: custom criterion evaluator via constr
 
   const service = new EvalDatasetJudgeService(customEval);
   // Use standard priority to avoid large case requirements
-  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "custom-", "exact_match");
+  const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "custom-", "exact_match");
   const firstCase = cases[0]!;
   firstCase.qualityCriteria[0] = {
     criterionId: "custom_score",
@@ -197,8 +197,8 @@ test("EvalDatasetJudgeService integration: custom criterion evaluator via constr
   });
   service.activateDataset("custom-eval-ds");
 
-  // Provide results for all 20 cases so no missing_case_result blocking findings
-  const allResults = Array.from({ length: 20 }, (_, i) => ({
+  // Provide results for all 50 cases so no missing_case_result blocking findings
+  const allResults = Array.from({ length: 50 }, (_, i) => ({
     caseId: `custom-standard-${i}`,
     output: i === 0 ? "custom-pass" : "wrong",
   }));
@@ -219,10 +219,10 @@ test("EvalDatasetJudgeService integration: evaluation with baseline regression d
   const service = new EvalDatasetJudgeService();
   createSmallDataset(service, "regression-ds");
 
-  // Provide results for all 20 cases - some will fail which reduces weighted quality score
-  const allResults = Array.from({ length: 20 }, (_, i) => ({
+  // Provide results for all 50 cases - some will fail which reduces weighted quality score
+  const allResults = Array.from({ length: 50 }, (_, i) => ({
     caseId: `regression-ds-standard-${i}`,
-    output: i < 18 ? "ok" : "wrong", // 2 failures out of 20
+    output: i < 45 ? "ok" : "wrong", // 5 failures out of 50
     latencyMs: 150,
     costUsd: 0.003,
   }));

@@ -273,7 +273,10 @@ export class SessionTransitionService {
  * lifecycle from creation through execution to completion or failure.
  */
 export class ExecutionTransitionService {
-  public constructor(private readonly repository: RuntimeLifecycleRepository) {}
+  public constructor(
+    private readonly repository: RuntimeLifecycleRepository,
+    private readonly db: AuthoritativeSqlDatabase | null,
+  ) {}
 
   /** Transitions execution status. */
   public transition(command: ExecutionStatusTransitionCommand): void {
@@ -315,12 +318,9 @@ export class ExecutionTransitionService {
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    const repositoryWithExecution = this.repository as RuntimeLifecycleRepository & {
-      getExecution?: (executionId: string) => { taskId?: string | null } | null;
-    };
-    const execution = repositoryWithExecution.getExecution?.(command.entityId) ?? null;
-    repositoryWithExecution.createTier1StatusEvent({
-      taskId: execution?.taskId ?? null,
+    const executionTaskId = resolveExistingExecutionId(this.db, command.entityId);
+    this.repository.createTier1StatusEvent({
+      taskId: executionTaskId,
       executionId: command.entityId,
       eventType: "execution:status_changed",
       traceId: command.traceId,
@@ -660,7 +660,7 @@ export class TransitionService {
     this.tasks = new TaskTransitionService(db, repository);
     this.workflows = new WorkflowTransitionService(db, repository);
     this.sessions = new SessionTransitionService(repository);
-    this.executions = new ExecutionTransitionService(repository);
+    this.executions = new ExecutionTransitionService(repository, db);
     this.approvals = new ApprovalTransitionService(repository);
     this.terminalTasks = new TaskTerminalTransitionService(db, repository);
     this.approvalBlocks = new ApprovalBlockingTransitionService(

@@ -139,7 +139,7 @@ export class HitlRuntime {
   }): HitlRequest {
     const requestedAt = nowIso();
     const request: HitlRequest = {
-      requestId: newId("hitl"),
+      requestId: newId("hitl_request"),
       runId: input.runId,
       domainId: input.domainId,
       mode: input.mode ?? "inspect",

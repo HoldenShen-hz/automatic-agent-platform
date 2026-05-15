@@ -178,25 +178,21 @@ export class EvaluatorService {
 
     // Evaluate budget adherence
     const budgetResult = this.evaluateBudgetAdherence(planGraphBundle, actualCost);
-    if (!budgetResult.adherent) {
-      findings.push({
-        findingId: newId("eval_find"),
-        category: "budget",
-        severity: budgetResult.severity,
-        message: budgetResult.message,
-      });
-    }
+    findings.push({
+      findingId: newId("eval_find"),
+      category: "budget",
+      severity: budgetResult.severity,
+      message: budgetResult.message,
+    });
 
     // Evaluate timing SLO
     const timingResult = this.evaluateTimingSLO(planGraphBundle, actualDurationMs);
-    if (!timingResult.withinSlo) {
-      findings.push({
-        findingId: newId("eval_find"),
-        category: "timing",
-        severity: timingResult.severity,
-        message: timingResult.message,
-      });
-    }
+    findings.push({
+      findingId: newId("eval_find"),
+      category: "timing",
+      severity: timingResult.severity,
+      message: timingResult.message,
+    });
 
     // Determine overall decision
     const decision = this.determineDecision(findings, nodeFilteredFeedback);
@@ -321,6 +317,17 @@ export class EvaluatorService {
         severity: "info",
         message: `Risk boundary: baseline ${baselineRisk} unchanged`,
         level: "unchanged",
+      };
+    }
+    // R11-03 FIX: When baseline is low and there are failures, we must elevate.
+    // The RiskEvaluationEngine may return "unchanged" if evaluated score doesn't
+    // cross the elevation threshold, but failures against low baseline should
+    // always be treated as elevated risk.
+    if (failureCount > 0 && baselineRisk === "low") {
+      return {
+        severity: failureCount >= 3 ? "error" : "warning",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
+        level: "elevated",
       };
     }
     const evaluated = this.riskEvaluationEngine.evaluate({
@@ -470,18 +477,19 @@ export class EvaluatorService {
       return "escalate";
     }
 
-    // Error findings suggest replan
-    const errorFindings = findings.filter((f) => f.severity === "error");
-    if (errorFindings.length > 0) {
-      return "replan";
-    }
-
-    // Failure signals suggest retry
+    // Failure signals suggest retry - check this FIRST before error findings
+    // because failure signals are the primary indicator of recoverable issues
     const failureSignals = feedback.signals.filter(
       (s) => s.category === "failure" || s.category === "timeout"
     );
     if (failureSignals.length > 0) {
       return "retry";
+    }
+
+    // Error findings suggest replan (only reached if no failure signals)
+    const errorFindings = findings.filter((f) => f.severity === "error");
+    if (errorFindings.length > 0) {
+      return "replan";
     }
 
     // Approval required for partial completion

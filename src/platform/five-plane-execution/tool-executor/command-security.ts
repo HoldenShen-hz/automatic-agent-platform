@@ -76,7 +76,7 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["sed", { allowed: true, riskLevel: "medium" }],
   ["tr", { allowed: true, riskLevel: "low" }],
   ["sleep", { allowed: true, riskLevel: "low" }],
-  ["env", { allowed: false, riskLevel: "medium", reasonCode: "tool.command_env_denied" }],
+  ["env", { allowed: false, riskLevel: "critical", reasonCode: "tool.env_blocked_exposes_secrets" }],
   ["printenv", { allowed: false, riskLevel: "medium", reasonCode: "tool.command_printenv_denied" }],
   ["which", { allowed: true, riskLevel: "low" }],
   ["ps", { allowed: true, riskLevel: "medium" }],
@@ -115,8 +115,10 @@ export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinit
 // Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
 // S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
 // and newline continuation attacks
-const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|\r|\n/;
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|\r|\n|\x00/;
 const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
+// Glob metacharacters that should be blocked in paths: * ? [ (character classes and ranges)
+const GLOB_METACHAR_PATTERN = /[*?[]/;
 
 // Fork bomb detection patterns
 // Classic bash fork bombs: :(){ :|:& };: or similar recursive function definitions
@@ -329,7 +331,7 @@ export class CommandSafetyClassifier {
     if (
       META_SYNTAX_PATTERN.test(command)
       || PATH_TRAVERSAL_PATTERN.test(command)
-      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg))
+      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg) || GLOB_METACHAR_PATTERN.test(arg))
     ) {
       return deniedAssessment("tool.command_meta_syntax_denied", "critical");
     }

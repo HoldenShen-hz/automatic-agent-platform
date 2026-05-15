@@ -173,6 +173,9 @@ function createTestServer(): HttpApiServer {
       jwtSecret: "test-jwt-secret-for-integration-tests-only",
     }),
     prometheusMetricsExporter: new MockPrometheusMetricsExporter(),
+    cors: {
+      allowedOrigins: ["https://console.example.test"],
+    },
   });
 }
 

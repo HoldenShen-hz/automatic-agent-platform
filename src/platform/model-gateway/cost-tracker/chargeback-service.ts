@@ -58,7 +58,8 @@ export class ChargebackService {
       }
       for (const resource of report.resourceCosts) {
         // R2-7: Determine cost source attribution from resource metadata
-        const costSource = (resource as { costSource?: string }).costSource ?? "platform";
+        const resourceMeta = (resource as { metadata?: Record<string, unknown> }).metadata;
+        const costSource = (resourceMeta?.costSource as string | undefined) ?? resource.resourceType;
         // R2-7: Use fxRate from resource if available, default to 1.0 (USD)
         const fxRate = (resource as { fxRate?: number }).fxRate ?? resolveFxRate(resource.currency, baseCurrency);
         const convertedCost = Number((resource.costUsd * fxRate).toFixed(4));
@@ -117,6 +118,15 @@ function resolveFxRate(fromCurrency: string, toCurrency: string): number {
   }
   if (fromCurrency === "EUR" && toCurrency === "USD") {
     return 1.08;
+  }
+  if (fromCurrency === "GBP" && toCurrency === "USD") {
+    return 1.27;
+  }
+  if (fromCurrency === "JPY" && toCurrency === "USD") {
+    return 0.0067;
+  }
+  if (fromCurrency === "CNY" && toCurrency === "USD") {
+    return 0.14;
   }
   return 1;
 }

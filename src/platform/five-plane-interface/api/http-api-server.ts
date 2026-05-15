@@ -189,9 +189,15 @@ export class HttpApiServer {
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
-    const corsConfigInput: Partial<CorsConfig> = {
-      allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
-    };
+    const envOrigins = process.env["AA_API_ALLOWED_ORIGINS"] != null
+      ? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"])
+      : [];
+    const allowedOrigins = (options.cors?.allowedOrigins ?? envOrigins);
+    const hasOrigins = allowedOrigins.length > 0;
+    const corsConfigInput: Partial<CorsConfig> = {};
+    if (hasOrigins) {
+      corsConfigInput.allowedOrigins = allowedOrigins;
+    }
     if (options.cors?.allowedMethods != null) {
       corsConfigInput.allowedMethods = options.cors.allowedMethods;
     }
