@@ -9,25 +9,32 @@ import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-e
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_DB_DIR = join(__dirname, "../../../../.test-db");
 
+function createIsolatedDbPath(prefix: string): string {
+  if (!fs.existsSync(TEST_DB_DIR)) {
+    fs.mkdirSync(TEST_DB_DIR, { recursive: true });
+  }
+  return join(fs.mkdtempSync(join(TEST_DB_DIR, `${prefix}-`)), "test.db");
+}
+
 test("integration: runMultiStepOrchestration with oapeflir plan request", async () => {
   if (!fs.existsSync(TEST_DB_DIR)) {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step");
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
       title: "multi-step-plan-1",
-      request: JSON.stringify({
+      request: JSON.stringify([{
         stepId: "step_1",
         roleId: "general_executor",
         outputs: ["output_step_1"],
         dependencies: [],
         timeout: 30000,
         retryPolicy: { maxRetries: 0 },
-      }).replace(/^/, "oapeflir://plan "),
+      }]).replace(/^/, "oapeflir://plan "),
     });
 
     assert.ok(result.snapshot);
@@ -50,13 +57,13 @@ test("integration: runMultiStepOrchestration creates routing and workflow", asyn
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-routing-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-routing");
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
-      title: "Test Multi-Step",
-      request: "Run a simple multi-step workflow",
+      title: "General Workflow Run",
+      request: "Summarize the task in detail and create a comprehensive summary document.",
     });
 
     assert.ok(result.snapshot);
@@ -81,7 +88,7 @@ test("integration: runMultiStepOrchestration stores events", async () => {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-events-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-events");
 
   try {
     const result = await runMultiStepOrchestration({

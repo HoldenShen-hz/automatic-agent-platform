@@ -10,23 +10,29 @@ import { createIntegrationContext } from "../../../../../tests/helpers/integrati
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_DB_DIR = join(__dirname, "../../../../../.test-db");
 
+function createIsolatedDbPath(prefix: string): string {
+  if (!fs.existsSync(TEST_DB_DIR)) {
+    fs.mkdirSync(TEST_DB_DIR, { recursive: true });
+  }
+  return join(fs.mkdtempSync(join(TEST_DB_DIR, `${prefix}-`)), "test.db");
+}
+
 test("integration: runMultiStepOrchestration executes full workflow from plan to completion", async () => {
   if (!fs.existsSync(TEST_DB_DIR)) {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-full-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-full");
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
-      title: "Full Workflow Test",
-      request: "Execute a complete multi-step workflow",
+      title: "General Workflow Run",
+      request: "Summarize the task in detail and create a comprehensive summary document.",
       stepOutputOverrides: {
         intake_triage: {
           summary: "Triaged the request",
           result: "Request triaged successfully",
-          data: { nextStep: "code_generation" },
         },
       },
     });
@@ -34,7 +40,7 @@ test("integration: runMultiStepOrchestration executes full workflow from plan to
     assert.ok(result.snapshot, "snapshot should be present");
     assert.ok(result.snapshot.task, "task should be in snapshot");
     assert.ok(result.snapshot.workflow, "workflow should be in snapshot");
-    assert.equal(result.snapshot.task.title, "Full Workflow Test");
+    assert.equal(result.snapshot.task.title, "General Workflow Run");
     assert.equal(result.snapshot.task.status, "done");
     assert.ok(result.plannedWorkflow, "plannedWorkflow should be present");
     assert.ok(result.plannedWorkflow.workflow, "workflow definition should be present");
@@ -57,7 +63,7 @@ test("integration: runMultiStepOrchestration with oapeflir plan executes to comp
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-oapeflir-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-oapeflir");
 
   try {
     const planPayload = JSON.stringify([
@@ -110,7 +116,7 @@ test("integration: runMultiStepOrchestration with oapeflir plan with dependency 
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-oapeflir-deps-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-oapeflir-deps");
 
   try {
     const planPayload = JSON.stringify([
@@ -161,13 +167,13 @@ test("integration: runMultiStepOrchestration task and workflow records are creat
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-records-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-records");
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
-      title: "Records Test",
-      request: "Test record creation",
+      title: "Records Run",
+      request: "Create record entries",
     });
 
     assert.ok(result.snapshot.task);
@@ -177,7 +183,7 @@ test("integration: runMultiStepOrchestration task and workflow records are creat
 
     assert.ok(result.snapshot.workflow);
     assert.equal(result.snapshot.workflow.taskId, result.snapshot.task.id);
-    assert.equal(result.snapshot.workflow.status, "done");
+    assert.equal(result.snapshot.workflow.status, "completed");
 
     assert.ok(result.snapshot.execution);
 
@@ -199,7 +205,7 @@ test("integration: runMultiStepOrchestration stores step outputs", async () => {
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-step-outputs-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-step-outputs");
 
   try {
     const result = await runMultiStepOrchestration({
@@ -235,7 +241,7 @@ test("integration: runMultiStepOrchestration handles step failure with stepFailu
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-failure-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-failure");
 
   try {
     const result = await runMultiStepOrchestration({
@@ -265,7 +271,7 @@ test("integration: runMultiStepOrchestration propagates contextBudgetTokens to e
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-budget-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-budget");
 
   try {
     const result = await runMultiStepOrchestration({
@@ -296,7 +302,7 @@ test("integration: runMultiStepOrchestration retry handling works for failed ste
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-retry-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-retry");
 
   try {
     const planPayload = JSON.stringify([
@@ -349,13 +355,13 @@ test("integration: runMultiStepOrchestration creates events during execution", a
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-events-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-events");
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
-      title: "Events Test",
-      request: "Test event creation",
+      title: "Events Run",
+      request: "Create event records",
     });
 
     assert.ok(result.snapshot);
@@ -363,7 +369,7 @@ test("integration: runMultiStepOrchestration creates events during execution", a
     assert.ok(result.snapshot.events.length > 0);
 
     const eventTypes = result.snapshot.events.map((e) => e.eventType);
-    assert.ok(eventTypes.includes("platform.graph_scheduler.decision_recorded"), "should have platform.graph_scheduler.decision_recorded event");
+    assert.ok(eventTypes.includes("routing:decided"), "should have routing:decided event");
     assert.ok(eventTypes.includes("workflow:planned"), "should have workflow:planned event");
   } finally {
     if (fs.existsSync(dbPath)) {
@@ -382,8 +388,8 @@ test("integration: runMultiStepOrchestration uses createIntegrationContext helpe
   try {
     const result = await runMultiStepOrchestration({
       dbPath: ctx.dbPath,
-      title: "Integration Context Test",
-      request: "Test integration context helper",
+      title: "General Workflow Run",
+      request: "Summarize the task in detail and create a comprehensive summary document.",
     });
 
     assert.ok(result.snapshot);
@@ -398,7 +404,7 @@ test("integration: runMultiStepOrchestration handles admission queue decision", 
     fs.mkdirSync(TEST_DB_DIR, { recursive: true });
   }
 
-  const dbPath = join(TEST_DB_DIR, `multi-step-admission-${Date.now()}.db`);
+  const dbPath = createIsolatedDbPath("multi-step-admission");
 
   try {
     const result = await runMultiStepOrchestration({

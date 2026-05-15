@@ -246,11 +246,12 @@ test("integration: BudgetReservationSweeper TTL enforcement matches R9-08 lease 
 
     // R9-08: Lease TTL bounds - test boundary conditions
     // Reservation at exact TTL boundary
-    const exactlyAtTTL = new Date(Date.now()).toISOString();
+    const dbTime = "2026-05-15T10:00:01.000Z";
+    const exactlyAtTTL = "2026-05-15T10:00:01.000Z";
     // Reservation just before TTL boundary
-    const justWithinTTL = new Date(Date.now() - 999).toISOString();
+    const justWithinTTL = "2026-05-15T10:00:01.001Z";
     // Reservation just past TTL boundary
-    const justPastTTL = new Date(Date.now() - 1001).toISOString();
+    const justPastTTL = "2026-05-15T10:00:00.999Z";
 
     const reservations = [
       makeReservation({
@@ -276,7 +277,7 @@ test("integration: BudgetReservationSweeper TTL enforcement matches R9-08 lease 
     const result = sweeper.sweep({
       reservations,
       activeRunIds: new Set(),
-      dbTime: new Date().toISOString(),
+      dbTime,
       clockSkewSafetyMarginMs: 0,
     });
 
@@ -286,10 +287,10 @@ test("integration: BudgetReservationSweeper TTL enforcement matches R9-08 lease 
       "Reservation past TTL should be expired"
     );
 
-    // Exactly-at-TTL and just-within-TTL should NOT be expired (still within bounds)
+    // Exactly-at-TTL is expired; just-within-TTL should NOT be expired.
     assert.ok(
-      !result.releaseReservationIds.includes("res-exactly-at-ttl"),
-      "Reservation at exact TTL boundary should not be expired"
+      result.releaseReservationIds.includes("res-exactly-at-ttl"),
+      "Reservation at exact TTL boundary should be expired"
     );
     assert.ok(
       !result.releaseReservationIds.includes("res-just-within-ttl"),

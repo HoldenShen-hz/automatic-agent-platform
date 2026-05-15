@@ -161,6 +161,7 @@ test("Integration: complete execution lifecycle from task creation to completion
       reasonDetail: null,
       metadataJson: null,
       occurredAt: now,
+      traceId: `trace-${executionId}`,
       correlationId: null,
     });
 
@@ -173,21 +174,22 @@ test("Integration: complete execution lifecycle from task creation to completion
       entityKind: "execution",
       entityId: executionId,
       fromStatus: "created",
-      toStatus: "queued",
-      reasonCode: "execution_queued",
+      toStatus: "prechecking",
+      reasonCode: "execution_prechecking",
       actorType: "system",
       actorId: null,
       idempotencyKey: null,
       reasonDetail: null,
       metadataJson: null,
       occurredAt: now,
+      traceId: `trace-${executionId}`,
       correlationId: null,
     });
 
     transitionService.transitionExecutionStatus({
       entityKind: "execution",
       entityId: executionId,
-      fromStatus: "queued",
+      fromStatus: "prechecking",
       toStatus: "executing",
       reasonCode: "execution_started",
       actorType: "system",
@@ -196,6 +198,7 @@ test("Integration: complete execution lifecycle from task creation to completion
       reasonDetail: null,
       metadataJson: null,
       occurredAt: now,
+      traceId: `trace-${executionId}`,
       correlationId: null,
     });
 
@@ -216,6 +219,7 @@ test("Integration: complete execution lifecycle from task creation to completion
       reasonDetail: null,
       metadataJson: null,
       occurredAt: now,
+      traceId: `trace-${executionId}`,
       correlationId: null,
     });
 
@@ -233,6 +237,7 @@ test("Integration: complete execution lifecycle from task creation to completion
       reasonDetail: null,
       metadataJson: null,
       occurredAt: now,
+      traceId: `trace-${executionId}`,
       correlationId: null,
     });
 
@@ -315,6 +320,26 @@ test("Integration: lease lifecycle during execution", () => {
 
     // Create execution
     ctx.db.transaction(() => {
+      ctx.store.insertTask({
+        id: "task-lease-test",
+        parentId: null,
+        rootId: "task-lease-test",
+        divisionId: "general_ops",
+        tenantId: "tenant-1",
+        title: "Lease lifecycle task",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
       ctx.store.insertExecution({
         id: executionId,
         taskId: "task-lease-test",
@@ -525,7 +550,7 @@ test("Integration: RuntimeStateMachine enforces terminal state transitions", () 
         reasonCode: "illegal_resume",
         emittedBy: "test",
       }),
-    /noop.*transition.*not allowed/i,
+    /Invalid HarnessRun transition: completed -> running/i,
   );
 });
 
@@ -559,6 +584,6 @@ test("Integration: RuntimeStateMachine self-transition is rejected", () => {
         reasonCode: "heartbeat",
         emittedBy: "worker",
       }),
-    /noop.*transition.*not allowed/i,
+    /No-op NodeRun transition is not allowed: running -> running/i,
   );
 });

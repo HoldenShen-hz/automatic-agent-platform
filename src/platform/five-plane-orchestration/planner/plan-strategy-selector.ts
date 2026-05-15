@@ -11,7 +11,7 @@ export class PlanStrategySelector {
   public select(input: PlanStrategySelectionInput): PlanStrategy {
     const stepCount = input.workflow.executionSteps.length;
     const divisionCount = new Set(input.workflow.executionSteps.map((step) => step.divisionId)).size;
-    const availableTools = new Set(input.observation.environmentContext.availableTools);
+    const availableTools = new Set(input.observation.environmentContext?.availableTools ?? []);
     const destructiveTools = ["apply_patch", "deploy", "shell"].some((tool) => availableTools.has(tool));
     const tokenBudget = input.assessment.resourceAllocation.maxTokens;
     const timeoutMs = input.assessment.resourceAllocation.timeoutMs;
