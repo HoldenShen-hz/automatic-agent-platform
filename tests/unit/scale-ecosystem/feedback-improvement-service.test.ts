@@ -17,6 +17,7 @@ test("FeedbackImprovementService turns feedback into traceable candidates and ga
         payload: { summary: "schema mismatch", reasonCode: "schema.invalid" },
         stepOutputRefs: ["artifact:a"],
         timestamp: 1,
+        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
       },
       {
         signalId: "sig_fix",
@@ -27,6 +28,7 @@ test("FeedbackImprovementService turns feedback into traceable candidates and ga
         payload: { summary: "adjust prompt", reasonCode: "user.fix" },
         stepOutputRefs: ["artifact:a"],
         timestamp: 2,
+        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
       },
       {
         signalId: "sig_ok",
@@ -37,6 +39,7 @@ test("FeedbackImprovementService turns feedback into traceable candidates and ga
         payload: { summary: "recovered", reasonCode: "recovery.ok" },
         stepOutputRefs: ["artifact:a"],
         timestamp: 3,
+        trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
       },
     ],
   });

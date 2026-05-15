@@ -12,9 +12,6 @@ export function transitionRemoteSessionState(
 ): RemoteSessionState {
   switch (signal) {
     case "connected":
-      if (current === "viewer_only") {
-        return "viewer_only";
-      }
       return current === "failed" ? "connecting" : "connected";
     case "connection_lost":
       return current === "failed" ? "failed" : "reconnecting";

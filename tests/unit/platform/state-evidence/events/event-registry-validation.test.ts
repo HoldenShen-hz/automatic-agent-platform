@@ -276,7 +276,7 @@ test("getEventSchema returns correct payloadSchemaRef for skill events", () => {
 
 test("getEventSchema returns correct payloadSchemaRef for platform events", () => {
   const schema = getEventSchema("platform.harness_run.status_changed");
-  assert.equal(schema.payloadSchemaRef, "event://platform/harness_run/status_changed/v1");
+  assert.equal(schema.payloadSchemaRef, "event://platform.harness_run.status_changed/v1");
 });
 
 test("RUNTIME_EVENT_REPLAY_METADATA covers all platform.* events", () => {

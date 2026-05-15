@@ -194,7 +194,7 @@ test("assertCanOpenForTraffic throws for fail_closed", () => {
 
   assert.throws(
     () => service.assertCanOpenForTraffic(report),
-    /fail_closed/,
+    /P0 findings/,
   );
 });
 
@@ -221,7 +221,7 @@ test("runRecoveryDrill throws for empty scenario", () => {
 
   assert.throws(
     () => service.runRecoveryDrill({ scenario: "", findings: [] }),
-    /scenario_required/,
+    /scenario is required/,
   );
 });
 

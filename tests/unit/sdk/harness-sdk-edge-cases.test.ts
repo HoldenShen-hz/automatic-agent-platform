@@ -185,7 +185,7 @@ test("HarnessSdk.resolveReview with rejected resolution", () => {
 
   const review = sdk.requestHumanReview(run, "needs approval", []);
   const resolved = sdk.resolveReview(review, "rejected", "operator-1");
-  assert.equal(resolved.status, "aborted");
+  assert.equal(resolved.status, "cancelled");
   assert.ok(resolved.completedAt !== null);
 });
 

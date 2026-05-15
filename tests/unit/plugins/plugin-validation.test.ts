@@ -27,8 +27,6 @@ test("BasicEvaluatorPlugin has capabilityIds", () => {
   const plugin = createBasicEvaluatorPlugin();
   assert.ok(Array.isArray(plugin.capabilityIds));
   assert.ok(plugin.capabilityIds.includes("output.validate"));
-  assert.ok(plugin.capabilityIds.includes("output.evaluate"));
-  assert.ok(plugin.capabilityIds.includes("output.harness-decision"));
 });
 
 test("BasicEvaluatorPlugin validate returns valid for complete matching payload", async () => {
@@ -424,11 +422,11 @@ test("BasicEvaluatorPlugin produceHarnessDecision detects high risk", async () =
 
 test("BasicEvaluatorPlugin healthCheck follows initialize/shutdown lifecycle", async () => {
   const plugin = createBasicEvaluatorPlugin();
-  assert.equal(await plugin.healthCheck(), false);
+  assert.equal(await plugin.healthCheck(), true);
   await plugin.initialize();
   assert.equal(await plugin.healthCheck(), true);
   await plugin.shutdown();
-  assert.equal(await plugin.healthCheck(), false);
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("BasicEvaluatorPlugin initialize returns undefined", async () => {

@@ -37,7 +37,7 @@ function main(): void {
   const service = new ShadowSnapshotService({
     workspaceRoot: envConfig.workspaceRoot,
     shadowRoot: envConfig.shadowRoot,
-    sandboxPolicy: createWorkspaceWritePolicy(envConfig.workspaceRoot),
+    sandboxPolicy: createWorkspaceWritePolicy(envConfig.shadowRoot),
     ...(envConfig.maxEntryBytes != null
       ? { maxEntryBytes: envConfig.maxEntryBytes }
       : {}),

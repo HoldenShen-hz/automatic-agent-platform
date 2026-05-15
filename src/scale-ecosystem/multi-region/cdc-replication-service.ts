@@ -131,6 +131,7 @@ export class CdcQueueBackpressureError extends Error {
 }
 
 export type VectorClockComparison = -1 | 0 | 1;
+export type ConflictResolutionStrategy = "lww" | "merge" | "abort";
 
 export class VectorClock {
   private readonly versions: Map<string, number>;
@@ -148,6 +149,11 @@ export class VectorClock {
     if (sequence > current) {
       this.versions.set(regionId, sequence);
     }
+  }
+
+  public increment(regionId: string): this {
+    this.update(regionId, (this.versions.get(regionId) ?? 0) + 1);
+    return this;
   }
 
   public merge(other: VectorClock): VectorClock {
@@ -205,13 +211,14 @@ export interface CDCReplicationConflict {
   readonly taskId: string;
   readonly localEventId: string;
   readonly remoteEventId: string;
-  readonly resolution: "local_wins" | "remote_wins" | "merged";
+  readonly resolution: "local_wins" | "remote_wins" | "merged" | "aborted";
 }
 
 export interface CDCConflictResolutionResult {
   readonly resolved: boolean;
   readonly resolvedEvent: CDCReplicationEvent | null;
   readonly conflict: CDCReplicationConflict | null;
+  readonly strategy?: ConflictResolutionStrategy;
 }
 
 /**
@@ -278,12 +285,8 @@ export class CDCReplicationService {
     const config = this.configs.get(key);
     const batchSize = config?.batchSize ?? 100;
 
-    // Filter events after checkpoint
-    const hasProcessedEvents = checkpoint.lastEventId != null;
-    const eventsToReplicate = sourceEvents.filter((event) =>
-      hasProcessedEvents
-        ? event.sequence > checkpoint.lastEventSequence
-        : event.sequence >= checkpoint.lastEventSequence);
+    // Filter events after checkpoint. Sequence 0 is the initial checkpoint boundary.
+    const eventsToReplicate = sourceEvents.filter((event) => event.sequence > checkpoint.lastEventSequence);
 
     if (eventsToReplicate.length === 0) {
       return null;
@@ -541,6 +544,7 @@ export class CDCReplicationService {
     return {
       resolved: true,
       resolvedEvent: remoteWins ? remoteEvent : localEvent,
+      strategy: "lww",
       conflict: {
         taskId: localEvent.taskId,
         localEventId: localEvent.id,
@@ -567,6 +571,7 @@ export class CDCReplicationService {
     return {
       resolved: true,
       resolvedEvent: mergedEvent,
+      strategy: "merge",
       conflict: {
         taskId: localEvent.taskId,
         localEventId: localEvent.id,
@@ -579,8 +584,22 @@ export class CDCReplicationService {
   public resolveConflict(
     localEvent: CDCReplicationEvent,
     remoteEvent: CDCReplicationEvent,
-    strategy: "lww" | "merge" = "lww",
+    strategy: ConflictResolutionStrategy = "lww",
   ): CDCConflictResolutionResult {
+    if (strategy === "abort") {
+      return {
+        resolved: false,
+        resolvedEvent: null,
+        strategy: "abort",
+        conflict: {
+          taskId: localEvent.taskId,
+          localEventId: localEvent.id,
+          remoteEventId: remoteEvent.id,
+          resolution: "aborted",
+        },
+      };
+    }
+
     if (!this.detectConflict(localEvent, remoteEvent)) {
       const localClock = this.getEventVectorClock(localEvent);
       const remoteClock = this.getEventVectorClock(remoteEvent);
@@ -590,6 +609,7 @@ export class CDCReplicationService {
           return {
             resolved: true,
             resolvedEvent: remoteEvent,
+            strategy,
             conflict: null,
           };
         }
@@ -597,6 +617,7 @@ export class CDCReplicationService {
           return {
             resolved: true,
             resolvedEvent: localEvent,
+            strategy,
             conflict: null,
           };
         }
@@ -610,7 +631,7 @@ export class CDCReplicationService {
   public recordConflict(taskId: string, conflict: CDCReplicationConflict): void {
     const history = this.conflictHistory.get(taskId) ?? [];
     history.push(conflict);
-    this.conflictHistory.set(taskId, history);
+    this.conflictHistory.set(taskId, history.slice(-100));
   }
 
   public getConflictHistory(taskId: string): readonly CDCReplicationConflict[] {

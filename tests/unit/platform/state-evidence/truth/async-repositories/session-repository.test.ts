@@ -201,7 +201,8 @@ test("AsyncSessionRepository listMessagesBySession returns messages with limit",
   const result = await repo.listMessagesBySession("sess-1", 10);
 
   assert.deepEqual(result, [message]);
-  assert.match(calls[0]!.sql, /LIMIT 10/);
+  assert.match(calls[0]!.sql, /LIMIT \$2/);
+  assert.deepEqual(calls[0]!.params, ["sess-1", 10]);
 });
 
 // === Session Summary Tests ===

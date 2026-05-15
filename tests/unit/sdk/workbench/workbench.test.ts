@@ -235,5 +235,5 @@ test("SdkWorkbenchService.listWorkbenchShortcuts builds correct preview URLs", (
   const shortcuts = service.listWorkbenchShortcuts(mockClient);
 
   const tasksShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
-  assert.ok(tasksShortcut?.previewUrl?.includes("https://api.example.com/v1/harness-runs"));
+  assert.ok(tasksShortcut?.previewUrl?.includes("https://api.example.com/api/v1/harness-runs"));
 });

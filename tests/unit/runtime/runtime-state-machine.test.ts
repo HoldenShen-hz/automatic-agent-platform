@@ -598,6 +598,8 @@ test("BudgetLedger valid transition: open -> closed", () => {
     tenantId: "tenant-1",
     reasonCode: "test",
     emittedBy: "test-emitter",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
   });
 
   assert.equal(result.aggregate.status, "closed");

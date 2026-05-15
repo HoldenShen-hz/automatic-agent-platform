@@ -182,7 +182,7 @@ test("AsyncPromptRepository listPromptBundlesByDomain excludes deprecated", asyn
 
   await repo.listPromptBundlesByDomain("coding");
 
-  assert.match(calls[0]!.sql, /deprecated = 0/);
+  assert.match(calls[0]!.sql, /deprecated = false/);
 });
 
 // === ListActivePromptBundles Tests ===
@@ -195,7 +195,7 @@ test("AsyncPromptRepository listActivePromptBundles returns bundles", async () =
   const result = await repo.listActivePromptBundles();
 
   assert.deepEqual(result, [bundle]);
-  assert.match(calls[0]?.sql ?? "", /deprecated = 0/);
+  assert.match(calls[0]?.sql ?? "", /deprecated = false/);
 });
 
 // === InsertPromptVersion Tests ===
@@ -219,10 +219,12 @@ test("AsyncPromptRepository setCurrentVersion updates versions", async () => {
 
   await repo.setCurrentVersion("bundle-1", "ver-1");
 
-  assert.equal(calls.length, 2);
-  assert.match(calls[0]!.sql, /is_current = 0/);
-  assert.match(calls[0]!.sql, /bundle_id = \$1/);
-  assert.match(calls[1]!.sql, /is_current = 1/);
+  assert.equal(calls.length, 4);
+  assert.match(calls[0]!.sql, /BEGIN/);
+  assert.match(calls[1]!.sql, /is_current = false/);
+  assert.match(calls[1]!.sql, /bundle_id = \$1/);
+  assert.match(calls[2]!.sql, /is_current = true/);
+  assert.match(calls[3]!.sql, /COMMIT/);
 });
 
 // === GetPromptVersion Tests ===
@@ -260,7 +262,7 @@ test("AsyncPromptRepository getCurrentVersion returns current version", async ()
   const result = await repo.getCurrentVersion("bundle-1");
 
   assert.deepEqual(result, version);
-  assert.match(calls[0]?.sql ?? "", /is_current = 1/);
+  assert.match(calls[0]?.sql ?? "", /is_current = true/);
 });
 
 // === InsertPromptAbTest Tests ===

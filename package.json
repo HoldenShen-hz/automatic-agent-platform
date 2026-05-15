@@ -52,6 +52,7 @@
     "acceptance-readiness": "npm run build && node --enable-source-maps dist/src/sdk/cli/acceptance-readiness.js",
     "marketplace": "npm run build && node --enable-source-maps dist/src/sdk/cli/marketplace.js",
     "api": "npm run build && node --enable-source-maps dist/src/sdk/cli/api-server.js",
+    "login": "npm run build && node --enable-source-maps dist/src/sdk/cli/login.js",
     "channel-gateway": "npm run build && node --enable-source-maps dist/src/sdk/cli/channel-gateway.js",
     "control-plane-balancer": "npm run build && node --enable-source-maps dist/src/sdk/cli/control-plane-balancer.js",
     "evolution": "npm run build && node --enable-source-maps dist/src/sdk/cli/evolution.js",

@@ -159,7 +159,7 @@ test("TransactionalEventAppender.appendEvent with custom event ID", () => {
 
     assert.equal(result.event.id, customId, "Event should have custom ID");
 
-    const found = eventRepo.findById(customId);
+    const found = eventRepo.getEvent(customId);
     assert.ok(found, "Event with custom ID should be findable in repository");
 
     db.close();

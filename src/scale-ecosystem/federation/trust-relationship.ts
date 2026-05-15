@@ -4,6 +4,9 @@
  */
 
 import { randomUUID } from "crypto";
+import { TrustLevel } from "./trust-level.js";
+
+export { TrustLevel } from "./trust-level.js";
 
 // Types
 export interface TrustMetrics {
@@ -533,4 +536,3 @@ export class TrustRelationshipManager {
 export function createTrustRelationshipManager(policies?: TrustPolicy[]): TrustRelationshipManager {
   return new TrustRelationshipManager(policies);
 }
-import { TrustLevel } from "./trust-level.js";

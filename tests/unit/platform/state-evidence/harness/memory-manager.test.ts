@@ -5,10 +5,7 @@
  * - Basic write/read operations across namespaces
  * - Tier management and promotion/demotion logic
  * - Self-enhancement blocking
- * - Issue #2035: Unbounded growth within tiers
- *
- * NOTE: Issue #2035 identifies that HarnessMemoryManager has no eviction/max-size
- * enforcement when writing new records - TIER_MAX_SIZE is only checked during promotion.
+ * - Issue #2035 regression: tier size enforcement on write
  */
 
 import assert from "node:assert/strict";
@@ -360,20 +357,17 @@ test("records at max tier (shared) do not promote further", () => {
 });
 
 // =============================================================================
-// Issue #2035: Unbounded Growth Tests
+// Issue #2035: Tier Capacity Regression Tests
 // =============================================================================
 //
-// These tests document the issue where HarnessMemoryManager does not enforce
-// TIER_MAX_SIZE limits when writing new records. Eviction only happens during
-// promotion, not when writing to the same tier.
+// HarnessMemoryManager must enforce TIER_MAX_SIZE limits when writing new
+// records, not only when promoting records.
 // =============================================================================
 
-test("ISSUE #2035: writing many records to same tier does not trigger eviction", () => {
+test("ISSUE #2035 regression: writing many records to same tier enforces eviction", () => {
   const manager = createManager();
 
   // Write 150 records to working tier (TIER_MAX_SIZE.working = 100)
-  // The issue is that these records are NOT evicted because eviction
-  // only happens during promotion, not during regular writes
   for (let i = 0; i < 150; i++) {
     manager.write("run", `scope_${i}`, `key_${i}`, `value_${i}`);
   }
@@ -387,8 +381,7 @@ test("ISSUE #2035: writing many records to same tier does not trigger eviction",
     }
   }
 
-  // All 150 records should still exist - this demonstrates the unbounded growth issue
-  assert.equal(workingCount, 150, "Issue #2035: Records are not evicted when writing beyond TIER_MAX_SIZE");
+  assert.equal(workingCount, 100, "Issue #2035 regression: working tier must be capped at TIER_MAX_SIZE");
 });
 
 test("ISSUE #2035: tier capacity is not enforced on write, only on promotion", () => {

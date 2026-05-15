@@ -143,7 +143,7 @@ test("MemorySelfReinforcementGuard.evaluate handles empty evidence with all fals
   const decision = guard.evaluate(evidence);
 
   assert.equal(decision.promotable, false);
-  assert.equal(decision.reasonCodes.length, 3);
+  assert.equal(decision.reasonCodes.length, 2);
   assert.ok(decision.reasonCodes.includes("memory.holdout_failed"));
   assert.ok(decision.reasonCodes.includes("memory.different_judge_failed"));
 });

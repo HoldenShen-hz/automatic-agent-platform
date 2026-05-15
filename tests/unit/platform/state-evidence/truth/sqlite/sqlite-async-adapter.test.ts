@@ -18,6 +18,13 @@ function createHarness(prefix: string) {
   const dbPath = join(workspace, "async-adapter.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
+  db.connection.exec(`
+    CREATE TABLE sample_items (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      quantity INTEGER NOT NULL
+    );
+  `);
 
   const adapter = new SqliteAsyncAdapter(db);
 

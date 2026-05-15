@@ -2,6 +2,7 @@ import { getRequiredConsumers } from "./event-types.js";
 import type { EventTier } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { EVENT_PAYLOAD_VALIDATORS, RUNTIME_EVENT_REPLAY_METADATA, genericEventPayloadSchema } from "./event-registry-payloads.js";
+export { RUNTIME_EVENT_REPLAY_METADATA } from "./event-registry-payloads.js";
 import { getEventTier } from "./event-types.js";
 
 /**
@@ -912,12 +913,30 @@ export function getEventSchema(type: string): EventSchemaDefinition {
 
 export function getEventReplayMetadata(type: string): EventReplayMetadata {
   const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
-  if (metadata == null) {
+  if (metadata != null) {
+    return metadata;
+  }
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    const schema = EVENT_SCHEMA_REGISTRY[type as KnownEventType];
+    if (type.startsWith("platform.") || type.startsWith("oapeflir.")) {
+      return {
+        eventType: type,
+        sourceOfTruth: type.startsWith("oapeflir.view.") || type.startsWith("oapeflir.phase.")
+          ? "projection"
+          : "platform",
+        replayable: true,
+        sideEffectSafeToReplay: !type.startsWith("platform.side_effect."),
+        schemaOwner: schema.producer,
+        replayBehavior: type.startsWith("platform.side_effect.") ? "skip_side_effect" : "replay_as_fact",
+        consumerContractTests: [],
+      };
+    }
+  }
+  {
     throw new ValidationError("event.replay_metadata_missing", `Event replay metadata not found for type: ${type}`, {
       details: { eventType: type },
     });
   }
-  return metadata;
 }
 
 /**

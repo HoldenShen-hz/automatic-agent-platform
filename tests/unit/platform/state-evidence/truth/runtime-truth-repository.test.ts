@@ -238,7 +238,7 @@ test("transition increments aggregateSeq for each event on same aggregate", () =
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: nodeRun.fencingToken,
   });
 
   const t2 = repository.transition({
@@ -251,7 +251,7 @@ test("transition increments aggregateSeq for each event on same aggregate", () =
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: t1.aggregate.fencingToken,
   });
 
   assert.equal(t1.event.aggregateSeq, 1);
@@ -299,7 +299,10 @@ test("transition records auditRef when provided", () => {
     auditRef: "audit/ref/123",
   });
 
-  assert.deepEqual(repository.listAuditRefs(), ["audit/ref/123"]);
+  const refs = repository.listAuditRefs();
+  assert.ok(refs.some((ref) => ref.startsWith("BEGIN_TXN_")));
+  assert.ok(refs.includes("audit/ref/123"));
+  assert.ok(refs.some((ref) => ref.startsWith("COMMIT_TXN_")));
 });
 
 // ---------------------------------------------------------------------------

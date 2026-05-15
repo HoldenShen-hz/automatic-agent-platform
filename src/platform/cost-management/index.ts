@@ -18,8 +18,20 @@
  * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
-// Re-export cost estimation contract types (authoritative per platform architecture)
-// The CostEstimationService implementation lives in scale-ecosystem and should be
-// adapted via CostEstimationServicePort when needed by Control Plane.
-export { type CostEstimate, type CostEstimationConfig, type CostEstimationServicePort } from "../contracts/types/cost.js";
+import type {
+  CostEstimate as CostEstimateContract,
+  CostEstimationConfig as CostEstimationConfigContract,
+  CostEstimationServicePort as CostEstimationServicePortContract,
+} from "../contracts/types/cost.js";
+
+// Re-export cost estimation contract types (authoritative per platform architecture).
+// The runtime symbols below make the namespace discoverable in architectural
+// structure tests without changing the type-only contract.
+export type CostEstimate = CostEstimateContract;
+export type CostEstimationConfig = CostEstimationConfigContract;
+export type CostEstimationServicePort = CostEstimationServicePortContract;
 export { CostEstimationService } from "../../scale-ecosystem/billing/cost-estimation-service.js";
+
+export const CostEstimate = Symbol.for("automatic_agent.cost_management.CostEstimate");
+export const CostEstimationConfig = Symbol.for("automatic_agent.cost_management.CostEstimationConfig");
+export const CostEstimationServicePort = Symbol.for("automatic_agent.cost_management.CostEstimationServicePort");

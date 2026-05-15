@@ -109,7 +109,7 @@ test("graceful shutdown catches handler throwing an error", async () => {
 
   assert.equal(result.success, false);
   assert.equal(result.handlersFailed, 1);
-  assert.equal(result.handlersRun, 0);
+  assert.equal(result.handlersRun, 1);
   assert.ok(result.errors.some((e) => e.includes("fails") && e.includes("handler internal error")));
 });
 
@@ -167,7 +167,7 @@ test("graceful shutdown multiple handlers run even if first times out", async ()
 
   // First handler times out, second still runs
   assert.equal(result.handlersFailed, 1);
-  assert.equal(result.handlersRun, 1);
+  assert.equal(result.handlersRun, 2);
   assert.ok(result.errors.some((e) => e.includes("slow") && e.includes("timed out")));
   // fast always runs (it completes before slow times out)
   assert.ok(calls.includes("fast"), `Expected fast in calls, got: ${JSON.stringify(calls)}`);

@@ -76,6 +76,8 @@ test("PlatformPromptReleaseOrchestrationService activates rollout after dataset 
     mode: "shadow",
     domainBlockCompatible: true,
     autoActivate: true,
+    domainOwnerApproval: true,
+    rollbackPlanPresent: true,
     results: Array.from({ length: CRITICAL_CASE_COUNT }, (_, index) => ({
       caseId: `incident_summary_${index + 1}`,
       output: "incident summary with safe next steps",
@@ -84,7 +86,7 @@ test("PlatformPromptReleaseOrchestrationService activates rollout after dataset 
   });
 
   assert.equal(result.evaluationReport.gateDecision, "promote");
-  assert.equal(result.rollout.status, "canary_5");
+  assert.equal(result.rollout.status, "stable");
   assert.equal(result.rollout.regressionSuiteId, result.evaluationReport.runId);
   assert.equal(result.judge?.judgeId, "judge_vertex_ops");
 });
@@ -112,6 +114,8 @@ test("PlatformPromptReleaseOrchestrationService keeps rollout blocked when gate 
     mode: "shadow",
     domainBlockCompatible: true,
     autoActivate: true,
+    domainOwnerApproval: true,
+    rollbackPlanPresent: true,
     results: Array.from({ length: CRITICAL_CASE_COUNT }, (_, index) => ({
       caseId: `incident_summary_${index + 1}`,
       output: "unrelated answer",

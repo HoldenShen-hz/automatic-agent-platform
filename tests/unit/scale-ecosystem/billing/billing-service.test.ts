@@ -264,14 +264,14 @@ test("BillingService evaluateEntitlement for warn returns remaining quota", () =
   assert.equal(result.remainingQuantity, 0);
 });
 
-test("BillingService recordUsage creates ledger entry with correct amount", () => {
+test("BillingService recordUsage creates ledger entry with correct amount", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_ledger", ownerId: "owner_ledger", planId: "plan_basic" });
 
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_ledger",
     metricType: "task_execution",
     quantity: 10,
@@ -282,14 +282,14 @@ test("BillingService recordUsage creates ledger entry with correct amount", () =
   assert.equal(result.ledgerEntry.amountUsd, 0.1);
 });
 
-test("BillingService recordUsage sets ledger entry type to usage_charge", () => {
+test("BillingService recordUsage sets ledger entry type to usage_charge", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_type", ownerId: "owner_type", planId: "plan_basic" });
 
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_type",
     metricType: "task_execution",
     quantity: 5,
@@ -299,14 +299,14 @@ test("BillingService recordUsage sets ledger entry type to usage_charge", () => 
   assert.equal(result.ledgerEntry.entryType, "usage_charge");
 });
 
-test("BillingService recordUsage sets correct periodId", () => {
+test("BillingService recordUsage sets correct periodId", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_period", ownerId: "owner_period", planId: "plan_basic" });
 
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_period",
     metricType: "task_execution",
     quantity: 1,
@@ -316,7 +316,7 @@ test("BillingService recordUsage sets correct periodId", () => {
   assert.ok(result.ledgerEntry.periodId.match(/^\d{4}-\d{2}$/));
 });
 
-test("BillingService recordUsage with no quota returns null quotaCounter", () => {
+test("BillingService recordUsage with no quota returns null quotaCounter", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -324,7 +324,7 @@ test("BillingService recordUsage with no quota returns null quotaCounter", () =>
   service.createAccount({ accountId: "acct_noquota", ownerId: "owner_noquota", planId: "plan_basic" });
 
   // task_execution has quota, but this should still work
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_noquota",
     metricType: "task_execution",
     quantity: 1,
@@ -334,7 +334,7 @@ test("BillingService recordUsage with no quota returns null quotaCounter", () =>
   assert.notEqual(result.quotaCounter, null);
 });
 
-test("BillingService recordUsage with null metricType quota returns null counter", () => {
+test("BillingService recordUsage with null metricType quota returns null counter", async () => {
   const localCatalog = {
     plan_nonmetric: {
       planId: "plan_nonmetric",
@@ -351,7 +351,7 @@ test("BillingService recordUsage with null metricType quota returns null counter
 
   service.createAccount({ accountId: "acct_nonmetric", ownerId: "owner_nonmetric", planId: "plan_nonmetric" });
 
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_nonmetric",
     metricType: "task_execution",
     quantity: 1,
@@ -361,21 +361,21 @@ test("BillingService recordUsage with null metricType quota returns null counter
   assert.equal(result.quotaCounter, null);
 });
 
-test("BillingService recordUsage increments existing quota counter", () => {
+test("BillingService recordUsage increments existing quota counter", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_inc", ownerId: "owner_inc", planId: "plan_basic" });
 
-  service.recordUsage({
+  await service.recordUsage({
     accountId: "acct_inc",
     metricType: "task_execution",
     quantity: 10,
     source: "api",
   });
 
-  const result = service.recordUsage({
+  const result = await service.recordUsage({
     accountId: "acct_inc",
     metricType: "task_execution",
     quantity: 20,
@@ -825,15 +825,15 @@ test("BillingService throws for negative requestedQuantity", () => {
   }, /positive number/);
 });
 
-test("BillingService throws for zero quantity in recordUsage", () => {
+test("BillingService throws for zero quantity in recordUsage", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_zero", ownerId: "owner_zero", planId: "plan_basic" });
 
-  assert.throws(() => {
-    service.recordUsage({
+  await assert.rejects(async () => {
+    await service.recordUsage({
       accountId: "acct_zero",
       metricType: "task_execution",
       quantity: 0,
@@ -842,15 +842,15 @@ test("BillingService throws for zero quantity in recordUsage", () => {
   }, /positive number/);
 });
 
-test("BillingService throws for negative quantity in recordUsage", () => {
+test("BillingService throws for negative quantity in recordUsage", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_neg_q", ownerId: "owner_neg_q", planId: "plan_basic" });
 
-  assert.throws(() => {
-    service.recordUsage({
+  await assert.rejects(async () => {
+    await service.recordUsage({
       accountId: "acct_neg_q",
       metricType: "task_execution",
       quantity: -10,
@@ -859,15 +859,15 @@ test("BillingService throws for negative quantity in recordUsage", () => {
   }, /positive number/);
 });
 
-test("BillingService throws for non-finite quantity in recordUsage", () => {
+test("BillingService throws for non-finite quantity in recordUsage", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
 
   service.createAccount({ accountId: "acct_nan", ownerId: "owner_nan", planId: "plan_basic" });
 
-  assert.throws(() => {
-    service.recordUsage({
+  await assert.rejects(async () => {
+    await service.recordUsage({
       accountId: "acct_nan",
       metricType: "task_execution",
       quantity: NaN,

@@ -38,7 +38,7 @@ test("LayeredEventInbox auto-compacts once the internal record buffer reaches th
   }
   assert.equal(inbox.drain("truth-projector").length, 5000);
 
-  for (let seq = 5001; seq <= 10000; seq += 1) {
+  for (let seq = 5001; seq <= 10001; seq += 1) {
     inbox.append(makePlatformFact(seq));
   }
 

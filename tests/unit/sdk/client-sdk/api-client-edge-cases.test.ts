@@ -191,7 +191,7 @@ test("RetryableApiClient throws BusinessError for 400 response", async () => {
   try {
     await assert.rejects(
       client.get("/test"),
-      (err: unknown) => err instanceof Error && err.message.includes("Request failed with status 400"),
+      (err: unknown) => err instanceof ValidationError && err.message.includes("API request failed with status 400"),
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -218,7 +218,7 @@ test("RetryableApiClient throws BusinessError for 422 response", async () => {
   try {
     await assert.rejects(
       client.post("/test", {}),
-      (err: unknown) => err instanceof Error && err.message.includes("Request failed with status 422"),
+      (err: unknown) => err instanceof ValidationError && err.message.includes("API request failed with status 422"),
     );
   } finally {
     globalThis.fetch = originalFetch;

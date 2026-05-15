@@ -271,7 +271,7 @@ test("RegionFailoverController.rejectRegionJoin rejects stale demoted leader", (
 
   const input: RejectRegionJoinInput = {
     regionId: "us-west-2",
-    offeredFencingEpoch: 1, // Current epoch is 2, so epoch 1 is stale
+    offeredFencingEpoch: 0,
     partitionKey: "global",
   };
 

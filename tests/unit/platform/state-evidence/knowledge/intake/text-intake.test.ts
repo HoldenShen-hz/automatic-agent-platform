@@ -142,7 +142,7 @@ test("TextKnowledgeIntake allows omitting optional parameters", () => {
   });
 
   assert.equal(result.source.type, "text");
-  assert.equal(result.source.trustLevel, "community");
+  assert.equal(result.source.trustLevel, "team_reviewed");
   assert.deepEqual(result.source.tags, []);
 });
 

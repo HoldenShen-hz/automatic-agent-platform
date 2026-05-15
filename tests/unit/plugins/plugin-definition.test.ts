@@ -266,8 +266,8 @@ test("definePlugin trims domainIds and filters empty", () => {
   assert.deepEqual(plugin.domainIds, ["coding", "operations"]);
 });
 
-test("definePlugin handles sbomRef trimming", () => {
-  const plugin = definePlugin({
+test("definePlugin handles sbomRef trimming", async () => {
+  const plugin = await definePlugin({
     pluginId: "test-plugin",
     name: "Test Plugin",
     version: "1.0.0",
@@ -292,25 +292,22 @@ test("definePlugin sets sbomRef to null when empty", () => {
   assert.equal(plugin.sbomRef, null);
 });
 
-test("definePlugin handles signing config", () => {
-  const plugin = definePlugin({
-    pluginId: "test-plugin",
-    name: "Test Plugin",
-    version: "1.0.0",
-    type: "tool",
-    capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
-    signing: {
-      keyId: "  key-123  ",
-      signature: "  sig-abc  ",
-      algorithm: "  ed25519  ",
-    },
-  });
-
-  assert.deepEqual(plugin.signing, {
-    keyId: "key-123",
-    signature: "sig-abc",
-    algorithm: "ed25519",
-  });
+test("definePlugin rejects signing config with unregistered key", () => {
+  assert.throws(
+    () => definePlugin({
+      pluginId: "test-plugin",
+      name: "Test Plugin",
+      version: "1.0.0",
+      type: "tool",
+      capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
+      signing: {
+        keyId: "  key-123  ",
+        signature: "  sig-abc  ",
+        algorithm: "  ed25519  ",
+      },
+    }),
+    /not registered/,
+  );
 });
 
 test("definePlugin sets signing to null when not provided", () => {

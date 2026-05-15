@@ -55,7 +55,7 @@ test("FeedbackCollectiveAnomalyDetector.evaluate ignores samples below minSample
   assert.equal(result.reasonCode, "feedback.normal");
 });
 
-test("FeedbackCollectiveAnomalyDetector.evaluate handles negative delta", () => {
+test("FeedbackCollectiveAnomalyDetector.evaluate treats negative delta at exact threshold as normal", () => {
   const detector = new FeedbackCollectiveAnomalyDetector(100, 0.1);
   const signal: FeedbackAggregateSignal = {
     segmentId: "segment_d",
@@ -66,9 +66,9 @@ test("FeedbackCollectiveAnomalyDetector.evaluate handles negative delta", () => 
 
   const result = detector.evaluate(signal);
 
-  assert.equal(result.biasSuspected, true);
+  assert.equal(result.biasSuspected, false);
   assert.equal(result.delta, -0.1);
-  assert.equal(result.reasonCode, "feedback.bias_suspected");
+  assert.equal(result.reasonCode, "feedback.normal");
 });
 
 test("FeedbackCollectiveAnomalyDetector.evaluate uses exact minSampleCount as threshold", () => {

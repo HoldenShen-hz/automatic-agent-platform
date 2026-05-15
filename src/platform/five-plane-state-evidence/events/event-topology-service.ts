@@ -1,5 +1,10 @@
 import { EVENT_SCHEMA_REGISTRY, type EventSchemaDefinition } from "./event-registry.js";
 
+function eventNamespace(eventType: string): string {
+  const separatorIndex = eventType.search(/[:.]/);
+  return separatorIndex >= 0 ? eventType.slice(0, separatorIndex) : "unknown";
+}
+
 export interface EventTopologyNode {
   nodeId: string;
   kind: "producer" | "event" | "consumer";
@@ -34,7 +39,7 @@ export class EventTopologyService {
   public listEntries(): EventTopologyEntry[] {
     return Object.values(EVENT_SCHEMA_REGISTRY).map((schema) => ({
       eventType: schema.type,
-      namespace: schema.type.split(":")[0] ?? "unknown",
+      namespace: eventNamespace(schema.type),
       tier: schema.tier,
       producer: schema.producer,
       consumers: [...schema.consumers],

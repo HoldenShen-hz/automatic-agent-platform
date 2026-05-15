@@ -7,6 +7,21 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
+function readinessRecord(componentId: string) {
+  return {
+    readinessId: `ready_${componentId}`,
+    environment: "staging" as const,
+    componentType: "external_service" as const,
+    componentId,
+    credentialReady: 1 as const,
+    secondaryGatesJson: "{}",
+    owner: "ha-test",
+    lastVerifiedAt: new Date().toISOString(),
+    isActive: 1 as const,
+    notes: null,
+  };
+}
+
 /**
  * Tests for issue 1913: overallStatus === "coordinator" or "postgres" branch
  * condition is always true - never returns "warning".
@@ -30,20 +45,8 @@ test("ISSUE-1913: overallStatus returns 'warning' when only non-critical compone
 
     // Insert readiness records for critical components only (coordinator and postgres)
     // Redis queue and distributed lock are NOT ready - should result in "warning"
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "ha_coordinator",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "postgres_primary",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("ha_coordinator"));
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("postgres_primary"));
     // Note: NOT inserting redis_queue or distributed_lock records
 
     const report = service.buildReport({ environment: "staging" });
@@ -79,13 +82,7 @@ test("ISSUE-1913: overallStatus returns 'fail' when critical component (coordina
     const service = new HaProgramService(store);
 
     // Only postgres is ready - coordinator is NOT ready -> should be "fail"
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "postgres_primary",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("postgres_primary"));
     // Note: NOT inserting ha_coordinator record
 
     const report = service.buildReport({ environment: "staging" });
@@ -109,13 +106,7 @@ test("ISSUE-1913: overallStatus returns 'fail' when critical component (postgres
     const service = new HaProgramService(store);
 
     // Only coordinator is ready - postgres is NOT ready -> should be "fail"
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "ha_coordinator",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("ha_coordinator"));
     // Note: NOT inserting postgres_primary record
 
     const report = service.buildReport({ environment: "staging" });
@@ -139,34 +130,10 @@ test("ISSUE-1913: overallStatus returns 'pass' when all components are ready", (
     const service = new HaProgramService(store);
 
     // All components are ready
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "ha_coordinator",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "postgres_primary",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "redis_queue",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
-    store.release.insertEnvironmentReadinessRecord({
-      environment: "staging",
-      componentType: "external_service",
-      componentId: "distributed_lock",
-      status: "ready",
-      checkedAt: new Date().toISOString(),
-    });
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("ha_coordinator"));
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("postgres_primary"));
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("redis_queue"));
+    store.release.upsertEnvironmentReadinessRecord(readinessRecord("distributed_lock"));
 
     const report = service.buildReport({ environment: "staging" });
 

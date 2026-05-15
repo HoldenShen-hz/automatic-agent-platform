@@ -52,6 +52,8 @@ import { PrometheusMetricsExporter } from "../../platform/shared/observability/p
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { CoordinatorLoadBalancingService } from "../../platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 import { getGlobalGracefulShutdown } from "../../platform/five-plane-execution/startup/graceful-shutdown.js";
+import { getModelCallProvider, resetModelCallProvider } from "../../platform/five-plane-execution/execution-engine/model-call-provider.js";
+import { getProcessTracker, resetProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import { ArtifactPublishLedger } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-ledger.js";
 import { ArtifactPublishService } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-service.js";
@@ -291,6 +293,27 @@ async function main(): Promise<void> {
       name: "channel_gateway_retry_executor",
       handler: async () => {
         channelGatewayRetryExecutor.stop();
+      },
+    });
+    shutdown.addHandler({
+      name: "typed_event_bus",
+      handler: async () => {
+        typedEventBus.dispose();
+      },
+    });
+    shutdown.addHandler({
+      name: "model_call_provider",
+      handler: async () => {
+        getModelCallProvider()?.dispose();
+        resetModelCallProvider();
+      },
+    });
+    shutdown.addHandler({
+      name: "process_tracker",
+      handler: async () => {
+        const tracker = getProcessTracker();
+        await tracker.killAll();
+        resetProcessTracker();
       },
     });
     shutdown.addHandler({

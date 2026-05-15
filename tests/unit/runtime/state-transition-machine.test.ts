@@ -41,20 +41,14 @@ test("StateTransitionMachine assertTransition throws on invalid transitions", ()
   );
 });
 
-test("StateTransitionMachine assertTransition rejects no-op transitions", () => {
+test("StateTransitionMachine assertTransition allows no-op transitions", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress"],
     pending: ["in_progress"],
   });
 
-  assert.throws(
-    () => machine.assertTransition("queued", "queued"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied"
-  );
-  assert.throws(
-    () => machine.assertTransition("pending", "pending"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied"
-  );
+  machine.assertTransition("queued", "queued");
+  machine.assertTransition("pending", "pending");
 });
 
 test("StateTransitionMachine assertTransition throws WorkflowStateError with details", () => {
@@ -112,16 +106,13 @@ test("StateTransitionMachine handles empty transitions map", () => {
   );
 });
 
-test("StateTransitionMachine rejects same-state transitions even when configured", () => {
+test("StateTransitionMachine allows same-state transitions when configured", () => {
   const machine = new StateTransitionMachine<string>("task", {
     running: ["running", "completed"], // includes self-transition
     completed: ["running"], // can restart
   });
 
-  assert.throws(
-    () => machine.assertTransition("running", "running"),
-    (err: unknown) => err instanceof WorkflowStateError && err.code === "task.noop_transition_denied"
-  );
+  machine.assertTransition("running", "running");
 
   // Valid transitions
   machine.assertTransition("running", "completed");

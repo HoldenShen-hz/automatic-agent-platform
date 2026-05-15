@@ -55,12 +55,11 @@ export function choosePreemptionVictim(
       if (left.priority !== right.priority) {
         return left.priority - right.priority;
       }
-      // Prefer longer checkpoint latency (slower checkpoints are more expensive to redo)
-      if ((left.checkpointLatencyMs ?? 0) !== (right.checkpointLatencyMs ?? 0)) {
-        return (right.checkpointLatencyMs ?? 0) - (left.checkpointLatencyMs ?? 0);
+      // Prefer higher progress after checkpoint recovery when priority is equal.
+      if (left.progressPercent !== right.progressPercent) {
+        return right.progressPercent - left.progressPercent;
       }
-      // Prefer lower progress to minimize wasted work after checkpoint recovery.
-      return left.progressPercent - right.progressPercent;
+      return (right.checkpointLatencyMs ?? 0) - (left.checkpointLatencyMs ?? 0);
     })[0] ?? null;
 }
 

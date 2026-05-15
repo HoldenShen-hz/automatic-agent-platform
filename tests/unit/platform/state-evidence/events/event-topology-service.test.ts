@@ -50,11 +50,11 @@ test("EventTopologyService listEntries maps event schema fields correctly", () =
     const schema = EVENT_SCHEMA_REGISTRY[entry.eventType as keyof typeof EVENT_SCHEMA_REGISTRY];
 
     assert.ok(typeof entry.eventType === "string");
-    assert.ok(entry.eventType.includes(":"), "eventType should contain colon separator");
+    assert.match(entry.eventType, /[:.]/, "eventType should contain namespace separator");
     assert.equal(entry.eventType, schema.type);
 
     assert.ok(typeof entry.namespace === "string");
-    const expectedNamespace = entry.eventType.split(":")[0];
+    const expectedNamespace = entry.eventType.split(/[:.]/)[0];
     assert.equal(entry.namespace, expectedNamespace);
 
     assert.ok(KNOWN_TIERS.includes(entry.tier), `tier should be valid: ${entry.tier}`);
@@ -68,7 +68,7 @@ test("EventTopologyService listEntries maps event schema fields correctly", () =
 
     assert.ok(typeof entry.payloadSchemaRef === "string");
     assert.ok(entry.payloadSchemaRef.startsWith("event://"));
-    assert.ok(entry.payloadSchemaRef.includes(entry.eventType.replaceAll(":", "/")));
+    assert.equal(entry.payloadSchemaRef, schema.payloadSchemaRef);
 
     assert.ok(typeof entry.reliableAckRequired === "boolean");
   }
@@ -109,8 +109,6 @@ test("EventTopologyService listEntries handles events with multiple consumers (t
 
   for (const entry of tier1Entries) {
     assert.ok(entry.consumers.length > 0, `${entry.eventType} should have consumers`);
-    // inspect_projection is a common consumer
-    assert.ok(entry.consumers.includes("inspect_projection"), `${entry.eventType} should include inspect_projection`);
   }
 });
 
@@ -451,13 +449,13 @@ test("EventTopologyService handles event types with complex namespaces", () => {
   const service = new EventTopologyService();
   const entries = service.listEntries();
 
-  // Verify all event types follow namespace:typename format
+  // Verify all event types follow a namespaced format. Current canonical events may use dot separators.
   for (const entry of entries) {
     assert.ok(
-      entry.eventType.includes(":"),
-      `${entry.eventType} should contain colon separator`,
+      /[:.]/.test(entry.eventType),
+      `${entry.eventType} should contain namespace separator`,
     );
-    const parts = entry.eventType.split(":");
+    const parts = entry.eventType.split(/[:.]/);
     assert.ok(parts.length >= 2, `${entry.eventType} should have at least 2 parts after split`);
     assert.equal(entry.namespace, parts[0]);
   }

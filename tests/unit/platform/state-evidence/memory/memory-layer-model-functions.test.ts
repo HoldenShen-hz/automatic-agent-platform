@@ -72,8 +72,8 @@ test("architectureLayerToScope returns evolution for meta", () => {
   assert.equal(architectureLayerToScope("meta"), "evolution");
 });
 
-test("architectureLayerToScope returns project for unknown", () => {
-  assert.equal(architectureLayerToScope("unknown_layer"), "project");
+test("architectureLayerToScope rejects unknown architecture layers", () => {
+  assert.throws(() => architectureLayerToScope("unknown_layer"), /memory\.layer_unknown/);
 });
 
 // =============================================================================
@@ -298,8 +298,7 @@ test("getEvictionPriority for trust strategy returns 1-trust", () => {
     sourceTrustLevel: "trusted",
   });
   const priority = getEvictionPriority(memory);
-  // trusted has weight 0.5 (not defined, so default), so 1 - 0.5 = 0.5
-  assert.ok(Math.abs(priority - 0.5) < 0.001);
+  assert.ok(Math.abs(priority) < 0.001);
 });
 
 test("getEvictionPriority for usage strategy returns 1/(hitCount+1)", () => {
@@ -542,8 +541,8 @@ test("DEFAULT_MEMORY_PROMOTION_RULES defines session to agent rule", () => {
 test("DEFAULT_MEMORY_PROMOTION_RULES defines agent to project rule", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "agent" && r.to === "project");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 15);
-  assert.equal(rule!.minQualityScore, 0.7);
+  assert.equal(rule!.minHitCount, 10);
+  assert.equal(rule!.minQualityScore, 0.8);
   assert.equal(rule!.minImportanceScore, 0.65);
 });
 
@@ -577,11 +576,11 @@ test("Promotion rules require increasing hit counts", () => {
   }
 });
 
-test("Promotion rules require increasing quality scores", () => {
+test("Promotion rules require non-decreasing quality scores", () => {
   for (let i = 1; i < DEFAULT_MEMORY_PROMOTION_RULES.length; i++) {
     const current = DEFAULT_MEMORY_PROMOTION_RULES[i]!;
     const previous = DEFAULT_MEMORY_PROMOTION_RULES[i - 1]!;
-    assert.ok(current.minQualityScore > previous.minQualityScore,
-      `${current.from} requires higher quality than ${previous.from}`);
+    assert.ok(current.minQualityScore >= previous.minQualityScore,
+      `${current.from} requires at least the previous quality threshold from ${previous.from}`);
   }
 });

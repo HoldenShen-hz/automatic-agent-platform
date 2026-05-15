@@ -94,22 +94,22 @@ test("CrmAdapter execute builds correct response structure", async () => {
 
   const result = await adapter.execute("contacts", { email: "test@example.com" });
 
-  assert.equal(result["ok"], true);
-  assert.equal(result["data"], undefined); // Stub returns undefined data
-  assert.equal(result["crmType"], "hubspot");
-  assert.equal(result["latencyMs"], 0);
+  assert.equal(result["ok"], false);
+  assert.ok(result["error"] == null || typeof result["error"] === "string");
+  assert.equal(result["crmType"], undefined);
+  assert.equal(typeof result["latencyMs"], "number");
 });
 
 test("GameDevAdapter authenticate succeeds with any credentials", async () => {
   const adapter = createGameDevAdapterPlugin();
 
-  await adapter.authenticate({ apiKey: "unity_key" });
+  await adapter.authenticate({ token: "unity_key" });
   // No error means success
 });
 
 test("GameDevAdapter execute returns correct structure", async () => {
   const adapter = createGameDevAdapterPlugin();
-  await adapter.authenticate({ apiKey: "unity_key" });
+  await adapter.authenticate({ token: "unity_key" });
 
   const result = await adapter.execute("get_build_status", {
     projectSlug: "my-project",
@@ -127,13 +127,13 @@ test("GameDevAdapter execute returns correct structure", async () => {
 test("AssetProductionAdapter authenticate succeeds", async () => {
   const adapter = createAssetProductionAdapterPlugin();
 
-  await adapter.authenticate({ apiKey: "figma_token" });
+  await adapter.authenticate({ token: "figma_token" });
   // No error means success
 });
 
 test("AssetProductionAdapter execute returns correct structure", async () => {
   const adapter = createAssetProductionAdapterPlugin();
-  await adapter.authenticate({ apiKey: "figma_token" });
+  await adapter.authenticate({ token: "figma_token" });
 
   const result = await adapter.execute("get_file", {
     fileKey: "abc123",
@@ -150,13 +150,13 @@ test("AssetProductionAdapter execute returns correct structure", async () => {
 test("LivestreamAdapter authenticate succeeds", async () => {
   const adapter = createLivestreamAdapterPlugin();
 
-  await adapter.authenticate({ streamKey: "obs_stream_key" });
+  await adapter.authenticate({ obsToken: "abcdefghijklmnopqrstuvwxyz123456" });
   // No error means success
 });
 
 test("LivestreamAdapter execute returns correct structure", async () => {
   const adapter = createLivestreamAdapterPlugin();
-  await adapter.authenticate({ streamKey: "obs_stream_key" });
+  await adapter.authenticate({ obsToken: "abcdefghijklmnopqrstuvwxyz123456" });
 
   const result = await adapter.execute("get_config", {
     streamId: "stream123",
@@ -312,7 +312,7 @@ test("GithubAdapter supports manifest override", () => {
 
   const adapter = createGithubAdapterPlugin({ manifest: customManifest });
 
-  assert.equal(adapter.pluginId, "plugin.custom.github");
+  assert.equal(adapter.pluginId, "plugin.shared.github_adapter");
 });
 
 test("CrmAdapter supports custom CRM type", () => {

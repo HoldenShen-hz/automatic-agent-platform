@@ -263,7 +263,7 @@ test("AsyncReleaseRepository listReleaseBundleRecords filters by environment", a
   const result = await repo.listReleaseBundleRecords({ environment: "production" });
 
   assert.deepEqual(result, [record]);
-  assert.match(calls[0]!.sql, /WHERE environment IS \$1/);
+  assert.match(calls[0]!.sql, /WHERE environment = \$1/);
 });
 
 // === Release Execution Report Tests ===

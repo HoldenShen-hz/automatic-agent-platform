@@ -328,6 +328,17 @@ interface StripeCheckoutSessionResponse {
   };
 }
 
+class StripeSecretRedactor {
+  public constructor(private readonly secretKey: string) {}
+
+  public redact(value: string): string {
+    if (this.secretKey.length === 0) {
+      return value;
+    }
+    return value.split(this.secretKey).join("[REDACTED]");
+  }
+}
+
 /**
  * Stripe payment gateway implementation.
  *
@@ -340,10 +351,12 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
 
   private readonly apiBaseUrl: string;
   private readonly fetchFn: typeof fetch;
+  private readonly secretRedactor: StripeSecretRedactor;
 
   public constructor(private readonly options: StripeBillingPaymentGatewayOptions) {
     this.apiBaseUrl = options.apiBaseUrl?.trim() || STRIPE_API_URL;
     this.fetchFn = options.fetchFn ?? fetch;
+    this.secretRedactor = new StripeSecretRedactor(options.secretKey);
   }
 
   /**
@@ -394,9 +407,10 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
 
     // Handle Stripe API errors
     if (!response.ok) {
+      const reason = this.secretRedactor.redact(payload.error?.message ?? (response.statusText || String(response.status)));
       throw new ProviderError(
-        `billing.stripe_checkout_failed:${payload.error?.message ?? (response.statusText || String(response.status))}`,
-        `billing.stripe_checkout_failed:${payload.error?.message ?? (response.statusText || String(response.status))}`,
+        `billing.stripe_checkout_failed:${reason}`,
+        `billing.stripe_checkout_failed:${reason}`,
         {
           details: { status: response.status },
           retryable: response.status >= 500,
@@ -452,9 +466,10 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
 
     // Handle Stripe API errors
     if (!response.ok) {
+      const reason = this.secretRedactor.redact(payload.error?.message ?? (response.statusText || String(response.status)));
       throw new ProviderError(
-        `billing.stripe_reconcile_failed:${payload.error?.message ?? (response.statusText || String(response.status))}`,
-        `billing.stripe_reconcile_failed:${payload.error?.message ?? (response.statusText || String(response.status))}`,
+        `billing.stripe_reconcile_failed:${reason}`,
+        `billing.stripe_reconcile_failed:${reason}`,
         {
           details: {
             invoiceId: input.invoice.invoiceId,

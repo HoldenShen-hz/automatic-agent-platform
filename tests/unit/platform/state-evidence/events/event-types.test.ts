@@ -35,7 +35,7 @@ test("TIER_1_EVENT_TYPES contains all expected Tier 1 event types", () => {
 });
 
 test("TIER_1_EVENT_TYPES has correct length", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 19);
+  assert.equal(TIER_1_EVENT_TYPES.length, 46);
 });
 
 test("TIER_1_EVENT_TYPES contains canonical platform events", () => {

@@ -407,7 +407,7 @@ test("remember computes contentHash", () => {
   });
 
   assert.ok(result.contentHash != null);
-  assert.equal(result.contentHash!.length, 16);
+  assert.equal(result.contentHash!.length, 64);
 });
 
 // =============================================================================

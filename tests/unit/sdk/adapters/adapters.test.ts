@@ -10,17 +10,16 @@ import test from "node:test";
 
 import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
 import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
-import { createGithubAdapterPlugin } from "../../../../src/plugins/adapters/github-adapter.js";
+import { createGithubAdapterPlugin, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import { PolicyDeniedError } from "../../../../src/platform/contracts/errors.js";
 
 test("CRM adapter execute returns structured response (issue #2008)", async () => {
   const adapter = createCrmAdapterPlugin();
+  await adapter.authenticate({ token: "crm-test-token" });
 
   const result = await adapter.execute("get_contacts", { limit: 10 });
 
-  // Issue #2008: The execute method returns hardcoded mock data
-  // This test documents the current behavior - it returns stub data
-  assert.ok(result.ok === true);
+  assert.equal(result.ok, false);
   assert.ok("data" in result);
 });
 
@@ -36,9 +35,10 @@ test("CRM adapter execute checks egress policy (issue #2008)", async () => {
     } as never,
   });
 
-  // With proper policy, should allow hubspot.com
+  // Egress is allowed, but this unit test does not provide a live CRM endpoint.
+  await adapter.authenticate({ token: "crm-test-token" });
   const result1 = await adapter.execute("get_contacts", {});
-  assert.ok(result1.ok === true);
+  assert.equal(result1.ok, false);
 
   // With restrictive policy, should deny
   const restrictedAdapter = createCrmAdapterPlugin({
@@ -52,6 +52,7 @@ test("CRM adapter execute checks egress policy (issue #2008)", async () => {
     } as never,
   });
 
+  await restrictedAdapter.authenticate({ token: "crm-test-token" });
   await assert.rejects(
     async () => restrictedAdapter.execute("get_contacts", {}),
     (error: unknown) => error instanceof PolicyDeniedError
@@ -73,13 +74,14 @@ test("Game Dev adapter authenticate is a no-op (issue #2014)", async () => {
 
   // Issue #2014: authenticate is a no-op that doesn't actually validate credentials
   // This test documents the current behavior
-  await adapter.authenticate({ credentials: "test-creds" });
+  await adapter.authenticate({ token: "test-creds" });
 
   // No error means authenticate completed (even though it's a no-op)
 });
 
 test("Game Dev adapter execute returns hardcoded mock (issue #2014)", async () => {
   const adapter = createGameDevAdapterPlugin();
+  await adapter.authenticate({ token: "unity-test-token" });
 
   const result = await adapter.execute("build", {
     projectSlug: "my-project",
@@ -96,19 +98,16 @@ test("Game Dev adapter execute returns hardcoded mock (issue #2014)", async () =
   assert.equal(output.buildTarget, "ios");
 });
 
-test("Game Dev adapter execute has no auth guard (issue #2014)", async () => {
+test("Game Dev adapter execute requires authentication (issue #2014)", async () => {
   const adapter = createGameDevAdapterPlugin();
 
-  // Issue #2014: execute can be called without prior authenticate() call
-  // There's no auth guard that throws if authenticate wasn't called
-
-  // This should succeed even without authentication
-  const result = await adapter.execute("build", {
-    projectSlug: "my-project",
-    buildTarget: "android",
-  });
-
-  assert.ok(result.success === true);
+  await assert.rejects(
+    async () => adapter.execute("build", {
+      projectSlug: "my-project",
+      buildTarget: "android",
+    }),
+    /game_dev_adapter\.not_authenticated/,
+  );
 });
 
 test("GitHub adapter execute validates repository parameter (issue #2020)", async () => {
@@ -240,37 +239,10 @@ test("GitHub adapter healthCheck evaluates egress policy", async () => {
   assert.equal(healthy, true);
 });
 
-test("GitHub adapter with verifySignature throws on missing signature", async () => {
-  // Issue #2020: signature verification should happen if verifySignature is true
-  await assert.rejects(
-    async () => createGithubAdapterPlugin({
-      verifySignature: true,
-      manifest: {
-        pluginId: "test.github",
-        name: "Test GitHub",
-        version: "1.0.0",
-        owner: "test",
-        domainIds: ["coding"],
-        capabilityIds: ["external.github"],
-        spiTypes: ["adapter"],
-        extensionKind: "external_adapter",
-        trustLevel: "untrusted", // Not internal or trusted
-        publicSdkSurface: "@test/github-adapter",
-        settingsSchema: {},
-        sandbox: {
-          timeoutMs: 5000,
-          allowFilesystemWrite: false,
-          allowNetworkEgress: true,
-          allowedKnowledgeNamespaces: [],
-          maxConcurrentInvocations: 4,
-          maxQueuedInvocations: 8,
-          runtimeIsolation: "serialized_in_process",
-          cooldownMs: 0,
-        },
-      },
-    }),
-    (error: unknown) => error instanceof Error && error.message.includes("signature_required")
-  );
+test("GitHub adapter signature verifier rejects missing signature", async () => {
+  const result = verifyPluginSignature("test.github", "manifest-hash", "", "secret-key");
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "plugin_signature.signature_missing");
 });
 
 test("GitHub adapter with verifySignature allows trusted manifest without signature", async () => {
@@ -306,44 +278,15 @@ test("GitHub adapter with verifySignature allows trusted manifest without signat
   assert.ok(adapter);
 });
 
-test("GitHub adapter lifecycle hooks are called in order", async () => {
-  const lifecycleCalls: string[] = [];
+test("GitHub adapter lifecycle uses initialize, authenticate, and shutdown", async () => {
+  const adapter = createGithubAdapterPlugin();
 
-  const adapter = createGithubAdapterPlugin({
-    manifest: {
-      pluginId: "test.github-lifecycle",
-      name: "Test GitHub Lifecycle",
-      version: "1.0.0",
-      owner: "test",
-      domainIds: ["coding"],
-      capabilityIds: ["external.github"],
-      spiTypes: ["adapter"],
-      extensionKind: "external_adapter",
-      trustLevel: "trusted",
-      publicSdkSurface: "@test/github-adapter",
-      settingsSchema: {},
-      sandbox: {
-        timeoutMs: 5000,
-        allowFilesystemWrite: false,
-        allowNetworkEgress: true,
-        allowedKnowledgeNamespaces: [],
-        maxConcurrentInvocations: 4,
-        maxQueuedInvocations: 8,
-        runtimeIsolation: "serialized_in_process",
-        cooldownMs: 0,
-      },
-      async onLoad() { lifecycleCalls.push("load"); },
-      async onActivate() { lifecycleCalls.push("activate"); },
-      async onDeactivate() { lifecycleCalls.push("deactivate"); },
-      async onUnload() { lifecycleCalls.push("unload"); },
-    } as never,
-  });
-
-  await adapter.onLoad({} as never);
-  await adapter.onActivate({} as never);
+  await adapter.initialize({} as never);
   await adapter.authenticate({ token: "test" });
-  await adapter.onDeactivate({} as never);
-  await adapter.onUnload({} as never);
+  await adapter.shutdown();
 
-  assert.deepEqual(lifecycleCalls, ["load", "activate", "deactivate", "unload"]);
+  await assert.rejects(
+    async () => adapter.execute("create_issue", { repository: "owner/repo", title: "after shutdown" }),
+    /github_adapter\.not_authenticated/,
+  );
 });

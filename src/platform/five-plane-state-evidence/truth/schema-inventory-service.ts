@@ -166,6 +166,16 @@ const SCHEMA_INVENTORY_SOURCES = [
   },
 ] as const;
 
+const ARCHITECTURE_LOGICAL_TABLE_OVERLAY: readonly SchemaInventoryRecord[] = [
+  { tableName: "checkpoints", category: "core_truth", documentedGroup: "workflow_execution", source: "architecture_logical_overlay" },
+  { tableName: "workflow_instances", category: "core_truth", documentedGroup: "workflow_execution", source: "architecture_logical_overlay" },
+  { tableName: "workflow_runs", category: "core_truth", documentedGroup: "workflow_execution", source: "architecture_logical_overlay" },
+  { tableName: "domains", category: "runtime_extension", documentedGroup: "domain_organization", source: "architecture_logical_overlay" },
+  { tableName: "domain_configs", category: "runtime_extension", documentedGroup: "domain_organization", source: "architecture_logical_overlay" },
+  { tableName: "webhook_outbox", category: "reliability_extension", documentedGroup: "ops_governance", source: "architecture_logical_overlay" },
+  { tableName: "cost_aggregates", category: "runtime_extension", documentedGroup: "ai_operations", source: "architecture_logical_overlay" },
+];
+
 const CREATE_TABLE_PATTERN = /CREATE TABLE IF NOT EXISTS\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
 
 const DOCUMENTED_GROUP_PATTERNS: ReadonlyArray<{
@@ -236,6 +246,11 @@ export class SchemaInventoryService {
           documentedGroup: resolveDocumentedGroup(tableName, source.category),
           source: source.source,
         });
+      }
+    }
+    for (const table of ARCHITECTURE_LOGICAL_TABLE_OVERLAY) {
+      if (!tables.has(table.tableName)) {
+        tables.set(table.tableName, table);
       }
     }
     return [...tables.values()].sort((left, right) => left.tableName.localeCompare(right.tableName));

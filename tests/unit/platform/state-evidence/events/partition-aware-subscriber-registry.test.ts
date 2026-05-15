@@ -35,27 +35,28 @@ test("PartitionAwareSubscriberRegistry: consumer group priority is respected", a
     // Subscribe with different priorities
     bus.subscribe("high_priority_consumer", async (event) => {
       highPriorityEvents.push(event.id);
-    }, { priority: "high", groupId: "high_group" });
+    }, undefined, "high_group");
 
     bus.subscribe("low_priority_consumer", async (event) => {
       lowPriorityEvents.push(event.id);
-    }, { priority: "low", groupId: "low_group" });
+    }, undefined, "low_group");
 
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-priority",
       executionId: "exec-priority",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-priority", ticketId: "ticket-priority", status: "created" },
     });
 
     // Wait for async delivery
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Both consumers should receive events (priority affects polling interval, not delivery)
-    assert.ok(highPriorityEvents.length >= 0 || lowPriorityEvents.length >= 0);
+    assert.ok(highPriorityEvents.length > 0 && lowPriorityEvents.length > 0);
 
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);
@@ -80,17 +81,17 @@ test("PartitionAwareSubscriberRegistry: multiple consumers in same group", async
     // Both consumers in same group
     bus.subscribe("group_member_1", async (event) => {
       groupMember1Events.push(event.id);
-    }, { groupId: "shared_group" });
+    }, undefined, "shared_group");
 
     bus.subscribe("group_member_2", async (event) => {
       groupMember2Events.push(event.id);
-    }, { groupId: "shared_group" });
+    }, undefined, "shared_group");
 
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-group-multi",
       executionId: "exec-group-multi",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-group-multi", ticketId: "ticket-group-multi", status: "created" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -98,8 +99,9 @@ test("PartitionAwareSubscriberRegistry: multiple consumers in same group", async
     // Both group members should receive the event
     assert.ok(groupMember1Events.length > 0 || groupMember2Events.length > 0);
 
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);
@@ -132,10 +134,10 @@ test("PartitionAwareSubscriberRegistry: unsubscribing one consumer does not affe
     bus.unsubscribe("consumer_isolated_1");
 
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-unsub-iso",
       executionId: "exec-unsub-iso",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-unsub-iso", ticketId: "ticket-unsub-iso", status: "created" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -144,8 +146,9 @@ test("PartitionAwareSubscriberRegistry: unsubscribing one consumer does not affe
     assert.equal(consumer1Events.length, 0, "Unsubscribed consumer should not receive events");
     assert.ok(consumer2Events.length > 0, "Active consumer should still receive events");
 
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);
@@ -164,8 +167,8 @@ test("PartitionAwareSubscriberRegistry: group unsubscribing last member removes 
 
     seedTaskAndExecution(db, store, { taskId: "task-group-removal", executionId: "exec-group-removal" });
 
-    bus.subscribe("group_member_a", async () => {}, { groupId: "group_to_remove" });
-    bus.subscribe("group_member_b", async () => {}, { groupId: "group_to_remove" });
+    bus.subscribe("group_member_a", async () => {}, undefined, "group_to_remove");
+    bus.subscribe("group_member_b", async () => {}, undefined, "group_to_remove");
 
     bus.unsubscribe("group_member_a");
     bus.unsubscribe("group_member_b");
@@ -177,18 +180,19 @@ test("PartitionAwareSubscriberRegistry: group unsubscribing last member removes 
     });
 
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-group-removal",
       executionId: "exec-group-removal",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-group-removal", ticketId: "ticket-group-removal", status: "created" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     assert.ok(newConsumerEvents.length >= 0);
 
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);

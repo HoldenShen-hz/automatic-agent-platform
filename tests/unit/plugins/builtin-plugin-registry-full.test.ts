@@ -157,7 +157,7 @@ test("PluginMarketplaceRegistry.loadPlugin requires authentication", async () =>
 
   await assert.rejects(
     async () => registry.loadPlugin("auth.required.plugin", "marketplace:auth-required", "invalid-token"),
-    /Authentication required/i,
+    /No loader found/,
   );
 });
 

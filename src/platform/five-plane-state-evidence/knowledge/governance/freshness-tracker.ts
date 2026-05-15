@@ -1,5 +1,5 @@
 import type { KnowledgeSource, KnowledgeNamespace, TrustLevel } from "../knowledge-model.js";
-import { degradeTrustLevel } from "../knowledge-model.js";
+import { degradeTrustLevel, normalizeTrustLevel } from "../knowledge-model.js";
 
 export interface FreshnessAssessment {
   stale: boolean;
@@ -16,8 +16,16 @@ export class FreshnessTracker {
     return {
       stale,
       daysOld,
-      effectiveTrustLevel: stale ? degradeTrustLevel(source.trustLevel) : source.trustLevel,
+      effectiveTrustLevel: stale ? degradeFreshnessTrustLevel(source.trustLevel) : source.trustLevel,
       action: stale ? namespace.freshnessPolicy.staleAction : null,
     };
   }
+}
+
+function degradeFreshnessTrustLevel(level: TrustLevel): TrustLevel {
+  const rawLevel = String(level);
+  if (rawLevel === "verified") return "reviewed" as TrustLevel;
+  if (rawLevel === "authoritative") return "official";
+  if (rawLevel === "reviewed" || rawLevel === "community" || rawLevel === "unverified") return level;
+  return degradeTrustLevel(normalizeTrustLevel(level));
 }

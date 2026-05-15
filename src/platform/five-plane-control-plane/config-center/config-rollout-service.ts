@@ -398,7 +398,7 @@ export class ConfigRolloutService {
 
     for (const [rolloutId, rollout] of this.activeRollouts.entries()) {
       const ageMs = Date.now() - new Date(rollout.updatedAt).getTime();
-      if (ageMs > maxAgeMs && (rollout.stage.phase === RolloutPhase.FULL || rollout.stage.phase === RolloutPhase.CANCELLED)) {
+      if (ageMs >= maxAgeMs && (rollout.stage.phase === RolloutPhase.FULL || rollout.stage.phase === RolloutPhase.CANCELLED)) {
         this.activeRollouts.delete(rolloutId);
         this.store?.delete(rolloutId);
         cleaned++;

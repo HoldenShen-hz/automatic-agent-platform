@@ -211,8 +211,10 @@ export class KnowledgeQueryService {
       case QueryLevel.Standard:
         return this.executeStandardQuery(keyword, options);
       case QueryLevel.Deep:
-        // Deep requires async, fall back to sync-safe subset
-        return this.executeStandardQuery(keyword, { ...options, limit: 30 });
+        throw new ValidationError(
+          "knowledge_query.deep_requires_async",
+          "Deep knowledge queries require queryAsync.",
+        );
     }
   }
 
@@ -223,6 +225,13 @@ export class KnowledgeQueryService {
    */
   private validateQueryBoundaries(options: KnowledgeQueryOptions): void {
     const { namespace, domainId, accessPrincipal } = options;
+    if (domainId != null && accessPrincipal == null) {
+      throw new ValidationError(
+        "knowledge_query.principal_required",
+        "Scoped knowledge queries require an access principal.",
+        { details: { domainId, namespace } },
+      );
+    }
 
     // R5-49 fix: Validate tenant/domain boundary using accessPrincipal
     // If accessPrincipal has a domainId, ensure query domain matches or is compatible
@@ -234,7 +243,7 @@ export class KnowledgeQueryService {
         const hasCrossDomainAccess = accessPrincipal.roles?.includes("cross_domain_reader");
         if (!hasCrossDomainAccess) {
           throw new ValidationError(
-            "knowledge_query.tenant_boundary_violation",
+            "knowledge_query.domain_principal_mismatch",
             "Query domain does not match principal's domain",
             { details: { principalDomainId, queryDomainId: domainId } },
           );

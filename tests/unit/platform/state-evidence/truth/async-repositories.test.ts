@@ -862,10 +862,10 @@ test("AsyncOrganizationRepository upserts and reads tenant records", async () =>
   const repo = new AsyncOrganizationRepository(connection);
 
   await repo.upsertTenantRecord(tenant as any);
-  assert.equal(await repo.getTenantRecord("tenant-a"), tenant);
+  assert.deepEqual(await repo.getTenantRecord("tenant-a"), { ...tenant, quotas: {} });
   assert.equal(await repo.getTenantRecord("missing-tenant"), null);
-  assert.deepEqual(await repo.listTenantRecords({ organizationId: "org-1" }), [tenant]);
-  assert.deepEqual(await repo.listTenantRecords({}), [tenant]);
+  assert.deepEqual(await repo.listTenantRecords({ organizationId: "org-1" }), [{ ...tenant, quotas: {} }]);
+  assert.deepEqual(await repo.listTenantRecords({}), [{ ...tenant, quotas: {} }]);
 
   assert.match(calls[0]!.sql, /INSERT INTO tenants/);
 });
@@ -977,8 +977,8 @@ test("AsyncPromptRepository lists prompt bundles by domain and active bundles", 
   assert.deepEqual(await repo.listPromptBundlesByDomain("routing", "task_run"), [bundle]);
   assert.deepEqual(await repo.listActivePromptBundles(), [bundle]);
 
-  assert.match(calls[0]!.sql, /WHERE domain = \$1 AND deprecated = 0/);
-  assert.match(calls[1]!.sql, /WHERE domain = \$1 AND task_type = \$2 AND deprecated = 0/);
+  assert.match(calls[0]!.sql, /WHERE domain = \$1 AND deprecated = false/);
+  assert.match(calls[1]!.sql, /WHERE domain = \$1 AND task_type = \$2 AND deprecated = false/);
 });
 
 test("AsyncPromptRepository writes and reads prompt versions", async () => {
@@ -1008,8 +1008,9 @@ test("AsyncPromptRepository writes and reads prompt versions", async () => {
   assert.equal(await repo.getCurrentVersion("missing-bundle"), null);
 
   assert.match(calls[0]!.sql, /INSERT INTO prompt_versions/);
-  assert.match(calls[1]!.sql, /UPDATE prompt_versions SET is_current = 0 WHERE bundle_id = \$1/);
-  assert.match(calls[2]!.sql, /UPDATE prompt_versions SET is_current = 1 WHERE version_id = \$1/);
+  assert.match(calls[1]!.sql, /BEGIN/);
+  assert.match(calls[2]!.sql, /UPDATE prompt_versions SET is_current = false WHERE bundle_id = \$1/);
+  assert.match(calls[3]!.sql, /UPDATE prompt_versions SET is_current = true WHERE version_id = \$1/);
 });
 
 test("AsyncPromptRepository writes and reads prompt AB tests", async () => {

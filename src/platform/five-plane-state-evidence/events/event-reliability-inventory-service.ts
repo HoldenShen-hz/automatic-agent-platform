@@ -1,6 +1,11 @@
 import type { DeadLetterQueueService, DeadLetterQueueSummary } from "../dlq/index.js";
 import { EVENT_SCHEMA_REGISTRY, type EventSchemaDefinition } from "./event-registry.js";
 
+function eventNamespace(eventType: string): string {
+  const separatorIndex = eventType.search(/[:.]/);
+  return separatorIndex >= 0 ? eventType.slice(0, separatorIndex) : "unknown";
+}
+
 export interface EventReliabilityInventoryEntry {
   eventType: string;
   namespace: string;
@@ -67,7 +72,7 @@ export class EventReliabilityInventoryService {
   public listEventEntries(): EventReliabilityInventoryEntry[] {
     return Object.values(EVENT_SCHEMA_REGISTRY).map((schema) => ({
       eventType: schema.type,
-      namespace: schema.type.split(":")[0] ?? "unknown",
+      namespace: eventNamespace(schema.type),
       tier: schema.tier,
       producer: schema.producer,
       consumers: [...schema.consumers],
@@ -102,7 +107,7 @@ export class EventReliabilityInventoryService {
         replayRequiredEvents: entries.filter((entry) => entry.replayRequired).map((entry) => entry.eventType).sort(),
         dlqEligibleEvents: entries.filter((entry) => entry.dlqEligible).map((entry) => entry.eventType).sort(),
       }))
-      .sort((left, right) => left.namespace.localeCompare(right.namespace));
+      .sort((left, right) => left.namespace < right.namespace ? -1 : left.namespace > right.namespace ? 1 : 0);
   }
 
   public listConsumerSurfaces(): EventConsumerSurfaceInventory[] {

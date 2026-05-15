@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const source = readFileSync(
-  join(process.cwd(), "src", "platform", "orchestration", "oapeflir", "oapeflir-loop-service.ts"),
+  join(process.cwd(), "src", "platform", "five-plane-orchestration", "oapeflir", "oapeflir-loop-core.ts"),
   "utf8",
 );
 

@@ -108,8 +108,8 @@ test("architectureLayerToScope: meta maps to evolution", () => {
   assert.equal(architectureLayerToScope("meta"), "evolution");
 });
 
-test("architectureLayerToScope: unknown defaults to project", () => {
-  assert.equal(architectureLayerToScope("unknown"), "project");
+test("architectureLayerToScope: unknown throws memory.layer_unknown", () => {
+  assert.throws(() => architectureLayerToScope("unknown"), /memory\.layer_unknown/);
 });
 
 test("scopeToArchitectureLayer: task_runtime maps to working", () => {
@@ -185,7 +185,7 @@ test("getLayerTtlConfig returns config for user", () => {
   assert.ok(config !== undefined);
   assert.equal(config!.scope, "user");
   assert.equal(config!.evictionStrategy, "usage");
-  assert.equal(config!.supportsPromotion, false);
+  assert.equal(config!.supportsPromotion, true);
 });
 
 test("getLayerTtlConfig returns config for evolution", () => {
@@ -435,11 +435,11 @@ test("Project layer has trust eviction strategy", () => {
   assert.equal(config!.evictionStrategy, "trust");
 });
 
-test("User layer has usage eviction and does not support promotion", () => {
+test("User layer has usage eviction and supports promotion to evolution", () => {
   const config = DEFAULT_LAYER_TTL_CONFIGS.find((c) => c.scope === "user");
   assert.ok(config);
   assert.equal(config!.evictionStrategy, "usage");
-  assert.equal(config!.supportsPromotion, false);
+  assert.equal(config!.supportsPromotion, true);
 });
 
 test("Evolution layer has importance eviction strategy", () => {
@@ -452,45 +452,53 @@ test("Evolution layer has importance eviction strategy", () => {
 // Default Memory Promotion Rules Tests
 // =============================================================================
 
-test("DEFAULT_MEMORY_PROMOTION_RULES has 4 rules", () => {
-  assert.equal(DEFAULT_MEMORY_PROMOTION_RULES.length, 4);
+test("DEFAULT_MEMORY_PROMOTION_RULES has 5 rules", () => {
+  assert.equal(DEFAULT_MEMORY_PROMOTION_RULES.length, 5);
 });
 
 test("Promotion rules are ordered from lower to higher layers", () => {
   const froms = DEFAULT_MEMORY_PROMOTION_RULES.map((r) => r.from);
-  assert.deepEqual(froms, ["session", "agent", "project", "user"]);
+  assert.deepEqual(froms, ["runtime", "session", "agent", "project", "user"]);
 });
 
-test("All promotion rules have increasing thresholds", () => {
+test("All promotion rules have increasing hit and importance thresholds with non-decreasing quality", () => {
   for (let i = 1; i < DEFAULT_MEMORY_PROMOTION_RULES.length; i++) {
     const current = DEFAULT_MEMORY_PROMOTION_RULES[i]!;
     const previous = DEFAULT_MEMORY_PROMOTION_RULES[i - 1]!;
     assert.ok(current.minHitCount > previous.minHitCount);
-    assert.ok(current.minQualityScore > previous.minQualityScore);
+    assert.ok(current.minQualityScore >= previous.minQualityScore);
     assert.ok(current.minImportanceScore > previous.minImportanceScore);
   }
+});
+
+test("Runtime to session rule has correct thresholds", () => {
+  const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "runtime" && r.to === "session");
+  assert.ok(rule);
+  assert.equal(rule!.minHitCount, 3);
+  assert.equal(rule!.minQualityScore, 0.4);
+  assert.equal(rule!.minImportanceScore, 0.3);
 });
 
 test("Session to agent rule has correct thresholds", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "session" && r.to === "agent");
   assert.ok(rule);
-  assert.equal(rule!.minHitCount, 3);
-  assert.equal(rule!.minQualityScore, 0.6);
+  assert.equal(rule!.minHitCount, 8);
+  assert.equal(rule!.minQualityScore, 0.55);
   assert.equal(rule!.minImportanceScore, 0.5);
 });
 
 test("Agent to project rule has correct thresholds", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "agent" && r.to === "project");
   assert.ok(rule);
-  assert.equal(rule!.minHitCount, 8);
-  assert.equal(rule!.minQualityScore, 0.75);
+  assert.equal(rule!.minHitCount, 10);
+  assert.equal(rule!.minQualityScore, 0.8);
   assert.equal(rule!.minImportanceScore, 0.65);
 });
 
 test("Project to user rule has correct thresholds", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "project" && r.to === "user");
   assert.ok(rule);
-  assert.equal(rule!.minHitCount, 12);
+  assert.equal(rule!.minHitCount, 25);
   assert.equal(rule!.minQualityScore, 0.8);
   assert.equal(rule!.minImportanceScore, 0.75);
 });
@@ -498,7 +506,7 @@ test("Project to user rule has correct thresholds", () => {
 test("User to evolution rule has correct thresholds", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "user" && r.to === "evolution");
   assert.ok(rule);
-  assert.equal(rule!.minHitCount, 20);
+  assert.equal(rule!.minHitCount, 40);
   assert.equal(rule!.minQualityScore, 0.9);
   assert.equal(rule!.minImportanceScore, 0.85);
 });
@@ -539,8 +547,8 @@ test("mapMemoryScopeToLayer: evolution -> evolution", () => {
   assert.equal(mapMemoryScopeToLayer("evolution"), "evolution");
 });
 
-test("mapMemoryScopeToLayer: unknown defaults to project", () => {
-  assert.equal(mapMemoryScopeToLayer("unknown"), "project");
+test("mapMemoryScopeToLayer: unknown throws memory.layer_unknown", () => {
+  assert.throws(() => mapMemoryScopeToLayer("unknown"), /memory\.layer_unknown/);
 });
 
 // =============================================================================

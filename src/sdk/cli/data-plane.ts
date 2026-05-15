@@ -27,8 +27,11 @@
  * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
+import { dirname } from "node:path";
+
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadDataPlaneCliEnv } from "../../platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { DataPlaneFlowService } from "../../scale-ecosystem/tenant-platform/data-plane-flow-service.js";
 
@@ -37,12 +40,13 @@ const action = envConfig.action;
 const result = withCliStorage((storage) => {
   const service = new DataPlaneFlowService(storage.sql, storage.store, {
     ...(envConfig.artifactRoot
-      ? {
-          artifactStoreOptions: {
-            rootDir: envConfig.artifactRoot,
-          },
-        }
-      : {}),
+        ? {
+            artifactStoreOptions: {
+              rootDir: envConfig.artifactRoot,
+              sandboxPolicy: createWorkspaceWritePolicy(dirname(envConfig.artifactRoot)),
+            },
+          }
+        : {}),
   });
 
   switch (action) {

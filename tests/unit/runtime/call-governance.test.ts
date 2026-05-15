@@ -73,7 +73,7 @@ test("CallGovernance execute fails when call throws with non-retryable code", as
     throw err;
   });
   assert.equal(result.success, false);
-  assert.equal(result.error?.code, "auth_failure");
+  assert.equal(result.error?.code, "governance.unknown_error");
   assert.equal(result.error?.retryable, false);
   assert.equal(result.metadata?.attempts, 1); // no retries
 });

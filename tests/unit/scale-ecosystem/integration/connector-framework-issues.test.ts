@@ -29,7 +29,7 @@ function execute(service: ConnectorFrameworkService, connectorId: string, execut
   );
 }
 
-test("connector-framework-2124: opens the circuit after repeated execution failures", () => {
+test("connector-framework-2124: opens the circuit after repeated execution failures", async () => {
   const executions: string[] = [];
   const service = new ConnectorFrameworkService({
     executors: {
@@ -46,17 +46,17 @@ test("connector-framework-2124: opens the circuit after repeated execution failu
   registerConnector(service, "failing-connector");
 
   for (let index = 0; index < 5; index++) {
-    const result = execute(service, "failing-connector", `2026-05-06T00:00:0${index}.000Z`);
+    const result = await execute(service, "failing-connector", `2026-05-06T00:00:0${index}.000Z`);
     assert.equal(result.success, false);
   }
 
-  const blocked = execute(service, "failing-connector", "2026-05-06T00:00:10.000Z");
+  const blocked = await execute(service, "failing-connector", "2026-05-06T00:00:10.000Z");
 
   assert.equal(blocked.success, false);
   assert.equal(executions.length, 5, "open circuit should fail fast without invoking executor again");
 });
 
-test("connector-framework-2124: transitions to half-open after timeout and closes on success", () => {
+test("connector-framework-2124: transitions to half-open after timeout and closes on success", async () => {
   const executions: string[] = [];
   const originalNow = Date.now;
   let now = 0;
@@ -79,20 +79,20 @@ test("connector-framework-2124: transitions to half-open after timeout and close
 
     for (let index = 0; index < 5; index++) {
       now = index * 1000;
-      execute(service, "recovering-connector");
+      await execute(service, "recovering-connector");
     }
 
     now = 6_000;
-    execute(service, "recovering-connector");
+    await execute(service, "recovering-connector");
     assert.equal(executions.length, 5, "circuit should still be open before timeout");
 
     now = 35_001;
-    const recovered = execute(service, "recovering-connector");
+    const recovered = await execute(service, "recovering-connector");
     assert.equal(recovered.success, true);
     assert.equal(executions.length, 6, "half-open circuit should allow one recovery probe");
 
     now = 36_000;
-    const closedAgain = execute(service, "recovering-connector");
+    const closedAgain = await execute(service, "recovering-connector");
     assert.equal(closedAgain.success, true);
     assert.equal(executions.length, 7, "successful half-open probe should close the circuit");
   } finally {
@@ -100,7 +100,7 @@ test("connector-framework-2124: transitions to half-open after timeout and close
   }
 });
 
-test("connector-framework-2124: failed health checks also contribute to opening the circuit", () => {
+test("connector-framework-2124: failed health checks also contribute to opening the circuit", async () => {
   const executions: string[] = [];
   const service = new ConnectorFrameworkService({
     executors: {
@@ -123,10 +123,10 @@ test("connector-framework-2124: failed health checks also contribute to opening 
       latencyMs: 5_000,
       checkedAt: `2026-05-06T00:00:0${index}.000Z`,
     });
-    execute(service, "health-checked-connector");
+    await execute(service, "health-checked-connector");
   }
 
-  const blocked = execute(service, "health-checked-connector");
+  const blocked = await execute(service, "health-checked-connector");
 
   assert.equal(blocked.success, false);
   assert.equal(executions.length, 0, "failed health should trip the circuit before executor is invoked");

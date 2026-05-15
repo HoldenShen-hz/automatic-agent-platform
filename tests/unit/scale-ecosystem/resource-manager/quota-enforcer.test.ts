@@ -599,7 +599,7 @@ test("evaluateMultiDimensionalQuota falls back to single dimension when no multi
   const decision = evaluateMultiDimensionalQuota(policy, requested);
 
   assert.equal(decision.passed, false);
-  assert.ok(decision.failedDimensions.includes("worker_concurrency"));
+  assert.ok(decision.failedDimensions.includes("runtime_units"));
   assert.equal(decision.overallDecision.exceeded, true);
 });
 

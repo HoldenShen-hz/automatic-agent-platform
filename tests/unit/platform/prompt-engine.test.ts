@@ -773,9 +773,11 @@ test("PlatformPromptReleaseOrchestrationService auto-activates when configured",
     domainBlockCompatible: true,
     results: createStandardEvalResults(),
     autoActivate: true,
+    domainOwnerApproval: true,
+    rollbackPlanPresent: true,
   });
 
-  assert.equal(result.rollout.status, "active");
+  assert.equal(result.rollout.status, "stable");
 });
 
 // ── ConversationTemplateConfigLoader Tests ────────────────────────────

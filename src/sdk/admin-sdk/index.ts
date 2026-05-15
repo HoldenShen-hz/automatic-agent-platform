@@ -13,6 +13,8 @@ import {
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { z } from "zod";
 
+// Bulk operations are routed through server endpoints that provide transactional semantics.
+
 // R31-38 FIX: Input validation schema for registerDomain
 const registerDomainSchema = z.object({
   domainId: z.string().min(1),

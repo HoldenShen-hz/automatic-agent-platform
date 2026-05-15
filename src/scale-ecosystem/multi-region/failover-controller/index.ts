@@ -298,6 +298,9 @@ export class RegionFailoverController {
       leaderRegionId: input.currentLeaderRegionId ?? null,
       demotedLeaderRegionId: null,
     };
+    if (existingState == null && input.currentLeaderRegionId != null) {
+      this.stateByPartition.set(partitionKey, previous);
+    }
     const latencyBreached = input.primaryLatencyMs != null
       && input.maxAcceptableLatencyMs != null
       && input.primaryLatencyMs > input.maxAcceptableLatencyMs;
@@ -359,8 +362,11 @@ export class RegionFailoverController {
         ? input.currentLeaderRegionId
         : null;
 
-    // Use explicit promoteEpoch if provided, otherwise increment from current
+    // Use explicit promoteEpoch if provided, otherwise increment from the controller's partition state.
     const effectivePromoteEpoch = input.promoteEpoch ?? (previous.fencingEpoch + 1);
+    if (input.promoteEpoch == null) {
+      this.epochManager.promoteEpoch(partitionKey, targetRegionId as string, previous.leaderRegionId);
+    }
     const nextState: FencingEpochState = {
       partitionKey,
       fencingEpoch: effectivePromoteEpoch,

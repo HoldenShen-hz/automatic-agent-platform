@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EventEmitter } from "node:events";
-
 import { DurableEventBusAsync } from "../../../../src/scale-ecosystem/runtime-services/durable-event-bus-async.js";
 import type { BusMetrics } from "../../../../src/scale-ecosystem/runtime-services/durable-event-bus-async.js";
 
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("DurableEventBusAsync is an EventEmitter subclass", () => {
-  assert.ok(new DurableEventBusAsync({} as never, {} as never) instanceof EventEmitter);
+test("DurableEventBusAsync exposes typed event emitter methods", () => {
+  const bus = new DurableEventBusAsync({} as never, {} as never);
+  assert.equal(typeof bus.on, "function");
+  assert.equal(typeof bus.emit, "function");
 });
 
 test("DurableEventBusAsync default options are applied", () => {

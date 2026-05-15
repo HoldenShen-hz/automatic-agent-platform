@@ -168,7 +168,8 @@ test("KnowledgeRetrievalService.query filters by namespace when specified", () =
   }));
   archive.upsert(createArchivedRecord({
     document: createMinimalDocument({ documentId: "doc2", namespace: "ns2" }),
-    chunks: [createMinimalChunk({ chunkId: "chunk2", namespace: "ns2", keywords: ["typescript"] })],
+    source: createMinimalSource({ sourceId: "source_2", checksum: "checksum_2", contentHash: "abc456", namespace: "ns2" }),
+    chunks: [createMinimalChunk({ chunkId: "chunk2", documentId: "doc2", namespace: "ns2", keywords: ["typescript"] })],
   }));
   index.upsert(createMinimalChunk({ chunkId: "chunk1", namespace: "ns1", keywords: ["typescript"] }));
   index.upsert(createMinimalChunk({ chunkId: "chunk2", namespace: "ns2", keywords: ["typescript"] }));

@@ -52,7 +52,7 @@ test("R12-03: DLQ entries are persisted with all required metadata", async () =>
     bus.setDlqRepository(mockDlqRepository);
 
     // Subscribe with a handler that always fails to trigger DLQ
-    bus.subscribe("dlq_consumer", async () => {
+    bus.subscribe("inspect_projection", async () => {
       throw new Error("force DLQ");
     });
 
@@ -63,7 +63,7 @@ test("R12-03: DLQ entries are persisted with all required metadata", async () =>
     });
 
     try {
-      await bus.deliverPending("dlq_consumer");
+      await bus.deliverPending("inspect_projection");
     } catch {
       // Expected after retries are exhausted and the event is dead-lettered.
     }
@@ -75,7 +75,7 @@ test("R12-03: DLQ entries are persisted with all required metadata", async () =>
     assert.ok(dlqEntry.deadLetterId.startsWith("dlq_"), "should have valid DLQ ID");
     assert.ok(dlqEntry.sourceEventId.startsWith("evt_"), "should have source event ID");
     assert.equal(dlqEntry.eventType, "task:status_changed");
-    assert.equal(dlqEntry.consumerId, "dlq_consumer");
+    assert.equal(dlqEntry.consumerId, "inspect_projection");
     assert.equal(dlqEntry.status, "pending");
     assert.ok(dlqEntry.retryCount >= 1, "retryCount should be >= 1");
     assert.ok(dlqEntry.maxRetries >= dlqEntry.retryCount, "maxRetries should be >= retryCount");
@@ -120,7 +120,7 @@ test("R12-03: DLQ repository insert is called on dead-lettering", async () => {
 
     bus.setDlqRepository(mockDlqRepository);
 
-    bus.subscribe("dlq_insert_consumer", async () => {
+    bus.subscribe("inspect_projection", async () => {
       throw new Error("force DLQ insert");
     });
 
@@ -132,7 +132,7 @@ test("R12-03: DLQ repository insert is called on dead-lettering", async () => {
 
     // Trigger delivery which will fail and call DLQ insert
     try {
-      await bus.deliverPending("dlq_insert_consumer");
+      await bus.deliverPending("inspect_projection");
     } catch {
       // Expected to throw after dead-lettering
     }

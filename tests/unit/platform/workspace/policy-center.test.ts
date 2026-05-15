@@ -210,7 +210,7 @@ test("PolicyCenterService allows path within scope", () => {
 
   const result = service.evaluate(request);
 
-  assert.equal(result.decision, "allow");
+  assert.equal(result.decision, "allow_with_constraints");
   assert.ok(result.enforcedConstraints.allowedPathPrefixes !== undefined);
 });
 
@@ -366,7 +366,7 @@ test("PolicyCenterService rejects empty required fields", () => {
 
   assert.throws(
     () => service.evaluate(request as PolicyDecisionRequest),
-    /decisionId_required/,
+    /required field/,
   );
 });
 

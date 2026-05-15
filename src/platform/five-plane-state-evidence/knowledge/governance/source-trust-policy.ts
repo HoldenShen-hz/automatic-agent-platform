@@ -1,6 +1,6 @@
-import type { SourceTrustPolicy, TrustLevel } from "../knowledge-model.js";
+import { normalizeTrustLevel, type SourceTrustPolicy, type TrustLevel } from "../knowledge-model.js";
 
-const DEFAULT_POLICIES: Record<TrustLevel, SourceTrustPolicy> = {
+const CANONICAL_POLICIES: Record<string, SourceTrustPolicy> = {
   authoritative: {
     level: "authoritative",
     allowedInFinalResponse: true,
@@ -31,8 +31,16 @@ const DEFAULT_POLICIES: Record<TrustLevel, SourceTrustPolicy> = {
   },
 };
 
+const DEFAULT_POLICIES: Record<string, SourceTrustPolicy> = {
+  ...CANONICAL_POLICIES,
+  verified: { ...CANONICAL_POLICIES.authoritative!, level: "verified" as TrustLevel },
+  reviewed: { ...CANONICAL_POLICIES.official!, level: "reviewed" as TrustLevel, maxRetrievalWeight: 0.8 },
+  community: { ...CANONICAL_POLICIES.team_reviewed!, level: "community" as TrustLevel, maxRetrievalWeight: 0.5 },
+  unverified: { ...CANONICAL_POLICIES.private_unverified!, level: "unverified" as TrustLevel },
+};
+
 export class SourceTrustPolicyRegistry {
   public get(level: TrustLevel): SourceTrustPolicy {
-    return DEFAULT_POLICIES[level];
+    return DEFAULT_POLICIES[level] ?? CANONICAL_POLICIES[normalizeTrustLevel(level)]!;
   }
 }

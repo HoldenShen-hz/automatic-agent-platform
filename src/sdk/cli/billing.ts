@@ -52,6 +52,24 @@ function requireNonEmptyValue(value: string | null | undefined, code: string): s
   return normalized;
 }
 
+function redactSensitiveValues(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveValues(item));
+  }
+  if (value == null || typeof value !== "object") {
+    return value;
+  }
+  const redacted: Record<string, unknown> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (/(secret|token|apiKey|authorization|password|credential)/i.test(key)) {
+      redacted[key] = "[REDACTED]";
+      continue;
+    }
+    redacted[key] = redactSensitiveValues(nestedValue);
+  }
+  return redacted;
+}
+
 /**
  * Creates a payment gateway instance based on CLI environment configuration.
  *
@@ -212,7 +230,7 @@ async function main(): Promise<void> {
     }
   }, { dbPath });
 
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(redactSensitiveValues(result), null, 2)}\n`);
 }
 
 await main();

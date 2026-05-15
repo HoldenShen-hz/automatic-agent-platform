@@ -204,7 +204,7 @@ export class HierarchicalPromptRegistryService {
         deprecated: bundle.metadata.deprecated,
         lifecycleStatus: (bundle.metadata as { lifecycleStatus?: string }).lifecycleStatus as "draft" | "active" | "deprecated" | "archived" ?? "active",
       }))
-      .sort((a, b) => a.version - b.version);
+      .sort((a, b) => b.version - a.version);
   }
 
   /**

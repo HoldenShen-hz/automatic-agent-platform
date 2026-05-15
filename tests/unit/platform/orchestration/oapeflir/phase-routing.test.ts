@@ -454,10 +454,10 @@ test("feedback stage entry does not require validation", () => {
   fsm.recordStageCompletion("execute");
 
   // feedback stage has validationRequired: false
-  // When already at feedback, same_stage is returned (not prerequisite_not_met)
+  // Feedback is entered through the normal forward transition after execute.
   const result = fsm.canTransitionTo("feedback");
   assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "fsm.same_stage");
+  assert.equal(result.reasonCode, "fsm.transition_allowed");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

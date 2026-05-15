@@ -32,7 +32,7 @@ test("security: blocks basic ../ path traversal", () => {
   const result = checkSandboxPath(policy, "/workspace/project/../../../etc/passwd");
 
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
+  assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
 });
 
 test("security: blocks deep nested ../ traversal", () => {
@@ -276,16 +276,16 @@ test("resolveSandboxPath without realpath returns as-is", () => {
 // Restricted Exec Mode
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("security: restricted_exec ignores allowed root boundary", () => {
+test("security: restricted_exec enforces allowed root boundary", () => {
   const policy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/root"),
     deniedRoots: ["/etc"],
   };
 
-  // Should allow paths outside workspace since mode is restricted_exec
   const result = checkSandboxPath(policy, "/tmp/anyfile.txt");
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
 test("security: restricted_exec still respects denied roots", () => {

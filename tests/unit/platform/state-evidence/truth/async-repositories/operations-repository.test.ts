@@ -161,7 +161,7 @@ test("AsyncOperationsRepository listAnalyticsFactRecords filters by tenantId", a
   const result = await repo.listAnalyticsFactRecords({ tenantId: "tenant-a" });
 
   assert.deepEqual(result, [fact]);
-  assert.match(calls[0]!.sql, /tenant_id IS \$/);
+  assert.match(calls[0]!.sql, /tenant_id = \$1/);
 });
 
 test("AsyncOperationsRepository listAnalyticsFactRecords filters by metricName", async () => {

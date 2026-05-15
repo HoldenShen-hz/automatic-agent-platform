@@ -16,12 +16,12 @@ test("StageTransitionFSM initializes with observe stage", () => {
   assert.equal(fsm.getStageStatus("observe"), "pending");
 });
 
-test("StageTransitionFSM.canTransitionTo allows forward progression", () => {
+test("StageTransitionFSM.canTransitionTo allows forward progression after prerequisites complete", () => {
   const fsm = new StageTransitionFSM();
 
-  // Can transition to assess from observe
+  fsm.recordStageCompletion("observe");
   const result1 = fsm.canTransitionTo("assess");
-  assert.equal(result1.allowed, true, "should allow observe→assess");
+  assert.equal(result1.allowed, true, "should allow assess after observe completion");
 
   // After recording assess entry, can go to plan
   fsm.recordStageEntry("assess");
@@ -169,6 +169,7 @@ test("StageTransitionFSM.getNextStage returns null when complete", () => {
 test("StageTransitionFSM.getExecutionSummary returns all stage statuses", () => {
   const fsm = new StageTransitionFSM();
 
+  fsm.recordStageCompletion("observe");
   fsm.recordStageEntry("assess");
   fsm.recordStageCompletion("assess");
 

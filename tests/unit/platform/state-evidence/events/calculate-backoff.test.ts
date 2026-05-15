@@ -82,7 +82,7 @@ test("calculateBackoff: first retry delay is INITIAL_BACKOFF_MS", async () => {
     let deliveryCount = 0;
     const deliveryTimestamps: number[] = [];
 
-    bus.subscribe("first_retry_consumer", async (event) => {
+    bus.subscribe("inspect_projection", async (event) => {
       deliveryTimestamps.push(Date.now());
       deliveryCount++;
       if (deliveryCount === 1) {

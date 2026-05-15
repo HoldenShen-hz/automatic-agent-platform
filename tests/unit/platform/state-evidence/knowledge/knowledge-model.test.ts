@@ -13,10 +13,10 @@ import {
 } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 test("TrustLevelSchema accepts valid values", () => {
-  assert.equal(TrustLevelSchema.parse("verified"), "verified");
-  assert.equal(TrustLevelSchema.parse("reviewed"), "reviewed");
-  assert.equal(TrustLevelSchema.parse("community"), "community");
-  assert.equal(TrustLevelSchema.parse("unverified"), "unverified");
+  assert.equal(TrustLevelSchema.parse("verified"), "authoritative");
+  assert.equal(TrustLevelSchema.parse("reviewed"), "official");
+  assert.equal(TrustLevelSchema.parse("community"), "team_reviewed");
+  assert.equal(TrustLevelSchema.parse("unverified"), "private_unverified");
 });
 
 test("TrustLevelSchema rejects invalid values", () => {
@@ -277,7 +277,7 @@ test("SourceTrustPolicySchema parses valid policy", () => {
 
   const result = SourceTrustPolicySchema.parse(policy);
 
-  assert.equal(result.level, "verified");
+  assert.equal(result.level, "authoritative");
   assert.equal(result.allowedInFinalResponse, true);
 });
 

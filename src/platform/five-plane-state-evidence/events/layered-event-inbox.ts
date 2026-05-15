@@ -25,7 +25,7 @@ export interface LayeredEventInboxRepository {
   append(record: EventInboxRecord): void;
   listRecords(): readonly EventInboxRecord[];
   size(): number;
-  compact(maxRecords: number, retentionRatio: number): void;
+  compact(maxRecords: number, retentionRatio: number): number;
 }
 
 export class InMemoryLayeredEventInboxRepository implements LayeredEventInboxRepository {
@@ -64,9 +64,9 @@ export class InMemoryLayeredEventInboxRepository implements LayeredEventInboxRep
     return this.records.length;
   }
 
-  public compact(maxRecords: number, retentionRatio: number): void {
+  public compact(maxRecords: number, retentionRatio: number): number {
     if (this.records.length <= maxRecords) {
-      return;
+      return 0;
     }
     let minCursor = this.records.length;
     for (const cursor of this.cursors.values()) {
@@ -76,8 +76,8 @@ export class InMemoryLayeredEventInboxRepository implements LayeredEventInboxRep
     }
     const retainCount = Math.ceil(maxRecords * retentionRatio);
     const cutoffIndex = Math.max(minCursor, this.records.length - retainCount);
-    if (cutoffIndex <= 0 || cutoffIndex >= this.records.length) {
-      return;
+    if (cutoffIndex <= 0 || cutoffIndex > this.records.length) {
+      return 0;
     }
     this.records.splice(0, cutoffIndex);
     for (const [consumerId, cursor] of this.cursors.entries()) {
@@ -87,6 +87,7 @@ export class InMemoryLayeredEventInboxRepository implements LayeredEventInboxRep
         this.cursors.set(consumerId, 0);
       }
     }
+    return cutoffIndex;
   }
 }
 
@@ -119,6 +120,10 @@ export class LayeredEventInbox {
       LayeredEventInbox.MAX_RECORDS,
       LayeredEventInbox.COMPACTION_RETENTION_RATIO,
     );
+  }
+
+  public compact(): number {
+    return this.repository.compact(0, 0);
   }
 
   public peek(consumerId: string): readonly EventEnvelope[] {

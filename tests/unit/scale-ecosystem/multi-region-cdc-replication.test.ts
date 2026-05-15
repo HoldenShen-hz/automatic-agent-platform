@@ -123,9 +123,9 @@ test("CDCReplicationService.prepareBatch returns null when no events after check
   service.registerReplication(config);
 
   const events = [
-    createMockEvent({ sequence: 1 }),
-    createMockEvent({ sequence: 2 }),
-    createMockEvent({ sequence: 3 }),
+    createMockEvent({ sequence: -2 }),
+    createMockEvent({ sequence: -1 }),
+    createMockEvent({ sequence: 0 }),
   ];
 
   const batch = service.prepareBatch("us-west-2", "eu-west-1", events);

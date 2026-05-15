@@ -508,8 +508,8 @@ test("AdminSdk.listWorkers and getConfig call operational endpoints", async () =
     await sdk.listWorkers("tenant-1");
     await sdk.getConfig("runtime/default");
     assert.deepEqual(seenUrls, [
-      "https://api.example.com/v1/workers?tenantId=tenant-1",
-      "https://api.example.com/v1/config/runtime/default",
+      "https://api.example.com/api/v1/workers?tenantId=tenant-1",
+      "https://api.example.com/api/v1/config/runtime/default",
     ]);
   } finally {
     globalThis.fetch = originalFetch;

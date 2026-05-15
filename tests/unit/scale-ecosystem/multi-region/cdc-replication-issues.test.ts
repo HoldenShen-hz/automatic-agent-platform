@@ -219,8 +219,8 @@ test("cdc-replication-2196: replication lag indicates queue buildup", () => {
   // Calculate lag
   const lag = service.getReplicationLag("us-east-1", "us-west-2", 500);
 
-  // Lag should be 400 (500 total - 100 confirmed)
-  assert.equal(lag, 400);
+  // Highest confirmed sequence is 99 because the source sequence starts at 0.
+  assert.equal(lag, 401);
 
   // Issue #2196: This lag indicates queue is not keeping up
 });

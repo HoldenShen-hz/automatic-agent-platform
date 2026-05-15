@@ -143,7 +143,7 @@ test("RuntimeTruthRepository.transition throws when using wrong aggregate type",
       reasonCode: "test",
       emittedBy: "test",
       leaseId: "lease-1",
-      fencingToken: "fence-1",
+      fencingToken: nodeRun.fencingToken,
     }),
     ValidationError,
   );
@@ -212,7 +212,7 @@ test("RuntimeTruthRepository.transition increments aggregateSeq correctly for sa
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: nodeRun.fencingToken,
   });
   assert.equal(t1.event.aggregateSeq, 1);
 
@@ -227,7 +227,7 @@ test("RuntimeTruthRepository.transition increments aggregateSeq correctly for sa
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: t1.aggregate.fencingToken,
   });
   assert.equal(t2.event.aggregateSeq, 2);
 
@@ -242,7 +242,7 @@ test("RuntimeTruthRepository.transition increments aggregateSeq correctly for sa
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: t2.aggregate.fencingToken,
   });
   assert.equal(t3.event.aggregateSeq, 3);
 });
@@ -603,7 +603,7 @@ test("RuntimeTruthRepository appends events with correct aggregateSeq across dif
     reasonCode: "test",
     emittedBy: "test",
     leaseId: "lease-1",
-    fencingToken: "fence-1",
+    fencingToken: nodeRun.fencingToken,
   });
 
   const events = repository.listEvents();
@@ -631,7 +631,7 @@ test("RuntimeTruthRepository validates aggregate not found", () => {
   );
 });
 
-test("RuntimeTruthRepository requires lease and fencing for HarnessRun transitions", () => {
+test("RuntimeTruthRepository allows unlocked HarnessRun admission without lease and fencing", () => {
   const repository = new RuntimeTruthRepository();
 
   const harnessRun = createHarnessRun({
@@ -647,9 +647,7 @@ test("RuntimeTruthRepository requires lease and fencing for HarnessRun transitio
   });
   repository.seed("HarnessRun", harnessRun);
 
-  // Without leaseId and fencingToken, the transition should throw
-  assert.throws(
-    () => repository.transition({
+  const result = repository.transition({
       aggregateType: "HarnessRun",
       aggregate: harnessRun,
       fromStatus: "created",
@@ -660,7 +658,7 @@ test("RuntimeTruthRepository requires lease and fencing for HarnessRun transitio
       emittedBy: "test",
       runVersionLockId: "rvlock-1",
       auditRef: "audit/ref/hrun-no-lease/admission",
-    }),
-    (error: unknown) => error instanceof WorkflowStateError && error.code === "runtime_state_machine.lease_and_fencing_required",
-  );
+  });
+
+  assert.equal(result.aggregate.status, "admitted");
 });

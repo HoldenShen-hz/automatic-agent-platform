@@ -57,7 +57,7 @@ async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, veri
   const response = await fetch(config.tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
+    body: params,
   });
 
   if (!response.ok) {

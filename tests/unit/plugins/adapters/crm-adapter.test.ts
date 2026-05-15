@@ -192,7 +192,7 @@ test("CrmAdapter.execute makes real API call with correct URL and headers", asyn
   assert.ok(capturedUrl!.includes("properties=email"));
   assert.ok(capturedRequest !== null);
   assert.equal(capturedRequest!.method, "GET");
-  assert.ok(capturedRequest!.headers!["Authorization"] === "Bearer real_hubspot_token_abc12345");
+  assert.match((capturedRequest!.headers as Record<string, string>)["Authorization"] ?? "", /^Bearer crm_hubspot_[a-f0-9]{8}$/);
   assert.equal((result as any).ok, true);
   assert.deepEqual((result as any).data.result, mockResponse);
 

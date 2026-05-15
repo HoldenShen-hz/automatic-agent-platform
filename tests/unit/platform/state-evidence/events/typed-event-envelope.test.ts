@@ -121,8 +121,6 @@ test("TypedEventBus.pendingForConsumer returns pending events for consumer", asy
   try {
     const { db, bus } = await setupBus(workspace);
 
-    bus.subscribe("task_projection", ["task:status_changed"], () => {});
-
     bus.publish({
       eventType: "task:status_changed",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
@@ -184,9 +182,7 @@ test("TypedEventBus.dispose cleans up resources", async () => {
 
     bus.dispose();
 
-    // After dispose, pendingForConsumer should not throw
-    const pending = bus.pendingForConsumer("task_projection");
-    assert.ok(Array.isArray(pending));
+    assert.throws(() => bus.pendingForConsumer("task_projection"), /event_bus\.disposed/);
 
     db.close();
   } finally {

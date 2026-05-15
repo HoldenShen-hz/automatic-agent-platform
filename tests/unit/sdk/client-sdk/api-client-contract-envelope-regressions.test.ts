@@ -88,7 +88,7 @@ test("api client does not retry 4xx business errors", async () => {
   };
 
   try {
-    await assert.rejects(client.get("/test"), /Request failed with status 400/);
+    await assert.rejects(client.get("/test"), /API request failed with status 400/);
     assert.equal(attempts, 1);
   } finally {
     globalThis.fetch = originalFetch;

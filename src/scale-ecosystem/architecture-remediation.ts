@@ -96,7 +96,13 @@ export function buildBillingAdjustment(input: Omit<BillingAdjustment, "preserves
 export function validateListingDependencies(dependencies: readonly ListingDependency[]): { readonly valid: boolean; readonly missingEvidenceIds: readonly string[] } {
   const missingEvidenceIds = dependencies
     .filter((dependency) => dependency.compatibilityEvidenceRef.trim().length === 0)
-    .map((dependency) => dependency.dependsOnEntryId);
+    .map((dependency) => {
+      const legacyDependency = dependency as ListingDependency & {
+        readonly dependsOnListingId?: string;
+      };
+      return legacyDependency.dependsOnEntryId ?? legacyDependency.dependsOnListingId;
+    })
+    .filter((dependencyId): dependencyId is string => typeof dependencyId === "string" && dependencyId.length > 0);
   return { valid: missingEvidenceIds.length === 0, missingEvidenceIds };
 }
 

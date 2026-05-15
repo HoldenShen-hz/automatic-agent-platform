@@ -11,21 +11,20 @@ test("orderFairQueue sorts by priority and age score", () => {
 
   const sorted = orderFairQueue(items);
 
-  // Priority 3 with 0 age score = 30, Priority 2 with age score 1 = 21, Priority 1 with 0 = 10
-  assert.equal(sorted[0]?.itemId, "b");
+  assert.equal(sorted[0]?.itemId, "a");
   assert.equal(sorted[1]?.itemId, "c");
-  assert.equal(sorted[2]?.itemId, "a");
+  assert.equal(sorted[2]?.itemId, "b");
 });
 
-test("orderFairQueue respects age scoring capped at 9", () => {
+test("orderFairQueue applies age penalty capped at 99", () => {
   const items: FairQueueItem[] = [
-    { itemId: "old", tenantId: "t1", priority: 1, ageMs: 600_000 }, // 10 + 9 = 19
-    { itemId: "new", tenantId: "t1", priority: 2, ageMs: 0 },        // 20 + 0 = 20
+    { itemId: "old", tenantId: "t1", priority: 1, ageMs: 600_000 },
+    { itemId: "new", tenantId: "t1", priority: 2, ageMs: 0 },
   ];
 
   const sorted = orderFairQueue(items);
 
-  assert.equal(sorted[0]?.itemId, "new"); // 20 > 19
+  assert.equal(sorted[0]?.itemId, "old");
 });
 
 test("orderFairQueue handles empty array", () => {

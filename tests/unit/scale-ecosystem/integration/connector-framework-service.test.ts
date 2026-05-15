@@ -104,7 +104,7 @@ test("ConnectorFrameworkService records health reports", () => {
   assert.equal(recorded.status, "healthy");
 });
 
-test("ConnectorFrameworkService execute returns success for healthy connector", () => {
+test("ConnectorFrameworkService execute returns success for healthy connector", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -114,7 +114,7 @@ test("ConnectorFrameworkService execute returns success for healthy connector", 
   };
   service.register(manifest);
 
-  const result = service.execute(
+  const result = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -129,7 +129,7 @@ test("ConnectorFrameworkService execute returns success for healthy connector", 
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService execute returns failed for unsupported event", () => {
+test("ConnectorFrameworkService execute returns failed for unsupported event", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -140,7 +140,7 @@ test("ConnectorFrameworkService execute returns failed for unsupported event", (
   };
   service.register(manifest);
 
-  const result = service.execute(
+  const result = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -155,7 +155,7 @@ test("ConnectorFrameworkService execute returns failed for unsupported event", (
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService execute returns failed for unhealthy connector", () => {
+test("ConnectorFrameworkService execute returns failed for unhealthy connector", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -172,7 +172,7 @@ test("ConnectorFrameworkService execute returns failed for unhealthy connector",
     checkedAt: "2026-01-01T00:00:00.000Z",
   });
 
-  const result = service.execute(
+  const result = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -187,7 +187,7 @@ test("ConnectorFrameworkService execute returns failed for unhealthy connector",
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService execute returns deferred for degraded connector", () => {
+test("ConnectorFrameworkService execute returns deferred for degraded connector", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -204,7 +204,7 @@ test("ConnectorFrameworkService execute returns deferred for degraded connector"
     checkedAt: "2026-01-01T00:00:00.000Z",
   });
 
-  const result = service.execute(
+  const result = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -219,7 +219,7 @@ test("ConnectorFrameworkService execute returns deferred for degraded connector"
   assert.equal(result.status, "deferred");
 });
 
-test("ConnectorFrameworkService execute throws for prod with non-verified connector", () => {
+test("ConnectorFrameworkService execute throws for prod with non-verified connector", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -229,9 +229,9 @@ test("ConnectorFrameworkService execute throws for prod with non-verified connec
   };
   service.register(manifest);
 
-  assert.throws(
-    () =>
-      service.execute(
+  await assert.rejects(
+    async () =>
+      await service.execute(
         {
           connectorId: "test-connector",
           capability: "cap1",
@@ -245,7 +245,7 @@ test("ConnectorFrameworkService execute throws for prod with non-verified connec
   );
 });
 
-test("ConnectorFrameworkService execute fails closed when policyRef or secret bindings are missing", () => {
+test("ConnectorFrameworkService execute fails closed when policyRef or secret bindings are missing", async () => {
   const service = new ConnectorFrameworkService();
   service.register({
     connectorId: "test-connector",
@@ -254,7 +254,7 @@ test("ConnectorFrameworkService execute fails closed when policyRef or secret bi
     lifecycleState: "enabled",
   });
 
-  const withoutPolicy = service.execute(
+  const withoutPolicy = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -263,7 +263,7 @@ test("ConnectorFrameworkService execute fails closed when policyRef or secret bi
     },
     { environment: "dev" },
   );
-  const withoutSecret = service.execute(
+  const withoutSecret = await service.execute(
     {
       connectorId: "test-connector",
       capability: "cap1",
@@ -279,12 +279,12 @@ test("ConnectorFrameworkService execute fails closed when policyRef or secret bi
   assert.equal(withoutSecret.status, "failed");
 });
 
-test("ConnectorFrameworkService execute throws for unknown connector", () => {
+test("ConnectorFrameworkService execute throws for unknown connector", async () => {
   const service = new ConnectorFrameworkService();
 
-  assert.throws(
-    () =>
-      service.execute(
+  await assert.rejects(
+    async () =>
+      await service.execute(
         { connectorId: "unknown-connector", capability: "cap1", payload: {} },
         { environment: "dev" },
       ),

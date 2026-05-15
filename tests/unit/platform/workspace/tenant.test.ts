@@ -366,7 +366,7 @@ test("TenantBoundaryRegistryService throws for different tenants", () => {
         sourceTenantId: "tenant_001",
         targetTenantId: "tenant_002",
       }),
-    /cross_tenant_denied/,
+    /Cross-tenant access/,
   );
 });
 
@@ -473,7 +473,7 @@ test("TenantBoundaryRegistryService rejects invalid user ID", () => {
         status: "active",
         identityProvider: "idp",
       }),
-    /invalid_user_id/,
+    /Tenant topology identifier is invalid/,
   );
 });
 
@@ -488,6 +488,6 @@ test("TenantBoundaryRegistryService rejects invalid workspace ID", () => {
         name: "Workspace",
         createdAt: "2026-04-29T00:00:00.000Z",
       }),
-    /invalid_workspace_id/,
+    /Tenant topology identifier is invalid/,
   );
 });

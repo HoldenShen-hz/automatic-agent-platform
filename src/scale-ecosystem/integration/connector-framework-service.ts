@@ -38,6 +38,15 @@ type ConnectorExecutor = {
   execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> | ConnectorExecutionResult;
 };
 
+export interface ConnectorFrameworkServiceOptions {
+  readonly storageDir?: string | null;
+  readonly maxBindingAgeMs?: number;
+  readonly healthRetentionCount?: number;
+  readonly maxBindings?: number;
+  readonly maxHealthConnectors?: number;
+  readonly executors?: Readonly<Record<string, (request: ConnectorExecutionRequest) => Promise<ConnectorExecutionResult> | ConnectorExecutionResult>>;
+}
+
 /**
  * R20-51 FIX: manifests and bindings are stored in in-memory Maps.
  * There is no persistence layer - all registered connectors and bindings
@@ -71,25 +80,33 @@ export class ConnectorFrameworkService {
 
   private static readonly DEFAULT_CIRCUIT_BREAKER_OPTIONS = {
     failureThreshold: 5,
-    successThreshold: 2,
+    successThreshold: 1,
     timeout: 30000,
-    resetTimeout: 60000,
+    resetTimeout: 30000,
   };
 
   public constructor(
-    storageDir: string | null = null,
+    storageDirOrOptions: string | ConnectorFrameworkServiceOptions | null = null,
     maxBindingAgeMs = 30 * 24 * 60 * 60 * 1000,
     healthRetentionCount = 100,
     maxBindings = 10_000,
     maxHealthConnectors = 1_000,
   ) {
-    this.storageDir = storageDir;
-    this.maxBindingAgeMs = maxBindingAgeMs;
-    this.healthRetentionCount = healthRetentionCount;
-    this.maxBindings = maxBindings;
-    this.maxHealthConnectors = maxHealthConnectors;
+    const options = typeof storageDirOrOptions === "object" && storageDirOrOptions !== null
+      ? storageDirOrOptions
+      : null;
+    this.storageDir = options != null
+      ? options.storageDir ?? null
+      : storageDirOrOptions;
+    this.maxBindingAgeMs = options?.maxBindingAgeMs ?? maxBindingAgeMs;
+    this.healthRetentionCount = options?.healthRetentionCount ?? healthRetentionCount;
+    this.maxBindings = options?.maxBindings ?? maxBindings;
+    this.maxHealthConnectors = options?.maxHealthConnectors ?? maxHealthConnectors;
     if (this.storageDir != null) {
       this.load();
+    }
+    for (const [connectorId, executor] of Object.entries(options?.executors ?? {})) {
+      this.registerConnectorInstance(connectorId, { execute: executor });
     }
   }
 
@@ -289,7 +306,21 @@ export class ConnectorFrameworkService {
     const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
     let result: ConnectorExecutionResult;
     if (connectorInstance != null && circuitBreaker != null) {
-      result = await circuitBreaker.execute(() => Promise.resolve(connectorInstance.execute(normalizedRequest)));
+      try {
+        result = await circuitBreaker.execute(async () => {
+          const executionResult = await Promise.resolve(connectorInstance.execute(normalizedRequest));
+          if (!executionResult.success) {
+            throw new Error(`connector_framework.execution_failed:${normalizedRequest.connectorId}`);
+          }
+          return executionResult;
+        });
+      } catch {
+        result = {
+          connectorId: normalizedRequest.connectorId,
+          success: false,
+          status: "failed",
+        };
+      }
     } else {
       result = {
         connectorId: normalizedRequest.connectorId,

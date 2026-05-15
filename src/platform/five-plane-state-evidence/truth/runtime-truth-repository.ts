@@ -178,25 +178,32 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         const harnessRun = command.aggregate as HarnessRun;
         const currentRun = this.getHarnessRun(harnessRun.harnessRunId);
         if (currentRun) {
-          // Check lease token if present
-          if (harnessRun.leaseId != null && currentRun.leaseId != null && harnessRun.leaseId !== currentRun.leaseId) {
+          if (currentRun.leaseId != null && (command.leaseId == null || command.fencingToken == null)) {
             throw new ValidationError(
-              "runtime_truth_repository.lease_conflict",
-              `HarnessRun ${harnessRun.harnessRunId} has an active lease held by another process`,
-              { details: { harnessRunId: harnessRun.harnessRunId, expectedLease: currentRun.leaseId, actualLease: harnessRun.leaseId } },
+              "runtime_truth_repository.lease_fencing_required",
+              `HarnessRun ${harnessRun.harnessRunId} requires the active lease and fencing token`,
+              { details: { harnessRunId: harnessRun.harnessRunId } },
             );
           }
-          // Check fencing token if present
-          if (harnessRun.fencingToken != null && currentRun.fencingToken != null && harnessRun.fencingToken !== currentRun.fencingToken) {
+          if (currentRun.leaseId != null && command.leaseId !== currentRun.leaseId) {
             throw new ValidationError(
-              "runtime_truth_repository.fencing_token_conflict",
-              `HarnessRun ${harnessRun.harnessRunId} has a conflicting fencing token`,
-              { details: { harnessRunId: harnessRun.harnessRunId, expectedToken: currentRun.fencingToken, actualToken: harnessRun.fencingToken } },
+              "runtime_truth_repository.stale_lease_id",
+              `HarnessRun ${harnessRun.harnessRunId} has an active lease held by another process`,
+              { details: { harnessRunId: harnessRun.harnessRunId, expectedLease: currentRun.leaseId, actualLease: command.leaseId } },
+            );
+          }
+          if (currentRun.fencingToken != null && command.fencingToken != null && command.fencingToken !== currentRun.fencingToken) {
+            throw new ValidationError(
+              "runtime_truth_repository.stale_fencing_token",
+              `HarnessRun ${harnessRun.harnessRunId} requires the active fencing token`,
+              { details: { harnessRunId: harnessRun.harnessRunId, expectedToken: currentRun.fencingToken, actualToken: command.fencingToken } },
             );
           }
         }
       }
 
+      const transactionMarker = `TXN_${Date.now()}_${this.state.auditRefs.length + 1}`;
+      this.state.auditRefs.push(`BEGIN_${transactionMarker}`);
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
       const result = this.stateMachine.transition({
         ...command,
@@ -207,6 +214,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       if (command.auditRef != null) {
         this.state.auditRefs.push(command.auditRef);
       }
+      this.state.auditRefs.push(`COMMIT_${transactionMarker}`);
       return { ...result, event };
     });
   }
