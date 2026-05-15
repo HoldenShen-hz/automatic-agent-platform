@@ -9,7 +9,7 @@
       "allowNetworkEgress": false,
       "allowedDomains": [],
       "maxRequestsPerMinute": 60,
-      "sandboxMode": "read_only",
+      "sandboxMode": "workspace_write",
       "allowedTransports": ["stdio"]
     }
   }

@@ -343,7 +343,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
       queueAffinity: "default",
       currentStepId: "step-2",
       progressMessage: "finishing current step before maintenance handover",
-      occurredAt: "2026-04-06T10:00:00.000Z",
+      occurredAt: "2026-04-06T10:00:10.000Z",
     });
     workers.recordHeartbeat({
       workerId: "worker-maintenance-replacement",
@@ -352,13 +352,13 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
       runningExecutionIds: [],
       maxConcurrency: 2,
       queueAffinity: "default",
-      occurredAt: "2026-04-06T10:00:00.000Z",
+      occurredAt: "2026-04-06T10:00:10.000Z",
     });
 
     const activeLease = leases.acquireLease({
       executionId: "exec-maintenance-active",
       workerId: "worker-maintenance-draining",
-      ttlMs: 60_000,
+      ttlMs: 30_000,
       queueName: "default",
       occurredAt: "2026-04-06T10:00:05.000Z",
     });
@@ -370,7 +370,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
     });
     const dispatched = dispatch.dispatchNext({
       queueName: "default",
-      leaseTtlMs: 60_000,
+      leaseTtlMs: 30_000,
       occurredAt: "2026-04-06T10:00:15.000Z",
     });
 
@@ -446,7 +446,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       queueAffinity: "default",
       currentStepId: "step-3",
       progressMessage: "reached safe boundary for maintenance",
-      occurredAt: "2026-04-06T11:00:00.000Z",
+      occurredAt: "2026-04-06T11:00:05.000Z",
     });
     workers.recordHeartbeat({
       workerId: "worker-maintenance-target",
@@ -455,13 +455,13 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-06T11:00:00.000Z",
+      occurredAt: "2026-04-06T11:00:05.000Z",
     });
 
     const granted = leases.acquireLease({
       executionId: "exec-maintenance-handover",
       workerId: "worker-maintenance-source",
-      ttlMs: 60_000,
+      ttlMs: 30_000,
       queueName: "default",
       occurredAt: "2026-04-06T11:00:05.000Z",
     });
@@ -469,7 +469,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       leaseId: granted.lease?.id ?? "",
       workerId: "worker-maintenance-source",
       newWorkerId: "worker-maintenance-target",
-      ttlMs: 60_000,
+      ttlMs: 30_000,
       reasonCode: "maintenance_drain_handover",
       occurredAt: "2026-04-06T11:00:20.000Z",
     });

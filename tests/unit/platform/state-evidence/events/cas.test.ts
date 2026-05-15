@@ -186,10 +186,12 @@ test("FencingTokenService generateFencingToken generates unique tokens", () => {
 test("FencingTokenService generateFencingToken includes executionId, nodeId, counter, and timestamp", () => {
   const service = new FencingTokenService("node1");
   const token = service.generateFencingToken("exec1", "node1");
-  const parts = token.split("-");
+  const parts = token.split("::");
   assert.equal(parts.length, 4);
   assert.equal(parts[0], "exec1");
   assert.equal(parts[1], "node1");
+  assert.match(parts[2]!, /^\d+$/);
+  assert.match(parts[3]!, /^\d+$/);
 });
 
 test("FencingTokenService validateFencingToken returns invalid for empty token", () => {
@@ -248,11 +250,11 @@ test("FencingTokenService acquireFence creates fence in shared mode", () => {
   assert.equal(fence?.mode, "shared");
 });
 
-test("FencingTokenService acquireFence allows same node to reacquire fence", () => {
+test("FencingTokenService acquireFence blocks same node from re-acquiring duplicate fence", () => {
   const service = new FencingTokenService("node1");
   service.acquireFence("exec1", "exclusive");
   const fence = service.acquireFence("exec1", "exclusive");
-  assert.ok(fence !== null);
+  assert.equal(fence, null);
 });
 
 test("FencingTokenService releaseFence returns true when fence is released", () => {

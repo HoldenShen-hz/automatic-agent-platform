@@ -258,12 +258,22 @@ function createMockConfig(): RedisQueueConfig {
 test.describe("RedisQueueAdapter unit tests", () => {
   let adapter: RedisQueueAdapter;
   let mockClient: MockRedisClient;
+  const originalRunningTests = process.env.AA_RUNNING_TESTS;
 
   test.beforeEach(() => {
+    process.env.AA_RUNNING_TESTS = "1";
     mockClient = new MockRedisClient();
     // We need to override the internal client creation
     // Since the adapter creates its own client, we'll test the async methods
     // which use the client directly
+  });
+
+  test.afterEach(() => {
+    if (originalRunningTests === undefined) {
+      delete process.env.AA_RUNNING_TESTS;
+    } else {
+      process.env.AA_RUNNING_TESTS = originalRunningTests;
+    }
   });
 
   test("backendKind is redis", () => {
@@ -480,7 +490,7 @@ test.describe("RedisQueueAdapter unit tests", () => {
     const stats = await adapter.statsAsync("stats-test");
 
     assert.equal(stats.queueName, "stats-test");
-    assert.equal(stats.waiting, 0);
+    assert.equal(stats.waiting, 1);
     assert.equal(stats.completed, 1);
     assert.equal(stats.deadLetter, 0);
   });

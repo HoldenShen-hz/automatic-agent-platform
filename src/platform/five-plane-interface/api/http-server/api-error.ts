@@ -4,7 +4,7 @@
  * Extracted from http-api-server.ts as part of GAP24A-02 deep split.
  */
 
-import { AppError, type AppErrorCategory, type AppErrorSource } from "../../../contracts/errors.js";
+import { AppError, type AppErrorCategory, type AppErrorSource, type ErrorOptions } from "../../../contracts/errors.js";
 import {
   GatewayTargetAmbiguousError,
   GatewayTargetNotFoundError,
@@ -23,12 +23,13 @@ const API_ERROR_MESSAGES = Object.freeze({
 });
 
 export class ApiError extends AppError {
-  public constructor(statusCode: number, code: string, message: string) {
+  public constructor(statusCode: number, code: string, message: string, options: Partial<ErrorOptions> = {}) {
     super(code, message, {
       statusCode,
       category: inferApiErrorCategory(statusCode, code),
       source: inferApiErrorSource(code),
       retryable: statusCode >= 500 || statusCode === 429,
+      ...options,
     });
     this.name = "ApiError";
   }
@@ -74,7 +75,10 @@ export function normalizeError(error: unknown): AppError {
     return new ApiError(429, "gateway.rate_limited", API_ERROR_MESSAGES.gatewayRateLimited(error.channel));
   }
   if (error instanceof GatewayTargetNotFoundError) {
-    return new ApiError(404, error.code, API_ERROR_MESSAGES.gatewayTargetNotFound);
+    return new ApiError(404, "gateway.target_not_found", API_ERROR_MESSAGES.gatewayTargetNotFound, {
+      details: error.details,
+      traceId: error.traceId,
+    });
   }
   if (error instanceof GatewayTargetAmbiguousError) {
     return new ApiError(409, "gateway.target_ambiguous", API_ERROR_MESSAGES.gatewayTargetAmbiguous);

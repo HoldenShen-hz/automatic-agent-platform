@@ -29,13 +29,13 @@ export function orderFairQueue(items: readonly FairQueueItem[]): FairQueueItem[]
 }
 
 function computeFairShareScore(item: FairQueueItem): number {
-  const priorityScore = (100 - Math.min(100, Math.max(0, item.priority))) * 100;
-  const agePenalty = Math.min(99, Math.floor(item.ageMs / 60_000));
+  const priorityScore = Math.min(100, Math.max(0, item.priority)) * 100;
+  const ageBonus = Math.min(99, Math.floor(item.ageMs / 60_000));
   const borrowedScore = (item.borrowedCredits ?? 0) * 10;
   const reclaimBonus = Math.max(0, item.reclaimedCredits ?? 0);
   return (item.slaTier ?? 0) * 10_000
     + priorityScore
     + borrowedScore
     + reclaimBonus * 10
-    - agePenalty;
+    + ageBonus;
 }

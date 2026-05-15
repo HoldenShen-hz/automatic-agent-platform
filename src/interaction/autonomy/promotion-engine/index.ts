@@ -78,7 +78,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
   }
 
   const maxFailedExecutions = maxFailedExecutionsForPromotion(score);
-  if (score.incidents > 0 || (score.failedExecutions > maxFailedExecutions && rate <= 0.95)) {
+  if (score.incidents > 0 || score.failedExecutions > maxFailedExecutions) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

@@ -82,7 +82,7 @@ test("StageTransitionFSM allows improve-to-plan backward transition (replan)", (
   assert.equal(result.allowed, true, "improve→plan must be allowed for replanning");
 });
 
-test("StageTransitionFSM allows release-to-plan backward transition (replan)", () => {
+test("StageTransitionFSM blocks release-to-plan after pipeline completion", () => {
   const fsm = new StageTransitionFSM();
 
   fsm.recordStageCompletion("observe");
@@ -95,7 +95,8 @@ test("StageTransitionFSM allows release-to-plan backward transition (replan)", (
   fsm.recordStageCompletion("release");
 
   const result = fsm.canTransitionTo("plan");
-  assert.equal(result.allowed, true, "release→plan must be allowed for replanning");
+  assert.equal(result.allowed, false, "completed release→plan must not implicitly re-enter");
+  assert.equal(result.reasonCode, "fsm.complete");
 });
 
 test("StageTransitionFSM allows feedback-to-execute backward transition (replan)", () => {
@@ -214,15 +215,22 @@ test("StageTransitionFSM forward skip is rejected in all cases", () => {
   assert.equal(result.reasonCode, "fsm.skip_not_allowed");
 });
 
-test("StageTransitionFSM same stage transition is always allowed", () => {
+test("StageTransitionFSM same stage transition is allowed only while current", () => {
   const fsm = new StageTransitionFSM();
 
   // Any stage can transition to itself
   for (const stage of OAPEFLIR_STAGES) {
     fsm.recordStageCompletion(stage);
     const result = fsm.canTransitionTo(stage);
-    assert.equal(result.allowed, true, `${stage}→${stage} must be allowed`);
-    assert.equal(result.reasonCode, "fsm.same_stage");
+    if (fsm.getCurrentStage() === stage) {
+      assert.equal(result.allowed, true, `${stage}→${stage} is allowed while current`);
+      assert.ok(
+        result.reasonCode === "fsm.same_stage" || result.reasonCode === "fsm.transition_allowed",
+        `unexpected same-current reason: ${result.reasonCode}`,
+      );
+    } else {
+      assert.equal(result.allowed, false, `${stage}→${stage} is not same-stage after advancing`);
+    }
   }
 });
 

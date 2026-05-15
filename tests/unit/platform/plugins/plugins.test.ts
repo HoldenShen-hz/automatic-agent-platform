@@ -25,6 +25,16 @@ import { createLivestreamRetrieverPlugin } from "../../../../src/plugins/retriev
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../../../src/domains/registry/plugin-spi.js";
 import type { UnifiedAssessment } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 
+async function withMockFetch<T>(handler: typeof fetch, run: () => Promise<T>): Promise<T> {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = handler;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Basic Evaluator Plugin Tests
 // ---------------------------------------------------------------------------
@@ -555,32 +565,38 @@ test("GithubAdapter preserves non-array labels as empty array", async () => {
 // ---------------------------------------------------------------------------
 
 test("CrmAdapter authenticates with token", async () => {
-  const plugin = createCrmAdapterPlugin();
-  await plugin.authenticate({ token: "hubspot_token_123" });
+  await withMockFetch(async () => new Response(JSON.stringify({ results: [] }), { status: 200 }), async () => {
+    const plugin = createCrmAdapterPlugin();
+    await plugin.authenticate({ token: "hubspot_token_123" });
 
-  const result = await plugin.execute("contacts", {});
+    const result = await plugin.execute("contacts", {});
 
-  assert.equal(result.ok, true);
-  assert.equal((result.data as Record<string, unknown>).crmType, "hubspot");
+    assert.equal(result.ok, true);
+    assert.equal((result.data as Record<string, unknown>).crmType, "hubspot");
+  });
 });
 
 test("CrmAdapter supports salesforce crmType", async () => {
-  const plugin = createCrmAdapterPlugin({ crmType: "salesforce" });
-  await plugin.authenticate({ token: "sf_token_123" });
+  await withMockFetch(async () => new Response(JSON.stringify({ results: [] }), { status: 200 }), async () => {
+    const plugin = createCrmAdapterPlugin({ crmType: "salesforce" });
+    await plugin.authenticate({ token: "sf_token_123" });
 
-  const result = await plugin.execute("contacts", {});
+    const result = await plugin.execute("contacts", {});
 
-  assert.equal((result.data as Record<string, unknown>).crmType, "salesforce");
+    assert.equal((result.data as Record<string, unknown>).crmType, "salesforce");
+  });
 });
 
 test("CrmAdapter returns structured response with action", async () => {
-  const plugin = createCrmAdapterPlugin();
-  await plugin.authenticate({ token: "test" });
+  await withMockFetch(async () => new Response(JSON.stringify({ results: [] }), { status: 200 }), async () => {
+    const plugin = createCrmAdapterPlugin();
+    await plugin.authenticate({ token: "test" });
 
-  const result = await plugin.execute("campaigns", { status: "active" });
+    const result = await plugin.execute("campaigns", { status: "active" });
 
-  assert.equal(result.ok, true);
-  assert.equal((result.data as Record<string, unknown>).action, "campaigns");
+    assert.equal(result.ok, true);
+    assert.equal((result.data as Record<string, unknown>).action, "campaigns");
+  });
 });
 
 test("CrmAdapter healthCheck returns boolean", async () => {
@@ -606,10 +622,7 @@ test("CrmAdapter clears credentials on shutdown", async () => {
 
   await plugin.shutdown();
 
-  // After shutdown credential fingerprint is cleared, next execute should still work
-  // but will have cleared fingerprint
-  const result = await plugin.execute("contacts", {});
-  assert.equal(result.ok, true);
+  await assert.rejects(plugin.execute("contacts", {}), /crm_adapter\.not_authenticated/);
 });
 
 // ---------------------------------------------------------------------------
@@ -618,6 +631,7 @@ test("CrmAdapter clears credentials on shutdown", async () => {
 
 test("GameDevAdapter execute returns success response", async () => {
   const plugin = createGameDevAdapterPlugin();
+  await plugin.authenticate({ token: "unity_token" });
 
   const result = await plugin.execute("build_status", {
     projectSlug: "my-game",
@@ -631,6 +645,7 @@ test("GameDevAdapter execute returns success response", async () => {
 
 test("GameDevAdapter handles null parameters", async () => {
   const plugin = createGameDevAdapterPlugin();
+  await plugin.authenticate({ token: "unity_token" });
 
   const result = await plugin.execute("build_logs", {});
 
@@ -665,6 +680,7 @@ test("GameDevAdapter lifecycle methods work", async () => {
 
 test("AssetProductionAdapter execute returns success response", async () => {
   const plugin = createAssetProductionAdapterPlugin();
+  await plugin.authenticate({ token: "figma_token" });
 
   const result = await plugin.execute("get_file", {
     fileKey: "abc123",
@@ -678,6 +694,7 @@ test("AssetProductionAdapter execute returns success response", async () => {
 
 test("AssetProductionAdapter handles null parameters", async () => {
   const plugin = createAssetProductionAdapterPlugin();
+  await plugin.authenticate({ token: "figma_token" });
 
   const result = await plugin.execute("get_components", {});
 
@@ -712,6 +729,7 @@ test("AssetProductionAdapter lifecycle methods work", async () => {
 
 test("LivestreamAdapter execute returns success response", async () => {
   const plugin = createLivestreamAdapterPlugin();
+  await plugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
 
   const result = await plugin.execute("get_scenes", {
     streamId: "stream123",
@@ -723,6 +741,7 @@ test("LivestreamAdapter execute returns success response", async () => {
 
 test("LivestreamAdapter handles null parameters", async () => {
   const plugin = createLivestreamAdapterPlugin();
+  await plugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
 
   const result = await plugin.execute("get_config", {});
 
@@ -731,23 +750,35 @@ test("LivestreamAdapter handles null parameters", async () => {
 });
 
 test("LivestreamAdapter healthCheck returns true", async () => {
+  const previousObsToken = process.env["OBS_WS_TOKEN"];
+  process.env["OBS_WS_TOKEN"] = "ABCDEFGHIJKLMNOPQRSTUV==";
   const plugin = createLivestreamAdapterPlugin();
-  const health = await plugin.healthCheck();
-
-  assert.equal(health, true);
+  try {
+    const health = await plugin.healthCheck();
+    assert.equal(health, true);
+  } finally {
+    if (previousObsToken == null) delete process.env["OBS_WS_TOKEN"];
+    else process.env["OBS_WS_TOKEN"] = previousObsToken;
+  }
 });
 
 test("LivestreamAdapter lifecycle methods work", async () => {
+  const previousObsToken = process.env["OBS_WS_TOKEN"];
+  process.env["OBS_WS_TOKEN"] = "ABCDEFGHIJKLMNOPQRSTUV==";
   const plugin = createLivestreamAdapterPlugin();
+  try {
+    const initResult = await plugin.initialize();
+    assert.equal(initResult, undefined);
 
-  const initResult = await plugin.initialize();
-  assert.equal(initResult, undefined);
+    const healthResult = await plugin.healthCheck();
+    assert.equal(healthResult, true);
 
-  const healthResult = await plugin.healthCheck();
-  assert.equal(healthResult, true);
-
-  const shutdownResult = await plugin.shutdown();
-  assert.equal(shutdownResult, undefined);
+    const shutdownResult = await plugin.shutdown();
+    assert.equal(shutdownResult, undefined);
+  } finally {
+    if (previousObsToken == null) delete process.env["OBS_WS_TOKEN"];
+    else process.env["OBS_WS_TOKEN"] = previousObsToken;
+  }
 });
 
 // ---------------------------------------------------------------------------

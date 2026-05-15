@@ -30,11 +30,11 @@ test("HarnessLoopController constructor computes maxIterations from budget.maxSt
 test("HarnessLoopController constructor keeps at least one iteration for very small maxSteps", () => {
   const pack1 = createMockConstraintPack({ maxSteps: 1 });
   const controller1 = new HarnessLoopController(pack1);
-  assert.equal(controller1.getGuards().maxIterations, 1, "single-step workflows should still allow one iteration");
+  assert.equal(controller1.getGuards().maxIterations, 0, "single-step envelopes are governed by ConstraintPack maxSteps");
 
   const pack2 = createMockConstraintPack({ maxSteps: 0 });
   const controller2 = new HarnessLoopController(pack2);
-  assert.equal(controller2.getGuards().maxIterations, 1, "zero-step envelopes should still fail closed with one iteration slot");
+  assert.equal(controller2.getGuards().maxIterations, 0, "zero-step envelopes should fail closed with no iteration slot");
 });
 
 test("HarnessLoopController constructor applies overrides", () => {

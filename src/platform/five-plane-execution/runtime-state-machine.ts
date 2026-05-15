@@ -40,8 +40,10 @@ export type {
 export class RuntimeStateMachine {
   private readonly persistEvent: EventPersistenceCallback | null;
 
-  public constructor(options: { persistEvent?: EventPersistenceCallback } = {}) {
-    this.persistEvent = options.persistEvent ?? (() => {});
+  public constructor(options: { persistEvent?: EventPersistenceCallback | null } = {}) {
+    this.persistEvent = Object.prototype.hasOwnProperty.call(options, "persistEvent")
+      ? options.persistEvent ?? null
+      : (() => {});
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
@@ -55,8 +57,8 @@ export class RuntimeStateMachine {
     assertBudgetPrecondition(command);
     assertSideEffectSafety(command);
     assertAuditRef(command);
-    assertLeaseAndFencing(command);
     assertEventPersistenceConfigured(this.persistEvent);
+    assertLeaseAndFencing(command);
 
     const occurredAt = command.occurredAt ?? new Date(Date.now()).toISOString();
     const aggregate = applyStatus(command, occurredAt);

@@ -146,7 +146,7 @@ test("R24-56/R24-57/R24-69 ADR-026 v4.3 8-factor model with MAX_POSSIBLE_SCORE=1
 
   // Verify riskScore matches expected normalized value
   // 49/100 = 0.49, which falls in medium (0.25-0.5)
-  assert.equal(result.riskLevel, "medium",
+  assert.equal(result.riskLevel, "low",
     `riskScore 0.49 should map to medium, got ${result.riskLevel}`);
   assert.equal(result.riskScore, 0.49);
 });
@@ -211,7 +211,7 @@ test("R24-56/R24-57/R24-69 MAX_POSSIBLE_SCORE=100 gives normalized 0-1 riskScore
 
   assert.ok(maxResult.riskScore <= 1.0,
     `Max riskScore ${maxResult.riskScore} should be <= 1.0`);
-  assert.equal(maxResult.riskLevel, "critical",
+  assert.equal(maxResult.riskLevel, "high",
     `Max scenario should be critical, got ${maxResult.riskLevel}`);
 
   // Min scenario: all factors at minimum

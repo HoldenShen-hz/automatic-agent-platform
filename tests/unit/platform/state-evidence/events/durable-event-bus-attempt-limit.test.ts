@@ -12,6 +12,7 @@ test("DurableEventBus retries exactly three delivery attempts before marking fai
         markEventAck: (input: Record<string, unknown>) => {
           ackUpdates.push(input);
         },
+        insertEventDeadLetter: () => undefined,
       },
     } as never,
   );

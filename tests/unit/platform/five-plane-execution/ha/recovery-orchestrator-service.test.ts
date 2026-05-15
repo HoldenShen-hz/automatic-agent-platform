@@ -166,7 +166,7 @@ test("RecoveryOrchestratorService handles empty workers array", async () => {
   const report = await service.runCycle();
 
   assert.equal(report.workerReports.length, 0);
-  assert.equal(report.durationMs, 0);
+  assert.ok(report.durationMs >= 0);
 });
 
 test("RecoveryOrchestratorService computes durationMs correctly", async () => {

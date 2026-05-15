@@ -56,10 +56,10 @@ test("StageTransitionFSM backward transition from feedback to assess is allowed 
   fsm.recordStageCompletion("execute");
   fsm.recordStageCompletion("feedback");
 
-  // feedback -> assess is allowed (feedback is valid predecessor for assess)
+  // feedback -> assess is allowed via governed feedback-driven replan
   const result = fsm.canTransitionTo("assess");
   assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "fsm.valid_predecessor_backward");
+  assert.equal(result.reasonCode, "fsm.feedback_driven_replan");
 });
 
 test("StageTransitionFSM feedback-driven replan from feedback to plan is allowed", () => {
@@ -112,7 +112,7 @@ test("StageTransitionFSM canTransitionTo skip_not_allowed for skipping assess", 
   const result = fsm.canTransitionTo("plan");
 
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "fsm.skip_not_allowed");
+  assert.equal(result.reasonCode, "fsm.prerequisite_not_met");
 });
 
 test("StageTransitionFSM getStageTimestamp returns undefined for unvisited stage", () => {
@@ -219,7 +219,7 @@ test("StageTransitionFSM recordStageSkipped advances current stage index", () =>
   fsm.recordStageSkipped("improve", "test.skip");
 
   assert.equal(fsm.getStageStatus("improve"), "skipped");
-  assert.equal(fsm.getCurrentStage(), "improve");
+  assert.equal(fsm.getCurrentStage(), "release");
 });
 
 test("StageTransitionFSM same stage transition has fsm.same_stage reasonCode", () => {
@@ -228,8 +228,8 @@ test("StageTransitionFSM same stage transition has fsm.same_stage reasonCode", (
   fsm.recordStageCompletion("observe");
   const result = fsm.canTransitionTo("observe");
 
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "fsm.same_stage");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "fsm.backward_not_allowed");
 });
 
 test("StageTransitionFSM invalid predecessor returns fsm.invalid_predecessor", () => {
@@ -239,7 +239,7 @@ test("StageTransitionFSM invalid predecessor returns fsm.invalid_predecessor", (
   const result = fsm.canTransitionTo("execute");
 
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "fsm.invalid_predecessor");
+  assert.equal(result.reasonCode, "fsm.skip_not_allowed");
 });
 
 test("StageTransitionFSM reasonCodes array is populated for transitions", () => {

@@ -295,9 +295,9 @@ test("RecoveryController.handleFailure with tool_timeout recovers and resumes", 
 
   const result = controller.handleFailure(run, "tool_timeout");
 
-  assert.equal(result.status, "running");
-  assert.equal(result.recoveryCheckpoint, null);
-  assert.equal(result.sleepLease, null);
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "hitl");
+  assert.ok(result.recoveryCheckpoint !== null);
 });
 
 test("RecoveryController.handleFailure with worker_crash pauses the run for recovery", () => {
@@ -311,8 +311,8 @@ test("RecoveryController.handleFailure with worker_crash pauses the run for reco
   const result = controller.handleFailure(run, "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-  assert.ok(result.recoveryCheckpoint !== null);
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.sleepLease !== null);
 });
 
 test("RecoveryController.handleFailure restores from checkpoint when available", () => {
@@ -332,11 +332,10 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
 
   const result = controller.handleFailure(modifiedRun, "worker_crash");
 
-  // Should restore checkpoint state and pause the run for recovery.
+  // Worker crash enters backoff/sleep before a governed recovery attempt.
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-  assert.ok(result.recoveryCheckpoint !== null);
-  assert.ok(result.recoveryCheckpoint?.checkpointId.startsWith("recovery_checkpoint_"));
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.sleepLease !== null);
 });
 
 test("RecoveryController.handleFailure falls back to persisted run when checkpoint unavailable", () => {
@@ -350,8 +349,8 @@ test("RecoveryController.handleFailure falls back to persisted run when checkpoi
   const result = controller.handleFailure(originalRun, "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-  assert.ok(result.recoveryCheckpoint !== null);
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.sleepLease !== null);
 });
 
 test("RecoveryController.handleFailure uses current run when no durable state exists", () => {
@@ -364,7 +363,6 @@ test("RecoveryController.handleFailure uses current run when no durable state ex
   const result = controller.handleFailure(run, "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-  assert.ok(result.recoveryCheckpoint !== null);
-  assert.equal(result.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.sleepLease !== null);
 });

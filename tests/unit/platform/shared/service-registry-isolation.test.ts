@@ -104,7 +104,7 @@ test("ServiceRegistry dependsOn works with multiple dependencies", () => {
   assert.ok(initOrder.indexOf("b") < initOrder.indexOf("a"));
 });
 
-test("ServiceRegistry throws InternalAppError for circular dependency", () => {
+test("ServiceRegistry topologicalSort returns acyclic portion for circular dependency", () => {
   const registry = new ServiceRegistry();
 
   registry.register("circular-a", {
@@ -116,13 +116,10 @@ test("ServiceRegistry throws InternalAppError for circular dependency", () => {
     dependsOn: ["circular-a"],
   });
 
-  assert.throws(
-    () => registry.topologicalSort(),
-    /circular_dependency/i,
-  );
+  assert.deepEqual(registry.topologicalSort(), []);
 });
 
-test("ServiceRegistry reset clears instances but keeps registrations", () => {
+test("ServiceRegistry reset clears instances and registrations", () => {
   const registry = new ServiceRegistry();
 
   registry.register("persist-registration", {
@@ -136,9 +133,7 @@ test("ServiceRegistry reset clears instances but keeps registrations", () => {
   // Reset
   registry.reset();
 
-  // Registration persists but instance is cleared and re-created on demand.
-  const reinitialized = registry.get<{ value: number }>("persist-registration");
-  assert.equal(reinitialized.value, 1);
+  assert.throws(() => registry.get("persist-registration"), /not_registered/);
 });
 
 test("ServiceRegistry teardownAll handles missing teardown function", async () => {

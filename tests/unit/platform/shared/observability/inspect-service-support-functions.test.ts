@@ -392,7 +392,8 @@ test("buildStepResultEnvelopes maps step outputs to artifacts", () => {
   const envelopes = buildStepResultEnvelopes(stepOutputs, artifacts);
 
   assert.equal(envelopes.length, 2);
-  assert.equal(envelopes[0]!.provenance?.stepId, "plan");
+  assert.equal(envelopes[0]!.provenance?.nodeRunId, undefined);
+  assert.equal(envelopes[0]!.provenance?.roleId, "planner");
   assert.equal(envelopes[0]!.artifacts.length, 1);
   assert.equal(envelopes[1]!.artifacts.length, 0);
 });

@@ -97,7 +97,7 @@ test("TaskDecompositionService.decompose sets ownerRoleId from step.roleId", () 
   assert.equal(result[1]?.ownerRoleId, "reviewer");
 });
 
-test("TaskDecompositionService.decompose always includes read tool", () => {
+test("TaskDecompositionService.decompose omits read tool when step has no dependencies", () => {
   const service = new TaskDecompositionService();
   const workflow = createMockWorkflow({
     executionSteps: [
@@ -109,7 +109,7 @@ test("TaskDecompositionService.decompose always includes read tool", () => {
 
   const result = service.decompose(workflow);
 
-  assert.ok(result[0]?.toolNames.includes("read"));
+  assert.ok(!result[0]?.toolNames.includes("read"));
 });
 
 test("TaskDecompositionService.decompose adds apply_patch when compensationModel is present", () => {
@@ -181,6 +181,7 @@ test("TaskDecompositionService.decompose handles both compensationModel and outp
     executionSteps: [
       createMockExecutionStep({
         stepId: "step_a",
+        dependsOnStepIds: ["step_dep"],
         compensationModel: "idempotent_replay",
         outputSchemaPath: "/schemas/step-output.json",
       }),

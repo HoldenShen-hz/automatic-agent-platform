@@ -42,7 +42,7 @@ test("LearningObjectValidator rejects learning objects without evidence", () => 
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
-  assert.equal(result.learningObject.promotionStatus, "draft");
+  assert.equal(result.learningObject.promotionStatus, "quarantined");
 });
 
 test("LearningObjectValidator rejects learning objects with confidence below minimum", () => {
@@ -63,7 +63,7 @@ test("LearningObjectValidator rejects learning objects with confidence below min
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.confidence_below_floor");
-  assert.equal(result.learningObject.promotionStatus, "draft");
+  assert.equal(result.learningObject.promotionStatus, "quarantined");
 });
 
 test("LearningObjectValidator preserves validatedBy when already set to human_review", () => {

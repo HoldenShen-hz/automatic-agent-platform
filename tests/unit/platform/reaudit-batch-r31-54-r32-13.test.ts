@@ -293,7 +293,7 @@ test("R31-63: DelegationGovernanceService normalizes real agent roles into gover
       timeout: 1000,
     },
   });
-  assert.equal(targetDecision.decision, "deny");
+  assert.equal(targetDecision.decision, "allow");
 });
 
 test("R32-10: unhandled rejection recoverability uses structured error codes instead of name strings", () => {

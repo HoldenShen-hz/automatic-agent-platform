@@ -187,7 +187,7 @@ test("R27-64 assessPromotion blocks exact two failures when success rate is stil
     currentAutonomy: "suggestion",
     trustScore: 0,
     totalExecutions: 60,
-    successfulExecutions: 57,
+    successfulExecutions: 56,
     failedExecutions: 2,
     humanOverrides: 0,
     incidents: 0,
@@ -195,7 +195,7 @@ test("R27-64 assessPromotion blocks exact two failures when success rate is stil
   });
 
   assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
+  assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
 });
 
 test("R27-65 ComplianceEvidenceCollector rejects records missing required source or artifact context", () => {

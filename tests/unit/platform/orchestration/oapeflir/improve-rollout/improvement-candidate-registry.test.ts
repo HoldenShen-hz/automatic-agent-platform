@@ -36,7 +36,7 @@ test("ImprovementCandidateRegistry registers a candidate", () => {
   assert.equal(candidate.taskId, "task_1");
   assert.equal(candidate.changeScope, "policy");
   assert.equal(candidate.description, "Improve planning");
-  assert.equal(candidate.status, "proposed");
+  assert.equal(candidate.status, "candidate_created");
 });
 
 test("ImprovementCandidateRegistry.list returns all candidates", () => {
@@ -70,7 +70,7 @@ test("ImprovementCandidateRegistry.updateStatus updates candidate status", () =>
     description: "Test",
   });
 
-  assert.equal(candidate.status, "proposed");
+  assert.equal(candidate.status, "candidate_created");
 
   const updated = registry.updateStatus(candidate.candidateId, "approved");
   assert.ok(updated);

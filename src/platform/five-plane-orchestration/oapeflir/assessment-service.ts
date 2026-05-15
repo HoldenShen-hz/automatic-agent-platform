@@ -414,6 +414,13 @@ export class AssessmentService {
       (situation as { domainId?: string }).domainId ?? "",
     ].join(" ").toLowerCase();
 
+    // Security division: security扫描, vuln, auth
+    if (tools.some(t => /security|scan|vuln|auth|identity|oauth|jwt|cert/.test(t)) ||
+        blockers.some(b => /security|vuln|auth|cert|pki/.test(b)) ||
+        /\b(security|vuln|auth|oauth|pki)\b/.test(objective)) {
+      return "security";
+    }
+
     // Data/analytics division: data processing, queries, pipelines
     if (tools.some(t => /data|query|pipeline|etl|warehouse|analytics/.test(t)) ||
         blockers.some(b => /data|query|pipeline|etl/.test(b)) ||
@@ -432,13 +439,6 @@ export class AssessmentService {
         blockers.some(b => /deploy|infrastructure|cloud|docker|kubernetes/.test(b)) ||
         /\b(deploy|infrastructure|kubernetes|docker|cloud|devops)\b/.test(objective)) {
       return "infrastructure";
-    }
-
-    // Security division: security扫描, vuln, auth
-    if (tools.some(t => /security|scan|vuln|auth|identity|oauth|jwt|cert/.test(t)) ||
-        blockers.some(b => /security|vuln|auth|cert|pki/.test(b)) ||
-        /\b(security|vuln|auth|oauth|pki)\b/.test(objective)) {
-      return "security";
     }
 
     // Research/ML division: training, model, ml, llm

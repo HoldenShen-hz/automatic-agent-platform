@@ -52,7 +52,7 @@ export interface AdminSdkConfig extends ApiClientConfig {
 }
 
 function normalizeAdminSdkPrincipal(config: AdminSdkConfig): NonNullable<ApiClientConfig["principal"]> {
-  const roles = config.principal?.roles ?? (config.requiredRole ? [config.requiredRole] : ["admin"]);
+  const roles = config.principal?.roles ?? (config.requiredRole ? [config.requiredRole] : []);
   const tenantId = config.principal?.tenantId ?? config.tenantId;
   return {
     subject: config.principal?.principalId ?? config.principal?.subject ?? "admin-sdk",

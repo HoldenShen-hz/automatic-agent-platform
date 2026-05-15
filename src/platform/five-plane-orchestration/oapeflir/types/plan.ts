@@ -29,6 +29,24 @@ export const PlanStepSchema = z.object({
   }),
 });
 
+export const PlanGraphNodeSchema = z.object({
+  nodeId: z.string().min(1),
+  nodeType: z.string().min(1),
+  inputRefs: z.array(z.string()).default([]),
+  riskClass: z.string().min(1),
+  budgetIntent: z.record(z.string(), z.unknown()).optional(),
+  sideEffectProfile: z.record(z.string(), z.unknown()).optional(),
+  timeoutMs: z.number().int().positive().optional(),
+}).passthrough();
+
+export const PlanGraphEdgeSchema = z.object({
+  edgeId: z.string().min(1),
+  fromNodeId: z.string().min(1),
+  toNodeId: z.string().min(1),
+  condition: z.record(z.string(), z.unknown()).optional(),
+  dependencyType: z.enum(["hard", "soft"]).default("hard"),
+}).passthrough();
+
 export const PlanSchema = z.object({
   planId: z.string().min(1),
   taskId: z.string().min(1),
@@ -38,6 +56,10 @@ export const PlanSchema = z.object({
   steps: z.array(PlanStepSchema).min(1),
   createdAt: z.number().int().nonnegative(),
   parentVersion: z.number().int().nonnegative().optional(),
+  nodes: z.array(PlanGraphNodeSchema).optional(),
+  edges: z.array(PlanGraphEdgeSchema).optional(),
+  entryNodeIds: z.array(z.string()).optional(),
+  graphConstraints: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type PlanStrategy = z.infer<typeof PlanStrategySchema>;

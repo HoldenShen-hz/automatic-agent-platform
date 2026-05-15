@@ -31,7 +31,8 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket credentials would be validated here
     },
     async healthCheck(): Promise<boolean> {
-      return policy.evaluate("https://api.twitch.tv").allowed;
+      const token = process.env["OBS_WS_TOKEN"];
+      return typeof token === "string" && token.trim().length > 0 && policy.evaluate("https://api.twitch.tv").allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -49,7 +50,9 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       credentialFingerprint = `obs_${token.trim().slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
-      void credentialFingerprint;
+      if (credentialFingerprint == null) {
+        throw new Error("livestream_adapter.not_authenticated");
+      }
 
       const allowed = policy.evaluate("https://api.twitch.tv").allowed;
       if (!allowed) {

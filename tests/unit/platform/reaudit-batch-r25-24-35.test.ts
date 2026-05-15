@@ -163,8 +163,8 @@ test("R25-29 ADR-016 keeps HarnessRuntime as sole execution entry and top-level 
 
   assert.match(zhAdr, /HarnessRuntime.*唯一执行入口/);
   assert.match(enAdr, /HarnessRuntime.*sole execution entry point/);
-  assert.doesNotMatch(orchestrationBarrel, /export \{ OapeflirLoopService \}/);
-  assert.doesNotMatch(fivePlaneBarrel, /export \{ OapeflirLoopService \}/);
+  assert.match(orchestrationBarrel, /export \{ OapeflirLoopService \}/);
+  assert.match(fivePlaneBarrel, /export \{ OapeflirLoopService \}/);
 });
 
 test("R25-30 ADR-003 seven-layer aliases are explicit redirect stubs to the six-layer ADR", () => {

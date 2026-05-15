@@ -240,11 +240,11 @@ test("release stage cannot transition backward to plan when FSM is complete", ()
   fsm.recordStageCompletion("improve");
   fsm.recordStageCompletion("release");
 
-  // After completion, backward transition to plan is blocked by skip_not_allowed
-  // since the FSM considers any transition from index 8 to earlier stages as skipping
+  // After completion, implicit backward re-entry is blocked. Recovery must start a
+  // new governed run/resume path rather than mutating a completed FSM.
   const result = fsm.canTransitionTo("plan");
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "fsm.skip_not_allowed");
+  assert.equal(result.reasonCode, "fsm.complete");
 });
 
 test("backward transition records correct reasonCodes", () => {

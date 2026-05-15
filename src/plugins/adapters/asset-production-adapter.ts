@@ -39,7 +39,9 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       credentialFingerprint = `figma_${token.slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
-      void credentialFingerprint;
+      if (credentialFingerprint == null) {
+        throw new Error("asset_production_adapter.not_authenticated");
+      }
 
       const { fileKey, nodeId } = params as {
         fileKey?: string;

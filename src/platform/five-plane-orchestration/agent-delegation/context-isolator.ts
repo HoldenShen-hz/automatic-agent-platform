@@ -221,15 +221,14 @@ export class ContextIsolator {
         };
 
       case IsolationLevel.MINIMAL:
-        // Empty required permissions mean inherit parent scope for that dimension;
-        // non-empty requests are still narrowed to the parent subset.
+        // Minimal isolation grants only explicitly requested permissions.
         return {
           resources: requiredPermissions.resources.length > 0
             ? this.intersectLists(parentPermissions.resources, requiredPermissions.resources)
-            : [...parentPermissions.resources],
+            : [],
           actions: requiredPermissions.actions.length > 0
             ? this.intersectLists(parentPermissions.actions, requiredPermissions.actions)
-            : [...parentPermissions.actions],
+            : [],
           constraints: this.mergeConstraints(parentPermissions.constraints, requiredPermissions.constraints),
         };
 

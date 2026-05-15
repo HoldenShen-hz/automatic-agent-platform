@@ -49,7 +49,10 @@ function scanForPiiAndSecrets(text: string): PiiScanResult {
 
   const lowerText = text.toLowerCase();
   for (const keyword of SECRET_KEYWORDS) {
-    if (lowerText.includes(keyword)) {
+    const matched = keyword === "token"
+      ? /\btoken\b/.test(lowerText)
+      : lowerText.includes(keyword);
+    if (matched) {
       secretTypes.push(keyword);
     }
   }
@@ -110,7 +113,6 @@ function minimumConfidenceFor(type: LearningObject["learningType"]): number {
     case "recovery_playbook":
       return 0.7;
     case "model_retraining":
-      return 0.8;
     case "dataset_gap":
       return 0.8;
   }

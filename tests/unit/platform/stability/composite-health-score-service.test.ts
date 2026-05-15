@@ -260,7 +260,7 @@ test("CompositeHealthScoreService status determination - overloaded", () => {
   const service = new CompositeHealthScoreService({
     thresholds: { unhealthyThreshold: 40, degradedThreshold: 70, overloadedThreshold: 90 },
   });
-  service.registerIndicator("system", "sys-1", 95); // score 95, above 90
+  service.registerIndicator("queue", "queue-depth", 95);
 
   const score = service.getHealthScore();
 
@@ -272,7 +272,7 @@ test("CompositeHealthScoreService custom thresholds", () => {
   const service = new CompositeHealthScoreService({
     thresholds: { unhealthyThreshold: 30, degradedThreshold: 60, overloadedThreshold: 80 },
   });
-  service.registerIndicator("system", "sys-1", 65); // score 65, between 60-80
+  service.registerIndicator("system", "sys-1", 55);
 
   const score = service.getHealthScore();
 
@@ -486,7 +486,7 @@ test("CompositeHealthScoreService isHealthy false for overloaded status", () => 
   const service = new CompositeHealthScoreService({
     thresholds: { unhealthyThreshold: 40, degradedThreshold: 70, overloadedThreshold: 90 },
   });
-  service.registerIndicator("system", "sys-1", 95);
+  service.registerIndicator("compute", "cpu", 95);
 
   const score = service.getHealthScore();
 
@@ -506,11 +506,12 @@ test("CompositeHealthScoreService HealthThresholds interface compliance", () => 
   service.registerIndicator("system", "sys-1", 70);
   const score = service.getHealthScore();
 
-  assert.equal(score.status, "overloaded"); // 70 >= 85 is false, but 70 >= 60 is true for degraded... wait no
-  // Let me reconsider: 70 is between 60 and 85, so it's degraded
-  // Actually for overloaded: 95 >= 90
-  // Let's test with 90 score
-  service.updateIndicator(service.getIndicators()[0].indicatorId, 90);
+  assert.equal(score.status, "ok");
+  service.updateIndicator(service.getIndicators()[0].indicatorId, 50);
+  const degradedScore = service.getHealthScore();
+  assert.equal(degradedScore.status, "degraded");
+  service.removeIndicator(service.getIndicators()[0].indicatorId);
+  service.registerIndicator("memory", "mem", 90);
   const scoreOverloaded = service.getHealthScore();
   assert.equal(scoreOverloaded.status, "overloaded");
 });

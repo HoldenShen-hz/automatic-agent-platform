@@ -41,7 +41,9 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       credentialFingerprint = `unity_${token.slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
-      void credentialFingerprint;
+      if (credentialFingerprint == null) {
+        throw new Error("game_dev_adapter.not_authenticated");
+      }
 
       const { projectSlug, buildTarget } = params as {
         projectSlug?: string;

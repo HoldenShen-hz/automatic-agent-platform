@@ -14,7 +14,10 @@ test("R24-30/R24-34/R31-01..R31-25: source fixes stay wired", () => {
   const sessionRepoSource = readFileSync("src/platform/five-plane-state-evidence/truth/sqlite/repositories/session-repository.ts", "utf8");
   const approvalRepoSource = readFileSync("src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.ts", "utf8");
   const workerSnapshotRepoSource = readFileSync("src/platform/five-plane-state-evidence/truth/sqlite/repositories/worker-snapshot-repository.ts", "utf8");
-  const loopServiceSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts", "utf8");
+  const loopServiceSource = [
+    readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts", "utf8"),
+    readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-core.ts", "utf8"),
+  ].join("\n");
   const mappingSource = readFileSync("src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.ts", "utf8");
   const fsmSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.ts", "utf8");
   const timelineSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/stage-timeline.ts", "utf8");
@@ -49,10 +52,10 @@ test("R24-30/R24-34/R31-01..R31-25: source fixes stay wired", () => {
   assert.match(mappingSource, /if \(stage === "learn" \|\| role === "learner"\)/);
   assert.match(mappingSource, /if \(stage === "release" \|\| role === "release_manager"\)/);
   assert.match(mappingSource, /if \(role === "hitl_operator"\)/);
-  assert.match(mappingSource, /return "feedback"/);
+  assert.match(mappingSource, /return "observe"/);
 
-  assert.match(fsmSource, /"knowledge_promotion"/);
-  assert.match(timelineSource, /"knowledge_promotion"/);
+  assert.doesNotMatch(fsmSource, /"knowledge_promotion"/);
+  assert.doesNotMatch(timelineSource, /"knowledge_promotion"/);
   assert.match(fsmSource, /public getCurrentStage\(\): OapeflirStage \{\s+if \(this\.currentStageIndex >= STAGE_ORDER\.length\) \{\s+return STAGE_ORDER\[STAGE_ORDER\.length - 1\]!;/s);
   assert.match(fsmSource, /private readonly skippedReasonCodes = new Map<OapeflirStage, string>\(\)/);
   assert.match(fsmSource, /this\.skippedReasonCodes\.set\(stage, reasonCode\)/);
@@ -82,9 +85,9 @@ test("R24-30/R24-34/R31-01..R31-25: source fixes stay wired", () => {
 test("R31-03/R31-14/R31-17: harness mapping and replay consumer registration stay aligned", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("learner", "learn"), "learn");
   assert.equal(mapHarnessLearnerToOapeflir("release_manager"), "release");
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "approve"), "feedback");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "approve"), "assess");
   assert.deepEqual(getRegisteredConsumers("platform.harness_run.status_changed"), ["truth_projector", "audit_projection"]);
-  assert.deepEqual(getRegisteredConsumers("oapeflir.view.run_lifecycle"), ["oapeflir_projection"]);
+  assert.deepEqual(getRegisteredConsumers("oapeflir.view.run_lifecycle"), ["oapeflir_projection", "inspect_projection"]);
 });
 
 test("R31-07/R31-11: stage transition FSM preserves skip reasons and never returns undefined after completion", () => {
@@ -95,7 +98,7 @@ test("R31-07/R31-11: stage transition FSM preserves skip reasons and never retur
   }
 
   assert.equal(fsm.isComplete(), true);
-  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
+  assert.equal(fsm.getCurrentStage(), "release");
 
   const skipped = new StageTransitionFSM();
   skipped.recordStageSkipped("release", "release.approval_required");

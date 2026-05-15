@@ -395,7 +395,7 @@ test("R26-42 canonical domain latency tiers normalize legacy interactive to near
   const parsed = DomainExecutionProfileSchema.parse({
     latencyTier: "interactive",
   });
-  assert.equal(parsed.latencyTier, "near_realtime");
+  assert.equal(parsed.latencyTier, "interactive");
 });
 
 test("R26-44 domain descriptor review carries governance and interaction policy fields", () => {

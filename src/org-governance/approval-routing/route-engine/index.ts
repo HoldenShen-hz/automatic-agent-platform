@@ -139,11 +139,9 @@ export function resolveAmountRoute(
   const thresholdFxSnapshot = fxSnapshot ?? normalizedAmount.fxSnapshot;
   const matchedRule = rules.find((item) => normalizedAmount.amountCny <= normalizeThresholdCny(item, thresholdFxSnapshot)) ?? null;
   if (!matchedRule) {
-    const requestedNodeExists = nodes.some((item) => item.orgNodeId === normalizedRequest.orgNodeId);
-    if (!requestedNodeExists) {
-      return null;
-    }
-    return nodes.find((item) => item.nodeType === "company") ?? null;
+    return nodes.find((item) => item.nodeType === "company" && item.active)
+      ?? nodes.find((item) => item.nodeType === "company")
+      ?? null;
   }
 
   return nodes.find((item) =>
@@ -324,7 +322,7 @@ function resolveApprovalRouteWithMode(
   const ownerChain = buildOwnerChain(nodes, matched?.orgNodeId ?? request.orgNodeId);
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
   const baseApproverChain = applySodPolicy(request, delegatedChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
-  const effectiveApproverChain = baseApproverChain.length > 0 ? baseApproverChain : ["platform_admin"];
+  const effectiveApproverChain = baseApproverChain;
 
   if (routingMode === "parallel" || routingMode === "countersign") {
     // R9-33: For parallel/countersign, split approvers into groups
@@ -560,12 +558,15 @@ function normalizeApprovalAmount(
 
 function validateFxSnapshot(
   snapshot: ApprovalFxSnapshot,
-  _now: number = Date.now(),
-  _maxAgeMs: number = DEFAULT_FX_SNAPSHOT_MAX_AGE_MS,
+  now: number = Date.now(),
+  maxAgeMs: number = DEFAULT_FX_SNAPSHOT_MAX_AGE_MS,
 ): ApprovalFxSnapshot {
   const capturedAtMs = Date.parse(snapshot.capturedAt);
   if (!Number.isFinite(capturedAtMs)) {
     throw new Error(`approval_route.fx_snapshot_invalid_captured_at:${snapshot.capturedAt}`);
+  }
+  if (now - capturedAtMs > maxAgeMs) {
+    throw new Error(`approval_route.fx_snapshot_stale:${snapshot.capturedAt}`);
   }
   return {
     baseCurrency: snapshot.baseCurrency.toUpperCase(),

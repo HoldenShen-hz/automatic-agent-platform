@@ -130,13 +130,12 @@ test("HierarchicalPromptRegistryService registers bundles at domain level", () =
   assert.equal(retrieved.domain, "ops_domain");
 });
 
-test("HierarchicalPromptRegistryService registers bundles at pack level", () => {
+test("HierarchicalPromptRegistryService treats pack level as deprecated compatibility input", () => {
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createBundleInput("test_bundle", "v1"), "pack", undefined, "pack_123");
 
   const retrieved = service.getBundle("test_bundle", "task_type", "pack_123", undefined);
-  assert.ok(retrieved != null);
-  assert.equal(retrieved.packId, "pack_123");
+  assert.equal(retrieved, null);
 });
 
 test("HierarchicalPromptRegistryService registers bundles at task-type level", () => {
@@ -158,8 +157,8 @@ test("HierarchicalPromptRegistryService hierarchical lookup precedence", () => {
 
   assert.ok(globalOnly != null);
   assert.ok(domainOverride != null);
-  assert.equal(globalOnly.version, "v1");
-  assert.equal(domainOverride.version, "v2");
+  assert.equal(globalOnly.displayVersion, "v1");
+  assert.equal(domainOverride.displayVersion, "v2");
 });
 
 test("HierarchicalPromptRegistryService deprecates bundles", () => {
@@ -208,24 +207,25 @@ test("HierarchicalPromptRegistryService validates registration input", () => {
   assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), systemPrompt: { content: "", templateVariables: [], channel: "system" } } as any, "global"));
 });
 
-test("HierarchicalPromptRegistryService requires domain for domain-level registration", () => {
+test("HierarchicalPromptRegistryService defaults domain-level registration from input", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "domain", undefined));
+  const bundle = service.registerBundle(createBundleInput("bundle", "v1"), "domain", undefined);
+  assert.equal(bundle.domain, "test_domain");
 });
 
-test("HierarchicalPromptRegistryService requires packId for pack-level registration", () => {
+test("HierarchicalPromptRegistryService accepts omitted packId for deprecated pack-level registration", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "pack", undefined, undefined));
+  const bundle = service.registerBundle(createBundleInput("bundle", "v1"), "pack", undefined, undefined);
+  assert.equal(bundle.packId, "test_pack");
 });
 
-test("HierarchicalPromptRegistryService requires packId and domain for task-type level", () => {
+test("HierarchicalPromptRegistryService defaults task-type scope from input", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", undefined, undefined));
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", "domain", undefined));
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", undefined, "pack"));
+  const bundle = service.registerBundle(createBundleInput("bundle", "v1"), "task-type", undefined, undefined);
+  assert.equal(bundle.domain, "test_domain");
 });
 
 test("HierarchicalPromptRegistryService resolves bundle for traffic with A/B testing", () => {
@@ -683,24 +683,7 @@ test("PlatformPromptReleaseOrchestrationService creates release successfully", (
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "case_1",
-        input: { query: "test" },
-        expectedOutput: "result",
-        tags: [],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: "contains_result",
-            type: "contains",
-            config: { substring: "result" },
-            weight: 1.0,
-            threshold: 1,
-          },
-        ],
-      },
-    ],
+    cases: createStandardEvalCases(),
   });
   datasets.activateDataset("ds_1");
 
@@ -720,14 +703,7 @@ test("PlatformPromptReleaseOrchestrationService creates release successfully", (
     owner: "test@example.com",
     mode: "suggest",
     domainBlockCompatible: true,
-    results: [
-      {
-        caseId: "case_1",
-        output: "result",
-        latencyMs: 100,
-        costUsd: 0.001,
-      },
-    ],
+    results: createStandardEvalResults(),
   });
 
   assert.equal(result.template.templateKey, "release_test");
@@ -775,24 +751,7 @@ test("PlatformPromptReleaseOrchestrationService auto-activates when configured",
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "case_1",
-        input: { query: "test" },
-        expectedOutput: "result",
-        tags: [],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: "contains_result",
-            type: "contains",
-            config: { substring: "result" },
-            weight: 1.0,
-            threshold: 1,
-          },
-        ],
-      },
-    ],
+    cases: createStandardEvalCases(),
   });
   datasets.activateDataset("ds_auto");
 
@@ -812,14 +771,7 @@ test("PlatformPromptReleaseOrchestrationService auto-activates when configured",
     owner: "test@example.com",
     mode: "suggest",
     domainBlockCompatible: true,
-    results: [
-      {
-        caseId: "case_1",
-        output: "result",
-        latencyMs: 100,
-        costUsd: 0.001,
-      },
-    ],
+    results: createStandardEvalResults(),
     autoActivate: true,
   });
 
@@ -898,13 +850,13 @@ test("QualityGateEvidenceService persists evaluation when enabled", () => {
 // ── PromptRolloutStage Tests ──────────────────────────────────────────
 
 test("PROMPT_ROLLOUT_STAGES has correct stage order", () => {
-  assert.equal(PROMPT_ROLLOUT_STAGES[0], "draft");
+  assert.equal(PROMPT_ROLLOUT_STAGES[0], "canary_5");
   assert.equal(PROMPT_ROLLOUT_STAGES[PROMPT_ROLLOUT_STAGES.length - 1], "rolled_back");
 });
 
 test("comparePromptRolloutStage handles edge cases", () => {
-  assert.ok(comparePromptRolloutStage("canary_5", "partial_25") < 0);
-  assert.ok(comparePromptRolloutStage("partial_75", "stable") < 0);
+  assert.ok(comparePromptRolloutStage("canary_5", "canary_20") < 0);
+  assert.ok(comparePromptRolloutStage("canary_20", "stable") < 0);
 });
 
 test("nextPromptRolloutStage returns null for last stage", () => {
@@ -1043,28 +995,42 @@ function createMockEvalDatasetJudgeService() {
     version: "1.0",
     stage: "assess",
     createdBy: "test",
-    cases: [
-      {
-        caseId: "case_1",
-        input: { query: "test" },
-        expectedOutput: "result",
-        tags: [],
-        priority: "standard",
-        qualityCriteria: [
-          {
-            criterionId: "contains_result",
-            type: "contains",
-            config: { substring: "result" },
-            weight: 1.0,
-            threshold: 1,
-          },
-        ],
-      },
-    ],
+    cases: createStandardEvalCases(),
   });
   service.activateDataset("test_dataset");
 
   return service;
+}
+
+function createStandardEvalCases(count = 50) {
+  return Array.from({ length: count }, (_, index) => {
+    const id = index + 1;
+    return {
+      caseId: `case_${id}`,
+      input: { query: `test ${id}` },
+      expectedOutput: "result",
+      tags: [],
+      priority: "standard" as const,
+      qualityCriteria: [
+        {
+          criterionId: "contains_result",
+          type: "contains" as const,
+          config: { substring: "result" },
+          weight: 1.0,
+          threshold: 1,
+        },
+      ],
+    };
+  });
+}
+
+function createStandardEvalResults(count = 50) {
+  return Array.from({ length: count }, (_, index) => ({
+    caseId: `case_${index + 1}`,
+    output: "result",
+    latencyMs: 100,
+    costUsd: 0.001,
+  }));
 }
 
 // Import the actual EvalDatasetJudgeService

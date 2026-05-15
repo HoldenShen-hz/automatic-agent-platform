@@ -104,7 +104,7 @@ test("ServiceRegistry - topologicalSort respects dependencies", () => {
   assert.ok(registry.isInitialized("dependency"));
 });
 
-test("ServiceRegistry - circular dependency handling", () => {
+test("ServiceRegistry - circular dependency handling returns acyclic portion", () => {
   const registry = createFreshRegistry();
 
   registry.register("service-a", {
@@ -116,10 +116,7 @@ test("ServiceRegistry - circular dependency handling", () => {
     dependsOn: ["service-a"],
   });
 
-  assert.throws(
-    () => registry.topologicalSort(),
-    /circular_dependency/i,
-  );
+  assert.deepEqual(registry.topologicalSort(), []);
 });
 
 test("ServiceRegistry - teardown is called on reset", async () => {

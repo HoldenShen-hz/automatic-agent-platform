@@ -125,6 +125,14 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
+      if (this.isComplete()) {
+        return {
+          allowed: false,
+          targetStage,
+          reasonCode: "fsm.complete",
+          reasonCodes: [`fsm.complete: completed pipeline cannot re-enter ${targetStage}`],
+        };
+      }
       const feedbackCompleted = this.stageStatuses.get("feedback") === "completed";
       if (feedbackCompleted && FEEDBACK_REENTRY_TARGETS.includes(targetStage)) {
         return {
@@ -142,7 +150,30 @@ export class StageTransitionFSM {
       };
     }
 
+    const entryCondition = STAGE_ENTRY_CONDITIONS.get(targetStage);
+    if (entryCondition?.validationRequired) {
+      for (const pred of validPredecessors) {
+        const predStatus = this.stageStatuses.get(pred);
+        if (predStatus && !entryCondition.requiredStatus.includes(predStatus)) {
+          return {
+            allowed: false,
+            targetStage,
+            reasonCode: "fsm.prerequisite_not_met",
+            reasonCodes: [`fsm.prerequisite_not_met: ${pred} must be ${entryCondition.requiredStatus.join(" or ")} but was ${predStatus}`],
+          };
+        }
+      }
+    }
+
     if (targetIndex === currentIndex) {
+      if (validPredecessors.length > 0) {
+        return {
+          allowed: true,
+          targetStage,
+          reasonCode: "fsm.transition_allowed",
+          reasonCodes: [`fsm.transition_allowed: ${validPredecessors.join(" or ")} → ${targetStage}`],
+        };
+      }
       return {
         allowed: true,
         targetStage,
@@ -158,21 +189,6 @@ export class StageTransitionFSM {
         reasonCode: "fsm.invalid_predecessor",
         reasonCodes: [`fsm.invalid_predecessor: ${currentStage} is not a valid predecessor for ${targetStage}`],
       };
-    }
-
-    const entryCondition = STAGE_ENTRY_CONDITIONS.get(targetStage);
-    if (entryCondition?.validationRequired) {
-      for (const pred of validPredecessors) {
-        const predStatus = this.stageStatuses.get(pred);
-        if (predStatus && !entryCondition.requiredStatus.includes(predStatus)) {
-          return {
-            allowed: false,
-            targetStage,
-            reasonCode: "fsm.prerequisite_not_met",
-            reasonCodes: [`fsm.prerequisite_not_met: ${pred} must be ${entryCondition.requiredStatus.join(" or ")} but was ${predStatus}`],
-          };
-        }
-      }
     }
 
     return {

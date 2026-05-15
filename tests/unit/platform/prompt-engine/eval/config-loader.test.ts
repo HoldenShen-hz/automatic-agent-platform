@@ -97,22 +97,18 @@ test("loadQualityConfig parses valid config file", () => {
   }
 });
 
-test("loadQualityConfig returns defaults when config is invalid JSON", () => {
+test("loadQualityConfig exposes invalid JSON errors", () => {
   setup();
   try {
     writeFileSync(QUALITY_CONFIG_PATH, "not valid json {", "utf-8");
 
-    const config = loadQualityConfig(QUALITY_CONFIG_PATH);
-
-    // Should return defaults
-    assert.equal(config.qualityGate.defaultPassThreshold, 0.8);
-    assert.equal(config.qualityGate.criticalPassThreshold, 0.95);
+    assert.throws(() => loadQualityConfig(QUALITY_CONFIG_PATH), SyntaxError);
   } finally {
     teardown();
   }
 });
 
-test("loadQualityConfig returns defaults when config fails Zod validation", () => {
+test("loadQualityConfig exposes Zod validation errors", () => {
   setup();
   try {
     // Invalid: enforcement should be "blocking" or "warning", not "invalid"
@@ -142,11 +138,7 @@ test("loadQualityConfig returns defaults when config fails Zod validation", () =
 
     writeFileSync(QUALITY_CONFIG_PATH, JSON.stringify(invalidConfig), "utf-8");
 
-    const config = loadQualityConfig(QUALITY_CONFIG_PATH);
-
-    // Should return defaults due to validation failure
-    assert.equal(config.qualityGate.defaultPassThreshold, 0.8);
-    assert.equal(config.qualityScoreWeights.successSignal, 0.4);
+    assert.throws(() => loadQualityConfig(QUALITY_CONFIG_PATH), /defaultPassThreshold|Invalid enum value/);
   } finally {
     teardown();
   }

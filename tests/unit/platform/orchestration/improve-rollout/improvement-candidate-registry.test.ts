@@ -45,7 +45,7 @@ test("ImprovementCandidateRegistry.register creates candidate with correct field
   assert.equal(candidate.taskId, "task-1");
   assert.equal(candidate.description, "Test improvement candidate");
   assert.equal(candidate.expectedBenefit, "Test benefit");
-  assert.equal(candidate.status, "proposed");
+  assert.equal(candidate.status, "candidate_created");
   assert.ok(typeof candidate.candidateId === "string");
   assert.ok(candidate.candidateId.startsWith("improvement_candidate"));
 });

@@ -171,16 +171,14 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
     assert.equal(pending.length, 0);
   });
 
-  test("ref count tracks multiple subscriptions per consumer", () => {
+  test("re-subscribing a consumer replaces the handler without duplicate refs", () => {
     // Subscribe twice to same consumer (simulated by different handlers)
     bus.subscribe("consumer-ref", () => { /* handler 1 */ });
     bus.subscribe("consumer-ref", () => { /* handler 2 */ });
     bus.unsubscribe("consumer-ref");
 
-    // Should still be tracked since we had 2 subscriptions
     const refCount = bus["activeConsumerRefCounts"].get("consumer-ref");
-    // After first unsubscribe, ref count should be 1
-    assert.equal(refCount, 1);
+    assert.equal(refCount, undefined);
   });
 
   test("batch published events create pending acks for all consumers", () => {

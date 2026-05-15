@@ -128,7 +128,7 @@ test("normalizeError converts GatewayTargetNotFoundError to 404", () => {
   const error = new GatewayTargetNotFoundError("my-query");
   const result = normalizeError(error);
   assert.equal((result as ApiError).statusCode, 404);
-  assert.equal((result as ApiError).code, "gateway.target_not_found:my-query");
+  assert.equal((result as ApiError).code, "gateway.target_not_found");
 });
 
 test("normalizeError converts GatewayTargetAmbiguousError to 409", () => {

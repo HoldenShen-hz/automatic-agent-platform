@@ -170,7 +170,7 @@ test("PromptVersionManager.listBundleVersions returns correct metadata", () => {
 
   assert.equal(versions.length, 2);
   // Latest should be current
-  assert.equal(versions[1]?.isCurrent, true);
+  assert.equal(versions[0]?.isCurrent, true);
   // Weight 100 should be default
   assert.equal(versions[0]?.isDefault, true);
 });

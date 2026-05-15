@@ -103,7 +103,7 @@ test("R27-25/R27-35 edge runtime sync exposes canonical conflict taxonomy and co
     { [conflictedEnvelope.recordId]: "digest-cloud" },
     { [conflictedEnvelope.recordId]: "{\"winner\":\"cloud\"}" },
   );
-  assert.equal(conflicted.decisions[0]?.resolution, "accept_cloud");
+  assert.equal(conflicted.decisions[0]?.resolution, "merge");
 });
 
 test("R27-26 agent registry accepts canonical lifecycle aliases while preserving internal transitions", () => {

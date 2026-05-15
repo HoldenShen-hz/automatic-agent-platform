@@ -73,7 +73,52 @@ export class ApprovalRoutingService {
     escalationContext: ApprovalEscalationEvaluationContext = {},
   ): ApprovalRoutingResult {
     const delegationMap = this.buildDelegationMap(request.orgNodeId, nowIso);
-    const base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
+    let base: ApprovalRouteDecision;
+    try {
+      base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith("approval_route.empty_approver_chain:")) {
+        throw error;
+      }
+      const matchedOrgNodeId = error.message.slice("approval_route.empty_approver_chain:".length) || request.orgNodeId;
+      base = {
+        matchedOrgNodeId,
+        approverChain: [],
+        delegated: false,
+        routingStrategy: this.amountThresholdRules.length > 0 ? "amount_based" : "org_chart",
+        routeSnapshot: {
+          snapshotId: `approval_route_snapshot:${request.requesterId}:${matchedOrgNodeId}:empty`,
+          createdAt: createdAtIso,
+          expiresAt: new Date(Date.parse(createdAtIso) + 24 * 60 * 60 * 1000).toISOString(),
+          orgVersion: request.orgVersion ?? "org-chart/v2",
+          policyVersion: request.policyVersion ?? "approval-routing/v2",
+          requesterId: request.requesterId,
+          matchedOrgNodeId,
+          routingStrategy: this.amountThresholdRules.length > 0 ? "amount_based" : "org_chart",
+          approverIds: [],
+          amount: {
+            originalValue: request.amount?.value ?? request.amountUsd ?? 0,
+            originalCurrency: request.amount?.currency?.toUpperCase() ?? "USD",
+            amountCny: request.amount?.currency?.toUpperCase() === "CNY"
+              ? request.amount.value
+              : (request.amountUsd ?? 0) * 7.2,
+            fxSnapshot: null,
+          },
+          evidenceRefs: request.evidenceRefs ?? [],
+          sodSnapshot: {
+            requesterManagerIds: request.requesterManagerIds ?? [],
+            blockedApproverIds: [],
+            budgetOwnerId: request.budgetOwnerId ?? null,
+            executionOwnerId: request.executionOwnerId ?? request.requesterId,
+          },
+          coiSnapshot: {
+            conflictedApproverIds: request.conflictedApproverIds ?? [],
+            blockedApproverIds: request.conflictedApproverIds ?? [],
+          },
+          legalEntityApprovalRoles: [],
+        },
+      };
+    }
     const escalation = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel, escalationContext);
     const escalatedTo = escalation.escalatedTo;
     const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)

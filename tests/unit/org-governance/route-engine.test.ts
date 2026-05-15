@@ -180,7 +180,7 @@ test("AmountBasedRoutingStrategy.selectNode respects amount threshold", () => {
   assert.ok(["department", "division"].includes(result?.nodeType ?? ""));
 });
 
-test("AmountBasedRoutingStrategy.selectNode uses fallback to company when no rule matches", () => {
+test("AmountBasedRoutingStrategy.selectNode falls back to company when no rule matches", () => {
   const rules: readonly AmountThresholdRule[] = [
     { maxAmountUsd: 100, targetNodeTypes: ["department"] },
   ];
@@ -235,7 +235,7 @@ test("resolveAmountRoute returns matching node for amount within threshold", () 
   assert.ok(["department", "team"].includes(result?.nodeType ?? ""));
 });
 
-test("resolveAmountRoute uses fallback company when no rule matches", () => {
+test("resolveAmountRoute falls back to company when no rule matches", () => {
   const rules: readonly AmountThresholdRule[] = [
     { maxAmountUsd: 100, targetNodeTypes: ["team"] },
   ];
@@ -449,7 +449,7 @@ test("resolveApprovalRoute returns platform_admin fallback when no owners", () =
   assert.deepStrictEqual(result.approverChain, ["platform_admin"]);
 });
 
-test("resolveApprovalRoute applies SoD policy", () => {
+test("resolveApprovalRoute rejects route when SoD removes every approver", () => {
   const nodesWithMembers: OrgNode[] = [
     createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["member-1", "member-2"] }),
   ];
@@ -461,11 +461,10 @@ test("resolveApprovalRoute applies SoD policy", () => {
     amountUsd: 0,
   };
 
-  const result = resolveApprovalRoute(nodesWithMembers, request);
-
-  assert.ok(!result.approverChain.includes("member-1"), "Initiator should be filtered out");
-  assert.deepStrictEqual(result.approverChain, ["platform_admin"]);
-  assert.deepStrictEqual(result.routeSnapshot.sodSnapshot.blockedApproverIds.sort(), ["member-1", "member-2"]);
+  assert.throws(
+    () => resolveApprovalRoute(nodesWithMembers, request),
+    /approval_route\.empty_approver_chain:team-1/,
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

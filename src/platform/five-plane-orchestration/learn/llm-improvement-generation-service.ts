@@ -1,6 +1,6 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { LearningObject } from "./learning-object-model.js";
+import { preserveLearningType, type LearningObject } from "./learning-object-model.js";
 import {
   createUnifiedChatProvider,
   type UnifiedChatProvider,
@@ -132,7 +132,9 @@ Return a JSON array of LearningObjects, one per signal.`;
   }
 
   private mapParsedToLearningObject(item: Record<string, unknown>, signal: LearningSignal): LearningObject {
-    const learningType = (item.learningType as LearningObject["learningType"]) ?? signal.learningType;
+    const learningType = preserveLearningType(
+      typeof item.learningType === "string" ? item.learningType as Parameters<typeof preserveLearningType>[0] : signal.learningType,
+    );
     const title = (item.title as string) ?? `Improvement: ${signal.valueSummary.slice(0, 40)}`;
     const summary = (item.summary as string) ?? signal.valueSummary;
     const recommendation = (item.recommendation as string) ?? this.templateRecommendation(signal);
@@ -163,7 +165,7 @@ Return a JSON array of LearningObjects, one per signal.`;
 
   private fallbackTemplateGeneration(signals: readonly LearningSignal[]): LearningObject[] {
     return signals.map((signal) => {
-      const learningType = signal.learningType;
+      const learningType = preserveLearningType(signal.learningType);
       return {
         learningObjectId: newId("learning"),
         objectId: newId("learning"),

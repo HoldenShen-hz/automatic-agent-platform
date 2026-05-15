@@ -219,22 +219,10 @@ function buildConsensusResult(
   const holdCount = results.filter((r) => r.report.gateDecision === "hold").length;
   const rollbackCount = results.filter((r) => r.report.gateDecision === "rollback").length;
   if (results.length > 0 && promoteCount === 0 && rollbackCount === 0 && holdCount === results.length) {
-    const signalValues = (evaluation?.results ?? []).flatMap((result) => Object.values(result.criterionSignals ?? {}));
-    const averageSignal = signalValues.length > 0
-      ? signalValues.reduce((sum, value) => sum + Number(value), 0) / signalValues.length
-      : 0.5;
-    if (averageSignal < 0.3) {
-      return {
-        consensusDecision: "rollback",
-        individualResults: results,
-        agreementScore: 1,
-        blockingFindings: [...new Set(results.flatMap((r) => r.report.blockingFindings))],
-      };
-    }
     return {
       consensusDecision: "hold",
       individualResults: results,
-      agreementScore: 0,
+      agreementScore: 1,
       blockingFindings: [...new Set(results.flatMap((r) => r.report.blockingFindings))],
     };
   }

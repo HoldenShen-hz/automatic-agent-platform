@@ -389,7 +389,8 @@ test("HarnessRuntimeService uses RecoveryController to recover from persisted fa
   const resumed = service.handleFailure(run, "tool_timeout");
 
   assert.equal(recovered.status, "paused");
-  assert.equal(recovered.pauseReason, "recovery");
-  assert.equal(recovered.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
-  assert.equal(resumed.status, "running");
+  assert.equal(recovered.pauseReason, "sleep");
+  assert.ok(recovered.sleepLease !== null);
+  assert.equal(resumed.status, "paused");
+  assert.equal(resumed.pauseReason, "hitl");
 });

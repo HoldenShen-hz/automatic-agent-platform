@@ -4,12 +4,11 @@ export const PHASE_1_LEARNING_TYPES = [
   "failure_pattern",
   "user_correction",
   "recovery_playbook",
-  "model_retraining",
-  "dataset_gap",
 ] as const;
 
 export type Phase1LearningType = typeof PHASE_1_LEARNING_TYPES[number];
-export type LearningObjectKind = Phase1LearningType;
+export type DeprecatedLearningType = "model_retraining" | "dataset_gap";
+export type LearningObjectKind = Phase1LearningType | DeprecatedLearningType;
 export type LearningObjectStatus = "created" | "validating" | "validated" | "rejected" | "promoted";
 
 export const LearningObjectPromotionStatusSchema = z.enum([
@@ -70,8 +69,8 @@ const LearningObjectContentSchema = z.object({
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1).optional(),
   objectId: z.string().min(1).optional(),
-  learningType: z.enum(PHASE_1_LEARNING_TYPES).optional(),
-  kind: z.enum(PHASE_1_LEARNING_TYPES).optional(),
+  learningType: z.union([z.enum(PHASE_1_LEARNING_TYPES), z.enum(["model_retraining", "dataset_gap"])]).optional(),
+  kind: z.union([z.enum(PHASE_1_LEARNING_TYPES), z.enum(["model_retraining", "dataset_gap"])]).optional(),
   title: z.string().min(1).optional(),
   summary: z.string().min(1).optional(),
   content: LearningObjectContentSchema.optional(),
@@ -121,7 +120,7 @@ function promotionStatusFromStatus(status: LearningObjectStatus): LearningObject
 }
 
 export function normalizeLearningType(
-  learningType: Phase1LearningType,
+  learningType: Phase1LearningType | DeprecatedLearningType,
 ): Phase1LearningType {
   switch (learningType) {
     case "failure_pattern":
@@ -135,16 +134,24 @@ export function normalizeLearningType(
   }
 }
 
+export function preserveLearningType(
+  learningType: Phase1LearningType | DeprecatedLearningType,
+): LearningObjectKind {
+  return learningType;
+}
+
 export function parseLearningObject(input: unknown): LearningObject {
   const parsed = LearningObjectSchema.parse(input);
+  const inputRecord = typeof input === "object" && input !== null ? input as Record<string, unknown> : {};
   const objectId = parsed.objectId ?? parsed.learningObjectId;
   if (objectId == null) {
     throw new Error("learning.object_id_required");
   }
-  const kind = parsed.kind ?? parsed.learningType;
-  if (kind == null) {
+  const rawKind = parsed.kind ?? parsed.learningType;
+  if (rawKind == null) {
     throw new Error("learning.kind_required");
   }
+  const kind = preserveLearningType(rawKind);
   const content = parsed.content ?? {
     title: parsed.title ?? "",
     summary: parsed.summary ?? "",
@@ -152,11 +159,9 @@ export function parseLearningObject(input: unknown): LearningObject {
     sourceSignalIds: parsed.sourceSignalIds,
     recommendation: parsed.recommendation ?? "",
   };
-  const promotionStatus = parsed.promotionStatus ?? (
-    parsed.status != null
+  const promotionStatus = parsed.status != null && !Object.prototype.hasOwnProperty.call(inputRecord, "promotionStatus")
       ? promotionStatusFromStatus(parsed.status)
-      : "quarantine"
-  );
+      : parsed.promotionStatus;
   const status = parsed.status ?? statusFromPromotionStatus(promotionStatus);
 
   return {

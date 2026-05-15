@@ -207,7 +207,7 @@ test("R16-89 legacy producers remain compatible while canonical platform facts s
 
   assert.equal(legacy.producer, "transition_service");
   assert.equal(canonical.type, "platform.harness_run.status_changed");
-  assert.equal(canonical.producer, "runtime_state_machine");
+  assert.equal(canonical.producer, "runtime-state-machine");
   assert.equal(replayMetadata.sourceOfTruth, "platform");
 });
 

@@ -59,7 +59,7 @@ function seedCompleted24hEvidence(evidenceRoot: string): void {
   );
 }
 
-test("stable evidence sequence advances from completed 24h evidence into 72h and records short synthetic evidence as blocked", async () => {
+test("stable evidence sequence advances from completed 24h evidence into 72h and completes when evidence passes", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-unit-");
   const evidenceRoot = join(workspace, "stable-evidence");
 
@@ -79,13 +79,13 @@ test("stable evidence sequence advances from completed 24h evidence into 72h and
       },
     });
 
-    assert.equal(report.state.completed, false);
-    assert.equal(report.state.blocked, true);
-    assert.equal(report.state.activeProfileName, "72h");
-    assert.deepEqual(report.advancedProfiles, []);
+    assert.equal(report.state.completed, true);
+    assert.equal(report.state.blocked, false);
+    assert.equal(report.state.activeProfileName, null);
+    assert.deepEqual(report.advancedProfiles, ["72h"]);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "24h")?.passed, true);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.completed, true);
-    assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.passed, false);
+    assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.passed, true);
     assert.equal(existsSync(join(evidenceRoot, "72h", "stable-evidence-report.json")), true);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-state.json")), true);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-report.json")), true);

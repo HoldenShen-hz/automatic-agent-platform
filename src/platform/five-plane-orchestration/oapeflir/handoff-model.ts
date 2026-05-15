@@ -84,6 +84,7 @@ export function compactAgentHandoff(
   options: HandoffBudgetOptions = {},
 ): AgentHandoff {
   const clone: AgentHandoff = JSON.parse(JSON.stringify(handoff)) as AgentHandoff;
+  clone.contextSummary ??= clone.state.latestSummary;
   const budget = resolveBudget(options);
   let size = estimatedTokens(clone);
   if (size <= budget) {
@@ -104,6 +105,7 @@ export function compactAgentHandoff(
 
   clone.planDelta.removedSteps = [];
   clone.planDelta.changedSteps = [];
+  clone.planDelta.addedSteps = [];
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
@@ -121,5 +123,14 @@ export function compactAgentHandoff(
 
   clone.primaryRefs = clone.primaryRefs.slice(0, 3);
   clone.fact.artifactRefs = clone.fact.artifactRefs.slice(0, 3);
+  size = estimatedTokens(clone);
+  if (size <= budget) {
+    return clone;
+  }
+
+  clone.primaryRefs = clone.primaryRefs.slice(0, 1);
+  clone.fact.artifactRefs = [];
+  clone.state.blockers = [];
+  clone.state.latestSummary = clone.contextSummary.slice(0, Math.max(0, budget * 4));
   return clone;
 }

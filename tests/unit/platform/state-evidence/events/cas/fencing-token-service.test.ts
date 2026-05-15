@@ -40,25 +40,26 @@ describe("FencingTokenService", () => {
 
     it("should include execution ID in token", () => {
       const token = service.generateFencingToken("exec-123", "node-1");
+      const result = service.validateFencingToken(token, "node-1");
 
-      assert.ok(token.startsWith("exec-123-"), "Token should start with execution ID");
+      assert.strictEqual(result.executionId, "exec-123");
     });
 
     it("should include node ID in token", () => {
       const token = service.generateFencingToken("exec-1", "node-specific");
+      const result = service.validateFencingToken(token, "node-specific");
 
-      assert.ok(token.includes("-node-specific-"), "Token should include node ID");
+      assert.strictEqual(result.owner, "node-specific");
     });
 
     it("should generate monotonically increasing tokens", () => {
       const token1 = service.generateFencingToken("exec1", "node1");
       const token2 = service.generateFencingToken("exec1", "node1");
 
-      // Extract counter from tokens (format: executionId-nodeId-counter-timestamp)
-      const parts1 = token1.split("-");
-      const parts2 = token2.split("-");
-      assert.ok(parts1.length >= 3, "Token should have at least 3 parts");
-      assert.ok(parts2.length >= 3, "Token should have at least 3 parts");
+      const parts1 = token1.split("::");
+      const parts2 = token2.split("::");
+      assert.strictEqual(parts1.length, 4, "Token should have 4 opaque parts");
+      assert.strictEqual(parts2.length, 4, "Token should have 4 opaque parts");
       const counter1 = parseInt(parts1[2]!, 10);
       const counter2 = parseInt(parts2[2]!, 10);
 
@@ -67,9 +68,9 @@ describe("FencingTokenService", () => {
 
     it("should include timestamp in token", () => {
       const token = service.generateFencingToken("exec-1", "node-1");
-      const parts = token.split("-");
+      const parts = token.split("::");
 
-      assert.ok(parts.length >= 4, "Token should have at least 4 parts");
+      assert.strictEqual(parts.length, 4, "Token should have 4 opaque parts");
       const timestamp = parseInt(parts[3]!, 10);
       assert.ok(timestamp > 0, "Timestamp should be a positive number");
     });

@@ -120,7 +120,7 @@ export function buildX1FabricBootstrap(): X1FabricBootstrap {
 }
 
 export function performBootstrapHealthCheck(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): BootstrapHealthCheck {
   const failedServices = FIVE_PLANE_BOOTSTRAP_SERVICE_IDS.filter((serviceId) => !registry.isInitialized(serviceId));
   return {

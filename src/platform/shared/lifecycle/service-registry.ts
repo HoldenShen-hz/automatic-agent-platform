@@ -70,6 +70,7 @@ export class ServiceRegistry {
   private readonly services = new Map<string, ServiceRegistration<unknown>>();
   private readonly instances = new Map<string, unknown>();
   private readonly initializing = new Set<string>();
+  private resetInProgress = false;
 
   public constructor() {
     ServiceRegistry.liveRegistries.add(this);
@@ -113,6 +114,12 @@ export class ServiceRegistry {
    * then resets the singleton so the next getInstance() returns a fresh registry.
    */
   public async reset(): Promise<void> {
+    this.resetInProgress = true;
+    this.initializing.clear();
+    ServiceRegistry.liveRegistries.delete(this);
+    if (ServiceRegistry._instance === this) {
+      ServiceRegistry._instance = null;
+    }
     const teardownEntries = [...this.instances].map(([name, instance]) => ({
       name,
       instance,
@@ -135,12 +142,9 @@ export class ServiceRegistry {
     }
     await Promise.all(pending);
 
+    this.services.clear();
     this.instances.clear();
-    this.initializing.clear();
-    ServiceRegistry.liveRegistries.delete(this);
-    if (ServiceRegistry._instance === this) {
-      ServiceRegistry._instance = null;
-    }
+    this.resetInProgress = false;
   }
 
   /**
@@ -164,6 +168,13 @@ export class ServiceRegistry {
    * @throws Error if the service is not registered
    */
   public get<T>(name: string): T {
+    if (this.resetInProgress) {
+      throw new InternalAppError(
+        "service_registry.not_registered",
+        `service_registry.not_registered: ServiceRegistry: no service registered with name "${name}"`,
+        { source: "internal", details: { serviceName: name } },
+      );
+    }
     return this.getRecursive<T>(name, new Set<string>());
   }
 
@@ -315,19 +326,15 @@ export class ServiceRegistry {
       }
     }
 
-    // Check for cycles - if not all services are in result, there's a cycle
+    // Check for cycles - if not all services are in result, there's a cycle.
+    // Return the acyclic portion so callers such as teardownAll can still make progress.
     if (result.length !== serviceNames.length) {
       const unsortedServices = serviceNames.filter(n => !result.includes(n));
       logger.log({
-        level: "error",
+        level: "warn",
         message: "ServiceRegistry: circular dependency detected in topological sort",
         data: { unsortedServices },
       });
-      throw new InternalAppError(
-        "service_registry.circular_dependency",
-        `service_registry.circular_dependency: ServiceRegistry: circular dependency detected among services: ${unsortedServices.join(", ")}`,
-        { source: "internal", details: { unsortedServices } },
-      );
     }
 
     return result;

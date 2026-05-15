@@ -124,15 +124,12 @@ export class SqliteLeaseRepository implements LeaseRepository {
     const originalLeaseDuration = new Date(existing.expiresAt).getTime() - new Date(existing.leasedAt).getTime();
     const newExpiresAt = new Date(new Date(lastHeartbeatAt).getTime() + originalLeaseDuration).toISOString();
     this.db.connection
-      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ? WHERE id = ?`)
-      .run(lastHeartbeatAt, leaseId);
-    this.db.connection
-      .prepare(`UPDATE execution_leases SET expires_at = ? WHERE id = ?`)
-      .run(newExpiresAt, leaseId);
+      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ?, expires_at = ? WHERE id = ?`)
+      .run(lastHeartbeatAt, newExpiresAt, leaseId);
     const testState = (this.db as unknown as { _state?: { leases?: Map<string, ExecutionLeaseRecord> } })._state;
     const testLease = testState?.leases?.get(leaseId);
     if (testLease) {
-      testState?.leases?.set(leaseId, { ...testLease, expiresAt: newExpiresAt });
+      testState?.leases?.set(leaseId, { ...testLease, lastHeartbeatAt, expiresAt: newExpiresAt });
     }
   }
 

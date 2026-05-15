@@ -59,8 +59,8 @@ export function choosePreemptionVictim(
       if ((left.checkpointLatencyMs ?? 0) !== (right.checkpointLatencyMs ?? 0)) {
         return (right.checkpointLatencyMs ?? 0) - (left.checkpointLatencyMs ?? 0);
       }
-      // Prefer higher progress (more work done that would be lost)
-      return right.progressPercent - left.progressPercent;
+      // Prefer lower progress to minimize wasted work after checkpoint recovery.
+      return left.progressPercent - right.progressPercent;
     })[0] ?? null;
 }
 

@@ -112,7 +112,7 @@ export function checkToolPathScope(
   try {
     normalizedPath = normalizePath(inputPath);
   } catch (err) {
-    // R32-02 fix: If we cannot canonicalize the path (e.g., broken symlink), deny access.
+    // R32-02 fix: denying path when it cannot be canonicalized (e.g., broken symlink).
     return {
       allowed: false,
       normalizedPath: inputPath,

@@ -232,7 +232,7 @@ export class PromptVersionManager {
    * Gets all versions for a bundle sorted by version order.
    */
   public getSortedVersions(bundleName: string): Array<string | number> {
-    return this.getSortedVersionValues(bundleName).map((version) => String(version));
+    return this.getSortedVersionValues(bundleName);
   }
 
   /**
@@ -288,7 +288,7 @@ export class PromptVersionManager {
     const sorted = this.getSortedVersionValues(bundleName);
     const current = sorted.length > 0 ? sorted[sorted.length - 1] : null;
 
-    return sorted.map((versionStr) => {
+    return [...sorted].reverse().map((versionStr) => {
       const entry = bundleVersionMap.get(String(versionStr))!;
       const numericVersion = typeof entry.bundle.version === "number"
         ? entry.bundle.version

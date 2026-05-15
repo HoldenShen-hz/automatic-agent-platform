@@ -435,7 +435,7 @@ test("PromptVersionManager.registerBundleVersion stores bundle", () => {
 
   const versions = manager.getSortedVersions("test-bundle");
   assert.equal(versions.length, 1);
-  assert.equal(versions[0], "1");
+  assert.equal(versions[0], 1);
 });
 
 test("PromptVersionManager.listBundleVersions returns version info", () => {

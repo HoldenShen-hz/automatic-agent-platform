@@ -2,6 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ObservationAggregator } from "../../../../../src/platform/shared/observability/observation-aggregator.js";
+import type {
+  EventFlowSituation,
+  GoalDecompositionSituation,
+  MemorySituation,
+} from "../../../../../src/platform/shared/observability/observation-aggregator.js";
 import { parseTaskSituation } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 import { parseSystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
 import type { TaskSituation } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
@@ -64,22 +69,77 @@ function createMockSystemSituation(): SystemSituation {
   });
 }
 
+function createMockEventFlowSituation(): EventFlowSituation {
+  return {
+    tier1EventCount: 0,
+    tier1PendingAcks: 0,
+    dlqSize: 0,
+    recentEventTypes: [],
+    backlogDegraded: false,
+    lastEventAt: null,
+  };
+}
+
+function createMockGoalDecompositionSituation(): GoalDecompositionSituation {
+  return {
+    goalId: null,
+    lifecycleState: "draft",
+    strategy: null,
+    taskCount: 0,
+    decompositionConfidence: 0,
+    requiresHumanReview: false,
+    overallRisk: null,
+  };
+}
+
+function createMockMemorySituation(): MemorySituation {
+  return {
+    workingLayerCount: 0,
+    sessionLayerCount: 0,
+    episodicLayerCount: 0,
+    semanticLayerCount: 0,
+    proceduralLayerCount: 0,
+    metaLayerCount: 0,
+    totalMemoryCount: 0,
+    promotionCandidateCount: 0,
+    staleMemoryCount: 0,
+    averageQualityScore: 0,
+  };
+}
+
+function aggregateRequired(
+  aggregator: ObservationAggregator,
+  task: TaskSituation,
+  system: SystemSituation,
+) {
+  return aggregator.aggregate(
+    task,
+    system,
+    createMockEventFlowSituation(),
+    createMockGoalDecompositionSituation(),
+    createMockMemorySituation(),
+  );
+}
+
 test("ObservationAggregator.aggregate merges task and system situations", () => {
   const aggregator = new ObservationAggregator();
   const task = createMockTaskSituation();
   const system = createMockSystemSituation();
 
-  const result = aggregator.aggregate(task, system);
+  const result = aggregateRequired(aggregator, task, system);
 
   assert.equal(result.task.taskId, "task_test_1");
   assert.equal(result.system.healthStatus, "ok");
+  assert.equal(result.eventFlow.tier1EventCount, 0);
+  assert.equal(result.goalDecomposition.lifecycleState, "draft");
+  assert.equal(result.memory.totalMemoryCount, 0);
   assert.ok(result.observedAt >= 0);
 });
 
 test("ObservationAggregator.aggregate sets observedAt timestamp", () => {
   const aggregator = new ObservationAggregator();
   const before = Date.now();
-  const result = aggregator.aggregate(createMockTaskSituation(), createMockSystemSituation());
+  const result = aggregateRequired(aggregator, createMockTaskSituation(), createMockSystemSituation());
   const after = Date.now();
 
   assert.ok(result.observedAt >= before);
@@ -91,7 +151,7 @@ test("ObservationAggregator preserves task fields after aggregation", () => {
   const task = createMockTaskSituation();
   const system = createMockSystemSituation();
 
-  const result = aggregator.aggregate(task, system);
+  const result = aggregateRequired(aggregator, task, system);
 
   assert.equal(result.task.taskId, task.taskId);
   assert.equal(result.task.objective, task.objective);
@@ -119,7 +179,7 @@ test("ObservationAggregator strips blacklisted fields from task situation", () =
     approvalRequired: false,
   });
 
-  const result = aggregator.aggregate(taskWithBlacklisted, createMockSystemSituation());
+  const result = aggregateRequired(aggregator, taskWithBlacklisted, createMockSystemSituation());
 
   // Blacklisted fields should be stripped
   assert.ok(!("recommendedWorkflow" in result.task));
@@ -144,7 +204,7 @@ test("ObservationAggregator accepts valid task situation", () => {
     metrics: { executionTimeMs: 100 },
   });
 
-  const result = aggregator.aggregate(validTask, createMockSystemSituation());
+  const result = aggregateRequired(aggregator, validTask, createMockSystemSituation());
 
   assert.equal(result.task.taskId, "task_valid");
   assert.equal(result.task.currentPhase, "executing");

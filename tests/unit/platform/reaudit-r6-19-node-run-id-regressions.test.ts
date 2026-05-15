@@ -53,7 +53,7 @@ test("R6-19: CompensationManager emits evidence keyed by compensation nodeRunId"
 
 test("R6-19: legacy execution-receipt compatibility path exposes nodeRunId", () => {
   const source = readRepoFile("src/platform/contracts/execution-receipt/index.ts");
-  assert.match(source, /nodeRunId\?: string \| null/);
+  assert.match(source, /nodeRunId: string \| null/);
   assert.match(source, /@deprecated legacy execution projection; use nodeRunId/);
   assert.match(source, /stepId\?: string \| null/);
 });

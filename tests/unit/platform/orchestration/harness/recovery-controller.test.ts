@@ -112,7 +112,8 @@ test("RecoveryController.handleFailure with tool_timeout triggers recovery then 
   const run = createRun({ status: "running" });
   const result = controller.handleFailure(run, "tool_timeout");
 
-  assert.equal(result.status, "running");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
 });
 
 test("RecoveryController.handleFailure restores from checkpoint when available", () => {

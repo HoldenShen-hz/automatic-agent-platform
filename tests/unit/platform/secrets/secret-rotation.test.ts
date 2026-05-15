@@ -647,10 +647,12 @@ test("recordRotationEvent creates version record when rotation is requested", ()
       nextVersion: "v2",
     });
     const versions = harness.store.listSecretVersionRecordsBySecretRef("secret://system/version/test");
-    // Should have v2 in "rotating" status (created during requested)
-    assert.equal(versions.length, 1);
-    assert.equal(versions[0]?.version, "v2");
-    assert.equal(versions[0]?.status, "rotating");
+    // Requested rotation records both the superseded current version and new rotating version.
+    assert.equal(versions.length, 2);
+    const v1Record = versions.find(v => v.version === "v1");
+    const v2Record = versions.find(v => v.version === "v2");
+    assert.equal(v1Record?.status, "superseded");
+    assert.equal(v2Record?.status, "rotating");
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

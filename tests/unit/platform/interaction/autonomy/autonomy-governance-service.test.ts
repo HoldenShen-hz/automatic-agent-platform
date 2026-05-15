@@ -78,7 +78,7 @@ test("AutonomyGovernanceService evaluateCapability returns governance decision",
 
 test("AutonomyGovernanceService evaluateCapability sets promoted flag correctly", () => {
   const service = new AutonomyGovernanceService();
-  const score = mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 100, successfulExecutions: 98 });
+  const score = mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 100, successfulExecutions: 98, failedExecutions: 2 });
 
   const result = service.evaluateCapability("agent-1", score);
 
@@ -114,7 +114,7 @@ test("AutonomyGovernanceService evaluateCapability includes reason codes", () =>
 
 test("AutonomyGovernanceService evaluateCapability recommended level can differ from current", () => {
   const service = new AutonomyGovernanceService();
-  const score = mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 50, successfulExecutions: 48 });
+  const score = mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 50, successfulExecutions: 48, failedExecutions: 2 });
 
   const result = service.evaluateCapability("agent-1", score);
 
@@ -123,7 +123,7 @@ test("AutonomyGovernanceService evaluateCapability recommended level can differ 
 
 test("AutonomyGovernanceService evaluateProfile surfaces promoted decisions when capability level changes", () => {
   const service = new AutonomyGovernanceService();
-  const profile = mockProfile({ capabilityScores: [mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 50, successfulExecutions: 48 })] });
+  const profile = mockProfile({ capabilityScores: [mockCapabilityScore({ currentAutonomy: "suggestion", trustScore: 80, totalExecutions: 50, successfulExecutions: 48, failedExecutions: 2 })] });
 
   const result = service.evaluateProfile(profile);
   const decision = result.decisions[0];

@@ -43,13 +43,14 @@ test("resolveApprovalRoute returns org chart routing when no amount rules", () =
   assert.ok(result.approverChain.length > 0);
 });
 
-test("resolveApprovalRoute filters out requester from approver chain via SodPolicy", () => {
+test("resolveApprovalRoute rejects when SodPolicy filters every approver", () => {
   const nodes = [mockOrgNode({ ownerUserIds: ["user-1", "requester-1"] })];
   const request = mockRequest({ requesterId: "requester-1" });
 
-  const result = resolveApprovalRoute(nodes, request);
-
-  assert.ok(!result.approverChain.includes("requester-1"));
+  assert.throws(
+    () => resolveApprovalRoute(nodes, request),
+    /approval_route\.empty_approver_chain:node-1/,
+  );
 });
 
 test("resolveApprovalRoute handles delegation map", () => {

@@ -67,7 +67,7 @@ test("LearningObjectValidator.validate rejects missing evidenceRefs", () => {
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
-  assert.equal(result.learningObject.promotionStatus, "quarantine");
+  assert.equal(result.learningObject.promotionStatus, "quarantined");
 });
 
 test("LearningObjectValidator.validate rejects confidence below floor for failure_pattern", () => {

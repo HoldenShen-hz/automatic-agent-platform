@@ -19,6 +19,7 @@ export interface HarnessLoopState {
 // Backoff constants per §9.3
 const BACKOFF_BASE_MS = 1000; // 1 second base
 const BACKOFF_MAX_MS = 60000; // 60 seconds max
+// Iteration guard minimum: Math.max(1, rawIterations)
 const JITTER_FACTOR = 0.1; // 10% jitter
 
 export interface HarnessLoopProgress {

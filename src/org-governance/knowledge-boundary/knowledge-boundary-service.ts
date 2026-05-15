@@ -179,7 +179,11 @@ export class KnowledgeBoundaryService {
     if (policy.requiredGrantBoundaryIds != null && policy.requiredGrantBoundaryIds.length > 0) {
       const grantedBoundaryIds = new Set(
         grants
-          .filter((grant) => grant.requesterOrgNodeId === requesterOrgNodeId)
+          .filter((grant) => {
+            const grantedToOrgNodeId = (grant as { grantedToOrgNodeId?: string }).grantedToOrgNodeId
+              ?? grant.requesterOrgNodeId;
+            return grantedToOrgNodeId === requesterOrgNodeId;
+          })
           .map((grant) => grant.boundaryId),
       );
       const missingRequiredGrant = policy.requiredGrantBoundaryIds.some((grantBoundaryId) => !grantedBoundaryIds.has(grantBoundaryId));

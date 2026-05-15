@@ -126,7 +126,7 @@ test("OapeflirLoopService produces planGraphBundle as primary output (R5-1)", as
   assert.ok(result.planGraphBundle.graph != null, "bundle must contain graph structure");
   assert.ok(result.planGraphBundle.graph.nodes.length > 0, "graph must have nodes");
   assert.ok(result.planGraphBundle.graph.edges != null, "graph must have edges");
-  assert.equal(result.planGraphBundle.schedulerPolicy.policyId, "scheduler:oapeflir.fifo");
+  assert.equal(result.planGraphBundle.schedulerPolicy.policyId, "scheduler:oapeflir.deterministic_fifo");
 });
 
 test("OapeflirLoopService evaluationReport follows R5-7 structure", async () => {

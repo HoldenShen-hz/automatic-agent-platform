@@ -17,6 +17,8 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 
 const toolExecutionAccessLogger = new StructuredLogger({ retentionLimit: 100 });
 
+// Fail-closed default when execution context is required: allowedTools: []
+
 /**
  * Result of parsing the stored tool allowlist from the database.
  */

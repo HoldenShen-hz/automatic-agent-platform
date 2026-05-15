@@ -70,7 +70,11 @@ export class PackCatalogService {
 
   public listPacks(limit = 50): PackCatalogEntry[] {
     return [...this.packs.values()]
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .sort((left, right) => {
+        const byCreatedAt = right.createdAt.localeCompare(left.createdAt);
+        if (byCreatedAt !== 0) return byCreatedAt;
+        return [...this.packs.keys()].indexOf(right.packId) - [...this.packs.keys()].indexOf(left.packId);
+      })
       .slice(0, Math.max(0, limit));
   }
 }

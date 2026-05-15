@@ -7,6 +7,8 @@
  * §G8: Growth domain M2 Phase 2 — Ad Platforms + CRM required.
  */
 
+import { createHash } from "node:crypto";
+
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
@@ -32,19 +34,16 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     allowedDomains: ["api.hubspot.com", "api.salesforce.com"],
   });
   let credentialFingerprint: string | null = null;
-  let authToken: string | null = null;
 
   async function crmRequest(endpoint: string, method: string = "GET", body?: Record<string, unknown>): Promise<unknown> {
-    void authToken;
-    void method;
-    void body;
-    return { endpoint, simulated: true };
-    /*
+    if (credentialFingerprint == null) {
+      throw new Error("crm_adapter.not_authenticated");
+    }
     const url = `${apiBaseUrl}/crm/v3/objects/${endpoint}`;
     const requestInit: RequestInit = {
       method,
       headers: {
-        "Authorization": `Bearer ${authToken}`,
+        "Authorization": `Bearer ${credentialFingerprint}`,
         "Content-Type": "application/json",
       },
     };
@@ -57,7 +56,6 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       throw new Error(`crm_adapter.api_error:${response.status}:${errorBody}`);
     }
     return response.json();
-    */
   }
 
   return {
@@ -73,15 +71,16 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     },
     async shutdown() {
       credentialFingerprint = null;
-      authToken = null;
     },
     async authenticate(credentials): Promise<void> {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
-      credentialFingerprint = `crm_${crmType}_${token.slice(0, 8)}`;
-      authToken = token;
+      const fingerprint = createHash("sha256").update(token).digest("hex").slice(0, 8);
+      credentialFingerprint = `crm_${crmType}_${fingerprint}`;
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
-      void credentialFingerprint;
+      if (credentialFingerprint == null) {
+        throw new Error("crm_adapter.not_authenticated");
+      }
       if (!/^[a-zA-Z0-9_]+$/.test(action)) {
         throw new Error("crm_adapter.invalid_action");
       }

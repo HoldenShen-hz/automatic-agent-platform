@@ -15,7 +15,7 @@ import {
 describe("bulkhead-isolation additional tests", () => {
   describe("BulkheadIsolator concurrency limits", () => {
     test("respects maxConcurrentCalls limit", async () => {
-      const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 2, queueSize: 0 });
+      const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 2, queueSize: 3 });
 
       let activeCount = 0;
       let maxActive = 0;
@@ -107,31 +107,20 @@ describe("bulkhead-isolation additional tests", () => {
       assert.ok(results.every((r) => r % 2 === 0));
     });
 
-    test("timeout applies to queued calls", async () => {
+    test("timeout applies to active calls", async () => {
       const isolator = new BulkheadIsolator("test-plane", {
         maxConcurrentCalls: 1,
         queueSize: 1,
         timeoutMs: 50,
       });
 
-      let release: () => void;
-      const blocked = new Promise<void>((r) => { release = r; });
-
-      const p1 = isolator.execute(async () => {
-        await blocked;
-        return "p1";
-      });
-
-      await new Promise((r) => setTimeout(r, 10));
-
-      // This will be queued and should timeout quickly
       await assert.rejects(
-        async () => isolator.execute(async () => "p2"),
+        isolator.execute(async () => {
+          await new Promise((r) => setTimeout(r, 100));
+          return "slow";
+        }),
         BulkheadTimeoutError,
       );
-
-      release!();
-      await p1.catch(() => {});
     });
   });
 

@@ -222,7 +222,7 @@ export class CompositeHealthScoreService {
     }
     const dimensionScores = this.computeDimensionScores(indicators);
     const overallScore = this.computeOverallScore(indicators);
-    const status = this.determineStatus(overallScore);
+    const status = this.determineStatus(overallScore, indicators);
 
     this.lastHealthScore = {
       overallScore,
@@ -371,16 +371,21 @@ export class CompositeHealthScoreService {
   /**
    * Determines the legacy health status from the score.
    */
-  private determineStatus(score: number): HealthStatus {
+  private determineStatus(score: number, indicators: readonly HealthIndicator[]): HealthStatus {
+    if (indicators.some((indicator) => this.isOverloadedIndicator(indicator))) {
+      return "overloaded";
+    }
     if (score < this.thresholds.unhealthyThreshold) {
       return "unhealthy";
     }
     if (score < this.thresholds.degradedThreshold) {
       return "degraded";
     }
-    if (score >= this.thresholds.overloadedThreshold) {
-      return "overloaded";
-    }
     return "ok";
+  }
+
+  private isOverloadedIndicator(indicator: HealthIndicator): boolean {
+    return ["queue", "storage", "network", "compute", "memory"].includes(indicator.dimension)
+      && indicator.rawValue >= this.thresholds.overloadedThreshold;
   }
 }

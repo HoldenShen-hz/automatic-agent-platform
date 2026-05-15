@@ -320,7 +320,7 @@ test("OapeflirLoopService exposes plan diagnostics on the loop result", async ()
   assert.equal(result.validationReport?.valid, true);
   assert.equal(result.validationReport?.findings[0]?.code, "validation.issue.0");
   assert.ok(result.riskPropagation);
-  assert.equal(result.riskPropagation?.riskScore, 0.75);
+  assert.equal(result.riskPropagation?.riskScore, 0.85);
   assert.deepEqual(result.riskPropagation?.criticalPathNodes, ["node-diagnostics-1"]);
   assert.ok(result.worstPath);
   assert.equal(result.worstPath?.pathLength, 1);

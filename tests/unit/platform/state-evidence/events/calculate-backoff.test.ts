@@ -57,8 +57,9 @@ test("calculateBackoff: exponential increase with cap", async () => {
     // Backoff should be applied between retries
     // Initial delay is 100ms, then exponential with cap at 5000ms
     // With jitter at 10%, we check that retries happened with increasing delays
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);
@@ -103,8 +104,9 @@ test("calculateBackoff: first retry delay is INITIAL_BACKOFF_MS", async () => {
     // The first retry should happen after INITIAL_BACKOFF_MS (100ms) + jitter
     assert.ok(deliveryTimestamps.length >= 1, "Should have at least one delivery attempt");
 
-    bus.dispose();
+    await bus.disposeAsync();
     db.close();
+    db = undefined;
   } finally {
     db?.close();
     cleanupPath(workspace);

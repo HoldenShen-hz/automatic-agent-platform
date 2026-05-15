@@ -195,7 +195,7 @@ export class ComplianceEvidenceCollector {
 
   public getDueCollections(referenceTime: string): EvidenceCollectionSchedule[] {
     return this.listScheduledCollections().filter((schedule) =>
-      schedule.active && schedule.nextRunAt <= referenceTime,
+      schedule.active && (schedule.trigger.type === "on_demand" || schedule.nextRunAt <= referenceTime),
     );
   }
 

@@ -2,6 +2,7 @@ import { getRequiredConsumers } from "./event-types.js";
 import type { EventTier } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { EVENT_PAYLOAD_VALIDATORS, RUNTIME_EVENT_REPLAY_METADATA, genericEventPayloadSchema } from "./event-registry-payloads.js";
+import { getEventTier } from "./event-types.js";
 
 /**
  * Event Registry - Central registry of all event types in the system.
@@ -889,7 +890,7 @@ export function getEventSchema(type: string): EventSchemaDefinition {
   if (metadata != null) {
     return {
       type,
-      tier: type.startsWith("platform.") ? "tier_1" : "tier_2",
+      tier: getEventTier(type),
       producer: metadata.schemaOwner,
       consumers: metadata.sourceOfTruth === "platform" ? ["truth_projector", "audit_projection"] : ["oapeflir_projection"],
       payloadSchemaRef: buildPayloadSchemaRef(type),

@@ -131,6 +131,7 @@ export class IntakeRouter {
     }
     if (input.riskPreview != null) {
       routeTrace.push(`risk_class:${input.riskPreview.riskClass}`);
+      routeTrace.push(`riskClass:${input.riskPreview.riskClass}`);
       if ((input.riskPreview.reasons ?? []).length > 0) {
         routeTrace.push(`risk_reasons:${input.riskPreview.reasons!.join(",")}`);
       }

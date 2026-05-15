@@ -174,7 +174,7 @@ test("DelegatedGovernanceService getApplicableGuardrails with empty domainIds ma
   assert.strictEqual(guardrails.length, 1);
 });
 
-test("DelegatedGovernanceService checkOperation with no attemptedValue skips guardrail evaluation", () => {
+test("DelegatedGovernanceService checkOperation with no attemptedValue fails closed", () => {
   const delegation = mockDelegation({
     guardrails: [mockGuardrail({ guardrailId: "rail-1", value: 0 })],
   });
@@ -184,7 +184,8 @@ test("DelegatedGovernanceService checkOperation with no attemptedValue skips gua
     "approve_task",
   );
 
-  assert.strictEqual(result.allowed, true);
+  assert.strictEqual(result.allowed, false);
+  assert.deepStrictEqual(result.violatedGuardrails, ["rail-1"]);
 });
 
 test("DelegatedGovernanceService resolve with no delegations returns not allowed", () => {

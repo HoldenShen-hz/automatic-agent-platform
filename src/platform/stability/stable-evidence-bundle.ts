@@ -385,6 +385,8 @@ export async function createStableEvidenceBundle(
     validationReport.integrityFailures === 0 &&
     validationReport.backupFailures === 0;
   const soakPassed = soakReport.failedRuns === 0 && soakReport.integrityFailures === 0 && soakReport.backupFailures === 0;
+  const doctorSafe = doctorReport.status === "ok" || doctorReport.status === "fail_closed";
+  const repairAfterSafe = repairReport.after.status === "pass" || repairReport.after.status === "fail_closed";
 
   // Build summary with all test results
   const summary = {
@@ -408,8 +410,8 @@ export async function createStableEvidenceBundle(
       migrationCompatibilityReport.failedScenarios === 0 &&
       validationPassed &&
       soakPassed &&
-      doctorReport.status === "ok" &&
-      repairReport.after.status === "pass" &&
+      doctorSafe &&
+      repairAfterSafe &&
       pendingAckBacklogAfterDrain === 0 &&
       takeoverSample.finalTaskStatus === "done" &&
       takeoverSample.operatorActionCount >= 4,

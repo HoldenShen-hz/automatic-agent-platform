@@ -107,7 +107,7 @@ test("KnowledgeBoundaryService evaluateDynamicAccess with dynamic policy blockin
   const result = service.evaluateDynamicAccess({
     boundary,
     requesterId: "blocked-user",
-    requesterOrgNodeId: "org-1",
+    requesterOrgNodeId: "org-2",
     purpose: "view",
     grants: [],
     dynamicPolicy,
@@ -128,7 +128,7 @@ test("KnowledgeBoundaryService evaluateDynamicAccess with dynamic policy blockin
   const result = service.evaluateDynamicAccess({
     boundary,
     requesterId: "user-1",
-    requesterOrgNodeId: "org-1",
+    requesterOrgNodeId: "org-2",
     purpose: "export",
     grants: [],
     dynamicPolicy,
@@ -171,7 +171,7 @@ test("KnowledgeBoundaryService evaluateDynamicAccess allows when required grant 
   const result = service.evaluateDynamicAccess({
     boundary,
     requesterId: "user-1",
-    requesterOrgNodeId: "org-1",
+    requesterOrgNodeId: "org-2",
     purpose: "view",
     grants: [grant],
     dynamicPolicy,

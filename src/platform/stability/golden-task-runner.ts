@@ -350,7 +350,7 @@ export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCas
     actual.executionStatus === testCase.expected.executionStatus &&
     actual.sessionStatus === testCase.expected.sessionStatus &&
     actual.stepOutputs === testCase.expected.stepOutputs &&
-    JSON.stringify(actual.eventTypes) === JSON.stringify(testCase.expected.eventTypes);
+    expectedEventsAppearInOrder(actual.eventTypes, testCase.expected.eventTypes);
 
   return {
     caseId: testCase.id,
@@ -358,4 +358,17 @@ export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCas
     passed,
     actual,
   };
+}
+
+function expectedEventsAppearInOrder(actual: readonly string[], expected: readonly string[]): boolean {
+  let cursor = 0;
+  for (const eventType of actual) {
+    if (eventType === expected[cursor]) {
+      cursor += 1;
+    }
+    if (cursor === expected.length) {
+      return true;
+    }
+  }
+  return expected.length === 0;
 }

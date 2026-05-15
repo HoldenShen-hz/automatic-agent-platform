@@ -39,7 +39,7 @@ test("LearningObjectSchema applies defaults", () => {
   assert.deepEqual(result.evidenceRefs, []);
   assert.deepEqual(result.sourceSignalIds, []);
   assert.equal(result.validatedBy, "none");
-  assert.equal(result.promotionStatus, "draft");
+  assert.equal(result.promotionStatus, "untrusted");
 });
 
 test("LearningObjectSchema accepts all learning types", () => {

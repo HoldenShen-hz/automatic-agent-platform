@@ -33,6 +33,9 @@ export type {
   EventHandler,
   EventPartitionKey,
 } from "./durable-event-bus-support.js";
+export {
+  ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS,
+} from "./durable-event-bus-support.js";
 
 const eventBusLogger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -953,12 +956,6 @@ export class DurableEventBus {
     // R31-19 FIX: Use a Set to avoid duplicate ack creation
     const processedConsumerIds = new Set<string>();
     for (const consumerId of getRegisteredConsumers(event.eventType)) {
-      if (!processedConsumerIds.has(consumerId)) {
-        processedConsumerIds.add(consumerId);
-        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
-      }
-    }
-    for (const consumerId of this.activeConsumerRefCounts.keys()) {
       if (!processedConsumerIds.has(consumerId)) {
         processedConsumerIds.add(consumerId);
         this.store.event.ensureEventConsumerAckPending(event.id, consumerId);

@@ -2,6 +2,7 @@
 
 - Status: Superseded by ADR-020
 - Note: This file is retained only as a historical link compatibility page to avoid breaking old references.
+- Compatibility redirect: use `003-memory-six-layers.md` as the authoritative ADR-003 memory contract.
 
 ## Background
 

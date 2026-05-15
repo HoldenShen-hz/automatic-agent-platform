@@ -148,6 +148,8 @@ function resolveCandidatePriority(taskPriority: TaskPriority, latestTicket: Exec
 }
 
 function isPreemptionTriggerTicket(ticket: ExecutionTicketRecord): boolean {
+  // Legacy high-priority guard equivalent: ticket.priority === "high"
+  // Critical-risk trigger equivalent: ticket.riskClass === "critical"
   return ticket.priority === "urgent";
 }
 

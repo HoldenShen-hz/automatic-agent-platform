@@ -51,7 +51,6 @@ test("R12-03: DLQ entries are persisted with all required metadata", async () =>
 
     bus.setDlqRepository(mockDlqRepository);
 
-    const seen: string[] = [];
     // Subscribe with a handler that always fails to trigger DLQ
     bus.subscribe("dlq_consumer", async () => {
       throw new Error("force DLQ");
@@ -63,7 +62,11 @@ test("R12-03: DLQ entries are persisted with all required metadata", async () =>
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      await bus.deliverPending("dlq_consumer");
+    } catch {
+      // Expected after retries are exhausted and the event is dead-lettered.
+    }
 
     // Verify DLQ entry was persisted with full metadata
     assert.ok(dlqRecords.length > 0, "DLQ record should be persisted");

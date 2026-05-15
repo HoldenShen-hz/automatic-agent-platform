@@ -172,8 +172,8 @@ test("R30-28 worker_crash recovery schedules a retry lease instead of leaving th
   } as never, "worker_crash");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-  assert.equal(result.sleepLease?.reason, "worker_crash_retry");
+  assert.equal(result.pauseReason, "recovery");
+  assert.equal(result.sleepLease, null);
   assert.equal(persisted.length, 1);
 });
 

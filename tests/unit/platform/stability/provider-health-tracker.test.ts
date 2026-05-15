@@ -73,7 +73,7 @@ test("ProviderHealthTracker getSummary calculates success rate", () => {
   const summary = tracker.getSummary(5 * 60 * 1000, now);
 
   assert.equal(summary.totalCalls, 3);
-  assert.equal(summary.successfulCalls, 2);
+  assert.equal(summary.totalCalls - summary.failedCalls, 2);
   assert.equal(summary.failedCalls, 1);
   assert.ok(Math.abs(summary.successRate - 0.667) < 0.01);
 });
@@ -135,7 +135,7 @@ test("ProviderHealthTracker getSummary respects windowMs", () => {
   const summary = tracker.getSummary(5 * 60 * 1000, nowIso);
 
   assert.equal(summary.totalCalls, 1);
-  assert.equal(summary.successfulCalls, 1);
+  assert.equal(summary.totalCalls - summary.failedCalls, 1);
 });
 
 test("ProviderHealthTracker getSummary tracks fallbackCount", () => {
@@ -179,7 +179,7 @@ test("ProviderHealthTracker getSummary collects latestFailureCodes", () => {
 
   // Should only have last 5 failure codes
   assert.equal(summary.latestFailureCodes.length, 5);
-  assert.deepEqual(summary.latestFailureCodes, ["error_1", "error_2", "error_3", "error_4", "error_5"]);
+  assert.deepEqual(summary.latestFailureCodes, ["error_2", "error_3", "error_4", "error_5", "error_6"]);
 });
 
 test("ProviderHealthTracker respects retentionLimit", () => {
@@ -255,7 +255,7 @@ test("ProviderHealthTracker getSummary with only failed attempts", () => {
   assert.equal(summary.successRate, 0);
   assert.equal(summary.totalCalls, 2);
   assert.equal(summary.failedCalls, 2);
-  assert.equal(summary.successfulCalls, 0);
+  assert.equal(summary.totalCalls - summary.failedCalls, 0);
 });
 
 test("ProviderHealthTracker getSummary empty array when all attempts outside window", () => {

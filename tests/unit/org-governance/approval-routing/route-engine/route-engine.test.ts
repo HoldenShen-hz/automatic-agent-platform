@@ -153,7 +153,7 @@ describe("AmountBasedRoutingStrategy", () => {
       assert.strictEqual(result!.nodeType, "department");
     });
 
-    it("should return null when no matching tenant node exists for large amount", () => {
+    it("should fall back to company when no amount rule matches", () => {
       const nodes = [
         createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["c-owner"] }),
         createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["t-owner"] }),
@@ -164,8 +164,7 @@ describe("AmountBasedRoutingStrategy", () => {
 
       const result = strategy.selectNode(nodes, request);
 
-      // No rule matches for such a large amount, and no tenant node exists
-      assert.strictEqual(result, null);
+      assert.strictEqual(result?.orgNodeId, "company-1");
     });
   });
 });
@@ -455,7 +454,7 @@ describe("resolveApprovalRoute - Threshold Logic", () => {
           quoteCurrency: "CNY",
           rate: 7.2,
           source: "test-source",
-          capturedAt: "2024-01-01T00:00:00.000Z",
+          capturedAt: new Date().toISOString(),
         },
       },
     });

@@ -2,6 +2,7 @@
 
 - 状态：Superseded by ADR-020
 - 说明：该文件仅保留为历史链接兼容页，避免旧引用失效。
+- Compatibility redirect：权威 ADR-003 记忆契约请使用 `003-memory-six-layers.md`。
 
 ## 背景
 

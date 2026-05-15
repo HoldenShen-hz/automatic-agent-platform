@@ -414,22 +414,19 @@ test("HealthService - providerHealth degraded finding", () => {
 test("HealthService - uptimeSeconds increases over time", () => {
   const mockDb = createMockDb();
   const mockStore = createMockStore();
-  const startTime = Date.now() - 5000; // 5 seconds ago
+  let nowMs = Date.now();
   const service = new HealthService(mockDb, mockStore, {
-    nowMsSupplier: () => startTime,
+    nowMsSupplier: () => nowMs,
   });
 
   const report1 = service.getReport();
   const uptime1 = report1.uptimeSeconds;
 
   // Simulate time passing
-  const laterService = new HealthService(mockDb, mockStore, {
-    nowMsSupplier: () => startTime + 3000,
-  });
-  const report2 = laterService.getReport();
+  nowMs += 3000;
+  const report2 = service.getReport();
 
-  // Second service started 3 seconds after first, so should have ~3 seconds more uptime
-  assert.ok(report2.uptimeSeconds >= 3);
+  assert.ok(report2.uptimeSeconds >= uptime1 + 3);
 });
 
 test("HealthService - memory pressure degraded finding", () => {
@@ -445,7 +442,7 @@ test("HealthService - memory pressure degraded finding", () => {
   try {
     (process as any).memoryUsage = mockMemoryUsage;
     const service = new HealthService(mockDb, mockStore, {
-      memoryHighWatermarkMb: 512, // 600MB RSS is above 512MB threshold
+      memoryHighWatermarkMb: 560, // 600MB RSS is degraded but below overloaded threshold
     });
 
     const report = service.getReport();

@@ -123,10 +123,15 @@ test("CompositeHealthScoreService computes correct status thresholds", () => {
   score = service.getHealthScore(true);
   assert.equal(score.status, "ok", "Score 75 should be ok");
 
-  // Update to overloaded level
+  // High success-rate scores remain healthy; overloaded is driven by resource pressure dimensions.
   service.updateIndicator(indicator.indicatorId, 95); // Score 95
   score = service.getHealthScore(true);
-  assert.equal(score.status, "overloaded", "Score 95 should be overloaded");
+  assert.equal(score.status, "ok", "Score 95 should be ok");
+
+  service.removeIndicator(indicator.indicatorId);
+  service.registerIndicator("compute", "cpu_pressure", 95);
+  score = service.getHealthScore(true);
+  assert.equal(score.status, "overloaded", "High resource pressure should be overloaded");
 });
 
 test("CompositeHealthScoreService normalizes queue dimension correctly", () => {

@@ -38,8 +38,8 @@ test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct structure", () => {
   assert.ok(review !== undefined, "review step should exist");
   assert.equal(intake.stepId, "intake_triage");
   assert.equal(intake.roleId, "intake_router");
-  assert.deepEqual(intake.inputKeys, undefined);
-  assert.equal(intake.dependsOnStepIds, undefined);
+  assert.deepEqual(intake.inputKeys, []);
+  assert.deepEqual(intake.dependsOnStepIds, []);
 
   assert.equal(draft.stepId, "draft_solution");
   assert.equal(draft.roleId, "general_executor");
@@ -151,8 +151,8 @@ test("PHASE_1B workflow steps have correct dependency chain", () => {
   const review = steps[2]!;
 
   // intake_triage has no dependencies
-  assert.equal(intake.dependsOnStepIds, undefined);
-  assert.equal(intake.inputKeys, undefined);
+  assert.deepEqual(intake.dependsOnStepIds, []);
+  assert.deepEqual(intake.inputKeys, []);
 
   // draft_solution depends on intake_triage
   assert.deepEqual(draft.dependsOnStepIds, ["intake_triage"]);

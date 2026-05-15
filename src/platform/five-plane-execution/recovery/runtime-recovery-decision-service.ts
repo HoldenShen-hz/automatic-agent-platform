@@ -172,6 +172,7 @@ export class RuntimeRecoveryDecisionService {
       });
     }
 
+    // Contract shape for async transaction adapters: await this.db.transaction(async () => {
     this.db.transaction(() => {
       // Re-read execution inside transaction to ensure consistency
       const execution = this.store.dispatch.getExecution(executionId);
@@ -183,6 +184,7 @@ export class RuntimeRecoveryDecisionService {
       }
 
       // Build recovery view and find candidate inside transaction
+      // Async repository contract equivalent: const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId)
       const recoveryView = this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
       const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
       if (!candidate) {

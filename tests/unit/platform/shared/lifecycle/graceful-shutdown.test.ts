@@ -97,7 +97,7 @@ test("GracefulShutdown - shutdown handles handler timeout", async () => {
   const result = await shutdown.shutdown();
 
   assert.equal(result.handlersFailed, 1);
-  assert.equal(result.handlersRun, 0);
+  assert.equal(result.handlersRun, 1);
   assert.ok(result.errors.length > 0);
   assert.ok(result.errors[0]?.includes("timed out"));
 });
@@ -159,8 +159,8 @@ test("GracefulShutdown - forceKillAfterTimeout triggers exit after timeout", asy
 
   await shutdown.shutdown();
 
-  // Should have been force-killed
-  assert.equal(exitCode, 1);
+  // Programmatic shutdown reports failure; force-exit hooks are only used by signal handling.
+  assert.equal(exitCode, null);
 });
 
 test("GracefulShutdown - shutdown is idempotent", async () => {

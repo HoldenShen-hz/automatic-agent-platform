@@ -84,9 +84,10 @@ test("FairSchedulingService detects quota exceeded and selects victim", () => {
     { itemId: "item-1", tenantId: "tenant-1", priority: 5, ageMs: 60_000 },
   ];
 
+  const checkpointAt = Date.now();
   const preemptionCandidates: PreemptionCandidate[] = [
-    { executionId: "exec-1", priority: 1, progressPercent: 90 },
-    { executionId: "exec-2", priority: 2, progressPercent: 50 },
+    { executionId: "exec-1", priority: 1, progressPercent: 90, lastCheckpointTimestampMs: checkpointAt },
+    { executionId: "exec-2", priority: 2, progressPercent: 50, lastCheckpointTimestampMs: checkpointAt },
   ];
 
   const request: FairSchedulingRequest = {
@@ -181,10 +182,11 @@ test("orderFairQueue caps age score at 9 to prevent overflow", () => {
 });
 
 test("choosePreemptionVictim selects lowest priority candidate", () => {
+  const checkpointAt = Date.now();
   const candidates: PreemptionCandidate[] = [
-    { executionId: "high-priority", priority: 10, progressPercent: 50 },
-    { executionId: "low-priority", priority: 1, progressPercent: 30 },
-    { executionId: "medium-priority", priority: 5, progressPercent: 70 },
+    { executionId: "high-priority", priority: 10, progressPercent: 50, lastCheckpointTimestampMs: checkpointAt },
+    { executionId: "low-priority", priority: 1, progressPercent: 30, lastCheckpointTimestampMs: checkpointAt },
+    { executionId: "medium-priority", priority: 5, progressPercent: 70, lastCheckpointTimestampMs: checkpointAt },
   ];
 
   const victim = choosePreemptionVictim(candidates);
@@ -193,9 +195,10 @@ test("choosePreemptionVictim selects lowest priority candidate", () => {
 });
 
 test("choosePreemptionVictim breaks tie by progress percent", () => {
+  const checkpointAt = Date.now();
   const candidates: PreemptionCandidate[] = [
-    { executionId: "less-progress", priority: 3, progressPercent: 20 },
-    { executionId: "more-progress", priority: 3, progressPercent: 80 },
+    { executionId: "less-progress", priority: 3, progressPercent: 20, lastCheckpointTimestampMs: checkpointAt },
+    { executionId: "more-progress", priority: 3, progressPercent: 80, lastCheckpointTimestampMs: checkpointAt },
   ];
 
   const victim = choosePreemptionVictim(candidates);

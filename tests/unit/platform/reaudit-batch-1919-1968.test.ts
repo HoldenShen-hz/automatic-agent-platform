@@ -102,7 +102,7 @@ test("1941..1953: IAM, secret, plugin, and stability security guards remain enfo
   });
   assert.ok(adminProfile.capabilities.includes("exec:command"));
 
-  assert.throws(() => encryptField("secret", "short-key"), /security\.encryption_key_too_weak/);
+  assert.throws(() => encryptField("secret", "short"), /security\.encryption_key_too_weak/);
 
   const invalidRequestEngine = new PolicyEngine({
     budgetPolicy: {
@@ -164,9 +164,9 @@ test("1954..1958: prompt config, registry immutability, rollout modes, and auto-
   const defaultConfig = loadQualityConfig(join(tempDir, "missing.json"));
   assert.equal(defaultConfig.qualityGate.defaultPassThreshold, 0.8);
 
-  assert.equal(normalizePromptRolloutMode("canary"), "canary");
-  assert.equal(normalizePromptRolloutMode("staged"), "staged");
-  assert.equal(normalizePromptRolloutMode("full"), "full");
+  assert.equal(normalizePromptRolloutMode("canary"), "L3_canary");
+  assert.equal(normalizePromptRolloutMode("staged"), "L4_partial");
+  assert.equal(normalizePromptRolloutMode("full"), "L5_stable");
   assert.equal(nextPromptRolloutStage("stable"), null);
 
   const qualityLoaderSource = readFileSync("src/platform/prompt-engine/eval/quality-config-loader.ts", "utf8");

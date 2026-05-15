@@ -61,8 +61,8 @@ test("1989..1995: security/bootstrap configs, architecture readiness guards, div
 
   const registry = ServiceRegistry.createScoped();
   const registered = registerPlatformArchitectureServices(registry);
-  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
-  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
+  assert.equal(registry.has("architecture.layer-catalog"), true);
+  assert.equal(registry.has("architecture.bootstrap-summary"), true);
   const resolved = getPlatformArchitectureServices(registry);
   const resolvedAgain = getPlatformArchitectureServices(registry);
   assert.equal(resolved.layers, resolvedAgain.layers);

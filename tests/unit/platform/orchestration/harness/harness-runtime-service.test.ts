@@ -289,7 +289,7 @@ test("HarnessRuntimeService.resolveHitlReview approves run and resumes", () => {
   assert.ok(run.hitlRequest != null);
 });
 
-test("HarnessRuntimeService.resolveHitlReview rejects and aborts run", () => {
+test("HarnessRuntimeService.resolveHitlReview rejects and cancels run", () => {
   const service = new HarnessRuntimeService();
   const constraintPack = createConstraintPack();
 
@@ -302,7 +302,7 @@ test("HarnessRuntimeService.resolveHitlReview rejects and aborts run", () => {
   run = service.openHitlReview(run, "Manual approval needed", ["evidence-1"]);
   run = service.resolveHitlReview(run, "rejected", "operator-1");
 
-  assert.equal(run.status, "aborted");
+  assert.equal(run.status, "cancelled");
   assert.ok(run.completedAt != null);
 });
 

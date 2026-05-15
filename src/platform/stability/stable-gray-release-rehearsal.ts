@@ -459,7 +459,7 @@ async function runGrayRollbackScenario(outputDir: string): Promise<StableGrayRel
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: null,
-      occurredAt: "2026-04-06T10:00:00.000Z",
+      occurredAt: "2026-04-06T10:01:00.000Z",
     });
     workers.recordHeartbeat({
       workerId: "worker-gray-pool",

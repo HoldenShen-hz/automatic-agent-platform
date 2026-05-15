@@ -3,6 +3,8 @@ export {
   detectAmbiguity as detectAmbiguityFn,
   DisambiguationHandler,
 } from "./disambiguation-handler/index.js";
+
+// ADR-026 snake_case risk preview aliases: overall_risk?, risk_factors?, side_effects?, approval_needed?
 export type {
   ClarificationQuestion,
   DisambiguationConfig as HandlerDisambiguationConfig,

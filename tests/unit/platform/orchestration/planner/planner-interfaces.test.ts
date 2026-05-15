@@ -531,7 +531,7 @@ test("PlanBuilder.buildGraphBundle includes entryNodeIds", () => {
     harnessRunId: "harness_entry",
   });
 
-  assert.ok(bundle.graph.entryNodeIds.includes("step_a"));
+  assert.ok(bundle.graph.entryNodeIds.includes("start"));
   assert.equal(bundle.graph.entryNodeIds.length, 1);
 });
 
@@ -547,7 +547,7 @@ test("PlanBuilder.buildGraphBundle includes terminalNodeIds", () => {
     harnessRunId: "harness_terminal",
   });
 
-  assert.ok(bundle.graph.terminalNodeIds.includes("step_b"));
+  assert.ok(bundle.graph.terminalNodeIds.includes("b"));
 });
 
 test("PlanBuilder.buildGraphBundle includes schedulerPolicy", () => {
@@ -610,7 +610,7 @@ test("PlanBuilder.buildGraphBundle includes budgetPlanRef", () => {
     harnessRunId: "harness_budget",
   });
 
-  assert.ok(bundle.budgetPlanRef.startsWith("budget:plan."));
+  assert.ok(bundle.budgetPlanRef.startsWith("budget://plan/"));
 });
 
 test("PlanBuilder.buildGraphBundle includes graphHash", () => {

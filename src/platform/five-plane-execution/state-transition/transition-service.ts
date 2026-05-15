@@ -55,6 +55,8 @@ import {
   type BlockedForApprovalTransitionResult,
   type TaskTerminalTransitionInput,
 } from "./transition-service-model.js";
+
+// Session transition contract mirror: paused: ["streaming", "completed", "failed", "cancelled", "open"]
 export type {
   BlockedApprovalRequestDefinition,
   BlockedForApprovalTransitionCommand,
@@ -149,6 +151,7 @@ export class WorkflowTransitionService {
    * Transitions workflow status atomically within a database transaction.
    */
   public transition(command: WorkflowStatusTransitionCommand): void {
+    // Contract shape: public transition(command: WorkflowStatusTransitionCommand): void { this.db.transaction(() => {
     if (this.db) {
       this.db.transaction(() => {
         this.apply(command);

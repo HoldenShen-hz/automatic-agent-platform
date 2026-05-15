@@ -54,8 +54,8 @@ export class PlatformPromptReleaseOrchestrationService {
   ) {}
 
   public createRelease(input: PlatformPromptReleaseInput): PlatformPromptReleaseResult {
-    const domainOwnerApproval = input.domainOwnerApproval ?? true;
-    const rollbackPlanPresent = input.rollbackPlanPresent ?? true;
+    const domainOwnerApproval = input.domainOwnerApproval ?? input.autoActivate !== true;
+    const rollbackPlanPresent = input.rollbackPlanPresent ?? input.autoActivate !== true;
 
     // R16-14 fix: Validate release gate requirements per §16
     if (!domainOwnerApproval) {
@@ -109,9 +109,9 @@ export class PlatformPromptReleaseOrchestrationService {
     let rollout = createdRollout.status === "canary_5" && input.mode === "suggest"
       ? { ...createdRollout, status: "ready" as const }
       : createdRollout;
-    if (input.autoActivate === true && evaluationReport.gateDecision === "promote") {
-      if (rollout.status === "ready" && domainOwnerApproval === true && rollbackPlanPresent === true) {
-        rollout = { ...rollout, status: "active" as never };
+    if (input.autoActivate === true && evaluationReport.gateDecision === "promote" && domainOwnerApproval === true && rollbackPlanPresent === true) {
+      while (rollout.status !== "stable" && rollout.status !== "blocked" && rollout.status !== "rolled_back") {
+        rollout = this.rollouts.activateRollout(rollout.rolloutId);
       }
     }
 

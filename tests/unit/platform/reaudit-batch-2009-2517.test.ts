@@ -295,7 +295,7 @@ test("2303: runtime state machine refuses transitions when event persistence is 
     version: 1,
     status: "open",
   });
-  const machine = new RuntimeStateMachine();
+  const machine = new RuntimeStateMachine({ persistEvent: null });
   assert.throws(
     () =>
       machine.transition({

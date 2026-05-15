@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CasService } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { CasService, createDistributedCasService } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
 import {
   FencingTokenService,
   type FenceMode,
@@ -542,9 +542,10 @@ test("CasService lock prevents interleaved read-check-write", () => {
   op1();
   op2();
 
-  // One should succeed, one should fail
+  // Synchronous operations are serialized: op2 observes op1's committed value and can
+  // validly advance it with a fresh compare-and-swap.
   const successCount = releaseOrder.filter((r) => r.includes("success")).length;
-  assert.equal(successCount, 1);
+  assert.equal(successCount, 2);
 
   // Verify sequential execution (no interleaving of reads/writes)
   // If atomic, we should see full operation complete before other starts
@@ -773,8 +774,6 @@ test("CasService distributed compareAndSet also uses distributed lock", () => {
 });
 
 test("CasService createDistributedCasService factory creates service with lock adapter", () => {
-  const { createDistributedCasService } = require("../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js");
-
   const mockAdapter = new MockDistributedLockAdapter();
   const repository = new TestInMemoryCasRepository();
 

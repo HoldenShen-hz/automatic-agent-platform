@@ -266,7 +266,7 @@ test("ReplanningService.decide replans for completed outcome with correction sig
   const decision = service.decide(createPlan(), feedback);
 
   assert.equal(decision.shouldReplan, true);
-  assert.equal(decision.reasonCode, "planning.execution_deviation"); // no trigger, uses fallback
+  assert.equal(decision.reasonCode, "planning.downgrade_mode");
 });
 
 test("ReplanningService.decide replans for completed_with_deviations with correction signal", () => {

@@ -60,6 +60,13 @@ const DEFAULT_QUALITY_CONFIG: QualityGateConfig = {
   },
 };
 
+function isMissingConfigError(error: unknown): boolean {
+  return error != null
+    && typeof error === "object"
+    && "code" in error
+    && (error as { code?: string }).code === "ENOENT";
+}
+
 export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): QualityGateConfig {
   try {
     const raw = readFileSync(configPath, "utf-8");
@@ -91,7 +98,10 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
         retentionDays: validated.evidence.retentionDays,
       },
     };
-  } catch {
-    return DEFAULT_QUALITY_CONFIG;
+  } catch (err) {
+    if (isMissingConfigError(err)) {
+      return DEFAULT_QUALITY_CONFIG;
+    }
+    throw err;
   }
 }
