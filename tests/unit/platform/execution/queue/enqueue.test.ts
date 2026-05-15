@@ -1,10 +1,9 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteQueueAdapter } from "../../../../../src/platform/execution/queue/queue-adapter.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { RawRow } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { SqliteQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { RawRow } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
   let data = [...rows];

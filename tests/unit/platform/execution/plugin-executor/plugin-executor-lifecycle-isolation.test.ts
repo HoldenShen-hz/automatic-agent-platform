@@ -15,18 +15,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PluginExecutorService } from "../../../../../src/platform/execution/plugin-executor/plugin-executor.service.js";
+import { PluginExecutorService } from "../../../../../src/platform/five-plane-execution/plugin-executor/plugin-executor.service.js";
 import {
   AdapterExecutor,
   type AdapterExecutionRequest,
-} from "../../../../../src/platform/execution/plugin-executor/adapter-executor.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/adapter-executor.js";
 import {
   ScopedExternalAccessSandbox,
   createScopedExternalAccessSandbox,
-} from "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js";
-import { BrowserExecutor, createBrowserExecutor } from "../../../../../src/platform/execution/plugin-executor/browser-executor.js";
-import { HumanWaitExecutor } from "../../../../../src/platform/execution/plugin-executor/human-wait-executor.js";
-import { SubWorkflowExecutor, createSubWorkflowExecutor } from "../../../../../src/platform/execution/plugin-executor/sub-workflow-executor.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js";
+import { BrowserExecutor, createBrowserExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/browser-executor.js";
+import { HumanWaitExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/human-wait-executor.js";
+import { SubWorkflowExecutor, createSubWorkflowExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

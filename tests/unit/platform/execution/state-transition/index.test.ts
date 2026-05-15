@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   StateTransitionMachine,
   TransitionService,
-} from "../../../../../src/platform/execution/state-transition/index.js";
+} from "../../../../../src/platform/five-plane-execution/state-transition/index.js";
 
 test("StateTransitionMachine is exported as function", () => {
   assert.equal(typeof StateTransitionMachine, "function");

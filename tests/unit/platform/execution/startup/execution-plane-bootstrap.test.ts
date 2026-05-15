@@ -6,9 +6,9 @@ import {
   registerExecutionPlaneBootstrap,
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
   EXECUTION_PLANE_CATALOG_SERVICE_ID,
-} from "../../../../../src/platform/execution/execution-plane-bootstrap.js";
+} from "../../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
-import type { ExecutionCapabilityId } from "../../../../../src/platform/execution/execution-plane-baseline.js";
+import type { ExecutionCapabilityId } from "../../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests - buildExecutionPlaneBootstrap

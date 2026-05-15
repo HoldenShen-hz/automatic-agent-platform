@@ -18,7 +18,7 @@ import {
   X1_FABRIC_BOOTSTRAP_SERVICE_ID,
 } from "../../../src/platform/five-plane-runtime-bootstrap.js";
 import { COMPLIANCE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/compliance/compliance-bootstrap.js";
-import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/control-plane/control-plane-bootstrap.js";
+import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane-control-plane/control-plane-bootstrap.js";
 import { MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/model-gateway/model-gateway-bootstrap.js";
 import { PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/prompt-engine/prompt-engine-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";

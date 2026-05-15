@@ -7,7 +7,7 @@ import type {
   VcrReplayRequest,
   RecordedInteraction,
 } from "../../../../../src/platform/shared/stability/vcr-replay-fixture.js";
-import type { StreamEventFrame } from "../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
+import type { StreamEventFrame } from "../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 
 test("VcrReplayMode accepts all valid values", () => {
   const modes: VcrReplayMode[] = ["fixture_only", "vcr_replay", "vcr_record"];

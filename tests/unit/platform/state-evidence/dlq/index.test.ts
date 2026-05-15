@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
+import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../../src/platform/five-plane-state-evidence/dlq/index.js";
 
 test("DeadLetterQueueService tracks retries and resolution state", () => {
   const service = new DeadLetterQueueService();

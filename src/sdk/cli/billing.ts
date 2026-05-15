@@ -33,7 +33,7 @@
 import { dirname } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadBillingCliEnv } from "../../platform/control-plane/config-center/billing-env.js";
+import { loadBillingCliEnv } from "../../platform/five-plane-control-plane/config-center/billing-env.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import {
   ManualBillingPaymentGateway,
@@ -42,7 +42,7 @@ import {
   type BillingPaymentGateway,
 } from "../../scale-ecosystem/billing/billing-payment-gateway.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 function requireNonEmptyValue(value: string | null | undefined, code: string): string {
   const normalized = value?.trim();

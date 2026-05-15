@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
-import { loadOrphanCleanupCliEnv } from "../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadOrphanCleanupCliEnv } from "../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ModelCallProviderService } from "../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 import { AdminSdk } from "../../../src/sdk/admin-sdk/index.js";
 import { HarnessSdk, HarnessSdkError } from "../../../src/sdk/harness-sdk/index.js";

@@ -19,9 +19,9 @@
  */
 
 import { deriveCliWorkspaceRoot, withCliStorage } from "./authoritative-storage.js";
-import { loadComplianceProgramCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
+import { loadComplianceProgramCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ComplianceProgramService } from "../../scale-ecosystem/marketplace/compliance-program-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 const envConfig = loadComplianceProgramCliEnv();
 
 const result = withCliStorage((storage) => {

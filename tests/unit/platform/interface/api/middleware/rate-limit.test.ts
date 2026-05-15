@@ -9,7 +9,7 @@ import {
   resetGlobalRateLimiter,
   type RateLimitConfig,
   type RateLimitDecision,
-} from "../../../../../../src/platform/interface/api/middleware/rate-limit.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/rate-limit.js";
 
 describe("RateLimiter", () => {
   describe("constructor", () => {

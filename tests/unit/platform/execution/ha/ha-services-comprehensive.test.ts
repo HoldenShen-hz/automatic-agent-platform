@@ -4,26 +4,26 @@ import test from "node:test";
 import {
   LeaderElectionService,
   type LeaderElectionServiceOptions,
-} from "../../../../../src/platform/execution/ha/leader-election-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/leader-election-service.js";
 import {
   LeaseReclaimerService,
-} from "../../../../../src/platform/execution/ha/lease-reclaimer-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/lease-reclaimer-service.js";
 import {
   StuckRunSweeperService,
-} from "../../../../../src/platform/execution/ha/stuck-run-sweeper-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/stuck-run-sweeper-service.js";
 import {
   CrossRegionEventReplicationService,
-} from "../../../../../src/platform/execution/ha/cross-region-event-replication-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/cross-region-event-replication-service.js";
 import type {
   CoordinatorNode,
   FailoverDecision,
   LeaderLease,
   LeadershipQueryResult,
   StuckRun,
-} from "../../../../../src/platform/execution/ha/types.js";
-import type { HaCoordinatorService } from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
-import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import type { TypedEventType } from "../../../../../src/platform/state-evidence/events/typed-event-bus.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
+import type { HaCoordinatorService } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
+import type { TypedEventPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
+import type { TypedEventType } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -661,10 +661,10 @@ function inferCallerSourcePath(): string {
 }
 
 function mapPathToStructuredPlane(sourcePath: string): StructuredPlane {
-  if (sourcePath.includes("/platform/interface/")) return "P1";
-  if (sourcePath.includes("/platform/control-plane/")) return "P2";
-  if (sourcePath.includes("/platform/orchestration/")) return "P3";
-  if (sourcePath.includes("/platform/execution/")) return "P4";
-  if (sourcePath.includes("/platform/state-evidence/")) return "P5";
+  if (sourcePath.includes("/platform/five-plane-interface/")) return "P1";
+  if (sourcePath.includes("/platform/five-plane-control-plane/")) return "P2";
+  if (sourcePath.includes("/platform/five-plane-orchestration/")) return "P3";
+  if (sourcePath.includes("/platform/five-plane-execution/")) return "P4";
+  if (sourcePath.includes("/platform/five-plane-state-evidence/")) return "P5";
   return "X1";
 }

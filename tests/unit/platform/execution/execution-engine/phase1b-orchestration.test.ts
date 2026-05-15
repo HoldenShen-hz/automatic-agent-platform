@@ -12,10 +12,10 @@ import test from "node:test";
 import {
   runMultiStepOrchestration,
   type MultiStepToolExecutionInput,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 import {
   runPhase1BOrchestration,
-} from "../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js";
 
 // =============================================================================
 // runPhase1BOrchestration alias tests

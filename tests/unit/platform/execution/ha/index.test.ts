@@ -23,7 +23,7 @@ import {
   HA_COORDINATOR_DDL,
   CROSS_REGION_DDL,
   WAL_CHECKPOINT_DDL,
-} from "../../../../../src/platform/execution/ha/index.js";
+} from "../../../../../src/platform/five-plane-execution/ha/index.js";
 
 test("CONTROL_PLANE_LOAD_BALANCING_DDL is exported", () => {
   assert.ok(CONTROL_PLANE_LOAD_BALANCING_DDL !== undefined);

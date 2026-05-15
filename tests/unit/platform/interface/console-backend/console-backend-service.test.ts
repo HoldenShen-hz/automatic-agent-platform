@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OperatorConsoleBackendService } from "../../../../../src/platform/interface/console-backend/index.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("buildSnapshot with empty data sources returns empty arrays", () => {
   const service = new OperatorConsoleBackendService({});

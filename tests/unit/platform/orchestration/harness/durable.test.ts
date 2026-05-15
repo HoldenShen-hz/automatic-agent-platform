@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 
 test("DurableHarnessService is exported from durable index", () => {
   const service = new DurableHarnessService();
@@ -13,6 +13,6 @@ test("DurableHarnessService is exported from durable index", () => {
 });
 
 test("durable index exports DurableHarnessService", async () => {
-  const mod = await import("../../../../../src/platform/orchestration/harness/durable/index.js");
+  const mod = await import("../../../../../src/platform/five-plane-orchestration/harness/durable/index.js");
   assert.ok("DurableHarnessService" in mod);
 });

@@ -5,14 +5,14 @@ import type {
   AsyncQueryResult,
   AsyncSqlConnection,
   AsyncSqlDatabase,
-} from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import {
   LocalHashSemanticVectorStore,
   PgvectorSemanticVectorStore,
   createSemanticVectorStoreFromEnvironment,
-} from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
-import { buildSemanticEmbedding } from "../../../../../src/platform/state-evidence/knowledge/semantic-embedding.js";
-import { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import { buildSemanticEmbedding } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-embedding.js";
+import { KnowledgePlaneService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 
 function buildEmbedding(seed: number): number[] {
   return Array.from({ length: 32 }, (_, index) => Number((((seed + index) % 7) / 7).toFixed(6)));

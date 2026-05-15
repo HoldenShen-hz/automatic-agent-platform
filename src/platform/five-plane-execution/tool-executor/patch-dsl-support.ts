@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
 import type { CodeDiagnosticsSummary } from "./code-diagnostics-service.js";
-import type { FileSnapshot, FreshnessConfig } from "../../control-plane/iam/file-freshness.js";
-import type { SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
+import type { FileSnapshot, FreshnessConfig } from "../../five-plane-control-plane/iam/file-freshness.js";
+import type { SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 
 export interface PatchHunk {
   /** Starting line number in the original file */

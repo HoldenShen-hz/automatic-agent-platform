@@ -9,7 +9,7 @@ import {
   ConfigSourcePriority,
   EnvironmentConfigSource,
   DefaultConfigSource,
-} from "../../../../../src/platform/control-plane/config-center/config-loader.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-loader.js";
 
 test("ConfigLoader.loadConfig merges sources by priority", async () => {
   const loader = new ConfigLoader({ enableCache: false });

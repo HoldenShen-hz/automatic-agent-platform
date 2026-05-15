@@ -7,14 +7,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../src/platform/orchestration/routing/workflow-planner.js";
+import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 import {
   getWorkflowDefinition,
   WORKFLOW_DEFINITIONS,
-} from "../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+} from "../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StorageError } from "../../../src/platform/contracts/errors.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

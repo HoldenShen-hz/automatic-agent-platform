@@ -14,7 +14,7 @@ import {
   type QueueAdapter,
   type QueueBackendConfig,
   type RedisQueueConfig,
-} from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+} from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 test("DEFAULT_RETRY_POLICY has correct values", () => {
   assert.equal(DEFAULT_RETRY_POLICY.maxAttempts, 3);

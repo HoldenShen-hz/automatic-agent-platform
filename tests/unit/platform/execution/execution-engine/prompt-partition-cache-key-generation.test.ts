@@ -13,7 +13,7 @@ import {
   partitionPromptForCache,
   PromptPartitionCacheService,
   type PromptPartitionInput,
-} from "../../../../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 function sha256Hex(value: string): string {
   return createHash("sha256").update(value).digest("hex");

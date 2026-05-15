@@ -21,7 +21,7 @@ import {
   type PendingDelivery,
   type RetryableDelivery,
   type DeliveryMessageRecord,
-} from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-support.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 
 test("DeliveryAttempt status accepts valid values", () => {
   const statuses: DeliveryAttempt["status"][] = ["pending", "success", "failed", "retrying"];

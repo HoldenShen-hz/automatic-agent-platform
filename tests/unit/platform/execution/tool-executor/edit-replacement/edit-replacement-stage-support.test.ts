@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateEditStages } from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-stage-support.js";
+import { evaluateEditStages } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-stage-support.js";
 
 test("evaluateEditStages returns exact match on first stage", () => {
   const content = "hello world";

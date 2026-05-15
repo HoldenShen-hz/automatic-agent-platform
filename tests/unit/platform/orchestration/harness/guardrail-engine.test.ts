@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GuardrailEngine, type GuardrailAssessmentInput } from "../../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
-import type { HarnessToolbelt } from "../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
+import { GuardrailEngine, type GuardrailAssessmentInput } from "../../../../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
+import type { HarnessToolbelt } from "../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
 
 // Helper to create a minimal toolbelt
 function createToolbelt(overrides: Partial<{

@@ -26,7 +26,7 @@ import {
   type DualChannelStepOutput,
   type Feedback,
   type LearningSignal,
-} from "../../../../../src/platform/orchestration/oapeflir/dto.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/dto.js";
 
 test("dto exports TaskSituationSchema and parseTaskSituation", () => {
   assert.equal(typeof TaskSituationSchema, "object");

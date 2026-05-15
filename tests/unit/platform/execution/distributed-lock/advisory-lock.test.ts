@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PgAdvisoryLockAdapter } from "../../../../../src/platform/execution/distributed-lock/pg-advisory-lock-adapter.js";
+import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
 
 // ---------------------------------------------------------------------------
 // Mock helpers

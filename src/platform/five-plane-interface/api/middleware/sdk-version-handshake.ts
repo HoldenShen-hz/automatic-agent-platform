@@ -31,21 +31,6 @@ export class SdkVersionHandshakeService {
       warnings.push(`compatibility_warning:contract=${contractVersion};expected=${this.policy.contractVersion}`);
     }
 
-    // R5-53: Validate platform minimum version compatibility
-    // R5-53 fix: Reject handshake if platform_min_version is below minimum, not just warn
-    if (platformMinVersion != null && this.compareSemver(platformMinVersion, this.policy.platformVersion) > 0) {
-      return {
-        accepted: false,
-        statusCode: 426,
-        reasonCode: "sdk.platform_incompatible",
-        responseHeaders: this.buildHeaders("platform_incompatible"),
-        warnings: [
-          `compatibility_error:platform_min=${platformMinVersion};platform=${this.policy.platformVersion}`,
-          ...warnings,
-        ],
-      };
-    }
-
     if (platformMinVersion != null && !this.isStrictSemver(platformMinVersion)) {
       return {
         accepted: false,
@@ -69,6 +54,20 @@ export class SdkVersionHandshakeService {
           ],
         };
       }
+    }
+
+    // R5-53: Validate platform minimum version compatibility.
+    if (platformMinVersion != null && this.compareSemver(platformMinVersion, this.policy.platformVersion) > 0) {
+      return {
+        accepted: false,
+        statusCode: 426,
+        reasonCode: "sdk.platform_incompatible",
+        responseHeaders: this.buildHeaders("platform_incompatible"),
+        warnings: [
+          `compatibility_error:platform_min=${platformMinVersion};platform=${this.policy.platformVersion}`,
+          ...warnings,
+        ],
+      };
     }
 
     if (sdkVersion == null || !this.isStrictSemver(sdkVersion) || this.compareSemver(sdkVersion, this.policy.minimumSdkVersion) < 0) {
@@ -125,10 +124,10 @@ export class SdkVersionHandshakeService {
   }
 
   private parse(version: string): readonly number[] {
-    return version.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+    return version.split(/[.-]/).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
   }
 
   private isStrictSemver(version: string): boolean {
-    return /^\d+(?:\.\d+){0,2}$/.test(version.trim());
+    return /^\d+(?:\.\d+){0,2}$/.test(version.trim()) || /^\d{4}-\d{2}-\d{2}$/.test(version.trim());
   }
 }

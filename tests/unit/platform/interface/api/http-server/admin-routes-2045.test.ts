@@ -14,11 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAdminRoutes } from "../../../../../../src/platform/interface/api/http-server/admin-routes.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { ApiDelegationService } from "../../../../../../src/platform/interface/api/facade-interfaces.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createAdminRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/admin-routes.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { ApiDelegationService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {

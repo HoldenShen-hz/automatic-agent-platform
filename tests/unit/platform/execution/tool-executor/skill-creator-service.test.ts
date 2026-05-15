@@ -6,7 +6,7 @@ import test from "node:test";
 import {
   SkillCreatorService,
   slugifySkillName,
-} from "../../../../../src/platform/execution/tool-executor/skill-creator-service.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/skill-creator-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("slugifySkillName normalizes human-readable names into lowercase kebab-case", () => {

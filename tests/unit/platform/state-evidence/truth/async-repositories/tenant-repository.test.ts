@@ -6,8 +6,8 @@ import {
   type TenantBillingRecord,
   type TenantQuotaRecord,
   type TenantRecord,
-} from "../../../../../../src/platform/state-evidence/truth/async-repositories/tenant-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/tenant-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";

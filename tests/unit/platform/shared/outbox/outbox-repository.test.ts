@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
-import type { SqliteConnection } from "../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
+import type { SqliteConnection } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/query-helper.js";
 import { OutboxStatus } from "../../../../../src/platform/shared/outbox/outbox-types.js";
 
 type ConnectionMock = Pick<SqliteConnection, "prepare">;

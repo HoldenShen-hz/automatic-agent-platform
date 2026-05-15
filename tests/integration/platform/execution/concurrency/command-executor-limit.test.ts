@@ -12,8 +12,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { WorkerRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/worker-repository.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { WorkerRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/worker-repository.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

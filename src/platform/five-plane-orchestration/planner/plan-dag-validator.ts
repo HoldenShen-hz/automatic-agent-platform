@@ -25,7 +25,7 @@ export class PlanDagValidator {
     }
 
     for (const step of steps) {
-      if (typeof step.title !== "string" || step.title.trim().length === 0) {
+      if (step.title != null && (typeof step.title !== "string" || step.title.trim().length === 0)) {
         issues.push(`planning.missing_title:${step.stepId}`);
       }
       if (!Number.isFinite(step.timeout) || step.timeout <= 0) {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
+import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
 // ============================================================================
 // API Key Validator Tests

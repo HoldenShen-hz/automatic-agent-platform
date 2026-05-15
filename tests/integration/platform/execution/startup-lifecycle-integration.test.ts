@@ -5,7 +5,7 @@ import {
   createGracefulShutdown,
   getGlobalGracefulShutdown,
   registerProcessErrorHandlers,
-} from "../../../../src/platform/execution/startup/index.js";
+} from "../../../../src/platform/five-plane-execution/startup/index.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("integration: getGlobalGracefulShutdown returns the singleton instance", async () => {

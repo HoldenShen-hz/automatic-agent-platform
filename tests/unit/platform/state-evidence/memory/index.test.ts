@@ -12,7 +12,7 @@ import type {
   ExperienceCacheService,
   ExperienceRecord,
   SimilarExperienceQuery,
-} from "../../../../../src/platform/state-evidence/memory/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/index.js";
 
 test("MemoryService type can be referenced", () => {
   // Verify the type exists and can be used in type annotations

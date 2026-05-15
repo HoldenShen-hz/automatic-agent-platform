@@ -10,7 +10,7 @@ import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { ModelRoutingService } from "../../../../src/platform/model-gateway/index.js";
-import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import type { ProviderHealthSummary } from "../../../../src/platform/shared/observability/provider-health-tracker.js";
 
 function buildTestRegistry(profiles: Record<string, ModelProfileMetadata>): ModelMetadataRegistry {

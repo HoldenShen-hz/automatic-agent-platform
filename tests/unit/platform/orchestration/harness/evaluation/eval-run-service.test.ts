@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EvalRunService } from "../../../../../../src/platform/orchestration/harness/evaluation/eval-run-service.js";
-import type { HarnessRun } from "../../../../../../src/platform/orchestration/harness/index.js";
+import { EvalRunService } from "../../../../../../src/platform/five-plane-orchestration/harness/evaluation/eval-run-service.js";
+import type { HarnessRun } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMockRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return {

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessSleepScheduler } from "../../../../../../src/platform/orchestration/harness/durable/sleep-scheduler.js";
-import type { HarnessRun } from "../../../../../../src/platform/orchestration/harness/index.js";
-import { DurableHarnessService } from "../../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessSleepScheduler } from "../../../../../../src/platform/five-plane-orchestration/harness/durable/sleep-scheduler.js";
+import type { HarnessRun } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { DurableHarnessService } from "../../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 
 function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return {

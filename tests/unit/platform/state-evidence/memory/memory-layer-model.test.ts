@@ -5,13 +5,13 @@ import {
   cloneMemoryWithLayer,
   DEFAULT_MEMORY_PROMOTION_RULES as legacyRules,
   mapMemoryScopeToLayer,
-} from "../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import {
   DEFAULT_MEMORY_PROMOTION_RULES as fivePlaneRules,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import {
   DEFAULT_SIX_LAYER_TRANSITION_RULES as legacyTransitionRules,
-} from "../../../../../src/platform/state-evidence/memory/layer-transition-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";
 import {
   DEFAULT_SIX_LAYER_TRANSITION_RULES as fivePlaneTransitionRules,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";

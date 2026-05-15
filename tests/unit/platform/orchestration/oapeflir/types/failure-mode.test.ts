@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   FailureMode,
   FailureCategory,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/failure-mode.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/failure-mode.js";
 
 test("FailureCategory accepts all valid categories", () => {
   const categories: FailureCategory[] = [

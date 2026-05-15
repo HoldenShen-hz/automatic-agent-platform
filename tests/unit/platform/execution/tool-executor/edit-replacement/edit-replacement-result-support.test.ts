@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAttempt } from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-result-support.js";
-import type { MatchOutcome } from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-types.js";
+import { buildAttempt } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-result-support.js";
+import type { MatchOutcome } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
 test("buildAttempt creates attempt with exact level and matched candidate", () => {
   const outcome: MatchOutcome = {

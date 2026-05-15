@@ -23,7 +23,7 @@ import {
   type RawWorkflowConfig,
   type RawWorkflowStepConfig,
 } from "../../../../src/domains/governance/index.js";
-import type { SandboxPolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import type { SandboxPolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // parseLimitedYaml

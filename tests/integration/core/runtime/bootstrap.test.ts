@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { GracefulShutdown } from "../../../../src/platform/execution/startup/graceful-shutdown.js";
+import { GracefulShutdown } from "../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 test("GracefulShutdown integration with actual handler execution", async () => {
   const callLog: string[] = [];

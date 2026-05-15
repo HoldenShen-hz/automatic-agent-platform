@@ -6,7 +6,7 @@ import {
   type IntakeRouteInput,
   type IntakeIntent,
   type IntakeContinuation,
-} from "../../../../../src/platform/orchestration/routing/intake-router.js";
+} from "../../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../../../src/domains/governance/division-loader.js";
 
 function createMockDivision(overrides: Partial<LoadedDivisionDefinition> & { id: string }): LoadedDivisionDefinition {

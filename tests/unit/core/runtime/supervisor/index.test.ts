@@ -28,7 +28,7 @@ test("core/runtime/supervisor shim exports buildStepFailureSummary", () => {
 
 test("core/runtime/supervisor shim re-exports same implementation as platform", async () => {
   const shim = await import("../../../../../src/core/runtime/supervisor/index.js");
-  const platform = await import("../../../../../src/platform/execution/execution-engine/multi-step-supervisor.js");
+  const platform = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-supervisor.js");
 
   assert.equal(shim.normalizeStepFailurePlan, platform.normalizeStepFailurePlan, "normalizeStepFailurePlan should point to platform implementation");
   assert.equal(shim.resolveStepFailurePlan, platform.resolveStepFailurePlan, "resolveStepFailurePlan should point to platform implementation");

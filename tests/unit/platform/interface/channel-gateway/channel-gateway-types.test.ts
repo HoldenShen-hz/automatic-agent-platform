@@ -10,7 +10,7 @@ import type {
   GatewayDeliveryReceipt,
   GatewayRetryQueueSummary,
   TrackedGatewayDeliveryPayload,
-} from "../../../../../src/platform/interface/channel-gateway/types.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/types.js";
 
 test("TelegramGatewayConfig allows optional baseUrl", () => {
   const config1: TelegramGatewayConfig = { botToken: "token123" };

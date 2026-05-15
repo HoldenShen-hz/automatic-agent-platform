@@ -5,7 +5,7 @@ import type {
   GatewayTargetRecord,
   GatewayTargetSource,
 } from "../../contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { GatewaySessionTargetCandidate } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { GatewayStoragePort } from "./storage-port.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

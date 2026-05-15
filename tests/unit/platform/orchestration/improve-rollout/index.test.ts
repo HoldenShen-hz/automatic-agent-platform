@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as improveRollout from "../../../../../src/platform/orchestration/improve-rollout/index.js";
+import * as improveRollout from "../../../../../src/platform/five-plane-orchestration/improve-rollout/index.js";
 
 test("improve-rollout index exports AutoRollbackService", () => {
   assert.ok(improveRollout.AutoRollbackService !== undefined);

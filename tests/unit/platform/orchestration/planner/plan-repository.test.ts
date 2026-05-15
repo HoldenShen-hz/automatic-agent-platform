@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PlanRepository } from "../../../../../src/platform/orchestration/planner/plan-repository.js";
+import { PlanRepository } from "../../../../../src/platform/five-plane-orchestration/planner/plan-repository.js";
 
 test("PlanRepository stores versioned plan history per task", () => {
   const repository = new PlanRepository();

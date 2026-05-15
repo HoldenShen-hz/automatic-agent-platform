@@ -151,7 +151,16 @@ function validateWithQualityScoring(
   // Check field types
   for (const [field, expectedType] of Object.entries(contract.fieldTypes ?? {})) {
     if (!(field in payload)) {
-      // Already counted in missing fields
+      if ((contract.requiredFields ?? []).length === 0) {
+        continue;
+      }
+      errors.push({
+        field,
+        message: `Expected ${expectedType}, received missing`,
+        severity: "error",
+      });
+      suggestions.push(`Provide "${field}" as ${expectedType}.`);
+      typeMismatchCount++;
       continue;
     }
 

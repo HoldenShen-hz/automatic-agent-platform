@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeRetrievalService } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import type { ArchivedKnowledgeChunkRecord } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { KeywordKnowledgeIndex } from "../../../../../src/platform/state-evidence/knowledge/keyword-index.js";
-import type { KnowledgeAuditLogger } from "../../../../../src/platform/state-evidence/knowledge/governance/knowledge-audit-logger.js";
-import type { NamespacePolicyStore } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import type { SemanticKnowledgeGraph } from "../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import type { SemanticVectorStore } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
-import type { KnowledgeArchive } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { RetrievalHit, KnowledgeNamespace } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import type { ArchivedKnowledgeChunkRecord } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { KeywordKnowledgeIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
+import type { KnowledgeAuditLogger } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-audit-logger.js";
+import type { NamespacePolicyStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import type { SemanticKnowledgeGraph } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import type { SemanticVectorStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import type { KnowledgeArchive } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { RetrievalHit, KnowledgeNamespace } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // =============================================================================
 // mock factories

@@ -7,8 +7,8 @@ import {
   loadEnvironmentDeploymentCliEnv,
   loadOpsProgramCliEnv,
   loadPlatformOperatorCliEnv,
-} from "../../../../../src/platform/control-plane/config-center/operations-cli-env.js";
-import { loadAuthoritativeStorageAdminCliEnv } from "../../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { loadAuthoritativeStorageAdminCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 
 test("operations cli env loader parses enterprise governance inputs", () => {
   const config = loadEnterpriseGovernanceCliEnv({

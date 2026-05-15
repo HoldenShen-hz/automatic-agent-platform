@@ -12,6 +12,7 @@ import test from "node:test";
 
 import { FailurePatternMiner } from "../../../../../../src/platform/five-plane-orchestration/learn/failure-pattern-miner.js";
 import { LearningObjectValidator } from "../../../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
+import { StrategyLearningService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/strategy-learning-service.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,7 +393,7 @@ test("LearningObjectValidator sets quarantine status on invalid objects", () => 
 
   assert.equal(result.valid, false);
   const learningObj = result.learningObject as { promotionStatus?: string };
-  assert.equal(learningObj.promotionStatus, "quarantine");
+  assert.equal(learningObj.promotionStatus, "quarantined");
 });
 
 test("LearningObjectValidator.validateMany filters invalid objects", () => {
@@ -626,7 +627,6 @@ test("FailurePatternMiner.mine produces consistent ID format", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("StrategyLearningService returns empty array for empty signals", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const objects = service.learnSync([]);
 
@@ -634,7 +634,6 @@ test("StrategyLearningService returns empty array for empty signals", () => {
 });
 
 test("StrategyLearningService async returns empty array for empty signals", async () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const objects = await service.learn([]);
 
@@ -642,7 +641,6 @@ test("StrategyLearningService async returns empty array for empty signals", asyn
 });
 
 test("StrategyLearningService works without evidenceStore", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signals = [createLearningSignal({ learningSignalId: "sig_no_store" })];
 
@@ -652,7 +650,6 @@ test("StrategyLearningService works without evidenceStore", () => {
 });
 
 test("StrategyLearningService async works without evidenceStore", async () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signals = [createLearningSignal({ learningSignalId: "sig_no_store_async" })];
 
@@ -662,7 +659,6 @@ test("StrategyLearningService async works without evidenceStore", async () => {
 });
 
 test("StrategyLearningService handles signals with cost and latency", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signals = [
     createLearningSignal({
@@ -678,7 +674,6 @@ test("StrategyLearningService handles signals with cost and latency", () => {
 });
 
 test("StrategyLearningService handles signals with repair rounds", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signals = [createLearningSignal({ learningSignalId: "sig_repair", repairRounds: 3 })];
 
@@ -687,7 +682,6 @@ test("StrategyLearningService handles signals with repair rounds", () => {
 });
 
 test("StrategyLearningService handles signals with errorCode", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signals = [createLearningSignal({ learningSignalId: "sig_error", errorCode: "EXECUTION_TIMEOUT" })];
 
@@ -696,7 +690,6 @@ test("StrategyLearningService handles signals with errorCode", () => {
 });
 
 test("StrategyLearningService normalizes signal references", () => {
-  const { StrategyLearningService } = require("../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js");
   const service = new StrategyLearningService();
   const signal = createLearningSignal({
     evidenceRefs: [],

@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import {
   buildMarkdown,
   type ReleasePipelineBundle,
-} from "../../src/platform/control-plane/incident-control/release-pipeline-support.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/release-pipeline-support.js";
 
 test("golden: buildMarkdown produces correct structure", () => {
   const bundle: ReleasePipelineBundle = {

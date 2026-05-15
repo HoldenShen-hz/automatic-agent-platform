@@ -12,7 +12,7 @@ import {
   checkSandboxPath,
   createWorkspaceWritePolicy,
   type SandboxPolicy,
-} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("security: basic ../ path traversal is blocked", () => {
   const policy = createWorkspaceWritePolicy("/workspace/project");

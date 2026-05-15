@@ -13,18 +13,18 @@ import { globSync } from "glob";
 import { readFileSync } from "fs";
 
 const ROUTE_FILES = [
-  "src/platform/interface/api/http-server/admin-routes.ts",
-  "src/platform/interface/api/http-server/approval-routes.ts",
-  "src/platform/interface/api/http-server/billing-routes.ts",
-  "src/platform/interface/api/http-server/console-routes.ts",
-  "src/platform/interface/api/http-server/cost-routes.ts",
-  "src/platform/interface/api/http-server/division-routes.ts",
-  "src/platform/interface/api/http-server/gateway-routes.ts",
-  "src/platform/interface/api/http-server/incident-routes.ts",
-  "src/platform/interface/api/http-server/pack-routes.ts",
-  "src/platform/interface/api/http-server/prompt-routes.ts",
-  "src/platform/interface/api/http-server/task-routes.ts",
-  "src/platform/interface/api/http-server/webhook-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/admin-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/approval-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/billing-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/console-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/cost-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/division-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/gateway-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/incident-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/pack-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/prompt-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/task-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/webhook-routes.ts",
 ];
 
 test("[SYS-QUAL-7.3] route files with POST/PUT/PATCH handlers call schema.parse on request body", () => {
@@ -241,7 +241,7 @@ test("[SYS-QUAL-7.3] comprehensive validation across all route files", () => {
       const status = handlerCount === 0 || hasValidation ? "pass" : "fail";
 
       results.push({
-        file: routeFile.replace("src/platform/interface/api/http-server/", ""),
+        file: routeFile.replace("src/platform/five-plane-interface/api/http-server/", ""),
         handlers: handlerCount,
         parseCalls: parseCount,
         safeParseCalls: safeParseCount,
@@ -250,7 +250,7 @@ test("[SYS-QUAL-7.3] comprehensive validation across all route files", () => {
       });
     } catch {
       results.push({
-        file: routeFile.replace("src/platform/interface/api/http-server/", ""),
+        file: routeFile.replace("src/platform/five-plane-interface/api/http-server/", ""),
         handlers: 0,
         parseCalls: 0,
         safeParseCalls: 0,

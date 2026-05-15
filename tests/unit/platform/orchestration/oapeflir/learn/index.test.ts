@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // OAPEFLIR Learn barrel test - imports from the learn module index
-import * as Learn from "../../../../../../src/platform/orchestration/oapeflir/learn/index.js";
+import * as Learn from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/index.js";
 
 test("Learn module is exported", () => {
   assert.ok(Learn !== undefined);

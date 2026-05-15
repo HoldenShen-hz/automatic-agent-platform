@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { detectLlmTruncation } from "../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/truncation-detector.js";
-import { detectToolPermissionDenial } from "../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/permission-detector.js";
-import { detectModelHallucination } from "../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/hallucination-detector.js";
-import { detectSchemaValidationLoop } from "../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/schema-loop-detector.js";
+import { detectLlmTruncation } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/truncation-detector.js";
+import { detectToolPermissionDenial } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/permission-detector.js";
+import { detectModelHallucination } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/hallucination-detector.js";
+import { detectSchemaValidationLoop } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/schema-loop-detector.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {

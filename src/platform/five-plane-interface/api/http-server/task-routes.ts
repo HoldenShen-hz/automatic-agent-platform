@@ -32,8 +32,8 @@ import {
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
-import type { MissionRepository } from "../../../state-evidence/truth/mission-repository.js";
+import type { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { MissionRepository } from "../../../five-plane-state-evidence/truth/mission-repository.js";
 import type { IntakeAdmissionService } from "../../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { TaskInputSource } from "../../../contracts/executable-contracts/index.js";

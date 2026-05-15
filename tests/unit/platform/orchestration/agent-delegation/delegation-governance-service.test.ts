@@ -8,8 +8,8 @@ import {
   DelegationGovernanceService,
   type DelegationGovernanceRequest,
   type GovernanceRule,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-governance-service.js";
-import type { AgentContext, DelegationSpec } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-governance-service.js";
+import type { AgentContext, DelegationSpec } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 function createMockContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

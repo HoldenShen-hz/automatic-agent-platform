@@ -10,28 +10,28 @@ import * as assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import {
   HitlApprovalOrchestrationService,
   type ApprovalPacket,
   type HitlApprovalRequest,
   type ApprovalPacketOption,
-} from "../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
-import { HitlInboxService } from "../../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
-import { HITLExplainabilityService } from "../../../../src/platform/orchestration/hitl/hitl-explainability-service.js";
-import { HitlRuntime } from "../../../../src/platform/orchestration/harness/hitl-runtime.js";
+} from "../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
+import { HitlInboxService } from "../../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
+import { HITLExplainabilityService } from "../../../../src/platform/five-plane-orchestration/hitl/hitl-explainability-service.js";
+import { HitlRuntime } from "../../../../src/platform/five-plane-orchestration/harness/hitl-runtime.js";
 import {
   HarnessRuntimeService,
   type ConstraintPack,
   type HarnessTimelineEvent,
-} from "../../../../src/platform/orchestration/harness/index.js";
-import { HITL_MODES } from "../../../../src/platform/orchestration/hitl/hitl-modes.js";
+} from "../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { HITL_MODES } from "../../../../src/platform/five-plane-orchestration/hitl/hitl-modes.js";
 
 function createHitlContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);

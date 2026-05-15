@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 // Helper to compute HMAC signature

@@ -7,7 +7,7 @@ import {
   type BeforeAgentHook,
   type WrapToolCallHook,
   type MiddlewareContext,
-} from "../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 test("globalMiddlewareChain is an AgentMiddlewareChain instance", () => {
   assert.ok(globalMiddlewareChain instanceof AgentMiddlewareChain);

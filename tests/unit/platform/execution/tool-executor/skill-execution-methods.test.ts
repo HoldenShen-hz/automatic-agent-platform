@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import {
   SkillExecutionService,
   type SkillDefinition,
-} from "../../../../../src/platform/execution/tool-executor/skill-execution-service.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/skill-execution-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createService() {

@@ -5,9 +5,9 @@
  * enabling both SQLite (single-node) and PostgreSQL (multi-node) backends.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
-import type { SqliteAuthoritativeStorageBackendHandle, PostgresAuthoritativeStorageBackendHandle } from "../../state-evidence/truth/storage-backend-factory.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
+import type { SqliteAuthoritativeStorageBackendHandle, PostgresAuthoritativeStorageBackendHandle } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../contracts/types/domain.js";
 import { SqliteLeaseRepository } from "./lease-repository-sqlite.js";
 import { PostgresLeaseRepository } from "./lease-repository-postgres.js";

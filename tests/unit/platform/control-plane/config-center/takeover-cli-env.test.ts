@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadTakeoverCliEnv } from "../../../../../src/platform/control-plane/config-center/takeover-cli-env.js";
+import { loadTakeoverCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/takeover-cli-env.js";
 
 test("takeover env loader parses tenant-scoped workflow repair inputs", () => {
   const config = loadTakeoverCliEnv({

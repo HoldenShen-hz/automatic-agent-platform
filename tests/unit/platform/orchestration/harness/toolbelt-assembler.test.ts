@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ToolbeltAssembler, type ToolbeltAssemblyRequest } from "../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
+import { ToolbeltAssembler, type ToolbeltAssemblyRequest } from "../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
 
 test("ToolbeltAssembler.grantedTools contains requested tools that are in allowed list", () => {
   const assembler = new ToolbeltAssembler();

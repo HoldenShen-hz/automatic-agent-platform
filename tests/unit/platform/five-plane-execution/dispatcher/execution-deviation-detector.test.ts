@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { ExecutionDeviationDetector } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-deviation-detector.js";
-import type { Plan } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
+import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
 describe("ExecutionDeviationDetector", () => {
   describe("detect", () => {

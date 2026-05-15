@@ -7,8 +7,8 @@ import {
   RedisQueueAdapter,
   createQueueAdapter,
   QUEUE_JOBS_DDL,
-} from "../../../../../src/platform/execution/queue/queue-adapter.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-execution/queue/queue-adapter.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createHarness(prefix: string) {

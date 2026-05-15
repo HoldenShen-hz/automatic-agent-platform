@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PlanBuilder } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
+import { PlanBuilder } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
 
 const workflow = {
   workflow: {

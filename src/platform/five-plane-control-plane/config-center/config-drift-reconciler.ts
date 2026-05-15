@@ -1,4 +1,4 @@
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 
 export interface ConfigDriftSource {
   readonly sourceName: "defaults" | "environment" | "runtime" | "run_version_lock";

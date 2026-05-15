@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Ingress Handler Unit Tests
  *
@@ -7,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DistributedRateLimiter } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter checkAndConsume allows requests under limit", async () => {
   const limiter = new DistributedRateLimiter({

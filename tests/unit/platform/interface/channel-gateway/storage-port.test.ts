@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { GatewayStoragePort } from "../../../../../src/platform/interface/channel-gateway/storage-port.js";
+import type { GatewayStoragePort } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
 
 test("GatewayStoragePort interface structure", () => {
   // GatewayStoragePort is an interface, so we can only verify its shape exists

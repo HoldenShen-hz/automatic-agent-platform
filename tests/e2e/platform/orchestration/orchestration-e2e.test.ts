@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * E2E Test: Orchestration - Delegation + Escalation Combined Flow
  *
@@ -18,7 +17,7 @@ import {
   DelegationGovernanceService,
   type AgentContext,
   type DelegationSpec,
-} from "../../../../../src/platform/orchestration/agent-delegation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 // Mock external services for E2E testing
 const mockPanicService = {

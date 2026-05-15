@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { scanTrustedContextContent, scanTrustedContextWorkspace } from "../../../../../src/platform/control-plane/iam/trusted-context-scanner.js";
+import { scanTrustedContextContent, scanTrustedContextWorkspace } from "../../../../../src/platform/five-plane-control-plane/iam/trusted-context-scanner.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("trusted context scanner marks prompt override phrases as untrusted", () => {

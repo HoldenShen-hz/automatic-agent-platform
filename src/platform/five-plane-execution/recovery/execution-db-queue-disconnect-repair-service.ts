@@ -17,8 +17,8 @@
 import type { DispatchTarget, TaskPriority, WorkerIsolationLevel } from "../../contracts/types/domain.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ExecutionDispatchService } from "../dispatcher/execution-dispatch-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

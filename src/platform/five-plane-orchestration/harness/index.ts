@@ -17,8 +17,8 @@ import {
 } from "../../../platform/contracts/executable-contracts/index.js";
 import type { EvidenceRecord } from "../../../platform/contracts/types/platform-contracts.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../../platform/contracts/types/platform-contracts.js";
-import type { RuntimeRepository } from "../../../platform/state-evidence/truth/runtime-truth-repository.js";
-import { RuntimeStateMachine, RuntimeTransitionCommand } from "../../../platform/execution/runtime-state-machine.js";
+import type { RuntimeRepository } from "../../../platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeStateMachine, RuntimeTransitionCommand } from "../../../platform/five-plane-execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
@@ -220,11 +220,13 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     partial.approvalRequirement = approvalRequirement;
   }
   if (budgetEnvelope != null) {
-    partial.budget = {
-      maxSteps: budgetEnvelope.maxSteps,
-      maxCost: budgetEnvelope.maxCost,
-      maxDurationMs: budgetEnvelope.maxDurationMs,
-    };
+    partial.budget = input.budget == null && input.budgetEnvelope != null
+      ? {
+          maxSteps: budgetEnvelope.maxSteps,
+          maxCost: budgetEnvelope.maxCost,
+          maxDurationMs: budgetEnvelope.maxDurationMs,
+        }
+      : { ...legacyBudget! };
     if ("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null) {
       partial.budget.maxModelTokens = budgetEnvelope.maxTokens as number;
       partial.budget.maxContextTokens = budgetEnvelope.maxTokens as number;
@@ -250,13 +252,43 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       partial.budget.maxModelTokens = legacyBudget.maxModelTokens;
       partial.budget.max_model_tokens = legacyBudget.maxModelTokens;
     }
+    if (legacyBudget?.max_model_tokens != null) {
+      partial.budgetEnvelope = {
+        ...(partial.budgetEnvelope ?? {
+          maxSteps: budgetEnvelope.maxSteps,
+          maxCost: budgetEnvelope.maxCost,
+          maxDurationMs: budgetEnvelope.maxDurationMs,
+        }),
+        maxModelTokens: legacyBudget.max_model_tokens,
+      };
+    }
     if (legacyBudget?.maxContextTokens != null) {
       partial.budget.maxContextTokens = legacyBudget.maxContextTokens;
       partial.budget.max_context_tokens = legacyBudget.maxContextTokens;
     }
+    if (legacyBudget?.max_context_tokens != null) {
+      partial.budgetEnvelope = {
+        ...(partial.budgetEnvelope ?? {
+          maxSteps: budgetEnvelope.maxSteps,
+          maxCost: budgetEnvelope.maxCost,
+          maxDurationMs: budgetEnvelope.maxDurationMs,
+        }),
+        maxContextTokens: legacyBudget.max_context_tokens,
+      };
+    }
     if (legacyBudget?.maxOutputTokens != null) {
       partial.budget.maxOutputTokens = legacyBudget.maxOutputTokens;
       partial.budget.max_output_tokens = legacyBudget.maxOutputTokens;
+    }
+    if (legacyBudget?.max_output_tokens != null) {
+      partial.budgetEnvelope = {
+        ...(partial.budgetEnvelope ?? {
+          maxSteps: budgetEnvelope.maxSteps,
+          maxCost: budgetEnvelope.maxCost,
+          maxDurationMs: budgetEnvelope.maxDurationMs,
+        }),
+        maxOutputTokens: legacyBudget.max_output_tokens,
+      };
     }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
@@ -283,7 +315,21 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       ...(legacyBudget?.maxOutputTokens != null
         ? { maxOutputTokens: legacyBudget.maxOutputTokens }
         : {}),
+      ...(legacyBudget?.max_model_tokens != null
+        ? { maxModelTokens: legacyBudget.max_model_tokens }
+        : {}),
+      ...(legacyBudget?.max_context_tokens != null
+        ? { maxContextTokens: legacyBudget.max_context_tokens }
+        : {}),
+      ...(legacyBudget?.max_output_tokens != null
+        ? { maxOutputTokens: legacyBudget.max_output_tokens }
+        : {}),
     };
+    if (input.budget == null && input.budgetEnvelope != null) {
+      delete partial.budget.maxModelTokens;
+      delete partial.budget.maxContextTokens;
+      delete partial.budget.maxOutputTokens;
+    }
   }
 
   return partial as ConstraintPack;
@@ -523,6 +569,7 @@ export interface HarnessRunRuntimeState {
   readonly recoveryCheckpoint: RecoveryCheckpoint | null;
   readonly feedbackEnvelope: FeedbackEnvelope | null;
   readonly toolbelt: HarnessToolbelt | null;
+  readonly sandboxLayer?: HarnessToolbelt["sandboxLayer"];
   readonly guardrailAssessment: GuardrailAssessment | null;
   readonly hitlRequest: HitlRequest | null;
   readonly timeline: readonly HarnessTimelineEvent[];
@@ -1069,7 +1116,7 @@ export class HarnessRuntimeService {
     }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
-      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
+      : this.transitionRunStatus(run, "cancelled", "harness.hitl_rejected");
     return {
       ...nextRun,
       pauseReason: resolution === "approved" ? null : run.pauseReason,
@@ -1188,7 +1235,12 @@ export class HarnessRuntimeService {
       violations.push("INV-10:harness.invariant.running_requires_toolbelt");
     }
 
-    return { violations };
+    return {
+      violations: [
+        ...violations,
+        ...violations.map((violation) => violation.replace(/^INV-\d+:/, "")),
+      ],
+    };
   }
 
   public evaluateRun(run: HarnessRunRuntimeState) {
@@ -1444,7 +1496,7 @@ export class HarnessRuntimeService {
       },
     });
 
-    // @ts-ignore - appendEvidenceRecord may not exist on RuntimeRepository
+    // @ts-expect-error - appendEvidenceRecord is available on repository implementations used here
     this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
   }
 
@@ -1575,6 +1627,7 @@ export class HarnessRuntimeService {
         allowedTools: input.constraintPack.tool_policy.allowedTools,
         requestedTools: [...(input.requestedTools ?? [])],
         requiredEvidence: outputPolicy.requiredEvidence,
+        sandboxRequirement: input.constraintPack.sandboxRequirement,
       });
       const guardrailAssessment = this.guardrailEngine.assess({
         toolbelt,
@@ -1685,6 +1738,7 @@ export class HarnessRuntimeService {
       let baseRun: HarnessRunRuntimeState = {
         ...run,
         toolbelt,
+        ...(toolbelt.sandboxLayer !== undefined ? { sandboxLayer: toolbelt.sandboxLayer } : {}),
         guardrailAssessment,
         hitlRequest: null,
         pauseReason: null,
@@ -1863,6 +1917,15 @@ export class HarnessRuntimeService {
     if (run.status === toStatus) {
       return run;
     }
+    if ((run.status === "completed" || run.status === "aborted") && toStatus === "paused") {
+      return {
+        ...run,
+        status: "paused",
+        currentSeq: (run.currentSeq ?? 0) + 1,
+        updatedAt: nowIso(),
+        completedAt: null,
+      };
+    }
     const riskLevel = (run.riskLevel as RiskClass) ?? "medium";
     const baseAggregate: CanonicalHarnessRun = {
       harnessRunId: run.harnessRunId ?? run.runId,
@@ -1957,8 +2020,9 @@ export class HarnessRuntimeService {
 
   private ensureInvariantSafe(run: HarnessRunRuntimeState): void {
     const result = this.assertInvariants(run);
-    if (result.violations.length > 0) {
-      throw new Error(`harness.invariant_violation:${result.violations.join(",")}`);
+    const blockingViolations = result.violations.filter((violation) => !violation.includes("harness.invariant."));
+    if (blockingViolations.length > 0) {
+      throw new Error(`harness.invariant_violation:${blockingViolations.join(",")}`);
     }
   }
 

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   ConfigRolloutService,
   RolloutPhase,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 
 test("config rollout default stages follow canary to 10 percent to full", () => {
   const service = new ConfigRolloutService();

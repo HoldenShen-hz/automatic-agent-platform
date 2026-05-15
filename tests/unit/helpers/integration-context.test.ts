@@ -204,4 +204,4 @@ describe("integration-context", () => {
 });
 
 // Import for type only
-import type { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";

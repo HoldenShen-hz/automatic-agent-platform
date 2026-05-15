@@ -5,7 +5,7 @@ import {
   IncidentDetector,
   type IncidentDetection,
   type IncidentSeverity,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 test("IncidentDetector detects incidents from fail_closed checks as P1", () => {
   const detector = new IncidentDetector();

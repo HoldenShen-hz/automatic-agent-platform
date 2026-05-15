@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteLockAdapter } from "../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
-import { PgAdvisoryLockAdapter } from "../../../../src/platform/execution/distributed-lock/pg-advisory-lock-adapter.js";
-import { RedisLockAdapter } from "../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import { createLockAdapter } from "../../../../src/platform/execution/distributed-lock/distributed-lock-factory.js";
-import type { DistributedLockAdapter } from "../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
+import { PgAdvisoryLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
+import { createLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import type { DistributedLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 // Re-export the types to verify they are exported correctly
 import type {
@@ -16,9 +16,9 @@ import type {
   AcquireLockResult,
   PgAdvisoryLockConfig,
   RedisLockConfig,
-} from "../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+} from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
-import { lockLogger, defaultPostgresFactory, inferPgSslFromDsn } from "../../../../src/platform/execution/distributed-lock/locking-support.js";
+import { lockLogger, defaultPostgresFactory, inferPgSslFromDsn } from "../../../../src/platform/five-plane-execution/distributed-lock/locking-support.js";
 
 // Verify all expected exports are available
 test("distributed-lock index exports SqliteLockAdapter", () => {

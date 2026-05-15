@@ -12,12 +12,12 @@
 
 import type { FileLockRecord, WorkflowStateRecord } from "../../contracts/types/domain.js";
 
-import { getRegisteredConsumers, hasEventSchema } from "../../state-evidence/events/event-registry.js";
+import { getRegisteredConsumers, hasEventSchema } from "../../five-plane-state-evidence/events/event-registry.js";
 import { ExecutionDispatchReconciliationService } from "../dispatcher/execution-dispatch-reconciliation-service.js";
-import type { ConfigBundle } from "../../control-plane/config-center/config-governance-service.js";
-import { getWorkflowDefinition } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { ConfigBundle } from "../../five-plane-control-plane/config-center/config-governance-service.js";
+import { getWorkflowDefinition } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { listBuiltinToolExecutionMetadata } from "../tool-executor/tool-metadata.js";
 import { type ToolContractViolation, validateToolMetadataRegistry } from "../tool-executor/tool-contract-validator.js";
 

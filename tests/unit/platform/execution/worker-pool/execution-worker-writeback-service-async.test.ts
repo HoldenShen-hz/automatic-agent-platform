@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionWorkerWritebackServiceAsync } from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-service-async.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { WorkerWritebackDecision } from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-service.js";
+import { ExecutionWorkerWritebackServiceAsync } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service-async.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { WorkerWritebackDecision } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

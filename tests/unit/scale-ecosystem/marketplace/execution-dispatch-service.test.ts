@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace execution-dispatch-service re-export
  *

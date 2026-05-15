@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   FailurePatternSchema,
   FailurePatternTypeSchema,
-} from "../../../../../../src/platform/orchestration/learn/pattern-detectors/failure-pattern-model.js";
+} from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/failure-pattern-model.js";
 
 test("FailurePatternTypeSchema accepts valid pattern types", () => {
   const types = [

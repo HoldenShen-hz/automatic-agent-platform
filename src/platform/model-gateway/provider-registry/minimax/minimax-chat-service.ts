@@ -36,9 +36,9 @@ import {
 import {
   MINIMAX_API_URL_CHINA,
   MINIMAX_API_URL_GLOBAL,
-} from "../../../control-plane/config-center/provider-defaults.js";
+} from "../../../five-plane-control-plane/config-center/provider-defaults.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
-import { createPolicyAwareFetch } from "../../../control-plane/iam/network-egress-policy.js";
+import { createPolicyAwareFetch } from "../../../five-plane-control-plane/iam/network-egress-policy.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

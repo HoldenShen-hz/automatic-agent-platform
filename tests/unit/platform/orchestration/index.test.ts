@@ -6,7 +6,7 @@ import {
   HitlApprovalOrchestrationService,
   OapeflirLoopService,
   TaskDecompositionService,
-} from "../../../../src/platform/orchestration/index.js";
+} from "../../../../src/platform/five-plane-orchestration/index.js";
 
 test("orchestration root barrel exposes harness, HITL, OAPEFLIR, and planner services", () => {
   assert.equal(typeof HarnessRuntimeService, "function");

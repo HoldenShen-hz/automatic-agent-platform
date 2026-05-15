@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkerDrainProtocol } from "../../../../../src/platform/execution/worker-pool/worker-drain-protocol.js";
+import { WorkerDrainProtocol } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
 test("WorkerDrainProtocol.createReceipt returns drained when no active leases", () => {
   const protocol = new WorkerDrainProtocol();

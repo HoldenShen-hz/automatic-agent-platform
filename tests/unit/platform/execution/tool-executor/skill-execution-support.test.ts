@@ -5,7 +5,7 @@ import type {
   SkillStepDefinition,
   SkillStepModelOverride,
   SkillDefinition,
-} from "../../../../../src/platform/execution/tool-executor/skill-execution-support.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/skill-execution-support.js";
 
 test("SkillStepDefinition type accepts valid onFailure values", () => {
   const step1: SkillStepDefinition = { stepId: "1", toolName: "read", onFailure: "fail" };

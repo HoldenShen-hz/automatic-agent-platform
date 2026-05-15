@@ -17,11 +17,11 @@
  */
 
 import { ServiceRegistry } from "./service-registry.js";
-import { NetworkEgressAuditService } from "../../control-plane/iam/network-egress-audit.js";
-import { NetworkEgressPolicyService, loadNetworkEgressPolicyConfigFromEnv } from "../../control-plane/iam/network-egress-policy.js";
-import { OutputContinuationService } from "../../execution/execution-engine/output-continuation-service.js";
-import { DelegationAuditService } from "../../orchestration/agent-delegation/delegation-audit-service.js";
-import { DelegationGovernanceService } from "../../orchestration/agent-delegation/delegation-governance-service.js";
+import { NetworkEgressAuditService } from "../../five-plane-control-plane/iam/network-egress-audit.js";
+import { NetworkEgressPolicyService, loadNetworkEgressPolicyConfigFromEnv } from "../../five-plane-control-plane/iam/network-egress-policy.js";
+import { OutputContinuationService } from "../../five-plane-execution/execution-engine/output-continuation-service.js";
+import { DelegationAuditService } from "../../five-plane-orchestration/agent-delegation/delegation-audit-service.js";
+import { DelegationGovernanceService } from "../../five-plane-orchestration/agent-delegation/delegation-governance-service.js";
 
 ServiceRegistry.registerBootstrap("service-registry-bootstrap.core-services", (registry) => {
   // Register network egress audit service

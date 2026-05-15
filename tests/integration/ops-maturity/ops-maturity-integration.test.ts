@@ -11,10 +11,10 @@ import { buildEdgeExecutionPlan, buildLegacyEdgeExecutionPlan } from "../../../s
 import { selectEdgeLocalModel } from "../../../src/ops-maturity/edge-runtime/local-model/index.js";
 import { orderEdgeSyncQueue } from "../../../src/ops-maturity/edge-runtime/sync-queue/index.js";
 import { EvolutionMvpService } from "../../../src/ops-maturity/drift-detection/evolution-mvp-service.js";
-import { ApprovalService } from "../../../src/platform/control-plane/approval-center/approval-service.js";
-import { MemoryService } from "../../../src/platform/state-evidence/memory/memory-service.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { ApprovalService } from "../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { MemoryService } from "../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 

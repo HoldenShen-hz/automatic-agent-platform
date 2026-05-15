@@ -9,8 +9,8 @@
  * @see docs_zh/architecture/00-platform-architecture.md for architecture context
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ArtifactRef, DataNamespaceRecord } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 

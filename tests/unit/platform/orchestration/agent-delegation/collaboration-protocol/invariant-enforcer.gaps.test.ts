@@ -13,9 +13,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ACPInvariantEnforcer } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
-import type { PermissionSet } from "../../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
-import type { ACPMessage } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/types.js";
+import { ACPInvariantEnforcer } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
+import type { PermissionSet } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
+import type { ACPMessage } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/types.js";
 
 const enforcer = new ACPInvariantEnforcer();
 

@@ -5,12 +5,12 @@ import {
   HarnessRuntimeService,
   type ConstraintPack,
   type HarnessLoopInput,
-} from "../../src/platform/orchestration/harness/index.js";
-import { HarnessMemoryManager } from "../../src/platform/orchestration/harness/memory-manager.js";
-import { ToolbeltAssembler } from "../../src/platform/orchestration/harness/toolbelt-assembler.js";
-import { GuardrailEngine } from "../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
-import { ContextAssembler } from "../../src/platform/orchestration/harness/context-assembler.js";
-import { DurableHarnessService } from "../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+} from "../../src/platform/five-plane-orchestration/harness/index.js";
+import { HarnessMemoryManager } from "../../src/platform/five-plane-orchestration/harness/memory-manager.js";
+import { ToolbeltAssembler } from "../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
+import { GuardrailEngine } from "../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
+import { ContextAssembler } from "../../src/platform/five-plane-orchestration/harness/context-assembler.js";
+import { DurableHarnessService } from "../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 
 const createMockConstraintPack = (): ConstraintPack => ({
   policyIds: [],

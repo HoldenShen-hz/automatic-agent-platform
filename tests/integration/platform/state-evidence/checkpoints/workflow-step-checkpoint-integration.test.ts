@@ -7,7 +7,7 @@ import {
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
-} from "../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 
 test("createWorkflowStepCheckpoint creates valid checkpoint for integration", () => {

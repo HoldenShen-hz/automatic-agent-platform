@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { FivePlaneRuntimeOrchestrator } from "../../../src/platform/five-plane-runtime-orchestrator.js";
-import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/control-plane/control-plane-bootstrap.js";
-import { INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/interface/interface-plane-bootstrap.js";
+import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane-control-plane/control-plane-bootstrap.js";
+import { INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane-interface/interface-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 import { X1_FABRIC_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane-runtime-bootstrap.js";
 

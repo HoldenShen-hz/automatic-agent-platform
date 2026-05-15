@@ -18,7 +18,7 @@ import {
   type PlanEdge,
   type PlatformFactEvent,
 } from "../../../contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../../five-plane-execution/runtime-state-machine.js";
 
 export interface PlanGraphSchedulerInput {
   readonly planGraphBundle: PlanGraphBundle;

@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { DomainPromptGovernanceService } from "../../../../src/domains/prompt-library/domain-prompt-governance-service.js";
 import { DomainEvaluationGateService } from "../../../../src/domains/eval-framework/domain-evaluation-gate-service.js";

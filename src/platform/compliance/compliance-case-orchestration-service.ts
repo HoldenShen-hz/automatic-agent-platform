@@ -1,5 +1,5 @@
-import type { DataClassificationService } from "../control-plane/iam/data-classification-service.js";
-import type { ClassificationResult, HandlingDecision, PiiAnnotation } from "../control-plane/iam/data-classification-service.js";
+import type { DataClassificationService } from "../five-plane-control-plane/iam/data-classification-service.js";
+import type { ClassificationResult, HandlingDecision, PiiAnnotation } from "../five-plane-control-plane/iam/data-classification-service.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
 import type { ComplianceGovernanceService, ComplianceEvaluationResult } from "../../org-governance/compliance-engine/compliance-governance-service.js";
 import { buildGovernanceAuditRecord } from "../../org-governance/compliance-engine/audit-enforcer/index.js";

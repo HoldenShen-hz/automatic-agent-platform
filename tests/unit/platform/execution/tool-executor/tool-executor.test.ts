@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ToolExecutor } from "../../../../../src/platform/execution/tool-executor/tool-executor.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { READ_TOOL_METADATA } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+import { ToolExecutor } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-executor.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { READ_TOOL_METADATA } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 test("ToolExecutor delegates command execution to the command executor", async () => {
   let observedCommand = "";

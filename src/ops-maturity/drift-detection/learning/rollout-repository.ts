@@ -6,7 +6,7 @@
  */
 
 import type { RolloutRecord } from "./rollout-manager.js";
-import type { SqliteDatabase } from "../../../platform/state-evidence/truth/sqlite/sqlite-database.js";
+import type { SqliteDatabase } from "../../../platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
 /**
  * Repository for persisting RolloutRecords to SQLite.

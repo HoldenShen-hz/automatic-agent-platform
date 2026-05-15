@@ -9,7 +9,7 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
 import { CostEstimationService } from "../../../../src/scale-ecosystem/marketplace/cost-estimation-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /**
  * Creates an in-memory database with the necessary schema for cost estimation.

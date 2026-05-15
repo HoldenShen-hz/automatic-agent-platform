@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabaseWrapper } from "../../../../../../src/platform/state-evidence/truth/postgres/sqlite-database-wrapper.js";
+import { SqliteDatabaseWrapper } from "../../../../../../src/platform/five-plane-state-evidence/truth/postgres/sqlite-database-wrapper.js";
 
 test("SqliteDatabaseWrapper implements AuthoritativeSqlDatabase interface", () => {
   const wrapper = new SqliteDatabaseWrapper({ exec: () => {}, prepare: () => ({ all: () => [], run: () => {} }) });

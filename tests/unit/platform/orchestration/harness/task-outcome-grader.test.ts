@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { TaskOutcomeGrader, type TaskOutcomeGradeInput } from "../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
+import { TaskOutcomeGrader, type TaskOutcomeGradeInput } from "../../../../../src/platform/five-plane-orchestration/harness/evaluation/task-outcome-grader.js";
 
 test("TaskOutcomeGrader.grade returns passed=true when all evidence present and score >= 0.75", () => {
   const grader = new TaskOutcomeGrader();

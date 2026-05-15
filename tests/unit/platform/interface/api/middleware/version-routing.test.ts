@@ -5,7 +5,7 @@ import {
   DEFAULT_VERSION_ROUTING_CONFIG,
   globalVersionRoutingMiddleware,
   type VersionRoutingConfig,
-} from "../../../../../../src/platform/interface/api/middleware/version-routing.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/version-routing.js";
 
 describe("VersionRoutingMiddleware", () => {
   describe("constructor", () => {

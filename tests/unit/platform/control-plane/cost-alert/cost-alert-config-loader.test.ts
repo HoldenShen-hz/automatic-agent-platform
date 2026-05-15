@@ -4,10 +4,10 @@ import { resolve } from "node:path";
 
 import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
 import { partial } from "../../../../helpers/typed-factories.js";
-import { clearCostAlertConfigCache, loadCostAlertConfig } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-config-loader.js";
+import { clearCostAlertConfigCache, loadCostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
-import { createConfigReadPolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import type { CostAlertConfig } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+import { createConfigReadPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import type { CostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 test("loadCostAlertConfig returns default config when file does not exist (ENOENT)", () => {
   clearCostAlertConfigCache();

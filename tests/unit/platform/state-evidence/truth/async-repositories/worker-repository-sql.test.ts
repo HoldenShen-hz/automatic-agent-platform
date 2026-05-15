@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -8,7 +7,7 @@ import {
   AGENT_EXECUTION_SELECT_SCOPED,
   REMOTE_LOG_SELECT,
   REMOTE_LOG_SELECT_SCOPED,
-} from "../../../../../../src/platform/state-evidence/truth/async-repositories/worker-repository-sql.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/worker-repository-sql.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Worker Snapshot Select

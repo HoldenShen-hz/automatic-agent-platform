@@ -11,8 +11,8 @@ import {
   cleanupPath,
   createFile,
 } from "../../helpers/fs.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { seedTaskAndExecution, seedQueuedTasks } from "../../helpers/seed.js";
 
 describe("seed helpers", () => {

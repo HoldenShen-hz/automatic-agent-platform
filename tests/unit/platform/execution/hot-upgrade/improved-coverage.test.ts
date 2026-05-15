@@ -1,5 +1,5 @@
 /**
- * @fileoverview Improved coverage tests for src/platform/execution/hot-upgrade
+ * @fileoverview Improved coverage tests for src/platform/five-plane-execution/hot-upgrade
  * Tests HotUpgradeService types, DDL constants, and type structures
  */
 
@@ -19,12 +19,12 @@ import type {
   UpgradePhase,
   UpgradeStatus,
   UpgradeTarget,
-} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 
 import type {
   HotUpgradeRepository,
   UpgradeAuditEntry,
-} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
 
 test("VersionCompatibility type structure", () => {
   const compat: VersionCompatibility = {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LeaderElectionService, createLeaderElectionService, type LeaderElectionServiceOptions } from "../../../../../src/platform/execution/ha/leader-election-service.js";
-import type { HaCoordinatorService, LeaderLease, LeadershipEpoch } from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
+import { LeaderElectionService, createLeaderElectionService, type LeaderElectionServiceOptions } from "../../../../../src/platform/five-plane-execution/ha/leader-election-service.js";
+import type { HaCoordinatorService, LeaderLease, LeadershipEpoch } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

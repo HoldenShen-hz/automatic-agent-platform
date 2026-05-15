@@ -31,7 +31,7 @@
  * while the primary profile recovers.
  */
 
-import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../control-plane/config-center/model-metadata-registry.js";
+import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 import type { ProviderHealthSummary } from "../../shared/observability/provider-health-tracker.js";
 import type { ModelGovernanceSnapshot } from "../../contracts/types/governance.js";
 import { AppError } from "../../contracts/errors.js";

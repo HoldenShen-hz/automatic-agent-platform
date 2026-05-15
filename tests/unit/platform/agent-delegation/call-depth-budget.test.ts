@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CallDepthBudget } from "../../../../src/platform/orchestration/agent-delegation/call-depth-budget.js";
+import { CallDepthBudget } from "../../../../src/platform/five-plane-orchestration/agent-delegation/call-depth-budget.js";
 
 test("CallDepthBudget.evaluate returns allowed when under limit", () => {
   const budget = new CallDepthBudget();

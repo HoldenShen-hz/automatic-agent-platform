@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
 
 test("RedisLockAdapter release() throws sync_release_not_supported", () => {
   // Create adapter without connecting (sync methods throw regardless of connection state)

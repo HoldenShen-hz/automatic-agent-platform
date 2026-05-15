@@ -7,8 +7,8 @@ import {
   createLearningArtifact,
   parseLearningArtifact,
   type LearningArtifact,
-} from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-artifact-model.js";
-import { LearningObjectSchema } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-artifact-model.js";
+import { LearningObjectSchema } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 test("ArtifactFormatSchema accepts valid formats", () => {
   assert.equal(ArtifactFormatSchema.parse("json"), "json");

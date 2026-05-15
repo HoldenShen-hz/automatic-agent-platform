@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   MemoryPromotionEngine as LegacyMemoryPromotionEngine,
-} from "../../../../../src/platform/state-evidence/memory/memory-promotion-engine.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-promotion-engine.js";
 import {
   MemoryPromotionEngine as FivePlaneMemoryPromotionEngine,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-promotion-engine.js";

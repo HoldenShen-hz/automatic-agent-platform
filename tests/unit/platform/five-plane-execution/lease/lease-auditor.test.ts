@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain/lease-types.js";
 import type { LeaseAuditEventType } from "../../../../../src/platform/contracts/types/domain/primitives.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // ─── Test Data ────────────────────────────────────────────────────────────────
 

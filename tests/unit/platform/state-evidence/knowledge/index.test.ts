@@ -28,7 +28,7 @@ import {
   FreshnessTracker,
   KnowledgeAccessControl,
   KnowledgeAuditLogger,
-} from "../../../../../src/platform/state-evidence/knowledge/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/index.js";
 
 test("knowledge barrel exports core schemas", () => {
   assert.equal(TrustLevelSchema.safeParse("reviewed").success, true);

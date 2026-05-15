@@ -19,7 +19,7 @@ import { createWebSearchTool } from "../tool-executor/web-search.js";
 import { CommandExecutor } from "../tool-executor/command-executor.js";
 import { SemanticRepoMapService } from "../tool-executor/semantic-repo-map-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 
 import type { LlmModelCallResult } from "../execution-engine/model-call-provider.js";

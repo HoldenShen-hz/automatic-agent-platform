@@ -6,7 +6,7 @@ import {
   buildSemanticEmbedding,
   semanticEmbeddingId,
   cosineSimilarity,
-} from "../../../../../src/platform/state-evidence/knowledge/semantic-embedding.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-embedding.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // tokenizeSemantically Tests

@@ -10,7 +10,7 @@ import {
   type RiskLevelStrategy,
   type AttemptThresholds,
   type ExceptionRecoveryConfig,
-} from "../../../../../src/platform/execution/recovery/exception-recovery-types.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-types.js";
 
 test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ValidationError", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["ValidationError"];

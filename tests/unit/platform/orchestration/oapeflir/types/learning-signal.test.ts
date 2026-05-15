@@ -9,7 +9,7 @@ import {
 } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import {
   FeedbackSignalSchema,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 test("LearningSignalSchema parses valid learning signal", () => {
   const validSignal = {

@@ -8,7 +8,7 @@ import {
   ConfigRolloutService,
   RolloutPhase,
   ConfigRollout,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 
 // Manual mock event bus
 interface MockEventBus {
@@ -75,7 +75,7 @@ test("startRollout starts at HALF for target between 25 and 50", () => {
 
 test("startRollout emits config.rollout.started event with event bus", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   const rollout = service.startRollout("runtime.timeout", "platform", null);
 
@@ -156,7 +156,7 @@ test("promoteRollout advances to next stage", () => {
 
 test("promoteRollout emits config.rollout.promoted event", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
   mockBus.getEvents().length = 0; // Clear start event
@@ -200,7 +200,7 @@ test("cancelRollout cancels the rollout", () => {
 
 test("cancelRollout emits config.rollout.cancelled event", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   const rollout = service.startRollout("runtime.timeout", "platform", null);
   mockBus.getEvents().length = 0; // Clear start event

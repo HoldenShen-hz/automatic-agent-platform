@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { ObservabilityRetentionService, type ObservabilityRetentionReport } from "../../src/platform/shared/observability/observability-retention-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { assertGolden } from "../helpers/golden.js";

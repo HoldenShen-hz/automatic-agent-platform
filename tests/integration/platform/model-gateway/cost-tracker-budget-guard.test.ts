@@ -4,7 +4,7 @@ import test from "node:test";
 import { BudgetGuard, type BudgetPolicy, type ExecutionChainBudgetSpend } from "../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 import { ChargebackService, type ChargebackReportSource } from "../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
 import { createBudgetLedger, type BudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import type { CostReportRecord } from "../../../../src/platform/interface/api/cost-report-service.js";
+import type { CostReportRecord } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 function createDefaultPolicy(): BudgetPolicy {
   return {

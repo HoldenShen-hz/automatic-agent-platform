@@ -8,20 +8,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import { RemoteWorkerRegistrationService } from "../../../../../src/platform/execution/worker-pool/worker/remote-worker-registration-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { RemoteWorkerRegistrationService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker/remote-worker-registration-service.js";
 import {
   computeWorkerLoadScore,
   summarizeWorkerLoadSkew,
   type WorkerLoadSignal,
-} from "../../../../../src/platform/execution/worker-pool/worker-load-balancing.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/worker-load-balancing.js";
 import {
   resolveRemoteAuthorityBlockReason,
   type RemoteSessionAuthorityState,
-} from "../../../../../src/platform/execution/worker-pool/remote-session-guard.js";
-import { toWorkerSchedulingStatus } from "../../../../../src/platform/execution/worker-pool/worker-scheduling-status.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/remote-session-guard.js";
+import { toWorkerSchedulingStatus } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-scheduling-status.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 

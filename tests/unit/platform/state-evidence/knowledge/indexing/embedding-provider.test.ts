@@ -11,7 +11,7 @@ import {
   type EmbeddingResult,
   type OpenAIEmbeddingOptions,
   type MiniMaxEmbeddingOptions,
-} from "../../../../../../src/platform/state-evidence/knowledge/indexing/embedding-provider.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
 
 test("EMBEDDING_PROVIDER_TYPES contains hash, openai, minimax", () => {
   assert.deepEqual(EMBEDDING_PROVIDER_TYPES, ["hash", "openai", "minimax"]);

@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 
 function createMemoryService(workspace: string) {

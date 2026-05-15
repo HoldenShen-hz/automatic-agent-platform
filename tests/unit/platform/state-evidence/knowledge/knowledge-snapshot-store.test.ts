@@ -11,8 +11,8 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
-import { KnowledgeSnapshotStore } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import type { KnowledgeNamespace } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeSnapshotStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import type { KnowledgeNamespace } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function createTempPath(): string {
   return `${tmpdir()}/knaps-test-${randomUUID()}`;

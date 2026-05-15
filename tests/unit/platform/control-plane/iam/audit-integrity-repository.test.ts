@@ -4,9 +4,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAuditIntegrityRepository, AUDIT_INTEGRITY_DDL, type AuditIntegrityRepository } from "../../../../../src/platform/control-plane/iam/audit-integrity-repository.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { Tier1AuditIntegrityRecord } from "../../../../../src/platform/control-plane/iam/audit-event-integrity.js";
+import { createAuditIntegrityRepository, AUDIT_INTEGRITY_DDL, type AuditIntegrityRepository } from "../../../../../src/platform/five-plane-control-plane/iam/audit-integrity-repository.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { Tier1AuditIntegrityRecord } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 
 function createMockDatabase(): AuthoritativeSqlDatabase {
   const records: Map<string, Record<string, unknown>> = new Map();

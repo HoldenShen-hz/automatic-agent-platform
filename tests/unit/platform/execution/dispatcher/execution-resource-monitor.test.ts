@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionResourceMonitor } from "../../../../../src/platform/execution/dispatcher/execution-resource-monitor.js";
-import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { ExecutionResourceUsageSample } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceMonitor } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { ExecutionResourceUsageSample } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 // ---------------------------------------------------------------------------
 // Helper types and builders

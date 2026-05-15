@@ -31,8 +31,9 @@
  * @see docs_zh/contracts/policy_engine_contract.md
  */
 
-import type { ToolRiskLevel } from "../../execution/tool-executor/tool-metadata.js";
-import { BudgetGuard } from "../../model-gateway/cost-tracker/budget-guard.js";
+import type { ToolRiskLevel } from "../../five-plane-execution/tool-executor/tool-metadata.js";
+import { BudgetGuard, type BudgetGuardResult, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import type { UnifiedRuntimeMode } from "../../contracts/types/unified-runtime-mode.js";
 
 export type {
   PolicyAction,

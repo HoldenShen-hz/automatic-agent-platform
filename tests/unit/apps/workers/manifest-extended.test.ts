@@ -6,7 +6,7 @@ import { WORKER_APP_MANIFEST } from "../../../../src/apps/workers/index.js";
 test("WORKER_APP_MANIFEST entryModule points to execution-worker-writeback-service", () => {
   assert.equal(
     WORKER_APP_MANIFEST.entryModule,
-    "src/platform/execution/worker-pool/execution-worker-writeback-service.ts"
+    "src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.ts"
   );
 });
 

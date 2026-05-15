@@ -1,6 +1,6 @@
 /**
  * Unit tests for Gateway Target Directory Service types and helpers
- * Tests src/platform/interface/channel-gateway/gateway-target-directory-service.ts
+ * Tests src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.ts
  */
 
 import assert from "node:assert/strict";

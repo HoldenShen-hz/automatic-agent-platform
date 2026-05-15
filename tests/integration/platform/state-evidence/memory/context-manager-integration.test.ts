@@ -10,19 +10,19 @@ import test from "node:test";
 
 import {
   MemoryPlaneService,
-} from "../../../../../src/platform/state-evidence/memory/memory-plane-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-plane-service.js";
 import {
   buildFtsMatchQuery,
   extractSearchableText,
   createSnippet,
-} from "../../../../../src/platform/state-evidence/memory/memory-retrieval-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
 import type {
   MemoryProvider,
   MemoryProviderPrefetchResult,
   MemoryProviderQuery,
   MemoryTurnSyncInput,
   MemoryTurnSyncResult,
-} from "../../../../../src/platform/state-evidence/memory/memory-provider.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-provider.js";
 import type { MemoryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 function createMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {

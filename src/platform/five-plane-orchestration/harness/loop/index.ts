@@ -42,7 +42,7 @@ export class HarnessLoopController {
       maxCost: 100000,
       maxDurationMs: 3600000,
     };
-    const rawIterations = Math.floor(budget.maxSteps / 3);
+    const rawIterations = Math.max(0, Math.floor(budget.maxSteps / 3));
     this.guards = {
       maxIterations: rawIterations,
       maxReplans: 3,

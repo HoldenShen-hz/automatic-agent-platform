@@ -1,11 +1,11 @@
 /**
  * Unit tests for HTTP Server Request Helpers extended coverage
- * Tests src/platform/interface/api/http-server/request-helpers.ts
+ * Tests src/platform/five-plane-interface/api/http-server/request-helpers.ts
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ApiRequestLike } from "../../../../../src/platform/interface/api/http-server/types.js";
+import type { ApiRequestLike } from "../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockRequest(overrides: Partial<ApiRequestLike> = {}): ApiRequestLike {
   return {

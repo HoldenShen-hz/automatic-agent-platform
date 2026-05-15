@@ -10,9 +10,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { PlanBuilder, type PlanBuilderInput } from "../../../../src/platform/orchestration/planner/index.js";
-import { WorkflowPlanner } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { parseTaskSituation, parseUnifiedAssessment, createAssessmentRef } from "../../../../src/platform/orchestration/oapeflir/types/index.js";
+import { PlanBuilder, type PlanBuilderInput } from "../../../../src/platform/five-plane-orchestration/planner/index.js";
+import { WorkflowPlanner } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { parseTaskSituation, parseUnifiedAssessment, createAssessmentRef } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 function createTestTaskSituation(taskId: string): ReturnType<typeof parseTaskSituation> {

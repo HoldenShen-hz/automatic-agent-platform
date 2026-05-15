@@ -24,7 +24,7 @@ import {
   parseUpdateTaskPayload,
   parseCreateWebhookEndpointPayload,
   parseAuthTokenPayload,
-} from "../../../../../src/platform/interface/api/http-server/schemas.ts";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/schemas.ts";
 
 // ══════════════════════════════════════════════════════════════════════════
 // Gateway Send Payload Tests

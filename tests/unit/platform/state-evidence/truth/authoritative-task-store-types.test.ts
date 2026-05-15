@@ -5,7 +5,7 @@ import {
   parseDispatchDecisionTrace,
   mapRuntimeRecoveryRecord,
   resolveTenantScope,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 test("parseDispatchDecisionTrace returns null for invalid input", () => {
   assert.equal(parseDispatchDecisionTrace("not json"), null);

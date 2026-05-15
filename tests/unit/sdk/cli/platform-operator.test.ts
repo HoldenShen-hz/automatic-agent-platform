@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadPlatformOperatorCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
+import { loadPlatformOperatorCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
 
 test("loadPlatformOperatorCliEnv parses current platform operator env names", () => {
   const config = loadPlatformOperatorCliEnv({

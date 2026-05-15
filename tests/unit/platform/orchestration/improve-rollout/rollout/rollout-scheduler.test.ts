@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RolloutScheduler } from "../../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-scheduler.js";
-import type { RolloutRecord } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
+import { RolloutScheduler } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-scheduler.js";
+import type { RolloutRecord } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {

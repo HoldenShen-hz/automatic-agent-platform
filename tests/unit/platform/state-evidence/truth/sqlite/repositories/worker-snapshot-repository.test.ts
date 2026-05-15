@@ -6,7 +6,7 @@ import type {
   HeartbeatSnapshotRecord,
   WorkerSnapshotRecord,
 } from "../../../../../../../src/platform/contracts/types/domain.js";
-import { WorkerSnapshotRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/worker-snapshot-repository.js";
+import { WorkerSnapshotRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/worker-snapshot-repository.js";
 
 // Mock the query-helper module
 const mockQueryOne = test.mock;

@@ -8,7 +8,7 @@ import {
   type GracefulShutdownOptions,
   type ShutdownHandler,
   type ShutdownResult,
-} from "../../../../../src/platform/execution/startup/graceful-shutdown.js";
+} from "../../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

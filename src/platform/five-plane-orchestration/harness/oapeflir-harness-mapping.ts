@@ -11,6 +11,9 @@ export type OapeflirSemanticPhase =
   | "release";
 
 export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string): OapeflirSemanticPhase {
+  if (stage === "assess") {
+    return "assess";
+  }
   if (stage === "plan" || role === "planner") {
     return "plan";
   }
@@ -21,7 +24,7 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
     return "feedback";
   }
   if (role === "hitl_operator") {
-    return "feedback";
+    return "assess";
   }
   if (role === "loop_controller") {
     return "improve";

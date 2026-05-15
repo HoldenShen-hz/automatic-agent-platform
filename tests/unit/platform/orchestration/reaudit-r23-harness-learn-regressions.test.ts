@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { HARNESS_RUN_TERMINAL_STATUSES } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { DurableHarnessService } from "../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import type { GuardrailAssessment } from "../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
-import { HarnessLoopController } from "../../../../src/platform/orchestration/harness/loop/index.js";
+import { DurableHarnessService } from "../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import type { GuardrailAssessment } from "../../../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
+import { HarnessLoopController } from "../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
 import {
   GuardrailVibrationBreaker,
   HarnessRuntimeService,
@@ -12,12 +12,12 @@ import {
   RecoveryController,
   type ConstraintPack,
   type HarnessRunRuntimeState,
-} from "../../../../src/platform/orchestration/harness/index.js";
-import { LearningObjectValidator } from "../../../../src/platform/orchestration/learn/learning-object-validator.js";
-import { KnowledgePromotionService } from "../../../../src/platform/orchestration/learn/knowledge-promotion-service.js";
-import { parseLearningObject, type LearningObject } from "../../../../src/platform/orchestration/learn/learning-object-model.js";
-import type { TypedEventPublisher } from "../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import type { KnowledgePlaneService } from "../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+} from "../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { LearningObjectValidator } from "../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
+import { KnowledgePromotionService } from "../../../../src/platform/five-plane-orchestration/learn/knowledge-promotion-service.js";
+import { parseLearningObject, type LearningObject } from "../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
+import type { TypedEventPublisher } from "../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
+import type { KnowledgePlaneService } from "../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {
@@ -300,7 +300,7 @@ test("R23-38: LearningObjectValidator quarantines PII and secret tainted content
 
   assert.equal(result.valid, false);
   assert.equal(result.learningObject.promotionStatus, "quarantined");
-  assert.equal(result.reasonCode, "learning.pii_detected");
+  assert.equal(result.reasonCode, "learning.pii_secret_detected");
 });
 
 test("R23-39: HarnessRunStatus exposes cancelled and HITL rejection resolves to cancelled", () => {

@@ -20,8 +20,8 @@ import type { WorkerSnapshotRecord } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ExecutionDispatchReconciliationService } from "../dispatcher/execution-dispatch-reconciliation-service.js";
 import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

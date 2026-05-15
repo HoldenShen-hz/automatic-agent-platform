@@ -6,7 +6,7 @@ import {
   isInjectedWorkflowCrashError,
   maybeInjectWorkflowCrash,
   type WorkflowCrashPoint,
-} from "../../../src/platform/execution/recovery/workflow-crash-simulator.js";
+} from "../../../src/platform/five-plane-execution/recovery/workflow-crash-simulator.js";
 
 test("workflow crash simulator throws only for the matching point and step", () => {
   const context = {

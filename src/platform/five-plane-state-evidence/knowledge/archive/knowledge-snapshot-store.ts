@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute } from "node:path";
 
 import { nowIso } from "../../../contracts/types/ids.js";
-import { checkToolPathScope } from "../../../execution/tool-executor/tool-path-scope.js";
+import { checkToolPathScope } from "../../../five-plane-execution/tool-executor/tool-path-scope.js";
 import type { KnowledgeNamespace } from "../knowledge-model.js";
 import type { ArchivedKnowledgeRecord } from "./knowledge-archive.js";
 

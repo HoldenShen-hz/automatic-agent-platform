@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AuditTrailService, type AuditActorType } from "../../../../../src/platform/state-evidence/audit/index.js";
+import { AuditTrailService, type AuditActorType } from "../../../../../src/platform/five-plane-state-evidence/audit/index.js";
 
 test("AuditTrailService is instantiable", () => {
   const service = new AuditTrailService();

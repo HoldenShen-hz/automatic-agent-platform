@@ -16,8 +16,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import { RuntimeExecuteBridge } from "../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
+import { OapeflirLoopService } from "../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { RuntimeExecuteBridge } from "../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 
 test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", async () => {

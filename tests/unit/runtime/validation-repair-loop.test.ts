@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ValidationRepairLoopService } from "../../../src/platform/execution/recovery/validation-repair-loop.js";
+import { ValidationRepairLoopService } from "../../../src/platform/five-plane-execution/recovery/validation-repair-loop.js";
 
 test("ValidationRepairLoopService releases when review and validation pass", () => {
   const service = new ValidationRepairLoopService();

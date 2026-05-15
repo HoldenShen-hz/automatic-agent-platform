@@ -9,7 +9,7 @@
  * metrics, health, and diagnostics data into actionable governance reports.
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import {
   buildIncidentTimelineMarkdown,
   type IncidentTimelineReport,
@@ -18,7 +18,7 @@ import {
 } from "../../shared/observability/diagnostics-service.js";
 import { MetricsService, type RuntimeMetricsSummary } from "../../shared/observability/metrics-service.js";
 import { DoctorService, type DoctorReport } from "./doctor-service.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ArtifactRef, EnvironmentName } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {

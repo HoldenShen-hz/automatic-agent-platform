@@ -19,8 +19,8 @@ import test from "node:test";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 import { EvolutionMvpService } from "../../src/ops-maturity/drift-detection/evolution-mvp-service.js";
-import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
-import { MemoryService } from "../../src/platform/state-evidence/memory/memory-service.js";
+import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { MemoryService } from "../../src/platform/five-plane-state-evidence/memory/memory-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { BudgetPolicy } from "../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 

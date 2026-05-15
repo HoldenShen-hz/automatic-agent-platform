@@ -9,14 +9,14 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createRuntimeServices, runtimeFactories } from "../../../../../src/platform/execution/execution-engine/runtime-factory.js";
-import { createExecutionLeaseService } from "../../../../../src/platform/execution/lease/execution-lease-factory.js";
-import { createHaCoordinatorService } from "../../../../../src/platform/execution/ha/ha-coordinator-factory.js";
-import { createHotUpgradeService } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-factory.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { createRuntimeServices, runtimeFactories } from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js";
+import { createExecutionLeaseService } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-factory.js";
+import { createHaCoordinatorService } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-factory.js";
+import { createHotUpgradeService } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-factory.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import type { PostgresAuthoritativeStorageBackendHandle } from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
-import type { RuntimeServices } from "../../../../../src/platform/execution/execution-engine/runtime-factory.js";
+import type { PostgresAuthoritativeStorageBackendHandle } from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
+import type { RuntimeServices } from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js";
 
 function createSqliteBackend(dbPath: string): SqliteDatabase {
   const db = new SqliteDatabase(dbPath);

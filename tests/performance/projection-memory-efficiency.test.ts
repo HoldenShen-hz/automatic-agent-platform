@@ -18,7 +18,7 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import type { ProjectionHandler, ProjectionInputEvent } from "../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import type { ProjectionHandler, ProjectionInputEvent } from "../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 // ============================================================================

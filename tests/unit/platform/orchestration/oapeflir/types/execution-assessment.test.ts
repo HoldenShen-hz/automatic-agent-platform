@@ -8,7 +8,7 @@ import type {
   ExecutionError,
   CriterionResult,
   FailureMode,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/execution-assessment.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/execution-assessment.js";
 
 function createExecutionAssessment(overrides: Partial<ExecutionAssessment> = {}): ExecutionAssessment {
   return {

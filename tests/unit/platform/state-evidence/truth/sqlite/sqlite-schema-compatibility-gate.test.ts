@@ -7,8 +7,8 @@ import {
   type SqliteSchemaCompatibilityMigrationResult,
   type SqliteSchemaCompatibilityIssue,
   type SqliteSchemaCompatibilityRuleId,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
-import type { SqliteMigrationDefinition } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+import type { SqliteMigrationDefinition } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 test("evaluateSqliteSchemaCompatibilityGate returns a valid report", () => {
   const report = evaluateSqliteSchemaCompatibilityGate([]);

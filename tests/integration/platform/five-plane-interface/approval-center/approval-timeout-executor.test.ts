@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ApprovalTimeoutExecutor } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
 import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
-import { ApprovalRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { ApprovalRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

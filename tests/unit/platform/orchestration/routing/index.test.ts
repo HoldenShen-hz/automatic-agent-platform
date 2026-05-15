@@ -13,7 +13,7 @@ import {
   IntakeIntent,
   IntakeContinuation,
   IntakeIntentClassification,
-} from "../../../../../src/platform/orchestration/routing/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/routing/index.js";
 
 test("AgentTeamStage type accepts valid values", () => {
   const stages: AgentTeamStage[] = ["plan", "build", "review", "validate", "repair", "release"];

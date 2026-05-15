@@ -11,7 +11,7 @@ import {
 import {
   FeedbackSignalSchema,
   parseFeedbackSignal,
-} from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 test("FeedbackBatchSchema parses valid feedback batch", () => {
   const input = {

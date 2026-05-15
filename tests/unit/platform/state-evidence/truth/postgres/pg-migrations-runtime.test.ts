@@ -8,7 +8,7 @@ import {
   MIGRATION_04_SESSIONS_MESSAGING,
   MIGRATION_05_EVENTS_APPROVALS,
   MIGRATION_06_RESOURCES,
-} from "../../../../../../src/platform/state-evidence/truth/postgres/pg-migrations-runtime.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/postgres/pg-migrations-runtime.js";
 
 test("MIGRATION_01_INITIAL_SCHEMA is exported and has valid structure", () => {
   assert.equal(MIGRATION_01_INITIAL_SCHEMA.version, 1);

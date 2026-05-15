@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
-import { HttpApiServer, type InjectResponse } from "../../../../../src/platform/interface/api/http-api-server.js";
-import { CoordinatorLoadBalancingService } from "../../../../../src/platform/execution/ha/coordinator-load-balancing-service.js";
-import { ChannelGatewayService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
-import { ChannelGatewayDeliveryService, CHANNEL_DELIVERY_DDL } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
+import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { HttpApiServer, type InjectResponse } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { CoordinatorLoadBalancingService } from "../../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
+import { ChannelGatewayService } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { ChannelGatewayDeliveryService, CHANNEL_DELIVERY_DDL } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 

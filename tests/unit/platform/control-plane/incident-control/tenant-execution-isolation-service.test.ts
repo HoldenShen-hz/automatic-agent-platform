@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   TenantExecutionIsolationService,
   TENANT_ISOLATION_DDL,
-} from "../../../../../src/platform/control-plane/incident-control/tenant-execution-isolation-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { join } from "node:path";
 

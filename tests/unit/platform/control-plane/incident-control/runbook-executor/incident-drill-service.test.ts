@@ -10,8 +10,8 @@ import {
   PREDEFINED_SCENARIOS,
   DEFAULT_INCIDENT_DRILL_CONFIG,
   type IncidentDrillScenario,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/incident-drill-service.js";
-import type { RunbookExecutionResult } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/incident-drill-service.js";
+import type { RunbookExecutionResult } from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
 
 // Mock runbook executor
 const createMockExecutor = () => ({

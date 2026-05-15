@@ -16,7 +16,7 @@ import test from "node:test";
 import {
   CompensationManager,
   type CompensationContext,
-} from "../../src/platform/execution/compensation-manager.js";
+} from "../../src/platform/five-plane-execution/compensation-manager.js";
 import type { SideEffectRecord, SideEffectStatus } from "../../src/platform/contracts/executable-contracts/index.js";
 import { createCompensationRecord } from "../../src/platform/contracts/executable-contracts/index.js";
 

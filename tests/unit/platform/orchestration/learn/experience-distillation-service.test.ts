@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { ExperienceDistillationService } from "../../../../../src/platform/orchestration/learn/experience-distillation-service.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import { ExperienceDistillationService } from "../../../../../src/platform/five-plane-orchestration/learn/experience-distillation-service.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {

@@ -7,7 +7,7 @@ import {
   createStageTransitionFSM,
   type OapeflirStage,
   type StageStatus,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("StageTransitionFSM canTransitionTo allows same stage", () => {
   const fsm = new StageTransitionFSM();

@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AutoStopLossService, type SystemHealthSnapshot, type StopLossPlaybook, type StopLossEvent } from "../../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+import { AutoStopLossService, type SystemHealthSnapshot, type StopLossPlaybook, type StopLossEvent } from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 import type { AnomalySeverity } from "../../../../../src/platform/shared/observability/anomaly-detection-service.js";
 
 function createTestPlaybook(overrides: Partial<StopLossPlaybook> = {}): StopLossPlaybook {

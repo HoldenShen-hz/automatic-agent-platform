@@ -16,7 +16,7 @@ import {
   SQLITE_MIGRATIONS,
   SQLITE_MIGRATION_LEDGER_SQL,
   getLatestSqliteMigrationVersion,
-} from "../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+} from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 function isCompatibleFixtureSkip(message: string): boolean {
   return message.includes("duplicate column name") || message.includes("no such column: organization_id");

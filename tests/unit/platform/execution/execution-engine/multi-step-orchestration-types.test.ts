@@ -1,35 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { StepFailurePlan, MultiStepToolExecutionInput, MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
-import type { ContextCompactionResult } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
+import type { StepFailurePlan, MultiStepToolExecutionInput, MultiStepOrchestrationResult } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
+import type { ContextCompactionResult } from "../../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 import type {
   Phase1BOrchestrationInput,
   Phase1BOrchestrationResult,
-} from "../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js";
-import type { Phase1BToolDefinition } from "../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js";
+import type { Phase1BToolDefinition } from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js";
 
 // =============================================================================
 // Phase1B Re-Export Verification Tests
 // =============================================================================
 
 test("phase1b-orchestration exports runPhase1BOrchestration alias", async () => {
-  const { runPhase1BOrchestration } = await import("../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js");
-  const { runMultiStepOrchestration } = await import("../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js");
+  const { runPhase1BOrchestration } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
+  const { runMultiStepOrchestration } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(runPhase1BOrchestration, runMultiStepOrchestration, "runPhase1BOrchestration should be an alias for runMultiStepOrchestration");
 });
 
 test("phase1b-orchestration exports executePhase1BToolCallForTests alias", async () => {
-  const { executePhase1BToolCallForTests } = await import("../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js");
-  const { executeMultiStepToolCallForTests } = await import("../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js");
+  const { executePhase1BToolCallForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
+  const { executeMultiStepToolCallForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(executePhase1BToolCallForTests, executeMultiStepToolCallForTests, "executePhase1BToolCallForTests should be an alias for executeMultiStepToolCallForTests");
 });
 
 test("phase1b-orchestration exports resetPhase1BToolRegistryForTests alias", async () => {
-  const { resetPhase1BToolRegistryForTests } = await import("../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js");
-  const { resetMultiStepToolRegistryForTests } = await import("../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js");
+  const { resetPhase1BToolRegistryForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
+  const { resetMultiStepToolRegistryForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(resetPhase1BToolRegistryForTests, resetMultiStepToolRegistryForTests, "resetPhase1BToolRegistryForTests should be an alias for resetMultiStepToolRegistryForTests");
 });
@@ -49,15 +49,15 @@ test("phase1b-orchestration exports Phase1BOrchestrationInput type alias", () =>
 });
 
 test("phase1b-tool-definitions exports PHASE1B_TOOL_DEFINITIONS alias", async () => {
-  const { PHASE1B_TOOL_DEFINITIONS } = await import("../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js");
-  const { MULTI_STEP_TOOL_DEFINITIONS } = await import("../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js");
+  const { PHASE1B_TOOL_DEFINITIONS } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js");
+  const { MULTI_STEP_TOOL_DEFINITIONS } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js");
 
   assert.equal(PHASE1B_TOOL_DEFINITIONS, MULTI_STEP_TOOL_DEFINITIONS, "PHASE1B_TOOL_DEFINITIONS should be an alias for MULTI_STEP_TOOL_DEFINITIONS");
 });
 
 test("phase1b-tool-definitions exports getPhase1BToolDefinitions alias", async () => {
-  const { getPhase1BToolDefinitions } = await import("../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js");
-  const { getMultiStepToolDefinitions } = await import("../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js");
+  const { getPhase1BToolDefinitions } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js");
+  const { getMultiStepToolDefinitions } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js");
 
   assert.equal(getPhase1BToolDefinitions, getMultiStepToolDefinitions, "getPhase1BToolDefinitions should be an alias for getMultiStepToolDefinitions");
 });
@@ -72,28 +72,28 @@ test("phase1b-tool-definitions exports Phase1BToolDefinition type alias", () => 
 });
 
 test("phase1b-utils exports resolvePhase1BToolPath alias", async () => {
-  const { resolvePhase1BToolPath } = await import("../../../../../src/platform/execution/execution-engine/phase1b-utils.js");
-  const { resolveMultiStepToolPath } = await import("../../../../../src/platform/execution/execution-engine/multi-step-utils.js");
+  const { resolvePhase1BToolPath } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
+  const { resolveMultiStepToolPath } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js");
 
   assert.equal(resolvePhase1BToolPath, resolveMultiStepToolPath, "resolvePhase1BToolPath should be an alias for resolveMultiStepToolPath");
 });
 
 test("phase1b-utils exports parseOptionalPositiveInteger function", async () => {
-  const { parseOptionalPositiveInteger } = await import("../../../../../src/platform/execution/execution-engine/phase1b-utils.js");
+  const { parseOptionalPositiveInteger } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.equal(parseOptionalPositiveInteger(42), 42, "parseOptionalPositiveInteger should return 42 for input 42");
   assert.equal(parseOptionalPositiveInteger("not a number"), undefined, "parseOptionalPositiveInteger should return undefined for non-number");
 });
 
 test("phase1b-utils exports parseOptionalStringArray function", async () => {
-  const { parseOptionalStringArray } = await import("../../../../../src/platform/execution/execution-engine/phase1b-utils.js");
+  const { parseOptionalStringArray } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.deepEqual(parseOptionalStringArray(["a", "b", "c"]), ["a", "b", "c"], "parseOptionalStringArray should return array as-is for valid strings");
   assert.deepEqual(parseOptionalStringArray("not an array"), [], "parseOptionalStringArray should return empty array for non-array input");
 });
 
 test("phase1b-utils exports safeParseToolResult function", async () => {
-  const { safeParseToolResult } = await import("../../../../../src/platform/execution/execution-engine/phase1b-utils.js");
+  const { safeParseToolResult } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.deepEqual(safeParseToolResult('{"key": "value"}'), { key: "value" }, "safeParseToolResult should parse valid JSON");
   assert.equal(safeParseToolResult("not json"), "not json", "safeParseToolResult should return raw string for invalid JSON");

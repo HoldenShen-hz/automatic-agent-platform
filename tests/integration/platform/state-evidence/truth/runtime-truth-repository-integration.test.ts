@@ -18,7 +18,7 @@ import {
   createRunVersionLock,
   type HarnessRun,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeTruthRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------

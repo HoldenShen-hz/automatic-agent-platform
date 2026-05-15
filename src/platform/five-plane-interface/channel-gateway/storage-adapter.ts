@@ -9,7 +9,7 @@
 
 import type { GatewayStoragePort } from "./storage-port.js";
 import type { GatewayTargetRecord } from "../../contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { GatewaySessionTargetCandidate } from "../../five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 /**
  * Adapter that implements GatewayStoragePort using AuthoritativeTaskStore.

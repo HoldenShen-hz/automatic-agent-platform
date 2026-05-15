@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayBoundaryGuard, type ReplayOperation } from "../../src/platform/execution/recovery/replay-boundary-guard.js";
-import { RuntimeEntryGuard } from "../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { ReplayBoundaryGuard, type ReplayOperation } from "../../src/platform/five-plane-execution/recovery/replay-boundary-guard.js";
+import { RuntimeEntryGuard } from "../../src/platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { ValidationError } from "../../src/platform/contracts/errors.js";
 import { createHarnessRun, createNodeRun, createBudgetLedger, createBudgetReservation, createSideEffectRecord } from "../../src/platform/contracts/executable-contracts/index.js";

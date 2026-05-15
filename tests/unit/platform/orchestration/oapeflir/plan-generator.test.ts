@@ -9,11 +9,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanBuilder, type PlanBuilderInput } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
-import { PlanDagValidator } from "../../../../../src/platform/orchestration/planner/plan-dag-validator.js";
-import { PlanStrategySelector } from "../../../../../src/platform/orchestration/planner/plan-strategy-selector.js";
-import { parsePlan, type Plan, type PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
-import type { TaskSituation, UnifiedAssessment } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
+import { PlanBuilder, type PlanBuilderInput } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import { PlanDagValidator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import { PlanStrategySelector } from "../../../../../src/platform/five-plane-orchestration/planner/plan-strategy-selector.js";
+import { parsePlan, type Plan, type PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
+import type { TaskSituation, UnifiedAssessment } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: create minimal task situation for testing

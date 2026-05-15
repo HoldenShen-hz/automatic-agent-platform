@@ -6,7 +6,7 @@ import type {
   EvaluateEntitlementInput,
   RecordUsageInput,
 } from "../../../../src/scale-ecosystem/marketplace/billing/types.js";
-import type { BillingMetricType } from "../../../../src/platform/control-plane/config-center/billing-plan-catalog.js";
+import type { BillingMetricType } from "../../../../src/platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
 
 test("CreateBillingAccountInput structure is correct", () => {
   const input: CreateBillingAccountInput = {

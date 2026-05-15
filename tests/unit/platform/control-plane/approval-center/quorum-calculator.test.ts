@@ -23,7 +23,7 @@ import {
   type QuorumConfig,
   type QuorumVote,
   type QuorumStatus,
-} from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 
 function makeTestConfig(minApprovals = 2, minRejectionsToDeny = 2, votingWindowMs?: number): QuorumConfig {
   if (votingWindowMs !== undefined) {

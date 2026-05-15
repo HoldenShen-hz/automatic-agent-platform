@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { ensureAgentProfileHome, resolveAgentProfileHome } from "../../../../../src/platform/control-plane/config-center/profile-home.js";
+import { ensureAgentProfileHome, resolveAgentProfileHome } from "../../../../../src/platform/five-plane-control-plane/config-center/profile-home.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("resolveAgentProfileHome creates managed home layout from profile id", () => {

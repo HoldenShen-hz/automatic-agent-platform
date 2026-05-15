@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FreshnessTracker } from "../../../../../../src/platform/state-evidence/knowledge/governance/freshness-tracker.js";
-import type { KnowledgeSource, KnowledgeNamespace } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { FreshnessTracker } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/freshness-tracker.js";
+import type { KnowledgeSource, KnowledgeNamespace } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function createTestSource(freshnessTimestamp: string, trustLevel: KnowledgeSource["trustLevel"] = "verified"): KnowledgeSource {
   return {

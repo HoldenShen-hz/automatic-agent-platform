@@ -15,7 +15,7 @@ import test from "node:test";
 import {
   normalizeSandboxMode,
   type SandboxMode,
-} from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 /**
  * Legacy aliases that remain supported for compatibility.

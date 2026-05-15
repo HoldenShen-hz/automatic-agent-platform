@@ -29,16 +29,16 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { StorageError } from "../contracts/errors.js";
-import { ExecutionDbQueueDisconnectRepairService } from "../execution/recovery/execution-db-queue-disconnect-repair-service.js";
+import { ExecutionDbQueueDisconnectRepairService } from "../five-plane-execution/recovery/execution-db-queue-disconnect-repair-service.js";
 import {
   ExecutionDispatchService,
   type DispatchQueueAvailabilitySnapshot,
-} from "../execution/dispatcher/execution-dispatch-service.js";
-import { ExecutionWorkerHandshakeService } from "../execution/worker-pool/execution-worker-handshake-service.js";
-import { ExecutionWorkerWritebackService } from "../execution/worker-pool/execution-worker-writeback-service.js";
-import { WorkerRegistryService } from "../execution/worker-pool/worker-registry-service.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+} from "../five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { ExecutionWorkerHandshakeService } from "../five-plane-execution/worker-pool/execution-worker-handshake-service.js";
+import { ExecutionWorkerWritebackService } from "../five-plane-execution/worker-pool/execution-worker-writeback-service.js";
+import { WorkerRegistryService } from "../five-plane-execution/worker-pool/worker-registry-service.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 /** Options for running the DB queue disconnect rehearsal */
@@ -130,12 +130,12 @@ function seedTaskExecutionWorkflowAndSession(
       updatedAt: now,
       completedAt: null,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-db-queue-disconnect",
       roleId: "general_executor",
       runKind: "task_run",
@@ -145,6 +145,8 @@ function seedTaskExecutionWorkflowAndSession(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

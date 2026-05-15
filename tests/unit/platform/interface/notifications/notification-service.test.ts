@@ -11,8 +11,8 @@ import type {
   NotificationDispatchResult,
   HitlNotificationChannel,
   HitlNotificationRoutingRule,
-} from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
-import type { ApprovalPacket } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
+import type { ApprovalPacket } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
 
 function createMockApprovalPacket(overrides: Partial<ApprovalPacket> = {}): ApprovalPacket {
   return {

@@ -1,4 +1,4 @@
-import { loadStableValidateCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableValidateCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 import { runStableValidation } from "../../platform/shared/stability/stable-runtime-validator.js";
 import { createStableCli } from "./stable-runner-factory.js";
 

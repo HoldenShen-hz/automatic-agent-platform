@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
-import { createLockAdapter } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-factory.js";
-import { DISTRIBUTED_LOCKS_DDL } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
-import { SqliteLockAdapter } from "../../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
-import { PgAdvisoryLockAdapter } from "../../../../../src/platform/execution/distributed-lock/pg-advisory-lock-adapter.js";
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import type { DistributedLockAdapter } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { createLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import { DISTRIBUTED_LOCKS_DDL } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
+import { SqliteLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
+import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
+import type { DistributedLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 // =============================================================================
 // Test setup helpers

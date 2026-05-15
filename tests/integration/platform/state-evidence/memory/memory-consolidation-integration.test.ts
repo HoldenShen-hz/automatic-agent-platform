@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import { parseStructuredMemoryContent } from "../../../../../src/platform/state-evidence/memory/memory-schema.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { parseStructuredMemoryContent } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("consolidation integration: multiple memories aggregate into layer_5 with provenance", () => {

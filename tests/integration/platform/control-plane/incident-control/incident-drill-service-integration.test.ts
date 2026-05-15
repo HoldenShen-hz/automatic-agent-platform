@@ -16,9 +16,9 @@ import {
   type IncidentDrillScenario,
   type DrillObservation,
   type DrillCriteriaResult,
-} from "../../../../../src/platform/control-plane/incident-control/runbook-executor/incident-drill-service.js";
-import type { RunbookExecutor, RunbookExecutionResult } from "../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
-import type { ParsedRunbook } from "../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/incident-drill-service.js";
+import type { RunbookExecutor, RunbookExecutionResult } from "../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
+import type { ParsedRunbook } from "../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
 
 // Mock runbook executor for testing
 function createMockExecutor(): RunbookExecutor {

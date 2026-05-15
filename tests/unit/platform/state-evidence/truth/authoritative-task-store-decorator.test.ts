@@ -8,13 +8,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import {
   decorateAuthoritativeTaskStore,
   getAuthoritativeTaskStoreDecoratorMetricsSnapshot,
   resetAuthoritativeTaskStoreDecoratorMetrics,
   type DecoratedAuthoritativeTaskStoreOptions,
-} from "../../../../../src/platform/state-evidence/truth/repositories/authoritative-task-store-decorator.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/authoritative-task-store-decorator.js";
 
 test.beforeEach(() => {
   resetAuthoritativeTaskStoreDecoratorMetrics();

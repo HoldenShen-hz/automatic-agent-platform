@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RolloutStateMachine, type RolloutTransitionOptions } from "../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
-import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/oapeflir/types/improvement-candidate.js";
+import { RolloutStateMachine, type RolloutTransitionOptions } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 function createMockCandidate(status: ImprovementCandidate["status"] = "approved"): ImprovementCandidate {
   return {

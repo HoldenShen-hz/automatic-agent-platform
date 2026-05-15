@@ -9,10 +9,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { OapeflirLoopService, type OapeflirLoopInput } from "../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import { WorkflowPlanner } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { OapeflirLoopService, type OapeflirLoopInput } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { WorkflowPlanner } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createOapeflirContext(prefix: string) {

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { serializeHandoff } from "../../../../../src/platform/orchestration/oapeflir/handoff-serializer.js";
-import type { AgentHandoff } from "../../../../../src/platform/orchestration/oapeflir/handoff-model.js";
+import { serializeHandoff } from "../../../../../src/platform/five-plane-orchestration/oapeflir/handoff-serializer.js";
+import type { AgentHandoff } from "../../../../../src/platform/five-plane-orchestration/oapeflir/handoff-model.js";
 
 function makeHandoff(overrides: Partial<{
   planDeltaSize: number;

@@ -1,6 +1,6 @@
-export { ExecutionWorkerWritebackService } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
+export { ExecutionWorkerWritebackService } from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 export type {
   ExecutionWorkerWritebackServiceOptions,
   WorkerWritebackDecision,
   WorkerWritebackInput,
-} from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
+} from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";

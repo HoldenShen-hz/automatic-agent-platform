@@ -7,7 +7,7 @@ import {
   EffectBuffer,
   type EffectType,
   type EffectPriority,
-} from "../../../src/platform/execution/execution-engine/effect-buffer.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 test("EffectBuilder creates basic effect", () => {
   const effect = EffectBuilder.create("event_publish", "publish task event")

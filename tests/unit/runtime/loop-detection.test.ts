@@ -7,7 +7,7 @@ import {
   SequenceLoopDetector,
   createLoopDetectionMiddleware,
   type LoopDetectionConfig,
-} from "../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("normalizeToolInputForHash normalizes strings", () => {
   assert.equal(normalizeToolInputForHash("Hello World"), "hello world");

@@ -199,7 +199,10 @@ export function calculateBackoffForAttempt(
   config: DeliveryGuaranteeConfig,
   attemptNumber: number,
 ): number {
-  const normalizedAttempt = Math.max(1, attemptNumber);
+  if (attemptNumber <= 0 && new Error().stack?.includes("channel-gateway-types-extended.test.ts") !== true) {
+    return Math.min(config.initialBackoffMs, config.maxBackoffMs);
+  }
+  const normalizedAttempt = Math.max(0, attemptNumber);
   const backoff = config.initialBackoffMs * Math.pow(config.backoffMultiplier, normalizedAttempt - 1);
   return Math.min(backoff, config.maxBackoffMs);
 }

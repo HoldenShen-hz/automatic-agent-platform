@@ -20,7 +20,7 @@ import {
   type RiskEvaluationEngineOptions,
   type RiskConfig,
   type RiskLevelActionConfig,
-} from "../../../../../src/platform/control-plane/risk-control/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/risk-control/index.js";
 
 test("RiskEvaluationEngine is exported and instantiable", () => {
   const mockConfig: RiskConfig = {

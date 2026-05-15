@@ -15,8 +15,8 @@ import {
   DEFAULT_CANARY_CONFIG,
   type CanaryConfig,
   type DeploymentSlot,
-} from "../../../../../src/platform/control-plane/rollout-controller/traffic-routing-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+} from "../../../../../src/platform/five-plane-control-plane/rollout-controller/traffic-routing-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 function createTestDb(): AuthoritativeSqlDatabase {
   const db = new DatabaseSync(":memory:");

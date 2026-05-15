@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { createIntegrationContext, type IntegrationContext } from "../../../helpers/integration-context.js";
 
 function queryTaskOutboxEntries(ctx: IntegrationContext, taskId: string): Array<Record<string, unknown>> {

@@ -15,16 +15,16 @@
  * @see ExecutionWorkerHandshakeService for the sync implementation
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   ExecutionWorkerHandshakeServiceOptions,
   WorkerClaimExecutionInput,
   WorkerExecutionHeartbeatInput,
   WorkerHandshakeDecision,
   WorkerRemoteLogInput,
-} from "../../platform/execution/worker-pool/execution-worker-handshake-types.js";
-import { ExecutionWorkerHandshakeService } from "../../platform/execution/worker-pool/execution-worker-handshake-service.js";
+} from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-types.js";
+import { ExecutionWorkerHandshakeService } from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
@@ -34,7 +34,7 @@ export type {
   WorkerExecutionHeartbeatInput,
   WorkerHandshakeDecision,
   WorkerRemoteLogInput,
-} from "../../platform/execution/worker-pool/execution-worker-handshake-types.js";
+} from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-types.js";
 
 /**
  * Options for configuring the async ExecutionWorkerHandshakeService

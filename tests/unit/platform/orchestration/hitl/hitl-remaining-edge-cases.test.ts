@@ -11,10 +11,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HitlApprovalOrchestrationService } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
-import { HitlOperatorConsoleService } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
-import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/orchestration/hitl/approval-context-summary-service.js";
-import type { ApprovalPacket } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
+import { HitlApprovalOrchestrationService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
+import { HitlOperatorConsoleService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
+import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/five-plane-orchestration/hitl/approval-context-summary-service.js";
+import type { ApprovalPacket } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────

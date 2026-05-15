@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { CommandExecutor } from "../../../../../src/platform/execution/tool-executor/command-executor.js";
-import { CommandSafetyClassifier, createDefaultCommandPolicies } from "../../../../../src/platform/execution/tool-executor/command-security.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { CommandExecutor } from "../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
+import { CommandSafetyClassifier, createDefaultCommandPolicies } from "../../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 

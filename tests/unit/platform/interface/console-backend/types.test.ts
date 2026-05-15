@@ -1,6 +1,6 @@
 /**
  * Unit tests for console-backend type definitions
- * Tests all exported types from src/platform/interface/console-backend/index.ts
+ * Tests all exported types from src/platform/five-plane-interface/console-backend/index.ts
  */
 
 import assert from "node:assert/strict";
@@ -16,7 +16,7 @@ import type {
   ConsoleDataSources,
   OperatorConsoleSnapshot,
   OperatorActionPlan,
-} from "../../../../../src/platform/interface/console-backend/index.js";
+} from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("ConsoleModuleId type accepts all valid module identifiers", () => {
   const moduleIds: ConsoleModuleId[] = [

@@ -5,7 +5,7 @@ import {
   StageTransitionFSM,
   OAPEFLIR_STAGES,
   type OapeflirStage,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("StageTransitionFSM initializes with observe as current stage", () => {
   const fsm = new StageTransitionFSM();

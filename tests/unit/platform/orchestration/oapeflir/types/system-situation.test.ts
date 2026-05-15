@@ -5,7 +5,7 @@ import {
   SystemSituationSchema,
   parseSystemSituation,
   type SystemSituation,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/system-situation.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/system-situation.js";
 
 test("SystemSituationSchema parses valid system situation", () => {
   const validData: SystemSituation = {

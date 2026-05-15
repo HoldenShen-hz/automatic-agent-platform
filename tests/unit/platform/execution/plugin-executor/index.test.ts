@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PluginExecutionService } from "../../../../../src/platform/execution/plugin-executor/index.js";
+import { PluginExecutionService } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 
 test("PluginExecutionService registers plugins and executes allowed actions", async () => {
   const service = new PluginExecutionService();

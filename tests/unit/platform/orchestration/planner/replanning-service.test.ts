@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ReplanningService } from "../../../../../src/platform/orchestration/planner/replanning-service.js";
+import { ReplanningService } from "../../../../../src/platform/five-plane-orchestration/planner/replanning-service.js";
 
 test("ReplanningService requests new plan version for repairable feedback", () => {
   const service = new ReplanningService();

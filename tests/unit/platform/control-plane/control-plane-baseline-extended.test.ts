@@ -12,7 +12,7 @@ import {
   listControlPlaneCapabilityBaselines,
   resolveControlPlaneCapabilityBaseline,
   type ControlPlaneCapabilityId,
-} from "../../../../src/platform/control-plane/control-plane-baseline.js";
+} from "../../../../src/platform/five-plane-control-plane/control-plane-baseline.js";
 
 test("listControlPlaneCapabilityBaselines returns all capability baselines", () => {
   const baselines = listControlPlaneCapabilityBaselines();
@@ -95,7 +95,7 @@ test("entryModule paths are valid TypeScript module paths", () => {
   const baselines = listControlPlaneCapabilityBaselines();
 
   for (const baseline of baselines) {
-    assert.ok(baseline.entryModule.startsWith("src/platform/control-plane/"));
+    assert.ok(baseline.entryModule.startsWith("src/platform/five-plane-control-plane/"));
     assert.ok(baseline.entryModule.endsWith(".ts") || baseline.entryModule.endsWith("/index.ts"));
   }
 });

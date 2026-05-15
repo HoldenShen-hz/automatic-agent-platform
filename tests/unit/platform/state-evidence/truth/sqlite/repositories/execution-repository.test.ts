@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
+import { ExecutionRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/execution-repository.js";
 
 // Test type exports and structure from the execution-repository
 // We test the structure and types without needing actual database connections

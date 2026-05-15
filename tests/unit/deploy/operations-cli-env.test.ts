@@ -15,7 +15,7 @@ import {
   loadPlatformOperatorCliEnv,
   loadDataPlaneCliEnv,
   loadAcceptanceReadinessCliEnv,
-} from "../../../src/platform/control-plane/config-center/operations-cli-env.js";
+} from "../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
 
 test("loadEnterpriseGovernanceCliEnv parses enterprise governance config", () => {
   const config = loadEnterpriseGovernanceCliEnv({

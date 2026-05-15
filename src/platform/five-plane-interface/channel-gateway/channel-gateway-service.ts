@@ -7,11 +7,11 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import {
   SLACK_API_URL,
   TELEGRAM_API_URL,
-} from "../../control-plane/config-center/provider-defaults.js";
+} from "../../five-plane-control-plane/config-center/provider-defaults.js";
 import {
   parseSafeOutboundUrl,
   sanitizeUrlForTelemetry,
-} from "../../control-plane/iam/outbound-url-policy.js";
+} from "../../five-plane-control-plane/iam/outbound-url-policy.js";
 import {
   GatewayDeliveryError,
   GatewayRateLimitError,

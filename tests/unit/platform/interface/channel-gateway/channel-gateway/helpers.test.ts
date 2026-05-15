@@ -5,7 +5,7 @@ import {
   parseMetadata,
   requireNonEmpty,
   readTrackedDeliveryPayload,
-} from "../../../../../../src/platform/interface/channel-gateway/helpers.js";
+} from "../../../../../../src/platform/five-plane-interface/channel-gateway/helpers.js";
 
 test("parseMetadata returns empty object for null", () => {
   assert.deepEqual(parseMetadata(null), {});

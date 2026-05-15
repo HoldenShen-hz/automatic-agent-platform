@@ -12,7 +12,7 @@ import {
   type EffectPriority,
   type EffectResult,
   type EffectScopeResult,
-} from "../../../../../src/platform/execution/execution-engine/effect-buffer.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 test("EffectBuilder creates effect with required fields", () => {
   const effect = EffectBuilder.create("event_publish", "Test effect")

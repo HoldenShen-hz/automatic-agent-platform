@@ -9,7 +9,7 @@ import {
   DelegationCycleDetectedError,
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_FANOUT,
-} from "../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/topology-validator.js";
 
 test("DEFAULT_MAX_DEPTH is 3", () => {
   assert.equal(DEFAULT_MAX_DEPTH, 3);

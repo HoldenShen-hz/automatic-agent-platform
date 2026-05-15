@@ -24,8 +24,8 @@ import type { CompactionRecord, MessageRecord } from "../../contracts/types/doma
 import { estimateMessageTokens } from "../../model-gateway/messages/token-estimator.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { renderMessagePartsForContext } from "../../model-gateway/messages/message-parts.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { KvCachePrefixConfig } from "./kv-cache-prefix-config.js";
 import { createKvCachePrefixConfig, estimateTokens } from "./kv-cache-prefix-config.js";
 

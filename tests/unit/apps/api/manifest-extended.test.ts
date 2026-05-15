@@ -6,7 +6,7 @@ import { API_APP_MANIFEST } from "../../../../src/apps/api/index.js";
 test("API_APP_MANIFEST entryModule points to http-api-server", () => {
   assert.equal(
     API_APP_MANIFEST.entryModule,
-    "src/platform/interface/api/http-api-server.ts"
+    "src/platform/five-plane-interface/api/http-api-server.ts"
   );
 });
 

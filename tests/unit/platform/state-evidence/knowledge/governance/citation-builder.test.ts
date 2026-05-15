@@ -4,8 +4,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CitationBuilder } from "../../../../../../src/platform/state-evidence/knowledge/governance/citation-builder.js";
-import type { RetrievalHit } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { CitationBuilder } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/citation-builder.js";
+import type { RetrievalHit } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function createTestRetrievalHit(overrides?: Partial<RetrievalHit>): RetrievalHit {
   return {

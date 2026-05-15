@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ConstraintPack } from "../../../../../src/platform/orchestration/harness/constraints/index.js";
+import type { ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/constraints/index.js";
 
 test("ConstraintPack type is exported and can be constructed", () => {
   const pack: ConstraintPack = {

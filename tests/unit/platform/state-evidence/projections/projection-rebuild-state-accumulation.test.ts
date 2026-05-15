@@ -6,7 +6,7 @@ import {
   ProjectionHandlerRegistry,
   type ProjectionHandler,
   type ProjectionInputEvent,
-} from "../../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 /**
  * R16-28 CRITICAL Audit Fix Test

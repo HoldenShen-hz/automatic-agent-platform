@@ -9,13 +9,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
-import { SqliteLockAdapter } from "../../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
+import { SqliteLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import {
   DISTRIBUTED_LOCKS_DDL,
   type DistributedLockAdapter,
   type LockBackendKind,
-} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
-import * as DistributedLock from "../../../../../src/platform/execution/distributed-lock/index.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
+import * as DistributedLock from "../../../../../src/platform/five-plane-execution/distributed-lock/index.js";
 
 // =============================================================================
 // SqliteLockAdapter edge case tests

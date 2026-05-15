@@ -15,8 +15,8 @@ import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { HaCoordinatorService } from "../../src/platform/execution/ha/ha-coordinator-service-inner.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { HaCoordinatorService } from "../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 function createTempDb(): SqliteDatabase {

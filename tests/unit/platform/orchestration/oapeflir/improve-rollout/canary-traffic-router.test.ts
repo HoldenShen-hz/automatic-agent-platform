@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { CanaryTrafficRouter } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/canary-traffic-router.js";
+import { CanaryTrafficRouter } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/canary-traffic-router.js";
 
 test("CanaryTrafficRouter returns 0% for draft status", () => {
   const router = new CanaryTrafficRouter();

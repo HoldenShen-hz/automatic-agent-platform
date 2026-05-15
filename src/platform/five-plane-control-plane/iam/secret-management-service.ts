@@ -4,10 +4,10 @@
 
 export * from "./secret-management-support.js";
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ValidationError, StorageError, PolicyDeniedError, ProviderError } from "../../contracts/errors.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });

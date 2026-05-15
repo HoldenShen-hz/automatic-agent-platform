@@ -13,7 +13,7 @@ import {
   DEFAULT_MEMORY_PROMOTION_RULES,
   type LayerTtlConfig,
   type EvictionStrategy,
-} from "../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createTestMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {

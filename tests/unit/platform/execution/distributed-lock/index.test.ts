@@ -15,7 +15,7 @@ import {
   type RedisLockConfig,
   type LockData,
   type CreateLockAdapter,
-} from "../../../../../src/platform/execution/distributed-lock/index.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/index.js";
 
 test("DistributedLockAdapter interface structure", () => {
   const mockAdapter: DistributedLockAdapter = {

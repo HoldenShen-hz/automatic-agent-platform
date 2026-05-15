@@ -15,9 +15,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
-import { ApprovalRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { ApprovalRepository } from "../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus, ApprovalStatus } from "../../src/platform/contracts/types/status.js";
 

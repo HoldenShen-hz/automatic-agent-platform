@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EvalRunService, TaskOutcomeGrader } from "../../../../../src/platform/orchestration/harness/eval-harness/index.js";
-import type { HarnessRun } from "../../../../../src/platform/orchestration/harness/index.js";
+import { EvalRunService, TaskOutcomeGrader } from "../../../../../src/platform/five-plane-orchestration/harness/eval-harness/index.js";
+import type { HarnessRun } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("EvalRunService is exported and can be instantiated", () => {
   const service = new EvalRunService();

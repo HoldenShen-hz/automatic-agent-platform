@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain/worker-types.js";
 
 // ---------------------------------------------------------------------------

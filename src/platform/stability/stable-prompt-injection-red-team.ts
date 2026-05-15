@@ -12,7 +12,7 @@ import {
   sanitizeToolOutput,
   type InjectionRisk,
   type PromptInjectionRuleId,
-} from "../execution/tool-executor/tool-output-sanitizer.js";
+} from "../five-plane-execution/tool-executor/tool-output-sanitizer.js";
 
 export interface StablePromptInjectionRedTeamOptions {
   outputDir: string;

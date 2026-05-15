@@ -1,5 +1,5 @@
 import { LLM_EVAL_DDL, PROMPT_MODEL_POLICY_GOVERNANCE_DDL } from "../../../prompt-engine/eval/prompt-model-policy-governance-schema.js";
-import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
+import { ENTERPRISE_GOVERNANCE_DDL } from "../../../five-plane-control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 
 export {

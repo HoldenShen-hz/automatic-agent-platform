@@ -5,7 +5,7 @@ import {
   ComplianceProgramService,
   type ComplianceProgramInput,
 } from "../../../../src/scale-ecosystem/tenant-platform/compliance-program-service.js";
-import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { DataNamespaceRecord } from "../../../../src/platform/contracts/types/domain.js";
 
 function createMockStore(overrides: Partial<{

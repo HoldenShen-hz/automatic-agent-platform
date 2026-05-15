@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAdminRoutes } from "../../../../../../src/platform/interface/api/http-server/admin-routes.js";
-import { ConfigRolloutService } from "../../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
-import { TenantBoundaryRegistryService } from "../../../../../../src/platform/control-plane/tenant/index.js";
-import { CostReportService } from "../../../../../../src/platform/interface/api/cost-report-service.js";
-import { AdminConfigService } from "../../../../../../src/platform/interface/api/admin-config-service.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { CoordinatorLoadBalancingService } from "../../../../../../src/platform/execution/ha/coordinator-load-balancing-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createAdminRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/admin-routes.js";
+import { ConfigRolloutService } from "../../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
+import { TenantBoundaryRegistryService } from "../../../../../../src/platform/five-plane-control-plane/tenant/index.js";
+import { CostReportService } from "../../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
+import { AdminConfigService } from "../../../../../../src/platform/five-plane-interface/api/admin-config-service.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { CoordinatorLoadBalancingService } from "../../../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {

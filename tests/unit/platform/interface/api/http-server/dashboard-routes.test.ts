@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDashboardRoutes } from "../../../../../../src/platform/interface/api/http-server/dashboard-routes.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createDashboardRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/dashboard-routes.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {

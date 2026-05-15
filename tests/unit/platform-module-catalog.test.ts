@@ -80,7 +80,7 @@ test("resolvePlatformSurfaceManifest throws for unknown surfaceId", () => {
 test("resolvePlatformSurfaceManifest returns manifest with correct structure", () => {
   const manifest = resolvePlatformSurfaceManifest("execution");
   assert.equal(manifest.surfaceId, "execution");
-  assert.equal(manifest.entryModule, "src/platform/execution/index.ts");
+  assert.equal(manifest.entryModule, "src/platform/five-plane-execution/index.ts");
   assert.ok(manifest.architectureSections.includes("§14"));
   assert.ok(manifest.canonicalSubdomains.includes("dispatcher"));
 });
@@ -131,12 +131,12 @@ test("specific surface manifests have expected properties", () => {
   assert.ok(contracts.canonicalSubdomains.includes("request-envelope"));
 
   const orchestration = resolvePlatformSurfaceManifest("orchestration");
-  assert.equal(orchestration.entryModule, "src/platform/orchestration/index.ts");
+  assert.equal(orchestration.entryModule, "src/platform/five-plane-orchestration/index.ts");
   assert.ok(orchestration.canonicalSubdomains.includes("hitl"));
   assert.ok(orchestration.canonicalSubdomains.includes("planner"));
 
   const stateEvidence = resolvePlatformSurfaceManifest("state-evidence");
-  assert.equal(stateEvidence.entryModule, "src/platform/state-evidence/index.ts");
+  assert.equal(stateEvidence.entryModule, "src/platform/five-plane-state-evidence/index.ts");
   assert.ok(stateEvidence.canonicalSubdomains.includes("truth"));
   assert.ok(stateEvidence.canonicalSubdomains.includes("events"));
 });

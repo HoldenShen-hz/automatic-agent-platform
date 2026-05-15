@@ -11,7 +11,7 @@ import {
   type IncidentResolution,
   type ResolutionStrategy,
   type IncidentDetection,
-} from "../../../../../src/platform/control-plane/incident-control/incident-resolver.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-resolver.js";
 
 // ============================================================================
 // Helper Functions

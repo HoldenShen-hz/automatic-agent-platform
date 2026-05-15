@@ -19,12 +19,12 @@
 import { type ChildProcess } from "node:child_process";
 import { join, resolve } from "node:path";
 
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const commandExecutorLogger = new StructuredLogger({ retentionLimit: 100 });
-import { checkSandboxPath } from "../../control-plane/iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { checkSandboxPath } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { sanitizeToolOutput, type SanitizedToolOutput } from "./tool-output-sanitizer.js";
 import { assessCommand } from "./command-security.js";
 import { isToolCallSuccessful, type ToolCallResult } from "./tool-call-result.js";

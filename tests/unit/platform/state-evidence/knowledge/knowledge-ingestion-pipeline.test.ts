@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AstStructuralIndex } from "../../../../../src/platform/state-evidence/knowledge/indexing/ast-index.js";
-import { KnowledgeIngestionPipeline } from "../../../../../src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+import { AstStructuralIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/ast-index.js";
+import { KnowledgeIngestionPipeline } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
 
 test("KnowledgeIngestionPipeline ingests documents and serves keyword queries", () => {
   const pipeline = new KnowledgeIngestionPipeline();

@@ -6,8 +6,8 @@ import {
   HA_COORDINATOR_DDL,
   MIN_LEASE_TTL_MS,
   MAX_LEASE_TTL_MS,
-} from "../../../src/platform/execution/ha/ha-coordinator-service.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../src/platform/five-plane-execution/ha/ha-coordinator-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { join } from "node:path";
 

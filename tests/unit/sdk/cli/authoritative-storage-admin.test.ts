@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadAuthoritativeStorageAdminCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadAuthoritativeStorageAdminCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // ---------------------------------------------------------------------------

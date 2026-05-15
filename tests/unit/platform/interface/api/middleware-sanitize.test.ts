@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sanitizeJsonValue } from "../../../../../src/platform/interface/api/middleware/sanitize.js";
+import { sanitizeJsonValue } from "../../../../../src/platform/five-plane-interface/api/middleware/sanitize.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
 
 test("sanitizeJsonValue returns primitives unchanged", () => {

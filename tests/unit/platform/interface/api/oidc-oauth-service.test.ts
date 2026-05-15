@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OidcOAuthService, OidcProvider } from "../../../../../src/platform/interface/api/oidc-oauth-service.js";
+import { OidcOAuthService, OidcProvider } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth-service.js";
 
 function createService(providers: OidcProvider[] = [], trustedIssuers: string[] = [], skipSignatureVerification = false) {
   return new OidcOAuthService(providers, trustedIssuers, "test-audience", undefined, skipSignatureVerification);

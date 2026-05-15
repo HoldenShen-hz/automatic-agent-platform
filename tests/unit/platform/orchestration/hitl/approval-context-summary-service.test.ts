@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/orchestration/hitl/approval-context-summary-service.js";
+import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/five-plane-orchestration/hitl/approval-context-summary-service.js";
 
 const createMockProvider = (response: { content: string }) => ({
   createChatCompletion: async () => ({

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { runMultiStepOrchestration } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 

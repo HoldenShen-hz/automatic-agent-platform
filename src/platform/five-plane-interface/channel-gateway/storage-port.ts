@@ -7,7 +7,7 @@
  */
 
 import type { GatewayTargetRecord } from "../../contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { GatewaySessionTargetCandidate } from "../../five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 /**
  * Port interface for gateway storage operations.

@@ -12,10 +12,10 @@ import { join } from "node:path";
 // We need to test the backoff calculation indirectly through the retry mechanism
 // since calculateBackoff is a private function in durable-event-bus.ts
 
-import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { DlqService } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { DlqService } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 

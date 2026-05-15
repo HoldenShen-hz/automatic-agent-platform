@@ -21,9 +21,9 @@ import {
   AFFINITY_SELECTION_BONUS,
   LOAD_SKEW_SELECTION_PENALTY,
   DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
-} from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 import type { WorkerPlacement, DispatchWorkerEvaluation, DispatchTarget, WorkerIsolationLevel, ExecutionTicketRecord, TaskPriority, RemoteAvailability } from "../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // ---------------------------------------------------------------------------
 // normalizeStringArray edge cases

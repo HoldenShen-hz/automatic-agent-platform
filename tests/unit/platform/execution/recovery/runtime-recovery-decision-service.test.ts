@@ -5,10 +5,10 @@ import {
   RuntimeRecoveryDecisionService,
   type RecoveryDecisionRecord,
   type RecoveryDecisionApplyResult,
-} from "../../../../../src/platform/execution/recovery/runtime-recovery-decision-service.js";
-import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/execution/recovery/runtime-recovery-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.js";
+import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Mock database factory
 function createMockDb(): AuthoritativeSqlDatabase {

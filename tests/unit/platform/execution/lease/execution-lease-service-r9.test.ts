@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionLeaseService } from "../../../../../src/platform/execution/lease/execution-lease-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { ExecutionLeaseService } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 import { StorageError } from "../../../../../src/platform/contracts/errors.js";
-import { MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS } from "../../../../../src/platform/execution/lease/types.js";
+import { MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS } from "../../../../../src/platform/five-plane-execution/lease/types.js";
 
 // ---------------------------------------------------------------------------
 // Mock Store Factory

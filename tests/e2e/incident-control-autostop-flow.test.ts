@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   AutoStopLossService,
   type StopLossPlaybook,
-} from "../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 
 test("E2E: auto stop-loss health loop executes auto playbooks, queues approvals, and respects cooldowns", async () => {
   const executedActions: string[] = [];

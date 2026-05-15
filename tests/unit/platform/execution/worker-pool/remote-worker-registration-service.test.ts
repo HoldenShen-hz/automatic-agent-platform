@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import {
   RemoteWorkerRegistrationService,
   type IssueRemoteWorkerRegistrationChallengeInput,
   type CompleteRemoteWorkerRegistrationInput,
-} from "../../../../../src/platform/execution/worker-pool/worker/remote-worker-registration-service.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/worker/remote-worker-registration-service.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AutoRollbackService, type RolloutMetrics, type AutoRollbackConfig } from "../../../../../src/platform/orchestration/improve-rollout/auto-rollback-service.js";
-import type { RolloutRecord } from "../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+import { AutoRollbackService, type RolloutMetrics, type AutoRollbackConfig } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/auto-rollback-service.js";
+import type { RolloutRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 function makeRolloutRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
   return {

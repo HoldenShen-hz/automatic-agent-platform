@@ -7,7 +7,7 @@ import {
   normalizeConstraintPack,
   type ConstraintBudgetEnvelope,
   type ConstraintPack,
-} from "../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMinimalPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

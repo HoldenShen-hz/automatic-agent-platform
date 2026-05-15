@@ -13,9 +13,9 @@ import { newId } from "../../src/platform/contracts/types/ids.js";
 import {
   KnowledgeQueryService,
   QueryLevel,
-} from "../../src/platform/state-evidence/knowledge/knowledge-query-service.js";
-import type { RetrievalHit, KnowledgeRetrievalService } from "../../src/platform/state-evidence/knowledge/index.js";
-import type { SemanticKnowledgeGraph } from "../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
+} from "../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
+import type { RetrievalHit, KnowledgeRetrievalService } from "../../src/platform/five-plane-state-evidence/knowledge/index.js";
+import type { SemanticKnowledgeGraph } from "../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
 
 function createMockRetrievalService(): KnowledgeRetrievalService {
   return {

@@ -12,12 +12,12 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sha256, stableStringify } from "../../../../../src/platform/control-plane/config-center/config-governance-support.js";
+import { sha256, stableStringify } from "../../../../../src/platform/five-plane-control-plane/config-center/config-governance-support.js";
 import {
   ConfigAuditService,
   type ConfigAuditAction,
   type ConfigAuditEntry,
-} from "../../../../../src/platform/control-plane/config-center/config-audit-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-audit-service.js";
 
 // Helper to create deterministic content hash
 function contentHash(content: Record<string, unknown>): string {

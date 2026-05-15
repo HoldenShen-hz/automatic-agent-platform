@@ -27,10 +27,10 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadGatewayTargetsCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadGatewayTargetsCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { GatewayTargetDirectoryService } from "../../platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { GatewayStorageAdapter } from "../../platform/interface/channel-gateway/storage-adapter.js";
+import { GatewayTargetDirectoryService } from "../../platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import { GatewayStorageAdapter } from "../../platform/five-plane-interface/channel-gateway/storage-adapter.js";
 
 /**
  * Main entry point for the gateway targets CLI.

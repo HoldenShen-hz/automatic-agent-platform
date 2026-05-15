@@ -9,8 +9,8 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { loadRiskConfig } from "../../../../../src/platform/control-plane/risk-control/risk-config-loader.js";
-import { createConfigReadPolicy, checkSandboxPath } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { loadRiskConfig } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
+import { createConfigReadPolicy, checkSandboxPath } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("loadRiskConfig with valid sandbox policy allows access", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-sandbox-test-"));

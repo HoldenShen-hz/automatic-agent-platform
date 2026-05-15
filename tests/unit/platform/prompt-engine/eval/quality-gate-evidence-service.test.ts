@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { QualityGateEvidenceService } from "../../../../../src/platform/prompt-engine/eval/quality-gate-evidence-service.js";
 import type { QualityGateConfig } from "../../../../../src/platform/prompt-engine/eval/types.js";
-import type { ArtifactStore, ArtifactWriteInput, ArtifactWriteResult } from "../../../../../src/platform/state-evidence/artifacts/artifact-store.js";
+import type { ArtifactStore, ArtifactWriteInput, ArtifactWriteResult } from "../../../../../src/platform/five-plane-state-evidence/artifacts/artifact-store.js";
 
 const config: QualityGateConfig = {
   qualityGate: {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LoopDetectionState } from "../../../src/platform/execution/execution-engine/loop-detection.js";
-import { EffectBuffer, EffectScope } from "../../../src/platform/execution/execution-engine/effect-buffer.js";
+import { LoopDetectionState } from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
+import { EffectBuffer, EffectScope } from "../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 test("LoopDetectionState and EffectBuffer integration - loop detection triggers effect", async () => {
   const loopState = new LoopDetectionState({ warnThreshold: 1, escalateThreshold: 2 });
@@ -65,7 +65,7 @@ test("EffectScope with multiple effects and LoopDetectionState coordination", as
 });
 
 test("SequenceLoopDetector with EffectBuffer for sequence tracking", async () => {
-  const { SequenceLoopDetector } = await import("../../../src/platform/execution/execution-engine/loop-detection.js");
+  const { SequenceLoopDetector } = await import("../../../src/platform/five-plane-execution/execution-engine/loop-detection.js");
 
   const detector = new SequenceLoopDetector({ windowSize: 3, repeatThreshold: 2 });
   const effectBuffer = new EffectBuffer();

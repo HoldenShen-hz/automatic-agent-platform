@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/execution/worker-pool/worker-service-identity.js";
+import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
 
 test("WorkerServiceIdentityRegistry.register stores identity", () => {
   const registry = new WorkerServiceIdentityRegistry();

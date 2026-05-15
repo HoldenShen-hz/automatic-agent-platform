@@ -19,7 +19,7 @@
 import type { TaskPriority } from "../../contracts/types/domain.js";
 import type { HealthStatusReport } from "../../shared/observability/health-service.js";
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface AdmissionPolicy {
   maxQueuedTasks: number;

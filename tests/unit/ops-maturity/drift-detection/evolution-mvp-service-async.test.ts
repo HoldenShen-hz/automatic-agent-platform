@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Unit tests for EvolutionServiceAsync
  *
@@ -9,8 +8,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EvolutionServiceAsync } from "../../../../src/ops-maturity/drift-detection/evolution-mvp-service-async.js";
-import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
 // Helper types

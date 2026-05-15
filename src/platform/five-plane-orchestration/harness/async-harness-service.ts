@@ -1,10 +1,10 @@
-import { toCanonicalHarnessRun, type HarnessLoopInput, type HarnessRun, type HarnessRunStatus, type HarnessRuntimeService } from "./index.js";
+import { type HarnessLoopInput, type HarnessRunRuntimeState, type HarnessRunStatus, type HarnessRuntimeService } from "./index.js";
 
 export interface AsyncHarnessQueuedRun {
   readonly runId: string;
   readonly input: HarnessLoopInput;
   readonly status: "queued" | "running" | "completed" | "failed";
-  readonly result: HarnessRun | null;
+  readonly result: HarnessRunRuntimeState | null;
   readonly errorMessage: string | null;
 }
 
@@ -29,11 +29,11 @@ export class AsyncHarnessService {
     return runId;
   }
 
-  public async execute(runId: string): Promise<HarnessRun> {
+  public async execute(runId: string): Promise<HarnessRunRuntimeState> {
     const queued = this.requireRun(runId);
     this.queuedRuns.set(runId, { ...queued, status: "running" });
     try {
-      const result = toCanonicalHarnessRun(this.runtime.runLoop(queued.input));
+      const result = this.runtime.runLoop(queued.input);
       this.queuedRuns.set(runId, {
         ...queued,
         status: "completed",

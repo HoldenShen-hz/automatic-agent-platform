@@ -12,7 +12,7 @@ import {
 import { registerModelGatewayBootstrap } from "../../../src/platform/model-gateway/model-gateway-bootstrap.js";
 import { registerPromptEngineBootstrap } from "../../../src/platform/prompt-engine/prompt-engine-bootstrap.js";
 import { registerComplianceBootstrap } from "../../../src/platform/compliance/compliance-bootstrap.js";
-import { registerHarnessBootstrap } from "../../../src/platform/orchestration/harness/harness-bootstrap.js";
+import { registerHarnessBootstrap } from "../../../src/platform/five-plane-orchestration/harness/harness-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("buildAiOperationsStartupPlan returns AiOperationsStartupPlan interface", () => {

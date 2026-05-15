@@ -8,7 +8,7 @@ import {
   type ValidationLoopStage,
   type ValidationFailureRecord,
   type RepairEvidencePackage,
-} from "../../../../../src/platform/execution/recovery/validation-repair-loop.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/validation-repair-loop.js";
 
 function makeValidationLoopInput(overrides: Partial<ValidationLoopInput> = {}): ValidationLoopInput {
   return {

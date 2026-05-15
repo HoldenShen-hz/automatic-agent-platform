@@ -4,13 +4,13 @@ import test from "node:test";
 import {
   TakeoverQueueManager,
   type TakeoverQueueConfig,
-} from "../../../../../src/platform/control-plane/incident-control/takeover-queue-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/takeover-queue-manager.js";
 import type {
   TakeoverLifecycleEvent,
   TakeoverEventPayload,
   TakeoverRequestEntry,
   TakeoverRequestPayload,
-} from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 
 function createMockEventEmitter() {
   const events: Array<{ event: TakeoverLifecycleEvent; payload: unknown }> = [];

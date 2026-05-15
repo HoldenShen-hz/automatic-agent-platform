@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RolloutStateMachine } from "../../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
+import { RolloutStateMachine } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {

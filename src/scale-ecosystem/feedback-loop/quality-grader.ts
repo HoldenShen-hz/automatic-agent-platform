@@ -5,8 +5,8 @@
  * Filters out noise, contradictions, and low-information feedback.
  */
 
-import { deriveFeedbackTrustScore } from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
-import type { FeedbackSignal } from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
+import { deriveFeedbackTrustScore } from "../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import type { LearningSignal } from "./collector/feedback-model.js";
 
 export interface QualityScore {

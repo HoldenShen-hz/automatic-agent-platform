@@ -84,7 +84,7 @@ import {
   verifyTier1AuditIntegrity,
   type Tier1AuditIntegrityRecord,
   type Tier1AuditIntegrityReport,
-} from "../../../control-plane/iam/audit-event-integrity.js";
+} from "../../../five-plane-control-plane/iam/audit-event-integrity.js";
 import { getEventTier, getRequiredConsumers } from "../../events/event-types.js";
 import { ensureMessagePartsJson } from "../../../model-gateway/messages/message-parts.js";
 import { getTenantIdOrNull, hasTenantContext } from "../../../shared/context/runtime-context.js";

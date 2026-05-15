@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EscalationService, type EscalationRequest } from "../../../../../src/platform/orchestration/escalation/index.js";
+import { EscalationService, type EscalationRequest } from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
 function createEscalationRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {

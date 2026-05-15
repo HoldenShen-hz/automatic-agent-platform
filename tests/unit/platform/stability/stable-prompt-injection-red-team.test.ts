@@ -7,7 +7,7 @@ import {
   writeStablePromptInjectionRedTeamReport,
   type StablePromptInjectionRedTeamOptions,
 } from "../../../../src/platform/stability/stable-prompt-injection-red-team.js";
-import { sanitizeToolOutput } from "../../../../src/platform/execution/tool-executor/tool-output-sanitizer.js";
+import { sanitizeToolOutput } from "../../../../src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.js";
 
 test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES contains expected test cases", () => {
   assert.ok(STABLE_PROMPT_INJECTION_RED_TEAM_CASES.length > 0, "should have at least one test case");

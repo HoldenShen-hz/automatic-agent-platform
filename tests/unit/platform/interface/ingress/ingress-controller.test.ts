@@ -5,8 +5,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DistributedRateLimiter } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
-import type { RateLimitCheckResult } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+import type { RateLimitCheckResult } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter in-memory mode enforces maxCalls limit", async () => {
   const limiter = new DistributedRateLimiter({

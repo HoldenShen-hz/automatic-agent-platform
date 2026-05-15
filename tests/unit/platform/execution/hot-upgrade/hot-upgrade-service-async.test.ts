@@ -3,13 +3,12 @@
  * Tests the async version of the hot upgrade service.
  */
 
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HotUpgradeServiceAsync } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service-async.js";
-import type { HotUpgradeRepository } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
-import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult, UpgradeTarget } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+import { HotUpgradeServiceAsync } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service-async.js";
+import type { HotUpgradeRepository } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
+import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult, UpgradeTarget } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock repository implementation

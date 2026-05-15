@@ -13,11 +13,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createApprovalRoutes } from "../../../../../../src/platform/interface/api/http-server/approval-routes.js";
-import type { ApprovalService } from "../../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { createApprovalRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/approval-routes.js";
+import type { ApprovalService } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../../../../src/platform/shared/observability/inspect-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockApprovalService(): ApprovalService {
   return {

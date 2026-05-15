@@ -6,7 +6,7 @@ import {
   FreshnessTracker,
   KnowledgeAccessControl,
   SourceTrustPolicyRegistry,
-} from "../../../../../src/platform/state-evidence/knowledge/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/index.js";
 
 test("knowledge governance services enforce trust, citation, freshness, and access rules", () => {
   const trustPolicies = new SourceTrustPolicyRegistry();

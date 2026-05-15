@@ -5,7 +5,7 @@ import {
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { ProjectionRebuildOptions, ProjectionRebuildResult, ProjectionRebuildService } from "../../state-evidence/projections/projection-rebuild-service.js";
+import type { ProjectionRebuildOptions, ProjectionRebuildResult, ProjectionRebuildService } from "../../five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 export interface ProjectionRebuildWorkerOptions {
   readonly projectionRebuildService: Pick<ProjectionRebuildService, "rebuildAll">;

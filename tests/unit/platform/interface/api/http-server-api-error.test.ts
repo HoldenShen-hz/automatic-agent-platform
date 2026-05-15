@@ -6,10 +6,10 @@ import {
   inferApiErrorCategory,
   inferApiErrorSource,
   normalizeError,
-} from "../../../../../src/platform/interface/api/http-server/api-error.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/api-error.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
-import { GatewayRateLimitError, GatewayDeliveryError } from "../../../../../src/platform/interface/channel-gateway/errors.js";
-import { GatewayTargetNotFoundError, GatewayTargetAmbiguousError } from "../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
+import { GatewayRateLimitError, GatewayDeliveryError } from "../../../../../src/platform/five-plane-interface/channel-gateway/errors.js";
+import { GatewayTargetNotFoundError, GatewayTargetAmbiguousError } from "../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 
 test("ApiError has correct properties", () => {
   const error = new ApiError(404, "api.not_found", "Resource not found");

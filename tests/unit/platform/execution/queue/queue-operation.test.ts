@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteQueueAdapter } from "../../../../../src/platform/execution/queue/queue-adapter.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { QUEUE_JOBS_DDL } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { SqliteQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { QUEUE_JOBS_DDL } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { join } from "node:path";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { QueueJobRecord, EnqueueInput } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { QueueJobRecord, EnqueueInput } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 function createTestHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);

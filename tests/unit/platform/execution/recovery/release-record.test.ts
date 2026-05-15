@@ -10,7 +10,7 @@ import {
   type ReleaseDecision,
   type ReleaseEnvironment,
   type ApprovalRecord,
-} from "../../../../../src/platform/execution/recovery/release-record.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/release-record.js";
 
 test("createReleaseRecord creates approved record with environment", () => {
   const record = createReleaseRecord({

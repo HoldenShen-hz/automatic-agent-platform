@@ -14,7 +14,7 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { RuntimeTruthRepository } from "../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeTruthRepository } from "../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 import type {
   HarnessRun,
@@ -25,7 +25,7 @@ import type {
   NodeAttemptReceipt,
   RunVersionLock,
 } from "../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 // ============================================================================
 // Snapshot with Few Aggregates

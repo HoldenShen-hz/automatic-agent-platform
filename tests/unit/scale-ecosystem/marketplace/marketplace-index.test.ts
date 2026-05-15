@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace index - verifies barrel re-exports
  *

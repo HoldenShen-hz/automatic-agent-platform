@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { partitionPromptForCache, PromptPartitionCacheService } from "../../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+import { partitionPromptForCache, PromptPartitionCacheService } from "../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 test("partitionPromptForCache keeps leading system messages in the static prefix", () => {
   const result = partitionPromptForCache({

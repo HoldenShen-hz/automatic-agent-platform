@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { StateTransitionMachine } from "../../../src/platform/execution/state-transition/state-transition-machine.js";
+import { StateTransitionMachine } from "../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js";
 import { WorkflowStateError } from "../../../src/platform/contracts/errors.js";
 import {
   provideContext,
@@ -22,7 +22,7 @@ import {
   hasTenantContext,
   hasWorkspaceContext,
 } from "../../../src/platform/shared/context/runtime-context.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import type { RuntimeContextSnapshot } from "../../../src/platform/shared/context/runtime-context.js";
 

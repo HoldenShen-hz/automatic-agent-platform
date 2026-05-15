@@ -14,7 +14,7 @@ import {
   RuntimeStateMachine,
   isTruthConsumerEvent,
   type PlatformFactEvent,
-} from "../../../../src/platform/execution/runtime-state-machine.js";
+} from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 const artifact: ArtifactRef = {
   artifactId: "artifact-1",

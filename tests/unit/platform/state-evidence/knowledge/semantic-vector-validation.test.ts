@@ -5,8 +5,8 @@ import type {
   AsyncQueryResult,
   AsyncSqlConnection,
   AsyncSqlDatabase,
-} from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
-import { validateSemanticVectorReadiness } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-validation.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
+import { validateSemanticVectorReadiness } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-validation.js";
 
 test("validateSemanticVectorReadiness verifies pgvector extension, table, ivfflat index, and roundtrip", async () => {
   const executed: Array<{ sql: string; params: unknown[] }> = [];

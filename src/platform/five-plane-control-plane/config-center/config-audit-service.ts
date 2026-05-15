@@ -10,7 +10,7 @@
  * supporting compliance requirements and incident investigation.
  */
 
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
   diffObjects,
@@ -18,8 +18,8 @@ import {
   stableStringify,
   type ConfigDiffEntry,
 } from "./config-governance-support.js";
-import type { SqliteConnection } from "../../state-evidence/truth/sqlite/query-helper.js";
-import { queryAllOrEmpty, queryOne, execute } from "../../state-evidence/truth/sqlite/query-helper.js";
+import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
+import { queryAllOrEmpty, queryOne, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 
 /**
  * Audit action types for configuration changes.

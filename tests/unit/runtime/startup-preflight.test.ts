@@ -6,8 +6,8 @@ import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
   deriveProviderApiKeyEnvName,
-} from "../../../src/platform/execution/startup/startup-preflight.js";
-import { createWorkspaceWritePolicy } from "../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../src/platform/five-plane-execution/startup/startup-preflight.js";
+import { createWorkspaceWritePolicy } from "../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../helpers/fs.js";
 
 function seedConfigTree(root: string, overrides: Record<string, string> = {}): void {

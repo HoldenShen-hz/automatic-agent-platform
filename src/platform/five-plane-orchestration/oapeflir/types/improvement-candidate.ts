@@ -11,15 +11,26 @@ export const ImprovementGuardrailSchema = z.object({
   requiredLevel: RolloutLevelSchema.default("L1_evaluate"),
 });
 export const ImprovementCandidateStatusSchema = z.enum([
+  "proposed",
+  "evaluating",
+  "draft",
+  "pending_approval",
+  "shadow",
   "candidate_created",
   "under_review",
   "approved",
+  "accepted",
+  "shadow_running",
   "evaluation_enabled",
   "canary_5",
   "partial_25",
+  "partial_50",
+  "partial_75",
+  "stable",
   "stable_75",
   "stable_100",
   "released",
+  "deployed",
   "rejected",
   "rolled_back",
 ]);
@@ -27,10 +38,10 @@ export const ImprovementCandidateStatusSchema = z.enum([
 export const ImprovementCandidateSchema = z.object({
   candidateId: z.string().min(1),
   taskId: z.string().min(1),
-  learningObjectId: z.string().min(1),
-  source: ImprovementCandidateSourceSchema,
-  targetScope: ImprovementTargetScopeSchema,
-  priority: ImprovementPrioritySchema,
+  learningObjectId: z.string().min(1).default("missing_learning_object"),
+  source: ImprovementCandidateSourceSchema.default("failure_pattern"),
+  targetScope: ImprovementTargetScopeSchema.default("task"),
+  priority: ImprovementPrioritySchema.default("medium"),
   rolloutLevel: RolloutLevelSchema.default("L0_off"),
   metrics: RolloutMetricsSchema.default({
     errorRate: 0,
@@ -45,8 +56,8 @@ export const ImprovementCandidateSchema = z.object({
   description: z.string().min(1),
   expectedBenefit: z.string().min(1),
   status: ImprovementCandidateStatusSchema,
-  createdAt: z.string().min(1),
-  updatedAt: z.string().min(1),
+  createdAt: z.union([z.string().min(1), z.number().int().nonnegative()]),
+  updatedAt: z.union([z.string().min(1), z.number().int().nonnegative()]).optional(),
 });
 
 export type ImprovementChangeScope = z.infer<typeof ImprovementChangeScopeSchema>;

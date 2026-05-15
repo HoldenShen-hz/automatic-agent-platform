@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProjectionRebuildWorker } from "../../../../../src/platform/execution/ha/projection-rebuild-worker.js";
+import { ProjectionRebuildWorker } from "../../../../../src/platform/five-plane-execution/ha/projection-rebuild-worker.js";
 
 test("ProjectionRebuildWorker.getWorkerId returns default worker id", () => {
   const worker = new ProjectionRebuildWorker({

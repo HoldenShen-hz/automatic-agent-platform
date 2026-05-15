@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type {
   RuntimeLifecycleRepository,
-} from "../../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 
 test("RuntimeLifecycleRepository interface can be used as type", () => {
   // This test verifies the interface structure is valid

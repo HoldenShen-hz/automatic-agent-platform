@@ -6,10 +6,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { ChannelGatewayService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
-import { ChannelGatewayDeliveryService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import { GatewayTargetDirectoryService } from "../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { GatewayStorageAdapter } from "../../../../../src/platform/interface/channel-gateway/storage-adapter.js";
+import { ChannelGatewayService } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { ChannelGatewayDeliveryService } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import { GatewayTargetDirectoryService } from "../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import { GatewayStorageAdapter } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-adapter.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("Integration: ChannelGatewayService sends message through full pipeline", async () => {

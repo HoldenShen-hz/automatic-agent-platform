@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HarnessRuntimeService } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessRuntimeService } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // decide() Method Tests

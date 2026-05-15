@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
-import { EventReliabilityInventoryService } from "../../../../../src/platform/state-evidence/events/event-reliability-inventory-service.js";
+import { DeadLetterQueueService } from "../../../../../src/platform/five-plane-state-evidence/dlq/index.js";
+import { EventReliabilityInventoryService } from "../../../../../src/platform/five-plane-state-evidence/events/event-reliability-inventory-service.js";
 
 test("EventReliabilityInventoryService exposes namespace and tier inventory", () => {
   const service = new EventReliabilityInventoryService();

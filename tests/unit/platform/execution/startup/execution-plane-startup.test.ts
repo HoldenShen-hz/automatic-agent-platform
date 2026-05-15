@@ -5,7 +5,7 @@ import {
   listExecutionCapabilityBaselines,
   resolveExecutionCapabilityBaseline,
   EXECUTION_CAPABILITY_BASELINES,
-} from "../../../../../src/platform/execution/execution-plane-baseline.js";
+} from "../../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
 import {
   GracefulShutdown,
@@ -14,7 +14,7 @@ import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
   createDefaultStartupConsistencyCheckerOptions,
-} from "../../../../../src/platform/execution/startup/index.js";
+} from "../../../../../src/platform/five-plane-execution/startup/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -59,7 +59,7 @@ test("execution-plane-startup - startup baseline has correct entry module path",
   const startupBaseline = resolveExecutionCapabilityBaseline("startup");
   assert.equal(
     startupBaseline.entryModule,
-    "src/platform/execution/startup/index.ts",
+    "src/platform/five-plane-execution/startup/index.ts",
   );
 });
 

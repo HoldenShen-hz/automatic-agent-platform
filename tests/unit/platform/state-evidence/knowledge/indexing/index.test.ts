@@ -5,7 +5,7 @@ import {
   AstStructuralIndex,
   type AstIndexedSymbol,
   type AstIndexQuery,
-} from "../../../../../../src/platform/state-evidence/knowledge/indexing/ast-index.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/ast-index.js";
 import {
   HashEmbeddingProvider,
   OpenAIEmbeddingProvider,
@@ -14,7 +14,7 @@ import {
   EMBEDDING_PROVIDER_TYPES,
   type EmbeddingProvider,
   type EmbeddingResult,
-} from "../../../../../../src/platform/state-evidence/knowledge/indexing/embedding-provider.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
 
 /* ============================================================
    AstStructuralIndex - private method coverage helpers

@@ -12,8 +12,8 @@ import type {
   ProgressChunk,
   FinalChunk,
   ErrorChunk,
-} from "../../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
-import { StreamBridge } from "../../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
+} from "../../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
+import { StreamBridge } from "../../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 
 test("StreamEventFrame structure", () => {
   const frame: StreamEventFrame = {

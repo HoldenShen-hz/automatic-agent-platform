@@ -55,7 +55,7 @@ import {
 import {
   NoOpControlPlaneDirectiveSink,
   createNoOpDirectiveSink,
-} from "../../../../../src/platform/control-plane/control-plane-directive-sink.js";
+} from "../../../../../src/platform/five-plane-control-plane/control-plane-directive-sink.js";
 
 import type {
   OperationalDirective,

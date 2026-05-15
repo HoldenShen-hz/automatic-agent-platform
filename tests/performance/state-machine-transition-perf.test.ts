@@ -14,7 +14,7 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { HarnessRun, NodeRun, BudgetLedger, BudgetReservation } from "../../src/platform/contracts/executable-contracts/index.js";
 

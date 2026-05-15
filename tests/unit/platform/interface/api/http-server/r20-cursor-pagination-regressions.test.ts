@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IncidentCaseService } from "../../../../../../src/platform/state-evidence/incident/index.js";
+import { IncidentCaseService } from "../../../../../../src/platform/five-plane-state-evidence/incident/index.js";
 import { HierarchicalPromptRegistryService } from "../../../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
-import { createDashboardRoutes } from "../../../../../../src/platform/interface/api/http-server/dashboard-routes.js";
-import { createIncidentRoutes } from "../../../../../../src/platform/interface/api/http-server/incident-routes.js";
-import { createPromptRoutes } from "../../../../../../src/platform/interface/api/http-server/prompt-routes.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { IncidentFacadeService } from "../../../../../../src/platform/interface/api/facade-interfaces.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createDashboardRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/dashboard-routes.js";
+import { createIncidentRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/incident-routes.js";
+import { createPromptRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/prompt-routes.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(): ApiAuthService {
   return {

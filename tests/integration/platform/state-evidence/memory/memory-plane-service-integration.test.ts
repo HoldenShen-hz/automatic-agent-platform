@@ -8,14 +8,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemoryPlaneService } from "../../../../../src/platform/state-evidence/memory/memory-plane-service.js";
+import { MemoryPlaneService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-plane-service.js";
 import type {
   MemoryProvider,
   MemoryProviderPrefetchResult,
   MemoryProviderQuery,
   MemoryTurnSyncInput,
   MemoryTurnSyncResult,
-} from "../../../../../src/platform/state-evidence/memory/memory-provider.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-provider.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {

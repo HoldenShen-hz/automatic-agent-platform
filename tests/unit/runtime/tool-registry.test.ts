@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { execSync } from "node:child_process";
 
-import { resetModelCallProvider } from "../../../src/platform/execution/execution-engine/model-call-provider.js";
+import { resetModelCallProvider } from "../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 
 function isInsideGitRepo(): boolean {
   try {
@@ -15,7 +15,7 @@ function isInsideGitRepo(): boolean {
 import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-} from "../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
 test("multi-step tool registry executes repo-map searches", async () => {
   resetMultiStepToolRegistryForTests();

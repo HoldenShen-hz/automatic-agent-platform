@@ -7,7 +7,7 @@ import {
   loadHaProgramCliEnv,
   loadPerceptionCliEnv,
   loadPmfCliEnv,
-} from "../../../../../src/platform/control-plane/config-center/product-cli-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
 
 test("product CLI env loaders derive default db and artifact paths", () => {
   const cwd = "/tmp/aa-product-cli";

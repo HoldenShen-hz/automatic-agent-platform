@@ -17,7 +17,7 @@ import { join } from "node:path";
 import {
   SandboxPolicy,
   checkSandboxPath,
-} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("security: basic ../ path traversal is blocked", () => {
   const policy: SandboxPolicy = {

@@ -13,14 +13,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { RolloutStateMachine } from "../../src/platform/orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
-import { AutoRollbackService } from "../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
-import { CanaryTrafficRouter } from "../../src/platform/orchestration/oapeflir/improve-rollout/canary-traffic-router.js";
-import { GuardrailEvaluator } from "../../src/platform/orchestration/oapeflir/improve-rollout/guardrail-evaluator.js";
-import { parseImprovementCandidate } from "../../src/platform/orchestration/oapeflir/types/improvement-candidate.js";
-import type { ImprovementCandidate } from "../../src/platform/orchestration/oapeflir/types/improvement-candidate.js";
-import type { RolloutMetrics } from "../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
-import type { RolloutRecord } from "../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+import { RolloutStateMachine } from "../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
+import { AutoRollbackService } from "../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
+import { CanaryTrafficRouter } from "../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/canary-traffic-router.js";
+import { GuardrailEvaluator } from "../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/guardrail-evaluator.js";
+import { parseImprovementCandidate } from "../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
+import type { ImprovementCandidate } from "../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
+import type { RolloutMetrics } from "../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
+import type { RolloutRecord } from "../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures

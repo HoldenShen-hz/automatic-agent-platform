@@ -7,9 +7,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadModelRoutingCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadModelRoutingCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import { MODEL_ROUTE_CLASSES, MODEL_ROUTE_RISK_LEVELS } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-support.js";
+import { MODEL_ROUTE_CLASSES, MODEL_ROUTE_RISK_LEVELS } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-support.js";
 
 // ---------------------------------------------------------------------------
 // Tests for loadModelRoutingCliEnv

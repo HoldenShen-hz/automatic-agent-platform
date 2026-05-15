@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadBillingCliEnv } from "../../../../../src/platform/control-plane/config-center/billing-env.js";
+import { loadBillingCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/billing-env.js";
 
 test("billing env loader parses payment and invoice settings", () => {
   const config = loadBillingCliEnv({

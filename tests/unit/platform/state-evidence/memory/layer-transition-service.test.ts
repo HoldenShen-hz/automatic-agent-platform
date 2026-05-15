@@ -13,7 +13,7 @@ import {
   getLayerPriority,
   type SixLayerMemoryType,
   type LayerTransitionEvaluation,
-} from "../../../../../src/platform/state-evidence/memory/layer-transition-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createTestMemory(overrides: Partial<MemoryRecord> & { scope: string }): MemoryRecord {

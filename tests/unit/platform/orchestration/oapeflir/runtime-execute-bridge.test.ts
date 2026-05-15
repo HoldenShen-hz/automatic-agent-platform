@@ -8,10 +8,10 @@ import {
   extractStepOutputRecords,
   serialiseOapeflirPlan,
   RuntimeExecuteBridge,
-} from "../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
-import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
-import type { MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
+import type { MultiStepOrchestrationResult } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 
 function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
   return {
@@ -141,7 +141,7 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
   assert.equal(outputs[0]?.stepId, "step_1");
   assert.equal(outputs[0]?.planRef, "plan_transform");
   assert.equal(outputs[0]?.userFacingResult.summary, "Step 1 completed");
-  assert.ok(outputs[0]?.userFacingResult.artifacts.includes("output1"));
+  assert.ok(outputs[0]?.userFacingResult.artifacts.includes("artifact:output1"));
 });
 
 test("MockExecuteBridge.executePlan handles empty steps", async () => {

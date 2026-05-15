@@ -13,8 +13,8 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { PlanEvaluator } from "../../src/platform/orchestration/planner/plan-evaluator.js";
-import type { Plan, UnifiedAssessment } from "../../src/platform/orchestration/oapeflir/types/index.js";
+import { PlanEvaluator } from "../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import type { Plan, UnifiedAssessment } from "../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 function createSimplePlan(steps: number): Plan {

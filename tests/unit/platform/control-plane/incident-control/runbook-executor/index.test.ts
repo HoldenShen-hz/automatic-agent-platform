@@ -12,7 +12,7 @@ import {
   DEFAULT_RUNBOOK_EXECUTOR_CONFIG,
   DEFAULT_INCIDENT_DRILL_CONFIG,
   type IncidentDrillScenario,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/index.js";
 
 const SAMPLE_RUNBOOK_MARKDOWN = `# High Error Rate Runbook
 

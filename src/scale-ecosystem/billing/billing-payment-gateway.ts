@@ -20,7 +20,7 @@ import {
   MANUAL_BILLING_CHECKOUT_URL,
   PADDLE_API_URL,
   STRIPE_API_URL,
-} from "../../platform/control-plane/config-center/provider-defaults.js";
+} from "../../platform/five-plane-control-plane/config-center/provider-defaults.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,

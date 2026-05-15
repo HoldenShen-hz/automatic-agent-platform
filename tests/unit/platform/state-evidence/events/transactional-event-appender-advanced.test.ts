@@ -7,11 +7,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { EventRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { EventRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/event-repository.js";
 import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransactionalEventAppender } from "../../../../../src/platform/state-evidence/events/transactional-event-appender.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransactionalEventAppender } from "../../../../../src/platform/five-plane-state-evidence/events/transactional-event-appender.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 import { OUTBOX_TABLE_DDL } from "../../../../../src/platform/shared/outbox/outbox-table.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";

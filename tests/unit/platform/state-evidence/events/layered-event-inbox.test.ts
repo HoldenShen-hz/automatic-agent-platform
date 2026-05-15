@@ -9,7 +9,7 @@ import {
 import {
   LayeredEventInbox,
   canConsumerReceive,
-} from "../../../../../src/platform/state-evidence/events/layered-event-inbox.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/layered-event-inbox.js";
 
 const platformFact = createPlatformFactEvent({
   eventType: "platform.harness_run.created",

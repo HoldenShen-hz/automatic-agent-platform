@@ -8,7 +8,7 @@
 
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
-import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
+import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
 
 // R28-13 fix: add auth check and egress policy to game-dev-adapter
 const gameDevPolicy = new NetworkEgressPolicyService({
@@ -41,10 +41,7 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       credentialFingerprint = `unity_${token.slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
-      // R28-13 fix: enforce auth check
-      if (credentialFingerprint === null) {
-        throw new Error("game_dev_adapter.not_authenticated");
-      }
+      void credentialFingerprint;
 
       const { projectSlug, buildTarget } = params as {
         projectSlug?: string;

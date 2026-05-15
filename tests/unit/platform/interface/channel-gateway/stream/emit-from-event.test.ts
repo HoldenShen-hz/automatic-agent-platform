@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { StreamBridge } from "../../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
+import { StreamBridge } from "../../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 import type { EventRecord } from "../../../../../../src/platform/contracts/types/domain/session-types.js";
 import { EventTier } from "../../../../../../src/platform/contracts/types/domain/session-types.js";
 

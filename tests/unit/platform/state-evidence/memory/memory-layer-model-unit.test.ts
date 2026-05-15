@@ -22,7 +22,7 @@ import {
   cloneMemoryWithLayer,
   type HierarchicalMemoryLayer,
   type LayerTtlConfig,
-} from "../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 /**

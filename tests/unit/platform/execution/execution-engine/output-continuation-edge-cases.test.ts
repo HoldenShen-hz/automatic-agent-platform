@@ -7,7 +7,7 @@
  * - Continuation record management under pressure
  * - Memory management edge cases
  *
- * @see src/platform/execution/execution-engine/output-continuation-service.ts
+ * @see src/platform/five-plane-execution/execution-engine/output-continuation-service.ts
  */
 
 import test from "node:test";
@@ -21,7 +21,7 @@ import {
   extractContinuationPoint,
   type ContinuationRecord,
   type ContinueRequest,
-} from "../../../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 // ---------------------------------------------------------------------------
 // C-09: TTL-based eviction mechanism

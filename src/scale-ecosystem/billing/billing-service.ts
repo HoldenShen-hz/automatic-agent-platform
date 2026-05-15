@@ -35,7 +35,7 @@ import {
   type BudgetLedger,
   type BudgetReservation,
 } from "../../platform/contracts/executable-contracts/index.js";
-import { ArtifactStore } from "../../platform/state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import {
   ManualBillingPaymentGateway,
   type BillingPaymentGateway,
@@ -46,11 +46,11 @@ import {
   type BillingMetricType,
   type BillingPlanCatalog,
   type PlanCatalogEntry,
-} from "../../platform/control-plane/config-center/billing-plan-catalog.js";
-import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
+} from "../../platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
+import type { SandboxPolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { BudgetAllocator } from "../../platform/five-plane-execution/budget-allocator.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,
@@ -90,7 +90,7 @@ import {
 } from "./utils.js";
 
 // Re-export types for consumers
-export type { BillingMetricType, PlanCatalogEntry } from "../../platform/control-plane/config-center/billing-plan-catalog.js";
+export type { BillingMetricType, PlanCatalogEntry } from "../../platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
 export type {
   BillingAccountSummary,
   BillingServiceOptions,

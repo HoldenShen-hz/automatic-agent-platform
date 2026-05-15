@@ -5,7 +5,7 @@ import {
   resolveRemoteAuthorityBlockReason,
   type RemoteSessionAuthorityState,
   type RemoteAuthorityBlockReason,
-} from "../../../../../src/platform/execution/worker-pool/remote-session-guard.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/remote-session-guard.js";
 import type { RemoteSessionStatus, SessionConsistencyCheckStatus, WorkspaceSyncStatus, WorkerPlacement } from "../../../../../src/platform/contracts/types/domain.js";
 
 function makeState(overrides: Partial<RemoteSessionAuthorityState> = {}): RemoteSessionAuthorityState {

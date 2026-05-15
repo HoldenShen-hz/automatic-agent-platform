@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataClassificationService } from "../../../../src/platform/control-plane/iam/data-classification-service.js";
+import { DataClassificationService } from "../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 import { ComplianceCaseOrchestrationService } from "../../../../src/platform/compliance/compliance-case-orchestration-service.js";
 import { ComplianceGovernanceService } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
 

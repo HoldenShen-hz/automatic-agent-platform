@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { FinalResponse } from "../../../../../src/platform/orchestration/oapeflir/final-response.js";
+import type { FinalResponse } from "../../../../../src/platform/five-plane-orchestration/oapeflir/final-response.js";
 
 test("FinalResponse structure", () => {
   const response: FinalResponse = {

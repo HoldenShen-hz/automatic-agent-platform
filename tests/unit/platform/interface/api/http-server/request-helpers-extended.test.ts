@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 
-import { matchRoute, normalizeHeaders, readIncomingBody } from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
-import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { matchRoute, normalizeHeaders, readIncomingBody } from "../../../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 import { IncomingMessage } from "node:http";
 
 // Helper to create a minimal IncomingMessage-like that works with for-await-of

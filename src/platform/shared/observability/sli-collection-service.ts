@@ -18,7 +18,7 @@
  * @see docs_zh/contracts/slo_alerting_and_runbook_contract.md
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { HealthService } from "./health-service.js";
 import type { MetricsService } from "./metrics-service.js";

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHealthRoutes } from "../../../../../../src/platform/interface/api/http-server/health-routes.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createHealthRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/health-routes.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(health: Record<string, unknown> = { status: "ok" }): MissionControlService {
   return {

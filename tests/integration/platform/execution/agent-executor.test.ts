@@ -5,8 +5,8 @@ import {
   initializeAgentExecutor,
   getAgentExecutorContext,
   type AgentExecutorContext,
-} from "../../../../src/platform/execution/execution-engine/agent-executor.js";
-import { resetMiddleware } from "../../../../src/platform/execution/execution-engine/middleware-init.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
+import { resetMiddleware } from "../../../../src/platform/five-plane-execution/execution-engine/middleware-init.js";
 
 function createTestContext(): AgentExecutorContext {
   return {

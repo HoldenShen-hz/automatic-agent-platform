@@ -3,13 +3,13 @@ import test from "node:test";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "node:http";
-import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
-import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
-import type { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
+import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import type { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
-import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { BillingService } from "../../../../../src/scale-ecosystem/billing/billing-service.js";
-import type { ApiDelegationService } from "../../../../../src/platform/interface/api/facade-interfaces.js";
+import type { ApiDelegationService } from "../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 
 class NoOpMissionControlService implements MissionControlService {
   getSnapshot() {

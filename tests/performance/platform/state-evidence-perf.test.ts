@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Performance Test: State Evidence Operations
  * Measures truth store throughput, event bus publish, and checkpoint save/restore latency
@@ -20,14 +19,14 @@ import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync, mkdirSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
-import { DurableEventBus } from "../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
+import { DurableEventBus } from "../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 import {
   createCheckpointEnvelope,
   unpackCheckpointEnvelope,
   createWorkflowStepCheckpoint,
-} from "../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import type { TaskRecord, TaskSource, TaskPriority, StepOutputRecord } from "../../../src/platform/contracts/types/domain.js";
 
@@ -70,7 +69,7 @@ function createTestTaskRecord(overrides?: Partial<TaskRecord>): TaskRecord {
   };
 }
 
-function createTestCheckpoint(stepIndex: number): import("../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js").WorkflowStepCheckpoint {
+function createTestCheckpoint(stepIndex: number): import("../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js").WorkflowStepCheckpoint {
   const taskId = newId("task");
   const workflowId = newId("wf");
   return createWorkflowStepCheckpoint({
@@ -623,7 +622,7 @@ test("performance: checkpoint restore latency <5ms P99", async (t) => {
     const iterations = 500;
 
     // Pre-create envelopes for restore testing
-    const envelopes: import("../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js").CheckpointEnvelope[] = [];
+    const envelopes: import("../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.js").CheckpointEnvelope[] = [];
     for (let i = 0; i < iterations; i++) {
       const checkpoint = createTestCheckpoint(i);
       const envelope = await createCheckpointEnvelope(checkpoint, checkpoint.schemaVersion);
@@ -743,7 +742,7 @@ test("performance: checkpoint restore throughput >3000 ops/sec", async (t) => {
   try {
     // Pre-create envelopes for restore testing
     const iterations = 1000;
-    const envelopes: import("../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js").CheckpointEnvelope[] = [];
+    const envelopes: import("../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.js").CheckpointEnvelope[] = [];
     for (let i = 0; i < iterations; i++) {
       const checkpoint = createTestCheckpoint(i);
       const envelope = await createCheckpointEnvelope(checkpoint, checkpoint.schemaVersion);

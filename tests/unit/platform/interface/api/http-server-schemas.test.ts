@@ -6,7 +6,7 @@ import {
   parseAuthTokenPayload,
   parseBillingReconcilePayload,
   parseGatewaySendPayload,
-} from "../../../../../src/platform/interface/api/http-server/schemas.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/schemas.js";
 
 test("auth token payload prefers header api key over body and validates with zod schema", () => {
   const payload = parseAuthTokenPayload({ apiKey: "body-key" }, "header-key");

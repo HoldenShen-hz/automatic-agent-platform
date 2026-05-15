@@ -14,11 +14,11 @@ import {
   INTERFACE_PLANE_CATALOG_SERVICE_ID,
   buildInterfacePlaneBootstrap,
   registerInterfacePlaneBootstrap,
-} from "../../../../src/platform/interface/interface-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-interface/interface-plane-bootstrap.js";
 import {
   listInterfaceCapabilityBaselines,
   resolveInterfaceCapabilityBaseline,
-} from "../../../../src/platform/interface/interface-plane-baseline.js";
+} from "../../../../src/platform/five-plane-interface/interface-plane-baseline.js";
 
 test("interface-plane-baseline: buildInterfacePlaneBootstrap creates valid bootstrap", () => {
   const bootstrap = buildInterfacePlaneBootstrap();

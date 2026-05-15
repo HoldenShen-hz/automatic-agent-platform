@@ -21,7 +21,7 @@ import {
   RUNTIME_LAYER_SCHEMA,
   SECURITY_LAYER_SCHEMA,
   WORKFLOWS_LAYER_SCHEMA,
-} from "../../../../../src/platform/control-plane/config-center/config-governance-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-governance-support.js";
 
 test("stripJsonComments removes single-line comments", () => {
   const input = `{

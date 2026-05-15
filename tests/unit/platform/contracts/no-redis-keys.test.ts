@@ -11,7 +11,7 @@ import { readFileSync } from "fs";
 
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
 
@@ -30,7 +30,7 @@ test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
 
 test("[SYS-PERF-3.2] redis lock adapter listHeldAsync uses SCAN", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
 
@@ -51,7 +51,7 @@ test("[SYS-PERF-3.2] redis lock adapter listHeldAsync uses SCAN", () => {
 
 test("[SYS-PERF-3.2] other redis operations do not use blocking KEYS command", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
 

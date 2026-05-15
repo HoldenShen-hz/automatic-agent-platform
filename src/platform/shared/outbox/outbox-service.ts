@@ -25,8 +25,8 @@
 import { nowIso } from "../../contracts/types/ids.js";
 import type { OutboxInsertPayload, OutboxRecord } from "./outbox-types.js";
 import { OutboxRepository } from "./outbox-repository.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { StructuredLogger } from "../observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });

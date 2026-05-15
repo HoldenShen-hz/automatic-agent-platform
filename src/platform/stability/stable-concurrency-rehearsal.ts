@@ -28,10 +28,10 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { RuntimeRepairService } from "../execution/recovery/runtime-repair-service-root.js";
-import { StartupConsistencyChecker } from "../execution/startup/startup-consistency-checker.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { isSqliteWriteContentionError, SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { isSqliteWriteContentionError, SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 /**
@@ -175,12 +175,12 @@ function seedTaskAndExecution(
       });
     }
 
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-concurrency",
       roleId: "general_executor",
       runKind: "task_run",
@@ -190,6 +190,8 @@ function seedTaskAndExecution(
       attempt: input.attempt ?? 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

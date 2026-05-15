@@ -10,7 +10,7 @@ import test from "node:test";
 import {
   routeComplexity,
   type ComplexityRouterConfig,
-} from "../../../../../src/platform/execution/execution-engine/complexity-router.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
 // =============================================================================
 // routeComplexity - Basic path routing

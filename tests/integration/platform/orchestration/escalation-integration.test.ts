@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Escalation Service
  *
@@ -16,7 +15,7 @@ import {
   type EscalationDecision,
   type EscalationRiskLevel,
   type EscalationStage,
-} from "../../../../src/platform/orchestration/escalation/index.js";
+} from "../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
 function createEscalationRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {

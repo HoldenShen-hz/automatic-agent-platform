@@ -7,7 +7,7 @@ import {
   validateSecretRef,
   deriveSecretScope,
   deriveSecretEnvName,
-} from "../../../../src/platform/control-plane/iam/env-secret-provider.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

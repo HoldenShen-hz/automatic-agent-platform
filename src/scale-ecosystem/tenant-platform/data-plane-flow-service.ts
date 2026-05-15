@@ -9,7 +9,7 @@
  * Supported movement types and their rules:
  * - analytics_etl: transactional/artifact -> analytics only
  * - archive_compaction: memory_archive -> memory_archive only
- * - replay_dataset_build: any non-analytics -> replay
+ * - replay_dataset_build: non-analytics sources -> replay
  * - artifact_lifecycle_move: artifact -> artifact only
  *
  * Cross-namespace movement is prohibited at tenant, organization, and workspace boundaries.
@@ -17,9 +17,9 @@
  * @see docs_zh/architecture/00-platform-architecture.md for data plane architecture
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   AnalyticsFactRecord,
   ArchiveBundleRecord,

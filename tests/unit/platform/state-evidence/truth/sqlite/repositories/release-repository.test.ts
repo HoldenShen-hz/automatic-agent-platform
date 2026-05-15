@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ReleaseRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/release-repository.js";
+import { ReleaseRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/release-repository.js";
 
 function createMockDb() {
   return {

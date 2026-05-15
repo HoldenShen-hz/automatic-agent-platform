@@ -7,7 +7,7 @@ import {
   deriveSecretScope,
   deriveSecretEnvName,
   EnvSecretProvider,
-} from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 
 test("maskSecretValue masks long values correctly", () => {
   const result = maskSecretValue("my-secret-key-12345");

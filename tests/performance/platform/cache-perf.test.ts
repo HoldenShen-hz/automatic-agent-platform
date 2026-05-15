@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Performance Test: Cache Operations
  * Measures cache hit rates, throughput, and latency

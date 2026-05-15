@@ -21,9 +21,9 @@
  */
 
 import { deriveCliWorkspaceRoot, withCliStorage } from "./authoritative-storage.js";
-import { loadHaProgramCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
+import { loadHaProgramCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { HaProgramService } from "../../scale-ecosystem/marketplace/ha-program-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 const envConfig = loadHaProgramCliEnv();
 
 const result = withCliStorage((storage) => {

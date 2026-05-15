@@ -83,7 +83,10 @@ test("R20-50 and R20-51 wire built-in connectors and durable connector storage",
 });
 
 test("R20-52 side-effect FSM and contract both include manual review and compensation states", () => {
-  const runtimeSource = readSource("src/platform/five-plane-execution/runtime-state-machine.ts");
+  const runtimeSource = [
+    readSource("src/platform/five-plane-execution/runtime-state-machine.ts"),
+    readSource("src/platform/five-plane-execution/runtime-state-machine-model.ts"),
+  ].join("\n");
   const contractSource = readSource("docs_zh/contracts/side-effect-reconciliation-contract.md");
 
   assert.match(runtimeSource, /manual_review_required/);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionResourceCeilingGuard } from "../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 test("execution resource ceiling guard reports tool, memory, and elapsed limit breaches", () => {
   const guard = new ExecutionResourceCeilingGuard({

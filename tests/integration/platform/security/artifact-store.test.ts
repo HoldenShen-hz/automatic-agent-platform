@@ -3,8 +3,8 @@ import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ArtifactStore } from "../../../../src/platform/state-evidence/artifacts/artifact-store.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { ArtifactStore } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("artifact store blocks artifact roots outside the workspace sandbox", () => {

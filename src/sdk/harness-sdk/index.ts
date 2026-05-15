@@ -28,7 +28,7 @@ import {
   type HarnessRun,
   type HarnessRunRuntimeState,
   type HarnessTimelineEvent,
-} from "../../platform/orchestration/harness/index.js";
+} from "../../platform/five-plane-orchestration/harness/index.js";
 
 export class HarnessSdkError extends Error {
   public readonly code: string;
@@ -474,7 +474,6 @@ export class HarnessSdk {
       };
 
       // Cast through HarnessRunRuntimeState to access timeline and currentSeq
-      // @ts-ignore - timeline may not exist on HarnessRunRuntimeState
       const timeline = [
         ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
         timelineEntry,
@@ -487,7 +486,7 @@ export class HarnessSdk {
     }
 
     // R8-21 FIX: Always produce NodeAttemptReceipt for tracking
-    // @ts-ignore - exactOptionalPropertyTypes mismatch on optional fields
+    // @ts-expect-error - exactOptionalPropertyTypes mismatch on optional fields
     const receipt = createNodeAttemptReceipt({
       nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
       nodeRunId: input.nodeRunId,
@@ -573,7 +572,7 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-ignore - Partial<HarnessRun> doesn't have all required properties
+        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
         return {
           ...runOrId,
           status: "sleeping",
@@ -593,7 +592,7 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-ignore - Partial<HarnessRun> doesn't have all required properties
+        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
         return {
           ...runOrId,
           status: "active",
@@ -617,7 +616,7 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-ignore - Partial<HarnessRun> doesn't have all required properties
+        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
         return {
           ...runOrId,
           status: "awaiting_hitl",
@@ -640,7 +639,7 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-ignore - Partial<HarnessRun> doesn't have all required properties
+        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
         return {
           ...runOrId,
           status: "active",

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ToolbeltAssembler } from "../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
+import { ToolbeltAssembler } from "../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
 
 test("ToolbeltAssembler is exported and can be instantiated", () => {
   const assembler = new ToolbeltAssembler();

@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
-import { PlanDagValidator, type PlanDagValidationResult } from "../../../../src/platform/orchestration/planner/plan-dag-validator.js";
-import type { PlanStep } from "../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { PlanDagValidator, type PlanDagValidationResult } from "../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import type { PlanStep } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 function makeStep(stepId: string, dependencies: string[] = [], timeout = 60000): PlanStep {
   return {

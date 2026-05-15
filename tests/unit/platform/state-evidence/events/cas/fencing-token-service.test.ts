@@ -5,7 +5,7 @@ import {
   type FenceMode,
   type FenceInfo,
   type FencingTokenValidation,
-} from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
 
 describe("FencingTokenService", () => {
   let service: FencingTokenService;

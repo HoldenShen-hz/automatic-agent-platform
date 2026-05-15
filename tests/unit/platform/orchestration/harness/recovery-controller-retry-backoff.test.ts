@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessLoopController } from "../../../../../src/platform/orchestration/harness/loop/index.js";
-import type { ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import type { ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 // Direct backoff constants extracted from loop/index.ts for test verification
 const BACKOFF_BASE_MS = 1000; // 1 second base per §9.3

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "../../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import type { DualChannelStepOutput } from "../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
+import { OapeflirLoopService } from "../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import type { DualChannelStepOutput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
 
 /**
  * R19-08 Regression Tests: buildFeedbackSignals derives category from step validation status

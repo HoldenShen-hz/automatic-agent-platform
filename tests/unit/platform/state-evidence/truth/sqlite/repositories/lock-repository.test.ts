@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LockRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/lock-repository.js";
+import { LockRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/lock-repository.js";
 import type { FileLockRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
 
 function createMockSqliteConnection(): any {

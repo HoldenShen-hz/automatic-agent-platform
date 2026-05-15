@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataClassificationService } from "../../../../src/platform/control-plane/iam/data-classification-service.js";
+import { DataClassificationService } from "../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 import { FieldEncryptionService } from "../../../../src/platform/compliance/encryption/index.js";
 import { DataLineageService } from "../../../../src/platform/compliance/lineage/index.js";
 import { ErasurePlanningService } from "../../../../src/platform/compliance/erasure/index.js";

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createMetricsRoutes } from "../../../../../../src/platform/interface/api/http-server/metrics-routes.js";
+import { createMetricsRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/metrics-routes.js";
 import type { PrometheusMetricsExporter } from "../../../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMetricsExporter(metrics = "# HELP test\nexport_test 1\n"): PrometheusMetricsExporter {
   return {

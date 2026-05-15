@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { EgressDestinationType, EgressAuditEvent } from "../../../../../src/platform/control-plane/iam/network-egress-audit.js";
+import type { EgressDestinationType, EgressAuditEvent } from "../../../../../src/platform/five-plane-control-plane/iam/network-egress-audit.js";
 
 test("EgressDestinationType accepts all valid values", () => {
   const types: EgressDestinationType[] = ["url", "ssh", "s3", "registry", "publish", "unknown"];

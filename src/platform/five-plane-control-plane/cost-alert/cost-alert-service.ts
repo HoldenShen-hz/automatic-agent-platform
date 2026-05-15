@@ -10,9 +10,9 @@
  * @see docs_zh/architecture/00-platform-architecture.md §18
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { StorageError } from "../../contracts/errors.js";
 import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 import type {

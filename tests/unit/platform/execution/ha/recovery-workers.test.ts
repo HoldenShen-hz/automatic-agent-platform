@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionRecoveryWorker } from "../../../../../src/platform/execution/ha/execution-recovery-worker.js";
-import { ProjectionRebuildWorker } from "../../../../../src/platform/execution/ha/projection-rebuild-worker.js";
-import { ReplayWorker } from "../../../../../src/platform/execution/ha/replay-worker.js";
-import { WorkflowRepairWorker } from "../../../../../src/platform/execution/ha/workflow-repair-worker.js";
+import { ExecutionRecoveryWorker } from "../../../../../src/platform/five-plane-execution/ha/execution-recovery-worker.js";
+import { ProjectionRebuildWorker } from "../../../../../src/platform/five-plane-execution/ha/projection-rebuild-worker.js";
+import { ReplayWorker } from "../../../../../src/platform/five-plane-execution/ha/replay-worker.js";
+import { WorkflowRepairWorker } from "../../../../../src/platform/five-plane-execution/ha/workflow-repair-worker.js";
 
 test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates", async () => {
   const appliedExecutionIds: string[] = [];

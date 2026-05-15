@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Policy Version Manager
  *
@@ -9,13 +8,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PolicyVersionManager } from "../../../../../src/platform/control-plane/approval-center/approval-policy-engine/version-manager.js";
+import { PolicyVersionManager } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/version-manager.js";
 import {
   DEFAULT_APPROVAL_POLICY_BUNDLE,
   type ApprovalPolicyBundle,
   type ApprovalPolicyRule,
   type VersionedPolicyBundle,
-} from "../../../../../src/platform/control-plane/approval-center/approval-policy-engine/types.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 
 function createTestBundle(bundleId: string, version: string, rules: ApprovalPolicyRule[] = []): ApprovalPolicyBundle {
   return {

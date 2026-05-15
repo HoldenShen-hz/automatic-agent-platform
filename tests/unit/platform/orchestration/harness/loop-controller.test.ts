@@ -5,8 +5,8 @@ import {
   type HarnessLoopGuards,
   type HarnessLoopState,
   type HarnessLoopProgress,
-} from "../../../../../src/platform/orchestration/harness/loop/index.js";
-import type { ConstraintPack, HarnessDecisionAction } from "../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import type { ConstraintPack, HarnessDecisionAction } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

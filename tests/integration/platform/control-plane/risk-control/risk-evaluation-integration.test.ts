@@ -11,12 +11,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RiskEvaluationEngine } from "../../../../../src/platform/control-plane/risk-control/risk-evaluation-engine.js";
+import { RiskEvaluationEngine } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-evaluation-engine.js";
 import type {
   RiskEvaluationRequest,
   RiskConfig,
   RiskFactors,
-} from "../../../../../src/platform/control-plane/risk-control/types.js";
+} from "../../../../../src/platform/five-plane-control-plane/risk-control/types.js";
 
 /**
  * Creates a test risk configuration matching config/risk/default.json

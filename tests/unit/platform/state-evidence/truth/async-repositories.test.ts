@@ -6,29 +6,29 @@ import {
   type BudgetAlertRecord,
   type CostReportRecord,
   type TokenUsageDailyRecord,
-} from "../../../../../src/platform/state-evidence/truth/async-repositories/cost-management-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/cost-management-repository.js";
 import {
   AsyncDelegationRepository,
   type DelegationEventRecord,
   type DelegationRecord,
-} from "../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js";
-import { AsyncEvolutionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/evolution-repository.js";
-import { AsyncIntelligenceRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/intelligence-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/delegation-repository.js";
+import { AsyncEvolutionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/evolution-repository.js";
+import { AsyncIntelligenceRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/intelligence-repository.js";
 import {
   AsyncMarketplaceListingRepository,
   type MarketplaceListingRecord,
   type PackDownloadRecord,
   type PackReviewRecord,
-} from "../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository-ext.js";
-import { AsyncOrganizationRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/organization-repository.js";
-import { AsyncPromptRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/prompt-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/marketplace-repository-ext.js";
+import { AsyncOrganizationRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/organization-repository.js";
+import { AsyncPromptRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/prompt-repository.js";
 import {
   AsyncTenantRepository,
   type TenantBillingRecord,
   type TenantQuotaRecord,
   type TenantRecord,
-} from "../../../../../src/platform/state-evidence/truth/async-repositories/tenant-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/tenant-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";

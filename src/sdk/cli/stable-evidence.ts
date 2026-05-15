@@ -1,7 +1,7 @@
 import {
   createStableEvidenceBundle,
 } from "../../platform/shared/stability/stable-evidence-bundle.js";
-import { loadStableEvidenceCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableEvidenceCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 import { createStableCli } from "./stable-runner-factory.js";
 
 createStableCli({

@@ -51,7 +51,12 @@ export class GuardrailVibrationBreaker {
     const activeSignals = (
       cooldownExpiry != null && signal.observedAtMs >= cooldownExpiry
         ? []
-        : [...(state.recentSignals ?? [])]
+        : state.recentSignals != null
+          ? [...state.recentSignals]
+          : Array.from({ length: state.guardrailActionCount }, () => ({
+              signature: state.lastGuardrailSignature ?? signal.signature,
+              observedAtMs: signal.observedAtMs,
+            }))
     ).filter((entry) => entry.observedAtMs >= signal.observedAtMs - this.observationWindowMs);
     const nextSignals = [...activeSignals, { signature: signal.signature, observedAtMs: signal.observedAtMs }];
     const nextCount = nextSignals.length;

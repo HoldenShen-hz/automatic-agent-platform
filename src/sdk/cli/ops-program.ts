@@ -22,10 +22,10 @@
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
-import { loadOpsProgramCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { IndustrialOpsProgramService, type IndustrialOpsProgramInput } from "../../platform/control-plane/incident-control/industrial-ops-program-service.js";
-import { OperationsGovernanceService } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import { loadOpsProgramCliEnv } from "../../platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { IndustrialOpsProgramService, type IndustrialOpsProgramInput } from "../../platform/five-plane-control-plane/incident-control/industrial-ops-program-service.js";
+import { OperationsGovernanceService } from "../../platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 
 /**

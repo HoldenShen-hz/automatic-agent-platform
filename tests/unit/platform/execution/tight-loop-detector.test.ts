@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TightLoopDetector, createTightLoopDetector } from "../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+import { TightLoopDetector, createTightLoopDetector } from "../../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
 test("TightLoopDetector returns continue on first call", () => {
   const detector = new TightLoopDetector();

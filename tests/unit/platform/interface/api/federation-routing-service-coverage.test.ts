@@ -6,7 +6,7 @@ import {
   DEFAULT_FEDERATION_MIDDLEWARE_CONFIG,
   type FederationPartner,
   type FederationRouteRequest,
-} from "../../../../../src/platform/interface/api/federation-routing-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/federation-routing-service.js";
 
 test("FederationRoutingService registers partner", () => {
   const service = new FederationRoutingService();

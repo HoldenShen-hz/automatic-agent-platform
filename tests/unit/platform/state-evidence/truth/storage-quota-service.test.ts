@@ -3,11 +3,11 @@ import { existsSync, symlinkSync, utimesSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import {
   StorageQuotaService,
   type StorageQuotaCategoryConfig,
-} from "../../../../../src/platform/state-evidence/truth/storage-quota-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/storage-quota-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function applyModifiedAt(path: string, unixSeconds: number): void {

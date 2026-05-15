@@ -9,9 +9,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { IntakeRouter, type IntakeRouteInput, type IntakeIntent } from "../../../../src/platform/orchestration/routing/intake-router.js";
-import { AgentTeamService, type AgentTeamPlanInput } from "../../../../src/platform/orchestration/routing/agent-team-service.js";
-import { WorkflowPlanner } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
+import { IntakeRouter, type IntakeRouteInput, type IntakeIntent } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
+import { AgentTeamService, type AgentTeamPlanInput } from "../../../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
+import { WorkflowPlanner } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 function makeRouteInput(title: string, request: string): IntakeRouteInput {
   return { title, request };

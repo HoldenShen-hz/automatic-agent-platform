@@ -9,7 +9,7 @@ import {
   loadReplayRecoveryCliEnv,
   loadProfileHomeCliEnv,
   loadAuthoritativeStorageAdminCliEnv,
-} from "../../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("loadDispatchReconcileCliEnv defaults to scan action", () => {

@@ -9,11 +9,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HitlInboxService } from "../../../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
+import { HitlInboxService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
 import type {
   ApprovalFeedbackLink,
   ApprovalPacket,
-} from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
 
 function createPacket(overrides: Partial<ApprovalPacket> = {}): ApprovalPacket {
   const approvalId = overrides.approvalId ?? "approval-1";

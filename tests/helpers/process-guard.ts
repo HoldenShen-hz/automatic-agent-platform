@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { getProcessTracker } from '../../src/platform/execution/resource/process-tracker.js';
+import { getProcessTracker } from '../../src/platform/five-plane-execution/resource/process-tracker.js';
 
 /**
  * Creates a process guard that tracks child processes spawned during a test.

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GatewayStorageAdapter } from "../../../../../src/platform/interface/channel-gateway/storage-adapter.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { GatewayStorageAdapter } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-adapter.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { GatewayTargetRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { GatewaySessionTargetCandidate } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 test("GatewayStorageAdapter implements GatewayStoragePort interface", () => {
   // Create a mock store

@@ -9,12 +9,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { newId } from "../../src/platform/contracts/types/ids.js";
-import { ComplexityRouter } from "../../src/platform/execution/execution-engine/complexity-router.js";
-import { routeComplexity, type ComplexityRouterConfig } from "../../src/platform/execution/execution-engine/complexity-router.js";
-import { createKvCachePrefixConfig, estimateTokens } from "../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
-import { LoopDetectionState, hashToolCall, normalizeToolInputForHash } from "../../src/platform/execution/execution-engine/loop-detection.js";
-import { IntakeRouter } from "../../src/platform/orchestration/routing/intake-router.js";
-import { WorkflowPlanner } from "../../src/platform/orchestration/routing/workflow-planner.js";
+import { ComplexityRouter } from "../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
+import { routeComplexity, type ComplexityRouterConfig } from "../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
+import { createKvCachePrefixConfig, estimateTokens } from "../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
+import { LoopDetectionState, hashToolCall, normalizeToolInputForHash } from "../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
+import { IntakeRouter } from "../../src/platform/five-plane-orchestration/routing/intake-router.js";
+import { WorkflowPlanner } from "../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 // ============================================================================
 // Complexity Router Benchmarks

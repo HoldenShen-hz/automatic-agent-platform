@@ -6,7 +6,7 @@ import {
   removeExecutionId,
   toWorkerStatus,
   toExecutionTerminalStatus,
-} from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-support.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-support.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("parseJsonArray parses valid JSON array", () => {

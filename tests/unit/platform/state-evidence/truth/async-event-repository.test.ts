@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncEventRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/event-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncEventRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/event-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type { EventRecord, EventConsumerAckRecord, EventDeadLetterRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {

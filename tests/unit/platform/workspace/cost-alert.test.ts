@@ -13,8 +13,8 @@ import {
   type CostAlertConfig,
   type CostThresholdExceededEvent,
 } from "../../../../src/platform/five-plane-control-plane/cost-alert/index.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createNoopStore(): AuthoritativeTaskStore {
   return {

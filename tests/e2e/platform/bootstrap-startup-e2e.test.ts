@@ -19,7 +19,7 @@ import test from "node:test";
 import { join } from "node:path";
 
 import { loadConfiguredDivisionRegistry } from "../../../src/domains/governance/division-loader.js";
-import { createWorkspaceWritePolicy } from "../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import {
   ServiceRegistry,
 } from "../../../src/platform/shared/lifecycle/service-registry.js";

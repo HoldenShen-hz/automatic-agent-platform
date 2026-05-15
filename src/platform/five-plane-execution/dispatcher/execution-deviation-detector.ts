@@ -1,5 +1,5 @@
 import { newId } from "../../contracts/types/ids.js";
-import type { Plan } from "../../orchestration/oapeflir/types/index.js";
+import type { Plan } from "../../five-plane-orchestration/oapeflir/types/index.js";
 import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 export interface ExecutionDeviation {

@@ -21,10 +21,10 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { ExecutionDispatchService } from "../execution/dispatcher/execution-dispatch-service.js";
-import { WorkerRegistryService } from "../execution/worker-pool/worker-registry-service.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { ExecutionDispatchService } from "../five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { WorkerRegistryService } from "../five-plane-execution/worker-pool/worker-registry-service.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 /**
@@ -145,12 +145,12 @@ function seedTaskAndExecution(
       updatedAt: now,
       completedAt: null,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-dispatch-rehearsal",
       roleId: "general_executor",
       runKind: "task_run",
@@ -160,6 +160,8 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

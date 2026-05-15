@@ -18,8 +18,8 @@ import {
   type RiskActionState,
   type RiskActionType,
   type RiskDecisionStatus,
-} from "../../../../../../src/platform/state-evidence/events/projections/risk-action-projection.js";
-import type { ProjectionInputEvent } from "../../../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/risk-action-projection.js";
+import type { ProjectionInputEvent } from "../../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 function makeEvent(
   eventId: string,

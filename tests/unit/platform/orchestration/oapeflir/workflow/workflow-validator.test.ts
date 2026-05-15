@@ -9,12 +9,12 @@ import {
   type StaticCompatibilityIssue,
   type WorkflowLintIssue,
   type WorkflowLintSeverity,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/workflow-validator.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
 import type {
   MinimalWorkflowDefinition,
   MinimalWorkflowStep,
   WorkflowTemplate,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 function createValidStep(overrides: Partial<MinimalWorkflowStep> = {}): MinimalWorkflowStep {
   return {

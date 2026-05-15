@@ -1,11 +1,11 @@
 /**
  * Unit tests for Webhook payload parsing edge cases
- * Tests src/platform/interface/webhook/index.ts - parseWebhookPayload function
+ * Tests src/platform/five-plane-interface/webhook/index.ts - parseWebhookPayload function
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
 
 test("WebhookIngressService receive accepts payload with eventType key", () => {
   const service = new WebhookIngressService();

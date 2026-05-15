@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisLockAdapter } from "../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
 import { LockingError } from "../../../../src/platform/contracts/errors.js";
 import { StructuredLogger, type StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
 

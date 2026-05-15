@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
-import { WebhookOutboxDispatchService } from "../../../../../src/platform/interface/webhook/webhook-outbox-dispatch-service.js";
+import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
+import { WebhookOutboxDispatchService } from "../../../../../src/platform/five-plane-interface/webhook/webhook-outbox-dispatch-service.js";
 import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";

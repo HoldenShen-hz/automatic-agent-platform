@@ -9,7 +9,7 @@ import test from "node:test";
 
 import { DatabaseSync } from "node:sqlite";
 import { HarnessSdk } from "../../../src/sdk/harness-sdk/index.js";
-import { SqliteDurableHarnessStore } from "../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { SqliteDurableHarnessStore } from "../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 import { nowIso } from "../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../tests/helpers/fs.js";
 import { join } from "node:path";

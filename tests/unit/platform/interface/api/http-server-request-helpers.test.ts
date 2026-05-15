@@ -6,8 +6,8 @@ import {
   normalizeHeaders,
   authenticateOptionalPrincipal,
   MAX_BODY_BYTES,
-} from "../../../../../src/platform/interface/api/http-server/request-helpers.js";
-import { ApiAuthError } from "../../../../../src/platform/interface/api/api-auth-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
+import { ApiAuthError } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
 function createMockRequest(overrides: Partial<{ method: string; url: string; headers: Record<string, string | undefined> }> = {}): any {
   return {

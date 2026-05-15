@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { ExecutionWorkerHandshakeService } from "../../../src/platform/execution/worker-pool/execution-worker-handshake-service.js";
-import { ExecutionLeaseService } from "../../../src/platform/execution/lease/execution-lease-service.js";
-import { WorkerRegistryService } from "../../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ExecutionWorkerHandshakeService } from "../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
+import { ExecutionLeaseService } from "../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
+import { WorkerRegistryService } from "../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 import type { TaskStatus, ExecutionStatus } from "../../../src/platform/contracts/types/status.js";

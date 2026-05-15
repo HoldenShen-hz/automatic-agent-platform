@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { TaskDecompositionService } from "../../../../../src/platform/orchestration/planner/task-decomposition-service.js";
-import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
+import { TaskDecompositionService } from "../../../../../src/platform/five-plane-orchestration/planner/task-decomposition-service.js";
+import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 function createMockExecutionStep(overrides: Partial<PlannedExecutionStep> = {}): PlannedExecutionStep {
   return {

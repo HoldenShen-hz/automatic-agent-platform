@@ -17,7 +17,7 @@ import {
   createStageTransitionFSM,
   type OapeflirStage,
   type StageTransitionResult,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // R9-16 / R5-3: Feedback-driven backward transitions for replanning

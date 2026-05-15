@@ -5,15 +5,15 @@
  * request validation stays consistent across handlers and tests.
  */
 
-import type { ApprovalDecision } from "../../../control-plane/approval-center/approval-service.js";
+import type { ApprovalDecision } from "../../../five-plane-control-plane/approval-center/approval-service.js";
 import {
   ArtifactBundleExtendedSchema,
   ArtifactRecordSchema,
-} from "../../../state-evidence/artifacts/artifact-model.js";
+} from "../../../five-plane-state-evidence/artifacts/artifact-model.js";
 import type {
   ArtifactBundleExtended,
   ArtifactRecord,
-} from "../../../state-evidence/artifacts/artifact-model.js";
+} from "../../../five-plane-state-evidence/artifacts/artifact-model.js";
 import { AppError } from "../../../contracts/errors.js";
 import { MissionRefSchema, type MissionRef } from "../../../contracts/mission/index.js";
 import { z, ZodError } from "zod";

@@ -114,7 +114,7 @@ test("getMultiStepToolDefinitions returns tools with full structure", () => {
 
 test("planner shim re-exports getMultiStepToolDefinitions from canonical platform", async () => {
   const shim = await import("../../../../../src/core/runtime/planner/index.js");
-  const platform = await import("../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js");
+  const platform = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js");
 
   assert.equal(shim.getMultiStepToolDefinitions, platform.getMultiStepToolDefinitions, "getMultiStepToolDefinitions should point to platform implementation");
   assert.equal(shim.MULTI_STEP_TOOL_DEFINITIONS, platform.MULTI_STEP_TOOL_DEFINITIONS, "MULTI_STEP_TOOL_DEFINITIONS should point to platform implementation");

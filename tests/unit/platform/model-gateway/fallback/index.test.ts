@@ -28,7 +28,8 @@ test("ModelGatewayFallbackService returns no candidate when candidates array is 
 
   assert.equal(decision.selectedProfileName, null);
   assert.equal(decision.reasonCode, "fallback.no_candidate_available");
-  assert.deepEqual(decision.attemptedProfiles, ["primary"]);
+  assert.deepEqual(decision.attemptedProfiles, []);
+  assert.deepEqual(decision.fallbackChain, ["primary"]);
 });
 
 test("ModelGatewayFallbackService returns no candidate when primary is the only candidate", () => {
@@ -42,7 +43,8 @@ test("ModelGatewayFallbackService returns no candidate when primary is the only 
 
   assert.equal(decision.selectedProfileName, null);
   assert.equal(decision.reasonCode, "fallback.no_candidate_available");
-  assert.deepEqual(decision.attemptedProfiles, ["primary"]);
+  assert.deepEqual(decision.attemptedProfiles, []);
+  assert.deepEqual(decision.fallbackChain, ["primary"]);
 });
 
 test("ModelGatewayFallbackService returns no candidate when all candidates are unhealthy", () => {
@@ -134,7 +136,7 @@ test("ModelGatewayFallbackService attemptedProfiles tracks the selected fallback
     candidates,
   });
 
-  assert.deepEqual(decision.attemptedProfiles, ["primary", "fallback-a"]);
+  assert.deepEqual(decision.attemptedProfiles, ["fallback-a", "fallback-b"]);
   assert.deepEqual(decision.fallbackChain, ["primary", "fallback-a", "fallback-b"]);
 });
 
@@ -217,7 +219,8 @@ test("ModelGatewayFallbackService prefers primary-tier-compatible fallback over 
   });
 
   assert.equal(decision.selectedProfileName, "balanced-safe");
-  assert.deepEqual(decision.attemptedProfiles, ["primary", "balanced-safe"]);
+  assert.deepEqual(decision.attemptedProfiles, ["balanced-safe", "fast-cheap"]);
+  assert.deepEqual(decision.fallbackChain, ["primary", "balanced-safe", "fast-cheap"]);
 });
 
 test("ModelGatewayFallbackService reasonCode is no_candidate when nothing eligible", () => {

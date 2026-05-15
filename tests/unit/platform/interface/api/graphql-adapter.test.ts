@@ -4,7 +4,7 @@ import {
   GraphQLAdapterService,
   GraphQLSchemaBuilder,
   type GraphQLSchemaWithResolvers,
-} from "../../../../../src/platform/interface/api/graphql-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/graphql-adapter-service.js";
 
 test("GraphQLAdapterService - is available", () => {
   const service = new GraphQLAdapterService({ endpoint: "/graphql" });

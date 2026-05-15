@@ -1,6 +1,6 @@
 /**
  * Unit tests for Coordinator Selection facade types
- * Tests src/platform/interface/api/facade-interfaces.ts - Coordinator types
+ * Tests src/platform/five-plane-interface/api/facade-interfaces.ts - Coordinator types
  */
 
 import assert from "node:assert/strict";
@@ -11,7 +11,7 @@ import type {
   CoordinatorSelectionDecision,
   CoordinatorLoadBalancingSummary,
   ApiDelegationService,
-} from "../../../../../src/platform/interface/api/facade-interfaces.js";
+} from "../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 
 test("CoordinatorSelectionInput allows all optional fields", () => {
   const input: CoordinatorSelectionInput = {

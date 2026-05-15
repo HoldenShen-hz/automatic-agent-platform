@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HarnessLoopController } from "../../../../../../src/platform/orchestration/harness/loop/index.js";
-import type { HarnessDecisionAction } from "../../../../../../src/platform/orchestration/harness/index.js";
-import type { ConstraintPack } from "../../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import type { HarnessDecisionAction } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import type { ConstraintPack } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createTestConstraintPack(overrides: Partial<ConstraintPack["budget"]> = {}): ConstraintPack {
   return {

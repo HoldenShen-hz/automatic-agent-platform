@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { DlqService } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { DlqService } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("integration: DlqService persists dead letters across database reopen", () => {

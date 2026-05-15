@@ -1,46 +1,50 @@
 # Test Quality Report
-**Date:** 2026-05-13  
-**Total Tests:** 58382  
-**Passed:** 56762  
-**Failed:** 1620
 
-## Failing Test Files (14 files - previously 21, 7 resolved)
+**Date:** 2026-05-14
+**Scope:** targeted review remediation evidence only
+**Full-suite status:** not claimed in this report
 
-| # | File | Path |
-|---|------|------|
-| 1 | execution-dispatch-service-async.test.ts | tests/unit/platform/execution/dispatcher/ |
-| 2 | nodeRunId-canonization.test.ts | tests/unit/platform/execution/execution-engine/ |
-| 3 | runtime-plan-executor.test.ts | tests/unit/platform/execution/oapeflir/ |
-| 4 | worker-pool-comprehensive.test.ts | tests/unit/platform/execution/worker-pool/ |
-| 5 | access-model.test.ts | tests/unit/platform/five-plane-control-plane/iam/ |
-| 6 | field-encryption.test.ts | tests/unit/platform/five-plane-control-plane/iam/ |
-| 7 | budget-allocator.test.ts | tests/unit/platform/five-plane-execution/ |
-| 8 | web-fetch.test.ts | tests/unit/platform/five-plane-execution/tool-executor/ |
-| 9 | worker-drain-protocol.test.ts | tests/unit/platform/five-plane-execution/ |
-| 10 | r20-05-parallelism-limit.test.ts | tests/unit/platform/five-plane-orchestration/planner/ |
-| 11 | node-run-checkpoint-migration.test.ts | tests/unit/platform/five-plane-state-evidence/checkpoints/ |
-| 12 | channel-gateway-service-coverage.test.ts | tests/unit/platform/interface/channel-gateway/ |
-| 13 | execution-adapter.test.ts | tests/unit/platform/orchestration/oapeflir/ |
-| 14 | durable-event-bus-async.test.ts | tests/unit/platform/state-evidence/events/ |
+This file is no longer an authoritative full-suite failure ledger. The previous
+2026-05-13 snapshot listed 58,382 total tests, 56,762 passed tests, 1,620 failed
+tests, and 14 failing files; that snapshot is stale and must not be used as
+current evidence unless a fresh full-suite run is performed.
 
-## Resolved Files (7 files)
-- cost-management-service.test.ts
-- index.test.ts (cost-management)
-- multi-region-cdc-replication.test.ts
-- durable-event-bus-async.test.ts (scale-ecosystem/runtime-services)
-- api-client.test.ts
-- dlq-manager-operations-2282-2283.test.ts
+## Current Evidence Policy
 
-## Failure Summary by Area
+- Do not use this file to claim that all tests pass.
+- Do not use stale full-suite counts to justify issue closure.
+- Use focused commands recorded in `docs_zh/reviews/issues-table.md` for review
+  remediation evidence.
+- Keep unresolved full-suite health questions outside “已解决（本轮落地）”
+  unless a current command output is available.
 
-- **Execution/Dispatcher:** 1 file
-- **Execution/Engine:** 1 file
-- **Execution/OAPEFLIR:** 1 file
-- **Execution/Worker Pool:** 1 file
-- **IAM:** 2 files
-- **Five-Plane Execution:** 3 files
-- **Five-Plane Orchestration:** 1 file
-- **Five-Plane State Evidence:** 1 file
-- **Interface/Channel Gateway:** 1 file
-- **Orchestration/OAPEFLIR:** 1 file
-- **State Evidence/Events:** 1 file
+## Targeted Evidence Referenced By The Review Table
+
+| Evidence Area | Command | Current Result |
+|---|---|---|
+| CI supply chain | `node scripts/ci/audit-ci-supply-chain.mjs` | `ci supply-chain audit passed: 26/26` |
+| Document structure | `node scripts/ci/audit-document-structure.mjs` | `document structure audit passed: 48/48` |
+| Review guardrails | `node scripts/ci/audit-review-guardrails.mjs` | `review guardrail audit passed: 46/46` |
+| Domain configs | `node scripts/ci/audit-domain-configs.mjs` | `domain config audit passed: 346/346` |
+| Root dependency audit | `npm audit --audit-level=low` | `found 0 vulnerabilities` |
+
+## Historical Failure Snapshot
+
+The following historical files were listed in the stale 2026-05-13 full-suite
+snapshot. They remain historical context only and are not treated as current
+failure evidence in this file:
+
+- `tests/unit/platform/execution/dispatcher/execution-dispatch-service-async.test.ts`
+- `tests/unit/platform/execution/execution-engine/nodeRunId-canonization.test.ts`
+- `tests/unit/platform/execution/oapeflir/runtime-plan-executor.test.ts`
+- `tests/unit/platform/execution/worker-pool/worker-pool-comprehensive.test.ts`
+- `tests/unit/platform/five-plane-control-plane/iam/access-model.test.ts`
+- `tests/unit/platform/five-plane-control-plane/iam/field-encryption.test.ts`
+- `tests/unit/platform/five-plane-execution/budget-allocator.test.ts`
+- `tests/unit/platform/five-plane-execution/tool-executor/web-fetch.test.ts`
+- `tests/unit/platform/five-plane-execution/worker-drain-protocol.test.ts`
+- `tests/unit/platform/five-plane-orchestration/planner/r20-05-parallelism-limit.test.ts`
+- `tests/unit/platform/five-plane-state-evidence/checkpoints/node-run-checkpoint-migration.test.ts`
+- `tests/unit/platform/interface/channel-gateway/channel-gateway-service-coverage.test.ts`
+- `tests/unit/platform/orchestration/oapeflir/execution-adapter.test.ts`
+- `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`

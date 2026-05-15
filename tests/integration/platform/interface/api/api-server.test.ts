@@ -6,13 +6,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
-import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
-import { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
-import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
-import type { ApprovalDecision } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { ApprovalDecision } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
-import type { MissionControlServiceType } from "../../../../../src/platform/interface/api/mission-control-service.js";
+import type { MissionControlServiceType } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 
 function createMockApprovalService(): ApprovalService {
   return {

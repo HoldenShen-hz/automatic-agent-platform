@@ -4,7 +4,7 @@ import test from "node:test";
 import { ExecutionDispatchServiceAsync } from "../../src/scale-ecosystem/runtime-services/execution-dispatch-service-async.js";
 import { HumanTakeoverServiceAsync } from "../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
 import { DurableEventBusAsync } from "../../src/scale-ecosystem/runtime-services/durable-event-bus-async.js";
-import { WorkerRegistryService } from "../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { WorkerRegistryService } from "../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { createE2EHarness, createSeededE2EHarness } from "../helpers/e2e-harness.js";
 import { seedTaskAndExecution } from "../helpers/seed.js";
 

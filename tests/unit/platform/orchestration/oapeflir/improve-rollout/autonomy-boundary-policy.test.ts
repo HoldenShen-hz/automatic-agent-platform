@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AutonomyBoundaryPolicy } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.js";
-import type { LearningObject } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+import { AutonomyBoundaryPolicy } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.js";
+import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 test("AutonomyBoundaryPolicy allows high-confidence validated learning objects", () => {
   const policy = new AutonomyBoundaryPolicy();

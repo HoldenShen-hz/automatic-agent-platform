@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildOpenApiDocument, listApiRoutes } from "../../src/platform/interface/api/openapi-document.js";
+import { buildOpenApiDocument, listApiRoutes } from "../../src/platform/five-plane-interface/api/openapi-document.js";
 import { assertGolden } from "../helpers/golden.js";
 
 test("golden: OpenAPI document has correct top-level structure", () => {

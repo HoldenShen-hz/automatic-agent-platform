@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ToolExecutionMetadata } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+import type { ToolExecutionMetadata } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 import {
   isConcurrentSafe,
   requiresExclusiveExecution,
@@ -9,7 +9,7 @@ import {
   partitionToolsByExecutionMode,
   executeToolsInParallel,
   executeToolItemsInParallel,
-} from "../../../../../src/platform/execution/tool-executor/tool-parallel-executor.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-parallel-executor.js";
 
 function makeMetadata(overrides: Partial<ToolExecutionMetadata> = {}): ToolExecutionMetadata {
   return {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createCacheGovernanceMiddleware, createCacheSummaryMiddleware } from "../../../../../src/platform/shared/cache/middleware/cache-governance-middleware.js";
-import type { MiddlewareContext } from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+import type { MiddlewareContext } from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 // Mock cache facade - using any to avoid interface mismatch
 const createMockCache = () => ({

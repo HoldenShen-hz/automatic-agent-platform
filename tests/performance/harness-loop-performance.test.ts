@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessRuntimeService, HarnessLoopController, type ConstraintPack, type HarnessLoopInput } from "../../src/platform/orchestration/harness/index.js";
+import { HarnessRuntimeService, HarnessLoopController, type ConstraintPack, type HarnessLoopInput } from "../../src/platform/five-plane-orchestration/harness/index.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 const createMockConstraintPack = (): ConstraintPack => ({

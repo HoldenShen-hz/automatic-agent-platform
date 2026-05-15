@@ -23,24 +23,24 @@ import { createWorkspaceWritePolicy } from "../iam/sandbox-policy.js";
 import {
   StorageQuotaService,
   type StorageQuotaEnforcementReport,
-} from "../../state-evidence/truth/storage-quota-service.js";
+} from "../../five-plane-state-evidence/truth/storage-quota-service.js";
 import {
   inspectStorageBackendConfig,
   type StorageBackendRuntimeProfile,
-} from "../../state-evidence/truth/storage-backend-config.js";
-import { ExecutionResourceMonitor } from "../../execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../execution/recovery/runtime-recovery-service-root.js";
-import { StalledExecutionDetector } from "../../execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../../execution/recovery/stalled-execution-escalation-service.js";
-import { StartupConsistencyChecker } from "../../execution/startup/startup-consistency-checker.js";
-import { WorkerRegistryService } from "../../execution/worker-pool/worker-registry-service.js";
+} from "../../five-plane-state-evidence/truth/storage-backend-config.js";
+import { ExecutionResourceMonitor } from "../../five-plane-execution/dispatcher/execution-resource-monitor.js";
+import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { StalledExecutionDetector } from "../../five-plane-execution/recovery/stalled-execution-detector.js";
+import { StalledExecutionEscalationService } from "../../five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { StartupConsistencyChecker } from "../../five-plane-execution/startup/startup-consistency-checker.js";
+import { WorkerRegistryService } from "../../five-plane-execution/worker-pool/worker-registry-service.js";
 import {
   resolveConfigEnvironment,
   resolveConfigRoot,
   resolveExpectedProtectedGovernanceVersion,
 } from "../config-center/runtime-env.js";
-import { SqliteReliabilityService, type SqliteBackupReport } from "../../state-evidence/truth/sqlite/sqlite-reliability-service.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { SqliteReliabilityService, type SqliteBackupReport } from "../../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { ObservabilityRetentionReport } from "../../shared/observability/observability-retention-service.js";
 import { ObservabilityRetentionService } from "../../shared/observability/observability-retention-service.js";

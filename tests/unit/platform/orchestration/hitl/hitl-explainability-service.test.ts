@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HITLExplainabilityService, type DecisionType, type SatisfactionRating } from "../../../../../src/platform/orchestration/hitl/hitl-explainability-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { HITLExplainabilityService, type DecisionType, type SatisfactionRating } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-explainability-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Mock store for testing
 const mockStore = {

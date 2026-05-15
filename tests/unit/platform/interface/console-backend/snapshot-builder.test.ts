@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OperatorConsoleBackendService } from "../../../../../src/platform/interface/console-backend/index.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("buildSnapshot returns correct snapshot structure with all required fields", () => {
   const service = new OperatorConsoleBackendService({});

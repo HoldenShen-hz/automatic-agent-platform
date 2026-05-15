@@ -11,8 +11,8 @@ import {
   type PlanStep,
   type Plan,
   parsePlan,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/plan.js";
-import { RetryPolicySchema } from "../../../../../../src/platform/orchestration/oapeflir/types/shared.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
+import { RetryPolicySchema } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/shared.js";
 
 test("PlanStrategySchema accepts all valid values", () => {
   const strategies: PlanStrategy[] = [

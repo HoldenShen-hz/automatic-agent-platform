@@ -7,7 +7,7 @@ import type { RouteDefinition } from "../../../../../src/platform/five-plane-int
 import type { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
 import { InMemoryMissionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 const authService = new ApiAuthService({
   jwtSecret: "test-secret",

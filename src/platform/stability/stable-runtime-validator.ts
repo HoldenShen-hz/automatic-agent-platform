@@ -27,8 +27,8 @@ import {
   writeGoldenTaskInventoryBaseline,
   type GoldenTaskCase,
 } from "./golden-task-runner.js";
-import { SqliteReliabilityService } from "../state-evidence/truth/sqlite/sqlite-reliability-service.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { SqliteReliabilityService } from "../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 
 /** Options for a validation run */
 export interface StableValidationOptions {

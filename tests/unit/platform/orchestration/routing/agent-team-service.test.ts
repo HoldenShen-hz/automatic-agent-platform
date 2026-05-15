@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AgentTeamService, type AgentTeamPlanInput, type AgentTeamStage, type AgentModelTier, type AgentTeamLane } from "../../../../../src/platform/orchestration/routing/agent-team-service.js";
-import type { PlannedWorkflow } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
+import { AgentTeamService, type AgentTeamPlanInput, type AgentTeamStage, type AgentModelTier, type AgentTeamLane } from "../../../../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
+import type { PlannedWorkflow } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 function createMockWorkflow(steps: any[] = []): PlannedWorkflow {
   return {

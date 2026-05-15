@@ -6,7 +6,7 @@ export * from "./diagnostics-support.js";
 
 import { arch, platform } from "node:os";
 
-import { ConfigGovernanceService } from "../../control-plane/config-center/config-governance-service.js";
+import { ConfigGovernanceService } from "../../five-plane-control-plane/config-center/config-governance-service.js";
 import { HealthService } from "./health-service.js";
 import { InspectService } from "./inspect-service.js";
 import { ObservabilityRetentionService } from "./observability-retention-service.js";

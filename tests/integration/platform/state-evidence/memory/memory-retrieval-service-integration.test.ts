@@ -12,7 +12,7 @@ import {
   buildFtsMatchQuery,
   extractSearchableText,
   createSnippet,
-} from "../../../../../src/platform/state-evidence/memory/memory-retrieval-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
 
 test("integration: buildFtsMatchQuery handles complex search queries", () => {
   // Multi-word query

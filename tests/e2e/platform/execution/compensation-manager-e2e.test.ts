@@ -14,7 +14,7 @@ import test from "node:test";
 // @ts-ignore
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 // @ts-ignore
-import { CompensationManagerService } from "../../../src/platform/execution/compensation-manager.js";
+import { CompensationManagerService } from "../../../src/platform/five-plane-execution/compensation-manager.js";
 // @ts-ignore
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 // @ts-ignore

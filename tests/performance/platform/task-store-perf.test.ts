@@ -16,8 +16,8 @@ import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import type { TaskRecord, TaskSource, TaskPriority } from "../../../src/platform/contracts/types/domain.js";
 

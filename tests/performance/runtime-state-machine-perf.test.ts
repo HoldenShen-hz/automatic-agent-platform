@@ -20,7 +20,7 @@ import {
   type HarnessRun,
   type NodeRun,
   type HarnessRunStatus,
-} from "../../src/platform/execution/runtime-state-machine.js";
+} from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 function createHarnessRun(runId: string): HarnessRun {

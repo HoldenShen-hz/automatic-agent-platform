@@ -15,25 +15,25 @@ import {
   requireCliSqliteDatabase,
   deriveCliWorkspaceRoot,
 } from "./authoritative-storage.js";
-import type { AuthoritativeStorageContext } from "../../platform/state-evidence/truth/storage-backend-factory.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { DoctorService } from "../../platform/control-plane/incident-control/doctor-service.js";
+import type { AuthoritativeStorageContext } from "../../platform/five-plane-state-evidence/truth/storage-backend-factory.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { DoctorService } from "../../platform/five-plane-control-plane/incident-control/doctor-service.js";
 import { HealthService } from "../../platform/shared/observability/health-service.js";
 import { MetricsService } from "../../platform/shared/observability/metrics-service.js";
 import { InspectService } from "../../platform/shared/observability/inspect-service.js";
 import { DiagnosticsService } from "../../platform/shared/observability/diagnostics-service.js";
 import { ObservabilityRetentionService } from "../../platform/shared/observability/observability-retention-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
-import { ExecutionResourceMonitor } from "../../platform/execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../platform/execution/recovery/runtime-recovery-service-root.js";
-import { StalledExecutionDetector } from "../../platform/execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../../platform/execution/recovery/stalled-execution-escalation-service.js";
-import { createDefaultStartupConsistencyCheckerOptions } from "../../platform/execution/startup/startup-preflight.js";
-import { StartupConsistencyChecker } from "../../platform/execution/startup/startup-consistency-checker.js";
-import { WorkerRegistryService } from "../../platform/execution/worker-pool/worker-registry-service.js";
-import { ProtectedGovernanceIntegrityService } from "../../platform/control-plane/config-center/protected-governance-integrity-service.js";
-import { StorageQuotaService, type StorageQuotaCategoryConfig } from "../../platform/state-evidence/truth/storage-quota-service.js";
-import { SqliteReliabilityService } from "../../platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { ExecutionResourceMonitor } from "../../platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
+import { RuntimeRecoveryService } from "../../platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { StalledExecutionDetector } from "../../platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import { StalledExecutionEscalationService } from "../../platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { createDefaultStartupConsistencyCheckerOptions } from "../../platform/five-plane-execution/startup/startup-preflight.js";
+import { StartupConsistencyChecker } from "../../platform/five-plane-execution/startup/startup-consistency-checker.js";
+import { WorkerRegistryService } from "../../platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { ProtectedGovernanceIntegrityService } from "../../platform/five-plane-control-plane/config-center/protected-governance-integrity-service.js";
+import { StorageQuotaService, type StorageQuotaCategoryConfig } from "../../platform/five-plane-state-evidence/truth/storage-quota-service.js";
+import { SqliteReliabilityService } from "../../platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 
 /**
  * Services initialized by bootstrapGovernanceServices.

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 /**
- * @fileoverview Unit tests for src/platform/interface/ingress/index.ts
+ * @fileoverview Unit tests for src/platform/five-plane-interface/ingress/index.ts
  * Tests barrel exports and type definitions
  */
 
@@ -13,7 +13,7 @@ import {
   type RateLimitResult,
   type RateLimiterConfig,
   type RateLimitCheckResult,
-} from "../../../../../src/platform/interface/ingress/index.js";
+} from "../../../../../src/platform/five-plane-interface/ingress/index.js";
 
 test("index exports DistributedRateLimiter as a constructor", () => {
   assert.equal(typeof DistributedRateLimiter, "function");

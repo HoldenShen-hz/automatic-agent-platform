@@ -62,7 +62,7 @@ test("planner baseline has correct services", () => {
 test("resolveOrchestrationCapabilityBaseline returns correct baseline", () => {
   const baseline = resolveOrchestrationCapabilityBaseline("oapeflir");
   assert.equal(baseline.capabilityId, "oapeflir");
-  assert.equal(baseline.entryModule, "src/platform/orchestration/oapeflir/index.ts");
+  assert.equal(baseline.entryModule, "src/platform/five-plane-orchestration/oapeflir/index.ts");
 });
 
 test("resolveOrchestrationCapabilityBaseline throws for unknown capability", () => {

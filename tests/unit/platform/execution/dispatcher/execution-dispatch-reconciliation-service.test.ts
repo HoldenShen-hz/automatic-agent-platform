@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchReconciliationService, type DispatchReconciliationIssue } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-reconciliation-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { ExecutionDispatchReconciliationService, type DispatchReconciliationIssue } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
 // Helper types and builders

@@ -7,7 +7,7 @@ import {
   type BudgetIntent,
   type PlanGraph,
 } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeEntryGuard } from "../../../../../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { RuntimeEntryGuard } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 
 const budgetIntent: BudgetIntent = {
   amount: 10,

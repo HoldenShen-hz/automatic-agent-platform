@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { ConfigGovernanceService } from "../config-center/config-governance-service.js";
 import { resolveAgentProfileHome } from "../config-center/profile-home.js";
-import type { SqliteSchemaStatus } from "../../state-evidence/truth/sqlite-database.js";
+import type { SqliteSchemaStatus } from "../../five-plane-state-evidence/truth/sqlite-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

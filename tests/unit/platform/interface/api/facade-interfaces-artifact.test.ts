@@ -1,6 +1,6 @@
 /**
  * Unit tests for Artifact and Knowledge Plane facade types
- * Tests src/platform/interface/api/facade-interfaces.ts - Artifact and Knowledge types
+ * Tests src/platform/five-plane-interface/api/facade-interfaces.ts - Artifact and Knowledge types
  */
 
 import assert from "node:assert/strict";
@@ -17,7 +17,7 @@ import type {
   RetrievalHit,
   KnowledgeQueryOptions,
   KnowledgeFacadeService,
-} from "../../../../../src/platform/interface/api/facade-interfaces.js";
+} from "../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 
 test("ArtifactLink structure is correct", () => {
   const link: ArtifactLink = {

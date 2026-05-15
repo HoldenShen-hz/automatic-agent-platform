@@ -6,7 +6,7 @@ import {
   type EscalationLevel,
   type StopLossAction,
   type StopLossPlaybook,
-} from "../../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 
 test("EscalationLevel type accepts valid values", () => {
   const levels: EscalationLevel[] = ["observe", "warn", "act", "critical"];

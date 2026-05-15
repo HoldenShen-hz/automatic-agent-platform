@@ -11,14 +11,14 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../control-plane/incident-control/runtime-version-snapshot.js";
-import { runSingleTaskExecution } from "../execution/execution-engine/single-task-execution.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../five-plane-control-plane/incident-control/runtime-version-snapshot.js";
+import { runSingleTaskExecution } from "../five-plane-execution/execution-engine/single-task-execution.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import {
   SqliteReliabilityService,
   type SqliteBackupReport,
   type SqliteRestoreReport,
-} from "../state-evidence/truth/sqlite/sqlite-reliability-service.js";
+} from "../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 
 export interface StableBackupRestoreRehearsalOptions {
   outputDir: string;

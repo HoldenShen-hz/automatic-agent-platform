@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createStrategyVersion } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/strategy-versioning.js";
+import { createStrategyVersion } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/strategy-versioning.js";
 
 test("createStrategyVersion creates version with suggest level by default", () => {
   const result = createStrategyVersion("Test Strategy", []);

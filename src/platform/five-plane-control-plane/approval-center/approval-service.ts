@@ -34,15 +34,15 @@
  * @packageDocumentation
  */
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ApprovalRecord } from "../../contracts/types/domain.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   createRuntimeLifecycleRepository,
   type RuntimeLifecycleRepository,
-} from "../../state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { TransitionService } from "../../execution/state-transition/transition-service.js";
+import { TransitionService } from "../../five-plane-execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 import {
   type ControlPlaneDirectiveSink,

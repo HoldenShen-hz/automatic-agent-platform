@@ -19,7 +19,7 @@
  * @see docs_zh/contracts/billing_contract.md
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /** Result of a cost estimation request */
 export interface CostEstimate {

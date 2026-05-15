@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/execution/worker-pool/worker-service-identity.js";
-import { WorkerDrainPhase, WorkerDrainProtocol } from "../../../../../src/platform/execution/worker-pool/worker-drain-protocol.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
+import { WorkerDrainPhase, WorkerDrainProtocol } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
 function createMockStore(): AuthoritativeTaskStore {
   return {

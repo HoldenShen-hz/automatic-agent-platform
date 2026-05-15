@@ -4,7 +4,7 @@ import {
   SequenceLoopDetector,
   createLoopDetectionMiddleware,
   createLoopDetectionMiddlewareFull,
-} from "../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("SequenceLoopDetector records actions and detects loops", () => {
   const detector = new SequenceLoopDetector({ windowSize: 3, repeatThreshold: 2 });
@@ -70,7 +70,7 @@ test("createLoopDetectionMiddlewareFull returns beforeAgent and wrapToolCall hoo
 
 test("createLoopDetectionMiddlewareFull beforeAgent hook escalates when pattern is already escalated", async () => {
   const { beforeAgent, state } = createLoopDetectionMiddlewareFull({ warnThreshold: 1, escalateThreshold: 1 });
-  const LoopDetectionStateCtor = (await import("../../../../src/platform/execution/execution-engine/loop-detection.js")).LoopDetectionState;
+  const LoopDetectionStateCtor = (await import("../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js")).LoopDetectionState;
   assert.equal(state instanceof LoopDetectionStateCtor, true);
   state.recordToolCall("tool", { x: 1 }); // triggers escalation immediately
 

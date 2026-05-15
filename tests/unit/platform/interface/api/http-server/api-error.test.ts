@@ -6,9 +6,9 @@ import {
   inferApiErrorCategory,
   inferApiErrorSource,
   normalizeError,
-} from "../../../../../../src/platform/interface/api/http-server/api-error.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/api-error.js";
 import { AppError } from "../../../../../../src/platform/contracts/errors.js";
-import { GatewayRateLimitError } from "../../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
+import { GatewayRateLimitError } from "../../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
 
 test("ApiError constructs with statusCode, code, and message", () => {
   const err = new ApiError(404, "api.task_not_found", "Task not found.");

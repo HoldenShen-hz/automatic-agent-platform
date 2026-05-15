@@ -6,7 +6,7 @@ import {
   type ToolCallStatus,
   type ToolCallErrorSource,
   type ToolCallError,
-} from "../../../../../src/platform/execution/tool-executor/tool-call-result.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-call-result.js";
 
 test("isToolCallSuccessful returns true for succeeded status", () => {
   assert.equal(isToolCallSuccessful("succeeded"), true);

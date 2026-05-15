@@ -7,7 +7,7 @@ import {
   MAX_LEASE_TTL_MS,
   MIN_LEASE_TTL_MS,
   HA_COORDINATOR_DDL,
-} from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
+} from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import type {
   CoordinatorNode,
   CoordinatorNodeStatus,
@@ -15,7 +15,7 @@ import type {
   LeaderLease,
   LeadershipEpoch,
   LeadershipQueryResult,
-} from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

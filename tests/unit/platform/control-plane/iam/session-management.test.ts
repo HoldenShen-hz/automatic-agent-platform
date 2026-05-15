@@ -18,7 +18,7 @@ import {
   revokeAllPrincipalSessions,
   type Session,
   type SessionValidationResult,
-} from "../../../../../src/platform/control-plane/iam/session-management.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/session-management.js";
 
 // Helper to clear session store between tests
 function clearSessions(): void {

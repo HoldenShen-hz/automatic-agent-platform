@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AutonomyBoundaryPolicy, type AutonomyTarget } from "../../../../../src/platform/orchestration/improve-rollout/autonomy-boundary-policy.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import { AutonomyBoundaryPolicy, type AutonomyTarget } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/autonomy-boundary-policy.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {

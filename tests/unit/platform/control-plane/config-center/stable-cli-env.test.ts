@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadStableCampaignCliEnv } from "../../../../../src/platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableCampaignCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 test("stable campaign env loader parses numeric overrides", () => {
   const config = loadStableCampaignCliEnv({

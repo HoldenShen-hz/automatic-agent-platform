@@ -2,16 +2,16 @@
  * Smoke Test: Approval Flow
  *
  * Verifies basic approval flow through the platform.
- * Part of the smoke test suite in tests/integration/platform/execution/smoke/.
+ * Part of the smoke test suite in tests/integration/platform/five-plane-execution/smoke/.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 

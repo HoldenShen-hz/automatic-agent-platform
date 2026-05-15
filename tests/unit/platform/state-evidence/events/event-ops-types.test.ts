@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { EventDrainResult } from "../../../../../src/platform/state-evidence/events/event-ops-service.js";
+import type { EventDrainResult } from "../../../../../src/platform/five-plane-state-evidence/events/event-ops-service.js";
 
 test("EventDrainResult structure is correct", () => {
   const result: EventDrainResult = {

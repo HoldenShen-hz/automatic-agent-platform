@@ -17,7 +17,7 @@ import {
   type EscalationContext,
   type EscalationRule,
   type NotificationChannel,
-} from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 function createTestEscalationRule(): EscalationRule {

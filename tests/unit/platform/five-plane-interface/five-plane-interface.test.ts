@@ -53,21 +53,21 @@ test("fivePlaneInterface exports INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID", () => {
 test("INTERFACE_CAPABILITY_BASELINES contains api capability", () => {
   const api = INTERFACE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "api");
   assert.ok(api, "api capability should exist");
-  assert.equal(api.entryModule, "src/platform/interface/api/index.ts");
+  assert.equal(api.entryModule, "src/platform/five-plane-interface/api/index.ts");
   assert.ok(api.baselineServices.includes("HttpApiServer"));
 });
 
 test("INTERFACE_CAPABILITY_BASELINES contains channel-gateway capability", () => {
   const cg = INTERFACE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "channel-gateway");
   assert.ok(cg, "channel-gateway capability should exist");
-  assert.equal(cg.entryModule, "src/platform/interface/channel-gateway/index.ts");
+  assert.equal(cg.entryModule, "src/platform/five-plane-interface/channel-gateway/index.ts");
   assert.ok(cg.baselineServices.includes("ChannelGatewayService"));
 });
 
 test("INTERFACE_CAPABILITY_BASELINES contains webhook capability", () => {
   const wh = INTERFACE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "webhook");
   assert.ok(wh, "webhook capability should exist");
-  assert.equal(wh.entryModule, "src/platform/interface/webhook/index.ts");
+  assert.equal(wh.entryModule, "src/platform/five-plane-interface/webhook/index.ts");
 });
 
 test("capability baselines have required fields", () => {

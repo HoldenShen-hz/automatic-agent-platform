@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ObservationDelta } from "../../../../../../src/platform/orchestration/oapeflir/types/observation-delta.js";
+import type { ObservationDelta } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/observation-delta.js";
 
 function createObservationDelta(overrides: Partial<ObservationDelta> = {}): ObservationDelta {
   return {

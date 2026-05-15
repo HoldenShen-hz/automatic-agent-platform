@@ -8,7 +8,7 @@ import {
   GRPC_ERROR_CODES,
   type GrpcAdapterConfig,
   type GrpcServiceDefinition,
-} from "../../../../../src/platform/interface/api/grpc-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/grpc-adapter-service.js";
 
 test("GrpcAdapterService creates with config", () => {
   const config: GrpcAdapterConfig = {

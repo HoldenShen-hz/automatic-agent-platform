@@ -9,7 +9,7 @@ import {
   ConfigRolloutService,
   RolloutPhase,
   type ConfigRollout,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 
 test.describe("ConfigRolloutService Integration", () => {
   test("complete canary pipeline: CANARY_5 -> 25% -> 50% -> FULL", () => {

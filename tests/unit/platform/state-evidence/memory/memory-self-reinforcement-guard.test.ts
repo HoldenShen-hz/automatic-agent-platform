@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   MemorySelfReinforcementGuard,
   type MemoryPromotionEvidence,
-} from "../../../../../src/platform/state-evidence/memory/memory-self-reinforcement-guard.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-self-reinforcement-guard.js";
 
 test("MemorySelfReinforcementGuard.evaluate returns promotable=true for ideal evidence", () => {
   const guard = new MemorySelfReinforcementGuard();

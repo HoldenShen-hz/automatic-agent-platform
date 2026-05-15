@@ -11,7 +11,7 @@ import {
   getProcessTracker,
   resetProcessTracker,
   spawnTracked,
-} from "../../../../../src/platform/execution/resource/process-tracker.js";
+} from "../../../../../src/platform/five-plane-execution/resource/process-tracker.js";
 
 function createMockChildProcess(pid: number, pgid?: number): ChildProcess {
   const emitter = new EventEmitter();

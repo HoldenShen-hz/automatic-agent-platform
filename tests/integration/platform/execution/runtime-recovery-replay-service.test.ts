@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { RuntimeRecoveryDecisionService } from "../../../../src/platform/execution/recovery/runtime-recovery-decision-service-root.js";
-import { RuntimeRecoveryReplayService } from "../../../../src/platform/execution/recovery/runtime-recovery-replay-service-root.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { RuntimeRecoveryDecisionService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service-root.js";
+import { RuntimeRecoveryReplayService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";

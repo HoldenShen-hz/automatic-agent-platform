@@ -7,7 +7,7 @@ import {
   type RecoveryCandidate,
   type RepairAction,
   type RecoveryDisposition,
-} from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 function makeFinding(overrides: Partial<StartupConsistencyFinding> = {}): StartupConsistencyFinding {
   return {

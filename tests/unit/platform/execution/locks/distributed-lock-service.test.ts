@@ -5,7 +5,7 @@ import {
   inferPgSslFromDsn,
   defaultPostgresFactory,
   lockLogger,
-} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-service.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 
 test("inferPgSslFromDsn returns rejectUnauthorized object for sslmode=require", () => {
   const result = inferPgSslFromDsn("postgresql://user:pass@host/db?sslmode=require");

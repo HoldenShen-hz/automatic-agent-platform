@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProjectionInventoryService } from "../../../../../src/platform/state-evidence/events/projection-inventory-service.js";
-import { EventReliabilityInventoryService } from "../../../../../src/platform/state-evidence/events/event-reliability-inventory-service.js";
+import { ProjectionInventoryService } from "../../../../../src/platform/five-plane-state-evidence/events/projection-inventory-service.js";
+import { EventReliabilityInventoryService } from "../../../../../src/platform/five-plane-state-evidence/events/event-reliability-inventory-service.js";
 
 test("ProjectionInventoryService lists all projections by default", () => {
   const service = new ProjectionInventoryService();

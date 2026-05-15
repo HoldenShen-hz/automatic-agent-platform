@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProjectMemoryStore } from "../../../../../src/platform/state-evidence/memory/project-memory-store.js";
-import { UserMemoryStore } from "../../../../../src/platform/state-evidence/memory/user-memory-store.js";
+import { ProjectMemoryStore } from "../../../../../src/platform/five-plane-state-evidence/memory/project-memory-store.js";
+import { UserMemoryStore } from "../../../../../src/platform/five-plane-state-evidence/memory/user-memory-store.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // =============================================================================

@@ -9,7 +9,7 @@ import {
   type DispatchTicketCreatedPayload,
   type DispatchTicketClaimedPayload,
   type DispatchDecisionRecordedPayload,
-} from "../../../../../../src/platform/state-evidence/events/projections/dispatch-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/dispatch-projection.js";
 
 /**
  * Helper to create a projection input event

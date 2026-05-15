@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import {
   HOT_UPGRADE_DDL,
   HotUpgradeService,
@@ -23,7 +23,7 @@ import {
   type HealthGateConfig,
   type RollbackTrigger,
   type UpgradeProgress,
-} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: create in-memory SQLite database with schema

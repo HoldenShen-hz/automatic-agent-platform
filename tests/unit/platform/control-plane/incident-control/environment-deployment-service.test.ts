@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { EnvironmentDeploymentService } from "../../../../../src/platform/control-plane/incident-control/environment-deployment-service.js";
-import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { EnvironmentDeploymentService } from "../../../../../src/platform/five-plane-control-plane/incident-control/environment-deployment-service.js";
+import { SecretManagementService } from "../../../../../src/platform/five-plane-control-plane/iam/secret-management-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 

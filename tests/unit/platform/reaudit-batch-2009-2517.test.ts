@@ -13,18 +13,18 @@ import {
 } from "../../../src/sdk/pack-sdk/pack-manifest.js";
 import { createBudgetLedger } from "../../../src/platform/contracts/executable-contracts/index.js";
 import { DataLineageService } from "../../../src/platform/compliance/lineage/index.js";
-import { RuntimeStateMachine } from "../../../src/platform/execution/runtime-state-machine.js";
-import { ReplayBoundaryGuard } from "../../../src/platform/execution/recovery/replay-boundary-guard.js";
-import { BudgetAllocator } from "../../../src/platform/execution/budget-allocator.js";
+import { RuntimeStateMachine } from "../../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { ReplayBoundaryGuard } from "../../../src/platform/five-plane-execution/recovery/replay-boundary-guard.js";
+import { BudgetAllocator } from "../../../src/platform/five-plane-execution/budget-allocator.js";
 import {
   createDistributedCasService,
   type CasRecord,
   type CasRepository,
-} from "../../../src/platform/state-evidence/events/cas/cas-service.js";
+} from "../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
 import { AgentVersionManager } from "../../../src/ops-maturity/agent-lifecycle/version-manager/agent-version-manager.js";
-import { DurableEventBus } from "../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
 function source(relativePath: string): string {
@@ -243,13 +243,13 @@ test("2117: marketplace security scan executes sandbox path instead of permissio
 });
 
 test("2148: workflow transition service wraps state change in transaction and CAS update", () => {
-  const text = source("src/platform/execution/state-transition/transition-service.ts");
+  const text = source("src/platform/five-plane-execution/state-transition/transition-service.ts");
   assert.match(text, /public transition\(command: WorkflowStatusTransitionCommand\): void {\s*this\.db\.transaction\(\(\) => {/s);
   assert.match(text, /updateWorkflowStateCas/);
 });
 
 test("2152: recovery decision apply re-reads execution and candidate inside a transaction", () => {
-  const text = source("src/platform/execution/recovery/runtime-recovery-decision-service.ts");
+  const text = source("src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.ts");
   assert.match(text, /await this\.db\.transaction\(async \(\) => {/);
   assert.match(text, /const execution = this\.store\.dispatch\.getExecution\(executionId\)/);
   assert.match(text, /const recoveryView = await this\.recoveryService\.buildRuntimeRecoveryView\(execution\.taskId\)/);
@@ -279,7 +279,7 @@ test("2180: intake router includes skill taxonomy and load-balancing paths", () 
 });
 
 test("2201: startup consistency checker fail-closes by blocking traffic", () => {
-  const text = source("src/platform/execution/startup/startup-consistency-checker.ts");
+  const text = source("src/platform/five-plane-execution/startup/startup-consistency-checker.ts");
   assert.match(text, /private _trafficBlocked = false/);
   assert.match(text, /this\._trafficBlocked = true/);
   assert.match(text, /this\.options\.onTrafficBlocked\?\.\(\)/);

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   listControlPlaneCapabilityBaselines,
   resolveControlPlaneCapabilityBaseline,
-} from "../../../../src/platform/control-plane/control-plane-baseline.js";
+} from "../../../../src/platform/five-plane-control-plane/control-plane-baseline.js";
 
 test("control plane baseline covers control-plane entry modules", () => {
   const baselines = listControlPlaneCapabilityBaselines();

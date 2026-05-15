@@ -9,7 +9,7 @@ import type {
   PgAdvisoryLockConfig,
   RedisLockConfig,
   LockData,
-} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 test("LockBackendKind type accepts valid values", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];

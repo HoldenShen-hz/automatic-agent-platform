@@ -8,11 +8,11 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
-import type { DataTaintPropagationRecord, TaintPropagationResult, DataTaintLabel } from "../../../../../src/platform/state-evidence/truth/data-taint-propagation.js";
+import type { DataTaintPropagationRecord, TaintPropagationResult, DataTaintLabel } from "../../../../../src/platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 import {
   DataTaintPropagationService,
   getDataTaintPropagationService,
-} from "../../../../../src/platform/state-evidence/truth/data-taint-propagation.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 
 // Mock taint labels for testing
 function createMockTaintLabel(overrides: Partial<DataTaintLabel> = {}): DataTaintLabel {

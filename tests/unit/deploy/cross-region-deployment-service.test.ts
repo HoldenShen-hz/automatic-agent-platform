@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CrossRegionDeploymentService, CROSS_REGION_DDL } from "../../../src/platform/execution/ha/cross-region-deployment-service.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { CrossRegionDeploymentService, CROSS_REGION_DDL } from "../../../src/platform/five-plane-execution/ha/cross-region-deployment-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { join } from "node:path";
 

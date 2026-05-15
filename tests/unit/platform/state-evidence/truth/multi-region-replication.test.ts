@@ -5,7 +5,7 @@ import {
   CrossRegionTruthLeader,
   type TruthLeaderEpoch,
   type TruthWriteClaim,
-} from "../../../../../src/platform/state-evidence/truth/cross-region-truth-leader.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/cross-region-truth-leader.js";
 import {
   CDCReplicationService,
   MultiRegionReplicationCoordinator,

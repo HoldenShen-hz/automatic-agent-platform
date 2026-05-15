@@ -3,9 +3,9 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { takeFileSnapshot } from "../../../../src/platform/control-plane/iam/file-freshness.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { PatchDslService, type FilePatch } from "../../../../src/platform/execution/tool-executor/patch-dsl-service.js";
+import { takeFileSnapshot } from "../../../../src/platform/five-plane-control-plane/iam/file-freshness.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { PatchDslService, type FilePatch } from "../../../../src/platform/five-plane-execution/tool-executor/patch-dsl-service.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("apply_patch service blocks writes outside the workspace sandbox", async () => {

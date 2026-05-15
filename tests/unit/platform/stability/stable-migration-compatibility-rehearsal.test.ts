@@ -7,7 +7,7 @@ import {
 } from "../../../../src/platform/stability/stable-migration-compatibility-rehearsal.js";
 import {
   evaluateSqliteMigrationCompatibility,
-} from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+} from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
 
 test("evaluateSqliteMigrationCompatibility returns compatible report when migrations are portable", () => {
   const report = evaluateSqliteMigrationCompatibility();

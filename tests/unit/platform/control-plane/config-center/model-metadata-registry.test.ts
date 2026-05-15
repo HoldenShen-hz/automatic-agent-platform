@@ -5,7 +5,7 @@ import type {
   ModelProviderMetadata,
   ModelProfileMetadata,
   ModelMetadataRegistry,
-} from "../../../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 
 test("ModelProviderMetadata type accepts valid status values", () => {
   const provider: ModelProviderMetadata = {

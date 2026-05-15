@@ -12,7 +12,7 @@ import {
   type GuardrailActionSignal,
   type GuardrailVibrationState,
   type GuardrailVibrationDecision,
-} from "../../../../../src/platform/orchestration/harness/guardrails/guardrail-vibration-breaker.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-vibration-breaker.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers

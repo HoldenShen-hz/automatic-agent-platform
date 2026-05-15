@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createPackRoutes } from "../../../../../../src/platform/interface/api/http-server/pack-routes.js";
-import { PackCatalogService } from "../../../../../../src/platform/interface/api/pack-catalog-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createPackRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/pack-routes.js";
+import { PackCatalogService } from "../../../../../../src/platform/five-plane-interface/api/pack-catalog-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
   return {

@@ -9,7 +9,7 @@ import {
   type Plan,
   type PlanStep,
   type PlanStrategy,
-} from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 test("PlanStrategySchema accepts all valid strategy values", () => {
   const strategies: PlanStrategy[] = [

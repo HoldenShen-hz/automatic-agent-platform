@@ -35,10 +35,10 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadSkillCreatorCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadSkillCreatorCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { SkillCreatorService, type SkillCreatorResourceDirectory } from "../../platform/execution/tool-executor/skill-creator-service.js";
-import { SkillGovernanceService, type SkillLifecycle, type SkillRiskLevel } from "../../platform/execution/tool-executor/skill-governance-service.js";
+import { SkillCreatorService, type SkillCreatorResourceDirectory } from "../../platform/five-plane-execution/tool-executor/skill-creator-service.js";
+import { SkillGovernanceService, type SkillLifecycle, type SkillRiskLevel } from "../../platform/five-plane-execution/tool-executor/skill-governance-service.js";
 
 /**
  * Main entry point for the skill creator CLI.

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ExperienceDistillationService } from "../../../../../../src/platform/orchestration/oapeflir/learn/experience-distillation-service.js";
+import { ExperienceDistillationService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/experience-distillation-service.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 test("ExperienceDistillationService.distill maps signals to learning objects", () => {

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   DualChannelStepOutputSchema,
   parseDualChannelStepOutput,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
 
 test("DualChannelStepOutputSchema parses valid output", () => {
   const validOutput = {

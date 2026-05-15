@@ -12,8 +12,8 @@ import test from "node:test";
 
 import { DatabaseSync } from "node:sqlite";
 
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Re-export cost estimation from platform cost-management module
 import {
@@ -23,16 +23,16 @@ import {
 } from "../../../../src/platform/cost-management/index.js";
 
 // Import CostAlertService and types
-import { CostAlertService } from "../../../../src/platform/control-plane/cost-alert/cost-alert-service.js";
+import { CostAlertService } from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 import type {
   BudgetPolicy,
   BudgetScope,
   CostAlertConfig,
   CostAlertLevel,
-} from "../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+} from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 // Import CostReportService
-import { CostReportService } from "../../../../src/platform/interface/api/cost-report-service.js";
+import { CostReportService } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures

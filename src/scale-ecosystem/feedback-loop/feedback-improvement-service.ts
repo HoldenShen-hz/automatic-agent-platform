@@ -2,7 +2,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   getFeedbackPromotionEligibility,
   parseFeedbackSignal,
-} from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import { analyzeFeedbackSignals, type FeedbackAnalysisSummary } from "./analyzer/index.js";
 import { FeedbackCollector, type FeedbackCollectorInput } from "./collector/feedback-collector.js";
 import type { FeedbackBatch, FeedbackSignal, LearningSignal } from "./collector/index.js";

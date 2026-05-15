@@ -18,7 +18,7 @@ import {
 import {
   HARNESS_BOOTSTRAP_SERVICE_ID,
   buildHarnessBootstrap,
-} from "./orchestration/harness/harness-bootstrap.js";
+} from "./five-plane-orchestration/harness/harness-bootstrap.js";
 
 export const AI_OPERATIONS_STARTUP_PLAN_SERVICE_ID = "aiops.runtime.startup-plan";
 

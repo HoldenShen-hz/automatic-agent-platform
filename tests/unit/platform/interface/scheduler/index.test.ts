@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as schedulerIndex from "../../../../../src/platform/interface/scheduler/index.js";
+import * as schedulerIndex from "../../../../../src/platform/five-plane-interface/scheduler/index.js";
 import type {
   WorkflowResumeDecision,
   WorkflowSleepLease,
@@ -11,7 +11,7 @@ import type {
   WorkflowSuspensionStatus,
   WorkflowTimeoutPolicy,
   WorkflowWaitKind,
-} from "../../../../../src/platform/interface/scheduler/index.js";
+} from "../../../../../src/platform/five-plane-interface/scheduler/index.js";
 
 test("scheduler index exports WorkflowSleepLease and related types", () => {
   const lease = null as unknown as WorkflowSleepLease;

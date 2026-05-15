@@ -6,9 +6,9 @@
  * layer to depend on an abstraction rather than the concrete runtime implementation.
  */
 
-import { ExecutionResourceCeilingGuard } from "../../execution/dispatcher/execution-resource-ceiling-guard.js";
-import type { ExecutionResourceCeilingFinding } from "../../execution/dispatcher/execution-resource-ceiling-guard.js";
-import type { ExecutionResourceUsageSample } from "../../execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
+import type { ExecutionResourceCeilingFinding } from "../../five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
+import type { ExecutionResourceUsageSample } from "../../five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 /**
  * Interface for resource ceiling guards.

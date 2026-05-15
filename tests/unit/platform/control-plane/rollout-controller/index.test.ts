@@ -13,7 +13,7 @@ import {
   type DeploymentSlotRecord,
   type TrafficShiftRecord,
   type CanaryConfig,
-} from "../../../../../src/platform/control-plane/rollout-controller/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
 
 test("TrafficRoutingService can be referenced", () => {
   assert.equal(typeof TrafficRoutingService, "function");

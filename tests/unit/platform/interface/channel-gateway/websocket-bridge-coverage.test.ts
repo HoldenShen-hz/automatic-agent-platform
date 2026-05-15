@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
 import { WebSocket } from "ws";
-import { WebSocketBridge, type TaskWebSocketEvent, type WebSocketMessageType } from "../../../../../src/platform/interface/channel-gateway/websocket-bridge.js";
+import { WebSocketBridge, type TaskWebSocketEvent, type WebSocketMessageType } from "../../../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
 
 class MockApiAuthService {
   authenticate() {

@@ -9,9 +9,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { EventRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { EventRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/event-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 import type { EventRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../../../../../src/platform/contracts/types/ids.js";

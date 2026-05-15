@@ -6,7 +6,7 @@ import {
   type ResumeSnapshotDescriptor,
   type ResumeCompatibilityOptions,
   type ResumeDiffReport,
-} from "../../../../../src/platform/execution/recovery/resume-compatibility-check.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/resume-compatibility-check.js";
 
 describe("ResumeCompatibilityCheck", () => {
   const check = new ResumeCompatibilityCheck();

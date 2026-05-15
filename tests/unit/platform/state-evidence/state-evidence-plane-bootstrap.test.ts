@@ -6,7 +6,7 @@ import {
   registerStateEvidencePlaneBootstrap,
   STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
   STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID,
-} from "../../../../src/platform/state-evidence/state-evidence-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-state-evidence/state-evidence-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("state-evidence plane bootstrap exposes canonical evidence services", () => {

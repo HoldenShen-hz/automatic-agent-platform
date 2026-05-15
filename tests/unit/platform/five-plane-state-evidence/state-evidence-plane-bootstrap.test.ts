@@ -69,7 +69,7 @@ test("buildStateEvidencePlaneBootstrap catalog contains truth capability", () =>
   const bootstrap = buildStateEvidencePlaneBootstrap();
   const truth = bootstrap.catalog.find((c) => c.capabilityId === "truth");
   assert.ok(truth, "truth capability should be in catalog");
-  assert.equal(truth.entryModule, "src/platform/state-evidence/truth/index.ts");
+  assert.equal(truth.entryModule, "src/platform/five-plane-state-evidence/truth/index.ts");
 });
 
 test("buildStateEvidencePlaneBootstrap catalog contains events capability", () => {

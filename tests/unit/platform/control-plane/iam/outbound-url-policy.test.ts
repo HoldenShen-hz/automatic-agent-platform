@@ -7,7 +7,7 @@ import {
   isInternalNetworkUrl,
   parseSafeOutboundUrl,
   sanitizeUrlForTelemetry,
-} from "../../../../../src/platform/control-plane/iam/outbound-url-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/outbound-url-policy.js";
 
 test("isBlockedOutboundHostname blocks localhost", () => {
   assert.equal(isBlockedOutboundHostname("localhost"), true);

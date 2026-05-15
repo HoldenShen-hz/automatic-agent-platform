@@ -16,7 +16,7 @@ import {
   type SkillExecutionPolicy,
   type SkillLifecycle,
 } from "../../../src/platform/five-plane-execution/tool-executor/skill-governance-service.js";
-import type { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createMockStore(): AuthoritativeTaskStore {
   const connection = {

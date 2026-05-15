@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { FailurePatternMiner } from "../../../../../../src/platform/orchestration/oapeflir/learn/failure-pattern-miner.js";
+import { FailurePatternMiner } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/failure-pattern-miner.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {

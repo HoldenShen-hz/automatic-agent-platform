@@ -1,27 +1,27 @@
 import { join } from "node:path";
 
-import { ApiAuthService } from "../../src/platform/interface/api/api-auth-service.js";
-import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
-import { HttpApiServer } from "../../src/platform/interface/api/http-api-server.js";
-import { MissionControlService } from "../../src/platform/interface/api/mission-control-service.js";
-import { GatewayTargetDirectoryService } from "../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
+import { ApiAuthService } from "../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { HttpApiServer } from "../../src/platform/five-plane-interface/api/http-api-server.js";
+import { MissionControlService } from "../../src/platform/five-plane-interface/api/mission-control-service.js";
+import { GatewayTargetDirectoryService } from "../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 import { HealthService } from "../../src/platform/shared/observability/health-service.js";
 import { InspectService } from "../../src/platform/shared/observability/inspect-service.js";
 import { MetricsService } from "../../src/platform/shared/observability/metrics-service.js";
 import { PrometheusMetricsExporter } from "../../src/platform/shared/observability/prometheus-metrics-exporter.js";
-import { HumanTakeoverService } from "../../src/platform/control-plane/incident-control/human-takeover-service.js";
+import { HumanTakeoverService } from "../../src/platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 import { BillingService } from "../../src/scale-ecosystem/marketplace/billing-service.js";
 import { PerceptionService } from "../../src/scale-ecosystem/marketplace/perception-service.js";
 import { PMF_EVALUATED_AT, seedPmfValidationDataset } from "./pmf.js";
 import { PmfValidationService } from "../../src/scale-ecosystem/marketplace/pmf-validation-service.js";
-import { runSingleTaskExecution } from "../../src/platform/execution/execution-engine/single-task-execution.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite-database.js";
-import { ArtifactPlaneService } from "../../src/platform/state-evidence/artifacts/artifact-plane-service.js";
+import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { ArtifactPlaneService } from "../../src/platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";
 import { DomainRegistryService } from "../../src/domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../src/domains/registry/plugin-spi-registry.js";
 import type { RetrieverKnowledgeResult } from "../../src/domains/registry/plugin-spi.js";
-import { KnowledgePlaneService } from "../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+import { KnowledgePlaneService } from "../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { seedBillingDataset } from "./billing.js";
 import { seedPerceptionDataset } from "./perception.js";
 

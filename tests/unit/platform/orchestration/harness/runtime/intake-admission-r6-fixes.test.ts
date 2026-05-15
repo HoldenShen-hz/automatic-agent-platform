@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IntakeAdmissionService } from "../../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
+import { IntakeAdmissionService } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { createPrincipalRef } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
 
 function createRiskPreview(input: { riskClass: "low" | "medium" | "high" | "critical"; reasons: readonly string[] }) {

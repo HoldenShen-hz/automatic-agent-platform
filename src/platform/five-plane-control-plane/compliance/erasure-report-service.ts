@@ -30,8 +30,8 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError, StorageError } from "../../contracts/errors.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ComplianceStore } from "./types.js";
 import type { ErasureRequest } from "./erasure-request-service.js";
 

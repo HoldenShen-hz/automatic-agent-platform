@@ -1,8 +1,8 @@
 import type { DurableHarnessService } from "./durable/durable-harness-service.js";
 import type { HarnessRun, HarnessRuntimeService, HarnessRunRuntimeState } from "./index.js";
 import { HarnessLoopController } from "./loop/index.js";
-import { TypedEventBusPublisher, type TypedEventPublisher } from "../../state-evidence/events/typed-event-publisher.js";
-import type { TypedEventBus } from "../../state-evidence/events/typed-event-bus.js";
+import { TypedEventBusPublisher, type TypedEventPublisher } from "../../five-plane-state-evidence/events/typed-event-publisher.js";
+import type { TypedEventBus } from "../../five-plane-state-evidence/events/typed-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type HarnessFailureType =
@@ -61,7 +61,7 @@ export class RecoveryController {
       replanCount: run.loopMetrics?.replanCount ?? 0,
       retryAttempt: run.sleepLease?.retryAttempt ?? 0,
       totalCost: run.loopMetrics?.totalCost ?? 0,
-      lastRetryAt: run.sleepLease?.createdAt ? new Date(run.sleepLease.createdAt).getTime() : Date.now(),
+      lastRetryAt: run.sleepLease?.createdAt ? new Date(run.sleepLease.createdAt).getTime() : 0,
     });
   }
 
@@ -188,10 +188,6 @@ export class RecoveryController {
       }
 
       case "tool_timeout": {
-        if (!this.shouldUseBackoffRecovery(run)) {
-          this.durableService.persist(recovering);
-          return recovering;
-        }
         // R18-16 fix: consult LoopController for retry/replan decision per §45.11
         // Node-level retry should go through LoopController's guard evaluation
         const loop = this.getLoopController(run as HarnessRunRuntimeState);

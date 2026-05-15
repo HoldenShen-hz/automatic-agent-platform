@@ -14,7 +14,7 @@ import {
   type ComplexityPath,
   type ComplexityRouteResult,
   type ComplexityRouterConfig,
-} from "../../../../../src/platform/execution/execution-engine/complexity-router.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
 test("complexity router: short input routes to passthrough", () => {
   const result = routeComplexity("Hello");

@@ -7,7 +7,7 @@ import {
   TransitionService,
   executeToolCall,
   resetToolRegistry,
-} from "../../../../src/platform/execution/index.js";
+} from "../../../../src/platform/five-plane-execution/index.js";
 
 test("execution root barrel exposes canonical execution plane services", () => {
   assert.equal(typeof executeToolCall, "function");

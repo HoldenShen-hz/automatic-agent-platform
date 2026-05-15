@@ -5,6 +5,7 @@
  * retry intervals, escalation thresholds, and maximum recovery attempts.
  */
 
+import { FIVE_SECONDS_MS, MS_PER_SECOND } from "../../contracts/constants/time.js";
 import type { RecoverySuggestedAction } from "./runtime-recovery-service.js";
 
 /**
@@ -61,13 +62,13 @@ export function createRecoveryCadence(config: {
       {
         phase: "backoff_retry",
         maxAttempts: Math.max(0, config.retryNewTicketMaxAttempts - config.resumeSameWorkerMaxAttempts),
-        intervalMs: 1000,
+        intervalMs: MS_PER_SECOND,
         action: "retry_new_ticket",
       },
       {
         phase: "dead_letter",
         maxAttempts: config.moveToDeadLetterMinAttempts - config.retryNewTicketMaxAttempts,
-        intervalMs: 5000,
+        intervalMs: FIVE_SECONDS_MS,
         action: "move_dead_letter",
       },
       {

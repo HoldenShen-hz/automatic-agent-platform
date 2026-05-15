@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkerRegistryService, type WorkerRegistryHeartbeatInput } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { WorkerRegistryService, type WorkerRegistryHeartbeatInput } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import {
   computeWorkerLoadScore,
   summarizeWorkerLoadSkew,
   type WorkerLoadSignal,
-} from "../../../../../src/platform/execution/worker-pool/worker-load-balancing.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/worker-load-balancing.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

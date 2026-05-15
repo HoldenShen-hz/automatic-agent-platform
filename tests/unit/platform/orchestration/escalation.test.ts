@@ -6,7 +6,7 @@ import {
   EscalationRequest,
   EscalationRiskLevel,
   EscalationStage,
-} from "../../../../src/platform/orchestration/escalation/index.js";
+} from "../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
 // Helper to create a minimal valid request
 function createRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {

@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkerRegistryService, type WorkerRegistryHeartbeatInput } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import type { AuthoritativeTaskStore, WorkerSnapshotRecord } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { WorkerRegistryService, type WorkerRegistryHeartbeatInput } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import type { AuthoritativeTaskStore, WorkerSnapshotRecord } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerPlacement, WorkerIsolationLevel } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

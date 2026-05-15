@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   Phase1aStore,
   AuthoritativeTaskStore,
-} from "../../../../../src/platform/state-evidence/truth/phase1a-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/phase1a-store.js";
 
 test("Phase1aStore is the same as AuthoritativeTaskStore", () => {
   assert.equal(Phase1aStore, AuthoritativeTaskStore);

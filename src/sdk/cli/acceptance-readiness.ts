@@ -1,10 +1,10 @@
 import { dirname } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadAcceptanceReadinessCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
-import { AcceptanceReadinessService } from "../../platform/control-plane/incident-control/acceptance-readiness-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
+import { loadAcceptanceReadinessCliEnv } from "../../platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { AcceptanceReadinessService } from "../../platform/five-plane-control-plane/incident-control/acceptance-readiness-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 
 const envConfig = loadAcceptanceReadinessCliEnv();
 

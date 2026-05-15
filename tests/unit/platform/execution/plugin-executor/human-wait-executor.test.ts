@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HumanWaitExecutor } from "../../../../../src/platform/execution/plugin-executor/human-wait-executor.js";
+import { HumanWaitExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/human-wait-executor.js";
 
 test("HumanWaitExecutor creates pending approvals as a formal execution result", () => {
   const executor = new HumanWaitExecutor({

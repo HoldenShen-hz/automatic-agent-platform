@@ -13,8 +13,8 @@
  */
 
 import { globalMiddlewareChain, type WrapModelCallHook, type MiddlewareContext } from "./agent-middleware-chain.js";
-import { createUnifiedChatProvider, type ChatCompletionRequest } from "../../model-gateway/provider-registry/unified-chat-provider.js";
-import type { ModelProfileMetadata } from "../../control-plane/config-center/model-metadata-registry.js";
+import { createUnifiedChatProvider, type ChatCompletionRequest, type ChatMessage, type UnifiedProviderConfig } from "../../model-gateway/provider-registry/unified-chat-provider.js";
+import type { ModelProfileMetadata } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 import { ProviderError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { CallGovernance } from "./call-governance.js";

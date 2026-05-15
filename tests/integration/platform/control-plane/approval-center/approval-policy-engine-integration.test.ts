@@ -8,13 +8,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalPolicyEngine } from "../../../../../src/platform/control-plane/approval-center/approval-policy-engine/rule-engine.js";
+import { ApprovalPolicyEngine } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/rule-engine.js";
 import {
   DEFAULT_APPROVAL_POLICY_BUNDLE,
   type ApprovalPolicyBundle,
   type ApprovalPolicyContext,
   type ApprovalPolicyRule,
-} from "../../../../../src/platform/control-plane/approval-center/approval-policy-engine/types.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 function createTestBundle(rules: ApprovalPolicyRule[]): ApprovalPolicyBundle {

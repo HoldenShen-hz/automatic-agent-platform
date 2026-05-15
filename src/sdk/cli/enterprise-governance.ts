@@ -21,10 +21,10 @@
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
-import { loadEnterpriseGovernanceCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { EnterpriseGovernanceService } from "../../platform/control-plane/incident-control/enterprise-governance-service.js";
-import { OperationsGovernanceService } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import { loadEnterpriseGovernanceCliEnv } from "../../platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { EnterpriseGovernanceService } from "../../platform/five-plane-control-plane/incident-control/enterprise-governance-service.js";
+import { OperationsGovernanceService } from "../../platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 
 /**
  * Main entry point for the enterprise governance CLI.

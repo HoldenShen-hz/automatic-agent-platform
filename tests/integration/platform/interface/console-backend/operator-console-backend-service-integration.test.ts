@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OperatorConsoleBackendService } from "../../../../../src/platform/interface/console-backend/index.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("OperatorConsoleBackendService builds snapshot with no data sources", () => {
   const service = new OperatorConsoleBackendService({});

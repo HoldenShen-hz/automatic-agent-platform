@@ -16,7 +16,7 @@ import {
   sanitizeConfigBundleRef,
   buildMarkdown,
   buildExecutionMarkdown,
-} from "../../../src/platform/control-plane/incident-control/release-pipeline-support.js";
+} from "../../../src/platform/five-plane-control-plane/incident-control/release-pipeline-support.js";
 
 test("sanitizeVersion accepts valid semver with v prefix", () => {
   assert.equal(sanitizeVersion("v1.2.3"), "v1.2.3");

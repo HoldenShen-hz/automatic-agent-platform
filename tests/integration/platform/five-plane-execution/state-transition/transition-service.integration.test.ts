@@ -11,7 +11,7 @@ import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { TransitionService } from "../../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { createRuntimeLifecycleRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("state-transition: TransitionService updates task status with real store", () => {

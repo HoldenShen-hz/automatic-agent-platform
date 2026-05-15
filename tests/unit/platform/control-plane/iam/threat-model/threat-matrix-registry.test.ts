@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ThreatMatrixRegistry, defaultThreatMatrixRegistry } from "../../../../../../src/platform/control-plane/iam/threat-model/index.js";
-import type { ThreatMatrix, ThreatEntry, StrideCategory } from "../../../../../../src/platform/control-plane/iam/threat-model/stride-framework.js";
+import { ThreatMatrixRegistry, defaultThreatMatrixRegistry } from "../../../../../../src/platform/five-plane-control-plane/iam/threat-model/index.js";
+import type { ThreatMatrix, ThreatEntry, StrideCategory } from "../../../../../../src/platform/five-plane-control-plane/iam/threat-model/stride-framework.js";
 
 test("ThreatMatrixRegistry can be instantiated with no arguments", () => {
   const registry = new ThreatMatrixRegistry();

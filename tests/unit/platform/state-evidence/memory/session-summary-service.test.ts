@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SessionSummaryService, type SessionSummaryInput } from "../../../../../src/platform/state-evidence/memory/session-summary-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SessionSummaryService, type SessionSummaryInput } from "../../../../../src/platform/five-plane-state-evidence/memory/session-summary-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SessionSummaryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockStore(): AuthoritativeTaskStore {

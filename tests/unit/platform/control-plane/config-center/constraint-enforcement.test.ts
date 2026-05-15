@@ -12,7 +12,7 @@ import {
   type ConfigConstraintLayer,
   type HighRiskConfigObject,
   type OverrideConstraintRule,
-} from "../../../../../src/platform/control-plane/config-center/config-override-governance.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-override-governance.js";
 
 /**
  * §36 Constraint Enforcement

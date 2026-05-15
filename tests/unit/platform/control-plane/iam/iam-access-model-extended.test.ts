@@ -19,7 +19,7 @@ import {
   type PlatformRole,
   type PlatformCapability,
   type AuthorizationAction,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 // ============================================================================
 // Role Hierarchy Tests

@@ -1,6 +1,6 @@
 /**
  * Extended tests for HTTP Server Schema parsing functions
- * Tests src/platform/interface/api/http-server/schemas.ts - untested parse functions
+ * Tests src/platform/five-plane-interface/api/http-server/schemas.ts - untested parse functions
  */
 
 import assert from "node:assert/strict";
@@ -14,7 +14,7 @@ import {
   parseCreateTaskPayload,
   parseUpdateTaskPayload,
   parseCreateWebhookEndpointPayload,
-} from "../../../../../src/platform/interface/api/http-server/schemas.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/schemas.js";
 
 test("parseGatewayWebhookPayload parses valid record payload", () => {
   const result = parseGatewayWebhookPayload({

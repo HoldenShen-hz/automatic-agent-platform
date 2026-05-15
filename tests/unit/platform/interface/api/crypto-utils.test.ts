@@ -5,7 +5,7 @@ import {
   rsaAlgToNode,
   ecAlgToNode,
   hmacAlgToNode,
-} from "../../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
+} from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/crypto-utils.js";
 
 test("rsaAlgToNode returns RSA-SHA256 for RS256", () => {
   assert.equal(rsaAlgToNode("RS256"), "RSA-SHA256");

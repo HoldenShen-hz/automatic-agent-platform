@@ -5,8 +5,8 @@
 import type { SQLInputValue } from "node:sqlite";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { type OutboxInsertPayload, type OutboxRecord, OutboxStatus } from "./outbox-types.js";
-import type { SqliteConnection } from "../../state-evidence/truth/sqlite/query-helper.js";
-import { execute, queryAll, queryOne } from "../../state-evidence/truth/sqlite/query-helper.js";
+import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
+import { execute, queryAll, queryOne } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 
 const OUTBOX_COLS = `id,
   aggregate_type AS aggregateType,

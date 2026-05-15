@@ -5,8 +5,8 @@ import {
   sanitizeMcpToolCallResult,
   validateMcpToolDefinition,
   validateMcpToolRuntime,
-} from "../../../../../src/platform/execution/tool-executor/mcp-tool-guard.js";
-import type { ToolExecutionMetadata } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/mcp-tool-guard.js";
+import type { ToolExecutionMetadata } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 const MCP_METADATA: ToolExecutionMetadata = {
   toolName: "mcp_github_list_issues",

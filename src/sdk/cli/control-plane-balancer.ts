@@ -21,8 +21,8 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadControlPlaneBalancerCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
-import { CoordinatorLoadBalancingService } from "../../platform/execution/ha/coordinator-load-balancing-service.js";
+import { loadControlPlaneBalancerCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
+import { CoordinatorLoadBalancingService } from "../../platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 
 const envConfig = loadControlPlaneBalancerCliEnv();
 const result = withCliStorage((storage) => {

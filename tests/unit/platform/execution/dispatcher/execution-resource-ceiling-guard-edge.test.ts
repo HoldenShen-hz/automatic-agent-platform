@@ -5,7 +5,7 @@ import {
   ExecutionResourceCeilingGuard,
   type ExecutionResourceCeilingOptions,
   type ExecutionResourceUsageSample,
-} from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 // ---------------------------------------------------------------------------
 // Additional edge cases for ExecutionResourceCeilingGuard

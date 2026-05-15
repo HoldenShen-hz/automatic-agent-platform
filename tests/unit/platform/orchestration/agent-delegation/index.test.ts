@@ -14,7 +14,7 @@ import {
   type DelegationResult,
   type DelegationStatus,
   type DelegationOptions,
-} from "../../../../../src/platform/orchestration/agent-delegation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 test("DelegationManagerService is exported as function", () => {
   assert.equal(typeof DelegationManagerService, "function");

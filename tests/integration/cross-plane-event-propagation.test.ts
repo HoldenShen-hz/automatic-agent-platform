@@ -24,10 +24,10 @@ import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
-import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { DurableEventBus } from "../../src/platform/state-evidence/events/durable-event-bus.js";
-import { TypedEventBus } from "../../src/platform/state-evidence/events/typed-event-bus.js";
+import { runMultiStepOrchestration } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { DurableEventBus } from "../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { TypedEventBus } from "../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 

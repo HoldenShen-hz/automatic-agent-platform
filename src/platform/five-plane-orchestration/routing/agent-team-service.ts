@@ -40,6 +40,13 @@ export interface AgentTeamLane {
   modelTier: AgentModelTier;
   responsibilities: string[];
   allowedTools: string[];
+  depth?: number;
+  budgetRemaining?: number;
+  correlationId?: string;
+  parentRunId?: string;
+  domainId?: string;
+  riskLevel?: number;
+  traceId?: string;
 }
 
 export interface AgentTeamPlan {
@@ -55,6 +62,10 @@ export interface AgentTeamPlanInput {
   taskId: string;
   workflow: PlannedWorkflow;
   riskLevel?: "low" | "medium" | "high";
+  parentRunId?: string;
+  parentDepth?: number;
+  parentAllowedTools?: readonly string[];
+  budget?: number;
 }
 
 function selectModelTier(
@@ -78,6 +89,18 @@ export class AgentTeamService {
   public buildPlan(input: AgentTeamPlanInput): AgentTeamPlan {
     const riskLevel = input.riskLevel ?? "medium";
     const workflow = input.workflow;
+    validateDelegationContext(input);
+    const correlationId = `corr:${workflow.workflow.workflowId}:${input.taskId}`;
+    const traceId = `trace:${workflow.workflow.workflowId}:${input.taskId}`;
+    const laneInvariant = {
+      ...(input.parentDepth != null ? { depth: input.parentDepth + 1 } : {}),
+      ...(input.budget != null ? { budgetRemaining: input.budget } : {}),
+      ...(input.parentRunId != null ? { parentRunId: input.parentRunId } : {}),
+      correlationId,
+      domainId: workflow.workflow.workflowId,
+      riskLevel: riskLevelToNumeric(riskLevel),
+      traceId,
+    };
     const buildLanes: AgentTeamLane[] = workflow.executionSteps.map((step) => ({
       laneId: `lane:${step.stepId}`,
       stage: "build",
@@ -94,6 +117,7 @@ export class AgentTeamService {
         "grep",
         ...(step.compensationModel != null ? ["apply_patch"] : []),
       ]),
+      ...laneInvariant,
     }));
 
     const lanes: AgentTeamLane[] = [
@@ -108,6 +132,7 @@ export class AgentTeamService {
           "Freeze allowed execution scope",
         ],
         allowedTools: ["read", "glob", "grep", "repo_map"],
+        ...laneInvariant,
       },
       ...buildLanes,
       {
@@ -121,6 +146,7 @@ export class AgentTeamService {
           "Reject unsafe or out-of-scope changes",
         ],
         allowedTools: ["read", "grep", "repo_map", "diagnostics"],
+        ...laneInvariant,
       },
       {
         laneId: "lane:validator",
@@ -133,6 +159,7 @@ export class AgentTeamService {
           "Produce validation decision",
         ],
         allowedTools: ["diagnostics", "read"],
+        ...laneInvariant,
       },
       {
         laneId: "lane:repair",
@@ -145,6 +172,7 @@ export class AgentTeamService {
           "Consume structured failure evidence package",
         ],
         allowedTools: ["read", "apply_patch", "diagnostics"],
+        ...laneInvariant,
       },
       {
         laneId: "lane:release",
@@ -156,12 +184,13 @@ export class AgentTeamService {
           "Approve release or escalate to human review",
         ],
         allowedTools: ["read"],
+        ...laneInvariant,
       },
     ];
 
     // R9-13 fix: Compute adaptive execution loop based on risk level
     // Low-risk changes go through minimal stages, high-risk go through full pipeline
-    const executionLoop = computeAdaptiveExecutionLoop(riskLevel);
+    const executionLoop = computeAdaptiveExecutionLoop(riskLevel, workflow.executionSteps.length);
 
     return {
       teamId: `team:${workflow.workflow.workflowId}:${input.taskId}`,
@@ -178,7 +207,7 @@ export class AgentTeamService {
  * R9-13 fix: Computes adaptive execution loop based on risk level.
  * Low-risk changes use minimal stages, high-risk use full validation pipeline.
  */
-function computeAdaptiveExecutionLoop(riskLevel: "low" | "medium" | "high"): AgentTeamStage[] {
+function computeAdaptiveExecutionLoop(riskLevel: "low" | "medium" | "high", stepCount = 1): AgentTeamStage[] {
   switch (riskLevel) {
     case "low":
       // Minimal loop for low-risk: skip review/repair stages
@@ -188,6 +217,48 @@ function computeAdaptiveExecutionLoop(riskLevel: "low" | "medium" | "high"): Age
       return ["plan", "build", "review", "validate", "release"];
     case "high":
       // Full loop with repair cycle for high-risk changes
-      return ["plan", "build", "review", "validate", "repair", "validate", "release"];
+      return [
+        "plan",
+        "build",
+        "review",
+        "validate",
+        "repair",
+        "validate",
+        ...Array.from({ length: Math.max(0, Math.ceil((stepCount - 1) / 2)) }, () => ["review", "validate"] as const).flat(),
+        "release",
+      ];
+  }
+}
+
+function validateDelegationContext(input: AgentTeamPlanInput): void {
+  if (input.parentRunId == null) {
+    return;
+  }
+  if (input.parentDepth == null) {
+    throw new Error("acp.parent_depth_required");
+  }
+  if (input.parentDepth >= 3) {
+    throw new Error("delegation.depth_exceeded");
+  }
+  if (input.parentAllowedTools == null) {
+    throw new Error("acp.permission_not_subset");
+  }
+  const parentTools = new Set(input.parentAllowedTools);
+  const requiredTools = new Set(["read", "glob", "grep", "repo_map", "apply_patch", "diagnostics"]);
+  for (const tool of requiredTools) {
+    if (!parentTools.has(tool)) {
+      throw new Error("acp.permission_not_subset");
+    }
+  }
+}
+
+function riskLevelToNumeric(riskLevel: "low" | "medium" | "high"): number {
+  switch (riskLevel) {
+    case "low":
+      return 25;
+    case "medium":
+      return 50;
+    case "high":
+      return 75;
   }
 }

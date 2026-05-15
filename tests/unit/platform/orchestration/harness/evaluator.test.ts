@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HARNESS_EVALUATOR_ROLE } from "../../../../../src/platform/orchestration/harness/evaluator/index.js";
+import { HARNESS_EVALUATOR_ROLE } from "../../../../../src/platform/five-plane-orchestration/harness/evaluator/index.js";
 
 test("HARNESS_EVALUATOR_ROLE constant is exported and has correct value", () => {
   assert.equal(HARNESS_EVALUATOR_ROLE, "evaluator");

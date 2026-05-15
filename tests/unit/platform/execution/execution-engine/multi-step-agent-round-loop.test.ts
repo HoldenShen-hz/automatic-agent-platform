@@ -11,8 +11,8 @@ import {
   type AgentRoundLoopResult,
   type ToolCallResult,
   type LlmModelCallResult,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-agent-round-loop.js";
-import { resetModelCallProvider, initializeModelCallProvider } from "../../../../../src/platform/execution/execution-engine/model-call-provider.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js";
+import { resetModelCallProvider, initializeModelCallProvider } from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 
 // ---------------------------------------------------------------------------
 // parseStepOutput

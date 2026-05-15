@@ -12,7 +12,7 @@ export interface DistributedLockAdapter {
 }
 
 export interface PostgresSqlDriver {
-  <T = any>(strings: TemplateStringsArray, ...values: any[]): Array<{ [key: string]: any }>;
+  <T extends Record<string, unknown> = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]): T[];
   unsafe(sql: string): (params: unknown[]) => unknown;
   end(): Promise<void>;
   transaction<T>(work: () => Promise<T>): Promise<T>;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { OapeflirLoopService } from "../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
+import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
 
 test("OapeflirLoopService closes OAPEFLIR shadow loop for repairable execution", async () => {
   const service = new OapeflirLoopService();

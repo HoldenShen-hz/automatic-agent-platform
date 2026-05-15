@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runMultiStepOrchestration } from "../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 import { VcrFixtureStore } from "../../../../src/platform/shared/stability/vcr-replay-fixture.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 

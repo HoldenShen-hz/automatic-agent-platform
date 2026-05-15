@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PermissionSet } from "../../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
-import { ACPInvariantEnforcer, CollaborationProtocolService, type ACPMessage, type InvariantContext } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/index.js";
+import type { PermissionSet } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
+import { ACPInvariantEnforcer, CollaborationProtocolService, type ACPMessage, type InvariantContext } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/index.js";
 
 const parentPermissions: PermissionSet = {
   resources: ["repo", "kb", "artifact"],

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Approval Center
  *
@@ -14,9 +13,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
-import { MultiPartyApprovalService } from "../../../../src/platform/control-plane/approval-center/multi-party-approval-service.js";
-import { QuorumCalculator } from "../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { MultiPartyApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.js";
+import { QuorumCalculator } from "../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 function seedApprovalTarget(

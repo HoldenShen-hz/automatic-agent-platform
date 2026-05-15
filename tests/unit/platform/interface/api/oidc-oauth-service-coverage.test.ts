@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { OidcOAuthService } from "../../../../../src/platform/interface/api/oidc-oauth-service.js";
-import type { OidcProvider, JwksKey } from "../../../../../src/platform/interface/api/oidc-oauth/types.js";
+import { OidcOAuthService } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth-service.js";
+import type { OidcProvider, JwksKey } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/types.js";
 
 // Mock fetch implementation
 function createMockFetch(response: unknown, ok = true): typeof fetch {

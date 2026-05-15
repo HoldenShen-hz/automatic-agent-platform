@@ -18,7 +18,7 @@ import {
   type RetryConfig,
   type CallPolicy,
   type CallResult,
-} from "../../../../../src/platform/execution/execution-engine/call-governance.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js";
 
 // ---------------------------------------------------------------------------
 // CallRateLimiter - additional edge cases

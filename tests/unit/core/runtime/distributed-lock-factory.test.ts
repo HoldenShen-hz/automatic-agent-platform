@@ -10,7 +10,7 @@ import test from "node:test";
 
 import { createLockAdapter } from "../../../../src/core/runtime/distributed-lock-service.js";
 import { LockingError } from "../../../../src/platform/contracts/errors.js";
-import { DISTRIBUTED_LOCKS_DDL } from "../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { DISTRIBUTED_LOCKS_DDL } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 test("createLockAdapter creates sqlite adapter with db", () => {
   try {

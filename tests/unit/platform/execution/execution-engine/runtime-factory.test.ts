@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -14,7 +13,7 @@ import {
   ExecutionPriorityPreemptionServiceAsync,
   type RuntimeServices,
   type AnyStorageBackendHandle,
-} from "../../../../../src/platform/execution/execution-engine/runtime-factory.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js";
 
 // ---------------------------------------------------------------------------
 // Type exports
@@ -265,13 +264,13 @@ test("RuntimeServices interface has all required service properties", () => {
   // Verify that a complete RuntimeServices object can be constructed
   // with all required properties
   const services: RuntimeServices = {
-    ha: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").HaCoordinatorServiceAsync,
-    leases: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionLeaseServiceAsync,
-    hotUpgrade: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").HotUpgradeServiceAsync,
-    dispatch: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionDispatchServiceAsync,
-    handshake: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionWorkerHandshakeServiceAsync,
-    writeback: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionWorkerWritebackServiceAsync,
-    preemption: null as unknown as import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionPriorityPreemptionServiceAsync,
+    ha: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HaCoordinatorServiceAsync,
+    leases: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionLeaseServiceAsync,
+    hotUpgrade: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HotUpgradeServiceAsync,
+    dispatch: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionDispatchServiceAsync,
+    handshake: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionWorkerHandshakeServiceAsync,
+    writeback: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionWorkerWritebackServiceAsync,
+    preemption: null as unknown as import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionPriorityPreemptionServiceAsync,
   };
 
   // Verify all properties exist
@@ -346,17 +345,17 @@ test("ExecutionPriorityPreemptionServiceAsync is a constructor function", () => 
 
 test("HaCoordinatorServiceAsync type is re-exported from runtime-factory", () => {
   // The type should be available for import
-  const typeName: import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").HaCoordinatorServiceAsync = {} as never;
+  const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HaCoordinatorServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
 
 test("ExecutionLeaseServiceAsync type is re-exported from runtime-factory", () => {
-  const typeName: import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").ExecutionLeaseServiceAsync = {} as never;
+  const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionLeaseServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
 
 test("HotUpgradeServiceAsync type is re-exported from runtime-factory", () => {
-  const typeName: import("../../../../../src/platform/execution/execution-engine/runtime-factory.js").HotUpgradeServiceAsync = {} as never;
+  const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HotUpgradeServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
 

@@ -8,7 +8,7 @@ import {
   type ValidationReport,
   type CheckResult,
   type ValidationDecision,
-} from "../../../../../src/platform/execution/recovery/validation-report.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
 
 test("createValidationReport returns pass decision when all checks pass", () => {
   const checks: readonly CheckResult[] = [

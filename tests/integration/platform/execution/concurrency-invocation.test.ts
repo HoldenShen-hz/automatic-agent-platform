@@ -17,13 +17,13 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { runConcurrentInvariant, runConcurrentStateModification, runCriticalSectionTest } from "../../../helpers/concurrent-runner.js";
-import { SqliteQueueAdapter } from "../../../../src/platform/execution/queue/sqlite-queue-adapter.js";
-import { QUEUE_JOBS_DDL } from "../../../../src/platform/execution/queue/queue-adapter-types.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { SqliteLockAdapter } from "../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
+import { SqliteQueueAdapter } from "../../../../src/platform/five-plane-execution/queue/sqlite-queue-adapter.js";
+import { QUEUE_JOBS_DDL } from "../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { createRuntimeLifecycleRepository } from "../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 

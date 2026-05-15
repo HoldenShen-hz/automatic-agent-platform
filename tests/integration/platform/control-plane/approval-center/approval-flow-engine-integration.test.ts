@@ -8,10 +8,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalFlowEngine, FlowType, FlowStatus } from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
-import { VoteType } from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+import { ApprovalFlowEngine, FlowType, FlowStatus } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
-import type { ApprovalRequest } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalRequest } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 function createTestApprovalRequest(approvalId: string, taskId: string): ApprovalRequest {
   return {

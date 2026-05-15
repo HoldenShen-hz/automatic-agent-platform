@@ -1,6 +1,6 @@
 /**
  * Unit tests for Scheduler Task Queue additional coverage
- * Tests src/platform/interface/scheduler/task-queue.ts additional scenarios
+ * Tests src/platform/five-plane-interface/scheduler/task-queue.ts additional scenarios
  */
 
 import assert from "node:assert/strict";

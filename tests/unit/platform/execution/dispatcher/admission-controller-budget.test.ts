@@ -6,8 +6,8 @@ import test from "node:test";
  * Verifies that the admission controller correctly rejects tasks that exceed budget
  */
 
-import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../../../../src/platform/execution/dispatcher/admission-controller.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // ---------------------------------------------------------------------------
 // Helper: Mock AuthoritativeTaskStore

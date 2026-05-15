@@ -22,7 +22,7 @@ import {
   type Tier1AuditIntegrityVerificationRow,
   type TaskBoardItem,
   type ExecutionAuthoritativeView,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 test("resolveTenantScope returns undefined when tenantId is undefined", () => {
   const result = resolveTenantScope(undefined);

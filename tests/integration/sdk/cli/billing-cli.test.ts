@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 

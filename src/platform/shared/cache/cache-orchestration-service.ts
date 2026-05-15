@@ -9,7 +9,7 @@ import {
   partitionPromptForCache,
   type PromptPartitionInput,
   type PromptPartitionResult,
-} from "../../execution/execution-engine/prompt-partition-cache.js";
+} from "../../five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 export interface CacheOrchestrationServiceOptions {
   cache?: CacheFacade;

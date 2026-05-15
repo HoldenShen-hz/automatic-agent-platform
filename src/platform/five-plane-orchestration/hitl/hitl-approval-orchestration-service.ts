@@ -2,7 +2,7 @@ import {
   ApprovalService,
   type ApprovalDecision,
   type ApprovalRequest,
-} from "../../control-plane/approval-center/approval-service.js";
+} from "../../five-plane-control-plane/approval-center/approval-service.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { HITLExplainabilityService, type DecisionExplanation } from "./hitl-explainability-service.js";
 import { validateHitlModeRequest, type HitlMode } from "./hitl-modes.js";

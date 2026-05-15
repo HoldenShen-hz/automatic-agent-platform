@@ -57,6 +57,9 @@ test("UnifiedChatProvider.createChatCompletion throws for unconfigured provider"
     model: "claude-haiku-3-5",
     messages: [{ role: "user", content: "hello" }],
     maxTokens: 100,
+    traceId: "test-trace",
+    tenantId: "test-tenant",
+    costTag: "test",
   };
 
   await assert.rejects(
@@ -72,6 +75,9 @@ test("UnifiedChatProvider.createChatCompletion throws for unconfigured openai mo
     model: "gpt-4o",
     messages: [{ role: "user", content: "hello" }],
     maxTokens: 100,
+    traceId: "test-trace",
+    tenantId: "test-tenant",
+    costTag: "test",
   };
 
   await assert.rejects(

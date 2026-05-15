@@ -9,7 +9,7 @@ import {
   type AgentRoundLoopInput,
   type AgentRoundLoopResult,
   type ToolCallResult,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-agent-round-loop.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js";
 
 test("executeAgentRoundLoop returns fallback when no model provider", async () => {
   const input: AgentRoundLoopInput = {

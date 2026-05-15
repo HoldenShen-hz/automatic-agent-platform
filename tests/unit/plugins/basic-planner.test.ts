@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createBasicPlannerPlugin } from "../../../src/plugins/planners/basic-planner.js";
-import type { UnifiedAssessment } from "../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
+import type { UnifiedAssessment } from "../../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 
 function createMinimalTask(assessment: Partial<UnifiedAssessment> = {}) {
   return {

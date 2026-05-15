@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as StartupModule from "../../../../../src/platform/execution/startup/index.js";
+import * as StartupModule from "../../../../../src/platform/five-plane-execution/startup/index.js";
 import type {
   StartupConsistencyCheckerOptions,
   StartupConsistencyReport,
@@ -13,7 +13,7 @@ import type {
   ConsistencySeverity,
   StartupReportStatus,
   RepairActionType,
-} from "../../../../../src/platform/execution/startup/index.js";
+} from "../../../../../src/platform/five-plane-execution/startup/index.js";
 
 type StartupIndexTypeExports = [
   StartupConsistencyCheckerOptions,

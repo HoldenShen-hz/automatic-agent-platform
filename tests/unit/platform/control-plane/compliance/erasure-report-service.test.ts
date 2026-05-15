@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ErasureReportService } from "../../../../../src/platform/control-plane/compliance/erasure-report-service.js";
-import type { ErasureReport, ErasureSubject, ReportEvidenceRef } from "../../../../../src/platform/control-plane/compliance/erasure-report-service.js";
-import type { ErasureRequest } from "../../../../../src/platform/control-plane/compliance/erasure-request-service.js";
-import type { DataEncryptionKey } from "../../../../../src/platform/control-plane/compliance/data-encryption-key-service.js";
-import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
+import { ErasureReportService } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-report-service.js";
+import type { ErasureReport, ErasureSubject, ReportEvidenceRef } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-report-service.js";
+import type { ErasureRequest } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-request-service.js";
+import type { DataEncryptionKey } from "../../../../../src/platform/five-plane-control-plane/compliance/data-encryption-key-service.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
 
 // Mock data
 const erasureRequests = new Map<string, ErasureRequest>();

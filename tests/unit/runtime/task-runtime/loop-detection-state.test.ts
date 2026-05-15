@@ -4,7 +4,7 @@ import {
   LoopDetectionState,
   normalizeToolInputForHash,
   hashToolCall,
-} from "../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("LoopDetectionState records tool calls and returns correct action", () => {
   const state = new LoopDetectionState({ warnThreshold: 2, escalateThreshold: 3 });

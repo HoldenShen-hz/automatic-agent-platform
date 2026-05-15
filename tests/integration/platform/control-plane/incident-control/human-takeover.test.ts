@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 
 import { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
-import { HumanTakeoverService } from "../../../../../src/platform/control-plane/incident-control/human-takeover-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { HumanTakeoverService } from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";

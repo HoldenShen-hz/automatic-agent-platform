@@ -23,22 +23,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // --- Env loaders under test ---
-import { loadInspectCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadDiagnosticsCliEnv } from "../../../../src/platform/control-plane/config-center/diagnostics-cli-env.js";
-import { loadMemoryCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadWorkerRegisterCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadWorkerHandshakeCliEnv } from "../../../../src/platform/control-plane/config-center/runtime-ops-env.js";
-import { loadBillingCliEnv } from "../../../../src/platform/control-plane/config-center/billing-env.js";
-import { loadPerceptionCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
-import { loadSkillCreatorCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadMarketplaceCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadTenantPlatformCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadEnterpriseCapabilityCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadShadowSnapshotCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadPmfCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
-import { loadEvolutionCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
-import { loadGatewayTargetsCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { loadTakeoverCliEnv } from "../../../../src/platform/control-plane/config-center/takeover-cli-env.js";
+import { loadInspectCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadDiagnosticsCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/diagnostics-cli-env.js";
+import { loadMemoryCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadWorkerRegisterCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadWorkerHandshakeCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/runtime-ops-env.js";
+import { loadBillingCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/billing-env.js";
+import { loadPerceptionCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
+import { loadSkillCreatorCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadMarketplaceCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadTenantPlatformCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadEnterpriseCapabilityCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadShadowSnapshotCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadPmfCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
+import { loadEvolutionCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
+import { loadGatewayTargetsCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadTakeoverCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/takeover-cli-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // =============================================================================

@@ -4,9 +4,9 @@ import test from "node:test";
 import {
   ImprovementCandidateRegistry,
   type RegisterImprovementCandidateInput,
-} from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
-import type { AutonomyTarget } from "../../../../../src/platform/orchestration/improve-rollout/autonomy-boundary-policy.js";
+} from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
+import type { AutonomyTarget } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/autonomy-boundary-policy.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {

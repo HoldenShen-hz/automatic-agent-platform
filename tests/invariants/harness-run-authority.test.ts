@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeEntryGuard } from "../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { RuntimeEntryGuard } from "../../src/platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 import { ValidationError } from "../../src/platform/contracts/errors.js";
 
 /**

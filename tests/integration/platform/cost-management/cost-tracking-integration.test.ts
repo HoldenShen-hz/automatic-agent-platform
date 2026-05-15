@@ -11,8 +11,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CostEstimationService } from "../../../../src/scale-ecosystem/billing/cost-estimation-service.js";
-import { CostAlertService } from "../../../../src/platform/control-plane/cost-alert/cost-alert-service.js";
-import { CostReportService } from "../../../../src/platform/interface/api/cost-report-service.js";
+import { CostAlertService } from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
+import { CostReportService } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 // ============================================================================
 // Cost Tracking and Aggregation Tests

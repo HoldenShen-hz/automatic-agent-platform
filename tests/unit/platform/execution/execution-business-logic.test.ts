@@ -10,7 +10,7 @@ import {
   routeComplexity,
   type ComplexityPath,
   type ComplexityRouterConfig,
-} from "../../../../src/platform/execution/execution-engine/complexity-router.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 import {
   createKvCachePrefixConfig,
   estimateTokens,
@@ -19,8 +19,8 @@ import {
   DEFAULT_BUDGET,
   DEFAULT_STRATEGY,
   DEFAULT_FIXED_PREFIX_TEMPLATE,
-} from "../../../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
-import { RecoveryOrchestratorService } from "../../../../src/platform/execution/ha/recovery-orchestrator-service.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
+import { RecoveryOrchestratorService } from "../../../../src/platform/five-plane-execution/ha/recovery-orchestrator-service.js";
 import type { RecoveryWorker, RecoveryReport, RecoveryCadence } from "../../../../src/platform/contracts/types/recovery-cadence.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 

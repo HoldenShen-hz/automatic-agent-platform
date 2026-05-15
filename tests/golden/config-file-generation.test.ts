@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { ConfigGovernanceService } from "../../src/platform/control-plane/config-center/config-governance-service.js";
+import { ConfigGovernanceService } from "../../src/platform/five-plane-control-plane/config-center/config-governance-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 
 test("golden: config governance service loads bundle structure", () => {

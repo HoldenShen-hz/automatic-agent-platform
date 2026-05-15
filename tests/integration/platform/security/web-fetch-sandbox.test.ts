@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createWebFetchTool } from "../../../../src/platform/execution/tool-executor/web-fetch.js";
+import { createWebFetchTool } from "../../../../src/platform/five-plane-execution/tool-executor/web-fetch.js";
 
 test("WebFetch sandbox: blocks file protocol", async () => {
   const tool = createWebFetchTool();

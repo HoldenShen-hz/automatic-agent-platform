@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteHotUpgradeRepository } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository-sqlite.js";
-import type { HotUpgradeRepository, UpgradeAuditEntry } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
-import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+import { SqliteHotUpgradeRepository } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository-sqlite.js";
+import type { HotUpgradeRepository, UpgradeAuditEntry } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
+import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 
 // Mock AuthoritativeSqlDatabase
 function createMockDb() {

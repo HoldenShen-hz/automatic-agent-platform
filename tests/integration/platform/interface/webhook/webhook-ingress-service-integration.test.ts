@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
 import { createHmac } from "node:crypto";
 
 function createWebhookTestHarness() {

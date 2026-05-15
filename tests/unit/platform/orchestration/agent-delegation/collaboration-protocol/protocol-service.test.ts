@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CollaborationProtocolService } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/protocol-service.js";
-import { ACPInvariantEnforcer } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
-import type { InvariantContext } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
-import type { ACPMessage } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/types.js";
-import type { PermissionSet } from "../../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import { CollaborationProtocolService } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/protocol-service.js";
+import { ACPInvariantEnforcer } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
+import type { InvariantContext } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
+import type { ACPMessage } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/types.js";
+import type { PermissionSet } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 const parentPermissions: PermissionSet = {
   resources: ["repo", "kb", "artifact"],

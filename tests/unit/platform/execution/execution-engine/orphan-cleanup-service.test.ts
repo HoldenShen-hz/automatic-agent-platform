@@ -7,9 +7,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OrphanCleanupService } from "../../../../../src/platform/execution/execution-engine/orphan-cleanup-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { OrphanCleanupService } from "../../../../../src/platform/five-plane-execution/execution-engine/orphan-cleanup-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
 // Mock Store

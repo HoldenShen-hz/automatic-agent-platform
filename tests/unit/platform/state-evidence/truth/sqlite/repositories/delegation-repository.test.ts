@@ -10,7 +10,7 @@ import {
   InMemoryDelegationRepository,
   InMemoryDelegationEventRepository,
   type CreateDelegationInput,
-} from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/delegation-repository.js";
+} from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 
 test("InMemoryDelegationRepository creates delegation", async () => {
   const repo = new InMemoryDelegationRepository();

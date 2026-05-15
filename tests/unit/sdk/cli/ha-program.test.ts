@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadHaProgramCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
+import { loadHaProgramCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadHaProgramCliEnv parses actions and optional artifact root", () => {

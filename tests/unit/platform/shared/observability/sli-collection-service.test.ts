@@ -6,14 +6,14 @@ import {
   SloAlertingService,
   SLO_ALERTING_DDL,
 } from "../../../../../src/platform/shared/observability/slo-alerting-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { HealthService } from "../../../../../src/platform/shared/observability/health-service.js";
 import { MetricsService } from "../../../../../src/platform/shared/observability/metrics-service.js";
 import {
   SliCollectionService,
   DEFAULT_SLO_DEFINITIONS,
 } from "../../../../../src/platform/shared/observability/sli-collection-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createHarness() {

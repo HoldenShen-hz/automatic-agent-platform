@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ImprovementCandidateRegistry, type RegisterImprovementCandidateInput } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
-import type { LearningObject } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+import { ImprovementCandidateRegistry, type RegisterImprovementCandidateInput } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
+import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 test("ImprovementCandidateRegistry registers a candidate", () => {
   const registry = new ImprovementCandidateRegistry();

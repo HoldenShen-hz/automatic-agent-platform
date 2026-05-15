@@ -6,8 +6,8 @@ import {
   LearningArtifact,
   createLearningArtifact,
   parseLearningArtifact,
-} from "../../../../../src/platform/orchestration/learn/learning-artifact-model.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+} from "../../../../../src/platform/five-plane-orchestration/learn/learning-artifact-model.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> & { learningObjectId: string }): LearningObject {
   return {

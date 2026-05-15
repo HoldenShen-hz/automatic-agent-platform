@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { detectLlmTruncation } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/truncation-detector.js";
+import { detectLlmTruncation } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/truncation-detector.js";
 
 function makeSignal(overrides: Partial<LearningSignal["evidence"]> & {
   finishReason?: string;

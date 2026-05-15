@@ -21,8 +21,8 @@ import {
   type FlowEscalationLevel,
   type VoteResult,
   type FeedbackResult,
-} from "../../../../../src/platform/control-plane/approval-center/approval-flow-types.js";
-import { EscalationReason, DelegationStatus } from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-types.js";
+import { EscalationReason, DelegationStatus } from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 
 test("ApprovalTimeoutConfig interface structure", () => {
   const config: ApprovalTimeoutConfig = {

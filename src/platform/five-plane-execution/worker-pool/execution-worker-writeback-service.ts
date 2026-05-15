@@ -24,8 +24,8 @@ import type { AgentExecutionRecord, WorkerSnapshotRecord } from "../../contracts
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ExecutionLeaseService } from "../lease/execution-lease-service.js";
 import { ExecutionResourceCeilingGuard } from "../dispatcher/execution-resource-ceiling-guard.js";
 import { resolveRemoteAuthorityBlockReason } from "./remote-session-guard.js";

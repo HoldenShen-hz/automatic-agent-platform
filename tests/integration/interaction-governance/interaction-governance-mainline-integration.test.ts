@@ -16,7 +16,7 @@ import { GroupRoleMappingService } from "../../../src/org-governance/sso-scim/gr
 import { IdentitySyncService } from "../../../src/org-governance/sso-scim/identity-sync-service.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
 
 function makeSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {

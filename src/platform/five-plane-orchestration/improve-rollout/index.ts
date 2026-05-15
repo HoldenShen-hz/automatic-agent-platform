@@ -22,3 +22,5 @@ export const PROGRESSIVE_ROLLOUT_LEVELS = ["L2_canary", "L3_partial", "L4_stable
 export const CANARY_ROLLOUT_STATUSES = ["evaluation_enabled"] as const;
 /** @deprecated Prefer canonical L0-L5 rollout levels. */
 export const PROGRESSIVE_ROLLOUT_STATUSES = ["canary_5", "partial_25", "stable_75", "stable_100", "released"] as const;
+/** @deprecated Kept for historical misspelled imports. */
+export const PROGRESIVE_ROLLOUT_STATUSES = PROGRESSIVE_ROLLOUT_STATUSES;

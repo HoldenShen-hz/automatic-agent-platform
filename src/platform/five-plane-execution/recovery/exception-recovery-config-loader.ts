@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PolicyDeniedError } from "../../contracts/errors.js";
-import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 export type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 
@@ -14,7 +14,7 @@ const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/exception-recovery/de
 
 const cachedConfigs = new Map<string, ExceptionRecoveryConfig>();
 
-function cloneExceptionRecoveryConfig(parsed: any): ExceptionRecoveryConfig {
+function cloneExceptionRecoveryConfig(parsed: ExceptionRecoveryConfig): ExceptionRecoveryConfig {
   return {
     recoveryStrategyTable: {
       byExceptionType: {

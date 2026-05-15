@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalFlowEngine, FlowType } from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
+import { ApprovalFlowEngine, FlowType } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
 
 test("ApprovalFlowEngine normalizes legacy workflow and step aliases into harness runtime context", () => {
   const engine = new ApprovalFlowEngine();

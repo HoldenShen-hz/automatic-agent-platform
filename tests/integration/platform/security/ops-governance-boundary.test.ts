@@ -3,35 +3,35 @@ import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import test from "node:test";
 
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { DiagnosticsService } from "../../../../src/platform/shared/observability/diagnostics-service.js";
 import { HealthService } from "../../../../src/platform/shared/observability/health-service.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import { MetricsService } from "../../../../src/platform/shared/observability/metrics-service.js";
 import { ObservabilityRetentionService } from "../../../../src/platform/shared/observability/observability-retention-service.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
-import { ProtectedGovernanceIntegrityService } from "../../../../src/platform/control-plane/config-center/protected-governance-integrity-service.js";
-import { OperationsGovernanceService } from "../../../../src/platform/control-plane/incident-control/operations-governance-service.js";
-import { DoctorService } from "../../../../src/platform/control-plane/incident-control/doctor-service.js";
-import { ExecutionResourceMonitor } from "../../../../src/platform/execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import { StalledExecutionDetector } from "../../../../src/platform/execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../../../../src/platform/execution/recovery/stalled-execution-escalation-service.js";
-import { createDefaultStartupConsistencyCheckerOptions } from "../../../../src/platform/execution/startup/startup-preflight.js";
-import { StartupConsistencyChecker } from "../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import { WorkerRegistryService } from "../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { StorageQuotaService } from "../../../../src/platform/state-evidence/truth/storage-quota-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { SqliteReliabilityService } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { ProtectedGovernanceIntegrityService } from "../../../../src/platform/five-plane-control-plane/config-center/protected-governance-integrity-service.js";
+import { OperationsGovernanceService } from "../../../../src/platform/five-plane-control-plane/incident-control/operations-governance-service.js";
+import { DoctorService } from "../../../../src/platform/five-plane-control-plane/incident-control/doctor-service.js";
+import { ExecutionResourceMonitor } from "../../../../src/platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { StalledExecutionDetector } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import { StalledExecutionEscalationService } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { createDefaultStartupConsistencyCheckerOptions } from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
+import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import { WorkerRegistryService } from "../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { StorageQuotaService } from "../../../../src/platform/five-plane-state-evidence/truth/storage-quota-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { SqliteReliabilityService } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 const repoRoot = process.cwd();
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Ops governance security task",

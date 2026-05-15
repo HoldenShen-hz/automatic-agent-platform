@@ -4,9 +4,9 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { PlatformOperatorService } from "../../../../src/scale-ecosystem/marketplace/platform-operator-service.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function writeSmokeEvidence(root: string): void {

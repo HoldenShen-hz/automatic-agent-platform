@@ -7,7 +7,7 @@ import {
   type FenceMode,
   type FenceInfo,
   type FencingTokenValidation,
-} from "../../../../../../src/platform/state-evidence/events/cas/index.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/cas/index.js";
 
 test("events/cas/index exports CasService", () => {
   assert.ok(CasService !== undefined);

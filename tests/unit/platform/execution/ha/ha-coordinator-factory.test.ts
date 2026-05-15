@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHaCoordinatorService, createHaRepositoryForBackend } from "../../../../../src/platform/execution/ha/ha-coordinator-factory.js";
-import { HaCoordinatorServiceAsync } from "../../../../../src/platform/execution/ha/ha-coordinator-service-async.js";
+import { createHaCoordinatorService, createHaRepositoryForBackend } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-factory.js";
+import { HaCoordinatorServiceAsync } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-async.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Storage Backend Factory

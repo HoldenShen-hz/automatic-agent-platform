@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AsyncHarnessService } from "../../../../../src/platform/orchestration/harness/async-harness-service.js";
-import { HarnessRuntimeService, type HarnessLoopInput, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { AsyncHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/async-harness-service.js";
+import { HarnessRuntimeService, type HarnessLoopInput, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides = {}): ConstraintPack {
   return {

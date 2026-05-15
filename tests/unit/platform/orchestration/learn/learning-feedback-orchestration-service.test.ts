@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LearningFeedbackOrchestrationService, type LearningFeedbackOrchestrationInput } from "../../../../../src/platform/orchestration/learn/learning-feedback-orchestration-service.js";
-import type { StrategyLearningService } from "../../../../../src/platform/orchestration/learn/strategy-learning-service.js";
-import type { KnowledgePromotionService, KnowledgePromotionResult } from "../../../../../src/platform/orchestration/learn/knowledge-promotion-service.js";
-import type { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import { LearningFeedbackOrchestrationService, type LearningFeedbackOrchestrationInput } from "../../../../../src/platform/five-plane-orchestration/learn/learning-feedback-orchestration-service.js";
+import type { StrategyLearningService } from "../../../../../src/platform/five-plane-orchestration/learn/strategy-learning-service.js";
+import type { KnowledgePromotionService, KnowledgePromotionResult } from "../../../../../src/platform/five-plane-orchestration/learn/knowledge-promotion-service.js";
+import type { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

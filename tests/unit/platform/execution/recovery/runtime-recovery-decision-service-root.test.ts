@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -6,10 +5,10 @@ import {
   RuntimeRecoveryDecisionService,
   type RecoveryDecisionRecord,
   type RecoveryDecisionApplyResult,
-} from "../../../../../src/platform/execution/recovery/runtime-recovery-decision-service-root.js";
-import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service-root.js";
+import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Mock database
 function createMockDb() {

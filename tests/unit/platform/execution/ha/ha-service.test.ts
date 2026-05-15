@@ -6,15 +6,15 @@ import {
   createLeaderElectionService,
   type LeaderElectionServiceOptions,
   type LeaderElectionState,
-} from "../../../../../src/platform/execution/ha/leader-election-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/leader-election-service.js";
 import type {
   CoordinatorNode,
   FailoverDecision,
   LeaderLease,
   LeadershipQueryResult,
-} from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import type { HaCoordinatorService } from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
+import type { HaCoordinatorService } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock HaCoordinatorService

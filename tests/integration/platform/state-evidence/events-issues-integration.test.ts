@@ -12,18 +12,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { LayeredEventInbox } from "../../../../src/platform/state-evidence/events/layered-event-inbox.js";
-import { DurableEventBus } from "../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { DlqService } from "../../../../src/platform/state-evidence/events/dlq-service.js";
+import { LayeredEventInbox } from "../../../../src/platform/five-plane-state-evidence/events/layered-event-inbox.js";
+import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { DlqService } from "../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 import { EventEnvelope } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import {
   getEventSchema,
   validateEventPayload,
   hasEventSchema,
   getRegisteredConsumers,
-} from "../../../../src/platform/state-evidence/events/event-registry.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";

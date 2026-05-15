@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { MemoryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { MemoryService } from "../../../../../../src/platform/state-evidence/memory/memory-service.js";
+import type { MemoryService } from "../../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
 import {
   LearningFeedbackOrchestrationService,
   type LearningFeedbackOrchestrationInput,
   type LearningObject,
-} from "../../../../../../src/platform/orchestration/oapeflir/learn/index.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/index.js";
 
 function createLearningSignal(
   overrides: Partial<LearningFeedbackOrchestrationInput["signals"][number]> = {},

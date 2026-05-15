@@ -12,8 +12,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { EscalationService, type EscalationRequest, type EscalationDecision } from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";

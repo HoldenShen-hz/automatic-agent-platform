@@ -1,4 +1,4 @@
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ValidationError } from "../../contracts/errors.js";
 
 import type { QueueAdapter, QueueBackendConfig } from "./queue-adapter-types.js";

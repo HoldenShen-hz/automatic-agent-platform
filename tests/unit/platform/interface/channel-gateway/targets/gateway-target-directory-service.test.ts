@@ -10,10 +10,10 @@ import {
   type ListGatewayTargetsQuery,
   type ResolveGatewayTargetQuery,
   type GatewayTargetResolution,
-} from "../../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import type { GatewayStoragePort } from "../../../../../../src/platform/interface/channel-gateway/storage-port.js";
+} from "../../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import type { GatewayStoragePort } from "../../../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
 import type { GatewayTargetRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { GatewaySessionTargetCandidate } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 
 // Mock storage port for testing
 function createMockStoragePort(overrides?: Partial<GatewayStoragePort>): GatewayStoragePort {

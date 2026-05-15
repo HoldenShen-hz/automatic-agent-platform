@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 
-import { ApiAuthError, ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
+import { ApiAuthError, ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
 
 test("api auth service exchanges api keys and authenticates bearer tokens with sorted roles", () => {

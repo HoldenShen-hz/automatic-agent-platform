@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EventProjectionService } from "../../../../src/platform/state-evidence/projections/index.js";
-import { AuditTrailService } from "../../../../src/platform/state-evidence/audit/index.js";
-import { IncidentCaseService } from "../../../../src/platform/state-evidence/incident/index.js";
-import { DeadLetterQueueService } from "../../../../src/platform/state-evidence/dlq/index.js";
+import { EventProjectionService } from "../../../../src/platform/five-plane-state-evidence/projections/index.js";
+import { AuditTrailService } from "../../../../src/platform/five-plane-state-evidence/audit/index.js";
+import { IncidentCaseService } from "../../../../src/platform/five-plane-state-evidence/incident/index.js";
+import { DeadLetterQueueService } from "../../../../src/platform/five-plane-state-evidence/dlq/index.js";
 
 test("integration: projection, audit, incident, and DLQ services share a consistent evidence chain", () => {
   const projections = new EventProjectionService();

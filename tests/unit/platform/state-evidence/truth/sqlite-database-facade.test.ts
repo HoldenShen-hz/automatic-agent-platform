@@ -5,7 +5,7 @@ import {
   isSqliteWriteContentionError,
   SqliteDatabase,
   type SqliteDatabaseOptions,
-} from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 test("sqlite database generic facade re-exports the sqlite implementation", () => {
   // SqliteDatabase is exported from both paths - verify they are the same class

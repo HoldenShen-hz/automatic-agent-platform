@@ -9,7 +9,7 @@ import {
   type QuestionToolRequest,
   type QuestionOption,
   type QuestionAnswer,
-} from "../../../../../src/platform/execution/tool-executor/question-tool.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/question-tool.js";
 
 const createMockRequest = (overrides: Partial<QuestionToolRequest> = {}): QuestionToolRequest => ({
   callId: "call_123",

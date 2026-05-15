@@ -8,7 +8,7 @@ import {
   type AuthoritativeSqlDatabase,
   type AppliedSqliteMigrationRecord,
   type SqliteSchemaStatus,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
 test("SqliteWriteContentionError constructor sets properties correctly", () => {
   const error = new SqliteWriteContentionError("/path/to/db.sqlite");

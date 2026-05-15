@@ -3,9 +3,9 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { buildStructuredToolResultParts, serializeMessageParts } from "../../../../src/platform/model-gateway/messages/message-parts.js";
-import { ContextCompactionService } from "../../../../src/platform/execution/execution-engine/context-compaction-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { ContextCompactionService } from "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 

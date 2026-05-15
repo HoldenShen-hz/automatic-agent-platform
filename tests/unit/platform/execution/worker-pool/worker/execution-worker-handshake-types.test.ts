@@ -7,9 +7,9 @@ import type {
   WorkerRemoteLogInput,
   WorkerHandshakeDecision,
   ExecutionWorkerHandshakeServiceOptions,
-} from "../../../../../../src/platform/execution/worker-pool/worker/execution-worker-handshake-types.js";
+} from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-types.js";
 import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import { ExecutionResourceCeilingGuard } from "../../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 // ---------------------------------------------------------------------------
 // WorkerClaimExecutionInput

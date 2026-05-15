@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { ProjectionRebuildService } from "../../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import { ProjectionRebuildService } from "../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 test("ProjectionRebuildService rebuilds task_summary projection", () => {
   const ctx = createIntegrationContext("aa-task-summary-proj-");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HARNESS_GENERATOR_ROLE } from "../../../../../../src/platform/orchestration/harness/generator/index.js";
+import { HARNESS_GENERATOR_ROLE } from "../../../../../../src/platform/five-plane-orchestration/harness/generator/index.js";
 
 test("HARNESS_GENERATOR_ROLE is a string", () => {
   assert.equal(typeof HARNESS_GENERATOR_ROLE, "string");

@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { createBudgetLedger, type PlatformFactEvent } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
-import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
+import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
+import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 test("BudgetAllocator reserves against hard cap and settles reservation with ledger accounting", () => {
   const allocator = new BudgetAllocator();

@@ -27,9 +27,9 @@ import {
   CheckpointSizeExceededError,
   CheckpointEnvelopeInvalidError,
   CheckpointEnvelope,
-} from "../../../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { CompensationModel } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import type { CompensationModel } from "../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { unsafeCast } from "../../../../helpers/typed-factories.js";
 
 // ── Integration Test Setup ─────────────────────────────────────────────────────

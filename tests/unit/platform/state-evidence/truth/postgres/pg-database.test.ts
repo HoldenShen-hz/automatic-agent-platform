@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { isPgWriteError, PgDatabase, PgWriteError, type PgDatabaseOptions } from "../../../../../../src/platform/state-evidence/truth/postgres/pg-database.js";
-import { openPostgresAuthoritativeStorageBackend, planAuthoritativeStorageBackend } from "../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import { isPgWriteError, PgDatabase, PgWriteError, type PgDatabaseOptions } from "../../../../../../src/platform/five-plane-state-evidence/truth/postgres/pg-database.js";
+import { openPostgresAuthoritativeStorageBackend, planAuthoritativeStorageBackend } from "../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("PgDatabase is exported correctly", () => {

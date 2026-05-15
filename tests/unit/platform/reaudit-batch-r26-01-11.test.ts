@@ -13,7 +13,7 @@ import { ACPInvariantEnforcer } from "../../../src/platform/five-plane-orchestra
 import { SqliteLeaseRepository } from "../../../src/platform/five-plane-execution/lease/lease-repository-sqlite.js";
 import type { AgentContext, DelegationSpec, PermissionSet } from "../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 import type { ACPMessage } from "../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/types.js";
-import type { AuthoritativeSqlDatabase } from "../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../src/platform/contracts/types/domain.js";
 
 function createParentContext(overrides: Partial<AgentContext> = {}): AgentContext {

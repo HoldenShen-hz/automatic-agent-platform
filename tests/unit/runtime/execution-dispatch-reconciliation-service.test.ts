@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { ExecutionDispatchReconciliationService } from "../../../src/platform/execution/dispatcher/execution-dispatch-reconciliation-service.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { ExecutionDispatchReconciliationService } from "../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import type { ExecutionTicketRecord, TaskPriority } from "../../../src/platform/contracts/types/domain.js";

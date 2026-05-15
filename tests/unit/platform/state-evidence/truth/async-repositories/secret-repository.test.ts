@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncSecretRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/secret-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncSecretRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/secret-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";

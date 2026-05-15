@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { detectModelHallucination } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/hallucination-detector.js";
+import { detectModelHallucination } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/hallucination-detector.js";
 
 function makeSignal(overrides: Partial<LearningSignal["evidence"]> & {
   evalScore?: number;

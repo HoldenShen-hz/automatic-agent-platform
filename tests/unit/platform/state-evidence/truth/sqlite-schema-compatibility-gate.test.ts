@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateSqliteSchemaCompatibilityGate } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
-import { SQLITE_MIGRATIONS } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { evaluateSqliteSchemaCompatibilityGate } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+import { SQLITE_MIGRATIONS } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 test("sqlite schema compatibility gate passes the current migration plan", () => {
   const report = evaluateSqliteSchemaCompatibilityGate(SQLITE_MIGRATIONS);

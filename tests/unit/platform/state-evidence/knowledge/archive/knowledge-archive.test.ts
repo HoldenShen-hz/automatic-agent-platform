@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeArchive } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { KnowledgeChunk, KnowledgeDocument, KnowledgeSource } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeArchive } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { KnowledgeChunk, KnowledgeDocument, KnowledgeSource } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function createMockKnowledgeSource(overrides: Partial<KnowledgeSource> = {}): KnowledgeSource {
   return {

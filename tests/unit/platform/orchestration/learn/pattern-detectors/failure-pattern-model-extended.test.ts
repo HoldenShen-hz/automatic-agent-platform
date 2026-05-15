@@ -8,7 +8,7 @@ import test from "node:test";
 import {
   FailurePatternTypeSchema,
   FailurePatternSchema,
-} from "../../../../../../src/platform/orchestration/learn/pattern-detectors/failure-pattern-model.js";
+} from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/failure-pattern-model.js";
 
 test("FailurePatternTypeSchema accepts llm_truncation", () => {
   const result = FailurePatternTypeSchema.safeParse("llm_truncation");

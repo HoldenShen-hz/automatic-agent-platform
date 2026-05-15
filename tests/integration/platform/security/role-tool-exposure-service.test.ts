@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RoleToolExposureService } from "../../../../src/platform/execution/tool-executor/role-tool-exposure-service.js";
+import { RoleToolExposureService } from "../../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
 
 test("role tool exposure service does not promote undeclared tools into the visible set", () => {
   const service = new RoleToolExposureService();

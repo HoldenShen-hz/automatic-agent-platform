@@ -11,7 +11,7 @@ import {
   createRecoverySession,
   type SessionTerminalStatus,
   type TaskActiveStatus,
-} from "../../../../../src/platform/execution/execution-engine/session-lifecycle.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/session-lifecycle.js";
 
 import type { SessionRecord, TaskRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

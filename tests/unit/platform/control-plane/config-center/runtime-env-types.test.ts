@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ExecutionResourceCeilingEnvConfig } from "../../../../../src/platform/control-plane/config-center/runtime-env.js";
+import type { ExecutionResourceCeilingEnvConfig } from "../../../../../src/platform/five-plane-control-plane/config-center/runtime-env.js";
 
 test("ExecutionResourceCeilingEnvConfig structure is correct", () => {
   const config: ExecutionResourceCeilingEnvConfig = {

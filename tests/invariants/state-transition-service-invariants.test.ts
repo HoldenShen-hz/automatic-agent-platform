@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
-import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { ValidationError } from "../../src/platform/contracts/errors.js";
 
 /**

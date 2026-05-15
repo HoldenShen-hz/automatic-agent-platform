@@ -13,7 +13,7 @@ import {
   mapOpsStatusToHandoffStatus,
   selectSloActualValue,
   buildMarkdownReport,
-} from "../../../../../src/platform/control-plane/incident-control/enterprise-governance-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/enterprise-governance-support.js";
 
 test("sha256 computes correct hash", () => {
   const result = sha256("hello world");

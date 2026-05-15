@@ -11,7 +11,7 @@ import {
   CheckpointEnvelopeInvalidError,
   CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
-} from "../../../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.js";
 
 test("createCheckpointEnvelope returns envelope with correct structure", async () => {
   const data = { step: "test", status: "complete" };

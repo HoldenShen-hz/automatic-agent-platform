@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAgentExecutionRecord } from "../../../../../src/platform/execution/worker-pool/execution-worker-handshake-support.js";
+import { buildAgentExecutionRecord } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-support.js";
 import type {
   AgentExecutionRecord,
   ExecutionRecord,
   RunKind,
 } from "../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // ---------------------------------------------------------------------------
 // Mock factories

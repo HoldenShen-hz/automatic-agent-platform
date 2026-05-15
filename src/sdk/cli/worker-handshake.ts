@@ -17,9 +17,9 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
-import { loadWorkerHandshakeCliEnv } from "../../platform/control-plane/config-center/runtime-ops-env.js";
+import { loadWorkerHandshakeCliEnv } from "../../platform/five-plane-control-plane/config-center/runtime-ops-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { ExecutionWorkerHandshakeService } from "../../platform/execution/worker-pool/execution-worker-handshake-service.js";
+import { ExecutionWorkerHandshakeService } from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
 import { withCliStorage } from "./authoritative-storage.js";
 
 /**

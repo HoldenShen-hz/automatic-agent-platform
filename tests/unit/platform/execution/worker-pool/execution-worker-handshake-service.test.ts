@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionWorkerHandshakeService } from "../../../../../src/platform/execution/worker-pool/execution-worker-handshake-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { ExecutionWorkerHandshakeService } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionTicketRecord, WorkerSnapshotRecord, ExecutionRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 // ---------------------------------------------------------------------------
 // Mock helpers

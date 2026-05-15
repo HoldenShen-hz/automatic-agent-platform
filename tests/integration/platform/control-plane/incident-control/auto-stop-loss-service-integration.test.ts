@@ -15,7 +15,7 @@ import {
   type StopLossAction,
   type StopLossPlaybook,
   type SystemHealthSnapshot,
-} from "../../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 
 test("AutoStopLossService: evaluates health snapshot and triggers matching playbooks", async () => {
   const ctx = createIntegrationContext("aa-stoploss-health-eval-");

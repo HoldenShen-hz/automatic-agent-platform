@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplanningService } from "../../../../../src/platform/orchestration/replan/index.js";
+import { ReplanningService } from "../../../../../src/platform/five-plane-orchestration/replan/index.js";
 
 test("replan barrel exports ReplanningService", () => {
   const service = new ReplanningService();

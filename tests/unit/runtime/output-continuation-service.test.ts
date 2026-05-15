@@ -8,7 +8,7 @@ import {
   OutputContinuationService,
   getGlobalContinuationService,
   type ContinuationReason,
-} from "../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 test("parseFinishReason returns max_tokens_exceeded for length-related reasons", () => {
   assert.equal(parseFinishReason("length"), "max_tokens_exceeded");

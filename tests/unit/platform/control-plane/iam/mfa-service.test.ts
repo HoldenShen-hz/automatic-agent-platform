@@ -18,7 +18,7 @@ import {
   DEFAULT_MFA_POLICY,
   type MfaPolicy,
   type MfaVerificationResult,
-} from "../../../../../src/platform/control-plane/iam/mfa-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/mfa-service.js";
 
 const MFA_CODE_LENGTH = 6;
 

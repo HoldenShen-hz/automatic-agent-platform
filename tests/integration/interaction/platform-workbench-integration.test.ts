@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HitlInboxService } from "../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
+import { HitlInboxService } from "../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
 import { PlatformWorkbenchSnapshotService } from "../../../src/interaction/ux/platform-workbench-snapshot-service.js";
 import { SdkWorkbenchService } from "../../../src/sdk/workbench/index.js";
 import { BenchmarkInventoryService } from "../../../src/platform/shared/stability/benchmark-inventory-service.js";
-import { ProjectionInventoryService } from "../../../src/platform/state-evidence/events/projection-inventory-service.js";
+import { ProjectionInventoryService } from "../../../src/platform/five-plane-state-evidence/events/projection-inventory-service.js";
 import { DeploymentInventoryService } from "../../../src/platform/shared/stability/deployment-inventory-service.js";
 import { JudgeProviderRegistryService } from "../../../src/platform/prompt-engine/eval/judge-provider-registry-service.js";
 import { ComplianceProgramTemplateService } from "../../../src/platform/compliance/compliance-program-template-service.js";

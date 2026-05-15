@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import test from "node:test";
 
-import { parseStructuredMemoryContent } from "../../../../src/platform/state-evidence/memory/memory-schema.js";
+import { parseStructuredMemoryContent } from "../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function runCli<T>(scriptName: string, env: NodeJS.ProcessEnv): T {

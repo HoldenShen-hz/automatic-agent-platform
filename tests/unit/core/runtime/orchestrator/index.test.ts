@@ -27,7 +27,7 @@ test("core/runtime/orchestrator shim exports resetMultiStepToolRegistryForTests"
 
 test("core/runtime/orchestrator shim re-exports same implementation as platform", async () => {
   const shim = await import("../../../../../src/core/runtime/orchestrator/index.js");
-  const platform = await import("../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js");
+  const platform = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(shim.runMultiStepOrchestration, platform.runMultiStepOrchestration, "runMultiStepOrchestration should point to platform implementation");
   assert.equal(shim.executeMultiStepToolCallForTests, platform.executeMultiStepToolCallForTests, "executeMultiStepToolCallForTests should point to platform implementation");

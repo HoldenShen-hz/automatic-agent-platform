@@ -9,7 +9,7 @@ import {
   buildFactProvenanceFromRecord,
   type StructuredMemoryContent,
   type StructuredMemoryFactProvenance,
-} from "../../../../../src/platform/state-evidence/memory/memory-schema.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
 
 test("normalizeMemoryContent handles string input as workContext", () => {
   const result = normalizeMemoryContent({ content: "This is my work context" });

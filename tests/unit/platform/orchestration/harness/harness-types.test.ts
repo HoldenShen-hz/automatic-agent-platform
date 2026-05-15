@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ConstraintPack, HarnessDecisionAction, HarnessRunStatus } from "../../../../../src/platform/orchestration/harness/index.js";
+import type { ConstraintPack, HarnessDecisionAction, HarnessRunStatus } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("ConstraintPack interface structure", () => {
   const pack: ConstraintPack = {

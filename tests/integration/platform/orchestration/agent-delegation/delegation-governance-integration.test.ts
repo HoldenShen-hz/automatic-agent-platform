@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Delegation Governance Service
  *
@@ -13,8 +12,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { DelegationGovernanceService, defaultDelegationGovernanceService, type GovernanceRule } from "../../../../../src/platform/orchestration/agent-delegation/delegation-governance-service.js";
-import type { AgentContext, DelegationSpec } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import { DelegationGovernanceService, defaultDelegationGovernanceService, type GovernanceRule } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-governance-service.js";
+import type { AgentContext, DelegationSpec } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 function createTestAgentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

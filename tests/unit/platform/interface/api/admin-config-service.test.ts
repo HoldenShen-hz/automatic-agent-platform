@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AdminConfigService } from "../../../../../src/platform/interface/api/admin-config-service.js";
+import { AdminConfigService } from "../../../../../src/platform/five-plane-interface/api/admin-config-service.js";
 
 test("AdminConfigService applies update and returns record", () => {
   const service = new AdminConfigService();

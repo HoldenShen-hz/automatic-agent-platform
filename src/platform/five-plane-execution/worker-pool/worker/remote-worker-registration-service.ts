@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { newId, nowIso } from "../../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { WorkerRegistryService } from "./worker-registry-service.js";
 
 export interface RemoteWorkerRegistrationServiceOptions {

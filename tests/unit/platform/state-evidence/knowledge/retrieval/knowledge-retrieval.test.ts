@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeRetrievalService } from "../../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import { KeywordKnowledgeIndex } from "../../../../../../src/platform/state-evidence/knowledge/keyword-index.js";
-import { KnowledgeArchive } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import { SemanticKnowledgeGraph } from "../../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import type { ArchivedKnowledgeRecord } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { KnowledgeSource, KnowledgeDocument, KnowledgeChunk, KnowledgeNamespace } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeRetrievalService } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import { KeywordKnowledgeIndex } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
+import { KnowledgeArchive } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import { SemanticKnowledgeGraph } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import type { ArchivedKnowledgeRecord } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { KnowledgeSource, KnowledgeDocument, KnowledgeChunk, KnowledgeNamespace } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // =============================================================================
 // mock factories

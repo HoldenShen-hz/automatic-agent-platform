@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RedisRateLimiter } from "../../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { RedisRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 
 // Mock Redis client for unit testing without a real Redis connection
 class MockRedis {

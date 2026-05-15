@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildFromStepResults, type HandoffBuilderInput } from "../../../../../src/platform/orchestration/oapeflir/handoff-builder.js";
+import { buildFromStepResults, type HandoffBuilderInput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/handoff-builder.js";
 
 function makeStepOutput(stepId: string, summary: string, durationMs: number, validationPassed = true) {
   return {

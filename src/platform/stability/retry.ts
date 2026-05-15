@@ -174,13 +174,11 @@ export class RetryTimeoutError extends Error {
 /**
  * Decorator-style retry wrapper
  */
-export function withRetry<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function withRetry<TArgs extends readonly unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   options?: RetryOptions
-): T {
+): (...args: TArgs) => Promise<TResult> {
   const retry = new Retry(options);
 
-  return ((...args: Parameters<T>) => {
-    return retry.execute(() => fn(...args));
-  }) as T;
+  return (...args: TArgs) => retry.execute(() => fn(...args));
 }

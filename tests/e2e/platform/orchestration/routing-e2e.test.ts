@@ -16,13 +16,13 @@ import test from "node:test";
 // @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 // @ts-ignore
-import { IntakeRouter } from "../../src/platform/orchestration/routing/intake-router.js";
+import { IntakeRouter } from "../../src/platform/five-plane-orchestration/routing/intake-router.js";
 // @ts-ignore
-import { WorkflowPlanner } from "../../src/platform/orchestration/routing/workflow-planner.js";
+import { WorkflowPlanner } from "../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 // @ts-ignore
-import { AgentTeamService } from "../../src/platform/orchestration/routing/agent-team-service.js";
+import { AgentTeamService } from "../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
 // @ts-ignore
-import type { IntakeClassification, RoutingDecision, WorkflowAssignment } from "../../src/platform/orchestration/routing/types.js";
+import type { IntakeClassification, RoutingDecision, WorkflowAssignment } from "../../src/platform/five-plane-orchestration/routing/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

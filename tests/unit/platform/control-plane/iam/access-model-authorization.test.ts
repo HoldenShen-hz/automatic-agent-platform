@@ -8,7 +8,7 @@ import {
   PlatformPrincipalType,
   PlatformRole,
   roleGrantsCapabilities,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 const ALL_ROLES = listPlatformRoles();
 

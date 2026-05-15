@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Import the real ContextCompactionService
-import { ContextCompactionService } from "../../../../src/platform/execution/execution-engine/context-compaction-service.js";
+import { ContextCompactionService } from "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 
 test("ContextCompactionService constructor creates instance", () => {
   // Can't create without db and store - verify class exists

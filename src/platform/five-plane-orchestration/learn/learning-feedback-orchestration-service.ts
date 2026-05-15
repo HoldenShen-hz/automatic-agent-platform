@@ -1,5 +1,5 @@
 import type { MemoryRecord } from "../../contracts/types/domain.js";
-import type { MemoryService } from "../../state-evidence/memory/memory-service.js";
+import type { MemoryService } from "../../five-plane-state-evidence/memory/memory-service.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import { KnowledgePromotionService, type KnowledgePromotionResult } from "./knowledge-promotion-service.js";
 import type { LearningObject } from "./learning-object-model.js";

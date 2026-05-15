@@ -21,9 +21,9 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadSecretManagementCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError, PolicyDeniedError } from "../../platform/contracts/errors.js";
-import { SecretManagementService, type SecretAuthorizationContext } from "../../platform/control-plane/iam/secret-management-service.js";
+import { SecretManagementService, type SecretAuthorizationContext } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 
 /**
  * Authentication gate configuration

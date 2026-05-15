@@ -10,10 +10,10 @@ import {
   ApprovalFlowEngine,
   FlowType,
   FlowStatus,
-} from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
-import { VoteType } from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 
-import type { ApprovalRequest } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalRequest } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 function createMockApprovalRequest(overrides?: Partial<ApprovalRequest>): ApprovalRequest {
   return {

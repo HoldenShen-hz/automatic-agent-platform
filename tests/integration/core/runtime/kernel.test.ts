@@ -16,10 +16,10 @@ test("StateTransitionMachine integration with real workflow transitions", async 
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -86,10 +86,10 @@ test("StateTransitionMachine workflow state transitions", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -167,10 +167,10 @@ test("StateTransitionMachine session state transitions", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -204,10 +204,10 @@ test("StateTransitionMachine execution state transitions", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -245,10 +245,10 @@ test("StateTransitionMachine invalid transitions throw", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -282,10 +282,10 @@ test("StateTransitionMachine approval transitions", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { StateTransitionMachine } = await import(
-      "../../../../src/platform/execution/state-transition/state-transition-machine.js"
+      "../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js"
     );
 
     const dbPath = join(tmpDir, "test.db");

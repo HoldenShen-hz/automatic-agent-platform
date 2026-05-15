@@ -16,8 +16,8 @@ import {
   STABLE_EVIDENCE_PROFILES,
   seedTakeoverEvidenceScenario,
 } from "../../../../../src/platform/shared/stability/stable-evidence-bundle-support.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 function createTempDb(): { db: SqliteDatabase; store: AuthoritativeTaskStore; cleanup: () => void } {
   const dbPath = join("/tmp", `evidence-test-${Date.now()}.db`);

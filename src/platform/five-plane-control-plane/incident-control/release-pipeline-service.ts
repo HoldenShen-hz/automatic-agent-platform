@@ -7,10 +7,10 @@ export * from "./release-pipeline-support.js";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { PolicyDeniedError, StorageError, ToolExecutionError, ValidationError } from "../../contracts/errors.js";
 import { SecretManagementService } from "../iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ArtifactRef, EnvironmentName, ReleaseBundleRecord, ReleaseExecutionReportRecord, SecretLeaseRecord } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {

@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 
 import type { ApprovalRecord, EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import {
   AuthoritativeTaskStoreRuntimeLifecycleRepository,
   ObservedRuntimeLifecycleRepository,
   RetryingRuntimeLifecycleRepository,
   type RuntimeLifecycleRepository,
-} from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 
 const APPROVAL_RECORD: ApprovalRecord = {
   id: "approval-1",

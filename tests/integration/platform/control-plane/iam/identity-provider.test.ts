@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: IAM Identity Provider
  *
@@ -28,7 +27,7 @@ import {
   type PlatformRole,
   type PlatformCapability,
   type AuthorizationAction,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 test("identity provider: listPlatformPrincipalTypes returns all principal types", () => {
   const ctx = createIntegrationContext("aa-identity-principal-types-");

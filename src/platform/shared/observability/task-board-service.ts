@@ -17,8 +17,8 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
-import type { TaskBoardItem } from "../../state-evidence/truth/authoritative-task-store.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export class TaskBoardService {
   public constructor(private readonly store: AuthoritativeTaskStore) {}

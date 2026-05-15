@@ -5,8 +5,8 @@ import {
   decodeJwtJsonSegment,
   parseJwtHeader,
   parseFederatedTokenClaims,
-} from "../../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
-import type { FederatedTokenClaims } from "../../../../../../src/platform/interface/api/oidc-oauth/types.js";
+} from "../../../../../../src/platform/five-plane-interface/api/oidc-oauth/jwt-utils.js";
+import type { FederatedTokenClaims } from "../../../../../../src/platform/five-plane-interface/api/oidc-oauth/types.js";
 
 test("decodeJwtJsonSegment decodes valid base64url payload", () => {
   // {"sub":"user"} in base64url

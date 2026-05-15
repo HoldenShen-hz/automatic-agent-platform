@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CasService } from "../../../../../../src/platform/state-evidence/events/cas/cas-service.js";
+import { CasService } from "../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
 import {
   FencingTokenService,
   type FenceMode,
-} from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
-import type { DistributedLockAdapter } from "../../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
+import type { DistributedLockAdapter } from "../../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 // Clear static fences before/after each test to avoid state pollution
 test.beforeEach(() => {
@@ -773,7 +773,7 @@ test("CasService distributed compareAndSet also uses distributed lock", () => {
 });
 
 test("CasService createDistributedCasService factory creates service with lock adapter", () => {
-  const { createDistributedCasService } = require("../../../../../../src/platform/state-evidence/events/cas/cas-service.js");
+  const { createDistributedCasService } = require("../../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js");
 
   const mockAdapter = new MockDistributedLockAdapter();
   const repository = new TestInMemoryCasRepository();

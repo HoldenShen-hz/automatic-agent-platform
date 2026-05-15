@@ -10,7 +10,7 @@
  * @see Resource Ceiling Guard: execution-resource-ceiling-guard.ts
  */
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
   ExecutionResourceCeilingGuard,

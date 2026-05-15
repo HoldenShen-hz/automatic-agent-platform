@@ -1,4 +1,4 @@
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface WorkerServiceIdentity {
   readonly workerId: string;

@@ -12,8 +12,8 @@ import test from "node:test";
 import { join } from "node:path";
 import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 

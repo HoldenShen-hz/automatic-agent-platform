@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ContextIsolator, createContextIsolator, IsolationLevel } from "../../../../../src/platform/orchestration/agent-delegation/context-isolator.js";
-import type { AgentContext, DelegationSpec, PermissionSet } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import { ContextIsolator, createContextIsolator, IsolationLevel } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/context-isolator.js";
+import type { AgentContext, DelegationSpec, PermissionSet } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

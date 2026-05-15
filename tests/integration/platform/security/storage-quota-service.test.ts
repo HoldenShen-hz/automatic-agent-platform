@@ -3,8 +3,8 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { StorageQuotaService } from "../../../../src/platform/state-evidence/truth/storage-quota-service.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { StorageQuotaService } from "../../../../src/platform/five-plane-state-evidence/truth/storage-quota-service.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("storage quota service blocks quota roots outside the workspace sandbox", () => {

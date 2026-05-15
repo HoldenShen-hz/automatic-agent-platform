@@ -17,7 +17,7 @@ import {
   type EffectScopeOptions,
   type EffectType,
   type EffectPriority,
-} from "../../../../../src/platform/execution/execution-engine/effect-buffer.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 test("effect scope: creates scope with options", () => {
   const scope = new EffectScope({

@@ -14,7 +14,7 @@ import {
   type PlatformRole,
   type AuthorizationAction,
   type AuthorizationContext,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 function makeMockContext(overrides: Partial<AuthorizationContext> = {}): AuthorizationContext {
   return {

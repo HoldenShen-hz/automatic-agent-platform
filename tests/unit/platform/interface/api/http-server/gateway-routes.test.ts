@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createGatewayRoutes } from "../../../../../../src/platform/interface/api/http-server/gateway-routes.js";
-import type { GatewayTargetDirectoryService } from "../../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import type { ChannelGatewayService } from "../../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
-import type { ChannelGatewayDeliveryService } from "../../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createGatewayRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/gateway-routes.js";
+import type { GatewayTargetDirectoryService } from "../../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import type { ChannelGatewayService } from "../../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import type { ChannelGatewayDeliveryService } from "../../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockTargetDirectoryService(): GatewayTargetDirectoryService {
   return {

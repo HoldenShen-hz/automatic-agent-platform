@@ -18,11 +18,11 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import { type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { ValidationError } from "../../contracts/errors.js";
 export { extractWorkflowDispatchReceipt } from "./workflow-dispatch-receipt.js";
 import { SecretManagementService, type ManagedSecretMetadata } from "../iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   ArtifactRef,
   EnvironmentName,

@@ -12,7 +12,7 @@ import test from "node:test";
 
 import { DatabaseSync } from "node:sqlite";
 
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { CostEstimationService } from "../../../../src/scale-ecosystem/billing/cost-estimation-service.js";
 import { CostReportService } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 import { aggregateCostAttribution } from "../../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js";

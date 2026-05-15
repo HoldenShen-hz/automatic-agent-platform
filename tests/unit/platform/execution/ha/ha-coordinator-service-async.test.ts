@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HaCoordinatorServiceAsync, DEFAULT_LEASE_TTL_MS, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "../../../../../src/platform/execution/ha/ha-coordinator-service-async.js";
-import type { HaRepository, LeaderActionAuditEntry } from "../../../../../src/platform/execution/ha/ha-repository.js";
+import { HaCoordinatorServiceAsync, DEFAULT_LEASE_TTL_MS, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-async.js";
+import type { HaRepository, LeaderActionAuditEntry } from "../../../../../src/platform/five-plane-execution/ha/ha-repository.js";
 import type {
   CoordinatorNode,
   CoordinatorNodeStatus,
@@ -10,7 +10,7 @@ import type {
   LeaderLease,
   LeadershipEpoch,
   LeadershipQueryResult,
-} from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

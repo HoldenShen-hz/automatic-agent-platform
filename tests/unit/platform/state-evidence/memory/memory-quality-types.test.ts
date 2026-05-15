@@ -6,7 +6,7 @@ import type {
   MemoryRecallQuery,
   MemoryQualityBreakdownItem,
   MemoryQualityReport,
-} from "../../../../../src/platform/state-evidence/memory/memory-quality.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-quality.js";
 
 test("MemoryState type accepts valid values", () => {
   const states: MemoryState[] = ["active", "expired", "revoked"];

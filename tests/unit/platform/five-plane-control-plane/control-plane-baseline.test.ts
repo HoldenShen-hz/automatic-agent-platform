@@ -34,7 +34,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains approval-center capability", (
     (b) => b.capabilityId === "approval-center",
   );
   assert.ok(cap, "approval-center capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/approval-center/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/approval-center/index.ts");
   assert.ok(cap.baselineServices.includes("ApprovalService"));
   assert.ok(cap.baselineServices.includes("ApprovalFlowEngine"));
 });
@@ -44,7 +44,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains audit-export capability", () =
     (b) => b.capabilityId === "audit-export",
   );
   assert.ok(cap, "audit-export capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/audit-export/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/audit-export/index.ts");
   assert.ok(cap.baselineServices.includes("AuditExportService"));
 });
 
@@ -53,7 +53,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains compliance capability", () => 
     (b) => b.capabilityId === "compliance",
   );
   assert.ok(cap, "compliance capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/compliance/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/compliance/index.ts");
   assert.ok(cap.baselineServices.includes("ErasureRequestService"));
 });
 
@@ -62,7 +62,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains config-center capability", () 
     (b) => b.capabilityId === "config-center",
   );
   assert.ok(cap, "config-center capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/config-center/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/config-center/index.ts");
   assert.ok(cap.baselineServices.includes("ConfigGovernanceService"));
   assert.ok(cap.baselineServices.includes("ConfigVersioningService"));
 });
@@ -72,14 +72,14 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains cost-alert capability", () => 
     (b) => b.capabilityId === "cost-alert",
   );
   assert.ok(cap, "cost-alert capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/cost-alert/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/cost-alert/index.ts");
   assert.ok(cap.baselineServices.includes("CostAlertService"));
 });
 
 test("CONTROL_PLANE_CAPABILITY_BASELINES contains iam capability", () => {
   const cap = CONTROL_PLANE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "iam");
   assert.ok(cap, "iam capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/iam/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/iam/index.ts");
   assert.ok(cap.baselineServices.includes("SecretManagementService"));
 });
 
@@ -88,7 +88,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains incident-control capability", 
     (b) => b.capabilityId === "incident-control",
   );
   assert.ok(cap, "incident-control capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/incident-control/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/incident-control/index.ts");
   assert.ok(cap.baselineServices.includes("DoctorService"));
   assert.ok(cap.baselineServices.includes("ReleasePipelineService"));
 });
@@ -98,7 +98,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains policy-center capability", () 
     (b) => b.capabilityId === "policy-center",
   );
   assert.ok(cap, "policy-center capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/policy-center/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/policy-center/index.ts");
   assert.ok(cap.baselineServices.includes("PolicyRegistryService"));
 });
 
@@ -109,7 +109,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains replay-repair-control capabili
   assert.ok(cap, "replay-repair-control capability should exist");
   assert.equal(
     cap.entryModule,
-    "src/platform/control-plane/replay-repair-control/index.ts",
+    "src/platform/five-plane-control-plane/replay-repair-control/index.ts",
   );
   assert.ok(cap.baselineServices.includes("ReplayRepairControlService"));
 });
@@ -119,7 +119,7 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains risk-control capability", () =
     (b) => b.capabilityId === "risk-control",
   );
   assert.ok(cap, "risk-control capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/risk-control/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/risk-control/index.ts");
   assert.ok(cap.baselineServices.includes("RiskEvaluationEngine"));
 });
 
@@ -128,27 +128,27 @@ test("CONTROL_PLANE_CAPABILITY_BASELINES contains rollout-controller capability"
     (b) => b.capabilityId === "rollout-controller",
   );
   assert.ok(cap, "rollout-controller capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/rollout-controller/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/rollout-controller/index.ts");
   assert.ok(cap.baselineServices.includes("TrafficRoutingService"));
 });
 
 test("CONTROL_PLANE_CAPABILITY_BASELINES contains tenant capability", () => {
   const cap = CONTROL_PLANE_CAPABILITY_BASELINES.find((b) => b.capabilityId === "tenant");
   assert.ok(cap, "tenant capability should exist");
-  assert.equal(cap.entryModule, "src/platform/control-plane/tenant/index.ts");
+  assert.equal(cap.entryModule, "src/platform/five-plane-control-plane/tenant/index.ts");
   assert.ok(cap.baselineServices.includes("TenantManagementService"));
 });
 
 test("resolveControlPlaneCapabilityBaseline resolves valid capability", () => {
   const baseline = resolveControlPlaneCapabilityBaseline("approval-center");
   assert.equal(baseline.capabilityId, "approval-center");
-  assert.equal(baseline.entryModule, "src/platform/control-plane/approval-center/index.ts");
+  assert.equal(baseline.entryModule, "src/platform/five-plane-control-plane/approval-center/index.ts");
 });
 
 test("resolveControlPlaneCapabilityBaseline resolves iam capability", () => {
   const baseline = resolveControlPlaneCapabilityBaseline("iam");
   assert.equal(baseline.capabilityId, "iam");
-  assert.equal(baseline.entryModule, "src/platform/control-plane/iam/index.ts");
+  assert.equal(baseline.entryModule, "src/platform/five-plane-control-plane/iam/index.ts");
 });
 
 test("resolveControlPlaneCapabilityBaseline throws for unknown capability", () => {

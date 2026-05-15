@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CrossRegionEventReplicationService, createCrossRegionEventReplicationService } from "../../../../../src/platform/execution/ha/cross-region-event-replication-service.js";
-import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import type { TypedEventType } from "../../../../../src/platform/state-evidence/events/typed-event-bus.js";
+import { CrossRegionEventReplicationService, createCrossRegionEventReplicationService } from "../../../../../src/platform/five-plane-execution/ha/cross-region-event-replication-service.js";
+import type { TypedEventPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
+import type { TypedEventType } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Typed Event Publisher

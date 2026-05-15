@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository.js";
-import type { LeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository.js";
+import { createLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository.js";
+import type { LeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 

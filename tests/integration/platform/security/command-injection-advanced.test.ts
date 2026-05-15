@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CommandSafetyClassifier } from "../../../../src/platform/execution/tool-executor/command-security.js";
+import { CommandSafetyClassifier } from "../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 
 test("security: semicolon command separator is blocked", () => {
   const classifier = new CommandSafetyClassifier();

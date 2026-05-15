@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readValidatedJsonBody } from "../../../../../../src/platform/interface/api/middleware/input-validation.js";
+import { readValidatedJsonBody } from "../../../../../../src/platform/five-plane-interface/api/middleware/input-validation.js";
 
 test("readValidatedJsonBody parses valid JSON and validates with parser", () => {
   const result = readValidatedJsonBody('{"id": 123, "name": "test"}', (data) => {

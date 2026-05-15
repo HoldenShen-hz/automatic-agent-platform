@@ -7,7 +7,7 @@ import {
   POSTGRES_MIGRATIONS,
   PHASE_1A_SCHEMA_DDL,
   translateSqliteToPostgresDdl,
-} from "../../../../../../src/platform/state-evidence/truth/postgres/pg-schema.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/postgres/pg-schema.js";
 
 test("POSTGRES_MIGRATIONS contains at least one migration", () => {
   assert.ok(POSTGRES_MIGRATIONS.length > 0, "Should have at least one migration");

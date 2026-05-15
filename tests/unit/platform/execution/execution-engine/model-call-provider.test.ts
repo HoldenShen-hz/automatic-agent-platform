@@ -15,7 +15,7 @@ import {
   initializeModelCallProvider,
   type ModelCallProviderConfig,
   type LlmModelCallRequest,
-} from "../../../../../src/platform/execution/execution-engine/model-call-provider.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 
 test("ModelCallProviderService hasAnthropic returns false when not configured", () => {
   const config: ModelCallProviderConfig = {};

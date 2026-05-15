@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessMemoryManager, type HarnessMemoryNamespace } from "../../../../../src/platform/orchestration/harness/memory-manager.js";
+import { HarnessMemoryManager, type HarnessMemoryNamespace } from "../../../../../src/platform/five-plane-orchestration/harness/memory-manager.js";
 
 test("HarnessMemoryManager.write stores value", () => {
   const manager = new HarnessMemoryManager();

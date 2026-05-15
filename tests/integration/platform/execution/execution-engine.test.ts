@@ -9,16 +9,16 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { getMultiStepToolDefinitions } from "../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js";
-import { getPhase1BToolDefinitions, PHASE1B_TOOL_DEFINITIONS } from "../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { getMultiStepToolDefinitions } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js";
+import { getPhase1BToolDefinitions, PHASE1B_TOOL_DEFINITIONS } from "../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
-import { AgentExecutor } from "../../../../src/platform/execution/execution-engine/agent-executor.js";
-import { routeComplexity } from "../../../../src/platform/execution/execution-engine/complexity-router.js";
-import { LoopDetectionState } from "../../../../src/platform/execution/execution-engine/loop-detection.js";
-import { TightLoopDetector } from "../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+import { AgentExecutor } from "../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
+import { routeComplexity } from "../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
+import { LoopDetectionState } from "../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
+import { TightLoopDetector } from "../../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
 function createIntegrationContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);

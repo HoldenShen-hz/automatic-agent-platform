@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWebhookRoutes } from "../../../../../../src/platform/interface/api/http-server/webhook-routes.js";
-import { WebhookIngressService } from "../../../../../../src/platform/interface/webhook/index.js";
-import type { WebhookOutboxDispatchService } from "../../../../../../src/platform/interface/webhook/webhook-outbox-dispatch-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createWebhookRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/webhook-routes.js";
+import { WebhookIngressService } from "../../../../../../src/platform/five-plane-interface/webhook/index.js";
+import type { WebhookOutboxDispatchService } from "../../../../../../src/platform/five-plane-interface/webhook/webhook-outbox-dispatch-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(): ApiAuthService {
   return {

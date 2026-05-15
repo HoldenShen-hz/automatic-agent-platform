@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createNoOpIncidentFacadeService } from "../../../../../src/platform/interface/api/facade-interfaces.js";
+import { createNoOpIncidentFacadeService } from "../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 
 test("createNoOpIncidentFacadeService returns an IncidentFacadeService", () => {
   const svc = createNoOpIncidentFacadeService();

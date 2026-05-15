@@ -6,7 +6,7 @@ import {
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
   CONTROL_PLANE_CATALOG_SERVICE_ID,
   registerControlPlaneBootstrap,
-} from "../../../../src/platform/control-plane/control-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-control-plane/control-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("control plane bootstrap exposes canonical control services", () => {

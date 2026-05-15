@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   EditSnapshotService,
   EditSnapshotManager,
-} from "../../../../../src/platform/execution/tool-executor/edit-snapshot-service.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/edit-snapshot-service.js";
 
 test("EditSnapshotService records edits", () => {
   const service = new EditSnapshotService("session-1");

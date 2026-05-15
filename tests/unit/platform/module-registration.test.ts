@@ -187,14 +187,14 @@ test("catalog contains all expected entry modules", async () => {
 
     assert.ok(entryModules.includes("src/platform/compliance/index.ts"));
     assert.ok(entryModules.includes("src/platform/contracts/index.ts"));
-    assert.ok(entryModules.includes("src/platform/control-plane/index.ts"));
-    assert.ok(entryModules.includes("src/platform/execution/index.ts"));
-    assert.ok(entryModules.includes("src/platform/interface/index.ts"));
+    assert.ok(entryModules.includes("src/platform/five-plane-control-plane/index.ts"));
+    assert.ok(entryModules.includes("src/platform/five-plane-execution/index.ts"));
+    assert.ok(entryModules.includes("src/platform/five-plane-interface/index.ts"));
     assert.ok(entryModules.includes("src/platform/model-gateway/index.ts"));
-    assert.ok(entryModules.includes("src/platform/orchestration/index.ts"));
+    assert.ok(entryModules.includes("src/platform/five-plane-orchestration/index.ts"));
     assert.ok(entryModules.includes("src/platform/prompt-engine/index.ts"));
     assert.ok(entryModules.includes("src/platform/shared/index.ts"));
-    assert.ok(entryModules.includes("src/platform/state-evidence/index.ts"));
+    assert.ok(entryModules.includes("src/platform/five-plane-state-evidence/index.ts"));
   } finally {
     await registry.reset();
   }

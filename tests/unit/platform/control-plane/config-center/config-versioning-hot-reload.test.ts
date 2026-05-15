@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConfigVersioningService } from "../../../../../src/platform/control-plane/config-center/config-versioning-service.js";
+import { ConfigVersioningService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-versioning-service.js";
 
 class MockEventBus {
   public readonly publishedEvents: Array<{ eventType: string; payload: Record<string, unknown> }> = [];

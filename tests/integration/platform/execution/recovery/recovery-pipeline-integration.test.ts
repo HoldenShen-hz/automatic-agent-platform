@@ -9,17 +9,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import { RepairPipeline } from "../../../../../src/platform/execution/recovery/repair-pipeline.js";
-import { createTaskCard, type TaskCard, type TaskRiskLevel } from "../../../../../src/platform/execution/recovery/task-card.js";
-import { createPatchBundle, type PatchBundle } from "../../../../../src/platform/execution/recovery/patch-bundle.js";
-import { createValidationReport, type ValidationReport, type CheckResult } from "../../../../../src/platform/execution/recovery/validation-report.js";
-import { createReviewReport } from "../../../../../src/platform/execution/recovery/review-report.js";
-import { classifyFailure, shouldEscalate } from "../../../../../src/platform/execution/recovery/failure-classification.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RepairPipeline } from "../../../../../src/platform/five-plane-execution/recovery/repair-pipeline.js";
+import { createTaskCard, type TaskCard, type TaskRiskLevel } from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
+import { createPatchBundle, type PatchBundle } from "../../../../../src/platform/five-plane-execution/recovery/patch-bundle.js";
+import { createValidationReport, type ValidationReport, type CheckResult } from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
+import { createReviewReport } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
+import { classifyFailure, shouldEscalate } from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
 
 function createTestTaskCard(riskLevel: TaskRiskLevel = "medium"): TaskCard {
   return createTaskCard({

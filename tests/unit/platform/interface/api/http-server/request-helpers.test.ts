@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 
-import { matchRoute, normalizeHeaders, readIncomingBody, authenticateOptionalPrincipal } from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
-import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { matchRoute, normalizeHeaders, readIncomingBody, authenticateOptionalPrincipal } from "../../../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 import { IncomingMessage } from "node:http";
-import { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
+import { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
 // Helper to create a minimal IncomingMessage-like that works with for-await-of
 function createMockIncomingMessage(data: Buffer | null): IncomingMessage {

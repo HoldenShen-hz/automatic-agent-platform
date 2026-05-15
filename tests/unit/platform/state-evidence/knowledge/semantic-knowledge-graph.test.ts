@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SemanticKnowledgeGraph } from "../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import type { ArchivedKnowledgeRecord } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { KnowledgeSource } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { SemanticKnowledgeGraph } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import type { ArchivedKnowledgeRecord } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { KnowledgeSource } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions

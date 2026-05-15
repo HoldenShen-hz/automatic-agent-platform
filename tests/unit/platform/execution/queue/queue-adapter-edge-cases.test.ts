@@ -9,20 +9,20 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { QueuePartitioner } from "../../../../../src/platform/execution/queue/queue-partitioner.js";
-import { createQueueAdapter } from "../../../../../src/platform/execution/queue/queue-adapter-factory.js";
+import { QueuePartitioner } from "../../../../../src/platform/five-plane-execution/queue/queue-partitioner.js";
+import { createQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-factory.js";
 import {
   SqliteQueueAdapter,
   RedisQueueAdapter,
   QUEUE_JOBS_DDL,
-} from "../../../../../src/platform/execution/queue/queue-adapter.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-execution/queue/queue-adapter.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import type {
   QueuePartition,
   QueueJobRecord,
   EnqueueInput,
-} from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+} from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 // =============================================================================
 // Queue Partitioner Edge Cases

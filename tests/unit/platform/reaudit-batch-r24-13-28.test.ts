@@ -19,8 +19,8 @@ import {
 } from "../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 import { DEFAULT_MEMORY_PROMOTION_RULES, shouldEvict } from "../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import { DEFAULT_SIX_LAYER_TRANSITION_RULES } from "../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import type { MemoryRecord } from "../../../src/platform/contracts/types/domain.js";
 import type {
   KnowledgeChunk,

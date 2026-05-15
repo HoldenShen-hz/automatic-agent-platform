@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
-import type { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
-import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import { KnowledgePromotionService } from "../../../../../src/platform/orchestration/learn/knowledge-promotion-service.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
+import type { KnowledgePlaneService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import type { TypedEventPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
+import { KnowledgePromotionService } from "../../../../../src/platform/five-plane-orchestration/learn/knowledge-promotion-service.js";
 
 function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {

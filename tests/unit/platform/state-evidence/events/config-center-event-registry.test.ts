@@ -5,7 +5,7 @@ import {
   getEventSchema,
   hasEventSchema,
   validateEventPayload,
-} from "../../../../../src/platform/state-evidence/events/event-registry.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 const CONFIG_EVENT_TYPES = [
   "config.changed",

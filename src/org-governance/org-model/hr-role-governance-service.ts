@@ -13,7 +13,7 @@
 
 import { join } from "node:path";
 
-import type { ApprovalRequest, ApprovalService } from "../../platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalRequest, ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import { PolicyDeniedError, StorageError, ValidationError } from "../../platform/contracts/errors.js";
 import type {
   DivisionRegistry,
@@ -21,7 +21,7 @@ import type {
   LoadedDivisionDefinition,
 } from "../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../domains/governance/division-loader.js";
-import { inferPromotedToolNames, expandToolNames } from "../../platform/execution/tool-executor/tool-recommend-service.js";
+import { inferPromotedToolNames, expandToolNames } from "../../platform/five-plane-execution/tool-executor/tool-recommend-service.js";
 
 /** Reason codes for gap analysis triggers */
 export type HrGapTriggerReason = "no_role_match" | "scope_exceeded";

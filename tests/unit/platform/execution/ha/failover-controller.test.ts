@@ -6,7 +6,7 @@ import type {
   FailoverDecision,
   LeaderLease,
   LeadershipQueryResult,
-} from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

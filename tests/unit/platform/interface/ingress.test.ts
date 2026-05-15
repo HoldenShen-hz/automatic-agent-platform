@@ -1,13 +1,13 @@
 /**
- * @fileoverview Unit tests for src/platform/interface/ingress
+ * @fileoverview Unit tests for src/platform/five-plane-interface/ingress
  * Tests RedisRateLimiter and DistributedRateLimiter implementations
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisRateLimiter } from "../../../../src/platform/interface/ingress/redis-rate-limiter.js";
-import { DistributedRateLimiter } from "../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { RedisRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("RedisRateLimiter constructor accepts config with all options", () => {
   const limiter = new RedisRateLimiter({

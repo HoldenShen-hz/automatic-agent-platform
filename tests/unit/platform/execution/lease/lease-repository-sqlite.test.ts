@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository-sqlite.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { SqliteLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository-sqlite.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 

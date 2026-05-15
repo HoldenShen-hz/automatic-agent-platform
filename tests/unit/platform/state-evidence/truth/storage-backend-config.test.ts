@@ -6,7 +6,7 @@ import {
   buildStorageBackendConfigIssues,
   inspectStorageBackendConfig,
   type StorageBackendConfigValidationOptions,
-} from "../../../../../src/platform/state-evidence/truth/storage-backend-config.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-config.js";
 
 test("resolveStorageDriver returns sqlite when not configured", () => {
   const result = resolveStorageDriver({});

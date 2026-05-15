@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createBillingRoutes } from "../../../../../../src/platform/interface/api/http-server/billing-routes.js";
-import { ApiAuthError } from "../../../../../../src/platform/interface/api/api-auth-service.js";
+import { createBillingRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/billing-routes.js";
+import { ApiAuthError } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { BillingService } from "../../../../../../src/scale-ecosystem/marketplace/billing-service.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockBillingService(result: Record<string, unknown> = { sessionRef: "sess-123", status: "paid" }): BillingService {
   return {

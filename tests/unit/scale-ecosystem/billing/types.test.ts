@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for billing types in scale-ecosystem/marketplace
  *

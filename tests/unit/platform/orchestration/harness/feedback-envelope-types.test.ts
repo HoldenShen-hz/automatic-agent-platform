@@ -1,7 +1,7 @@
 /**
  * Unit tests for FeedbackEnvelope and related types
  *
- * @see src/platform/orchestration/harness/index.ts
+ * @see src/platform/five-plane-orchestration/harness/index.ts
  */
 
 import assert from "node:assert/strict";
@@ -13,7 +13,7 @@ import type {
   HarnessDecision,
   HarnessRun,
   ConstraintPack,
-} from "../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMockConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

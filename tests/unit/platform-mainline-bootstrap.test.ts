@@ -83,7 +83,7 @@ test("resolvePlatformMainlineCapability error message includes the unknown ID", 
 test("resolvePlatformMainlineCapability returns capability with correct structure", () => {
   const capability = resolvePlatformMainlineCapability("execution");
   assert.equal(capability.capabilityId, "execution");
-  assert.equal(capability.entryModule, "src/platform/execution/index.ts");
+  assert.equal(capability.entryModule, "src/platform/five-plane-execution/index.ts");
   assert.ok(capability.architectureSections.includes("§14"));
   assert.ok(capability.criticalSubmodules.includes("dispatcher"));
   assert.ok(capability.criticalSubmodules.includes("execution-engine"));
@@ -96,18 +96,18 @@ test("PlatformMainlineCapabilityId type accepts all valid IDs", () => {
 
 test("specific capabilities have expected properties", () => {
   const interfaceCap = resolvePlatformMainlineCapability("interface");
-  assert.equal(interfaceCap.entryModule, "src/platform/interface/index.ts");
+  assert.equal(interfaceCap.entryModule, "src/platform/five-plane-interface/index.ts");
   assert.ok(interfaceCap.architectureSections.includes("§4"));
   assert.ok(interfaceCap.criticalSubmodules.includes("api"));
   assert.ok(interfaceCap.criticalSubmodules.includes("webhook"));
 
   const controlPlane = resolvePlatformMainlineCapability("control-plane");
-  assert.equal(controlPlane.entryModule, "src/platform/control-plane/index.ts");
+  assert.equal(controlPlane.entryModule, "src/platform/five-plane-control-plane/index.ts");
   assert.ok(controlPlane.criticalSubmodules.includes("approval-center"));
   assert.ok(controlPlane.criticalSubmodules.includes("config-center"));
 
   const stateEvidence = resolvePlatformMainlineCapability("state-evidence");
-  assert.equal(stateEvidence.entryModule, "src/platform/state-evidence/index.ts");
+  assert.equal(stateEvidence.entryModule, "src/platform/five-plane-state-evidence/index.ts");
   assert.ok(stateEvidence.criticalSubmodules.includes("truth"));
   assert.ok(stateEvidence.criticalSubmodules.includes("events"));
 

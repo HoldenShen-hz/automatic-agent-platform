@@ -135,18 +135,18 @@ export class TimeoutError extends Error {
 /**
  * Functional timeout wrapper - wraps a function with timeout semantics
  */
-export function withTimeout<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function withTimeout<TArgs extends readonly unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   timeoutMs: number,
   cleanupFn?: (() => void) | undefined
-): T {
-  return ((...args: Parameters<T>) => {
+): (...args: TArgs) => Promise<TResult> {
+  return (...args: TArgs) => {
     const options = cleanupFn !== undefined
       ? { timeoutMs, cleanupFn, propagateError: true }
       : { timeoutMs, propagateError: true };
     const timeout = new Timeout(options);
     return timeout.wrap(() => fn(...args));
-  }) as T;
+  };
 }
 
 /**

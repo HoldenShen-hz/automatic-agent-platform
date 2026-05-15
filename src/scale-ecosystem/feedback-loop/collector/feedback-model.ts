@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { FeedbackSignalSchema, type FeedbackSignal } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
+import { FeedbackSignalSchema, type FeedbackSignal } from "../../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 export const FeedbackBatchOutcomeSchema = z.enum(["completed", "failed", "repairable", "escalated", "partial"]);
 

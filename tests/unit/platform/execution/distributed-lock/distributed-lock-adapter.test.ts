@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteLockAdapter } from "../../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import type { DistributedLockAdapter } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
-import type { LockRecord, AcquireLockInput, AcquireLockResult } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { SqliteLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
+import type { DistributedLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
+import type { LockRecord, AcquireLockInput, AcquireLockResult } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 test("DistributedLockAdapter interface requires backendKind", () => {
   const adapter: DistributedLockAdapter = {

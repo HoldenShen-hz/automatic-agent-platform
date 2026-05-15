@@ -6,7 +6,7 @@ import { CONSOLE_APP_MANIFEST } from "../../../../src/apps/console/index.js";
 test("CONSOLE_APP_MANIFEST entryModule points to console-backend", () => {
   assert.equal(
     CONSOLE_APP_MANIFEST.entryModule,
-    "src/platform/interface/console-backend/index.ts"
+    "src/platform/five-plane-interface/console-backend/index.ts"
   );
 });
 

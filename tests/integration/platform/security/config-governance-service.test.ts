@@ -3,8 +3,8 @@ import test from "node:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { ConfigGovernanceService } from "../../../../src/platform/control-plane/config-center/config-governance-service.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { ConfigGovernanceService } from "../../../../src/platform/five-plane-control-plane/config-center/config-governance-service.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 function seedConfigTree(root: string): void {

@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { DiagnosticsExportService } from "../../../../../src/platform/shared/observability/diagnostics-export-service.js";
 import type { DiagnosticsService } from "../../../../../src/platform/shared/observability/diagnostics-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createStoreMock(inserted: Array<Record<string, unknown>>): AuthoritativeTaskStore {

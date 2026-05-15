@@ -1,6 +1,6 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError } from "../../platform/contracts/errors.js";
-import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
+import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { createHash } from "node:crypto";
 
 // R8-25 FIX: Plugin signature verification for secure plugin loading

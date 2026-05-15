@@ -10,8 +10,8 @@ import test from "node:test";
 
 import {
   MemoryPlaneService,
-} from "../../../../../src/platform/state-evidence/memory/memory-plane-service.js";
-import { MemoryPromotionEngine } from "../../../../../src/platform/state-evidence/memory/memory-promotion-engine.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-plane-service.js";
+import { MemoryPromotionEngine } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-promotion-engine.js";
 import {
   DEFAULT_LAYER_TTL_CONFIGS,
   DEFAULT_MEMORY_PROMOTION_RULES,
@@ -21,15 +21,15 @@ import {
   createContextTruncationReport,
   getLayerTtlConfig,
   type MemoryRecord,
-} from "../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import type {
   MemoryProvider,
   MemoryProviderPrefetchResult,
   MemoryProviderQuery,
   MemoryTurnSyncInput,
   MemoryTurnSyncResult,
-} from "../../../../../src/platform/state-evidence/memory/memory-provider.js";
-import type { HierarchicalMemoryLayer } from "../../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-provider.js";
+import type { HierarchicalMemoryLayer } from "../../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 
 function createMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {

@@ -9,8 +9,8 @@ import { createTempWorkspace, cleanupPath, createFile } from "../../../../helper
 import {
   loadExceptionRecoveryConfig,
   clearExceptionRecoveryConfigCache,
-} from "../../../../../src/platform/execution/recovery/exception-recovery-config-loader.js";
-import type { ExceptionRecoveryConfig } from "../../../../../src/platform/execution/recovery/exception-recovery-types.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-config-loader.js";
+import type { ExceptionRecoveryConfig } from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-types.js";
 
 test("loadExceptionRecoveryConfig loads default config", () => {
   // Clear cache first to ensure we load fresh

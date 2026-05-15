@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AssessmentService } from "../../../../../src/platform/orchestration/oapeflir/assessment-service.js";
+import { AssessmentService } from "../../../../../src/platform/five-plane-orchestration/oapeflir/assessment-service.js";
 
 test("AssessmentService derives critical risk and approval constraint from critical signals", () => {
   const service = new AssessmentService();

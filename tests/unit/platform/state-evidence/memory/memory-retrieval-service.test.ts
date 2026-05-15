@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildFtsMatchQuery, extractSearchableText, createSnippet, MemoryRetrievalService } from "../../../../../src/platform/state-evidence/memory/memory-retrieval-service.js";
+import { buildFtsMatchQuery, extractSearchableText, createSnippet, MemoryRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { MemoryRecallQuery } from "../../../../../src/platform/state-evidence/memory/memory-quality.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { MemoryRecallQuery } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-quality.js";
 
 test("buildFtsMatchQuery returns empty phrase for empty input", () => {
   const result = buildFtsMatchQuery("");

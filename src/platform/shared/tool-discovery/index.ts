@@ -13,10 +13,10 @@ import {
   listBuiltinToolExecutionMetadata,
   resolveToolExecutionMetadata,
   type ToolExecutionMetadata,
-} from "../../execution/tool-executor/tool-metadata.js";
+} from "../../five-plane-execution/tool-executor/tool-metadata.js";
 
 // Re-export ToolExecutionMetadata for consumers
-export type { ToolExecutionMetadata } from "../../execution/tool-executor/tool-metadata.js";
+export type { ToolExecutionMetadata } from "../../five-plane-execution/tool-executor/tool-metadata.js";
 
 export interface ExpandedToolNames {
   resolvedToolNames: readonly string[];

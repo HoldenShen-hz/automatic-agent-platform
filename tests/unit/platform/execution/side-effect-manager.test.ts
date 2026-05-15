@@ -7,7 +7,7 @@ import {
   createSideEffectRecord,
   type ArtifactRef,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { SideEffectManager } from "../../../../src/platform/execution/side-effect-manager.js";
+import { SideEffectManager } from "../../../../src/platform/five-plane-execution/side-effect-manager.js";
 
 const artifact: ArtifactRef = {
   artifactId: "artifact-1",

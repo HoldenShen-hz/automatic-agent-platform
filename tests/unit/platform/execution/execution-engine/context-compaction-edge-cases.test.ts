@@ -8,20 +8,20 @@
  * - Compaction record audit trail verification
  * - Token estimation edge cases
  *
- * @see src/platform/execution/execution-engine/context-compaction-service.ts
+ * @see src/platform/five-plane-execution/execution-engine/context-compaction-service.ts
  */
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ContextCompactionService } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
+import { ContextCompactionService } from "../../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 import type {
   ContextCompactionOptions,
   CompactedContextMessage,
-} from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { MessageRecord, CompactionRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

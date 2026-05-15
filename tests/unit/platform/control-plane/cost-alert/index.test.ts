@@ -6,7 +6,7 @@ import type {
   CostThresholdExceededEvent,
   BudgetPolicy,
   BudgetScope,
-} from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+} from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 // Mock the dependencies
 const mockDb = {
@@ -44,7 +44,7 @@ const mockStoreWithFailingArtifact = {
   },
 } as any;
 
-import { CostAlertService } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-service.js";
+import { CostAlertService } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 
 test("CostAlertService calculatePeriodEnd handles monthly period", () => {
   const config: Partial<CostAlertConfig> = {

@@ -8,7 +8,7 @@ import {
   detectCommonIndent,
   trimTerminalEmptyLine,
   preserveTrailingNewline,
-} from "../../../../../../src/platform/execution/tool-executor/edit-replacement/string-utils.js";
+} from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/string-utils.js";
 
 test("normalizeWhitespace collapses spaces and tabs", () => {
   assert.equal(normalizeWhitespace("  hello   world  "), "hello world");

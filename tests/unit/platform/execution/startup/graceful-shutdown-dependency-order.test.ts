@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GracefulShutdown } from "../../../../../src/platform/execution/startup/graceful-shutdown.js";
+import { GracefulShutdown } from "../../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 test("graceful shutdown executes handlers using dependsOn ordering", async () => {
   const callOrder: string[] = [];

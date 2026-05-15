@@ -8,7 +8,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §13.5
  */
 
-import type { FeedbackSignal } from "../../orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 /**
  * Feedback batch outcome classification.

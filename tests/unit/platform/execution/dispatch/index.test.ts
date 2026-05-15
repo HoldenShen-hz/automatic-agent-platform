@@ -15,7 +15,7 @@ import type {
   DispatchQueueAvailabilitySnapshot,
   ExecutionTicketDecision,
   DispatchExecutionDecision,
-} from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 // Re-export types from dispatch-types domain
 import type {
@@ -35,7 +35,7 @@ import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
   type MultiStepToolDefinition,
-} from "../../../../../src/platform/execution/dispatcher/index.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/index.js";
 
 // =============================================================================
 // Module Export Verification

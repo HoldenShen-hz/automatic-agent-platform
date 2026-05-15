@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert';
-import { assessCommand } from '../../../../../src/platform/execution/tool-executor/command-security.js';
+import { assessCommand } from '../../../../../src/platform/five-plane-execution/tool-executor/command-security.js';
 
 test('blocks classic fork bomb: :(){ :|:& };:', () => {
   const bomb = ':(){ :|:& };:';

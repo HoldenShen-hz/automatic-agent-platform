@@ -3,11 +3,11 @@
 // Supports issuing registration challenges and completing worker registration with capabilities.
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadWorkerRegisterCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
-import { ConfigGovernanceService } from "../../platform/control-plane/config-center/config-governance-service.js";
+import { loadWorkerRegisterCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
+import { ConfigGovernanceService } from "../../platform/five-plane-control-plane/config-center/config-governance-service.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { RemoteWorkerRegistrationService } from "../../platform/execution/worker-pool/remote-worker-registration-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { RemoteWorkerRegistrationService } from "../../platform/five-plane-execution/worker-pool/remote-worker-registration-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 /**
  * Loads the worker registration policy from the config bundle.

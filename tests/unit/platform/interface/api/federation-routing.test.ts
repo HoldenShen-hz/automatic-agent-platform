@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   FederationRoutingService,
   type FederationPartner,
-} from "../../../../../src/platform/interface/api/federation-routing-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/federation-routing-service.js";
 
 test("FederationRoutingService - register and retrieve partner", () => {
   const service = new FederationRoutingService();

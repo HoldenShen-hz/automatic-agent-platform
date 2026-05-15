@@ -15,7 +15,7 @@ import {
   hasApproverVoted,
   getApproverVote,
   countEffectiveVotes,
-} from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 
 import {
   EscalationManager,
@@ -23,7 +23,7 @@ import {
   DelegationStatus,
   NotificationChannelType,
   NotificationPriority,
-} from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 
 import {
   ApprovalFlowEngine,
@@ -33,8 +33,8 @@ import {
   ApprovalTimeoutConfig,
   FeedbackLoopConfig,
   HumanFeedback,
-} from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
-import type { ApprovalRequest } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+import type { ApprovalRequest } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 // ============================================================================
 // Quorum Calculator Tests

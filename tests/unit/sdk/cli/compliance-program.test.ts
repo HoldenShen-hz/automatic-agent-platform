@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadComplianceProgramCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
+import { loadComplianceProgramCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/product-cli-env.js";
 
 const COMPLIANCE_PROGRAM_ACTIONS = ["summary", "export"] as const;
 

@@ -10,8 +10,8 @@ import {
   PROMPT_MODEL_POLICY_GOVERNANCE_DDL,
   PromptModelPolicyGovernanceService,
 } from "../../../../src/platform/prompt-engine/eval/prompt-model-policy-governance-service.js";
-import { IntakeRouter } from "../../../../src/platform/orchestration/routing/intake-router.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { IntakeRouter } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("prompt-model-policy governance integrates structured intent evaluation into prompt promotion", () => {

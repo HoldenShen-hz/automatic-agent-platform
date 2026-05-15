@@ -5,7 +5,7 @@ import {
   readTrimmedEnv,
   resolveConfigEnvironment,
   resolveConfigRoot,
-} from "../../../../../src/platform/control-plane/config-center/runtime-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/runtime-env.js";
 
 test("readTrimmedEnv returns null for missing env var", () => {
   const result = readTrimmedEnv({}, "MISSING_VAR");

@@ -1,12 +1,12 @@
 /**
  * Unit tests for OperatorConsoleBackendService planHumanTakeoverAction edge cases
- * Tests src/platform/interface/console-backend/index.ts action planning
+ * Tests src/platform/five-plane-interface/console-backend/index.ts action planning
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OperatorConsoleBackendService } from "../../../../../src/platform/interface/console-backend/index.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 function createOperator(overrides: Partial<{ operatorId: string; roles: string[]; tenantId: string | null; workspaceId: string | null }> = {}) {
   return {

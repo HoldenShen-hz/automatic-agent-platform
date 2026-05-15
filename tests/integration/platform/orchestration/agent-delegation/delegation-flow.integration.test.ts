@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Delegation Flow
  *
@@ -18,7 +17,7 @@ import {
   type AgentContext,
   type DelegationSpec,
   type DelegationHandle,
-} from "../../../../../src/platform/orchestration/agent-delegation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 function createTestContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

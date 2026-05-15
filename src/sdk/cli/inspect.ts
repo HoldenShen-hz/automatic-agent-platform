@@ -23,7 +23,7 @@
  * @see {@link docs_zh/contracts/} for observability contracts
  */
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadInspectCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadInspectCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import {
   InspectService,

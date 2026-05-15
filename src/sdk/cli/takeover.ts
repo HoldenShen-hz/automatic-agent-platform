@@ -31,9 +31,9 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadTakeoverCliEnv } from "../../platform/control-plane/config-center/takeover-cli-env.js";
+import { loadTakeoverCliEnv } from "../../platform/five-plane-control-plane/config-center/takeover-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { HumanTakeoverService } from "../../platform/control-plane/incident-control/human-takeover-service.js";
+import { HumanTakeoverService } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 import type { TaskTerminalStatus } from "../../platform/contracts/types/status.js";
 
 /**

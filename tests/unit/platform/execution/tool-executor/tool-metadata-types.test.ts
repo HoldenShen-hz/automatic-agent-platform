@@ -11,7 +11,7 @@ import type {
   ToolApprovalMode,
   ToolRiskLevel,
   ToolExecutionMetadata,
-} from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 test("ToolSideEffectScope accepts all valid values", () => {
   const scopes: ToolSideEffectScope[] = ["none", "local_file", "local_process", "remote_api", "billing", "org_state"];

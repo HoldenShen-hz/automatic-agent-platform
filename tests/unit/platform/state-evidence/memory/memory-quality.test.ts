@@ -8,7 +8,7 @@ import {
   filterAndSortMemories,
   buildMemoryQualityReport,
   type MemoryRecallQuery,
-} from "../../../../../src/platform/state-evidence/memory/memory-quality.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-quality.js";
 
 function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   const now = new Date().toISOString() as any;

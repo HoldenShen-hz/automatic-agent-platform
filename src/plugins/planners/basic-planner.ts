@@ -60,6 +60,7 @@ export function createBasicPlannerPlugin(): DomainPlannerPlugin {
                   stepName: "approve",
                   toolHints: [],
                   requiresReview: true,
+                  retryPolicy: { maxRetries: 1, backoffMs: 500 },
                   timeoutMs: 30_000,
                 },
                 {

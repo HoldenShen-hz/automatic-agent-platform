@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
@@ -18,11 +18,11 @@ import {
   type ConstraintPack,
   type HarnessRun,
   type HarnessRole,
-} from "../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../src/platform/five-plane-orchestration/harness/index.js";
 import {
   mapHarnessStepToOapeflirPhase,
   type OapeflirSemanticPhase,
-} from "../../../../src/platform/orchestration/harness/oapeflir-harness-mapping.js";
+} from "../../../../src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.js";
 
 function createOapeflirContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);

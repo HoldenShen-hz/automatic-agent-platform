@@ -10,7 +10,7 @@ import {
   canTransitionTrustLevel,
   DEFAULT_TRUST_TRANSITION_RULES,
   type TrustLevel,
-} from "../../../../../src/platform/state-evidence/memory/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/index.js";
 
 function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   const now = new Date().toISOString() as any;

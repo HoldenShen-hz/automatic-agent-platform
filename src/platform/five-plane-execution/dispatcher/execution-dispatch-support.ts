@@ -1,5 +1,5 @@
 import type { AgentExecutionRecord, DispatchTarget, DispatchDecisionTrace, DispatchWorkerEvaluation, DispatchWorkerRejectionReason, ExecutionTicketRecord, RemoteAvailability, TaskPriority, WorkerIsolationLevel } from "../../contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { resolveRemoteAuthorityBlockReason } from "../worker-pool/remote-session-guard.js";
 

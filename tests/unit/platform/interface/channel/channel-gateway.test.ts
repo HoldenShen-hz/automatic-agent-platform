@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { ChannelGatewayService, GatewayRateLimitError } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
-import { GatewayTargetDirectoryService } from "../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { normalizeGatewayDeliveryFailure, GatewayDeliveryError } from "../../../../../src/platform/interface/channel-gateway/errors.js";
-import type { GatewayStoragePort } from "../../../../../src/platform/interface/channel-gateway/storage-port.js";
+import { ChannelGatewayService, GatewayRateLimitError } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { GatewayTargetDirectoryService } from "../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import { normalizeGatewayDeliveryFailure, GatewayDeliveryError } from "../../../../../src/platform/five-plane-interface/channel-gateway/errors.js";
+import type { GatewayStoragePort } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
 import type { GatewayTargetRecord, GatewayTargetKind, GatewayTargetSource } from "../../../../../src/platform/contracts/types/domain.js";
-import type { ChannelGatewayDeliveryService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import type { GatewayDeliveryReceipt } from "../../../../../src/platform/interface/channel-gateway/types.js";
+import type { ChannelGatewayDeliveryService } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import type { GatewayDeliveryReceipt } from "../../../../../src/platform/five-plane-interface/channel-gateway/types.js";
 
 /**
  * Manual mock implementations for unit testing ChannelGatewayService
@@ -65,7 +65,7 @@ interface CapturedRequest {
   body: unknown;
 }
 
-function createMockFetch(_responses?: Map<string, { ok: boolean; status: number; body: unknown }>): import("../../../../../src/platform/interface/channel-gateway/types.js").FetchLike {
+function createMockFetch(_responses?: Map<string, { ok: boolean; status: number; body: unknown }>): import("../../../../../src/platform/five-plane-interface/channel-gateway/types.js").FetchLike {
   return async (input: Request | URL | string, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof Request ? input.url : input.toString();
     const response = _responses?.get(url) ?? { ok: true, status: 200, body: {} };

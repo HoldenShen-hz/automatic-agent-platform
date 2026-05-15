@@ -10,7 +10,7 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
 import { SloAlertingService, SLO_ALERTING_DDL } from "../../../../src/platform/shared/observability/slo-alerting-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { SloDefinition, SliRecord, AlertRule, AlertEvent } from "../../../../src/platform/shared/observability/slo-alerting/types.js";
 
 // =============================================================================

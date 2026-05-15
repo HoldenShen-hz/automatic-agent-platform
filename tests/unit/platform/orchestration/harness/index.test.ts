@@ -8,7 +8,7 @@ import {
   HitlRuntime,
   ToolbeltAssembler,
   type ConstraintPack,
-} from "../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

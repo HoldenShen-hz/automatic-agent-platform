@@ -19,7 +19,7 @@ import {
   MEMORY_LAYER_TO_CODE,
   getMemoryLayerDescription,
   getTrustLevelDescription,
-} from "../../../../../src/platform/state-evidence/knowledge/governance/knowledge-naming-mapper.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-naming-mapper.js";
 
 test("toDocTrustLevel converts code trust levels to documentation trust levels", () => {
   assert.equal(toDocTrustLevel("trusted"), "verified");

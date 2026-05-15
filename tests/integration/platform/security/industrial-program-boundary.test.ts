@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 const repoRoot = process.cwd();

@@ -7,9 +7,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadInspectCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadInspectCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import { INSPECT_KINDS } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-support.js";
+import { INSPECT_KINDS } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-support.js";
 
 test("loadInspectCliEnv parses task kind", () => {
   const config = loadInspectCliEnv({

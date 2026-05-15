@@ -6,12 +6,12 @@
  * - PostgreSQL backend: uses PostgresHotUpgradeRepository (async operations)
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type {
   SqliteAuthoritativeStorageBackendHandle,
   PostgresAuthoritativeStorageBackendHandle,
-} from "../../state-evidence/truth/storage-backend-factory.js";
+} from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import { createHotUpgradeRepository } from "./hot-upgrade-repository.js";
 import { HotUpgradeServiceAsync } from "./hot-upgrade-service-async.js";
 

@@ -29,7 +29,7 @@
 import {
   runStableEvidenceCampaign,
 } from "../../platform/shared/stability/stable-evidence-campaign.js";
-import { loadStableCampaignCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableCampaignCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 /**
  * Main entry point for the stable evidence campaign CLI.

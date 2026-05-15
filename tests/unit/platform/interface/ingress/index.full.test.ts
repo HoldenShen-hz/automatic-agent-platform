@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as ingress from "../../../../../src/platform/interface/ingress/index.js";
+import * as ingress from "../../../../../src/platform/five-plane-interface/ingress/index.js";
 
 test("index exports DistributedRateLimiter", () => {
   assert.ok(ingress.DistributedRateLimiter !== undefined);

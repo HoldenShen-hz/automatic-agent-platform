@@ -8,8 +8,8 @@ import {
   isOriginAllowed,
   buildPreflightHeaders,
   decorateResponseHeaders,
-} from "../../../../../../src/platform/interface/api/http-server/response-hardening.js";
-import type { ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/response-hardening.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
+import type { ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
 
 test("parseAllowedOrigins returns defaults for undefined input", () => {
   const result = parseAllowedOrigins(undefined);

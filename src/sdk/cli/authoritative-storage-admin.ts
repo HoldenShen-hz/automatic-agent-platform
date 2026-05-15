@@ -22,8 +22,8 @@ import {
   describeCliAuthoritativeStoragePlan,
   withCliStorageBackendAsync,
 } from "./authoritative-storage.js";
-import { loadAuthoritativeStorageAdminCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
-import { MigrationRunner } from "../../platform/state-evidence/truth/migration-runner.js";
+import { loadAuthoritativeStorageAdminCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
+import { MigrationRunner } from "../../platform/five-plane-state-evidence/truth/migration-runner.js";
 
 /**
  * Main entry point for the authoritative storage admin CLI.

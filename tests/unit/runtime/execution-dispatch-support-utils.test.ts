@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { isElevatedPriority, resolveDispatchBackpressureReason } from "../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+import { isElevatedPriority, resolveDispatchBackpressureReason } from "../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 import type { ExecutionTicketRecord } from "../../../src/platform/contracts/types/domain.js";
 
 test("isElevatedPriority returns true for high and urgent", () => {

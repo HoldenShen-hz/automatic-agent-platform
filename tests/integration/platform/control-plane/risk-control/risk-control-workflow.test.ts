@@ -13,8 +13,8 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 
-import { RiskEvaluationEngine } from "../../../../../src/platform/control-plane/risk-control/risk-evaluation-engine.js";
-import { loadRiskConfig } from "../../../../../src/platform/control-plane/risk-control/risk-config-loader.js";
+import { RiskEvaluationEngine } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-evaluation-engine.js";
+import { loadRiskConfig } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
 
 test("risk-control: load config and evaluate low risk workflow", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-integration-"));

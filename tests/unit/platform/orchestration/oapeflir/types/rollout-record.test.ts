@@ -6,7 +6,7 @@ import {
   RolloutStatusSchema,
   RolloutRecordSchema,
   parseRolloutRecord,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 test("RolloutLevelSchema accepts valid levels", () => {
   const levels = ["off", "suggest", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable"] as const;

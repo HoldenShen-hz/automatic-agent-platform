@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   mapHarnessStepToOapeflirPhase,
   type OapeflirSemanticPhase,
-} from "../../../../../src/platform/orchestration/harness/oapeflir-harness-mapping.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.js";
 
 type OapeflirPhaseTypeSmoke = OapeflirSemanticPhase;
 void (null as unknown as OapeflirPhaseTypeSmoke);

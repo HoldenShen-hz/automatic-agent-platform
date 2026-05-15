@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FailurePatternMiner } from "../../../../../src/platform/orchestration/learn/failure-pattern-miner.js";
+import { FailurePatternMiner } from "../../../../../src/platform/five-plane-orchestration/learn/failure-pattern-miner.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 // Helper to create a minimal learning signal for testing

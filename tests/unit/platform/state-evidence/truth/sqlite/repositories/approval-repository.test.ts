@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ApprovalRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/approval-repository.js";
-import { TaskRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
-import { ExecutionRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
-import { SqliteDatabase } from "../../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { ApprovalRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { TaskRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/task-repository.js";
+import { ExecutionRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/execution-repository.js";
+import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 import type { ApprovalRecord, TakeoverSessionRecord, OperatorActionRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
 

@@ -11,7 +11,7 @@ import { globSync } from "glob";
 import { readFileSync } from "fs";
 
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
-  const oapeflirFiles = globSync("src/platform/orchestration/oapeflir/**/*.ts");
+  const oapeflirFiles = globSync("src/platform/five-plane-orchestration/oapeflir/**/*.ts");
   for (const file of oapeflirFiles) {
     // Skip declaration files
     if (file.endsWith(".d.ts")) {
@@ -37,7 +37,7 @@ test("[SYS-OBS-5.1] CDC replication uses StructuredLogger", () => {
 });
 
 test("[SYS-OBS-5.1] execution engine does not use console.*", () => {
-  const executionFiles = globSync("src/platform/execution/**/*.ts");
+  const executionFiles = globSync("src/platform/five-plane-execution/**/*.ts");
   for (const file of executionFiles) {
     if (file.endsWith(".d.ts") || file.endsWith("/index.ts")) {
       continue;
@@ -53,7 +53,7 @@ test("[SYS-OBS-5.1] execution engine does not use console.*", () => {
 });
 
 test("[SYS-OBS-5.1] state-evidence files do not use console.*", () => {
-  const stateEvidenceFiles = globSync("src/platform/state-evidence/**/*.ts");
+  const stateEvidenceFiles = globSync("src/platform/five-plane-state-evidence/**/*.ts");
   for (const file of stateEvidenceFiles) {
     if (file.endsWith(".d.ts") || file.endsWith("/index.ts")) {
       continue;

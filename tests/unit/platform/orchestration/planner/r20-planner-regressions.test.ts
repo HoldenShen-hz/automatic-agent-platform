@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanBuilder } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
-import { PlanEvaluator, estimatePlanTokens } from "../../../../../src/platform/orchestration/planner/plan-evaluator.js";
+import { PlanBuilder } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import { PlanEvaluator, estimatePlanTokens } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
 
 const observation = {
   taskId: "task-r20",

@@ -25,10 +25,10 @@ import {
   type AuthoritativeStorageContext,
   type AsyncAuthoritativeStorageContext,
   requireSqliteAuthoritativeStorageBackend,
-} from "../../platform/state-evidence/truth/storage-backend-factory.js";
+} from "../../platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { StorageError } from "../../platform/contracts/errors.js";
-import { readTrimmedEnv } from "../../platform/control-plane/config-center/runtime-env.js";
-import { getGlobalGracefulShutdown } from "../../platform/execution/startup/graceful-shutdown.js";
+import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
+import { getGlobalGracefulShutdown } from "../../platform/five-plane-execution/startup/graceful-shutdown.js";
 
 export { requireSqliteAuthoritativeStorageBackend };
 

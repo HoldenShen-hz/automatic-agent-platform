@@ -8,8 +8,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { WorkflowStateRecord } from "../../../../src/platform/contracts/types/domain.js";
-import { WorkflowTransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
-import type { RuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { WorkflowTransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import type { RuntimeLifecycleRepository } from "../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { runConcurrentInvariant } from "../../../helpers/concurrent-runner.js";
 
 function createWorkflowRepository(initial: WorkflowStateRecord, staleReadsRemaining = 0): RuntimeLifecycleRepository {

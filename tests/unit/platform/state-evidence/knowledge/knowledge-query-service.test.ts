@@ -5,10 +5,10 @@ import {
   KnowledgeQueryService,
   QueryLevel,
   type KnowledgeQueryServiceConfig,
-} from "../../../../../src/platform/state-evidence/knowledge/knowledge-query-service.js";
-import type { RetrievalHit } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
-import type { KnowledgeRetrievalService } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import type { SemanticKnowledgeGraph } from "../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
+import type { RetrievalHit } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
+import type { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import type { SemanticKnowledgeGraph } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
 
 // =============================================================================
 // helpers

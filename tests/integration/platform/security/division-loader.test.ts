@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { DivisionLoader } from "../../../../src/domains/governance/division-loader.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 function seedDivision(root: string): void {

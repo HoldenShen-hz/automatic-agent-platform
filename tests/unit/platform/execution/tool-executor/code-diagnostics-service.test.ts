@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { basename, join } from "node:path";
 import test from "node:test";
 
-import { CodeDiagnosticEntry, CodeDiagnosticsService, CodeDiagnosticsSummary, formatDiagnosticsFeedback } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
+import { CodeDiagnosticEntry, CodeDiagnosticsService, CodeDiagnosticsSummary, formatDiagnosticsFeedback } from "../../../../../src/platform/five-plane-execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("code diagnostics service reports TypeScript diagnostics for changed files", async () => {

@@ -14,7 +14,7 @@ import {
   type PgAdvisoryLockConfig,
   type RedisLockConfig,
   type LockData,
-} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-service.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 
 test("DistributedLockAdapter interface structure", () => {
   // This validates the interface exists and has the expected shape

@@ -10,8 +10,8 @@ test("package exports expose selective architecture subpaths", () => {
   };
 
   assert.equal(packageJson.exports?.["./platform"], "./dist/src/platform/index.js");
-  assert.equal(packageJson.exports?.["./platform/orchestration/learn"], "./dist/src/platform/orchestration/learn/index.js");
-  assert.equal(packageJson.exports?.["./platform/orchestration/improve-rollout"], "./dist/src/platform/orchestration/improve-rollout/index.js");
+  assert.equal(packageJson.exports?.["./platform/five-plane-orchestration/learn"], "./dist/src/platform/five-plane-orchestration/learn/index.js");
+  assert.equal(packageJson.exports?.["./platform/five-plane-orchestration/improve-rollout"], "./dist/src/platform/five-plane-orchestration/improve-rollout/index.js");
   assert.equal(packageJson.exports?.["./platform/stability"], "./dist/src/platform/stability/index.js");
   assert.equal(packageJson.exports?.["./scale-ecosystem/billing"], "./dist/src/scale-ecosystem/billing/index.js");
   assert.equal(packageJson.exports?.["./scale-ecosystem/enterprise"], "./dist/src/scale-ecosystem/enterprise/index.js");

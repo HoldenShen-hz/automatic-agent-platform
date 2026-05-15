@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, ReleaseAction } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/release-policy.js";
+import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, ReleaseAction } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/release-policy.js";
 
 // ---------------------------------------------------------------------------
 // ReleasePolicy

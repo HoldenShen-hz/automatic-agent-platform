@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncMarketplaceRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncMarketplaceRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/marketplace-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type { MarketplaceReviewRecord, MarketplacePublicationRecord, ExtensionPackageRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {

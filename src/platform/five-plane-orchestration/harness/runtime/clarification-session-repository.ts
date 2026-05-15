@@ -1,5 +1,5 @@
 import type { BudgetIntent, HarnessRun, TaskDraft, UserConfirmationReceipt } from "../../../contracts/executable-contracts/index.js";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ClarificationSession, ClarificationSessionStage } from "./intake-admission-service.js";
 
 export interface PersistedClarificationSessionRecord {

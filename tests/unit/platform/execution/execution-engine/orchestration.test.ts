@@ -10,7 +10,7 @@ import {
   runMultiStepOrchestration,
   type MultiStepOrchestrationInput,
   type MultiStepOrchestrationResult,
-} from "../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

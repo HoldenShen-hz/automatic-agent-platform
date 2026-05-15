@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PostgresHotUpgradeRepository } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository-postgres.js";
-import type { HotUpgradeRepository, UpgradeAuditEntry } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
-import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+import { PostgresHotUpgradeRepository } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository-postgres.js";
+import type { HotUpgradeRepository, UpgradeAuditEntry } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
+import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 
 // Mock AsyncSqlDatabase
 function createMockAsyncDb() {

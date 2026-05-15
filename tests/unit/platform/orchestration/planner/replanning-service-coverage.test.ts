@@ -10,8 +10,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplanningService } from "../../../../../src/platform/orchestration/planner/replanning-service.js";
-import type { Plan } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { ReplanningService } from "../../../../../src/platform/five-plane-orchestration/planner/replanning-service.js";
+import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function createPlan(overrides: Partial<Plan> = {}): Plan {

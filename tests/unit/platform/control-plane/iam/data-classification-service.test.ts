@@ -6,7 +6,7 @@ import {
   type DataClassificationLevel,
   type DataHandlingDimension,
   type PiiType,
-} from "../../../../../src/platform/control-plane/iam/data-classification-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 
 test("DataClassificationService detects email PII", () => {
   const service = new DataClassificationService({ autoDetectPii: true });

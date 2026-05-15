@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 
 import { StructuredLogger } from "../../../src/platform/shared/observability/structured-logger.js";
-import { GracefulShutdown } from "../../../src/platform/execution/startup/graceful-shutdown.js";
+import { GracefulShutdown } from "../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 class SignalBus extends EventEmitter {
   public override on(event: "SIGTERM" | "SIGINT", listener: () => void): this {

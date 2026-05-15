@@ -12,7 +12,7 @@ import {
   type ShutdownHandler,
   type ShutdownResult,
   type GracefulShutdownOptions,
-} from "../../../../src/platform/execution/startup/graceful-shutdown.js";
+} from "../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 test("GracefulShutdown constructor creates instance with defaults", () => {
   const shutdown = new GracefulShutdown();

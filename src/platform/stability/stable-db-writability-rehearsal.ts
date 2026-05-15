@@ -31,16 +31,16 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { HealthService } from "../shared/observability/health-service.js";
-import { DoctorService } from "../control-plane/incident-control/doctor-service.js";
-import { StartupConsistencyChecker } from "../execution/startup/startup-consistency-checker.js";
-import { runMultiStepOrchestration } from "../execution/execution-engine/multi-step-orchestration.js";
-import { ExecutionDispatchService } from "../execution/dispatcher/execution-dispatch-service.js";
-import { WorkerRegistryService } from "../execution/worker-pool/worker-registry-service.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
-import { SqliteReliabilityService } from "../state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { DoctorService } from "../five-plane-control-plane/incident-control/doctor-service.js";
+import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
+import { runMultiStepOrchestration } from "../five-plane-execution/execution-engine/multi-step-orchestration.js";
+import { ExecutionDispatchService } from "../five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { WorkerRegistryService } from "../five-plane-execution/worker-pool/worker-registry-service.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
+import { SqliteReliabilityService } from "../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { nowIso } from "../contracts/types/ids.js";
-import type { AdmissionBackpressureSnapshot } from "../execution/dispatcher/admission-controller.js";
+import type { AdmissionBackpressureSnapshot } from "../five-plane-execution/dispatcher/admission-controller.js";
 
 /** Options for running the DB writability rehearsal */
 export interface StableDbWritabilityRehearsalOptions {
@@ -152,12 +152,12 @@ function seedTaskExecutionWorkflowAndSession(
       updatedAt: now,
       completedAt: null,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-db-writability",
       roleId: "general_executor",
       runKind: "task_run",
@@ -167,6 +167,8 @@ function seedTaskExecutionWorkflowAndSession(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

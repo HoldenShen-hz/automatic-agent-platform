@@ -13,7 +13,7 @@ import {
   type AfterAgentHook,
   type MiddlewareContext,
   type MiddlewareResult,
-} from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 // ---------------------------------------------------------------------------
 // Test setup

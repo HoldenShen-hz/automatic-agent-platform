@@ -6,7 +6,7 @@ import type {
   ProcessOwner,
   TrackedProcessState,
   TrackedProcess,
-} from "../../../../../src/platform/execution/resource/index.js";
+} from "../../../../../src/platform/five-plane-execution/resource/index.js";
 
 test("ProcessOwner type accepts valid values", () => {
   const owners: ProcessOwner[] = [

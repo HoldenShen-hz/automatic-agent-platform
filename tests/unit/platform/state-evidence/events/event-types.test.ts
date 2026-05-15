@@ -13,7 +13,7 @@ import {
   getEventTier,
   getRequiredConsumers,
   type Tier1EventType,
-} from "../../../../../src/platform/state-evidence/events/event-types.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/event-types.js";
 
 test("TIER_1_EVENT_TYPES is a readonly array", () => {
   assert.ok(Array.isArray(TIER_1_EVENT_TYPES));

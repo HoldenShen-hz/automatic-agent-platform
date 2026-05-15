@@ -20,8 +20,8 @@ import {
   isOriginAllowed,
   buildPreflightHeaders,
   decorateResponseHeaders,
-} from "../../../../../../src/platform/interface/api/http-server/response-hardening.js";
-import type { ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
+import type { ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 // ── Issue #2038: CORS wildcard + credentials security anti-pattern ──────────────
 

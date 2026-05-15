@@ -1,4 +1,4 @@
-import { TypedEventBus } from "../state-evidence/events/typed-event-bus.js";
+import { TypedEventBus } from "../five-plane-state-evidence/events/typed-event-bus.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 export type CleanupCallback = (params: {

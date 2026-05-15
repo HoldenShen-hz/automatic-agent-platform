@@ -7,13 +7,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../src/platform/orchestration/routing/workflow-planner.js";
+import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 import {
   SINGLE_AGENT_MINIMAL_WORKFLOW,
   PHASE_1B_SINGLE_DIVISION_WORKFLOW,
   WORKFLOW_DEFINITIONS,
   getWorkflowDefinition,
-} from "../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+} from "../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StorageError } from "../../../src/platform/contracts/errors.js";
 
 // ---------------------------------------------------------------------------

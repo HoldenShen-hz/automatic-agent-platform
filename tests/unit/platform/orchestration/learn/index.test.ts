@@ -22,7 +22,7 @@ import {
   detectToolPermissionDenial,
   parseLearningArtifact,
   parseLearningObject,
-} from "../../../../../src/platform/orchestration/learn/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/learn/index.js";
 
 test("ExperienceDistillationService is exported", () => {
   assert.equal(typeof ExperienceDistillationService, "function");

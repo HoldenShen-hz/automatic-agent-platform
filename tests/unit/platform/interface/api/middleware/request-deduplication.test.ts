@@ -8,7 +8,7 @@ import {
   resetGlobalDeduplicationMiddleware,
   type DeduplicationConfig,
   type RequestFingerprint,
-} from "../../../../../../src/platform/interface/api/middleware/request-deduplication.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/request-deduplication.js";
 
 describe("DeduplicationMiddleware", () => {
   let middleware: DeduplicationMiddleware;

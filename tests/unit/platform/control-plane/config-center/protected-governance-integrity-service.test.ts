@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { ProtectedGovernanceIntegrityService } from "../../../../../src/platform/control-plane/config-center/protected-governance-integrity-service.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { ProtectedGovernanceIntegrityService } from "../../../../../src/platform/five-plane-control-plane/config-center/protected-governance-integrity-service.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function seedProtectedGovernanceTree(workspace: string): {

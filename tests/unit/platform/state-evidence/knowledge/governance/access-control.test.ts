@@ -12,8 +12,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeAccessControl, type KnowledgeAccessPrincipal } from "../../../../../../src/platform/state-evidence/knowledge/governance/access-control.js";
-import type { KnowledgeNamespace } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeAccessControl, type KnowledgeAccessPrincipal } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/access-control.js";
+import type { KnowledgeNamespace } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

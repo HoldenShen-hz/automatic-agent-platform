@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/execution/plugin-executor/index.js";
+import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ test("PluginExecutorService execute with scoped_external_access tier", async () 
 
 test("ScopedExternalAccessSandbox validates domain whitelist", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -396,7 +396,7 @@ test("ScopedExternalAccessSandbox validates domain whitelist", async () => {
 
 test("ScopedExternalAccessSandbox enforces rate limits", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -418,7 +418,7 @@ test("ScopedExternalAccessSandbox enforces rate limits", async () => {
 
 test("ScopedExternalAccessSandbox filters sensitive headers", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -444,7 +444,7 @@ test("ScopedExternalAccessSandbox filters sensitive headers", async () => {
 
 test("ScopedExternalAccessSandbox validates response size", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -462,7 +462,7 @@ test("ScopedExternalAccessSandbox validates response size", async () => {
 
 test("ScopedExternalAccessSandbox blocks oversized responses", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -482,7 +482,7 @@ test("ScopedExternalAccessSandbox blocks oversized responses", async () => {
 
 test("ScopedExternalAccessSandbox reports rate limit status", async () => {
   const { ScopedExternalAccessSandbox } = await import(
-    "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
 
   const sandbox = new ScopedExternalAccessSandbox({
@@ -566,7 +566,7 @@ test("PluginExecutorService.activate() throws for disabled plugin", async () => 
 
 test("PluginExecutionService registers plugins and exposes listPlugins", async () => {
   const { PluginExecutionService } = await import(
-    "../../../../../src/platform/execution/plugin-executor/index.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
 
   const service = new PluginExecutionService();
@@ -584,7 +584,7 @@ test("PluginExecutionService registers plugins and exposes listPlugins", async (
 
 test("PluginExecutionService.execute() runs plugin action and returns result", async () => {
   const { PluginExecutionService } = await import(
-    "../../../../../src/platform/execution/plugin-executor/index.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
 
   const service = new PluginExecutionService();
@@ -614,7 +614,7 @@ test("PluginExecutionService.execute() runs plugin action and returns result", a
 
 test("PluginExecutionService.execute() throws for unknown plugin", async () => {
   const { PluginExecutionService } = await import(
-    "../../../../../src/platform/execution/plugin-executor/index.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
 
   const service = new PluginExecutionService();
@@ -635,7 +635,7 @@ test("PluginExecutionService.execute() throws for unknown plugin", async () => {
 
 test("PluginExecutionService.execute() throws for unregistered action", async () => {
   const { PluginExecutionService } = await import(
-    "../../../../../src/platform/execution/plugin-executor/index.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
 
   const service = new PluginExecutionService();
@@ -662,7 +662,7 @@ test("PluginExecutionService.execute() throws for unregistered action", async ()
 
 test("PluginExecutionService.execute() supports sync execute function", async () => {
   const { PluginExecutionService } = await import(
-    "../../../../../src/platform/execution/plugin-executor/index.js"
+    "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
 
   const service = new PluginExecutionService();

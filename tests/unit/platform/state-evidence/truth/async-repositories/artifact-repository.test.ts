@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncArtifactRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/artifact-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncArtifactRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/artifact-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type { ArtifactRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {

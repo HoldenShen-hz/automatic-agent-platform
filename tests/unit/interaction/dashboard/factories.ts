@@ -5,7 +5,7 @@
  * Uses the pattern from tests/helpers/typed-factories.ts
  */
 
-import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 import type { DashboardDelta, DashboardChange } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 import type { AttentionItem } from "../../../../src/interaction/dashboard/index.js";

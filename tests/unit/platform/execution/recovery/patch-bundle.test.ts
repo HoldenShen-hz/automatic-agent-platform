@@ -7,7 +7,7 @@ import {
   type PatchBundle,
   type PatchStatus,
   type ChangedFile,
-} from "../../../../../src/platform/execution/recovery/patch-bundle.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/patch-bundle.js";
 
 test("createPatchBundle creates bundle with calculated totalDiffLines", () => {
   const changedFiles: readonly ChangedFile[] = [

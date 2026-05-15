@@ -22,17 +22,17 @@ import {
   computeEffectiveActiveLeaseCount,
   summarizeWorkerLoadSkew,
   type WorkerLoadSignal,
-} from "../../src/platform/execution/worker-pool/worker-load-balancing.js";
-import { routeComplexity, type ComplexityRouterConfig } from "../../src/platform/execution/execution-engine/complexity-router.js";
+} from "../../src/platform/five-plane-execution/worker-pool/worker-load-balancing.js";
+import { routeComplexity, type ComplexityRouterConfig } from "../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 import {
   createKvCachePrefixConfig,
   estimateTokens,
   isWithinFixedPrefixBudget,
   isWithinDomainBlockBudget,
   type KvCachePrefixConfig,
-} from "../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
-import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../src/platform/execution/dispatcher/admission-controller.js";
-import type { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
+import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import type { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Benchmark helper
 function runBenchmark(

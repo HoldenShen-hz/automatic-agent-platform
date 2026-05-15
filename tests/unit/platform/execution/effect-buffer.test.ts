@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EffectBuffer, EffectScope, EffectBuilder, EffectPriority } from "../../../../src/platform/execution/execution-engine/effect-buffer.js";
+import { EffectBuffer, EffectScope, EffectBuilder, EffectPriority } from "../../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 test("EffectBuilder creates effect with required fields", () => {
   const effect = EffectBuilder.create("event_publish", "test effect")

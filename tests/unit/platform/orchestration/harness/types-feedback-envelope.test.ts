@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { FeedbackEnvelope } from "../../../../../src/platform/orchestration/harness/types/feedback-envelope.js";
+import type { FeedbackEnvelope } from "../../../../../src/platform/five-plane-orchestration/harness/types/feedback-envelope.js";
 
 test("types/feedback-envelope.ts exports FeedbackEnvelope type", () => {
   const envelope: FeedbackEnvelope = {

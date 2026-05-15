@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import type {
   WorkflowStepCheckpoint,
   WorkflowStepCheckpointSummary,
-} from "../../../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 /**

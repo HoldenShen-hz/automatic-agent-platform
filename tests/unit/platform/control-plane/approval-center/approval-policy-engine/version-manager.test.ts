@@ -13,7 +13,7 @@ import {
   type PolicyChangeEntry,
   type PolicyVersionManagerConfig,
   type ActivatePolicyResult,
-} from "../../../../../../src/platform/control-plane/approval-center/approval-policy-engine/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/index.js";
 
 // Mock approval policy bundle for testing
 const createMockBundle = (overrides: Partial<ApprovalPolicyBundle> = {}): ApprovalPolicyBundle => ({

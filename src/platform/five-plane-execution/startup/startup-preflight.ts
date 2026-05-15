@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
-import { ConfigGovernanceService } from "../../control-plane/config-center/config-governance-service.js";
-import { resolveConfigEnvironment, resolveConfigRoot } from "../../control-plane/config-center/runtime-env.js";
+import { ConfigGovernanceService } from "../../five-plane-control-plane/config-center/config-governance-service.js";
+import { resolveConfigEnvironment, resolveConfigRoot } from "../../five-plane-control-plane/config-center/runtime-env.js";
 import {
   deriveProviderApiKeyEnvName as deriveProviderApiKeyEnvNameFromPool,
   deriveProviderApiKeySecretRefEnvName,
@@ -9,10 +9,10 @@ import {
   deriveProviderApiKeysJsonEnvName,
   loadProviderCredentialRecordsFromEnv,
 } from "../../model-gateway/provider-registry/provider-credential-pool.js";
-import { loadModelMetadataRegistry } from "../../control-plane/config-center/model-metadata-registry.js";
-import { createWorkspaceWritePolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
-import { buildStorageBackendConfigIssues } from "../../state-evidence/truth/storage-backend-config.js";
-import { scanTrustedContextWorkspace } from "../../control-plane/iam/trusted-context-scanner.js";
+import { loadModelMetadataRegistry } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
+import { createWorkspaceWritePolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { buildStorageBackendConfigIssues } from "../../five-plane-state-evidence/truth/storage-backend-config.js";
+import { scanTrustedContextWorkspace } from "../../five-plane-control-plane/iam/trusted-context-scanner.js";
 import type {
   ProviderReadinessResult,
   StartupConfigValidationResult,

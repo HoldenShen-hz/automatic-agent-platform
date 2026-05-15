@@ -10,7 +10,7 @@ import {
   type FailureContext,
   type FailureCategory,
   type PlatformFailureCategory,
-} from "../../../../../src/platform/execution/recovery/failure-classification.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
 
 test("FAILURE_CLASSIFICATION contains all categories", () => {
   const categories: FailureCategory[] = [

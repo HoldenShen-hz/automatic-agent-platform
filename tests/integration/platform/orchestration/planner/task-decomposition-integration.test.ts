@@ -9,13 +9,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TaskDecompositionService } from "../../../../../src/platform/orchestration/planner/task-decomposition-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TaskDecompositionService } from "../../../../../src/platform/five-plane-orchestration/planner/task-decomposition-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
-import type { MinimalWorkflowDefinition } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import type { MinimalWorkflowDefinition } from "../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 function createMockExecutionStep(overrides: Partial<PlannedExecutionStep> = {}): PlannedExecutionStep {
   return {

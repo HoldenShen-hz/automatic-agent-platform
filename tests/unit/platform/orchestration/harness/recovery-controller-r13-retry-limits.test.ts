@@ -4,14 +4,14 @@ import test from "node:test";
 import {
   RecoveryController,
   type HarnessFailureType,
-} from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
-import type { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
+import type { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 import type {
   ConstraintPack,
   HarnessRunRuntimeState,
   HarnessRuntimeService,
-} from "../../../../../src/platform/orchestration/harness/index.js";
-import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import type { TypedEventPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
 
 const RETRY_BACKOFF_BASE_MS = 1_000;
 const RETRY_BACKOFF_MAX_MS = 60_000;

@@ -6,8 +6,8 @@ import {
   computeEffectiveActiveLeaseCount,
   summarizeWorkerLoadSkew,
   MAX_RECOMMENDED_STICKY_SHARE,
-} from "../../../../../src/platform/execution/worker-pool/worker/worker-load-balancing.js";
-import { toWorkerSchedulingStatus } from "../../../../../src/platform/execution/worker-pool/worker/worker-scheduling-status.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-load-balancing.js";
+import { toWorkerSchedulingStatus } from "../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-scheduling-status.js";
 import type { WorkerSchedulingStatus, WorkerStatus } from "../../../../..//src/platform/contracts/types/domain.js";
 
 interface TestWorkerLoadSignal {

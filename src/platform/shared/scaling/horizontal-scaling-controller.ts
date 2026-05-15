@@ -11,7 +11,7 @@
  * - Worker utilization < 30% → scale in
  */
 
-import type { QueueStats } from "../../execution/queue/queue-adapter-types.js";
+import type { QueueStats } from "../../five-plane-execution/queue/queue-adapter-types.js";
 
 export type ScalingDirection = "out" | "in" | "none";
 

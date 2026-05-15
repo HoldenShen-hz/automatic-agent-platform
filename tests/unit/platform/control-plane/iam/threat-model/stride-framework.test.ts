@@ -13,7 +13,7 @@ import {
   type StrideCategory,
   type ThreatMatrix,
   type ThreatEntry,
-} from "../../../../../../src/platform/control-plane/iam/threat-model/stride-framework.js";
+} from "../../../../../../src/platform/five-plane-control-plane/iam/threat-model/stride-framework.js";
 
 test("STRIDE_CATEGORIES contains exactly 6 categories", () => {
   assert.equal(STRIDE_CATEGORIES.length, 6);

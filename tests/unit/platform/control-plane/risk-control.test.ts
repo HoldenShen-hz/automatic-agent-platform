@@ -8,18 +8,18 @@ import test from "node:test";
 import {
   RiskEvaluationEngine,
   RiskEvaluationError,
-} from "../../../../src/platform/control-plane/risk-control/risk-evaluation-engine.js";
+} from "../../../../src/platform/five-plane-control-plane/risk-control/risk-evaluation-engine.js";
 import {
   RiskLevelSchema,
   BlastRadiusSchema,
   ConfidenceLevelSchema,
   RiskFactorsSchema,
-} from "../../../../src/platform/control-plane/risk-control/types.js";
+} from "../../../../src/platform/five-plane-control-plane/risk-control/types.js";
 import type {
   RiskEvaluationRequest,
   RiskConfig,
   RiskLevel,
-} from "../../../../src/platform/control-plane/risk-control/types.js";
+} from "../../../../src/platform/five-plane-control-plane/risk-control/types.js";
 
 function createTestConfig(): RiskConfig {
   return {

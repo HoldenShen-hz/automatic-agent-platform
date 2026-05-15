@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Collaboration Protocol barrel
-import * as types from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/types.js";
-import * as invariantEnforcer from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
-import * as protocolService from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/protocol-service.js";
+import * as types from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/types.js";
+import * as invariantEnforcer from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.js";
+import * as protocolService from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/protocol-service.js";
 
 test("types module is exported", () => {
   assert.ok(types !== undefined);

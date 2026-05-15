@@ -8,9 +8,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { TypedEventBus, type TypedEventEnvelope, type TypedEventType } from "../../../../../src/platform/state-evidence/events/typed-event-bus.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { TypedEventBus, type TypedEventEnvelope, type TypedEventType } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 

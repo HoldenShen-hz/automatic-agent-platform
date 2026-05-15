@@ -5,7 +5,7 @@ import {
   extractMemorySnippet,
   hasExplicitMemoryBoundary,
   buildMemoryConsolidationSummary,
-} from "../../../../../src/platform/state-evidence/memory/memory-consolidation.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-consolidation.js";
 import type { MemoryRecord, MemoryLayer } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Unit tests for DurableEventBusAsync
  *
@@ -11,8 +10,8 @@ import test from "node:test";
 import { join } from "node:path";
 
 import { DurableEventBusAsync } from "../../../../src/scale-ecosystem/marketplace/durable-event-bus-async.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createTestBus(): { workspace: string; db: SqliteDatabase; bus: DurableEventBusAsync } {

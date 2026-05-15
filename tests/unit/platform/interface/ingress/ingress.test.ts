@@ -33,7 +33,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("RedisRateLimiter checkAndConsume returns correct structure", async () => {
-    const { RedisRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { RedisRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new RedisRateLimiter({
       host: "localhost",
@@ -52,7 +52,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("RedisRateLimiter close handles wait status gracefully", async () => {
-    const { RedisRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { RedisRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new RedisRateLimiter({
       host: "localhost",
@@ -65,7 +65,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("RedisRateLimiter close handles end status gracefully", async () => {
-    const { RedisRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { RedisRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new RedisRateLimiter({
       host: "localhost",
@@ -77,7 +77,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter uses in-memory when no Redis configured", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({
       maxCalls: 2,
@@ -104,14 +104,14 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter with empty config uses defaults", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({});
     assert.ok(limiter instanceof DistributedRateLimiter);
   });
 
   test("DistributedRateLimiter default maxCalls is 100", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({});
 
@@ -121,7 +121,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter default windowMs is 1000", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({});
 
@@ -131,7 +131,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter independent key tracking", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
@@ -148,7 +148,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter retryAfterMs calculation", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
@@ -165,7 +165,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter window reset allows new requests", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
@@ -186,7 +186,7 @@ test.describe("ingress module with mocks", () => {
   });
 
   test("DistributedRateLimiter count decreases remaining correctly", async () => {
-    const { DistributedRateLimiter } = await import("../../../../../src/platform/interface/ingress/index.js");
+    const { DistributedRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/index.js");
 
     const limiter = new DistributedRateLimiter({
       maxCalls: 5,

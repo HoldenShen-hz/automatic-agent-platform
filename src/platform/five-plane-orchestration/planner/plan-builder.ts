@@ -33,6 +33,32 @@ export interface BuildPlanOptions {
   graphPatch?: import("../../contracts/executable-contracts/index.js").GraphPatch | null;
 }
 
+interface SourcePlanStep {
+  readonly stepId?: string;
+  readonly action?: string;
+  readonly toolNames?: readonly string[];
+  readonly title?: string;
+  readonly name?: string;
+  readonly ownerRoleId?: string;
+  readonly roleId?: string;
+  readonly inputKeys?: readonly string[];
+  readonly outputKey?: string;
+  readonly dependsOn?: readonly string[];
+  readonly dependsOnStepIds?: readonly string[];
+  readonly timeoutMs?: number;
+  readonly timeout?: number;
+  readonly maxAttempts?: number;
+}
+
+export class InvalidDagError extends Error {
+  public readonly code = "INVALID_DAG";
+
+  public constructor(public readonly issues: readonly string[]) {
+    super(`DAG validation failed: ${issues.join("; ")}`);
+    this.name = "InvalidDagError";
+  }
+}
+
 export class PlanBuilder {
   private readonly decomposition = new TaskDecompositionService();
   private readonly dagValidator = new PlanDagValidator();
@@ -47,7 +73,7 @@ export class PlanBuilder {
     const workflowSteps = input.workflow.executionSteps ?? [];
     const decomposed = this.decomposition.decompose(input.workflow);
     const sourceSteps = workflowSteps.length > 0 ? workflowSteps : decomposed;
-    const steps: PlanStep[] = sourceSteps.map((item: any, index) => ({
+    const steps: PlanStep[] = (sourceSteps as readonly SourcePlanStep[]).map((item, index) => ({
       stepId: item.stepId ?? `step_${index + 1}`,
       action: item.action ?? item.toolNames?.[0] ?? (index === 0 ? "read" : "execute"),
       title: item.title ?? item.name ?? `Step ${index + 1}`,
@@ -56,7 +82,7 @@ export class PlanBuilder {
         inputKeys: [...(item.inputKeys ?? [])],
       },
       outputs: item.outputKey != null ? [item.outputKey] : [],
-      dependencies: item.dependsOn ?? item.dependsOnStepIds ?? [],
+      dependencies: [...(item.dependsOn ?? item.dependsOnStepIds ?? [])],
       status: "pending",
       timeout: item.timeoutMs ?? item.timeout ?? 60000,
       retryPolicy: {
@@ -70,10 +96,7 @@ export class PlanBuilder {
     // Reject invalid DAGs: a DAG that fails validation (cycle, missing deps, etc.)
     // cannot produce a sound execution plan and must be rejected outright.
     if (!dagValidation.valid) {
-      const error = new Error(`DAG validation failed: ${dagValidation.issues.join("; ")}`);
-      (error as any).code = "INVALID_DAG";
-      (error as any).issues = dagValidation.issues;
-      throw error;
+      throw new InvalidDagError(dagValidation.issues);
     }
 
     // R5-9: Apply graph normalization and risk propagation if enabled
@@ -91,14 +114,7 @@ export class PlanBuilder {
     }
 
     // Convert steps to PlanNodes
-    const graphSteps = normalizedSteps.map((step, index) => ({
-      ...step,
-      stepId: `step_${String.fromCharCode(97 + index)}`,
-      dependencies: step.dependencies.map((dep) => {
-        const depIndex = normalizedSteps.findIndex((candidate) => candidate.stepId === dep);
-        return depIndex >= 0 ? `step_${String.fromCharCode(97 + depIndex)}` : dep;
-      }),
-    }));
+    const graphSteps = normalizedSteps;
 
     const nodes: PlanNode[] = graphSteps.map((step, index) => {
       // step.inputs is Record<string, unknown>, access inputKeys property
@@ -175,6 +191,7 @@ export class PlanBuilder {
       riskClass: input.assessment.risk,
       reasons: ["assessment_complete"],
     };
+    const worstPath = this.dagValidator.analyzeWorstPath(normalizedSteps);
 
     const bundle = createPlanGraphBundle({
       planGraphBundleId,
@@ -185,11 +202,23 @@ export class PlanBuilder {
         policyId: "scheduler:oapeflir.deterministic_fifo",
         strategy: "deterministic_fifo",
       },
-      budgetPlanRef: `budget:plan.${planGraphBundleId}`,
+      budgetPlanRef: `budget://plan/${planGraphBundleId}`,
       riskProfile,
       validationReport: dagValidation.valid
         ? { valid: true, findings: [] }
         : { valid: false, findings: dagValidation.issues },
+      ...(worstPath == null ? {} : {
+        validationReport: {
+          valid: dagValidation.valid,
+          findings: dagValidation.valid ? [] : dagValidation.issues,
+          worstPath: {
+            pathNodeIds: worstPath.pathNodeIds,
+            riskClass: input.assessment.risk,
+            estimatedBudgetAmount: 0,
+            timeoutMs: worstPath.estimatedTimeoutMs,
+          },
+        },
+      }),
       artifactRefs: [],
       createdAt: nowIso(),
     });
@@ -198,7 +227,7 @@ export class PlanBuilder {
       taskId: input.observation.taskId,
       version: input.version ?? 1,
       assessmentRef: createAssessmentRef(input.assessment),
-      strategy: (input.version ?? 1) > 1 ? "replanned" : "linear",
+      strategy: (input.version ?? 1) > 1 ? "replanned" : this.strategySelector.select(input),
       steps: normalizedSteps,
       createdAt: Date.parse(bundle.createdAt),
       ...(input.parentVersion != null ? { parentVersion: input.parentVersion } : {}),

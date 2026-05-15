@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   listStateEvidenceCapabilityBaselines,
   resolveStateEvidenceCapabilityBaseline,
-} from "../../../../src/platform/state-evidence/state-evidence-plane-baseline.js";
+} from "../../../../src/platform/five-plane-state-evidence/state-evidence-plane-baseline.js";
 
 test("state-evidence plane baseline covers state and evidence entry modules", () => {
   const baselines = listStateEvidenceCapabilityBaselines();

@@ -5,14 +5,14 @@ import {
   LeaseReclaimerService,
   createLeaseReclaimerService,
   type LeaseReclaimerServiceOptions,
-} from "../../../../../src/platform/execution/ha/lease-reclaimer-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/lease-reclaimer-service.js";
 import type {
   LeaderLease,
   CoordinatorNode,
   FailoverDecision,
   LeadershipQueryResult,
-} from "../../../../../src/platform/execution/ha/types.js";
-import type { HaCoordinatorService } from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
+import type { HaCoordinatorService } from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

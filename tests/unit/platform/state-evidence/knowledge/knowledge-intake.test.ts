@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { TextKnowledgeIntake } from "../../../../../src/platform/state-evidence/knowledge/intake/text-intake.js";
-import { FileKnowledgeIntake } from "../../../../../src/platform/state-evidence/knowledge/intake/file-intake.js";
-import { KnowledgeIngestionPipeline } from "../../../../../src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+import { TextKnowledgeIntake } from "../../../../../src/platform/five-plane-state-evidence/knowledge/intake/text-intake.js";
+import { FileKnowledgeIntake } from "../../../../../src/platform/five-plane-state-evidence/knowledge/intake/file-intake.js";
+import { KnowledgeIngestionPipeline } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
 
 test("TextKnowledgeIntake ingests text documents", () => {
   const pipeline = new KnowledgeIngestionPipeline();

@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SkillExecutionService, type SkillDefinition } from "../../../../src/platform/execution/tool-executor/skill-execution-service.js";
-import type { ToolExecutionMetadata } from "../../../../src/platform/execution/tool-executor/tool-metadata.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SkillExecutionService, type SkillDefinition } from "../../../../src/platform/five-plane-execution/tool-executor/skill-execution-service.js";
+import type { ToolExecutionMetadata } from "../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 

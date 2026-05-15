@@ -32,6 +32,7 @@ import type {
   PermissionSet,
   DelegationCreatedEvent,
   DelegationStatus,
+  DelegationChainNode,
 } from "./delegation-types.js";
 import type { DelegationRepository, DelegationEventRepository, DelegationRecord } from "../../five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 import {

@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/execution/execution-engine/single-task-execution.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 

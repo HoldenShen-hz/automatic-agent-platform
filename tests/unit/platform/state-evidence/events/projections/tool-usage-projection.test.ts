@@ -7,7 +7,7 @@ import {
   createToolUsageProjectionHandler,
   type ToolUsageState,
   type ProjectionInputEvent,
-} from "../../../../../../src/platform/state-evidence/events/projections/tool-usage-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/tool-usage-projection.js";
 
 /**
  * Helper to create a projection input event

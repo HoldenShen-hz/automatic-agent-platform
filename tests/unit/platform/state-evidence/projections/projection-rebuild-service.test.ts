@@ -5,7 +5,7 @@ import {
   ProjectionHandlerRegistry,
   type ProjectionHandler,
   type ProjectionInputEvent,
-} from "../../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 test("ProjectionHandlerRegistry registers and retrieves handlers", () => {
   const registry = new ProjectionHandlerRegistry();

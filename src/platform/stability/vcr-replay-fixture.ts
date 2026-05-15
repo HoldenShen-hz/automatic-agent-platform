@@ -27,7 +27,7 @@
 
 import { createHash } from "node:crypto";
 
-import type { StreamEventFrame } from "../interface/channel-gateway/stream-bridge.js";
+import type { StreamEventFrame } from "../five-plane-interface/channel-gateway/stream-bridge.js";
 import { ValidationError } from "../contracts/errors.js";
 
 /** VCR replay mode determining behavior when fixtures are missing */

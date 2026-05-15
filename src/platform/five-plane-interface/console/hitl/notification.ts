@@ -10,7 +10,7 @@
  * @section §21 HITL UI Components
  */
 
-import type { HitlQueueItem, HitlQueueStatus } from "../../../orchestration/hitl/hitl-operator-console-service.js";
+import type { HitlQueueItem, HitlQueueStatus } from "../../../five-plane-orchestration/hitl/hitl-operator-console-service.js";
 
 /**
  * Severity level for visual display of notifications

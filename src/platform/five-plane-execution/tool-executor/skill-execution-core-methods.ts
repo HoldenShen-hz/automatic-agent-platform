@@ -7,15 +7,15 @@ import {
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
   type ModelProfileMetadata,
-} from "../../control-plane/config-center/model-metadata-registry.js";
+} from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 import {
   createDefaultResourceCeilingGuard,
   type ResourceCeilingGuard,
-} from "../../control-plane/config-center/resource-ceiling.js";
+} from "../../five-plane-control-plane/config-center/resource-ceiling.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { TypedEventBus, type SkillEventType, type TypedEventPayloadMap } from "../../state-evidence/events/typed-event-bus.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { TypedEventBus, type SkillEventType, type TypedEventPayloadMap } from "../../five-plane-state-evidence/events/typed-event-bus.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AgentExecutionRecord, StepOutputRecord } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { sanitizeMcpToolCallResult, validateMcpToolDefinition, validateMcpToolRuntime } from "./mcp-tool-guard.js";

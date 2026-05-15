@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { SamlService, buildSamlAudience, type SamlProviderConfig, type SamlAssertionInput } from "../../../../src/org-governance/sso-scim/saml/index.js";

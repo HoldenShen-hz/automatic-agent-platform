@@ -142,7 +142,7 @@ test("structured-logging: logger recent returns entries in order", () => {
 test("structured-logging: logger with custom plane inference", () => {
   const logger = new StructuredLogger({
     retentionLimit: 50,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("dispatch operation");

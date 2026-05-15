@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveRemoteAuthorityBlockReason } from "../../../src/platform/execution/worker-pool/remote-session-guard.js";
+import { resolveRemoteAuthorityBlockReason } from "../../../src/platform/five-plane-execution/worker-pool/remote-session-guard.js";
 
 test("remote session guard allows local workers and healthy remote workers", () => {
   assert.equal(

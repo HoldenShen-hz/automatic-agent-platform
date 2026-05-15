@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { lockLogger, inferPgSslFromDsn, defaultPostgresFactory } from "../../../../../src/platform/execution/distributed-lock/locking-support.js";
+import { lockLogger, inferPgSslFromDsn, defaultPostgresFactory } from "../../../../../src/platform/five-plane-execution/distributed-lock/locking-support.js";
 
 test("lockLogger is available", () => {
   assert.ok(lockLogger);

@@ -10,7 +10,7 @@ import {
   DEFAULT_TIMEOUT_CONFIG,
   DEFAULT_ESCALATION_RULE,
   DEFAULT_FEEDBACK_LOOP_CONFIG,
-} from "../../../../../src/platform/control-plane/approval-center/approval-flow-types.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-types.js";
 
 test("FlowType enum has all expected values", () => {
   assert.equal(FlowType.SINGLE, "single");

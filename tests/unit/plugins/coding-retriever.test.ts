@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCodingRetrieverPlugin } from "../../../src/plugins/retrievers/coding-retriever.js";
-import type { SemanticRepoMapService } from "../../../src/platform/execution/tool-executor/semantic-repo-map-service.js";
+import type { SemanticRepoMapService } from "../../../src/platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 
 function createMockRepoMapService(searchResult: {
   symbols?: Array<{ name: string; kind: string; filePath: string; line: number }>;

@@ -30,11 +30,11 @@
  * @see docs_zh/contracts/enterprise_contract.md for enterprise capability contracts
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import { MonetizationError } from "../../platform/contracts/errors.js";
-import { openAuthoritativeStorageContext } from "../../platform/state-evidence/truth/storage-backend-factory.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { openAuthoritativeStorageContext } from "../../platform/five-plane-state-evidence/truth/storage-backend-factory.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   ArtifactRef,
   DeploymentMode,

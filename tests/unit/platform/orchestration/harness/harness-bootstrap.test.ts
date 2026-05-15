@@ -7,7 +7,7 @@ import {
   HARNESS_CATALOG_SERVICE_ID,
   registerHarnessBootstrap,
   type HarnessBootstrap,
-} from "../../../../../src/platform/orchestration/harness/harness-bootstrap.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/harness-bootstrap.js";
 import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
 
 type HarnessBootstrapReadonlyType = HarnessBootstrap;

@@ -15,12 +15,12 @@
  * @module
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import type { ArtifactRef } from "../../contracts/types/domain.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { StalledExecutionEscalationPackage } from "../../execution/recovery/stalled-execution-escalation-service.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { sanitizeStructuredOutput } from "../../execution/tool-executor/tool-output-sanitizer.js";
+import type { StalledExecutionEscalationPackage } from "../../five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { sanitizeStructuredOutput } from "../../five-plane-execution/tool-executor/tool-output-sanitizer.js";
 import {
   buildIncidentTimelineMarkdown,
   DiagnosticsService,

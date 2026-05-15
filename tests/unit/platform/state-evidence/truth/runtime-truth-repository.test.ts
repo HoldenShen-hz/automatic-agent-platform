@@ -12,7 +12,7 @@ import {
   createSideEffectRecord,
   type ArtifactRef,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeTruthRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 
 const testArtifact: ArtifactRef = {
   artifactId: "test-artifact",

@@ -5,7 +5,7 @@ import {
   expandToolNames,
   inferPromotedToolNames,
   extractKeywords,
-} from "../../../../../src/platform/execution/tool-executor/tool-recommend-service.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-recommend-service.js";
 
 test("expandToolNames returns empty for empty input", () => {
   const result = expandToolNames([]);

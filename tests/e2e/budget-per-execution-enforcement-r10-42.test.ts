@@ -22,7 +22,7 @@ import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { BudgetAllocator } from "../../src/platform/five-plane-execution/budget-allocator.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 

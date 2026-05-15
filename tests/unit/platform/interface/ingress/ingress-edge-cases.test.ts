@@ -1,11 +1,11 @@
 /**
  * Unit tests for Ingress edge cases
- * Tests src/platform/interface/ingress/distributed-rate-limiter.ts edge cases
+ * Tests src/platform/five-plane-interface/ingress/distributed-rate-limiter.ts edge cases
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DistributedRateLimiter } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter in-memory mode handles zero maxCalls", async () => {
   const limiter = new DistributedRateLimiter({

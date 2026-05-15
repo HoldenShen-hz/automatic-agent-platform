@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDeviationDetector, type ExecutionDeviation } from "../../../../../src/platform/execution/dispatcher/execution-deviation-detector.js";
-import type { Plan } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
-import type { FeedbackSignal } from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+import { ExecutionDeviationDetector, type ExecutionDeviation } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-deviation-detector.js";
+import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
+import type { FeedbackSignal } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import { parseFeedbackBatch, type FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { parsePlan } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { parsePlan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 function makePlan(taskId: string): Plan {
   return parsePlan({

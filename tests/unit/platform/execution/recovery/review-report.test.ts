@@ -10,7 +10,7 @@ import {
   type ReviewIssue,
   type ReviewVerdict,
   type ReviewIssueSeverity,
-} from "../../../../../src/platform/execution/recovery/review-report.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
 
 test("createReviewReport creates report with defaults", () => {
   const report = createReviewReport({

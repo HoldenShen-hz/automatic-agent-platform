@@ -10,7 +10,7 @@ import {
   resolveSandboxPath,
   type SandboxPolicy,
   type SandboxMode,
-} from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 function makeSandboxPolicy(overrides: Partial<SandboxPolicy> = {}): SandboxPolicy {
   return {

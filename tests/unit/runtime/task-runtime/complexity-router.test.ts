@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { routeComplexity } from "../../../../src/platform/execution/execution-engine/complexity-router.js";
+import { routeComplexity } from "../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
 test("routeComplexity returns passthrough for short input", () => {
   const result = routeComplexity("Hi");

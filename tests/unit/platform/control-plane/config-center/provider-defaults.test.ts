@@ -10,7 +10,7 @@ import {
   PADDLE_API_URL,
   TELEGRAM_API_URL,
   SLACK_API_URL,
-} from "../../../../../src/platform/control-plane/config-center/provider-defaults.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/provider-defaults.js";
 
 test("ANTHROPIC_API_URL is correct", () => {
   assert.equal(ANTHROPIC_API_URL, "https://api.anthropic.com");

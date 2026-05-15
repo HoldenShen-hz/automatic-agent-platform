@@ -13,7 +13,7 @@ import {
   computeTier1AuditEventChecksum,
   type Tier1AuditIntegrityReport,
   verifyTier1AuditIntegrity,
-} from "../../../../control-plane/iam/audit-event-integrity.js";
+} from "../../../../five-plane-control-plane/iam/audit-event-integrity.js";
 import { materializeEventRecord, type EventRecordDraft } from "../../../events/event-record-support.js";
 import { getRequiredConsumers } from "../../../events/event-types.js";
 import { newId, nowIso } from "../../../../contracts/types/ids.js";

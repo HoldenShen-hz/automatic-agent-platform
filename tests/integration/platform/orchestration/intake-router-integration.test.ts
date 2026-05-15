@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
-import { IntakeRouter, type IntakeRouteInput } from "../../../../src/platform/orchestration/routing/intake-router.js";
+import { IntakeRouter, type IntakeRouteInput } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 import { getDefaultDivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
 
 function makeRouteInput(title: string, request: string): IntakeRouteInput {

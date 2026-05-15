@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionRecoveryWorker } from "../../../../../src/platform/execution/ha/execution-recovery-worker.js";
+import { ExecutionRecoveryWorker } from "../../../../../src/platform/five-plane-execution/ha/execution-recovery-worker.js";
 
 test("ExecutionRecoveryWorker.getWorkerId returns default worker id", () => {
   const worker = new ExecutionRecoveryWorker({

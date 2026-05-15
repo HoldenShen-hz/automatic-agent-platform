@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { KnowledgeSnapshotStore } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import type { ArchivedKnowledgeRecord } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import type { KnowledgeNamespace, KnowledgeSource, KnowledgeDocument, KnowledgeChunk } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeSnapshotStore } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import type { ArchivedKnowledgeRecord } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import type { KnowledgeNamespace, KnowledgeSource, KnowledgeDocument, KnowledgeChunk } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // =============================================================================
 // mock factories

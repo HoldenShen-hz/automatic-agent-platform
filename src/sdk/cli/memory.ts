@@ -33,11 +33,11 @@ import {
   buildMemoryProviderQuery,
   buildStructuredMemoryContentFromCliEnv,
   loadMemoryCliEnv,
-} from "../../platform/control-plane/config-center/remaining-cli-env.js";
+} from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { BuiltInMemoryProvider } from "../../platform/state-evidence/memory/builtin-memory-provider.js";
-import { MemoryService } from "../../platform/state-evidence/memory/memory-service.js";
-import type { ConsolidateMemoriesInput, RememberMemoryInput } from "../../platform/state-evidence/memory/memory-service.js";
+import { BuiltInMemoryProvider } from "../../platform/five-plane-state-evidence/memory/builtin-memory-provider.js";
+import { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
+import type { ConsolidateMemoriesInput, RememberMemoryInput } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
 import type { MemoryLayer, MemorySourceTrustLevel } from "../../platform/contracts/types/domain.js";
 
 /**

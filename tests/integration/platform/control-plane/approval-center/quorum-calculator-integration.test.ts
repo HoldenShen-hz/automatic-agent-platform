@@ -25,7 +25,7 @@ import {
   getApproverVote,
   type QuorumConfig,
   type QuorumVote,
-} from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("quorum calculator: initial status shows zero votes", () => {

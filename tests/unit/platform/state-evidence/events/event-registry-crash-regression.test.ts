@@ -24,7 +24,7 @@ import {
   getEventSchema,
   hasEventSchema,
   type KnownEventType,
-} from "../../../../../src/platform/state-evidence/events/event-registry.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 test("getRegisteredConsumers returns empty array for unknown event type - Issue #2034", () => {
   // This should NOT throw an error or crash - should return empty array

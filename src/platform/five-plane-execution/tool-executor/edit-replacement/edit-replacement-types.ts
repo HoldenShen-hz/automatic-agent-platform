@@ -1,5 +1,5 @@
 import type { CodeDiagnosticsSummary } from "../code-diagnostics-service.js";
-import type { SandboxPolicy } from "../../../control-plane/iam/sandbox-policy.js";
+import type { SandboxPolicy } from "../../../five-plane-control-plane/iam/sandbox-policy.js";
 import type { ToolCallResult } from "../tool-call-result.js";
 
 export type EditReplacementAttemptLevel =

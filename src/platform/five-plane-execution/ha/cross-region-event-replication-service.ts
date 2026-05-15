@@ -13,8 +13,8 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { TypedEventPublisher } from "../../state-evidence/events/typed-event-publisher.js";
-import type { TypedEventType, TypedEventPayloadMap } from "../../state-evidence/events/typed-event-bus.js";
+import type { TypedEventPublisher } from "../../five-plane-state-evidence/events/typed-event-publisher.js";
+import type { TypedEventType, TypedEventPayloadMap } from "../../five-plane-state-evidence/events/typed-event-bus.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

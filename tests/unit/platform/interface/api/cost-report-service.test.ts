@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CostReportService } from "../../../../../src/platform/interface/api/cost-report-service.js";
-import type { CreateCostReportInput, BudgetSummaryRecord, CostReportRecord } from "../../../../../src/platform/interface/api/cost-report-service.js";
+import { CostReportService } from "../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
+import type { CreateCostReportInput, BudgetSummaryRecord, CostReportRecord } from "../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 function makeResourceCost(overrides: Partial<{
   resourceId: string;

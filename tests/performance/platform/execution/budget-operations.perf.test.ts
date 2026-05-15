@@ -11,8 +11,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BudgetAllocator, BudgetTier } from "../../../../../src/platform/execution/budget-allocator.js";
-import { RuntimeStateMachine } from "../../../../../src/platform/execution/runtime-state-machine.js";
+import { BudgetAllocator, BudgetTier } from "../../../../../src/platform/five-plane-execution/budget-allocator.js";
+import { RuntimeStateMachine } from "../../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 /**
  * Performance test configuration.

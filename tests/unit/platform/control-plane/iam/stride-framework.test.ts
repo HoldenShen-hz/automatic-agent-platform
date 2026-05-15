@@ -8,7 +8,7 @@ import {
   defaultThreatMatrixRegistry,
   listThreatsByCategory,
   validateThreatMatrix,
-} from "../../../../../src/platform/control-plane/iam/threat-model/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/threat-model/index.js";
 
 test("STRIDE framework exposes six canonical categories", () => {
   assert.deepEqual(STRIDE_CATEGORIES, [

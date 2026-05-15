@@ -9,7 +9,7 @@ import {
   selectWorkersForDispatch,
   toWorkerEvaluation,
   resolveDispatchBackpressureReason,
-} from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 import type {
   DispatchWorkerEvaluation,
   DispatchTarget,

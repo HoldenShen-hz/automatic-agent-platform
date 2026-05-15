@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository.js";
-import { SqliteLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository-sqlite.js";
-import { PostgresLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository-postgres.js";
+import { createLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository.js";
+import { SqliteLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository-sqlite.js";
+import { PostgresLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository-postgres.js";
 
 // ---------------------------------------------------------------------------
 // Helper functions

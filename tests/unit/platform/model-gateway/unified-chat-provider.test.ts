@@ -77,7 +77,7 @@ test("UnifiedChatProvider throws for unknown model without configured provider",
         messages: [{ role: "user", content: "hello" }],
         maxTokens: 100,
         traceId: "test",
-        tenantId: null,
+        tenantId: "test-tenant",
         costTag: "test",
       });
     },

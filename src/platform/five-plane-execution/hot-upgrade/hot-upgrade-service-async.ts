@@ -10,7 +10,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type { HotUpgradeRepository, UpgradeAuditEntry } from "./hot-upgrade-repository.js";
 import type {
   UpgradePlan,

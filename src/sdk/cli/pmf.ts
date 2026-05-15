@@ -27,7 +27,7 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadPmfCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
+import { loadPmfCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { PmfValidationService } from "../../scale-ecosystem/intelligence/pmf-validation-service.js";
 

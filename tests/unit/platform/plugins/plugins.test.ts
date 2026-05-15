@@ -23,7 +23,7 @@ import { createGameDevRetrieverPlugin } from "../../../../src/plugins/retrievers
 import { createAssetProductionRetrieverPlugin } from "../../../../src/plugins/retrievers/asset-production-retriever.js";
 import { createLivestreamRetrieverPlugin } from "../../../../src/plugins/retrievers/livestream-retriever.js";
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../../../src/domains/registry/plugin-spi.js";
-import type { UnifiedAssessment } from "../../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
+import type { UnifiedAssessment } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 
 // ---------------------------------------------------------------------------
 // Basic Evaluator Plugin Tests

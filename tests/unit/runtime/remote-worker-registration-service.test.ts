@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { RemoteWorkerRegistrationService } from "../../../src/platform/execution/worker-pool/remote-worker-registration-service.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { RemoteWorkerRegistrationService } from "../../../src/platform/five-plane-execution/worker-pool/remote-worker-registration-service.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
 test("remote worker registration service issues and completes a trusted registration challenge", () => {

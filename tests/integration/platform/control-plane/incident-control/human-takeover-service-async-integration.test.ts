@@ -9,9 +9,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { HumanTakeoverServiceAsync } from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { HumanTakeoverServiceAsync } from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";

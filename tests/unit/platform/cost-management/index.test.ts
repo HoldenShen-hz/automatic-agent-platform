@@ -15,7 +15,7 @@ import {
   type CostEstimationConfig,
 } from "../../../../src/platform/cost-management/index.js";
 
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /**
  * Creates an in-memory database with the necessary schema for cost estimation.

@@ -6,7 +6,7 @@ import {
   resolveMultiStepToolPath,
   runMultiStepOrchestration,
   runPhase1BOrchestration,
-} from "../../../../../src/platform/execution/execution-engine/index.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/index.js";
 
 test("execution-engine barrel exports orchestration entrypoints", () => {
   assert.equal(typeof runMultiStepOrchestration, "function");

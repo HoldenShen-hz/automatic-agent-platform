@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { TaskWebSocketEvent, WebSocketMessageType } from "../../../../../src/platform/interface/channel-gateway/websocket-bridge.js";
+import type { TaskWebSocketEvent, WebSocketMessageType } from "../../../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
 
 test("WebSocketMessageType - ping message", () => {
   const msg: WebSocketMessageType = { type: "ping" };

@@ -1,5 +1,5 @@
 import { newId } from "../../../platform/contracts/types/ids.js";
-import { parseFeedbackSignal, type FeedbackSignal } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
+import { parseFeedbackSignal, type FeedbackSignal } from "../../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import { parseFeedbackBatch, type FeedbackBatch, type LearningSignal } from "./feedback-model.js";
 import { SignalPreprocessor } from "./signal-preprocessor.js";
 

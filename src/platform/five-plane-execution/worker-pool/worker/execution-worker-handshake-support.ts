@@ -1,7 +1,7 @@
 import type { AgentExecutionRecord, WorkerSnapshotRecord } from "../../../contracts/types/domain.js";
 
 import { newId } from "../../../contracts/types/ids.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerHandshakeDecision, WorkerRemoteLogInput } from "./execution-worker-handshake-types.js";
 export {
   buildAgentExecutionRecord,

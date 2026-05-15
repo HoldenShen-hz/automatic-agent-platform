@@ -6,7 +6,7 @@ import {
   ErasureReportService,
   DataEncryptionKeyService,
   DataResidencyService,
-} from "../../../../../src/platform/control-plane/compliance/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
 test("compliance module exports ErasureRequestService constructor", () => {
   assert.ok(typeof ErasureRequestService === "function");

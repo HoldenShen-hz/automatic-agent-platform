@@ -1,5 +1,5 @@
 import { resolveCliDbPath, withCliStorageBackendAsync } from "./authoritative-storage.js";
-import { validateSemanticVectorReadiness } from "../../platform/state-evidence/knowledge/semantic-vector-validation.js";
+import { validateSemanticVectorReadiness } from "../../platform/five-plane-state-evidence/knowledge/semantic-vector-validation.js";
 
 async function main(): Promise<void> {
   const dbPath = resolveCliDbPath();

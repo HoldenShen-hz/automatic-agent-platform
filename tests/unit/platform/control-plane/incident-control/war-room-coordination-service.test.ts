@@ -6,8 +6,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WarRoomCoordinationService } from "../../../../../src/platform/control-plane/incident-control/war-room-coordination-service.js";
-import type { WarRoomRole } from "../../../../../src/platform/control-plane/incident-control/war-room-coordination-service.js";
+import { WarRoomCoordinationService } from "../../../../../src/platform/five-plane-control-plane/incident-control/war-room-coordination-service.js";
+import type { WarRoomRole } from "../../../../../src/platform/five-plane-control-plane/incident-control/war-room-coordination-service.js";
 
 test.describe("WarRoomCoordinationService", () => {
   test("createWarRoom creates session with initiator as incident commander", () => {

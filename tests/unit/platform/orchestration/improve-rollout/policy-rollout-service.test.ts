@@ -5,11 +5,11 @@ import {
   PolicyRolloutService,
   type RolloutDecision,
   type MetricsGateDecision,
-} from "../../../../../src/platform/orchestration/improve-rollout/policy-rollout-service.js";
-import { AutoRollbackService, type RolloutMetrics } from "../../../../../src/platform/orchestration/improve-rollout/auto-rollback-service.js";
-import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { StrategyVersion } from "../../../../../src/platform/orchestration/improve-rollout/strategy-versioning.js";
-import type { RolloutRecord } from "../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+} from "../../../../../src/platform/five-plane-orchestration/improve-rollout/policy-rollout-service.js";
+import { AutoRollbackService, type RolloutMetrics } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/auto-rollback-service.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { StrategyVersion } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/strategy-versioning.js";
+import type { RolloutRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 function makeCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {

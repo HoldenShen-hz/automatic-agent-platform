@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runSingleTaskExecution } from "../../../../src/platform/execution/execution-engine/single-task-execution.js";
-import { runMultiStepOrchestration } from "../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import { RuntimeRepairService } from "../../../../src/platform/execution/recovery/runtime-repair-service-root.js";
-import { StartupConsistencyChecker } from "../../../../src/platform/execution/startup/startup-consistency-checker.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import {
   InjectedWorkflowCrashError,
   isInjectedWorkflowCrashError,
-} from "../../../../src/platform/execution/recovery/workflow-crash-simulator.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+} from "../../../../src/platform/five-plane-execution/recovery/workflow-crash-simulator.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function buildRecoveryReport(db: SqliteDatabase, store: AuthoritativeTaskStore, executionId: string) {

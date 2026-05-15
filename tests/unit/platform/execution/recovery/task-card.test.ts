@@ -7,7 +7,7 @@ import {
   type TaskCard,
   type TaskRiskLevel,
   type TaskStage,
-} from "../../../../../src/platform/execution/recovery/task-card.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
 
 test("createTaskCard creates card with defaults", () => {
   const card = createTaskCard({

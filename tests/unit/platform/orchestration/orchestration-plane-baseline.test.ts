@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   listOrchestrationCapabilityBaselines,
   resolveOrchestrationCapabilityBaseline,
-} from "../../../../src/platform/orchestration/orchestration-plane-baseline.js";
+} from "../../../../src/platform/five-plane-orchestration/orchestration-plane-baseline.js";
 
 test("orchestration plane baseline covers orchestration entry modules", () => {
   const baselines = listOrchestrationCapabilityBaselines();

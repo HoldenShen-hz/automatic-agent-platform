@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { KnowledgeSnapshotStore } from "../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import { KnowledgeSnapshotStore } from "../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 
 test("[SYS-SEC-4.2] knowledge snapshot store rejects path traversal", () => {
   assert.throws(

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessRuntimeService, type HarnessRun, type HarnessRunStatus, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type HarnessRun, type HarnessRunStatus, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers

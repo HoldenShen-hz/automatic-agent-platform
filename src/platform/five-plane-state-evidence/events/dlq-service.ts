@@ -1,13 +1,13 @@
 /**
  * @fileoverview DLQ Service - Dead Letter Queue handling for event delivery failures
  *
- * Extends the existing DLQ in src/platform/state-evidence/dlq/index.ts with:
+ * Extends the existing DLQ in src/platform/five-plane-state-evidence/dlq/index.ts with:
  * - Category classification for failure types
  * - Reason tracking for operator visibility
  * - Retry count management
  * - Operator action log for audit trail
  *
- * @see src/platform/state-evidence/dlq/index.ts - Base DLQ implementation
+ * @see src/platform/five-plane-state-evidence/dlq/index.ts - Base DLQ implementation
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";

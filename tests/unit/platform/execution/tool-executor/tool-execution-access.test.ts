@@ -7,7 +7,7 @@ import {
   resolveExecutionAllowedPathRoots,
   type ExecutionAllowedToolsResolution,
   type ExecutionAllowedPathRootsResolution,
-} from "../../../../../src/platform/execution/tool-executor/tool-execution-access.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-execution-access.js";
 
 test("resolveExecutionAllowedTools uses request-level allowlist when provided", () => {
   const result = resolveExecutionAllowedTools({

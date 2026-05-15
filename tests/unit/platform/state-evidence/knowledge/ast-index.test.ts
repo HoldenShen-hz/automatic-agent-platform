@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AstStructuralIndex } from "../../../../../src/platform/state-evidence/knowledge/indexing/ast-index.js";
+import { AstStructuralIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/ast-index.js";
 
 function tsSnippet(name: string, kind: "function" | "class" | "interface" | "type" | "enum" | "variable" = "function"): string {
   switch (kind) {

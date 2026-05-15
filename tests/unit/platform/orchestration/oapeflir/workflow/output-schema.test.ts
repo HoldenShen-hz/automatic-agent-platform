@@ -5,7 +5,7 @@ import {
   parseWorkflowOutputSchema,
   validateWorkflowStepOutput,
   type WorkflowOutputSchemaDefinition,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/output-schema.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/output-schema.js";
 import { WorkflowStateError } from "../../../../../../src/platform/contracts/errors.js";
 
 test("parseWorkflowOutputSchema parses valid schema", () => {

@@ -6,7 +6,7 @@ import {
   hashToolCall,
   LoopDetectionState,
   SequenceLoopDetector,
-} from "../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("normalizeToolInputForHash handles null and undefined", () => {
   assert.equal(normalizeToolInputForHash(null), "null");

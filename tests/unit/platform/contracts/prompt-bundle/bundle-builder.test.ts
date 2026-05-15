@@ -5,7 +5,7 @@ import {
   InMemoryPromptBundleRepository,
   InMemoryPromptVersionRepository,
   InMemoryPromptAbTestRepository,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 import type {
   PromptBundleRepository,
   PromptVersionRepository,
@@ -17,7 +17,7 @@ import type {
   UpdateBundleInput,
   CreateVersionInput,
   CreateTestInput,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 
 // =============================================================================
 // InMemoryPromptBundleRepository Tests

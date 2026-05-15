@@ -5,8 +5,8 @@ import {
   StuckRunSweeperService,
   createStuckRunSweeperService,
   type StuckRunSweeperServiceOptions,
-} from "../../../../../src/platform/execution/ha/stuck-run-sweeper-service.js";
-import type { StuckRun } from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/stuck-run-sweeper-service.js";
+import type { StuckRun } from "../../../../../src/platform/five-plane-execution/ha/types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Clock - controls time for deterministic testing

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { DivisionRegistry } from "../../../../../src/domains/governance/division-loader.js";
-import { RoleToolExposureService } from "../../../../../src/platform/execution/tool-executor/role-tool-exposure-service.js";
+import { RoleToolExposureService } from "../../../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
 
 test("RoleToolExposureService resolves general executor tools without filtering", () => {
   const service = new RoleToolExposureService();

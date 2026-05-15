@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   normalizeLearningType,
   parseLearningObject,
-} from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+} from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 test("parseLearningObject accepts ISO createdAt timestamps from harness learn flow", () => {
   const createdAt = "2026-05-08T10:15:30.000Z";

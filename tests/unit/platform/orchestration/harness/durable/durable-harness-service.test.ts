@@ -9,8 +9,8 @@ import {
   SqliteDurableHarnessStore,
   DurableHarnessService,
   type DurableHarnessRecord,
-} from "../../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import type { HarnessRun, WorkflowSleepLease } from "../../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import type { HarnessRun, WorkflowSleepLease } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return {

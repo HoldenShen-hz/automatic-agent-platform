@@ -1,16 +1,15 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
   loadExceptionRecoveryConfig,
   clearExceptionRecoveryConfigCache,
-} from "../../../../../src/platform/execution/recovery/exception-recovery-config-loader.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-config-loader.js";
 import type {
   ExceptionRecoveryConfig,
   ExceptionStrategy,
   ExceptionType,
-} from "../../../../../src/platform/execution/recovery/exception-recovery-types.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-types.js";
 
 /**
  * Retry strategy tests covering backoff calculations and retry policies.

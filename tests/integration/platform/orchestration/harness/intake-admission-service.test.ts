@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { IntakeAdmissionService } from "../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
+import { IntakeAdmissionService } from "../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { createPrincipalRef, type PrincipalRef } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 function createTestPrincipal(overrides: Partial<PrincipalRef> = {}): PrincipalRef {

@@ -6,7 +6,7 @@ import {
   estimateTokens,
   isWithinFixedPrefixBudget,
   isWithinDomainBlockBudget,
-} from "../../../../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
 
 test("createKvCachePrefixConfig returns default values", () => {
   const config = createKvCachePrefixConfig();

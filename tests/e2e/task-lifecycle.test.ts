@@ -13,7 +13,7 @@ import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 import { createMinimalNodeRun } from "../helpers/fixtures/base.js";

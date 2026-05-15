@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type {
   TakeoverActionResult,
-} from "../../../../../src/platform/control-plane/incident-control/human-takeover-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 
 test("TakeoverActionResult structure is correct", () => {
   const result: TakeoverActionResult = {

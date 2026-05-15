@@ -22,13 +22,13 @@ async function createTempDbPath(): Promise<string> {
 }
 
 async function openStorage(dbPath: string) {
-  const storageFactory = await import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+  const storageFactory = await import("../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
   const storage = storageFactory.openAuthoritativeStorageContext({ dbPath });
   storage.migrate();
   return storage;
 }
 
-async function closeStorage(storage: ReturnType<typeof import("../../../../../src/platform/state-evidence/truth/storage-backend-factory.js").openAuthoritativeStorageContext>, dbPath: string) {
+async function closeStorage(storage: ReturnType<typeof import("../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js").openAuthoritativeStorageContext>, dbPath: string) {
   try {
     storage.close();
   } catch {
@@ -78,7 +78,7 @@ test("TypedEventBus constructor initializes with database and store", async () =
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
 
     // TypedEventBus should be instantiable with db and store
     const bus = new TypedEventBus(storage.sql, storage.store);
@@ -104,7 +104,7 @@ test("publish emits task:status_changed event with correct type and payload", as
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -139,7 +139,7 @@ test("publish emits workflow:step_completed event with correct payload structure
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -171,7 +171,7 @@ test("publish emits decision:requested event with correct payload", async () => 
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -206,7 +206,7 @@ test("publish emits skill:execution_completed event with correct payload", async
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -242,7 +242,7 @@ test("subscribe receives events matching the subscription filter", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const receivedEvents: any[] = [];
@@ -292,7 +292,7 @@ test("subscribe can filter by multiple event types", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const receivedEvents: any[] = [];
@@ -339,7 +339,7 @@ test("unsubscribe removes consumer from receiving events", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const receivedEvents: any[] = [];
@@ -388,7 +388,7 @@ test("deliverPending returns number of events delivered for tier_2 events", asyn
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     let receivedCount = 0;
@@ -437,7 +437,7 @@ test("pendingForConsumer returns pending events for a consumer", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     bus.subscribe("test-consumer-005", ["task:status_changed"], () => {});
@@ -471,7 +471,7 @@ test("events are delivered with correct payload parsing", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     let receivedPayload: any = null;
@@ -533,7 +533,7 @@ test("task:status_changed event covers execution lifecycle states", async () => 
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const stateTransitions = [
@@ -573,7 +573,7 @@ test("workflow:step_completed event covers step-level execution completion", asy
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const steps = ["intake_triage", "planning", "execution", "verification"];
@@ -608,7 +608,7 @@ test("TypedEventBus dispose releases resources", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     // Subscribe before dispose
@@ -644,7 +644,7 @@ test("publish with optional trace context", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -679,7 +679,7 @@ test("publish with sessionId", async () => {
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     const event = bus.publish({
@@ -706,7 +706,7 @@ test("subscribe handler receives TypedEventEnvelope with correct types", async (
 
   try {
     const storage = await openStorage(dbPath);
-    const { TypedEventBus } = await import("../../../../../src/platform/state-evidence/events/typed-event-bus.js");
+    const { TypedEventBus } = await import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js");
     const bus = new TypedEventBus(storage.sql, storage.store);
 
     let receivedEnvelope: any = null;

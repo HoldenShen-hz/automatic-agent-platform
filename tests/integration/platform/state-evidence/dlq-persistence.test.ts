@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 
-import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../src/platform/state-evidence/dlq/index.js";
-import { SqliteDeadLetterQueueRepository } from "../../../../src/platform/state-evidence/truth/sqlite/repositories/dlq-repository.js";
+import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../src/platform/five-plane-state-evidence/dlq/index.js";
+import { SqliteDeadLetterQueueRepository } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/dlq-repository.js";
 
 function createInMemoryDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");

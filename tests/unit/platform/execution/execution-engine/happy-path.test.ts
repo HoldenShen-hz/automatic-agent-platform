@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/platform/execution/execution-engine/phase1a-happy-path.js";
+import { runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -9,8 +9,8 @@ import {
   READ_TOOL_METADATA,
   COMMAND_TOOL_METADATA,
   EDIT_TOOL_METADATA,
-} from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
-import type { ToolCallStatus } from "../../../../../src/platform/execution/tool-executor/tool-call-result.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
+import type { ToolCallStatus } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-call-result.js";
 
 test("resolveToolExecutionMetadata returns correct metadata for known tools", () => {
   assert.ok(resolveToolExecutionMetadata("read") !== null);

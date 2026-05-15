@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { ApprovalTimeoutResult, ApprovalTimeoutExecutorOptions } from "../../../../../src/platform/control-plane/approval-center/approval-timeout-executor.js";
+import type { ApprovalTimeoutResult, ApprovalTimeoutExecutorOptions } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
 
 const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 

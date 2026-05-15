@@ -5,15 +5,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHotUpgradeService } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-factory.js";
+import { createHotUpgradeService } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-factory.js";
 import {
   HotUpgradeService,
   HOT_UPGRADE_DDL,
-} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
 import type {
   HotUpgradeRepository,
   UpgradeAuditEntry,
-} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
 
 // Note: createHotUpgradeService requires a real storage backend handle
 // so we test the factory function signature and type output here
@@ -80,7 +80,7 @@ test("createHotUpgradeService is exported and callable", () => {
 });
 
 test("HotUpgradeService types are exported from index", async () => {
-  const indexModule = await import("../../../../../src/platform/execution/hot-upgrade/index.js");
+  const indexModule = await import("../../../../../src/platform/five-plane-execution/hot-upgrade/index.js");
 
   assert.ok(indexModule.HotUpgradeService !== undefined);
   assert.ok(indexModule.createHotUpgradeService !== undefined);

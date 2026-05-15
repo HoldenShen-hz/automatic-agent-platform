@@ -15,12 +15,12 @@ import { join } from "node:path";
 import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
-import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
-import { BudgetAllocator, BudgetTier } from "../../../../src/platform/execution/budget-allocator.js";
-import { ExecutionLeaseService } from "../../../../src/platform/execution/lease/execution-lease-service.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { BudgetAllocator, BudgetTier } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
+import { ExecutionLeaseService } from "../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
 
 /**
  * Creates a temporary directory for integration tests.

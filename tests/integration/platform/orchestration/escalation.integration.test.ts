@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Escalation Service Flow
  *
@@ -14,7 +13,7 @@ import {
   EscalationService,
   type EscalationRequest,
   type EscalationDecision,
-} from "../../../../../src/platform/orchestration/escalation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
 // Mock services for testing escalation service with external dependencies
 const mockPanicService = {

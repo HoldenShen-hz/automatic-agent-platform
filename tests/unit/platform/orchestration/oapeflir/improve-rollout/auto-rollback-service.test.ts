@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AutoRollbackService, type RolloutMetrics } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
+import { AutoRollbackService, type RolloutMetrics } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
 
 test("AutoRollbackService evaluates insufficient sample size", () => {
   const service = new AutoRollbackService();

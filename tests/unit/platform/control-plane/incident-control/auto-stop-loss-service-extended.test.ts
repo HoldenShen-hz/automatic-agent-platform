@@ -11,7 +11,7 @@ import {
   AutoStopLossService,
   type StopLossPlaybook,
   type SystemHealthSnapshot,
-} from "../../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 
 function createTestPlaybook(overrides: Partial<StopLossPlaybook> = {}): StopLossPlaybook {
   return {

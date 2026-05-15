@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as harnessModule from "../../../../../src/platform/orchestration/harness/index.js";
+import * as harnessModule from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 import {
   HARNESS_CAPABILITY_BASELINES,
   listHarnessCapabilityBaselines,
   resolveHarnessCapabilityBaseline,
-} from "../../../../../src/platform/orchestration/harness/harness-baseline.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/harness-baseline.js";
 
 test("harness baseline covers phase 8a-8c orchestration services", () => {
   const baselines = listHarnessCapabilityBaselines();
@@ -14,7 +14,7 @@ test("harness baseline covers phase 8a-8c orchestration services", () => {
     baselines.map((item) => item.capabilityId),
     ["constraint-pack", "planner-generator-evaluator-loop", "hitl", "governance"],
   );
-  assert.equal(resolveHarnessCapabilityBaseline("governance").entryModule, "src/platform/orchestration/harness/index.ts");
+  assert.equal(resolveHarnessCapabilityBaseline("governance").entryModule, "src/platform/five-plane-orchestration/harness/index.ts");
 });
 
 test("harness baseline service names resolve from the canonical harness entry", () => {
@@ -58,7 +58,7 @@ test("each capability baseline has valid entryModule and description", () => {
 test("resolveHarnessCapabilityBaseline returns correct baseline for each capabilityId", () => {
   const constraintPack = resolveHarnessCapabilityBaseline("constraint-pack");
   assert.equal(constraintPack.capabilityId, "constraint-pack");
-  assert.equal(constraintPack.entryModule, "src/platform/orchestration/harness/index.ts");
+  assert.equal(constraintPack.entryModule, "src/platform/five-plane-orchestration/harness/index.ts");
   assert.deepEqual(constraintPack.baselineServices, ["HarnessRuntimeService"]);
 
   const loop = resolveHarnessCapabilityBaseline("planner-generator-evaluator-loop");

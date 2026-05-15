@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { nowIso } from "../../src/platform/contracts/types/ids.js";
-import { WorkerRegistryService } from "../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { WorkerRegistryService } from "../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { PlatformOperatorService } from "../../src/scale-ecosystem/operations/platform-operator-service.js";
 import { ComplianceProgramService } from "../../src/scale-ecosystem/tenant-platform/compliance-program-service.js";
 import { HaProgramService } from "../../src/scale-ecosystem/tenant-platform/ha-program-service.js";

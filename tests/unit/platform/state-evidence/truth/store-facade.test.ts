@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   AuthoritativeTaskStore,
   Phase1aStore,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 test("authoritative task store generic facade re-exports the authoritative sqlite implementation", () => {
   assert.equal(typeof AuthoritativeTaskStore, "function");

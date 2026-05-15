@@ -12,8 +12,8 @@
 import { createRequire } from "node:module";
 
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { IntelItemRecord } from "../../platform/contracts/types/domain.js";
 
 const require = createRequire(import.meta.url);

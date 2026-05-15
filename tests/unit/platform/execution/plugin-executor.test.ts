@@ -26,9 +26,9 @@ import {
   type ExecutionContext,
   type PluginExecutionRequest,
   type PluginRegistration,
-} from "../../../../src/platform/execution/plugin-executor/index.js";
+} from "../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 
-import { SubWorkflowExecutor, createSubWorkflowExecutor } from "../../../../src/platform/execution/plugin-executor/sub-workflow-executor.js";
+import { SubWorkflowExecutor, createSubWorkflowExecutor } from "../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
 
 import type {
   PluginManifest,
@@ -37,13 +37,13 @@ import type {
 
 import type {
   BrowserExecutionContext,
-} from "../../../../src/platform/execution/plugin-executor/browser-executor.js";
+} from "../../../../src/platform/five-plane-execution/plugin-executor/browser-executor.js";
 
 import type {
   SubWorkflowContext,
   SubWorkflowDefinition,
   WorkflowStepDefinition,
-} from "../../../../src/platform/execution/plugin-executor/sub-workflow-executor.js";
+} from "../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

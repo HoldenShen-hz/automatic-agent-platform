@@ -19,8 +19,8 @@ import {
   type StableEvidenceTakeoverSample,
 } from "../../../../src/platform/stability/stable-evidence-bundle-support.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 describe("stable-evidence-bundle-support additional tests", () => {
   describe("writeJson", () => {

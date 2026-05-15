@@ -15,7 +15,7 @@ import {
   type EffectType,
   type EffectPriority,
   type Effect,
-} from "../../../../../src/platform/execution/execution-engine/effect-buffer.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 // ---------------------------------------------------------------------------
 // EffectBuilder tests

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionLeaseServiceAsync } from "../../../../../src/platform/execution/lease/execution-lease-service-async.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { LeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository.js";
+import { ExecutionLeaseServiceAsync } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service-async.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { LeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { WorkflowRepairWorker, type WorkflowRepairWorkerOptions } from "../../../../../src/platform/execution/ha/workflow-repair-worker.js";
+import { WorkflowRepairWorker, type WorkflowRepairWorkerOptions } from "../../../../../src/platform/five-plane-execution/ha/workflow-repair-worker.js";
 
 function createMockStartupConsistencyChecker() {
   return {

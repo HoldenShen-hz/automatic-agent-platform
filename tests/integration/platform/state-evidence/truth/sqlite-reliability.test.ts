@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { runSingleTaskExecution } from "../../../../../src/platform/execution/execution-engine/single-task-execution.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { getLatestSqliteMigrationVersion } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
-import { SqliteReliabilityService } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { getLatestSqliteMigrationVersion } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SqliteReliabilityService } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("sqlite reliability service checkpoints, backs up, and verifies the copied database", async () => {

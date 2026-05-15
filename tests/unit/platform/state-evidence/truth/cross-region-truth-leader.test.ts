@@ -6,7 +6,7 @@ import {
   type TruthLeaderEpoch,
   type TruthWriteClaim,
   type TruthLeaderDecision,
-} from "../../../../../src/platform/state-evidence/truth/cross-region-truth-leader.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/cross-region-truth-leader.js";
 
 test("CrossRegionTruthLeader.evaluate accepts matching epoch and claim", () => {
   const leader = new CrossRegionTruthLeader();

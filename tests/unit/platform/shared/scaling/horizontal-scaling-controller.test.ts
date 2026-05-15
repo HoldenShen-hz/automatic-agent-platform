@@ -7,7 +7,7 @@ import {
   type WorkerPoolMetrics,
   type ScalingPolicy,
 } from "../../../../../src/platform/shared/scaling/horizontal-scaling-controller.js";
-import type { QueueStats } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { QueueStats } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 test("evaluateScalingAction scales out when queue depth > threshold and utilization > target", () => {
   const metrics: WorkerPoolMetrics = {

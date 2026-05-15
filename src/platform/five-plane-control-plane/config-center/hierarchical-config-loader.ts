@@ -9,7 +9,7 @@
  */
 
 import { sha256, stableStringify } from "./config-governance-support.js";
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 
 /**
  * Configuration source type in the hierarchy.

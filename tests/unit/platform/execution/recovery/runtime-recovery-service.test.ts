@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -6,8 +5,8 @@ import {
   RuntimeRecoveryService,
   type RuntimeRecoveryCandidate,
   type RecoverySuggestedAction,
-} from "../../../../../src/platform/execution/recovery/runtime-recovery-service.js";
-import type { RuntimeRecoveryRecord } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
+import type { RuntimeRecoveryRecord } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Helper to create mock store
 function createMockStore(overrides: {

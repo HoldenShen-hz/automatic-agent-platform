@@ -6,7 +6,7 @@ import {
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
   EXECUTION_PLANE_CATALOG_SERVICE_ID,
   registerExecutionPlaneBootstrap,
-} from "../../../../src/platform/execution/execution-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("execution plane bootstrap exposes canonical execution services", () => {

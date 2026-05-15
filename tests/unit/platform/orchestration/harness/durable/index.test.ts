@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DurableHarnessService } from "../../../../../../src/platform/orchestration/harness/durable/index.js";
+import { DurableHarnessService } from "../../../../../../src/platform/five-plane-orchestration/harness/durable/index.js";
 
 test("DurableHarnessService is exported", () => {
   assert.ok(DurableHarnessService != null);

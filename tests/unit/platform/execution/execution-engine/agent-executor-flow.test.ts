@@ -12,9 +12,9 @@ import {
   type AgentExecutorContext,
   type AgentExecutorInput,
   type AgentExecutorResult,
-} from "../../../../../src/platform/execution/execution-engine/agent-executor.js";
-import { AgentMiddlewareChain } from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
-import type { LoopDetectionConfig } from "../../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
+import { AgentMiddlewareChain } from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
+import type { LoopDetectionConfig } from "../../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers

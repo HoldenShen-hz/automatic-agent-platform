@@ -5,7 +5,7 @@ import {
   InMemoryPromptAbTestRepository,
   InMemoryPromptBundleRepository,
   InMemoryPromptVersionRepository,
-} from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 
 test("InMemoryPromptBundleRepository creates and finds bundle", async () => {
   const repo = new InMemoryPromptBundleRepository();

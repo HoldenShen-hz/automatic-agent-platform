@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadDeploymentExecutionCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadDeploymentExecutionCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 
 test("loadDeploymentExecutionCliEnv parses build_report and export actions", () => {
   const report = loadDeploymentExecutionCliEnv({

@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
-import type { SqliteConnection } from "../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
+import { ExecutionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/execution-repository.js";
+import type { SqliteConnection } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/query-helper.js";
 import type { ExecutionRecord, ExecutionPrecheckRecord, DeadLetterRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 interface MockStatement {

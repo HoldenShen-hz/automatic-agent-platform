@@ -6,7 +6,7 @@ import { createAssetProductionAdapterPlugin } from "../../../../src/plugins/adap
 import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
 import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
 import { createLivestreamAdapterPlugin } from "../../../../src/plugins/adapters/livestream-adapter.js";
-import { NetworkEgressPolicyService } from "../../../../src/platform/control-plane/iam/network-egress-policy.js";
+import { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { ChannelGatewayDeliveryService } from "../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { nextPromptRolloutStage } from "../../../../src/platform/prompt-engine/rollout/prompt-rollout-stage.js";
 import { HierarchicalPromptRegistryService } from "../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace tenant-platform-service-async re-export
  *

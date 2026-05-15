@@ -7,7 +7,7 @@ import {
   EscalationRiskLevel,
   EscalationStage,
   EscalationDecisionType,
-} from "../../../../../src/platform/orchestration/escalation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/escalation/index.js";
 
 function createRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {

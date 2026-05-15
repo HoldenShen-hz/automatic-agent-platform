@@ -16,9 +16,9 @@ import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { EventRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
-import { ProjectionRebuildService } from "../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { EventRepository } from "../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/event-repository.js";
+import { ProjectionRebuildService } from "../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 
 function createTempDb(): SqliteDatabase {

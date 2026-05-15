@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
+import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/aws-kms-http-secret-provider.js";
 
 // Helper to create a mock env
 function createMockEnv(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {

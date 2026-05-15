@@ -32,9 +32,9 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import { summarizeWorkerLoadSkew } from "../../execution/worker-pool/worker-load-balancing.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { summarizeWorkerLoadSkew } from "../../five-plane-execution/worker-pool/worker-load-balancing.js";
 import {
   mapHealthDegradationModeToUnifiedRuntimeMode,
   type UnifiedRuntimeMode,

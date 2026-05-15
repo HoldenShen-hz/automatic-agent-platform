@@ -20,7 +20,7 @@ import {
   hashToolCall,
   createLoopDetectionMiddleware,
   createLoopDetectionMiddlewareFull,
-} from "../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 // ============================================================================
 // Test Suite 1: Loop Detection State - Basic Operations

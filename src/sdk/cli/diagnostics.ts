@@ -29,11 +29,11 @@
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServices } from "./governance-bootstrap.js";
-import { loadDiagnosticsCliEnv } from "../../platform/control-plane/config-center/diagnostics-cli-env.js";
+import { loadDiagnosticsCliEnv } from "../../platform/five-plane-control-plane/config-center/diagnostics-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { DiagnosticsExportService } from "../../platform/shared/observability/diagnostics-export-service.js";
 import { MetricsService } from "../../platform/shared/observability/metrics-service.js";
-import { StalledExecutionEscalationService } from "../../platform/execution/recovery/stalled-execution-escalation-service.js";
+import { StalledExecutionEscalationService } from "../../platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
 
 /**
  * Validates and returns the task ID from environment.

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PlanSchema } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { PlanSchema } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 test("PlanSchema accepts graph-native fields alongside legacy steps", () => {
   const plan = PlanSchema.parse({

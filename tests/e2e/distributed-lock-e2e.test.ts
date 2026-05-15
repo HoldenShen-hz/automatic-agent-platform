@@ -17,16 +17,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SqliteLockAdapter } from "../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteLockAdapter } from "../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
-import type { LockRecord } from "../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import type { LockRecord } from "../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 // ---------------------------------------------------------------------------
 // Test Harness
 // ---------------------------------------------------------------------------
 
-import { DISTRIBUTED_LOCKS_DDL } from "../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { DISTRIBUTED_LOCKS_DDL } from "../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 function createLockHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);

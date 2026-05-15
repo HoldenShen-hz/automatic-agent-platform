@@ -7,13 +7,13 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { SqliteDurableHarnessStore } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import { SqliteDurableHarnessStore } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { DatabaseSync } from "node:sqlite";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createConstraintPack(overrides = {}): ConstraintPack {

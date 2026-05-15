@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Incident Control
  *
@@ -14,19 +13,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { HumanTakeoverService } from "../../../../src/platform/control-plane/incident-control/human-takeover-service.js";
+import { HumanTakeoverService } from "../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 import {
   AutoStopLossService,
   type EscalationLevel,
   type StopLossAction,
   type StopLossPlaybook,
-} from "../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 import {
   TenantExecutionIsolationService,
   TENANT_ISOLATION_DDL,
   type QuotaKind,
   type EnforcementAction,
-} from "../../../../src/platform/control-plane/incident-control/tenant-execution-isolation-service.js";
+} from "../../../../src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 function ensureTenantIsolationSchema(ctx: ReturnType<typeof createIntegrationContext>): void {

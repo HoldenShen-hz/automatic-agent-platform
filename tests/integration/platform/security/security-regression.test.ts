@@ -15,13 +15,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { CommandSafetyClassifier } from "../../../../src/platform/execution/tool-executor/command-security.js";
+import { CommandSafetyClassifier } from "../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 import {
   SandboxPolicy,
   checkSandboxPath,
   createWorkspaceWritePolicy,
-} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { CommandExecutor } from "../../../../src/platform/execution/tool-executor/command-executor.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { CommandExecutor } from "../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
 import {
   classifyPromptInjectionRisk,
   protectSystemPrompt,

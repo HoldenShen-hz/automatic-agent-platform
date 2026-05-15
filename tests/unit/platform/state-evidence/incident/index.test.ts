@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IncidentCaseService } from "../../../../../src/platform/state-evidence/incident/index.js";
+import { IncidentCaseService } from "../../../../../src/platform/five-plane-state-evidence/incident/index.js";
 
 test("IncidentCaseService enforces acknowledge before mitigation and resolves incidents", () => {
   const service = new IncidentCaseService();

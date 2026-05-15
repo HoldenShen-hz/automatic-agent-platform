@@ -35,10 +35,10 @@ import {
   takeFileSnapshot,
   type FileSnapshot,
   type FreshnessConfig,
-} from "../../control-plane/iam/file-freshness.js";
+} from "../../five-plane-control-plane/iam/file-freshness.js";
 import { ToolExecutionError } from "../../contracts/errors.js";
-import { checkSandboxPath } from "../../control-plane/iam/sandbox-policy.js";
-import type { SandboxPathCheckResult, SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import type { SandboxPathCheckResult, SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import { checkToolPathScope } from "./tool-path-scope.js";
 
 /**

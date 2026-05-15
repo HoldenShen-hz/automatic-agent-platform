@@ -4,8 +4,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SourceTrustPolicyRegistry } from "../../../../../../src/platform/state-evidence/knowledge/governance/source-trust-policy.js";
-import type { TrustLevel } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { SourceTrustPolicyRegistry } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/source-trust-policy.js";
+import type { TrustLevel } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 test("SourceTrustPolicyRegistry returns correct policy for verified trust level", () => {
   const registry = new SourceTrustPolicyRegistry();

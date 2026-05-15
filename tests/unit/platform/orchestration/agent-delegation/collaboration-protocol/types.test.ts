@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ACPMessageTypeSchema, ACPMessageSchema, ACPCompletionPayloadSchema } from "../../../../../../src/platform/orchestration/agent-delegation/collaboration-protocol/types.js";
+import { ACPMessageTypeSchema, ACPMessageSchema, ACPCompletionPayloadSchema } from "../../../../../../src/platform/five-plane-orchestration/agent-delegation/collaboration-protocol/types.js";
 
 test("ACPMessageTypeSchema accepts valid message types", () => {
   const validTypes = [

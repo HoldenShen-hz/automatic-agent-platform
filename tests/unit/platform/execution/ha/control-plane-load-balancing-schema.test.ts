@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../../../../../src/platform/execution/ha/control-plane-load-balancing-schema.js";
+import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../../../../../src/platform/five-plane-execution/ha/control-plane-load-balancing-schema.js";
 
 test("CONTROL_PLANE_LOAD_BALANCING_DDL is a non-empty string", () => {
   assert.equal(typeof CONTROL_PLANE_LOAD_BALANCING_DDL, "string");

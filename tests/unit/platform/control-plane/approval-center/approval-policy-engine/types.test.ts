@@ -16,7 +16,7 @@ import type {
   PolicyLintResult,
   PolicyLintError,
   PolicyLintWarning,
-} from "../../../../../../src/platform/control-plane/approval-center/approval-policy-engine/types.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 
 test("RuleOperator type accepts all valid operators", () => {
   const operators: RuleOperator[] = ["eq", "neq", "in", "nin", "gt", "gte", "lt", "lte", "contains"];

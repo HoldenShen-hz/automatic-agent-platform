@@ -9,8 +9,8 @@ import {
   filterByStatus,
   groupByStage,
   WCAG_COMPLIANCE_NOTES,
-} from "../../../../../../src/platform/interface/console/hitl/notification.js";
-import type { HitlQueueItem } from "../../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
+} from "../../../../../../src/platform/five-plane-interface/console/hitl/notification.js";
+import type { HitlQueueItem } from "../../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
 
 function createMockQueueItem(overrides: Partial<HitlQueueItem> = {}): HitlQueueItem {
   return {

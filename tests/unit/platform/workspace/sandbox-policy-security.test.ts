@@ -20,7 +20,7 @@ import {
   resolveSandboxPath,
   type SandboxPolicy,
   type SandboxPathCheckResult,
-} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Traversal Prevention

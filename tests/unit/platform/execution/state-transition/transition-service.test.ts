@@ -8,16 +8,16 @@ import {
   SessionTransitionService,
   ExecutionTransitionService,
   ApprovalTransitionService,
-} from "../../../../../src/platform/execution/state-transition/transition-service.js";
+} from "../../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import type {
   AuthoritativeSqlDatabase,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   AuthoritativeTaskStore,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   RuntimeLifecycleRepository,
-} from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import type {
   TaskStatusTransitionCommand,
   WorkflowStatusTransitionCommand,

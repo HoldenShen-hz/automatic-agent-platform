@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { StalledExecutionDetector } from "../../../../src/platform/execution/recovery/stalled-execution-detector.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { StalledExecutionDetector } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";

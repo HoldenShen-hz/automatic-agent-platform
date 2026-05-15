@@ -30,7 +30,7 @@ export const PLATFORM_RISK_REGISTER_BASELINE: readonly RiskRegisterRecord[] = Ob
     reviewAfter: "2026-07-01",
     trigger: "Graph validation finding or scheduler replay mismatch.",
     linkedInvariant: "INV-GRAPH-001",
-    linkedTest: "tests/unit/platform/orchestration/harness/runtime/plan-graph-harness-runtime.test.ts",
+    linkedTest: "tests/unit/platform/five-plane-orchestration/harness/runtime/plan-graph-harness-runtime.test.ts",
   },
   {
     riskId: "RISK-SIDEEFFECT-001",
@@ -44,7 +44,7 @@ export const PLATFORM_RISK_REGISTER_BASELINE: readonly RiskRegisterRecord[] = Ob
     reviewAfter: "2026-07-01",
     trigger: "Ambiguous tool/API result or missing external confirmation.",
     linkedInvariant: "INV-SIDEEFFECT-001",
-    linkedTest: "tests/unit/platform/execution/side-effect-manager.test.ts",
+    linkedTest: "tests/unit/platform/five-plane-execution/side-effect-manager.test.ts",
   },
   {
     riskId: "RISK-BUDGET-001",
@@ -58,7 +58,7 @@ export const PLATFORM_RISK_REGISTER_BASELINE: readonly RiskRegisterRecord[] = Ob
     reviewAfter: "2026-07-01",
     trigger: "Reservation rejection, hard-cap reached, or settlement mismatch.",
     linkedInvariant: "INV-BUDGET-001",
-    linkedTest: "tests/unit/platform/execution/budget-allocator.test.ts",
+    linkedTest: "tests/unit/platform/five-plane-execution/budget-allocator.test.ts",
   },
   {
     riskId: "RISK-DOMAIN-001",

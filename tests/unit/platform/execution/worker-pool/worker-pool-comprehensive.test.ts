@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkerDrainProtocol, WorkerDrainPhase, DEFAULT_DRAIN_CONFIG } from "../../../../../src/platform/execution/worker-pool/worker-drain-protocol.js";
+import { WorkerDrainProtocol, WorkerDrainPhase, DEFAULT_DRAIN_CONFIG } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
 test("WorkerDrainProtocol beginDrain returns DRAIN phase receipt", () => {
   const protocol = new WorkerDrainProtocol();

@@ -6,7 +6,7 @@ import {
   OperatorConsoleBackendService,
   type OperatorIdentity,
   type ConsoleDataSources,
-} from "../../../../../src/platform/interface/console-backend/index.js";
+} from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("OperatorConsoleBackendService handles multi-tenant task aggregation", () => {
   const ctx = createIntegrationContext("aa-console-multitenant-");

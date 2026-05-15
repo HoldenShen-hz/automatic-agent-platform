@@ -8,11 +8,11 @@ import { DiagnosticsService } from "../../../../src/platform/shared/observabilit
 import { HealthService } from "../../../../src/platform/shared/observability/health-service.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
-import { runSingleTaskExecution } from "../../../../src/platform/execution/execution-engine/single-task-execution.js";
-import { StalledExecutionDetector } from "../../../../src/platform/execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../../../../src/platform/execution/recovery/stalled-execution-escalation-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { StalledExecutionDetector } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import { StalledExecutionEscalationService } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 

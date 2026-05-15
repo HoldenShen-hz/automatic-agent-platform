@@ -22,7 +22,7 @@ import {
   transitionLock,
   type LockTransitionCommand,
 } from "../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
-import { canonicalMemoryLayerToScope, DEFAULT_LAYER_TTL_CONFIGS, scopeToCanonicalMemoryLayer } from "../../../src/platform/state-evidence/memory/memory-layer-model.js";
+import { canonicalMemoryLayerToScope, DEFAULT_LAYER_TTL_CONFIGS, scopeToCanonicalMemoryLayer } from "../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 

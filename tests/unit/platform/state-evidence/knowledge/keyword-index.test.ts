@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { KeywordKnowledgeIndex } from "../../../../../src/platform/state-evidence/knowledge/keyword-index.js";
-import type { KnowledgeChunk } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { KeywordKnowledgeIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
+import type { KnowledgeChunk } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function makeChunk(overrides: Partial<KnowledgeChunk> = {}): KnowledgeChunk {
   return {

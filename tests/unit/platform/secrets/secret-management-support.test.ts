@@ -9,7 +9,7 @@ import {
   computeNextRotationDueAt,
   computeLeaseExpiry,
   normalizeLeaseStatus,
-} from "../../../../src/platform/control-plane/iam/secret-management-support.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 
 // ---------------------------------------------------------------------------
 // assertNonEmpty

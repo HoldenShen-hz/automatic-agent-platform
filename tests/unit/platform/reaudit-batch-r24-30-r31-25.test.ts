@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { getRegisteredConsumers } from "../../../src/platform/state-evidence/events/event-registry.js";
+import { getRegisteredConsumers } from "../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 import { mapHarnessLearnerToOapeflir, mapHarnessStepToOapeflirPhase } from "../../../src/platform/five-plane-orchestration/harness/oapeflir-harness-mapping.js";
 import { OAPEFLIR_STAGES, StageTransitionFSM } from "../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
@@ -22,8 +22,8 @@ test("R24-30/R24-34/R31-01..R31-25: source fixes stay wired", () => {
   const assessmentSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/assessment-service.ts", "utf8");
   const agentTeamSource = readFileSync("src/platform/five-plane-orchestration/routing/agent-team-service.ts", "utf8");
   const intakeRouterSource = readFileSync("src/platform/five-plane-orchestration/routing/intake-router.ts", "utf8");
-  const eventRegistrySource = readFileSync("src/platform/state-evidence/events/event-registry.ts", "utf8");
-  const durableBusSource = readFileSync("src/platform/state-evidence/events/durable-event-bus.ts", "utf8");
+  const eventRegistrySource = readFileSync("src/platform/five-plane-state-evidence/events/event-registry.ts", "utf8");
+  const durableBusSource = readFileSync("src/platform/five-plane-state-evidence/events/durable-event-bus.ts", "utf8");
   const organizationRepoSource = readFileSync("src/platform/five-plane-state-evidence/truth/sqlite/repositories/organization-repository.ts", "utf8");
 
   assert.match(runtimeTruthSource, /public upsertWithCas/);

@@ -6,7 +6,7 @@ import {
   KvCachePrefixConfigSchema,
   buildCacheKey,
   estimateTokens,
-} from "../../../../../src/platform/orchestration/oapeflir/kv-cache-prefix-config.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/kv-cache-prefix-config.js";
 
 test("KvCacheLayerSchema parses valid layer", () => {
   const result = KvCacheLayerSchema.parse({

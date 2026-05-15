@@ -5,8 +5,8 @@ import {
   createUncaughtExceptionHandler,
   createUnhandledRejectionHandler,
   registerProcessErrorHandlers,
-} from "../../../../../src/platform/execution/startup/process-error-handlers.js";
-import type { GracefulShutdown } from "../../../../../src/platform/execution/startup/graceful-shutdown.js";
+} from "../../../../../src/platform/five-plane-execution/startup/process-error-handlers.js";
+import type { GracefulShutdown } from "../../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock GracefulShutdown

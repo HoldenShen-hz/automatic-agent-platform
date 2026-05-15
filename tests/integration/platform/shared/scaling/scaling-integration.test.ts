@@ -46,7 +46,7 @@ import {
   type ScalingPolicy,
 } from "../../../../../src/platform/shared/scaling/horizontal-scaling-controller.js";
 
-import type { QueueStats } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { QueueStats } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 // ── Resource Quota Tests ──────────────────────────────────────────────────────
 

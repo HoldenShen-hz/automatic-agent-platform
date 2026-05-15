@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ChannelGatewayRetryExecutor } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-retry-executor.js";
+import { ChannelGatewayRetryExecutor } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-retry-executor.js";
 
 function createMockGatewayService(processResult: any = { scanned: 0, delivered: 0, retryScheduled: 0, deadLettered: 0, skippedRateLimited: 0 }) {
   return {

@@ -4,8 +4,8 @@ import test from "node:test";
 import { OpenAIChatService } from "../../../../src/platform/model-gateway/provider-registry/openai/openai-chat-service.js";
 import {
   createWebSearchTool,
-} from "../../../../src/platform/execution/tool-executor/web-search.js";
-import { resetGlobalNetworkEgressPolicyService } from "../../../../src/platform/control-plane/iam/network-egress-policy.js";
+} from "../../../../src/platform/five-plane-execution/tool-executor/web-search.js";
+import { resetGlobalNetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { withEnv } from "../../../helpers/env.js";
 
 async function withResetEgressEnv<T>(overrides: Record<string, string>, run: () => Promise<T>): Promise<T> {

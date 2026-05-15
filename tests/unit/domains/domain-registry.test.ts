@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
 import type { DomainDefinition } from "../../../src/domains/registry/domain-model.js";
-import type { TypedEventPublisher } from "../../../src/platform/state-evidence/events/typed-event-publisher.js";
+import type { TypedEventPublisher } from "../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
 
 // Manual mock event publisher
 function mockEventPublisher() {

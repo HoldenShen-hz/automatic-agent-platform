@@ -6,16 +6,16 @@ import test from "node:test";
 import {
   normalizeConstraintPack,
   type ConstraintPack,
-} from "../../../src/platform/orchestration/harness/index.js";
+} from "../../../src/platform/five-plane-orchestration/harness/index.js";
 import {
   PHASE_1_LEARNING_TYPES,
   normalizeLearningType,
-} from "../../../src/platform/orchestration/learn/learning-object-model.js";
+} from "../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 import {
   HANDOFF_LEVEL_TOKEN_BUDGET,
   createAgentHandoff,
-} from "../../../src/platform/orchestration/oapeflir/handoff-model.js";
-import { serializeHandoff } from "../../../src/platform/orchestration/oapeflir/handoff-serializer.js";
+} from "../../../src/platform/five-plane-orchestration/oapeflir/handoff-model.js";
+import { serializeHandoff } from "../../../src/platform/five-plane-orchestration/oapeflir/handoff-serializer.js";
 import {
   createProjectionUpdate,
   validateProjectionUpdate,
@@ -158,7 +158,7 @@ test("R25-28 handoff serializer aligns L1 semantics and L4 budgeted full handoff
 test("R25-29 ADR-016 keeps HarnessRuntime as sole execution entry and top-level barrels no longer primary-export OapeflirLoopService", () => {
   const zhAdr = readRepoFile("docs_zh/adr/016-oapeflir-loop-model.md");
   const enAdr = readRepoFile("docs_en/adr/016-oapeflir-loop-model.md");
-  const orchestrationBarrel = readRepoFile("src/platform/orchestration/index.ts");
+  const orchestrationBarrel = readRepoFile("src/platform/five-plane-orchestration/index.ts");
   const fivePlaneBarrel = readRepoFile("src/platform/five-plane-orchestration/index.ts");
 
   assert.match(zhAdr, /HarnessRuntime.*唯一执行入口/);

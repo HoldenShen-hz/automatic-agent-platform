@@ -6,9 +6,9 @@ import {
   removeExecutionId,
   buildAgentExecutionRecord,
   persistRemoteLogs,
-} from "../../../../../../src/platform/execution/worker-pool/worker/execution-worker-writeback-support.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { WorkerRemoteLogInput } from "../../../../../../src/platform/execution/worker-pool/execution-worker-writeback-service.js";
+} from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-writeback-support.js";
+import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { WorkerRemoteLogInput } from "../../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 
 // ---------------------------------------------------------------------------
 // parseJsonArray - additional edge cases

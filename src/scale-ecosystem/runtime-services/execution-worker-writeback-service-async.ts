@@ -16,14 +16,14 @@
  * @see ExecutionWorkerWritebackService for the sync implementation
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   WorkerWritebackInput,
   WorkerWritebackDecision,
   ExecutionWorkerWritebackServiceOptions,
-} from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
-import { ExecutionWorkerWritebackService } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
+} from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
+import { ExecutionWorkerWritebackService } from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
@@ -31,7 +31,7 @@ export type {
   WorkerWritebackInput,
   WorkerWritebackDecision,
   ExecutionWorkerWritebackServiceOptions,
-} from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
+} from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 
 /**
  * Options for configuring the async ExecutionWorkerWritebackService

@@ -13,7 +13,7 @@ import {
   OtelEnabledSchema,
   ExpectedGovernanceVersionSchema,
   type StartupEnvValidationResult,
-} from "../../../../../src/platform/control-plane/config-center/startup-env-schema.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/startup-env-schema.js";
 
 test("validateStartupEnv returns success for valid minimal config", () => {
   const result = validateStartupEnv({

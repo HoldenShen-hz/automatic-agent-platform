@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // HITL module barrel - re-exports HITL services
-import * as hitl from "../../../../../src/platform/orchestration/hitl/index.js";
+import * as hitl from "../../../../../src/platform/five-plane-orchestration/hitl/index.js";
 
 test("hitl module exports ApprovalContextSummaryService", () => {
   assert.equal(typeof hitl.ApprovalContextSummaryService, "function");

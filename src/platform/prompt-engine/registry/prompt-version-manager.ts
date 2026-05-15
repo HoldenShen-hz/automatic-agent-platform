@@ -232,7 +232,7 @@ export class PromptVersionManager {
    * Gets all versions for a bundle sorted by version order.
    */
   public getSortedVersions(bundleName: string): Array<string | number> {
-    return this.getSortedVersionValues(bundleName);
+    return this.getSortedVersionValues(bundleName).map((version) => String(version));
   }
 
   /**

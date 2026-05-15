@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadEnterpriseGovernanceCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
+import { loadEnterpriseGovernanceCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
 
 test("loadEnterpriseGovernanceCliEnv parses summary and export actions with current prefixes", () => {
   const summary = loadEnterpriseGovernanceCliEnv({

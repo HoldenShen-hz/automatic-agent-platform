@@ -23,7 +23,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   SQLITE_MIGRATIONS,
   SQLITE_MIGRATION_LEDGER_SQL,
-} from "../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+} from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 const OUTPUT_DIR = process.argv[2] ?? join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
 

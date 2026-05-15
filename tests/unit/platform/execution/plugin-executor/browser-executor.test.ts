@@ -17,7 +17,7 @@ import {
   BrowserExecutor,
   createBrowserExecutor,
   type BrowserExecutionContext,
-} from "../../../../../src/platform/execution/plugin-executor/browser-executor.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/browser-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

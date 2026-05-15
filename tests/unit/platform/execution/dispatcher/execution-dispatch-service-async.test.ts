@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchServiceAsync } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-service-async.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AdmissionBackpressureSnapshot } from "../../../../../src/platform/execution/dispatcher/admission-controller.js";
+import { ExecutionDispatchServiceAsync } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service-async.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AdmissionBackpressureSnapshot } from "../../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
 
 // ---------------------------------------------------------------------------
 // Helper types

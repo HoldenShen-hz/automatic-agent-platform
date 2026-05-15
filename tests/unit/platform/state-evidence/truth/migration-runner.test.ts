@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MigrationRunner } from "../../../../../src/platform/state-evidence/truth/migration-runner.js";
-import type { AuthoritativeStorageBackendHandle } from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import { MigrationRunner } from "../../../../../src/platform/five-plane-state-evidence/truth/migration-runner.js";
+import type { AuthoritativeStorageBackendHandle } from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 
 test("MigrationRunner status returns sqlite schema status", async () => {
   const runner = new MigrationRunner({

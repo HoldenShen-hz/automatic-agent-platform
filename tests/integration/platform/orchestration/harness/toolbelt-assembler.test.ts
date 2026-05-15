@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { ToolbeltAssembler, type ToolbeltAssemblyRequest } from "../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { ToolbeltAssembler, type ToolbeltAssemblyRequest } from "../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
+import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("ToolbeltAssembler integration: grants allowed tools with SQLite context", () => {
   const ctx = createIntegrationContext("aa-toolbelt-grant-");

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   toWorkflowSleepLease,
   toWorkflowResumeWindow,
-} from "../../../../../src/platform/interface/scheduler/workflow-sleep-contracts.js";
+} from "../../../../../src/platform/five-plane-interface/scheduler/workflow-sleep-contracts.js";
 
 interface WorkflowSuspensionRecord {
   suspensionId: string;

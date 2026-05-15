@@ -15,8 +15,8 @@
  * @see {@link docs_zh/contracts/} for event-related contracts
  */
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadEventOpsCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
-import { EventOpsService } from "../../platform/state-evidence/events/event-ops-service.js";
+import { loadEventOpsCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
+import { EventOpsService } from "../../platform/five-plane-state-evidence/events/event-ops-service.js";
 
 /**
  * Main entry point for the replay events CLI.

@@ -9,7 +9,7 @@ import {
   RolloutRecordSchema,
   TaskSituationSchema,
   UnifiedAssessmentSchema,
-} from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
 test("agent-loop phase-1 schemas accept valid minimal payloads", () => {
   assert.doesNotThrow(() => TaskSituationSchema.parse({

@@ -8,12 +8,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeIngestionPipeline } from "../../../../../src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.js";
-import { KnowledgeArchive } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import { NamespacePolicyStore } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import { KeywordKnowledgeIndex } from "../../../../../src/platform/state-evidence/knowledge/keyword-index.js";
-import { KnowledgeRetrievalService } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import type { SemanticVectorStore } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
+import { KnowledgeIngestionPipeline } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+import { KnowledgeArchive } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import { NamespacePolicyStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import { KeywordKnowledgeIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
+import { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import type { SemanticVectorStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
 
 function registerNamespace(store: NamespacePolicyStore, path: string, ownerDomainId: string = path): void {
   store.register({

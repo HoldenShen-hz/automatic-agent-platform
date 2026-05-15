@@ -12,7 +12,7 @@ import {
   buildExecutionMarkdown,
   DEFAULT_REPO_ROOT,
   ROTATION_GUARDED_ENVIRONMENTS,
-} from "../../../../../src/platform/control-plane/incident-control/release-pipeline-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/release-pipeline-support.js";
 
 function isValidationErrorWithCode(err: unknown, codePrefix: string): boolean {
   return (err as Error)?.message?.startsWith(codePrefix) ?? false;

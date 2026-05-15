@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { SuccessCriterion } from "../../../../../../src/platform/orchestration/oapeflir/types/success-criterion.js";
+import type { SuccessCriterion } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/success-criterion.js";
 
 type SuccessCriterionOverride = Omit<Partial<SuccessCriterion>, "operator"> & {
   operator?: NonNullable<SuccessCriterion["operator"]>;

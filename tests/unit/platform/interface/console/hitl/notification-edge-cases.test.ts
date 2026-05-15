@@ -1,6 +1,6 @@
 /**
  * Unit tests for HITL notification edge cases and additional coverage
- * Tests functions from src/platform/interface/console/hitl/notification.ts
+ * Tests functions from src/platform/five-plane-interface/console/hitl/notification.ts
  */
 
 import assert from "node:assert/strict";
@@ -15,8 +15,8 @@ import {
   groupByStage,
   type NotificationSeverity,
   type NotificationPriority,
-} from "../../../../../../src/platform/interface/console/hitl/notification.js";
-import type { HitlQueueItem, HitlQueueStatus } from "../../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
+} from "../../../../../../src/platform/five-plane-interface/console/hitl/notification.js";
+import type { HitlQueueItem, HitlQueueStatus } from "../../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
 
 function createHitlQueueItem(overrides: Partial<HitlQueueItem> = {}): HitlQueueItem {
   return {

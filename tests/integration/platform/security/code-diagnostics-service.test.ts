@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { CodeDiagnosticsService } from "../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
+import { CodeDiagnosticsService } from "../../../../src/platform/five-plane-execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("code diagnostics service keeps diagnostics scans inside the workspace boundary", async () => {

@@ -11,7 +11,7 @@ import {
   type ConfigOverrideAttempt,
   type ConfigConstraintLayer,
   type HighRiskConfigObject,
-} from "../../../../../src/platform/control-plane/config-center/config-override-governance.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-override-governance.js";
 
 test("InMemoryOverrideAuditLog records and queries overrides", () => {
   const auditLog = new InMemoryOverrideAuditLog();

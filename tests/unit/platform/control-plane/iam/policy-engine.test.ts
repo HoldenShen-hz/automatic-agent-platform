@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/control-plane/iam/policy-engine.js";
+import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
 import type { BudgetPolicy } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 
 function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDecisionRequest {

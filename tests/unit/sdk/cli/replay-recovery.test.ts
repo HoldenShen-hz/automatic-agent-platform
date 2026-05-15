@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadReplayRecoveryCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadReplayRecoveryCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 
 // ---------------------------------------------------------------------------
 // Tests for loadReplayRecoveryCliEnv
@@ -162,7 +162,7 @@ test("resolveLegacyReplayOutput throws for invalid action", () => {
 
 import { existsSync } from "node:fs";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import { readTrimmedEnv } from "../../../../src/platform/control-plane/config-center/runtime-env.js";
+import { readTrimmedEnv } from "../../../../src/platform/five-plane-control-plane/config-center/runtime-env.js";
 
 function printHelp(): void {
   process.stdout.write(

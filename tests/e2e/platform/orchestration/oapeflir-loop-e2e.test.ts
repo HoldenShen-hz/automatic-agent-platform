@@ -14,11 +14,11 @@ import test from "node:test";
 // @ts-ignore
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 // @ts-ignore
-import { OapeflirLoopService } from "../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
+import { OapeflirLoopService } from "../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
 // @ts-ignore
-import { HandoffBuilder } from "../../../src/platform/orchestration/oapeflir/handoff-builder.js";
+import { HandoffBuilder } from "../../../src/platform/five-plane-orchestration/oapeflir/handoff-builder.js";
 // @ts-ignore
-import type { LoopIterationResult, StageTiming } from "../../../src/platform/orchestration/oapeflir/types.js";
+import type { LoopIterationResult, StageTiming } from "../../../src/platform/five-plane-orchestration/oapeflir/types.js";
 // @ts-ignore
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 

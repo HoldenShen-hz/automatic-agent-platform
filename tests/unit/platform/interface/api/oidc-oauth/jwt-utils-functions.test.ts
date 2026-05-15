@@ -5,7 +5,7 @@ import {
   decodeJwtJsonSegment,
   parseJwtHeader,
   parseFederatedTokenClaims,
-} from "../../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
+} from "../../../../../../src/platform/five-plane-interface/api/oidc-oauth/jwt-utils.js";
 
 test("decodeJwtJsonSegment decodes valid base64url payload", () => {
   // "eyJzdWIiOiJ1c2VyMTIzIn0=" is base64url for {"sub":"user123"}

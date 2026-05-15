@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { MemoryPlaneService, type MemoryPlaneView } from "../../../../../src/platform/state-evidence/memory/memory-plane-service.js";
+import { MemoryPlaneService, type MemoryPlaneView } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-plane-service.js";
 import type {
   MemoryProvider,
   MemoryProviderPrefetchResult,
   MemoryProviderQuery,
   MemoryTurnSyncInput,
   MemoryTurnSyncResult,
-} from "../../../../../src/platform/state-evidence/memory/memory-provider.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-provider.js";
 import type { CacheOrchestrationService } from "../../../../../src/platform/shared/cache/cache-orchestration-service.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

@@ -27,12 +27,12 @@
  */
 
 import { requireSqliteAuthoritativeStorageBackend, withCliStorage } from "./authoritative-storage.js";
-import { ChannelGatewayService } from "../../platform/interface/channel-gateway/channel-gateway-service.js";
-import { GatewayTargetDirectoryService } from "../../platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { ChannelGatewayDeliveryService } from "../../platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import { CHANNEL_DELIVERY_DDL } from "../../platform/interface/channel-gateway/channel-gateway-delivery-support.js";
-import { GatewayStorageAdapter } from "../../platform/interface/channel-gateway/storage-adapter.js";
-import { loadChannelGatewayEnv } from "../../platform/control-plane/config-center/channel-gateway-env.js";
+import { ChannelGatewayService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { GatewayTargetDirectoryService } from "../../platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import { ChannelGatewayDeliveryService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
+import { GatewayStorageAdapter } from "../../platform/five-plane-interface/channel-gateway/storage-adapter.js";
+import { loadChannelGatewayEnv } from "../../platform/five-plane-control-plane/config-center/channel-gateway-env.js";
 
 // Load configuration from environment
 const envConfig = loadChannelGatewayEnv();

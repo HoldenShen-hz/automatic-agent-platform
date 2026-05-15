@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { WorkflowStateRecord } from "../../contracts/types/domain.js";
 import type { WorkflowStatus } from "../../contracts/types/status.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { toWorkflowResumeWindow, toWorkflowSleepLease, type WorkflowResumeWindow, type WorkflowSleepLease } from "./workflow-sleep-contracts.js";
 
 export type WorkflowWaitKind = "timer" | "human_input" | "external_event" | "throttled" | "deployment_window";

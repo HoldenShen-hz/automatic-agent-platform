@@ -17,7 +17,7 @@ import {
   ScopedExternalAccessSandbox,
   createScopedExternalAccessSandbox,
   type ExternalAccessRequest,
-} from "../../../../../src/platform/execution/plugin-executor/scoped-external-access-sandbox.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration Tests

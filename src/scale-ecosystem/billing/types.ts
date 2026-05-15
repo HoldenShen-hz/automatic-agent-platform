@@ -1,11 +1,11 @@
-import type { ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
+import type { ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import type { BillingPaymentGateway } from "./billing-payment-gateway.js";
 import type {
   BillingMetricType,
   BillingPlanCatalog,
   PlanCatalogEntry,
-} from "../../platform/control-plane/config-center/billing-plan-catalog.js";
-import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+} from "../../platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
+import type { SandboxPolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 import type {
   ArtifactRef,
   BillingAccountRecord,

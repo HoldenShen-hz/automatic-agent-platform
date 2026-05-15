@@ -10,7 +10,7 @@ import {
   SequenceLoopDetector,
   type LoopDetectionConfig,
   type LoopPattern,
-} from "../../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("normalizeToolInputForHash handles null", () => {
   assert.equal(normalizeToolInputForHash(null), "null");

@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayRepairControlService } from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
-import type { StartupConsistencyFinding, StartupConsistencyCheckId, ConsistencySeverity } from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
+import { ReplayRepairControlService } from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
+import type { StartupConsistencyFinding, StartupConsistencyCheckId, ConsistencySeverity } from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 test("buildStartupConsistencyReport with all severity types produces correct counts", () => {
   const service = new ReplayRepairControlService();

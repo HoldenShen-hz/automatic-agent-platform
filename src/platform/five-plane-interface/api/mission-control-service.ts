@@ -12,7 +12,7 @@ import {
 import { MetricsService, type RuntimeMetricsSummary } from "../../shared/observability/metrics-service.js";
 import { TaskBoardService } from "../../shared/observability/task-board-service.js";
 import { TaskTimelineService } from "../../shared/observability/task-timeline-service.js";
-import { AuthoritativeTaskStore, type TaskBoardItem } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore, type TaskBoardItem } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   ApprovalRecord,
   BillingAccountRecord,

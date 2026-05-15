@@ -12,7 +12,7 @@ import {
   partitionPromptForCache,
   PromptPartitionCacheService,
   type PromptPartitionInput,
-} from "../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+} from "../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 test("golden: partitionPromptForCache produces correct structure", () => {
   const input: PromptPartitionInput = {

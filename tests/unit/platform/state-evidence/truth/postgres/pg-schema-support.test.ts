@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { defineMigration, normalizeSql, checksumSql } from "../../../../../../src/platform/state-evidence/truth/postgres/pg-schema-support.js";
+import { defineMigration, normalizeSql, checksumSql } from "../../../../../../src/platform/five-plane-state-evidence/truth/postgres/pg-schema-support.js";
 
 test("normalizeSql removes leading/trailing whitespace and normalizes internal whitespace", () => {
   const result = normalizeSql("  SELECT   *   FROM   users  ");

@@ -17,13 +17,13 @@
 import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { ConfigGovernanceService } from "../config-center/config-governance-service.js";
 import { StorageError, ToolExecutionError, ValidationError } from "../../contracts/errors.js";
 import { EnvSecretProvider } from "../iam/env-secret-provider.js";
 import { SecretManagementService, type ManagedSecretMetadata } from "../iam/secret-management-service.js";
 import { createWorkspaceWritePolicy } from "../iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   ArtifactRef,
   DeploymentExecutionReportRecord,

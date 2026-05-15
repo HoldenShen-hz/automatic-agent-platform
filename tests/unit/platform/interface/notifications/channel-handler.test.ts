@@ -5,8 +5,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { HitlNotificationChannel } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
-import type { ApprovalPacket } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
+import type { HitlNotificationChannel } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
+import type { ApprovalPacket } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
 
 function createMockApprovalPacket(overrides: Partial<ApprovalPacket> = {}): ApprovalPacket {
   return {

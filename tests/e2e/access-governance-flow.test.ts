@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
+import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import {
   evaluateAuthorizationContext,
   resolvePrincipalAccessProfile,
-} from "../../src/platform/control-plane/iam/access-model.js";
+} from "../../src/platform/five-plane-control-plane/iam/access-model.js";
 import { createSeededE2EHarness } from "../helpers/e2e-harness.js";
 
 test("E2E: access governance bridges principal context decisions into approval flow", () => {

@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../src/platform/execution/state-transition/transition-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 
@@ -1378,7 +1378,7 @@ test("§17.4 lease_not_found — execution has no lease record", async () => {
   // ExecutionLeaseService.validateWriteAccess returns lease_not_found when
   // getLatestExecutionLease returns null (no lease ever acquired).
   const { ExecutionLeaseService } = await import(
-    "../../../src/platform/execution/lease/execution-lease-service.js"
+    "../../../src/platform/five-plane-execution/lease/execution-lease-service.js"
   );
   const workspace = createTempWorkspace("aa-fencing-");
 
@@ -1464,7 +1464,7 @@ test("§17.4 no_active_lease — lease exists but is expired/released", async ()
   // a lease record exists but getActiveExecutionLease returns null
   // (lease was released or expired without being replaced).
   const { ExecutionLeaseService } = await import(
-    "../../../src/platform/execution/lease/execution-lease-service.js"
+    "../../../src/platform/five-plane-execution/lease/execution-lease-service.js"
   );
   const workspace = createTempWorkspace("aa-fencing-");
 
@@ -1567,7 +1567,7 @@ test("§17.4 stale_fencing_token — worker presents old fencing token after lea
   // This detects split-brain: a worker with an old lease tries to write after
   // a new lease has been granted (with a new fencing token).
   const { ExecutionLeaseService } = await import(
-    "../../../src/platform/execution/lease/execution-lease-service.js"
+    "../../../src/platform/five-plane-execution/lease/execution-lease-service.js"
   );
   const workspace = createTempWorkspace("aa-fencing-");
 
@@ -1679,7 +1679,7 @@ test("§17.4 worker_mismatch — requesting worker is not the lease holder", asy
   // ExecutionLeaseService.validateWriteAccess returns worker_mismatch when
   // the workerId in the request does not match activeLease.workerId.
   const { ExecutionLeaseService } = await import(
-    "../../../src/platform/execution/lease/execution-lease-service.js"
+    "../../../src/platform/five-plane-execution/lease/execution-lease-service.js"
   );
   const workspace = createTempWorkspace("aa-fencing-");
 
@@ -1772,7 +1772,7 @@ test("§17.4 lease_mismatch — lease ID does not match current active lease", a
   // ExecutionLeaseService.validateWriteAccess returns lease_mismatch when
   // the presented leaseId does not match activeLease.id (lease was replaced).
   const { ExecutionLeaseService } = await import(
-    "../../../src/platform/execution/lease/execution-lease-service.js"
+    "../../../src/platform/five-plane-execution/lease/execution-lease-service.js"
   );
   const workspace = createTempWorkspace("aa-fencing-");
 

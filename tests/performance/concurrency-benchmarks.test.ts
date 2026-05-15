@@ -16,11 +16,11 @@ import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TypedEventBus } from "../../src/platform/state-evidence/events/typed-event-bus.js";
-import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
-import { BudgetAllocator } from "../../src/platform/execution/budget-allocator.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TypedEventBus } from "../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { BudgetAllocator } from "../../src/platform/five-plane-execution/budget-allocator.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { HarnessRun, BudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 

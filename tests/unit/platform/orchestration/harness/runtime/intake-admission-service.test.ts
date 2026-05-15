@@ -5,7 +5,7 @@ import { createPrincipalRef } from "../../../../../../src/platform/contracts/exe
 import {
   IntakeAdmissionService,
   type TrafficController,
-} from "../../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 
 test("IntakeAdmissionService builds the canonical intake and admission chain idempotently", () => {
   const service = new IntakeAdmissionService();

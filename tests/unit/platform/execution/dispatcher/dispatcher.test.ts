@@ -10,7 +10,7 @@ import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
   type MultiStepToolDefinition,
-} from "../../../../../src/platform/execution/dispatcher/index.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/index.js";
 
 // ---------------------------------------------------------------------------
 // Test setup and teardown

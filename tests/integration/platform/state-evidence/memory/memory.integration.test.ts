@@ -11,12 +11,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import { MemoryDecayService } from "../../../../../src/platform/state-evidence/memory/memory-decay-service.js";
-import { MemoryRetrievalService } from "../../../../../src/platform/state-evidence/memory/memory-retrieval-service.js";
-import { KnowledgePromotionService } from "../../../../../src/platform/state-evidence/memory/knowledge-promotion-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { MemoryDecayService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-decay-service.js";
+import { MemoryRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
+import { KnowledgePromotionService } from "../../../../../src/platform/five-plane-state-evidence/memory/knowledge-promotion-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

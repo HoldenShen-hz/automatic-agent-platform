@@ -30,12 +30,12 @@
 import { dirname, join } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadEnvironmentDeploymentCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
-import { ConfigGovernanceService } from "../../platform/control-plane/config-center/config-governance-service.js";
+import { loadEnvironmentDeploymentCliEnv } from "../../platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { ConfigGovernanceService } from "../../platform/five-plane-control-plane/config-center/config-governance-service.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { EnvironmentDeploymentService } from "../../platform/control-plane/incident-control/environment-deployment-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
+import { EnvironmentDeploymentService } from "../../platform/five-plane-control-plane/incident-control/environment-deployment-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 
 const envConfig = loadEnvironmentDeploymentCliEnv();
 const action = envConfig.action;

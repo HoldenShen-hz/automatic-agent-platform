@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { WorkflowDispatchReceipt } from "../../../../../src/platform/control-plane/incident-control/workflow-dispatch-receipt.js";
-import { extractWorkflowDispatchReceipt } from "../../../../../src/platform/control-plane/incident-control/workflow-dispatch-receipt.js";
+import type { WorkflowDispatchReceipt } from "../../../../../src/platform/five-plane-control-plane/incident-control/workflow-dispatch-receipt.js";
+import { extractWorkflowDispatchReceipt } from "../../../../../src/platform/five-plane-control-plane/incident-control/workflow-dispatch-receipt.js";
 
 test("WorkflowDispatchReceipt structure is correct", () => {
   const receipt: WorkflowDispatchReceipt = {

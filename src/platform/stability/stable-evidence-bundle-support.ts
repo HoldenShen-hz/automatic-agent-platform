@@ -43,22 +43,22 @@ import { HealthService } from "../shared/observability/health-service.js";
 import { InspectService } from "../shared/observability/inspect-service.js";
 import { ObservabilityRetentionService } from "../shared/observability/observability-retention-service.js";
 import { StructuredLogger } from "../shared/observability/structured-logger.js";
-import { DoctorService, type DoctorReport } from "../control-plane/incident-control/doctor-service.js";
-import { HumanTakeoverService } from "../control-plane/incident-control/human-takeover-service.js";
-import { EventOpsService } from "../state-evidence/events/event-ops-service.js";
-import { runSingleTaskExecution } from "../execution/execution-engine/single-task-execution.js";
-import { RuntimeRepairService, type RepairExecutionResult } from "../execution/recovery/runtime-repair-service-root.js";
-import { RuntimeRecoveryService } from "../execution/recovery/runtime-recovery-service-root.js";
-import { StalledExecutionDetector } from "../execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../execution/recovery/stalled-execution-escalation-service.js";
-import { WorkerRegistryService } from "../execution/worker-pool/worker-registry-service.js";
+import { DoctorService, type DoctorReport } from "../five-plane-control-plane/incident-control/doctor-service.js";
+import { HumanTakeoverService } from "../five-plane-control-plane/incident-control/human-takeover-service.js";
+import { EventOpsService } from "../five-plane-state-evidence/events/event-ops-service.js";
+import { runSingleTaskExecution } from "../five-plane-execution/execution-engine/single-task-execution.js";
+import { RuntimeRepairService, type RepairExecutionResult } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRecoveryService } from "../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { StalledExecutionDetector } from "../five-plane-execution/recovery/stalled-execution-detector.js";
+import { StalledExecutionEscalationService } from "../five-plane-execution/recovery/stalled-execution-escalation-service.js";
+import { WorkerRegistryService } from "../five-plane-execution/worker-pool/worker-registry-service.js";
 import {
   StartupConsistencyChecker,
   type StartupConsistencyReport,
-} from "../execution/startup/startup-consistency-checker.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
-import { SqliteReliabilityService } from "../state-evidence/truth/sqlite/sqlite-reliability-service.js";
+} from "../five-plane-execution/startup/startup-consistency-checker.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
+import { SqliteReliabilityService } from "../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
 import {
   runStableBackupRestoreRehearsal,
@@ -780,12 +780,12 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
       startedAt: now,
       updatedAt: now,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: executionId,
       taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent_general_executor",
       roleId: "general_executor",
       runKind: "task_run",
@@ -795,6 +795,8 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["analysis"]),

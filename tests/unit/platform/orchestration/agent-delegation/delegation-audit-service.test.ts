@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   DelegationAuditService,
   type DelegationAuditEventType,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-audit-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-audit-service.js";
 
 test("DelegationAuditService records governance evaluation", () => {
   const service = new DelegationAuditService();

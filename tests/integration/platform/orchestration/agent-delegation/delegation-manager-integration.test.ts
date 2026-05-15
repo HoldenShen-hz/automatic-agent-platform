@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Delegation Manager Service
  *
@@ -19,7 +18,7 @@ import {
   type AgentContext,
   type DelegationSpec,
   type DelegationChain,
-} from "../../../../../src/platform/orchestration/agent-delegation/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 function createTestAgentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

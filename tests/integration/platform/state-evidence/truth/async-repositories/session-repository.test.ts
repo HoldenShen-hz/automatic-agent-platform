@@ -1,12 +1,11 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
-import { AsyncSessionRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/session-repository.js";
-import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteAsyncAdapter } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-async-adapter.js";
+import { AsyncSessionRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/session-repository.js";
+import { AsyncTaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/task-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
 import type { SessionRecord, MessageRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 

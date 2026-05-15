@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { GatewayTargetDirectoryService, GatewayTargetNotFoundError, GatewayTargetAmbiguousError } from "../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import type { GatewayStoragePort } from "../../../../../src/platform/interface/channel-gateway/storage-port.js";
+import { GatewayTargetDirectoryService, GatewayTargetNotFoundError, GatewayTargetAmbiguousError } from "../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import type { GatewayStoragePort } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
 import type { GatewayTargetRecord, GatewayTargetKind } from "../../../../../src/platform/contracts/types/domain.js";
-import type { GatewaySessionTargetCandidate } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { GatewaySessionTargetCandidate } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 /**
  * Manual mock implementations for unit testing GatewayTargetDirectoryService

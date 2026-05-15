@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AssessmentService } from "../../../../../src/platform/orchestration/oapeflir/assessment-service.js";
+import { AssessmentService } from "../../../../../src/platform/five-plane-orchestration/oapeflir/assessment-service.js";
 
 function createMinimalSituation(overrides: any = {}) {
   return {

@@ -9,7 +9,7 @@ import {
   getGlobalIdempotencyKeyMiddleware,
   resetGlobalIdempotencyKeyMiddleware,
   type IdempotencyKeyConfig,
-} from "../../../../../../src/platform/interface/api/middleware/idempotency-key.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key.js";
 
 describe("IdempotencyKeyMiddleware", () => {
   let middleware: IdempotencyKeyMiddleware;

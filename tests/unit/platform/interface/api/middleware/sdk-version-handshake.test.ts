@@ -5,7 +5,7 @@ import {
   type SdkVersionHandshakePolicy,
   type SdkVersionHandshakeRequest,
   type SdkVersionHandshakeDecision,
-} from "../../../../../../src/platform/interface/api/middleware/sdk-version-handshake.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/sdk-version-handshake.js";
 
 describe("SdkVersionHandshakeService", () => {
   describe("evaluate", () => {

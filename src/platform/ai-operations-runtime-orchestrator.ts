@@ -18,7 +18,7 @@ import {
 import {
   HARNESS_BOOTSTRAP_SERVICE_ID,
   registerHarnessBootstrap,
-} from "./orchestration/harness/harness-bootstrap.js";
+} from "./five-plane-orchestration/harness/harness-bootstrap.js";
 import {
   MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
   registerModelGatewayBootstrap,

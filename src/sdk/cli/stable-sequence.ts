@@ -2,7 +2,7 @@ import {
   runStableEvidenceSequence,
   runStableEvidenceSequenceUntilComplete,
 } from "../../platform/shared/stability/stable-evidence-sequence.js";
-import { loadStableSequenceCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableSequenceCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 /**
  * Main entry point for the stable evidence sequence CLI.

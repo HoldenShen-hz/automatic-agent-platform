@@ -10,7 +10,7 @@ import {
   KnowledgeDocumentSchema,
   RetrievalHitSchema,
   SourceTrustPolicySchema,
-} from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 test("TrustLevelSchema accepts valid values", () => {
   assert.equal(TrustLevelSchema.parse("verified"), "verified");

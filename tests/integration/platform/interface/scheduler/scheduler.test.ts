@@ -6,8 +6,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { LongRunningWorkflowService } from "../../../../../src/platform/interface/scheduler/long-running-workflow-service.js";
-import { toWorkflowSleepLease, toWorkflowResumeWindow } from "../../../../../src/platform/interface/scheduler/workflow-sleep-contracts.js";
+import { LongRunningWorkflowService } from "../../../../../src/platform/five-plane-interface/scheduler/long-running-workflow-service.js";
+import { toWorkflowSleepLease, toWorkflowResumeWindow } from "../../../../../src/platform/five-plane-interface/scheduler/workflow-sleep-contracts.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("Integration: LongRunningWorkflowService suspends and resumes workflow", () => {

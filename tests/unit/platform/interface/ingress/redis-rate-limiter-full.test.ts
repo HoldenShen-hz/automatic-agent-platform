@@ -100,7 +100,7 @@ async function withMockRedisCtor<T>(
 }
 
 async function getRedisRateLimiter() {
-  const { RedisRateLimiter } = await import("../../../../../src/platform/interface/ingress/redis-rate-limiter.js");
+  const { RedisRateLimiter } = await import("../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js");
   return RedisRateLimiter;
 }
 

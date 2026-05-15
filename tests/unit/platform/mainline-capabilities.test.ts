@@ -96,7 +96,7 @@ test("resolvePlatformMainlineCapability throws Error for unknown capabilityId", 
 test("interface capability has correct properties", () => {
   const capability = resolvePlatformMainlineCapability("interface");
 
-  assert.strictEqual(capability.entryModule, "src/platform/interface/index.ts");
+  assert.strictEqual(capability.entryModule, "src/platform/five-plane-interface/index.ts");
   assert.ok(capability.architectureSections.includes("§4"));
   assert.ok(capability.architectureSections.includes("§6"));
   assert.ok(capability.architectureSections.includes("§7"));
@@ -108,7 +108,7 @@ test("interface capability has correct properties", () => {
 test("control-plane capability has correct properties", () => {
   const capability = resolvePlatformMainlineCapability("control-plane");
 
-  assert.strictEqual(capability.entryModule, "src/platform/control-plane/index.ts");
+  assert.strictEqual(capability.entryModule, "src/platform/five-plane-control-plane/index.ts");
   assert.ok(capability.architectureSections.includes("§10"));
   assert.ok(capability.criticalSubmodules.includes("approval-center"));
   assert.ok(capability.criticalSubmodules.includes("config-center"));
@@ -118,7 +118,7 @@ test("control-plane capability has correct properties", () => {
 test("orchestration capability has correct properties", () => {
   const capability = resolvePlatformMainlineCapability("orchestration");
 
-  assert.strictEqual(capability.entryModule, "src/platform/orchestration/index.ts");
+  assert.strictEqual(capability.entryModule, "src/platform/five-plane-orchestration/index.ts");
   assert.ok(capability.architectureSections.includes("§13"));
   assert.ok(capability.criticalSubmodules.includes("oapeflir"));
   assert.ok(capability.criticalSubmodules.includes("planner"));
@@ -128,7 +128,7 @@ test("orchestration capability has correct properties", () => {
 test("execution capability has correct properties", () => {
   const capability = resolvePlatformMainlineCapability("execution");
 
-  assert.strictEqual(capability.entryModule, "src/platform/execution/index.ts");
+  assert.strictEqual(capability.entryModule, "src/platform/five-plane-execution/index.ts");
   assert.ok(capability.architectureSections.includes("§14"));
   assert.ok(capability.criticalSubmodules.includes("dispatcher"));
   assert.ok(capability.criticalSubmodules.includes("execution-engine"));
@@ -138,7 +138,7 @@ test("execution capability has correct properties", () => {
 test("state-evidence capability has correct properties", () => {
   const capability = resolvePlatformMainlineCapability("state-evidence");
 
-  assert.strictEqual(capability.entryModule, "src/platform/state-evidence/index.ts");
+  assert.strictEqual(capability.entryModule, "src/platform/five-plane-state-evidence/index.ts");
   assert.ok(capability.architectureSections.includes("§25"));
   assert.ok(capability.criticalSubmodules.includes("truth"));
   assert.ok(capability.criticalSubmodules.includes("events"));

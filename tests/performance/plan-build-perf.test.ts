@@ -14,11 +14,11 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { PlanBuilder } from "../../src/platform/orchestration/planner/plan-builder.js";
+import { PlanBuilder } from "../../src/platform/five-plane-orchestration/planner/plan-builder.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
-import type { TaskSituation } from "../../src/platform/orchestration/oapeflir/types/task-situation.js";
-import type { UnifiedAssessment } from "../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
-import type { PlannedWorkflow } from "../../src/platform/orchestration/routing/workflow-planner.js";
+import type { TaskSituation } from "../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
+import type { UnifiedAssessment } from "../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
+import type { PlannedWorkflow } from "../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 function createMinimalTaskSituation(): TaskSituation {
   return {

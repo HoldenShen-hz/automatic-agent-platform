@@ -7,15 +7,15 @@ import {
 import {
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
   buildControlPlaneBootstrap,
-} from "./control-plane/control-plane-bootstrap.js";
+} from "./five-plane-control-plane/control-plane-bootstrap.js";
 import {
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
   buildExecutionPlaneBootstrap,
-} from "./execution/execution-plane-bootstrap.js";
+} from "./five-plane-execution/execution-plane-bootstrap.js";
 import {
   INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
   buildInterfacePlaneBootstrap,
-} from "./interface/interface-plane-bootstrap.js";
+} from "./five-plane-interface/interface-plane-bootstrap.js";
 import {
   MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
   buildModelGatewayBootstrap,
@@ -23,7 +23,7 @@ import {
 import {
   ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
   buildOrchestrationPlaneBootstrap,
-} from "./orchestration/orchestration-plane-bootstrap.js";
+} from "./five-plane-orchestration/orchestration-plane-bootstrap.js";
 import {
   PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
   buildPromptEngineBootstrap,
@@ -35,7 +35,7 @@ import {
 import {
   STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
   buildStateEvidencePlaneBootstrap,
-} from "./state-evidence/state-evidence-plane-bootstrap.js";
+} from "./five-plane-state-evidence/state-evidence-plane-bootstrap.js";
 
 export const FIVE_PLANE_STARTUP_PLAN_SERVICE_ID = "plane.runtime.startup-plan";
 

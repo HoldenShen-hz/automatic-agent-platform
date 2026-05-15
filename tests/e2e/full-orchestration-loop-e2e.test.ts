@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus, WorkflowStatus } from "../../src/platform/contracts/types/status.js";
 

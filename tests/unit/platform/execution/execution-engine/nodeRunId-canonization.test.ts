@@ -216,7 +216,7 @@ function resolveArtifactRefsFromModule(
 // =============================================================================
 
 test("R6-19: CompensationStep uses nodeRunId for canonical identity", async () => {
-  const { CompensationStep } = await import("../../../../../src/platform/execution/compensation-manager.js");
+  const { CompensationStep } = await import("../../../../../src/platform/five-plane-execution/compensation-manager.js");
 
   // R6-19: CompensationStep should have nodeRunId as canonical field
   // This tests the interface definition

@@ -7,7 +7,7 @@ import {
   type EndpointClassPolicy,
   type EndpointClassSnapshot,
   type EndpointClassAdmissionDecision,
-} from "../../../../../src/platform/execution/dispatcher/endpoint-class-admission.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/endpoint-class-admission.js";
 
 test("EndpointClassAdmissionController evaluates and accepts read_query", () => {
   const policies: EndpointClassPolicy[] = [

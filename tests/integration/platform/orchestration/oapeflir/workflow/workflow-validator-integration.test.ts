@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowValidator, assertWorkflowValid } from "../../../../../../src/platform/orchestration/oapeflir/workflow/workflow-validator.js";
-import type { MinimalWorkflowDefinition } from "../../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import { WorkflowValidator, assertWorkflowValid } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
+import type { MinimalWorkflowDefinition } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { ValidationError } from "../../../../../../src/platform/contracts/errors.js";
 
 function createValidWorkflow(overrides?: Partial<MinimalWorkflowDefinition>): MinimalWorkflowDefinition {

@@ -14,7 +14,7 @@ import type {
   DelegationChainNode,
   DelegationChain,
   DelegationOptions,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 test("AgentContext structure uses canonical sandbox tiers", () => {
   const ctx: AgentContext = {

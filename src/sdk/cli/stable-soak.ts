@@ -1,4 +1,4 @@
-import { loadStableSoakCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableSoakCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 import {
   runStableSoak,
   writeStableSoakReport,

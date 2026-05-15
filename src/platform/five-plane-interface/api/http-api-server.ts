@@ -5,9 +5,9 @@ import { parse as parseUrl } from "node:url";
 import { GatewayTargetDirectoryService } from "../channel-gateway/gateway-target-directory-service.js";
 import { ChannelGatewayService } from "../channel-gateway/channel-gateway-service.js";
 import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-gateway-delivery-service.js";
-import type { ApprovalService } from "../../control-plane/approval-center/approval-service.js";
-import { ConfigRolloutService } from "../../control-plane/config-center/config-rollout-service.js";
-import { TenantBoundaryRegistryService } from "../../control-plane/tenant/index.js";
+import type { ApprovalService } from "../../five-plane-control-plane/approval-center/approval-service.js";
+import { ConfigRolloutService } from "../../five-plane-control-plane/config-center/config-rollout-service.js";
+import { TenantBoundaryRegistryService } from "../../five-plane-control-plane/tenant/index.js";
 import { ApiAuthService } from "./api-auth-service.js";
 import type { DivisionRegistry } from "../../../domains/governance/division-loader.js";
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
@@ -22,12 +22,12 @@ import { AppError } from "../../contracts/errors.js";
 import { BillingService } from "../../../scale-ecosystem/billing/billing-service.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
-import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
-import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifact-plane-service.js";
+import type { KnowledgePlaneService } from "../../five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import type { ArtifactPlaneService } from "../../five-plane-state-evidence/artifacts/artifact-plane-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
-import type { MissionRepository } from "../../state-evidence/truth/mission-repository.js";
+import type { MissionRepository } from "../../five-plane-state-evidence/truth/mission-repository.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,

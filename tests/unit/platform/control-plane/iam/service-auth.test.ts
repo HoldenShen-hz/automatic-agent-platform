@@ -19,7 +19,7 @@ import {
   extractServiceAuth,
   getServiceAuthStats,
   type ServiceIdentityStatus,
-} from "../../../../../src/platform/control-plane/iam/service-auth.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/service-auth.js";
 
 // Helper to sign a token for validation
 function signToken(token: { tokenId: string; serviceId: string; expiresAt: number; audience: string }, signingKey: Buffer): string {

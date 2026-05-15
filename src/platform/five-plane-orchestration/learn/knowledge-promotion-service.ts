@@ -21,8 +21,8 @@
  */
 
 import type { LearningObject } from "./learning-object-model.js";
-import { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
-import type { TypedEventPublisher } from "../../state-evidence/events/typed-event-publisher.js";
+import { KnowledgePlaneService } from "../../five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import type { TypedEventPublisher } from "../../five-plane-state-evidence/events/typed-event-publisher.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

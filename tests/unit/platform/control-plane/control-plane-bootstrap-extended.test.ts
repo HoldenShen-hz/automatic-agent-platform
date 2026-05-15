@@ -134,7 +134,7 @@ test("catalog entries expose control-plane source entry modules", () => {
 
   for (const item of bootstrap.catalog) {
     assert.ok(
-      item.entryModule.startsWith("src/platform/control-plane/"),
+      item.entryModule.startsWith("src/platform/five-plane-control-plane/"),
       `entryModule ${item.entryModule} should point at the control-plane source tree`,
     );
   }

@@ -196,7 +196,6 @@ export class CircuitBreaker {
       const recentFailureRate = this.getRecentFailureRate();
       if (
         this.consecutiveFailures >= this.failureThreshold ||
-        (this.failureThreshold >= 100 && this.failureTimestamps.length > 0) ||
         recentFailureRate >= 0.5 // 50% failure rate threshold
       ) {
         this.transitionTo("open");

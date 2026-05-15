@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ConstraintPack } from "../../../../../../src/platform/orchestration/harness/constraints/index.js";
+import type { ConstraintPack } from "../../../../../../src/platform/five-plane-orchestration/harness/constraints/index.js";
 
 test("ConstraintPack type can be used as interface", () => {
   const pack: ConstraintPack = {

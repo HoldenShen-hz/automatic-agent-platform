@@ -50,7 +50,7 @@ import {
   type PlanStrategy,
   type PlanStep,
   type PlanStepStatus,
-} from "../../../../../src/platform/orchestration/oapeflir/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/index.js";
 
 test("TaskPhaseSchema is exported", () => {
   assert.ok(TaskPhaseSchema !== undefined);

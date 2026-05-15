@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
 // Set test mode to use in-memory Redis mock

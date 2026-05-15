@@ -14,8 +14,8 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadDispatchReconcileCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
-import { ExecutionDispatchReconciliationService } from "../../platform/execution/dispatcher/execution-dispatch-reconciliation-service.js";
+import { loadDispatchReconcileCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
+import { ExecutionDispatchReconciliationService } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.js";
 
 /**
  * Main entry point for the dispatch reconciliation CLI.

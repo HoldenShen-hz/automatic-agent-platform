@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, appendFileSync, mkdirSync, rmSync, existsS
 import { join } from "node:path";
 
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
-import { SessionDualStorageService, type SessionEvent } from "../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+import { SessionDualStorageService, type SessionEvent } from "../../../../src/platform/five-plane-state-evidence/truth/session-dual-storage.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 describe("SessionDualStorageService", () => {

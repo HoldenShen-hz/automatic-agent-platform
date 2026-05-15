@@ -6,7 +6,7 @@ import {
   ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
   ORCHESTRATION_PLANE_CATALOG_SERVICE_ID,
   registerOrchestrationPlaneBootstrap,
-} from "../../../../src/platform/orchestration/orchestration-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-orchestration/orchestration-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("orchestration plane bootstrap exposes canonical orchestration services", () => {

@@ -6,7 +6,7 @@ import {
   type DashboardTaskSource,
   type DashboardSystemSource,
 } from "../../../../src/interaction/dashboard/index.js";
-import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
 function makeTaskBoardItem(overrides: Partial<TaskBoardItem> = {}): TaskBoardItem {

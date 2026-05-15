@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
 import {
   LockDataSchema,
   type RedisLockConfig,
-} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+} from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 function hasLockCode(error: unknown, expectedSuffix: string): boolean {
   return typeof (error as { code?: unknown })?.code === "string" && (error as { code: string }).code.endsWith(expectedSuffix);

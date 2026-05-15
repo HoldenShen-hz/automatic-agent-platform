@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   validateToolExecutionMetadata,
   validateToolMetadataRegistry,
-} from "../../../../../src/platform/execution/tool-executor/tool-contract-validator.js";
-import type { ToolExecutionMetadata } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-contract-validator.js";
+import type { ToolExecutionMetadata } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 function createValidMetadata(overrides: Partial<ToolExecutionMetadata> = {}): ToolExecutionMetadata {
   return {

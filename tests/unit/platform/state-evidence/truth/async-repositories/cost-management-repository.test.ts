@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -7,8 +6,8 @@ import {
   type CostReportRecord,
   type BudgetAlertRecord,
   type TokenUsageDailyRecord,
-} from "../../../../../../src/platform/state-evidence/truth/async-repositories/cost-management-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/cost-management-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";

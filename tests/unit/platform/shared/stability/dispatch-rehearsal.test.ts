@@ -12,10 +12,10 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ExecutionDispatchService } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-service.js";
-import { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 function createTempDb(): { db: SqliteDatabase; store: AuthoritativeTaskStore; cleanup: () => void } {
   const dbPath = join("/tmp", `dispatch-test-${Date.now()}.db`);

@@ -7,8 +7,8 @@ import {
   type AuthoritativeSqlDatabase,
   type SqliteDatabaseOptions,
   type SqliteSchemaStatus,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import { SqliteWriteContentionError } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { SqliteWriteContentionError } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
 test("isSqliteWriteContentionError returns true for wrapped sqlite write contention error", () => {
   const error = new SqliteWriteContentionError(

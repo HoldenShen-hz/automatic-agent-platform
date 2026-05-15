@@ -52,7 +52,7 @@ test("core/runtime/planner shim exports safeParseToolResult", () => {
 
 test("core/runtime/planner shim re-exports same implementation as platform", async () => {
   const shim = await import("../../../../../src/core/runtime/planner/index.js");
-  const platform = await import("../../../../../src/platform/execution/execution-engine/multi-step-agent-round-loop.js");
+  const platform = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js");
 
   assert.equal(shim.executeAgentRoundLoop, platform.executeAgentRoundLoop, "executeAgentRoundLoop should point to platform implementation");
   assert.equal(shim.buildStepOutput, platform.buildStepOutput, "buildStepOutput should point to platform implementation");

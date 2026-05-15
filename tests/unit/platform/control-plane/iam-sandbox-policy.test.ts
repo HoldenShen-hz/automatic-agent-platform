@@ -9,7 +9,7 @@ import {
   createRestrictedExecPolicy,
   createConfigReadPolicy,
   normalizeSandboxMode,
-} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
   assert.equal(normalizeSandboxMode("process"), "read_only");

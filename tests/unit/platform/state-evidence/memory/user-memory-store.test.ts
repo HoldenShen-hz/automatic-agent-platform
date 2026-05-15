@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { UserMemoryStore, type UserMemoryEntry } from "../../../../../src/platform/state-evidence/memory/user-memory-store.js";
+import { UserMemoryStore, type UserMemoryEntry } from "../../../../../src/platform/five-plane-state-evidence/memory/user-memory-store.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockMemoryRecord(id: string, contentJson: string): MemoryRecord {

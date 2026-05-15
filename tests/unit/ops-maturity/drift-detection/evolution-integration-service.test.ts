@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EvolutionIntegrationService } from "../../../../src/ops-maturity/drift-detection/evolution-integration-service.js";
-import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 /**
  * Creates a mock AuthoritativeTaskStore for testing.

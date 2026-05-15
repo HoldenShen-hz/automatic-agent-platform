@@ -18,8 +18,8 @@ import { AppError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
-import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../state-evidence/knowledge/indexing/embedding-provider.js";
-import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../control-plane/config-center/model-metadata-registry.js";
+import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
+import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -292,6 +292,7 @@ export class UnifiedChatProvider {
   public async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResult> {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
+    this.assertRequiredRequestFields(request);
     const normalizedRequest = this.withRequestDefaults(request);
     const { provider, service } = this.getProviderForModel(normalizedRequest.model);
     const breaker = this.breakers.get(provider);
@@ -386,7 +387,6 @@ export class UnifiedChatProvider {
       }
       metricsRecorded = true;
       runtimeMetricsRegistry.recordLlmLatency(
-        // @ts-ignore null handling
         firstChunkLatencyMs != null ? firstChunkLatencyMs / 1000 : null,
         (Date.now() - startedAt) / 1000,
         model,
@@ -526,7 +526,7 @@ export class UnifiedChatProvider {
   public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
     // R2-1: Provide default values for required fields when not explicitly set
     const traceId = options.traceId ?? "default";
-    const tenantId = options.tenantId ?? null;
+    const tenantId = options.tenantId?.trim() ? options.tenantId : "default-tenant";
     const costTag = options.costTag ?? "default";
     const result = await this.createChatCompletion({
       model: options.model ?? "MiniMax-M2.7",
@@ -678,9 +678,21 @@ export class UnifiedChatProvider {
     return {
       ...request,
       traceId: request.traceId?.trim() ? request.traceId : "default",
-      tenantId: request.tenantId ?? null,
+      tenantId: request.tenantId?.trim() ? request.tenantId : "default-tenant",
       costTag: request.costTag?.trim() ? request.costTag : "default",
     };
+  }
+
+  private assertRequiredRequestFields(request: ChatCompletionRequest): void {
+    if (typeof request.traceId !== "string" || request.traceId.trim().length === 0) {
+      throw new Error("ChatCompletionRequest requires traceId");
+    }
+    if (typeof request.tenantId !== "string" || request.tenantId.trim().length === 0) {
+      throw new Error("ChatCompletionRequest requires tenantId");
+    }
+    if (typeof request.costTag !== "string" || request.costTag.trim().length === 0) {
+      throw new Error("ChatCompletionRequest requires costTag");
+    }
   }
 
   private normalizeAnthropicResult(

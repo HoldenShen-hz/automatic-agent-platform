@@ -3,8 +3,8 @@ import test from "node:test";
 
 import {
   evaluateSqliteMigrationCompatibility,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
-import { SQLITE_MIGRATIONS } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+import { SQLITE_MIGRATIONS } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 test("sqlite migration compatibility validator passes the current migration plan", () => {
   const report = evaluateSqliteMigrationCompatibility(SQLITE_MIGRATIONS);

@@ -5,8 +5,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { KnowledgePromotionService } from "../../../../../../src/platform/orchestration/oapeflir/learn/knowledge-promotion-service.js";
-import type { LearningObject } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+import { KnowledgePromotionService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/knowledge-promotion-service.js";
+import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 function createTestLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {

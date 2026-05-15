@@ -4,8 +4,8 @@ import test from "node:test";
 // Test RedisQueueAdapter async methods without requiring a live Redis connection.
 // We test the error-throwing behavior and the method signatures by mocking ioredis.
 
-import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
-import type { EnqueueInput, QueueJobRecord } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
+import type { EnqueueInput, QueueJobRecord } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 test("RedisQueueAdapter enqueue returns a job record with correct structure", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });

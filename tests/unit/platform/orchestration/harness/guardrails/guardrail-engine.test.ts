@@ -6,8 +6,8 @@ import type {
   GuardrailFinding,
   GuardrailAssessment,
   GuardrailAssessmentInput,
-} from "../../../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
-import { GuardrailEngine } from "../../../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
+import { GuardrailEngine } from "../../../../../../src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
 
 // Mock toolbelt for testing
 function createMockToolbelt(overrides: {

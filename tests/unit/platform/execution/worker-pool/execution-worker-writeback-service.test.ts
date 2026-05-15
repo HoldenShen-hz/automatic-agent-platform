@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionWorkerWritebackService } from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-service.js";
-import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { ExecutionAuthoritativeView } from "../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import { ExecutionWorkerWritebackService } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { ExecutionAuthoritativeView } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 import type { TaskRecord, ExecutionRecord, WorkflowStateRecord, SessionRecord, WorkerSnapshotRecord, ExecutionLeaseRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

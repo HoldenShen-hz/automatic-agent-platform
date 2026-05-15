@@ -31,7 +31,7 @@ import type {
   ExecutionRecord,
 } from "../../contracts/types/domain.js";
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
   RuntimeRecoveryService,

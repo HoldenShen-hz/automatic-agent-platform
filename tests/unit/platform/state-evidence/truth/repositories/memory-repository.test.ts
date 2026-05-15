@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { MemoryRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/memory-repository.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { MemoryRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/memory-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("MemoryRepository getMemory returns memory by ID", () => {

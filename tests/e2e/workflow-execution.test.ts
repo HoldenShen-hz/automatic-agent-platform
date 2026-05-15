@@ -12,8 +12,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import type { MultiStepToolExecutionInput } from "../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
+import { runMultiStepOrchestration } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+import type { MultiStepToolExecutionInput } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 
 // ---------------------------------------------------------------------------
 // Helper: Build an OAPEFLIR plan request string

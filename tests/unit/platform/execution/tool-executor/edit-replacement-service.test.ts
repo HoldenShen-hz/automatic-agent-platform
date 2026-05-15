@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { checkSandboxPath, createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { CodeDiagnosticsService } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
-import { EditReplacementService } from "../../../../../src/platform/execution/tool-executor/edit-replacement-service.js";
+import { checkSandboxPath, createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { CodeDiagnosticsService } from "../../../../../src/platform/five-plane-execution/tool-executor/code-diagnostics-service.js";
+import { EditReplacementService } from "../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement-service.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 

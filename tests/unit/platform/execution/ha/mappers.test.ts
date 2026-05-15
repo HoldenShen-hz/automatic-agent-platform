@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { mapNode, mapLease, mapEpoch, mapFailoverDecision } from "../../../../../src/platform/execution/ha/mappers.js";
+import { mapNode, mapLease, mapEpoch, mapFailoverDecision } from "../../../../../src/platform/five-plane-execution/ha/mappers.js";
 
 test("mapNode converts raw row to CoordinatorNode", () => {
   const row = {

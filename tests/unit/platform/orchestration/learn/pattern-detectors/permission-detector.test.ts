@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { detectToolPermissionDenial } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/permission-detector.js";
+import { detectToolPermissionDenial } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/permission-detector.js";
 
 function makeSignal(valueSummary: string, evidence: Record<string, unknown> = {}): LearningSignal {
   return {

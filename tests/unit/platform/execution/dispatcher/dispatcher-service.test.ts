@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchService } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   ExecutionLeaseRecord,
   ExecutionTicketRecord,
@@ -13,7 +13,7 @@ import type {
   TaskRecord,
   WorkerSnapshotRecord,
 } from "../../../../../src/platform/contracts/types/domain.js";
-import type { RegisteredWorkerView } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
+import type { RegisteredWorkerView } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 
 // ---------------------------------------------------------------------------
 // Helper types & factories

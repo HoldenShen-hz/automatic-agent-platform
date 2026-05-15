@@ -13,7 +13,7 @@ import {
   QUESTION_TOOL_METADATA,
   TODO_WRITE_TOOL_METADATA,
   WEB_SEARCH_TOOL_METADATA,
-} from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 test("listBuiltinToolExecutionMetadata returns all built-in tools", () => {
   const metadata = listBuiltinToolExecutionMetadata();

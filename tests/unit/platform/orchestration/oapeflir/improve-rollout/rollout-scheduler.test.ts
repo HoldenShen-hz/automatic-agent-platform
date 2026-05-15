@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseRolloutRecord } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
-import { RolloutScheduler } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/rollout/rollout-scheduler.js";
+import { parseRolloutRecord } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import { RolloutScheduler } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-scheduler.js";
 
 function createCandidate() {
   return {

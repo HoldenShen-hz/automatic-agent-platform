@@ -15,13 +15,13 @@ import {
   type UpdateTenantInput,
   type CreateQuotaInput,
   type CreateBillingInput,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/tenant-repository.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/tenant-repository.js";
 import {
   InMemoryDelegationRepository,
   InMemoryDelegationEventRepository,
   type CreateDelegationInput,
   type CreateEventInput,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/delegation-repository.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 import {
   InMemoryPromptBundleRepository,
   InMemoryPromptVersionRepository,
@@ -30,7 +30,7 @@ import {
   type UpdateBundleInput,
   type CreateVersionInput,
   type CreateTestInput,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tenant Repository Tests

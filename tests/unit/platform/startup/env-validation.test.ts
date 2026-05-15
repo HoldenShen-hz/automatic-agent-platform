@@ -9,7 +9,7 @@ import {
   ConfigEnvSchema,
   ApiPortSchema,
   validateStartupEnv,
-} from "../../../../src/platform/control-plane/config-center/startup-env-schema.js";
+} from "../../../../src/platform/five-plane-control-plane/config-center/startup-env-schema.js";
 
 test("[SYS-SEC-4.1] startup env schema validates DB path is non-empty", () => {
   const result = DbPathSchema.safeParse("");

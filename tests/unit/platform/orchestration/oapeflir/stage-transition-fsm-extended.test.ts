@@ -12,7 +12,7 @@ import {
   createStageTransitionFSM,
   type OapeflirStage,
   type StageTransitionResult,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("StageTransitionFSM canTransitionTo returns valid result structure", () => {
   const fsm = new StageTransitionFSM();

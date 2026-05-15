@@ -10,7 +10,7 @@ import {
   HistoricalContextSchema,
   UserIntentSchema,
   RetryPolicySchema,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/shared.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/shared.js";
 
 test("TaskPhaseSchema accepts valid phases", () => {
   const phases = ["intake", "planning", "executing", "reviewing", "completed"] as const;

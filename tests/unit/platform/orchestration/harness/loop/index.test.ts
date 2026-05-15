@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessLoopController } from "../../../../../../src/platform/orchestration/harness/loop/index.js";
-import type { ConstraintPack } from "../../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import type { ConstraintPack } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> = {}): ConstraintPack {
   return {

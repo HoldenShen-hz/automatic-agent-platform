@@ -26,21 +26,21 @@
 import { join } from "node:path";
 
 import { resolveCliDbPath, withPersistentCliStorageAsync } from "./authoritative-storage.js";
-import { ChannelGatewayService } from "../../platform/interface/channel-gateway/channel-gateway-service.js";
-import { ChannelGatewayDeliveryService } from "../../platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import { CHANNEL_DELIVERY_DDL } from "../../platform/interface/channel-gateway/channel-gateway-delivery-support.js";
-import { ChannelGatewayRetryExecutor } from "../../platform/interface/channel-gateway/channel-gateway-retry-executor.js";
-import { GatewayTargetDirectoryService } from "../../platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { GatewayStorageAdapter } from "../../platform/interface/channel-gateway/storage-adapter.js";
-import { ApprovalService } from "../../platform/control-plane/approval-center/approval-service.js";
-import { ApiAuthService } from "../../platform/interface/api/api-auth-service.js";
-import { HttpApiServer } from "../../platform/interface/api/http-api-server.js";
-import { MissionControlService } from "../../platform/interface/api/mission-control-service.js";
-import { TaskWebSocketStatusRelay } from "../../platform/interface/api/task-websocket-status-relay.js";
-import { loadApiServerEnv } from "../../platform/control-plane/config-center/api-server-env.js";
-import { requireValidStartupEnv } from "../../platform/control-plane/config-center/startup-env-schema.js";
-import { TypedEventBus } from "../../platform/state-evidence/events/typed-event-bus.js";
-import { TypedEventBusPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import { ChannelGatewayService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
+import { ChannelGatewayDeliveryService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
+import { ChannelGatewayRetryExecutor } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-retry-executor.js";
+import { GatewayTargetDirectoryService } from "../../platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import { GatewayStorageAdapter } from "../../platform/five-plane-interface/channel-gateway/storage-adapter.js";
+import { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
+import { ApiAuthService } from "../../platform/five-plane-interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../platform/five-plane-interface/api/http-api-server.js";
+import { MissionControlService } from "../../platform/five-plane-interface/api/mission-control-service.js";
+import { TaskWebSocketStatusRelay } from "../../platform/five-plane-interface/api/task-websocket-status-relay.js";
+import { loadApiServerEnv } from "../../platform/five-plane-control-plane/config-center/api-server-env.js";
+import { requireValidStartupEnv } from "../../platform/five-plane-control-plane/config-center/startup-env-schema.js";
+import { TypedEventBus } from "../../platform/five-plane-state-evidence/events/typed-event-bus.js";
+import { TypedEventBusPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { DomainEventFeedbackConsumer } from "../../scale-ecosystem/feedback-loop/collector/domain-event-feedback-consumer.js";
 import { InspectService } from "../../platform/shared/observability/inspect-service.js";
 import { HealthService } from "../../platform/shared/observability/health-service.js";
@@ -50,16 +50,16 @@ import { MetricsService } from "../../platform/shared/observability/metrics-serv
 import { initOtel, shutdownOtel } from "../../platform/shared/observability/otel-bootstrap.js";
 import { PrometheusMetricsExporter } from "../../platform/shared/observability/prometheus-metrics-exporter.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
-import { CoordinatorLoadBalancingService } from "../../platform/execution/ha/coordinator-load-balancing-service.js";
-import { getGlobalGracefulShutdown } from "../../platform/execution/startup/graceful-shutdown.js";
+import { CoordinatorLoadBalancingService } from "../../platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
+import { getGlobalGracefulShutdown } from "../../platform/five-plane-execution/startup/graceful-shutdown.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
-import { ArtifactPublishLedger } from "../../platform/state-evidence/artifacts/artifact-publish-ledger.js";
-import { ArtifactPublishService } from "../../platform/state-evidence/artifacts/artifact-publish-service.js";
-import { ArtifactPlaneService } from "../../platform/state-evidence/artifacts/artifact-plane-service.js";
+import { ArtifactPublishLedger } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-ledger.js";
+import { ArtifactPublishService } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-service.js";
+import { ArtifactPlaneService } from "../../platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";
 import { bootstrapConfiguredRegistries } from "../../domains/registry/registry-bootstrap.js";
-import { KnowledgeSnapshotStore } from "../../platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import { KnowledgePlaneService } from "../../platform/state-evidence/knowledge/knowledge-plane-service.js";
-import { createSemanticVectorStoreFromEnvironment } from "../../platform/state-evidence/knowledge/semantic-vector-store.js";
+import { KnowledgeSnapshotStore } from "../../platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import { KnowledgePlaneService } from "../../platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import { createSemanticVectorStoreFromEnvironment } from "../../platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
 
 /**
  * Main entry point for the API server.

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createConsoleRoutes } from "../../../../../../src/platform/interface/api/http-server/console-routes.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
-import type { GatewayTargetDirectoryService } from "../../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createConsoleRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/console-routes.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import type { GatewayTargetDirectoryService } from "../../../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {

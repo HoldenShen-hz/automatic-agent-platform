@@ -4,8 +4,8 @@ import test from "node:test";
 
 import { BillingService, type PlanCatalogEntry } from "../../../../src/scale-ecosystem/marketplace/billing-service.js";
 import { PerceptionService } from "../../../../src/scale-ecosystem/marketplace/perception-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("perception service deduplicates intel items and excludes expired items from briefs", () => {

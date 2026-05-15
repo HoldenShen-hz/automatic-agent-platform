@@ -12,11 +12,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../src/platform/execution/state-transition/transition-service.js";
-import { IntakeRouter } from "../../../src/platform/orchestration/routing/intake-router.js";
-import { WorkflowPlanner } from "../../../src/platform/orchestration/routing/workflow-planner.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { IntakeRouter } from "../../../src/platform/five-plane-orchestration/routing/intake-router.js";
+import { WorkflowPlanner } from "../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 

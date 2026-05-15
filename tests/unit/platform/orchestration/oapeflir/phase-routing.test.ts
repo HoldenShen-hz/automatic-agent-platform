@@ -18,7 +18,7 @@ import {
   type StageStatus,
   type StageTransitionResult,
   type StageTransitionContext,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: create minimal workflow for testing

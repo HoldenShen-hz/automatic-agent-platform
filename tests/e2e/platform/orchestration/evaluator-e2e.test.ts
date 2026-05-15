@@ -16,9 +16,9 @@ import test from "node:test";
 // @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 // @ts-ignore
-import { EvaluatorService } from "../../src/platform/orchestration/evaluator/evaluator-service.js";
+import { EvaluatorService } from "../../src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
 // @ts-ignore
-import type { EvaluationResult, StepEvaluation, WorkflowEvaluation } from "../../src/platform/orchestration/evaluator/types.js";
+import type { EvaluationResult, StepEvaluation, WorkflowEvaluation } from "../../src/platform/five-plane-orchestration/evaluator/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

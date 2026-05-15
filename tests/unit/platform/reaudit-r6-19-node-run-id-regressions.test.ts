@@ -59,10 +59,10 @@ test("R6-19: legacy execution-receipt compatibility path exposes nodeRunId", () 
 });
 
 test("R6-19: external SDK takeover and demo surfaces expose nodeRunId", () => {
-  const takeoverEnvSource = readRepoFile("src/platform/control-plane/config-center/takeover-cli-env.ts");
+  const takeoverEnvSource = readRepoFile("src/platform/five-plane-control-plane/config-center/takeover-cli-env.ts");
   const takeoverCliSource = readRepoFile("src/sdk/cli/takeover.ts");
   const demoSource = readRepoFile("src/sdk/cli/phase1b-demo.ts");
-  const takeoverServiceSource = readRepoFile("src/platform/control-plane/incident-control/human-takeover-service.ts");
+  const takeoverServiceSource = readRepoFile("src/platform/five-plane-control-plane/incident-control/human-takeover-service.ts");
 
   assert.match(takeoverEnvSource, /AA_NODE_RUN_ID/);
   assert.match(takeoverCliSource, /nodeRunId: envConfig\.nodeRunId/);

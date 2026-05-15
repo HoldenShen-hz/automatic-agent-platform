@@ -67,6 +67,9 @@ test("UnifiedChatProvider handles unknown model routing", async () => {
     model: "unknown-model-xyz",
     messages: [{ role: "user", content: "hello" }],
     maxTokens: 100,
+    traceId: "test-trace",
+    tenantId: "test-tenant",
+    costTag: "test",
   };
 
   // Should throw because no providers are configured
@@ -287,6 +290,9 @@ test("UnifiedChatProvider createChatCompletion routes to correct provider based 
         model: "claude-opus-4-5",
         messages: [{ role: "user", content: "hello" }],
         maxTokens: 100,
+        traceId: "test-trace",
+        tenantId: "test-tenant",
+        costTag: "test",
       }),
     /Anthropic provider is not configured/,
   );
@@ -302,6 +308,9 @@ test("UnifiedChatProvider createChatCompletion routes minimax model to minimax",
         model: "MiniMax-M2.7",
         messages: [{ role: "user", content: "hello" }],
         maxTokens: 100,
+        traceId: "test-trace",
+        tenantId: "test-tenant",
+        costTag: "test",
       }),
     /MiniMax provider is not configured/,
   );

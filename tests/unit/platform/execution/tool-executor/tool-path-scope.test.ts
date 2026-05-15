@@ -8,7 +8,7 @@ import {
   hasToolPathScopeRestrictions,
   checkToolPathScope,
   type ToolPathScopeCheckResult,
-} from "../../../../../src/platform/execution/tool-executor/tool-path-scope.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-path-scope.js";
 
 test("normalizeToolPathScopeRoots returns empty array for null input", () => {
   const result = normalizeToolPathScopeRoots(null);

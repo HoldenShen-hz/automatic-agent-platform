@@ -8,11 +8,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildOpenApiDocument, listApiRoutes } from "../../src/platform/interface/api/openapi-document.js";
+import { buildOpenApiDocument, listApiRoutes } from "../../src/platform/five-plane-interface/api/openapi-document.js";
 import { assertGolden } from "../helpers/golden.js";
 import { HealthService } from "../../src/platform/shared/observability/health-service.js";
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 import { seedTaskAndExecution } from "../helpers/seed.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";

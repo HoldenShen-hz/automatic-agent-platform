@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
 
-import { PolicyCenterService } from "../../../../src/platform/control-plane/policy-center/index.js";
-import { TenantBoundaryRegistryService } from "../../../../src/platform/control-plane/tenant/index.js";
-import { OperatorConsoleBackendService } from "../../../../src/platform/interface/console-backend/index.js";
-import { WebhookIngressService } from "../../../../src/platform/interface/webhook/index.js";
+import { PolicyCenterService } from "../../../../src/platform/five-plane-control-plane/policy-center/index.js";
+import { TenantBoundaryRegistryService } from "../../../../src/platform/five-plane-control-plane/tenant/index.js";
+import { OperatorConsoleBackendService } from "../../../../src/platform/five-plane-interface/console-backend/index.js";
+import { WebhookIngressService } from "../../../../src/platform/five-plane-interface/webhook/index.js";
 
 test("integration: webhook intake, tenant boundary, console planning, and policy escalation align on a high-risk org flow", () => {
   const tenantRegistry = new TenantBoundaryRegistryService({

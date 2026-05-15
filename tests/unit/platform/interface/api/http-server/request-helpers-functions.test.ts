@@ -5,8 +5,8 @@ import {
   matchRoute,
   normalizeHeaders,
   MAX_BODY_BYTES,
-} from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
-import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("matchRoute parses GET request", () => {
   const request: ApiRequestLike = {

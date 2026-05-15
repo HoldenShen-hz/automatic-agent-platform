@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AuditTrailService } from "../../../../../src/platform/state-evidence/audit/index.js";
+import { AuditTrailService } from "../../../../../src/platform/five-plane-state-evidence/audit/index.js";
 
 test("AuditTrailService records and exports task and tenant audit trails", () => {
   const service = new AuditTrailService();

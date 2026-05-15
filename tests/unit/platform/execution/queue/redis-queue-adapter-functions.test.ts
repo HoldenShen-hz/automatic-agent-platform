@@ -20,8 +20,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
-import type { QueueJobStatus } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
+import type { QueueJobStatus } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 // Helper to create adapter with mock redis client
 function createAdapterWithMockRedis(mockRedis: any): RedisQueueAdapter {

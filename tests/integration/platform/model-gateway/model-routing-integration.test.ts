@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ModelRoutingService } from "../../../../src/platform/model-gateway/index.js";
-import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import type { ProviderHealthSummary } from "../../../../src/platform/shared/observability/provider-health-tracker.js";
 import type { ModelGovernanceSnapshot } from "../../../../src/platform/prompt-engine/eval/prompt-model-policy-governance-service.js";
 

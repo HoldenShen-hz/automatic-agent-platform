@@ -9,10 +9,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { GatewayStorageAdapter } from "../../../../src/platform/interface/channel-gateway/storage-adapter.js";
-import { GatewayStoragePort } from "../../../../src/platform/interface/channel-gateway/storage-port.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { GatewayStorageAdapter } from "../../../../src/platform/five-plane-interface/channel-gateway/storage-adapter.js";
+import { GatewayStoragePort } from "../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import type { GatewayTargetRecord } from "../../../../src/platform/contracts/types/domain.js";
 

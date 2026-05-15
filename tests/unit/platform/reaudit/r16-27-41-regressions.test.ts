@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { DurableEventBus } from "../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { getEventSchema, getRegisteredConsumers } from "../../../../src/platform/state-evidence/events/event-registry.js";
-import { TIER_1_EVENT_TYPES } from "../../../../src/platform/state-evidence/events/event-types.js";
-import { ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS } from "../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { CasService, createInMemoryCasService } from "../../../../src/platform/state-evidence/events/cas/cas-service.js";
-import { SqliteCasRepository } from "../../../../src/platform/state-evidence/events/cas/sqlite-cas-repository.js";
-import { ProjectionRebuildService } from "../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
-import { DEFAULT_MEMORY_PROMOTION_RULES, shouldEvict } from "../../../../src/platform/state-evidence/memory/memory-layer-model.js";
-import { SemanticKnowledgeGraph } from "../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { getEventSchema, getRegisteredConsumers } from "../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
+import { TIER_1_EVENT_TYPES } from "../../../../src/platform/five-plane-state-evidence/events/event-types.js";
+import { ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { CasService, createInMemoryCasService } from "../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { SqliteCasRepository } from "../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
+import { ProjectionRebuildService } from "../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
+import { DEFAULT_MEMORY_PROMOTION_RULES, shouldEvict } from "../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
+import { SemanticKnowledgeGraph } from "../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("R16-27 durable event bus publishes referenced truth rows atomically with events", () => {

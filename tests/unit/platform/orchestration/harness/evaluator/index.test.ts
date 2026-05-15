@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HARNESS_EVALUATOR_ROLE } from "../../../../../../src/platform/orchestration/harness/evaluator/index.js";
+import { HARNESS_EVALUATOR_ROLE } from "../../../../../../src/platform/five-plane-orchestration/harness/evaluator/index.js";
 
 test("HARNESS_EVALUATOR_ROLE is a string", () => {
   assert.equal(typeof HARNESS_EVALUATOR_ROLE, "string");

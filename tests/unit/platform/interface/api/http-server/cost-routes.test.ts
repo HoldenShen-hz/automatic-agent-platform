@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCostRoutes } from "../../../../../../src/platform/interface/api/http-server/cost-routes.js";
-import { CostReportService } from "../../../../../../src/platform/interface/api/cost-report-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createCostRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/cost-routes.js";
+import { CostReportService } from "../../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
   return {

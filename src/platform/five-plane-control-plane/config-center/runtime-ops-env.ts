@@ -1,6 +1,6 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { readTrimmedEnv } from "./runtime-env.js";
-import { DEFAULT_LEASE_TTL_MS } from "../../execution/lease/types.js";
+import { DEFAULT_LEASE_TTL_MS } from "../../five-plane-execution/lease/types.js";
 
 /** Log levels for remote worker logging */
 type RemoteLogLevel = "debug" | "info" | "warn" | "error";

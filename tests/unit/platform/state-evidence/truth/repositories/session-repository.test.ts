@@ -3,10 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SessionRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/session-repository.js";
-import { TaskRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SessionDualStorageService } from "../../../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+import { SessionRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/session-repository.js";
+import { TaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/task-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SessionDualStorageService } from "../../../../../../src/platform/five-plane-state-evidence/truth/session-dual-storage.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 import type { SessionRecord, MessageRecord, GatewayTargetRecord, SessionSummaryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 import type { SessionStatus } from "../../../../../../src/platform/contracts/types/status.js";

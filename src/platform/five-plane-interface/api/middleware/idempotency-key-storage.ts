@@ -10,7 +10,7 @@
 import type { RedisConnectionConfig } from "../../../shared/utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../../shared/utils/redis-client-options.js";
 import { Redis } from "ioredis";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/sqlite/sqlite-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
 /**
  * Idempotency key entry stored in cache.

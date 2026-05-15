@@ -6,13 +6,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EnvSecretProvider } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
-import type { ManagedSecretProvider, SecretProviderMetadata } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import { EnvSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
+import type { ManagedSecretProvider, SecretProviderMetadata } from "../../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 import {
   EnvironmentBackedManagedSecretProvider,
   HybridManagedSecretProvider,
   createDefaultProviders,
-} from "../../../../../src/platform/control-plane/iam/secret-management-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 
 // Helper to create a mock provider
 function createMockProvider(config: {

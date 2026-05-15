@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for intelligence index - verifies barrel re-exports
  *

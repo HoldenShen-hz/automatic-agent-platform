@@ -18,14 +18,14 @@ import {
   resetMultiStepToolRegistryForTests,
   type MultiStepOrchestrationResult,
   type MultiStepToolExecutionInput,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 import {
   runPhase1BOrchestration,
   executePhase1BToolCallForTests,
   resetPhase1BToolRegistryForTests,
   type Phase1BOrchestrationResult,
   type Phase1BOrchestrationInput,
-} from "../../../../../src/platform/execution/execution-engine/phase1b-utils.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js";
 
 // =============================================================================
 // Function alias tests

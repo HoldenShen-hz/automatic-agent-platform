@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
-import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
-import type { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
+import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import type { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
 
 class NoOpMissionControlService implements MissionControlService {

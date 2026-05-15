@@ -11,8 +11,8 @@ import assert from "node:assert/strict";
 import { TaskSituationBuilder, type TaskSituationInput } from "../../src/platform/shared/observability/task-situation-builder.js";
 import { assertGolden } from "../helpers/golden.js";
 import { seedTaskAndExecution } from "../helpers/seed.js";
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 
 test("golden: task situation builder produces valid situation with required fields", () => {

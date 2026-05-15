@@ -12,7 +12,7 @@ import {
   validateEventPayload,
   getEventReplayMetadata,
   EVENT_SCHEMA_REGISTRY,
-} from "../../../../../src/platform/state-evidence/events/event-registry.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 test("validateEventPayload accepts valid task:status_changed payload", () => {
   const result = validateEventPayload("task:status_changed", {

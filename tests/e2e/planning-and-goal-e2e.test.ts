@@ -21,7 +21,7 @@ import { PlanDagValidator } from "../../src/platform/five-plane-orchestration/pl
 import { PlanBuilder } from "../../src/platform/five-plane-orchestration/planner/plan-builder.js";
 import { FeedbackImprovementService } from "../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
 import { FeedbackQualityGrader } from "../../src/scale-ecosystem/feedback-loop/quality-grader.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import type { PlanStep } from "../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
 // ---------------------------------------------------------------------------

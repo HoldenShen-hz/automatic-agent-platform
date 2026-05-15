@@ -9,7 +9,7 @@ import {
   listPlatformPrincipalTypes,
   listPlatformRoles,
   resolvePrincipalAccessProfile,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 test("access model exposes authoritative principal and role inventories", () => {
   assert.deepEqual(listPlatformPrincipalTypes(), ["user", "agent", "system", "service", "worker", "plugin"]);

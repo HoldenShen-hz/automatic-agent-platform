@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { loadRiskConfig } from "../../../src/platform/control-plane/risk-control/risk-config-loader.js";
+import { loadRiskConfig } from "../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
 
 const riskConfig = loadRiskConfig();
 const rawRiskConfig = JSON.parse(

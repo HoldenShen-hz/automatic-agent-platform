@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadOpsGovernanceCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadOpsGovernanceCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 
 test("loadOpsGovernanceCliEnv parses check action (default)", () => {
   const config = loadOpsGovernanceCliEnv({

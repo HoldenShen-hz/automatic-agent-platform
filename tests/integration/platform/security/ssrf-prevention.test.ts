@@ -15,7 +15,7 @@ import {
   NetworkEgressPolicyService,
   NetworkEgressPolicyConfig,
   NetworkEgressDecision,
-} from "../../../../src/platform/control-plane/iam/network-egress-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 
 test("security: AWS metadata endpoint (169.254.169.254) is blocked", () => {
   const config: NetworkEgressPolicyConfig = {

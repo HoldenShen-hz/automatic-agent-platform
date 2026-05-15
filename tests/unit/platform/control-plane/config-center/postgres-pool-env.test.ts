@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadPostgresPoolEnv } from "../../../../../src/platform/control-plane/config-center/postgres-pool-env.js";
+import { loadPostgresPoolEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/postgres-pool-env.js";
 
 test("loadPostgresPoolEnv prefers lock-specific env and parses pool settings", () => {
   const config = loadPostgresPoolEnv({

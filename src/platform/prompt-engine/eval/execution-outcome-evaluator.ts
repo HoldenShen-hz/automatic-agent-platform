@@ -26,6 +26,10 @@ import type { RiskFactors } from "../../five-plane-control-plane/risk-control/ty
 export interface EvaluationReport {
   verdict: "accept" | "approve" | "replan" | "retry" | "escalate";
   score: number;
+  passed: boolean;
+  issues: readonly string[];
+  recommendation: "continue" | "retry" | "replan" | "escalate" | "approve";
+  confidence: number;
   evidenceRefs: readonly string[];
   notes?: string;
   /** R11-03: Additional evaluation dimensions */
@@ -169,6 +173,21 @@ function mapNextActionToVerdict(nextAction: ExecutionOutcomeEvaluation["nextActi
   }
 }
 
+function mapVerdictToRecommendation(verdict: EvaluationReport["verdict"]): EvaluationReport["recommendation"] {
+  switch (verdict) {
+    case "accept":
+      return "continue";
+    case "approve":
+      return "approve";
+    case "replan":
+      return "replan";
+    case "retry":
+      return "retry";
+    case "escalate":
+      return "escalate";
+  }
+}
+
 export class ExecutionOutcomeEvaluator {
   private readonly config: QualityGateConfig;
   private readonly riskThresholds: RiskAdjustedQualityThresholds;
@@ -211,10 +230,16 @@ export class ExecutionOutcomeEvaluator {
     // R11-03: Evaluate timing SLO dimension
     const timingSlo = this.evaluateTimingSlo(planGraphBundle, actualDurationMs);
 
+    const verdict = mapNextActionToVerdict(legacy.nextAction, legacy.passed);
+    const issues = legacy.passed ? [] : legacy.reasons;
     return {
       ...legacy,
-      verdict: mapNextActionToVerdict(legacy.nextAction, legacy.passed),
+      verdict,
       score: legacy.qualityScore,
+      passed: legacy.passed,
+      issues,
+      recommendation: mapVerdictToRecommendation(verdict),
+      confidence: Number(Math.max(0, Math.min(1, legacy.qualityScore)).toFixed(4)),
       evidenceRefs: legacy.reasons,
       notes: legacy.reasons.length > 0 ? legacy.reasons.join("; ") : "",
       constraintCompliance,

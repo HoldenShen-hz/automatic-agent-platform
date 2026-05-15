@@ -10,7 +10,7 @@ import type {
   AuditEventSummary,
   IntegrityCheckResult,
   Soc2EvidencePackage,
-} from "../../../../../src/platform/control-plane/audit-export/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/audit-export/index.js";
 
 test("ExportFormat type accepts valid values", () => {
   const formats: ExportFormat[] = ["json", "csv", "soc2_package"];

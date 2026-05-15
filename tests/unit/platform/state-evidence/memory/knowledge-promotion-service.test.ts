@@ -8,7 +8,7 @@ import {
   type KnowledgePromotionTier,
   type PromotionRequest,
   type PromotionResult,
-} from "../../../../../src/platform/state-evidence/memory/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/index.js";
 
 function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   const now = new Date().toISOString() as any;

@@ -6,7 +6,7 @@ import type {
   StructuredMemoryFact,
   StructuredMemoryContent,
   NormalizeMemoryContentInput,
-} from "../../../../../src/platform/state-evidence/memory/memory-schema.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
 
 test("StructuredMemoryFactProvenance structure is correct", () => {
   const provenance: StructuredMemoryFactProvenance = {

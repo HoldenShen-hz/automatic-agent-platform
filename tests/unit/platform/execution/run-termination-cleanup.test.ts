@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RunTerminationCleanup, type CleanupCallback } from "../../../../src/platform/execution/run-termination-cleanup.js";
+import { RunTerminationCleanup, type CleanupCallback } from "../../../../src/platform/five-plane-execution/run-termination-cleanup.js";
 
 test("RunTerminationCleanup includes callback in cleanup order", async () => {
   // R4-22 fix: callback is now a valid CleanupResourceKind

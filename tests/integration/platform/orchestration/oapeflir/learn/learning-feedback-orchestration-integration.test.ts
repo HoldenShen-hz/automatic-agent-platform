@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { MemoryRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { MemoryService } from "../../../../../../src/platform/state-evidence/memory/memory-service.js";
-import { KnowledgePlaneService } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { MemoryService } from "../../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { KnowledgePlaneService } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import {
   KnowledgePromotionService,
   LearningFeedbackOrchestrationService,
-} from "../../../../../../src/platform/orchestration/oapeflir/learn/index.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/index.js";
 
 function createMockStore(): AuthoritativeTaskStore {
   const memories = new Map<string, MemoryRecord>();

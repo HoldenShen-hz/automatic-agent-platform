@@ -5,7 +5,7 @@ import type {
   CompensationModel,
   MinimalWorkflowStep,
   MinimalWorkflowDefinition,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 test("CompensationModel accepts all valid values", () => {
   const models: CompensationModel[] = [

@@ -30,7 +30,7 @@ async function createTempDbPath(): Promise<string> {
 
 // Mock factory for typed-factories.ts replacement
 function createMockStorageContext(dbPath: string) {
-  const { openAuthoritativeStorageContext } = require("../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+  const { openAuthoritativeStorageContext } = require("../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
   return openAuthoritativeStorageContext({ dbPath });
 }
 
@@ -59,7 +59,7 @@ test("runMultiStepOrchestration creates task with queued status", async () => {
     assert.ok(result.plannedWorkflow, "Should have planned workflow");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -84,7 +84,7 @@ test("runMultiStepOrchestration handles simple request routing", async () => {
     assert.ok(!result.routing.requiresOrchestration || result.routing.workflowId, "Should have workflow ID");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -127,7 +127,7 @@ test("runMultiStepOrchestration uses oapeflir plan when request starts with oape
     assert.ok(result.plannedWorkflow, "Should have planned workflow");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -153,7 +153,7 @@ test("runMultiStepOrchestration creates workflow and session records", async () 
     assert.ok(result.snapshot.task, "Snapshot should contain task");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -179,7 +179,7 @@ test("runMultiStepOrchestration emits routing:decided event", async () => {
     assert.ok(routingEvent, "Should emit routing:decided event");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -206,7 +206,7 @@ test("runMultiStepOrchestration validates workflow with assertWorkflowValid", as
     assert.ok(result.plannedWorkflow, "Should produce valid planned workflow");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -233,7 +233,7 @@ test("runMultiStepOrchestration returns compaction result when context budget ex
     assert.ok(result.snapshot, "Should have snapshot");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -264,7 +264,7 @@ test("runMultiStepOrchestration enforces admission control", async () => {
     assert.ok(result.snapshot, "Should return snapshot");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -288,7 +288,7 @@ test("runMultiStepOrchestration produces stream frames for streaming clients", a
     assert.ok(Array.isArray(result.streamFrames), "streamFrames should be an array");
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {
@@ -318,7 +318,7 @@ test("runMultiStepOrchestration handles budget reservation (INV-BUDGET-001)", as
     }
   } finally {
     try {
-      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");
+      const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
       const storage = openAuthoritativeStorageContext({ dbPath });
       storage.close();
     } catch {

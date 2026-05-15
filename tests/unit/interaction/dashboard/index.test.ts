@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DashboardAggregationService, type AttentionItem } from "../../../../src/interaction/dashboard/index.js";
-import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
 function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general_ops"): TaskBoardItem {

@@ -4,7 +4,7 @@
  * Implements HaRepository for single-node SQLite-backed HA state.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
 import { nowIso } from "../../contracts/types/ids.js";

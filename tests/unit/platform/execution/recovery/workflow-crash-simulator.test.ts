@@ -8,7 +8,7 @@ import {
   type WorkflowCrashPoint,
   type WorkflowCrashInjection,
   type WorkflowCrashContext,
-} from "../../../../../src/platform/execution/recovery/workflow-crash-simulator.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/workflow-crash-simulator.js";
 
 function makeCrashContext(point: WorkflowCrashPoint = "step_started"): WorkflowCrashContext {
   return {

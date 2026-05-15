@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   ConfigRolloutService,
   RolloutPhase,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { SqliteConfigRolloutStore } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/config-rollout-repository.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";

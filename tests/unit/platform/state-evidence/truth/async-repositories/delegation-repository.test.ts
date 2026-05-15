@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncDelegationRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncDelegationRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/delegation-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";
@@ -42,7 +41,7 @@ function createConnection(options: {
 
 const now = "2026-04-26T10:00:00.000Z";
 
-function delegationRecord(overrides: Partial<import("../../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js").DelegationRecord> = {}): import("../../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js").DelegationRecord {
+function delegationRecord(overrides: Partial<import("../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/delegation-repository.js").DelegationRecord> = {}): import("../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/delegation-repository.js").DelegationRecord {
   return {
     delegationId: "dlg-1",
     parentAgentId: "agent-parent",

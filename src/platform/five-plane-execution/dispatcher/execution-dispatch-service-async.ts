@@ -13,9 +13,9 @@
  */
 
 import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
 import type {
   CreateExecutionTicketInput,

@@ -13,7 +13,7 @@ import {
   computeTier1AuditChainHash,
   verifyTier1AuditIntegrity,
   type Tier1AuditIntegrityVerificationEntry,
-} from "../../../../../src/platform/control-plane/iam/audit-event-integrity.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 const TEST_HMAC_KEY = "audit-integrity-secret-key-32-bytes!";

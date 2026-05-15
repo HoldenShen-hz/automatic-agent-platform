@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 
-import { PgDatabase } from "../../src/platform/state-evidence/truth/postgres/pg-database.js";
+import { PgDatabase } from "../../src/platform/five-plane-state-evidence/truth/postgres/pg-database.js";
 
 const require = createRequire(import.meta.url);
 const DEFAULT_PG_TEST_DSN = "postgresql:///agent_company_os";

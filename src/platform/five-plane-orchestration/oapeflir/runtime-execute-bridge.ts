@@ -85,7 +85,8 @@ export function extractStepOutputRecords(result: { snapshot?: unknown }): StepOu
 }
 
 export function serialiseOapeflirPlan(steps: PlanStep[] | PlanNode[], parentContext?: Record<string, unknown>): string {
-  return `oapeflir://plan ${JSON.stringify({ steps, ...(parentContext != null ? { parentContext } : {}) })}`;
+  const payload = parentContext == null ? steps : { steps, parentContext };
+  return `oapeflir://plan ${JSON.stringify(payload)}`;
 }
 
 export function minimalWorkflowToPlanGraphBundle(
@@ -221,7 +222,10 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     return result.results.map((item) => ({
       stepId: item.stepId,
       planRef: result.planId,
-      userFacingResult: { summary: item.summary, artifacts: item.artifacts },
+      userFacingResult: {
+        summary: item.summary,
+        artifacts: item.artifacts.map((artifact) => artifact.startsWith("artifact:") ? artifact : `artifact:${artifact}`),
+      },
       systemTelemetry: {
         durationMs: item.durationMs,
         tokensUsed: item.tokenCost,

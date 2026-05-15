@@ -8,7 +8,7 @@ import {
   asyncQueryOne,
   type AsyncSqlConnection,
   type AsyncQueryResult,
-} from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 function createConnection() {
   const calls: Array<{ method: string; sql: string; params: unknown[] }> = [];

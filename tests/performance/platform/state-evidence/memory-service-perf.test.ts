@@ -11,9 +11,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 
-import { MemoryService } from "../../../src/platform/state-evidence/memory/memory-service.js";
-import { MemoryRetrievalService } from "../../../src/platform/state-evidence/memory/memory-retrieval-service.js";
-import { SessionService } from "../../../src/platform/state-evidence/memory/session-service.js";
+import { MemoryService } from "../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { MemoryRetrievalService } from "../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
+import { SessionService } from "../../../src/platform/five-plane-state-evidence/memory/session-service.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 
 test("performance: memory write >5000 ops/sec", (t) => {

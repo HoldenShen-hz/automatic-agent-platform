@@ -7,11 +7,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type {
   ManagedSecretProvider,
-} from "../../../../../src/platform/control-plane/iam/managed-secret-provider.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/managed-secret-provider.js";
 import type {
   SecretProviderIssuedLease,
   SecretProviderMetadata,
-} from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 import type { SecretProviderKind } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Mock implementation to test interface conformance

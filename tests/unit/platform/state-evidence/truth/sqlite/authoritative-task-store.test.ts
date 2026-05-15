@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AuthoritativeTaskStore, Phase1aStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore, Phase1aStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 /**
  * Tests for AuthoritativeTaskStore focusing on:

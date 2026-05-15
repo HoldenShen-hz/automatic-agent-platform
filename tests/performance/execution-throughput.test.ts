@@ -20,10 +20,10 @@ import { rmSync } from "node:fs";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 import { performance } from "node:perf_hooks";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { ExecutionLeaseService } from "../../src/platform/execution/lease/execution-lease-service.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { ExecutionLeaseService } from "../../src/platform/five-plane-execution/lease/execution-lease-service.js";
 import { HealthService } from "../../src/platform/shared/observability/health-service.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 

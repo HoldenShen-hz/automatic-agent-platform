@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TypedEventBusPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import type { TypedEventBus } from "../../../../../src/platform/state-evidence/events/typed-event-bus.js";
+import { TypedEventBusPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
+import type { TypedEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 
 // Use a simpler approach - directly test the publisher's behavior
 test("TypedEventBusPublisher.publish delegates to bus.publish", () => {

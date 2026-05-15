@@ -12,7 +12,7 @@ import {
   requirePostgresAuthoritativeStorageBackend,
   requireSyncCompatibleAuthoritativeSqlDatabase,
   requireSqliteAuthoritativeStorageBackend,
-} from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 type MockRequire = (specifier: string) => unknown;

@@ -5,8 +5,8 @@ import test from "node:test";
 import {
   DEFAULT_BILLING_PLAN_CATALOG,
   loadBillingPlanCatalog,
-} from "../../../../../src/platform/control-plane/config-center/billing-plan-catalog.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("billing plan catalog falls back to bundled defaults when config file is absent", () => {

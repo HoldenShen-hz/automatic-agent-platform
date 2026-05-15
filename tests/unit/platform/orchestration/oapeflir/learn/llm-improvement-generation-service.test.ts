@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { LLMImprovementGenerationService } from "../../../../../../src/platform/orchestration/oapeflir/learn/llm-improvement-generation-service.js";
+import { LLMImprovementGenerationService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/llm-improvement-generation-service.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 const createMockProvider = (response: { content: string }) => ({

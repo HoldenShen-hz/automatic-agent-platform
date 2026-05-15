@@ -1,5 +1,5 @@
-import type { Blocker, RelevantFile, TaskPhase, TaskSituation } from "../../orchestration/oapeflir/types/index.js";
-import { parseTaskSituation } from "../../orchestration/oapeflir/types/index.js";
+import type { Blocker, RelevantFile, TaskPhase, TaskSituation } from "../../five-plane-orchestration/oapeflir/types/index.js";
+import { parseTaskSituation } from "../../five-plane-orchestration/oapeflir/types/index.js";
 
 export type { TaskSituation };
 

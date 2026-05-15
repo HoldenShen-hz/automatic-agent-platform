@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ShadowSnapshotService } from "../../../../../src/platform/execution/tool-executor/shadow-snapshot-service.js";
+import { ShadowSnapshotService } from "../../../../../src/platform/five-plane-execution/tool-executor/shadow-snapshot-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("ShadowSnapshotService creates an external snapshot and keeps workspace git metadata clean", () => {

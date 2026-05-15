@@ -136,7 +136,7 @@ export class ExplanationPipelineService {
     const redactedEvidenceRefs = collectExplanationEvidenceIds(hiddenEvidence);
     const rationaleId = newId("rationale");
     const summary = options.inferredSummary ?? request.summary;
-    // @ts-ignore - exactOptionalPropertyTypes complexity with Omit
+    // @ts-expect-error - exactOptionalPropertyTypes complexity with Omit
     const rationaleWithoutLock: Omit<StageRationale, "versionLockRef"> = {
       rationaleId,
       taskId: request.taskId,

@@ -10,7 +10,7 @@ import {
 import {
   registerHarnessBootstrap,
   type HarnessCapabilityBaseline,
-} from "./orchestration/harness/harness-bootstrap.js";
+} from "./five-plane-orchestration/harness/harness-bootstrap.js";
 import {
   registerPromptEngineBootstrap,
   type PromptEngineCapabilityBaseline,

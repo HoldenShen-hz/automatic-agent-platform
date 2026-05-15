@@ -6,7 +6,7 @@ import {
   type ConsoleModuleId,
   type OperatorIdentity,
   type ConsoleTaskSummary,
-} from "../../../../../src/platform/interface/console-backend/index.js";
+} from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("OperatorConsoleBackendService is instantiable", () => {
   const service = new OperatorConsoleBackendService();

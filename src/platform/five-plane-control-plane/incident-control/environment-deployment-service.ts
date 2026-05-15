@@ -17,12 +17,12 @@
 
 import { join, resolve } from "node:path";
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { ConfigGovernanceService, type ConfigBundle } from "../config-center/config-governance-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { SecretManagementService } from "../iam/secret-management-service.js";
 import { createWorkspaceWritePolicy } from "../iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   ArtifactRef,
   DeploymentBindingRecord,

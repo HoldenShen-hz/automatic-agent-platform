@@ -5,7 +5,7 @@ import {
   computeTier1AuditChainHash,
   computeTier1AuditEventChecksum,
   verifyTier1AuditIntegrity,
-} from "../../../../../src/platform/control-plane/iam/audit-event-integrity.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 
 test("verifyTier1AuditIntegrity accepts an intact Tier 1 event chain", () => {
   const event = {

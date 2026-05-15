@@ -11,11 +11,11 @@ import {
   type IncidentSeverity,
 // @ts-ignore
   type RunbookPriority,
-} from "../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 import {
   AutoStopLossService,
   type SystemHealthSnapshot,
-} from "../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 
 test.describe("Incident Control E2E Flow", () => {
   test("complete incident lifecycle: detection -> classification -> escalation", () => {

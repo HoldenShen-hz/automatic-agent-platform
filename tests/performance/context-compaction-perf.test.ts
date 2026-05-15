@@ -9,10 +9,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
-import { ContextCompactionService, type ContextCompactionOptions } from "../../src/platform/execution/execution-engine/context-compaction-service.js";
+import { ContextCompactionService, type ContextCompactionOptions } from "../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
 import type { MessageRecord, CompactionRecord } from "../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /**
  * Create a mock database with in-memory transaction support.

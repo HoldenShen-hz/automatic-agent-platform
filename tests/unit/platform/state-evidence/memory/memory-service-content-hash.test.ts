@@ -6,10 +6,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { MemoryService, type RememberMemoryInput, type ConsolidateMemoriesInput } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
+import { MemoryService, type RememberMemoryInput, type ConsolidateMemoriesInput } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
 import { MemoryError } from "../../../../../src/platform/contracts/errors.js";
 import type { MemoryRecord, MemoryKind, MemorySourceTrustLevel } from "../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createMockMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {

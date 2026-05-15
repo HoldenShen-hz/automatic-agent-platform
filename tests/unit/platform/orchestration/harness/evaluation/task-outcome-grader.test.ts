@@ -4,8 +4,8 @@ import test from "node:test";
 import type {
   TaskOutcomeGradeInput,
   TaskOutcomeGrade,
-} from "../../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
-import { TaskOutcomeGrader } from "../../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/evaluation/task-outcome-grader.js";
+import { TaskOutcomeGrader } from "../../../../../../src/platform/five-plane-orchestration/harness/evaluation/task-outcome-grader.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TaskOutcomeGradeInput structure tests

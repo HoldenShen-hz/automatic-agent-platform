@@ -10,14 +10,14 @@ import {
   IncidentDetector,
   type IncidentDetection,
   type IncidentCategory,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 import {
   IncidentResolver,
   type IncidentResolution,
-} from "../../../../../src/platform/control-plane/incident-control/incident-resolver.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-resolver.js";
 import type {
   IncidentSeverity,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 function createTestIncident(overrides: Partial<IncidentDetection> = {}): IncidentDetection {
   return {

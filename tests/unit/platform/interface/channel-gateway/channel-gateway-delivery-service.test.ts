@@ -5,9 +5,9 @@ import {
   ChannelGatewayDeliveryService,
   CHANNEL_DELIVERY_DDL,
   type DeliveryGuaranteeConfig,
-} from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 import { join } from "node:path";
 

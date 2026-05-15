@@ -217,21 +217,21 @@ test("CircuitBreaker getRecentFailureRate is high with rapid failures", async ()
   mock.timers.enable({ apis: ["Date"] });
 
   try {
-    // Use a large failureThreshold so rate-based opening triggers first
-    const breaker = new CircuitBreaker({
-      name: "rate-test",
-      failureThreshold: 100,
+      // The architecture contract opens after more than five consecutive failures.
+      const breaker = new CircuitBreaker({
+        name: "rate-test",
+        failureThreshold: 6,
       resetTimeoutMs: 10000,
       halfOpenSuccessThreshold: 2,
       monitorWindowMs: 10000,
     });
 
-    // First failure - rate-based opening should trigger
-    // rate = (1/10)*10 = 1.0 >= 0.5
-    const error = await breaker.execute(async () => { throw new Error("rate fail"); }).catch(e => e);
-    assert.equal(error.message, "rate fail");
+    for (let index = 0; index < 6; index++) {
+      const error = await breaker.execute(async () => { throw new Error("rate fail"); }).catch(e => e);
+      assert.equal(error.message, "rate fail");
+    }
 
-    // Circuit should be open due to rate >= 50%
+    // Circuit should be open after the documented >5 consecutive failures within 60s.
     assert.equal(breaker.getState(), "open");
   } finally {
     mock.timers.reset();

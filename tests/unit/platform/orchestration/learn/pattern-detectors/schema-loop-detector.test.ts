@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { detectSchemaValidationLoop } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/schema-loop-detector.js";
+import { detectSchemaValidationLoop } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/schema-loop-detector.js";
 
 function makeSignal(taskId: string, stepId: string, learningType: LearningSignal["learningType"] = "failure_pattern"): LearningSignal {
   return {

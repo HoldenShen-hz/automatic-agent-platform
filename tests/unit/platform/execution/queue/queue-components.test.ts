@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TicketPriorityQueue } from "../../../../../src/platform/execution/queue/ticket-priority-queue.js";
-import { BoundedDispatchQueueEventFactory, type BoundedDispatchQueueSnapshot } from "../../../../../src/platform/execution/queue/bounded-dispatch-event.js";
+import { TicketPriorityQueue } from "../../../../../src/platform/five-plane-execution/queue/ticket-priority-queue.js";
+import { BoundedDispatchQueueEventFactory, type BoundedDispatchQueueSnapshot } from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 
 test("TicketPriorityQueue enqueue increases size", () => {
   const queue = new TicketPriorityQueue();

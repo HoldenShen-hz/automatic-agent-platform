@@ -13,7 +13,7 @@ import {
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
   CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
   type CheckpointEnvelope,
-} from "../../../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 
 /**
  * Sample checkpoint data for testing

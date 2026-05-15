@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TaskOutcomeGrader } from "../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
-import { EvalRunService } from "../../../../src/platform/orchestration/harness/evaluation/eval-run-service.js";
-import { DurableHarnessService } from "../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { RecoveryController } from "../../../../src/platform/orchestration/harness/recovery-controller.js";
-import { HarnessRuntimeService, type ConstraintPack, type HarnessRun } from "../../../../src/platform/orchestration/harness/index.js";
+import { TaskOutcomeGrader } from "../../../../src/platform/five-plane-orchestration/harness/evaluation/task-outcome-grader.js";
+import { EvalRunService } from "../../../../src/platform/five-plane-orchestration/harness/evaluation/eval-run-service.js";
+import { DurableHarnessService } from "../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import { RecoveryController } from "../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
+import { HarnessRuntimeService, type ConstraintPack, type HarnessRun } from "../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ErasureRequestService } from "../../../../../src/platform/control-plane/compliance/erasure-request-service.js";
-import type { ErasureRequest } from "../../../../../src/platform/control-plane/compliance/erasure-request-service.js";
-import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
+import { ErasureRequestService } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-request-service.js";
+import type { ErasureRequest } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-request-service.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
 
 // Mock store implementation
 function createMockStore(): { compliance: ComplianceStore; event: { insertEvent: (event: { id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }) => void }; events: Array<{ id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }> } {

@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { LicenseEnforcementService } from "../../../src/scale-ecosystem/marketplace/license-enforcement-service.js";
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { join } from "node:path";
 
 function createService() {

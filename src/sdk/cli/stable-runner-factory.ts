@@ -59,17 +59,14 @@ export interface StableRunnerOptions {
   outputDir: string;
 }
 
-/** Runner function — accepts any options object and returns any report (sync or async) */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type StableRunner = (opts: any) => any;
+/** Runner function accepts prepared options and returns a report sync or async. */
+export type StableRunner<TOptions = StableRunnerOptions, TReport = unknown> = (opts: TOptions) => TReport | Promise<TReport>;
 
-/** Writer function — accepts any report */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type StableReportWriter = (path: string, report: any) => void;
+/** Writer function for a stable report. */
+export type StableReportWriter<TReport = unknown> = (path: string, report: TReport) => void;
 
 /** Predicate that determines process exit code — return true = exit 1 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FailedPredicate = (report: any) => boolean;
+export type FailedPredicate<TReport = unknown> = (report: TReport) => boolean;
 
 // ---------------------------------------------------------------------------
 // createStableCli — main factory
@@ -84,7 +81,7 @@ export type FailedPredicate = (report: any) => boolean;
  * 4. `process.stdout.write(JSON.stringify(report, null, 2))`
  * 5. Call `failed(report)` — set exit code 1 if true
  */
-export function createStableCli(opts: {
+export function createStableCli<TOptions = StableRunnerOptions, TReport = unknown>(opts: {
   /**
    * Environment variable prefix (e.g. "AA_STABLE_CHAOS").
    * The OUTPUT_DIR suffix is appended automatically.
@@ -101,23 +98,22 @@ export function createStableCli(opts: {
    * Runner function. Receives `{ outputDir }` by default.
    * For CLIs that need extra args (soak, validate), supply `prepare` instead.
    */
-  runner: StableRunner;
+  runner: StableRunner<TOptions, TReport>;
 
   /** Report serialiser */
-  writer?: StableReportWriter;
+  writer?: StableReportWriter<TReport>;
 
   /**
    * Determines whether the run should be considered failed (exit code 1).
    * Default: `(r) => (r.failedScenarios ?? 0) > 0`
    */
-  failed?: FailedPredicate;
+  failed?: FailedPredicate<TReport>;
 
   /**
    * Override argument resolution. When supplied, `runner` receives
    * the return value of `prepare` instead of just `{ outputDir }`.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  prepare?: (outputDir: string) => Record<string, any>;
+  prepare?: (outputDir: string) => Partial<TOptions>;
 
   /**
    * When false, do not inject outputDir into runner args.
@@ -131,7 +127,7 @@ export function createStableCli(opts: {
     reportFilename,
     runner,
     writer,
-    failed = (r) => (r.failedScenarios ?? 0) > 0,
+    failed = (r) => typeof (r as { failedScenarios?: unknown }).failedScenarios === "number" && (r as { failedScenarios: number }).failedScenarios > 0,
     prepare,
     includeOutputDir = true,
   } = opts;
@@ -157,13 +153,11 @@ export function createStableCli(opts: {
     const outputDir = resolveOutputDir();
 
     // prepare() allows callers like soak/validate to add extra arguments
-    const preparedArgs = prepare ? prepare(outputDir) : {};
+    const preparedArgs = prepare ? prepare(outputDir) : {} as TOptions;
     const runnerArgs = includeOutputDir
       ? { ...preparedArgs, outputDir }
       : preparedArgs;
-    // Support both sync and async runners (stable-package is sync)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (runner as any)(runnerArgs);
+    const result = runner(runnerArgs as TOptions);
     const report = result instanceof Promise ? await result : result;
 
     if (writer && reportFilename) {

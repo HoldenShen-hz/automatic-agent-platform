@@ -1,14 +1,13 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
   RuntimeRepairService,
   type RepairExecutionResult,
-} from "../../../../../src/platform/execution/recovery/runtime-repair-service-root.js";
-import type { RepairAction, StartupConsistencyReport } from "../../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import type { RepairAction, StartupConsistencyReport } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // Mock database
 function createMockDb() {

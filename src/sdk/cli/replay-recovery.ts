@@ -21,9 +21,9 @@ import { existsSync } from "node:fs";
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { loadReplayRecoveryCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
-import { readTrimmedEnv } from "../../platform/control-plane/config-center/runtime-env.js";
-import { RuntimeRecoveryReplayService } from "../../platform/execution/recovery/runtime-recovery-replay-service-root.js";
+import { loadReplayRecoveryCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
+import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
+import { RuntimeRecoveryReplayService } from "../../platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
 
 function printHelp(): void {
   process.stdout.write(

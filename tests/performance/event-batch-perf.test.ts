@@ -16,9 +16,9 @@ import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { TransactionalEventAppender } from "../../src/platform/state-evidence/events/transactional-event-appender.js";
-import { EventRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { TransactionalEventAppender } from "../../src/platform/five-plane-state-evidence/events/transactional-event-appender.js";
+import { EventRepository } from "../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/event-repository.js";
 import { OutboxRepository } from "../../src/platform/shared/outbox/outbox-repository.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 

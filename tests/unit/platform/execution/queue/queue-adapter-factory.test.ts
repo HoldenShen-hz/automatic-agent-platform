@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createQueueAdapter } from "../../../../../src/platform/execution/queue/queue-adapter-factory.js";
+import { createQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-factory.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("createQueueAdapter throws for redis kind without config", () => {

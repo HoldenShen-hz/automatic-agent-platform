@@ -8,7 +8,7 @@ import {
   type ScalingAction,
   type ScalingDirection,
 } from "../../../../../src/platform/shared/scaling/horizontal-scaling-controller.js";
-import type { QueueStats } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { QueueStats } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 /**
  * Additional tests for Horizontal Scaling Controller covering edge cases

@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 // Re-export all Zod schemas and parse functions for stage boundary validation
-import * as schemasModule from "../../../../../../src/platform/orchestration/oapeflir/schemas/index.js";
-import * as validatorsModule from "../../../../../../src/platform/orchestration/oapeflir/schemas/validators.js";
+import * as schemasModule from "../../../../../../src/platform/five-plane-orchestration/oapeflir/schemas/index.js";
+import * as validatorsModule from "../../../../../../src/platform/five-plane-orchestration/oapeflir/schemas/validators.js";
 
 test("schemas module exports TaskPhaseSchema", () => {
   assert.ok("TaskPhaseSchema" in schemasModule);

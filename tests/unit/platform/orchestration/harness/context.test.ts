@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessRuntimeService } from "../../../../../src/platform/orchestration/harness/index.js";
-import type { ConstraintPack, HarnessRun } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessRuntimeService } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import type { ConstraintPack, HarnessRun } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("HarnessRuntimeService is exported and can be instantiated", () => {
   const service = new HarnessRuntimeService();

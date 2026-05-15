@@ -11,11 +11,11 @@ import test from "node:test";
 import { join } from "node:path";
 import { memoryUsage } from "node:process";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 test("soak: memory service remains stable over repeated operations", () => {
   const workspace = createTempWorkspace("soak-memory-");

@@ -6,7 +6,7 @@ import {
   inferApiErrorCategory,
   inferApiErrorSource,
   normalizeError,
-} from "../../../../../src/platform/interface/api/http-server/api-error.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/api-error.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
 
 test("ApiError extends AppError", () => {

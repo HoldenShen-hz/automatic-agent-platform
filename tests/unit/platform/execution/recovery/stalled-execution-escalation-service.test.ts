@@ -1,15 +1,14 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
   StalledExecutionEscalationService,
   type StalledExecutionEscalationPackage,
-} from "../../../../../src/platform/execution/recovery/stalled-execution-escalation-service.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import type {
   StalledExecutionFinding,
   StalledExecutionDetectionOptions,
-} from "../../../../../src/platform/execution/recovery/stalled-execution-detector.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
 import type {
   DiagnosticsService,
   DiagnosticWarningSummary,

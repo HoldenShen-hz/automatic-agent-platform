@@ -11,13 +11,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayRepairControlService } from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
+import { ReplayRepairControlService } from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 import type {
   StartupConsistencyFinding,
   ConsistencySeverity,
   StartupConsistencyCheckId,
   RepairActionType,
-} from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 function createFinding(overrides: Partial<StartupConsistencyFinding> = {}): StartupConsistencyFinding {
   return {

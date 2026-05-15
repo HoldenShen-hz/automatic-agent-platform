@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { StreamBridge } from "../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
-import { PolicyEngine } from "../../../../../src/platform/control-plane/iam/policy-engine.js";
-import { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { StreamBridge } from "../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
+import { PolicyEngine } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
+import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 

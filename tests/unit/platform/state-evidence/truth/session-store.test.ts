@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
 import test from "node:test";
@@ -7,7 +6,7 @@ import {
   SessionDualStorageService,
   type SessionEvent,
   type SessionEventType,
-} from "../../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/session-dual-storage.js";
 import type { MessageRecord, SessionRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Mock file system operations for testing without actual I/O

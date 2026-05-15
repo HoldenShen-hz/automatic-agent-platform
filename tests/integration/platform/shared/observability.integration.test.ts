@@ -251,11 +251,11 @@ test("observability-integration: Ring buffer overflow tracking", () => {
 
 test("observability-integration: StructuredLogger plane and service inference", () => {
   const paths = [
-    { file: "/workspace/src/platform/interface/api/gateway.ts", expectedPlane: "P1", expectedService: "gateway" },
-    { file: "/workspace/src/platform/control-plane/iam/service.ts", expectedPlane: "P2", expectedService: "service" },
-    { file: "/workspace/src/platform/orchestration/planner/index.ts", expectedPlane: "P3", expectedService: "index" },
-    { file: "/workspace/src/platform/execution/dispatcher/index.ts", expectedPlane: "P4", expectedService: "index" },
-    { file: "/workspace/src/platform/state-evidence/truth/repository.ts", expectedPlane: "P5", expectedService: "repository" },
+    { file: "/workspace/src/platform/five-plane-interface/api/gateway.ts", expectedPlane: "P1", expectedService: "gateway" },
+    { file: "/workspace/src/platform/five-plane-control-plane/iam/service.ts", expectedPlane: "P2", expectedService: "service" },
+    { file: "/workspace/src/platform/five-plane-orchestration/planner/index.ts", expectedPlane: "P3", expectedService: "index" },
+    { file: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts", expectedPlane: "P4", expectedService: "index" },
+    { file: "/workspace/src/platform/five-plane-state-evidence/truth/repository.ts", expectedPlane: "P5", expectedService: "repository" },
   ];
 
   for (const { file, expectedPlane, expectedService } of paths) {

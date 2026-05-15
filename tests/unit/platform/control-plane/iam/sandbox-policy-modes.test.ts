@@ -8,7 +8,7 @@ import {
   createWorkspaceWritePolicy,
   type SandboxMode,
   type SandboxPolicy,
-} from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("sandbox policy exposes the canonical four sandbox modes", () => {
   const modes: SandboxMode[] = ["read_only", "workspace_write", "scoped_external_access", "restricted_exec"];

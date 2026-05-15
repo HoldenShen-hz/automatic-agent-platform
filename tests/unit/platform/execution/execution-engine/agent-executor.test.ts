@@ -11,8 +11,8 @@ import {
   type AgentExecutorOptions,
   type AgentExecutorContext,
   type AgentExecutorInput,
-} from "../../../../../src/platform/execution/execution-engine/agent-executor.js";
-import type { LoopDetectionConfig } from "../../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
+import type { LoopDetectionConfig } from "../../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 // Test helper to reset executor context between tests
 function resetExecutorContext(): void {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Unit tests for TopologyValidator - Coverage Gaps
  *
@@ -19,7 +18,7 @@ import {
   DelegationCycleDetectedError,
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_FANOUT,
-} from "../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/topology-validator.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Default Configuration Tests

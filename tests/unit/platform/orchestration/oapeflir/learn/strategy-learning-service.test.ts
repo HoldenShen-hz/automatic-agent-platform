@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { StrategyLearningService } from "../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js";
+import { StrategyLearningService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/strategy-learning-service.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 test("StrategyLearningService turns learning signals into learning objects", () => {

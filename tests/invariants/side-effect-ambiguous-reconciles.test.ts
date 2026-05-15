@@ -6,7 +6,7 @@ import {
   createReconciliationRecord,
   createSideEffectRecord,
 } from "../../src/platform/contracts/executable-contracts/index.js";
-import { SideEffectManager } from "../../src/platform/execution/side-effect-manager.js";
+import { SideEffectManager } from "../../src/platform/five-plane-execution/side-effect-manager.js";
 
 const artifact = {
   artifactId: "artifact-1",

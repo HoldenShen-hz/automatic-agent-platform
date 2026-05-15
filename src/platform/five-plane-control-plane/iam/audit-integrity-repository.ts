@@ -8,7 +8,7 @@
  * §50 Compliance Audit - Audit Log Tampering Protection
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   computeTier1AuditEventChecksum,
   computeTier1AuditChainHash,

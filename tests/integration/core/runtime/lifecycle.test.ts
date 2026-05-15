@@ -13,10 +13,10 @@ test("ContextCompactionService integration with real storage", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { ContextCompactionService } = await import(
-      "../../../../src/platform/execution/execution-engine/context-compaction-service.js"
+      "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -87,10 +87,10 @@ test("ContextCompactionService stage 1 does not trigger with empty session", asy
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { ContextCompactionService } = await import(
-      "../../../../src/platform/execution/execution-engine/context-compaction-service.js"
+      "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js"
     );
 
     const dbPath = join(tmpDir, "test.db");
@@ -159,10 +159,10 @@ test("ContextCompactionService records are persisted to storage", async () => {
 
   try {
     const { openAuthoritativeStorageContext } = await import(
-      "../../../../src/platform/state-evidence/truth/storage-backend-factory.js"
+      "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js"
     );
     const { ContextCompactionService } = await import(
-      "../../../../src/platform/execution/execution-engine/context-compaction-service.js"
+      "../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js"
     );
 
     const dbPath = join(tmpDir, "test.db");

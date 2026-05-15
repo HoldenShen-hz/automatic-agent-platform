@@ -7,7 +7,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §17.4
  */
 
-import type { ArtifactStore, ArtifactWriteInput } from "../../state-evidence/artifacts/artifact-store.js";
+import type { ArtifactStore, ArtifactWriteInput } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import type { QualityGateConfig, QualityEvaluationEvidence } from "./types.js";
 import type { ExecutionOutcomeEvaluation } from "./execution-outcome-evaluator.js";
 import type { PostExecutionQualityGateDecision } from "./post-execution-quality-gate.js";

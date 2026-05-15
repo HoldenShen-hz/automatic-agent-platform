@@ -1,11 +1,11 @@
 /**
  * Unit tests for Console Backend Operator Action Planning
- * Tests src/platform/interface/console-backend/index.ts - OperatorActionPlan coverage
+ * Tests src/platform/five-plane-interface/console-backend/index.ts - OperatorActionPlan coverage
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OperatorConsoleBackendService } from "../../../../../src/platform/interface/console-backend/index.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
 
 test("planHumanTakeoverAction with all action types", () => {
   const service = new OperatorConsoleBackendService({});

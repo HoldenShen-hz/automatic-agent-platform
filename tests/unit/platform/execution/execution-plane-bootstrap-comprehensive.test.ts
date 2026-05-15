@@ -11,12 +11,12 @@ import {
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
   EXECUTION_PLANE_CATALOG_SERVICE_ID,
   registerExecutionPlaneBootstrap,
-} from "../../../../src/platform/execution/execution-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js";
 import {
   listExecutionCapabilityBaselines,
   resolveExecutionCapabilityBaseline,
-} from "../../../../src/platform/execution/execution-plane-baseline.js";
-import type { ExecutionCapabilityId } from "../../../../src/platform/execution/execution-plane-baseline.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
+import type { ExecutionCapabilityId } from "../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 
 // ---------------------------------------------------------------------------
 // Execution Plane Bootstrap - basic construction
@@ -296,9 +296,9 @@ test("all catalog entry modules end with /index.ts", () => {
   }
 });
 
-test("all catalog entry modules start with src/platform/execution/", () => {
+test("all catalog entry modules start with src/platform/five-plane-execution/", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   for (const entry of bootstrap.catalog) {
-    assert.ok(entry.entryModule.startsWith("src/platform/execution/"), `${entry.capabilityId}: ${entry.entryModule}`);
+    assert.ok(entry.entryModule.startsWith("src/platform/five-plane-execution/"), `${entry.capabilityId}: ${entry.entryModule}`);
   }
 });

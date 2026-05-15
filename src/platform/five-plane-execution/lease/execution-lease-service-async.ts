@@ -31,8 +31,8 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { LeaseAuditRecord } from "../../contracts/types/domain/lease-types.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError } from "../../contracts/errors.js";

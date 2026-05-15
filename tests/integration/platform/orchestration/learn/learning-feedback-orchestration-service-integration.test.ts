@@ -12,7 +12,7 @@ import { createSeededIntegrationContext } from "../../../../helpers/integration-
 import {
   LearningFeedbackOrchestrationService,
   type LearningFeedbackOrchestrationInput,
-} from "../../../../../src/platform/orchestration/learn/learning-feedback-orchestration-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/learn/learning-feedback-orchestration-service.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> & { learningSignalId: string; taskId: string }): LearningSignal {

@@ -18,9 +18,9 @@
  * @see docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md for QA-64
  */
 
-import type { DoctorReport } from "../control-plane/incident-control/doctor-service.js";
-import type { RepairExecutionResult } from "../execution/recovery/runtime-repair-service-root.js";
-import type { RepairAction, StartupConsistencyReport } from "../execution/startup/startup-consistency-checker.js";
+import type { DoctorReport } from "../five-plane-control-plane/incident-control/doctor-service.js";
+import type { RepairExecutionResult } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import type { RepairAction, StartupConsistencyReport } from "../five-plane-execution/startup/startup-consistency-checker.js";
 import {
   SINGLE_TASK_GOLDEN_TASKS,
   type GoldenTaskCase,

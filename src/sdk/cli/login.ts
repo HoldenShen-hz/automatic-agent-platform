@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { readTrimmedEnv } from "../../platform/control-plane/config-center/runtime-env.js";
+import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
 
 export interface OAuthPkceConfig {
   authorizationUrl: string;

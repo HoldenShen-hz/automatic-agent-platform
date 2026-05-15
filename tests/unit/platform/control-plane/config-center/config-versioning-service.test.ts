@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ConfigVersioningService,
-} from "../../../../../src/platform/control-plane/config-center/config-versioning-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-versioning-service.js";
 
 // Mock DurableEventBus for testing event emission
 class MockEventBus {

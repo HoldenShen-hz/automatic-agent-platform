@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { AgentExecutionRecord, RemoteLogRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
-import { AgentExecutionRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/agent-execution-repository.js";
+import { AgentExecutionRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/agent-execution-repository.js";
 
 function createMockAgentExecutionRecord(overrides: Partial<AgentExecutionRecord> = {}): AgentExecutionRecord {
   const now = new Date().toISOString();

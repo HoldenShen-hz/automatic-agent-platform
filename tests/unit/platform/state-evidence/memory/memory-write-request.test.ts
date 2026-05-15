@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { MemoryWriteRequest, MemoryContent } from "../../../../../src/platform/state-evidence/memory/memory-write-request.js";
+import type { MemoryWriteRequest, MemoryContent } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-write-request.js";
 
 function createMemoryContent(overrides: Partial<MemoryContent> = {}): MemoryContent {
   return {

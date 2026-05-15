@@ -20,9 +20,9 @@ import {
   type ExecutionContext,
   type StepResult,
   type ExecutionResult,
-} from "../../../../../src/platform/orchestration/oapeflir/execute-bridge.js";
-import { runtimeExecuteBridge, minimalWorkflowToPlanGraphBundle } from "../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
-import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/execute-bridge.js";
+import { runtimeExecuteBridge, minimalWorkflowToPlanGraphBundle } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { DualChannelStepOutput, PlanGraphBundle, PlanNode } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
 
@@ -670,7 +670,7 @@ test("serialiseOapeflirPlan normalizes parentContext empty fields", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("minimalWorkflowToPlanGraphBundle converts workflow to bundle", () => {
-  const workflow: import("../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
+  const workflow: import("../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: "wf_test",
     divisionId: "coding",
     steps: [
@@ -702,7 +702,7 @@ test("minimalWorkflowToPlanGraphBundle converts workflow to bundle", () => {
 });
 
 test("minimalWorkflowToPlanGraphBundle creates edges from dependencies", () => {
-  const workflow: import("../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
+  const workflow: import("../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: "wf_test",
     divisionId: "coding",
     steps: [
@@ -742,7 +742,7 @@ test("minimalWorkflowToPlanGraphBundle creates edges from dependencies", () => {
 });
 
 test("minimalWorkflowToPlanGraphBundle sets entry and terminal nodeIds", () => {
-  const workflow: import("../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
+  const workflow: import("../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: "wf_test",
     divisionId: "coding",
     steps: [
@@ -786,7 +786,7 @@ test("minimalWorkflowToPlanGraphBundle sets entry and terminal nodeIds", () => {
 });
 
 test("minimalWorkflowToPlanGraphBundle includes scheduler policy", () => {
-  const workflow: import("../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
+  const workflow: import("../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: "wf_scheduler",
     divisionId: "coding",
     steps: [
@@ -808,7 +808,7 @@ test("minimalWorkflowToPlanGraphBundle includes scheduler policy", () => {
 });
 
 test("minimalWorkflowToPlanGraphBundle creates valid validation report", () => {
-  const workflow: import("../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
+  const workflow: import("../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: "wf_valid",
     divisionId: "coding",
     steps: [

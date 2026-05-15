@@ -23,11 +23,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { evaluateSqliteMigrationCompatibility } from "../../state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
-import { evaluateSqliteSchemaCompatibilityGate } from "../../state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { evaluateSqliteMigrationCompatibility } from "../../five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+import { evaluateSqliteSchemaCompatibilityGate } from "../../five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
 import type {
   EnterpriseGovernanceReportRecord,
   EnvironmentName,

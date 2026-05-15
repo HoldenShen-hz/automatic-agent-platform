@@ -13,7 +13,7 @@ import {
   DEFAULT_PROMOTION_RULES,
   type PromotionRequest,
   type KnowledgePromotionTier,
-} from "../../../../../src/platform/state-evidence/memory/knowledge-promotion-service.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/knowledge-promotion-service.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {

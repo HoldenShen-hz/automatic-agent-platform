@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { OapeflirStageTimelineBuilder, OapeflirStageSchema } from "../../../../../src/platform/orchestration/oapeflir/stage-timeline.js";
+import { OapeflirStageTimelineBuilder, OapeflirStageSchema } from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
 
 test("OapeflirStageTimelineBuilder records stages in order", () => {
   const builder = new OapeflirStageTimelineBuilder();

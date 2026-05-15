@@ -9,7 +9,7 @@ import {
   MINIMAX_API_URL_CHINA,
   STRIPE_API_URL,
   PADDLE_API_URL,
-} from "../../../../../src/platform/control-plane/config-center/provider-defaults.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/provider-defaults.js";
 
 test("ANTHROPIC_API_URL is a valid URL", () => {
   assert.equal(ANTHROPIC_API_URL, "https://api.anthropic.com");

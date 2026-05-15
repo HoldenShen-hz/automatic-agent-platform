@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 
-import { SqliteDatabase } from "../../platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { PgDatabase } from "../../platform/state-evidence/truth/postgres/pg-database.js";
+import { SqliteDatabase } from "../../platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { PgDatabase } from "../../platform/five-plane-state-evidence/truth/postgres/pg-database.js";
 
 const TABLES = [
   "tasks",

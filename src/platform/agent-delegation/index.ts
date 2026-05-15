@@ -23,35 +23,35 @@ export {
   DelegationManagerService,
   type DelegationExpirationConfig,
   type ExpirationScanResult,
-} from "../orchestration/agent-delegation/delegation-manager.service.js";
-export { createDelegationManager } from "../orchestration/agent-delegation/delegation-manager.service.js";
+} from "../five-plane-orchestration/agent-delegation/delegation-manager.service.js";
+export { createDelegationManager } from "../five-plane-orchestration/agent-delegation/delegation-manager.service.js";
 
 export {
   DelegationTracker,
   type DelegationTreeNode,
   type DelegationMetrics,
-} from "../orchestration/agent-delegation/delegation-tracker.js";
-export { createDelegationTracker } from "../orchestration/agent-delegation/delegation-tracker.js";
+} from "../five-plane-orchestration/agent-delegation/delegation-tracker.js";
+export { createDelegationTracker } from "../five-plane-orchestration/agent-delegation/delegation-tracker.js";
 
 export {
   ContextIsolator,
   createContextIsolator,
   IsolationLevel,
   type IsolatedContext,
-} from "../orchestration/agent-delegation/context-isolator.js";
+} from "../five-plane-orchestration/agent-delegation/context-isolator.js";
 
 export {
   TopologyValidator,
   createTopologyValidator,
   type TopologyValidatorConfig,
-} from "../orchestration/agent-delegation/topology-validator.js";
+} from "../five-plane-orchestration/agent-delegation/topology-validator.js";
 export {
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_FANOUT,
   DelegationDepthExceededError,
   DelegationFanoutExceededError,
   DelegationCycleDetectedError,
-} from "../orchestration/agent-delegation/topology-validator.js";
+} from "../five-plane-orchestration/agent-delegation/topology-validator.js";
 
 export type {
   AgentContext,
@@ -68,4 +68,4 @@ export type {
   DelegationFailedEvent,
   DelegationEvent,
   DelegationOptions,
-} from "../orchestration/agent-delegation/delegation-types.js";
+} from "../five-plane-orchestration/agent-delegation/delegation-types.js";

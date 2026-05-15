@@ -1,6 +1,6 @@
 /**
  * Unit tests for HTTP Server Schema validation
- * Tests src/platform/interface/api/http-server/schemas.ts - additional validation coverage
+ * Tests src/platform/five-plane-interface/api/http-server/schemas.ts - additional validation coverage
  */
 
 import assert from "node:assert/strict";

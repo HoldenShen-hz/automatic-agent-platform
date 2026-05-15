@@ -29,7 +29,7 @@ import {
   type Tier1AuditIntegrityVerificationRow,
   type TaskBoardItem,
   type ExecutionAuthoritativeView,
-} from "../../../../../src/platform/state-evidence/truth/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/index.js";
 
 test("StorageDriver type accepts valid values", () => {
   const drivers: StorageDriver[] = ["sqlite", "postgres"];

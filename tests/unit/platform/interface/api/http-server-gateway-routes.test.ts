@@ -1,11 +1,11 @@
 /**
  * Unit tests for API Gateway Routes coverage
- * Tests src/platform/interface/api/http-server/gateway-routes.ts
+ * Tests src/platform/five-plane-interface/api/http-server/gateway-routes.ts
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildJsonResponse } from "../../../../../src/platform/interface/api/http-server/utils.js";
+import { buildJsonResponse } from "../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
 
 test("buildJsonResponse for gateway routes", () => {
   const response = buildJsonResponse("gw-req-1", 200, {

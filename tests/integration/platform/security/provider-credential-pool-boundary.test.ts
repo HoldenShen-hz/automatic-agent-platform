@@ -6,11 +6,11 @@ import { createMiniMaxChatServiceFromEnvironment } from "../../../../src/platfor
 import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
-} from "../../../../src/platform/execution/startup/startup-preflight.js";
-import { SecretManagementService } from "../../../../src/platform/control-plane/iam/secret-management-service.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
+import { SecretManagementService } from "../../../../src/platform/five-plane-control-plane/iam/secret-management-service.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 

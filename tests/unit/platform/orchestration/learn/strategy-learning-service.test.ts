@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { StrategyLearningService } from "../../../../../src/platform/orchestration/learn/strategy-learning-service.js";
+import { StrategyLearningService } from "../../../../../src/platform/five-plane-orchestration/learn/strategy-learning-service.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {

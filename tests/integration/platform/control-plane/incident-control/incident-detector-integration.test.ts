@@ -14,7 +14,7 @@ import {
   type IncidentDetection,
   type IncidentCategory,
   type IncidentSeverity,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 test("IncidentDetector: detects P1 incidents from multiple fail_closed checks", () => {
   const ctx = createIntegrationContext("aa-incident-detect-multi-");

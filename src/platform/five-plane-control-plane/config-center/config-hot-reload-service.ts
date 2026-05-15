@@ -8,7 +8,7 @@
  * - Supports both push and pull reload mechanisms
  */
 
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**

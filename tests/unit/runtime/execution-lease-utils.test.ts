@@ -7,7 +7,7 @@ import {
   mergeExecutionIds,
   removeExecutionId,
   toWorkerStatus,
-} from "../../../src/platform/execution/lease/utils.js";
+} from "../../../src/platform/five-plane-execution/lease/utils.js";
 import type { WorkerSnapshotRecord } from "../../../src/platform/contracts/types/domain.js";
 import { StructuredLogger } from "../../../src/platform/shared/observability/structured-logger.js";
 

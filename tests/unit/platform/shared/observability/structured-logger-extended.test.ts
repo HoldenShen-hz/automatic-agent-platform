@@ -80,7 +80,7 @@ test("StructuredLogger minLogLevel debug includes all levels", () => {
 test("StructuredLogger plane inference from control-plane path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/control-plane/iam/service.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-control-plane/iam/service.ts",
   });
 
   const entry = logger.info("iam operation");
@@ -90,7 +90,7 @@ test("StructuredLogger plane inference from control-plane path", () => {
 test("StructuredLogger plane inference from orchestration path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/orchestration/planner/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-orchestration/planner/index.ts",
   });
 
   const entry = logger.info("planning operation");
@@ -100,7 +100,7 @@ test("StructuredLogger plane inference from orchestration path", () => {
 test("StructuredLogger plane inference from interface path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/interface/api/gateway.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-interface/api/gateway.ts",
   });
 
   const entry = logger.info("api operation");
@@ -110,7 +110,7 @@ test("StructuredLogger plane inference from interface path", () => {
 test("StructuredLogger plane inference from state-evidence path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/state-evidence/truth/repository.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-state-evidence/truth/repository.ts",
   });
 
   const entry = logger.info("storage operation");
@@ -130,7 +130,7 @@ test("StructuredLogger plane defaults to X1 for unknown paths", () => {
 test("StructuredLogger service name extraction from file with path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("test");
@@ -140,7 +140,7 @@ test("StructuredLogger service name extraction from file with path", () => {
 test("StructuredLogger service name extraction handles path separators", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("test");
@@ -150,7 +150,7 @@ test("StructuredLogger service name extraction handles path separators", () => {
 test("StructuredLogger service name extraction strips .ts extension", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("test");
@@ -160,7 +160,7 @@ test("StructuredLogger service name extraction strips .ts extension", () => {
 test("StructuredLogger service name extraction strips .mts extension", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/module.mts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/module.mts",
   });
 
   const entry = logger.info("test");
@@ -328,7 +328,7 @@ test("StructuredLogger timestamp can be provided explicitly", () => {
 test("StructuredLogger service can be provided explicitly", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.log({
@@ -343,7 +343,7 @@ test("StructuredLogger service can be provided explicitly", () => {
 test("StructuredLogger plane can be provided explicitly", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.log({
@@ -577,7 +577,7 @@ test("StructuredLogger plane option is used when provided", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
     plane: "P3",
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("test");

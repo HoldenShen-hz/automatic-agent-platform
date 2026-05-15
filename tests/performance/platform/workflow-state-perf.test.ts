@@ -17,8 +17,8 @@ import type {
   TaskRecord,
   WorkflowStateRecord,
 } from "../../../src/platform/contracts/types/domain.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
 
 function createTempDb(): SqliteDatabase {
   mkdirSync(".tmp", { recursive: true });

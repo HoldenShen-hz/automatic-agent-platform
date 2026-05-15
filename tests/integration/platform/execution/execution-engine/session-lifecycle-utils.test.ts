@@ -14,7 +14,7 @@ import {
   createRecoverySession,
   type SessionTerminalStatus,
   type TaskActiveStatus,
-} from "../../../../../src/platform/execution/execution-engine/session-lifecycle.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/session-lifecycle.js";
 
 test("isSessionTerminalStatus: returns true for terminal statuses", () => {
   assert.equal(isSessionTerminalStatus("completed"), true, "completed should be terminal");

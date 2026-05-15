@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { routeComplexity, type ComplexityPath } from "../../../src/platform/execution/execution-engine/complexity-router.js";
+import { routeComplexity, type ComplexityPath } from "../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
 test("routeComplexity returns correct structure", () => {
   const result = routeComplexity("simple task");

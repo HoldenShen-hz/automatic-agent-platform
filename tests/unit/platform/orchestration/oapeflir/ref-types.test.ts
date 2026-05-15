@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RefIdSchema, parseRefId } from "../../../../../src/platform/orchestration/oapeflir/ref-types.js";
-import type { EvidenceRef, ArtifactRef, MemoryRef, KnowledgeRef } from "../../../../../src/platform/orchestration/oapeflir/ref-types.js";
+import { RefIdSchema, parseRefId } from "../../../../../src/platform/five-plane-orchestration/oapeflir/ref-types.js";
+import type { EvidenceRef, ArtifactRef, MemoryRef, KnowledgeRef } from "../../../../../src/platform/five-plane-orchestration/oapeflir/ref-types.js";
 
 test("RefId type creates valid reference IDs", () => {
   const evidenceRef: EvidenceRef = "evidence:sig_123";

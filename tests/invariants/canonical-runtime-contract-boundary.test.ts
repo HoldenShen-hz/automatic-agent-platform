@@ -7,7 +7,7 @@ import {
   CANONICAL_CONTRACT_NAMES,
   LEGACY_CONTRACT_NAMES,
 } from "../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeEntryGuard } from "../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { RuntimeEntryGuard } from "../../src/platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 
 test("legacy contract directories are compatibility surfaces, not canonical runtime entries", () => {
   const legacyDirectories = ["request-envelope", "execution-plan", "execution-receipt", "control-directive", "state-command"];

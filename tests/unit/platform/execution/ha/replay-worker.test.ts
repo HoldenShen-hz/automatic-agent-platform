@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ReplayWorker, type ReplayWorkerOptions } from "../../../../../src/platform/execution/ha/replay-worker.js";
+import { ReplayWorker, type ReplayWorkerOptions } from "../../../../../src/platform/five-plane-execution/ha/replay-worker.js";
 
 function createMockReplayService() {
   return {

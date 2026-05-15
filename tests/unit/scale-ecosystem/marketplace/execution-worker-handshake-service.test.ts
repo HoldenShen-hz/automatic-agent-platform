@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace execution-worker-handshake-service re-export
  *

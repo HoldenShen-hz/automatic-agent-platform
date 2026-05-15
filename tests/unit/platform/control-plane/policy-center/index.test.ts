@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PolicyCenterService } from "../../../../../src/platform/control-plane/policy-center/index.js";
+import { PolicyCenterService } from "../../../../../src/platform/five-plane-control-plane/policy-center/index.js";
 
 test("PolicyCenterService denies all requests when kill switch is enabled", () => {
   const service = new PolicyCenterService({ killSwitchEnabled: true });

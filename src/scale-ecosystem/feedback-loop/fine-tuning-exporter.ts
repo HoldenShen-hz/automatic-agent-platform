@@ -6,7 +6,7 @@
  */
 
 import { nowIso } from "../../platform/contracts/types/ids.js";
-import type { FeedbackSignal } from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import type { LearningSignal } from "./collector/feedback-model.js";
 import type { FeedbackImprovementService } from "./feedback-improvement-service.js";
 import type { FeedbackQualityGrader, QualityGrade } from "./quality-grader.js";

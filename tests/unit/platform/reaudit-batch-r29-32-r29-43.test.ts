@@ -4,13 +4,13 @@ import test from "node:test";
 import { ConversationHistoryService } from "../../../src/interaction/ux/conversation-history-service.js";
 import { UxEventTrackingService } from "../../../src/interaction/ux/ux-event-tracking-service.js";
 import { DegradationController, DegradationLevel } from "../../../src/platform/model-gateway/degradation/degradation-controller.js";
-import { AutoStopLossService, type StopLossPlaybook } from "../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
-import { createIncidentRoutes } from "../../../src/platform/interface/api/http-server/incident-routes.js";
-import { createPromptRoutes } from "../../../src/platform/interface/api/http-server/prompt-routes.js";
-import { createTaskRoutes } from "../../../src/platform/interface/api/http-server/task-routes.js";
-import type { ApiAuthService } from "../../../src/platform/interface/api/api-auth-service.js";
-import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../src/platform/interface/api/http-server/types.js";
-import { IncidentCaseService } from "../../../src/platform/state-evidence/incident/index.js";
+import { AutoStopLossService, type StopLossPlaybook } from "../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
+import { createIncidentRoutes } from "../../../src/platform/five-plane-interface/api/http-server/incident-routes.js";
+import { createPromptRoutes } from "../../../src/platform/five-plane-interface/api/http-server/prompt-routes.js";
+import { createTaskRoutes } from "../../../src/platform/five-plane-interface/api/http-server/task-routes.js";
+import type { ApiAuthService } from "../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../src/platform/five-plane-interface/api/http-server/types.js";
+import { IncidentCaseService } from "../../../src/platform/five-plane-state-evidence/incident/index.js";
 
 function createAuthService(
   roles: Array<"viewer" | "operator" | "admin"> = ["viewer"],

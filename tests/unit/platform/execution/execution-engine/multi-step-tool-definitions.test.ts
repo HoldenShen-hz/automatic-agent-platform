@@ -10,7 +10,7 @@ import test from "node:test";
 import {
   getMultiStepToolDefinitions,
   MULTI_STEP_TOOL_DEFINITIONS,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js";
 
 test("getMultiStepToolDefinitions returns all tools when filter matches all", () => {
   const allToolNames = MULTI_STEP_TOOL_DEFINITIONS.map((t) => t.name);

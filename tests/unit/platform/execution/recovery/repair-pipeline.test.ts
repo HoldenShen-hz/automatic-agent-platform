@@ -7,12 +7,12 @@ import {
   type PipelineState,
   type PipelineStage,
   type PipelineOptions,
-} from "../../../../../src/platform/execution/recovery/repair-pipeline.js";
-import { createTaskCard } from "../../../../../src/platform/execution/recovery/task-card.js";
-import type { ValidationReport, CheckResult } from "../../../../../src/platform/execution/recovery/validation-report.js";
-import type { ReviewReport } from "../../../../../src/platform/execution/recovery/review-report.js";
-import type { PatchBundle } from "../../../../../src/platform/execution/recovery/patch-bundle.js";
-import type { ReleaseRecord } from "../../../../../src/platform/execution/recovery/release-record.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/repair-pipeline.js";
+import { createTaskCard } from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
+import type { ValidationReport, CheckResult } from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
+import type { ReviewReport } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
+import type { PatchBundle } from "../../../../../src/platform/five-plane-execution/recovery/patch-bundle.js";
+import type { ReleaseRecord } from "../../../../../src/platform/five-plane-execution/recovery/release-record.js";
 
 function createTestTaskCard() {
   return createTaskCard({

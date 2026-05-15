@@ -16,15 +16,15 @@
  * @see DurableEventBus for the sync implementation
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { EventRecord, TraceContext } from "../../platform/contracts/types/domain.js";
-import type { PendingAckEvent } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import { DurableEventBus, type EventHandler } from "../../platform/state-evidence/events/durable-event-bus.js";
+import type { PendingAckEvent } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus, type EventHandler } from "../../platform/five-plane-state-evidence/events/durable-event-bus.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
-export type { EventHandler } from "../../platform/state-evidence/events/durable-event-bus.js";
+export type { EventHandler } from "../../platform/five-plane-state-evidence/events/durable-event-bus.js";
 
 /**
  * Options for configuring the async DurableEventBus

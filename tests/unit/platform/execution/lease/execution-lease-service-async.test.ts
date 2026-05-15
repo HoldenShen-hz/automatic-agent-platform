@@ -10,7 +10,7 @@ import type {
   ReleaseExecutionLeaseInput,
   RenewExecutionLeaseInput,
   ValidateExecutionWriteInput,
-} from "../../../../../src/platform/execution/lease/execution-lease-service-async.js";
+} from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service-async.js";
 
 test("AcquireExecutionLeaseInput interface structure", () => {
   const input: AcquireExecutionLeaseInput = {

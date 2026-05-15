@@ -7,8 +7,8 @@ import {
   mapToDualChannelStepOutputs,
   extractStepOutputRecords,
   serialiseOapeflirPlan,
-} from "../../../../../src/platform/orchestration/oapeflir/execute-bridge.js";
-import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/execute-bridge.js";
+import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
 
 test("MockExecuteBridge.executeStep returns succeeded result with defaults", async () => {

@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncIntelligenceRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/intelligence-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncIntelligenceRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/intelligence-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type { IntelItemRecord, IntelBriefRecord, PerceptionSourceRecord, ActionProposalRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {

@@ -14,7 +14,7 @@
 import type { LicenseTier } from "./enterprise-capability-matrix-service.js";
 import { BoundedCache } from "../../platform/shared/utils/bounded-cache.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

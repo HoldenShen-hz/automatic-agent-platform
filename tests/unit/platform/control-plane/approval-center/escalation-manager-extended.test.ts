@@ -16,7 +16,7 @@ import {
   type EscalationContext,
   type NotificationChannel,
   type NotificationMessage,
-} from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 
 // ============================================================================
 // Helper Functions

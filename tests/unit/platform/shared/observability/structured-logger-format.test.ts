@@ -165,11 +165,11 @@ test("StructuredLogger - sensitive data fields are redacted recursively", () => 
 });
 
 test("StructuredLogger - plane field is correctly set", () => {
-  const loggerP1 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/interface/api/index.ts" });
-  const loggerP2 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/control-plane/iam/service.ts" });
-  const loggerP3 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/orchestration/planner/index.ts" });
-  const loggerP4 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts" });
-  const loggerP5 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/state-evidence/truth/repo.ts" });
+  const loggerP1 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/five-plane-interface/api/index.ts" });
+  const loggerP2 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/five-plane-control-plane/iam/service.ts" });
+  const loggerP3 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/five-plane-orchestration/planner/index.ts" });
+  const loggerP4 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts" });
+  const loggerP5 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/five-plane-state-evidence/truth/repo.ts" });
 
   assert.equal(loggerP1.info("P1").plane, "P1");
   assert.equal(loggerP2.info("P2").plane, "P2");
@@ -278,7 +278,7 @@ test("StructuredLogger - recentByCorrelation returns entries in order", () => {
 test("StructuredLogger - service name extracted from file path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("test");
@@ -288,7 +288,7 @@ test("StructuredLogger - service name extracted from file path", () => {
 test("StructuredLogger - service name with platform path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/control-plane/config-center/service.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-control-plane/config-center/service.ts",
   });
 
   const entry = logger.info("test");
@@ -298,7 +298,7 @@ test("StructuredLogger - service name with platform path", () => {
 test("StructuredLogger - service option overrides planeSourceFile", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
     service: "custom-service",
   });
 

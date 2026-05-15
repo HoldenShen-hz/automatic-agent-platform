@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { BuiltInMemoryProvider } from "../../../../../src/platform/state-evidence/memory/builtin-memory-provider.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { BuiltInMemoryProvider } from "../../../../../src/platform/five-plane-state-evidence/memory/builtin-memory-provider.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { MemoryService, RememberMemoryInput } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import type { FewShotExample } from "../../../../../src/platform/state-evidence/memory/experience-cache-service.js";
+import type { MemoryService, RememberMemoryInput } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import type { FewShotExample } from "../../../../../src/platform/five-plane-state-evidence/memory/experience-cache-service.js";
 
 /**
  * Creates a mock MemoryRecord for testing

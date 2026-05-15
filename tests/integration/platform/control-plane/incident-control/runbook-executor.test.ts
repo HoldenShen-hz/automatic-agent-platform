@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RunbookExecutor } from "../../../../../src/platform/control-plane/incident-control/runbook-executor/runbook-executor.js";
-import type { ParsedRunbook } from "../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
+import { RunbookExecutor } from "../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/runbook-executor.js";
+import type { ParsedRunbook } from "../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
 
 const SAMPLE_RUNBOOK = `
 # Emergency Database Recovery P0

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateHitlModeRequest, HITL_MODES, type HitlMode } from "../../../../../src/platform/orchestration/hitl/hitl-modes.js";
+import { validateHitlModeRequest, HITL_MODES, type HitlMode } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-modes.js";
 
 test("HITL_MODES exports all expected modes", () => {
   assert.deepEqual(HITL_MODES, [

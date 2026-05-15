@@ -16,9 +16,9 @@ import {
   resolveStepFailurePlan,
   normalizeStepErrorCode,
   buildStepFailureSummary,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-supervisor.js";
-import type { MultiStepToolExecutionInput, StepFailurePlan } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
-import type { WorkflowStepRetryDecision } from "../../../../../src/platform/orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-supervisor.js";
+import type { MultiStepToolExecutionInput, StepFailurePlan } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
+import type { WorkflowStepRetryDecision } from "../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 
 // =============================================================================
 // normalizeStepFailurePlan edge case tests

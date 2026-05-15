@@ -1,4 +1,4 @@
-import type { CostReportRecord, CostReportResourceCost } from "../../interface/api/cost-report-service.js";
+import type { CostReportRecord, CostReportResourceCost } from "../../five-plane-interface/api/cost-report-service.js";
 
 export interface ChargebackReportSource {
   listReports(limit?: number, tenantId?: string | null): CostReportRecord[];

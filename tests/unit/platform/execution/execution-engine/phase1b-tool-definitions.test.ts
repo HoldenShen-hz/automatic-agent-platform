@@ -13,12 +13,12 @@ import test from "node:test";
 import {
   MULTI_STEP_TOOL_DEFINITIONS,
   getMultiStepToolDefinitions,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js";
 import {
   PHASE1B_TOOL_DEFINITIONS,
   getPhase1BToolDefinitions,
   type Phase1BToolDefinition,
-} from "../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js";
 
 // =============================================================================
 // PHASE1B_TOOL_DEFINITIONS alias tests

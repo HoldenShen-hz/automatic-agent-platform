@@ -4,7 +4,7 @@ import type { TaskTerminalStatus } from "../../../contracts/types/status.js";
 import { newId } from "../../../contracts/types/ids.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
 import type { WorkerRemoteLogInput } from "../execution-worker-writeback-service.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

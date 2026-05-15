@@ -17,7 +17,7 @@ import type {
   RecoveryCheckpoint,
   WorkProduct,
   WorkflowSleepLease,
-} from "../../../../../../src/platform/orchestration/harness/protocol/index.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/protocol/index.js";
 
 test("ContextSnapshot type can be used as interface", () => {
   const snapshot: ContextSnapshot = {

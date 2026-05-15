@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConfigDriftReconciler } from "../../../../../src/platform/control-plane/config-center/config-drift-reconciler.js";
+import { ConfigDriftReconciler } from "../../../../../src/platform/five-plane-control-plane/config-center/config-drift-reconciler.js";
 
 interface MockEventBus {
   publish: (event: { eventType: string; payload: Record<string, unknown> }) => void;
@@ -23,7 +23,7 @@ function createMockEventBus(): MockEventBus {
 test("ConfigDriftReconciler emits config.drift_detected when drift is found", () => {
   const eventBus = createMockEventBus();
   const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus,
+    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
   });
 
   const report = reconciler.reconcile({
@@ -54,7 +54,7 @@ test("ConfigDriftReconciler emits config.drift_detected when drift is found", ()
 test("ConfigDriftReconciler does not emit incident when no drift is found", () => {
   const eventBus = createMockEventBus();
   const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus,
+    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
   });
 
   const report = reconciler.reconcile({
@@ -78,7 +78,7 @@ test("ConfigDriftReconciler does not emit incident when no drift is found", () =
 test("ConfigDriftReconciler can disable incident emission", () => {
   const eventBus = createMockEventBus();
   const reconciler = new ConfigDriftReconciler({
-    eventBus: eventBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus,
+    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
     emitIncidents: false,
   });
 

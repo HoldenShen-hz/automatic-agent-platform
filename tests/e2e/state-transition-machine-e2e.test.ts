@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { StateTransitionMachine } from "../../src/platform/execution/state-transition/state-transition-machine.js";
+import { StateTransitionMachine } from "../../src/platform/five-plane-execution/state-transition/state-transition-machine.js";
 import { WorkflowStateError } from "../../src/platform/contracts/errors.js";
 
 // ============================================================================

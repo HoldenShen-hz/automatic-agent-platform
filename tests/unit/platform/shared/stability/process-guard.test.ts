@@ -2,7 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import { spawn } from 'node:child_process';
 import { createProcessGuard, withProcessGuard } from '../../../../helpers/process-guard.js';
-import { getProcessTracker, resetProcessTracker } from '../../../../../src/platform/execution/resource/process-tracker.js';
+import { getProcessTracker, resetProcessTracker } from '../../../../../src/platform/five-plane-execution/resource/process-tracker.js';
 
 describe('createProcessGuard', () => {
   beforeEach(() => {

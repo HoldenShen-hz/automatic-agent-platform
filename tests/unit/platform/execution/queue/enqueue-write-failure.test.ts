@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { StorageError } from "../../../../../src/platform/contracts/errors.js";
-import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 // Helper type for mock pipeline

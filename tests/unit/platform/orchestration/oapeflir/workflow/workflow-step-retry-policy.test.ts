@@ -6,7 +6,7 @@ import {
   type WorkflowStepFailureClass,
   type WorkflowStepFailureAction,
   type WorkflowStepRetryDecision,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 
 test("decideWorkflowStepRetry classifies transient errors correctly", () => {
   const result = decideWorkflowStepRetry({

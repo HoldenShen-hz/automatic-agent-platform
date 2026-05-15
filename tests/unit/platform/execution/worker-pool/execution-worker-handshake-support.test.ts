@@ -6,7 +6,7 @@ import {
   mergeExecutionIds,
   toWorkerStatus,
   normalizeLeaseReason,
-} from "../../../../../src/platform/execution/worker-pool/execution-worker-handshake-support.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-support.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("parseJsonArray parses valid JSON array", () => {

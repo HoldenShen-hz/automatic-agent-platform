@@ -9,10 +9,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { newId } from "../../src/platform/contracts/types/ids.js";
-import { OapeflirLoopService } from "../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../src/platform/orchestration/oapeflir/execute-bridge.js";
-import type { Plan, PlanStep } from "../../src/platform/orchestration/oapeflir/types/plan.js";
-import type { DualChannelStepOutput } from "../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
+import { OapeflirLoopService } from "../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../src/platform/five-plane-orchestration/oapeflir/execute-bridge.js";
+import type { Plan, PlanStep } from "../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
+import type { DualChannelStepOutput } from "../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
 import { runtimeMetricsRegistry } from "../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 /**

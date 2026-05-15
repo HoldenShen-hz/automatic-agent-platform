@@ -30,12 +30,12 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadEvolutionCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
-import { ApprovalService } from "../../platform/control-plane/approval-center/approval-service.js";
+import { loadEvolutionCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
+import { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import { BudgetGuard } from "../../platform/model-gateway/cost-tracker/budget-guard.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { EvolutionMvpService } from "../../ops-maturity/drift-detection/evolution-mvp-service.js";
-import { MemoryService } from "../../platform/state-evidence/memory/memory-service.js";
+import { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
 
 /**
  * Main entry point for the evolution CLI.

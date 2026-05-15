@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncWorkflowRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/workflow-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncWorkflowRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/workflow-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type { StepOutputRecord, WorkflowStateRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {

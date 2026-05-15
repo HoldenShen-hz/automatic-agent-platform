@@ -21,9 +21,14 @@ export const RolloutLevelSchema = z.enum([
   "L4_stable",
   "L5_full",
   "off",
+  "suggest",
+  "shadow",
   "evaluate_0",
   "canary_5",
   "partial_25",
+  "partial_50",
+  "partial_75",
+  "stable",
   "stable_75",
   "stable_100",
 ]);
@@ -31,9 +36,14 @@ export const RolloutLevelSchema = z.enum([
 // Deprecated aliases for backward compatibility
 export const DEPRECATED_ROLLOUT_LEVEL_ALIASES: Record<string, RolloutLevel> = {
   "off": "L0_off",
+  "suggest": "L1_evaluate",
+  "shadow": "L1_evaluate",
   "evaluate_0": "L1_evaluate",
   "canary_5": "L2_canary",
   "partial_25": "L3_partial",
+  "partial_50": "L3_partial",
+  "partial_75": "L4_stable",
+  "stable": "L5_full",
   "stable_75": "L4_stable",
   "stable_100": "L5_full",
 };
@@ -43,25 +53,36 @@ export const DEPRECATED_ROLLOUT_LEVEL_ALIASES: Record<string, RolloutLevel> = {
  * @deprecated Use standardized L0-L5 levels instead
  */
 export function normalizeRolloutLevel(level: string): RolloutLevel {
+  const normalized = DEPRECATED_ROLLOUT_LEVEL_ALIASES[level];
+  if (normalized != null) {
+    return normalized;
+  }
   if (RolloutLevelSchema.options.includes(level as RolloutLevel)) {
     return level as RolloutLevel;
   }
-  const normalized = DEPRECATED_ROLLOUT_LEVEL_ALIASES[level];
-  if (normalized == null) {
-    return "L0_off"; // Default to L0 for unknown levels
-  }
-  return normalized;
+  return "L0_off"; // Default to L0 for unknown levels
 }
 export const RolloutStatusSchema = z.enum([
+  "proposed",
+  "evaluating",
+  "draft",
+  "pending_approval",
+  "shadow",
   "candidate_created",
   "under_review",
   "approved",
+  "accepted",
+  "shadow_running",
   "evaluation_enabled",
   "canary_5",
   "partial_25",
+  "partial_50",
+  "partial_75",
+  "stable",
   "stable_75",
   "stable_100",
   "released",
+  "deployed",
   "rejected",
   "rolled_back",
   "paused",
@@ -85,13 +106,13 @@ export const RolloutRecordSchema = z.object({
   recordId: z.string().min(1),
   candidateId: z.string().min(1),
   level: RolloutLevelSchema,
-  previousLevel: RolloutLevelSchema.default("L0_off"),
-  fromLevel: RolloutLevelSchema.default("L0_off"),
-  toLevel: RolloutLevelSchema,
+  previousLevel: RolloutLevelSchema.default("off"),
+  fromLevel: RolloutLevelSchema.default("off"),
+  toLevel: RolloutLevelSchema.optional(),
   strategyVersionId: z.string().nullable().default(null),
-  status: RolloutStatusSchema.default("candidate_created"),
+  status: RolloutStatusSchema.default("draft"),
   transitionedAt: z.number().int().nonnegative(),
-  createdAt: z.string().min(1),
+  createdAt: z.string().min(1).optional(),
   approvedBy: z.string().optional(),
   triggeredBy: z.enum(["scheduler", "human", "auto_rollback"]).default("scheduler"),
   triggerReason: z.string().optional(),

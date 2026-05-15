@@ -5,10 +5,10 @@
  * Uses AsyncSqlDatabase for async operations with proper connection pooling.
  */
 
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type { HotUpgradeRepository, UpgradeAuditEntry } from "./hot-upgrade-repository.js";
 import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult } from "./hot-upgrade-service.js";
-import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../../state-evidence/truth/async-query-helper.js";
+import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../../five-plane-state-evidence/truth/async-query-helper.js";
 
 export class PostgresHotUpgradeRepository implements HotUpgradeRepository {
   constructor(private readonly db: AsyncSqlDatabase) {}

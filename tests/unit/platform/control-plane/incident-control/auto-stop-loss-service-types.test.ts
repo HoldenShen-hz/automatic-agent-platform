@@ -9,7 +9,7 @@ import type {
   StopLossEvent,
   AutoStopLossConfig,
   SystemHealthSnapshot,
-} from "../../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 import type { AnomalySeverity } from "../../../../../src/platform/shared/observability/anomaly-detection-service.js";
 
 test("EscalationLevel accepts all valid values", () => {

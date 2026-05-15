@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   TightLoopDetector,
   createTightLoopDetector,
-} from "../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
 test("TightLoopDetector sandbox: single tool repeat detection", () => {
   const detector = createTightLoopDetector({ warnThreshold: 2, escalateThreshold: 4 });

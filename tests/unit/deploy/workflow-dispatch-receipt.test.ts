@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractWorkflowDispatchReceipt } from "../../../src/platform/control-plane/incident-control/workflow-dispatch-receipt.js";
+import { extractWorkflowDispatchReceipt } from "../../../src/platform/five-plane-control-plane/incident-control/workflow-dispatch-receipt.js";
 
 test("extractWorkflowDispatchReceipt parses run ID from success output", () => {
   const output = `Created workflow_dispatch event

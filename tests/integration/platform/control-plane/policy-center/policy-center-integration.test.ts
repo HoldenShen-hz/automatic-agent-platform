@@ -14,7 +14,7 @@ import {
   type PolicyRiskCategory,
   type PolicyAction,
   type PolicyMode,
-} from "../../../../../src/platform/control-plane/policy-center/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/policy-center/index.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDecisionRequest {

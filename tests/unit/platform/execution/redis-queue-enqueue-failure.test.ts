@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisQueueAdapter } from "../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 
 test("[SYS-REL-2.4] Redis queue enqueue hmset failure should propagate (currently swallows)", () => {
   const mockRedis = new EventEmitter();

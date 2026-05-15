@@ -166,7 +166,7 @@ export class WakeEngine {
       return conditions.every((condition) => this.matchesCondition(event, condition));
     }
 
-    // Default: any condition triggers wake
+    // Default: at least one condition triggers wake
     return conditions.some((condition) => this.matchesCondition(event, condition));
   }
 

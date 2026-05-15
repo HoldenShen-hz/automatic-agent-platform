@@ -15,7 +15,7 @@ import {
   HEALTH_CHECK_QUERY,
   INTROSPECTION_QUERY_PREFIX,
   type GraphQLSchemaWithResolvers,
-} from "../../../../../src/platform/interface/api/graphql-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/graphql-adapter-service.js";
 
 function createTaskSchema(): GraphQLSchemaWithResolvers {
   const schema = new GraphQLSchemaBuilder()

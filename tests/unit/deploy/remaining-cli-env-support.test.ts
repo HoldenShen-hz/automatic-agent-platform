@@ -21,7 +21,7 @@ import {
   parseCompatibilityJson,
   missingEnv,
   invalidEnv,
-} from "../../../src/platform/control-plane/config-center/remaining-cli-env-support.js";
+} from "../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-support.js";
 
 test("requiredEnv returns value when present", () => {
   const result = requiredEnv({ TEST_VAR: "value" }, "TEST_VAR");

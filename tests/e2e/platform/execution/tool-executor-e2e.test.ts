@@ -13,7 +13,7 @@ import test from "node:test";
 // @ts-ignore
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 // @ts-ignore
-import { ToolExecutorService } from "../../../src/platform/execution/tool-executor/tool-executor-service.js";
+import { ToolExecutorService } from "../../../src/platform/five-plane-execution/tool-executor/tool-executor-service.js";
 // @ts-ignore
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 // @ts-ignore

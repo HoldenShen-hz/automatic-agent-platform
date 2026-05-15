@@ -19,9 +19,9 @@ import {
   buildTextResponse,
   normalizeSegments,
   matchNormalizedSegments,
-} from "../../../../../../src/platform/interface/api/http-server/utils.js";
-import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
-import { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+import { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
 function makeRequest(url: string, headers: Record<string, string | undefined> = {}): ApiRequestLike {
   return { method: "GET", url, headers, body: null };
@@ -214,7 +214,7 @@ test("readJsonBody throws for partial JSON", () => {
   assert.throws(() => readJsonBody('{"key": }'), /Request body must be valid JSON/);
 });
 
-function makePrincipal(tenantId: string | null): import("../../../../../../src/platform/interface/api/api-auth-service.js").ApiPrincipal {
+function makePrincipal(tenantId: string | null): import("../../../../../../src/platform/five-plane-interface/api/api-auth-service.js").ApiPrincipal {
   return { actorId: "user_1", roles: [], authMethod: "jwt", tenantId };
 }
 

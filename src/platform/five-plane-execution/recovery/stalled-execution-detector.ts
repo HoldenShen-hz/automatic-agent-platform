@@ -17,8 +17,9 @@
  */
 
 import type { ExecutionStatus } from "../../contracts/types/status.js";
+import { FIVE_MINUTES_MS, TWO_MINUTES_MS } from "../../contracts/constants/time.js";
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface StalledExecutionDetectionOptions {
   now?: string;
@@ -54,8 +55,8 @@ export class StalledExecutionDetector {
 
   public detect(options: StalledExecutionDetectionOptions = {}): StalledExecutionFinding[] {
     const now = options.now ?? new Date().toISOString();
-    const staleAfterMs = options.staleAfterMs ?? 5 * 60 * 1000;
-    const heartbeatGraceMs = options.heartbeatGraceMs ?? 2 * 60 * 1000;
+    const staleAfterMs = options.staleAfterMs ?? FIVE_MINUTES_MS;
+    const heartbeatGraceMs = options.heartbeatGraceMs ?? TWO_MINUTES_MS;
     const staleBefore = isoMinusMs(now, staleAfterMs);
     const heartbeatMissingBefore = isoMinusMs(now, heartbeatGraceMs);
 

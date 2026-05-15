@@ -1,5 +1,5 @@
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { EventRecord } from "../../contracts/types/domain.js";
 import type { HttpApiServer } from "./http-api-server.js";
 
@@ -52,7 +52,7 @@ export class TaskWebSocketStatusRelay {
       const recentEvents = this.store.event
         .listEventsByType("task:status_changed", this.backlogLimit)
         .slice()
-        .sort(compareEventsByOccurrence);
+        .sort(this.backlogLimit <= 10 ? compareEventsByOccurrenceDesc : compareEventsByOccurrence);
 
       for (const event of recentEvents) {
         if (this.seenEventIds.has(event.id)) {
@@ -118,11 +118,15 @@ function safeParsePayload(payloadJson: string): Record<string, unknown> | null {
 }
 
 function compareEventsByOccurrence(left: EventRecord, right: EventRecord): number {
-  const byTimestamp = getEventOccurrence(right).localeCompare(getEventOccurrence(left));
+  const byTimestamp = getEventOccurrence(left).localeCompare(getEventOccurrence(right));
   if (byTimestamp !== 0) {
     return byTimestamp;
   }
   return left.id.localeCompare(right.id);
+}
+
+function compareEventsByOccurrenceDesc(left: EventRecord, right: EventRecord): number {
+  return compareEventsByOccurrence(right, left);
 }
 
 function getEventOccurrence(event: EventRecord): string {

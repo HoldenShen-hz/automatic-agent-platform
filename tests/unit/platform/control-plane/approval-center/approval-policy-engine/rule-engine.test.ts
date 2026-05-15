@@ -4,17 +4,17 @@ import test from "node:test";
 import {
   ApprovalPolicyEngine,
   createDefaultPolicyEngine,
-} from "../../../../../../src/platform/control-plane/approval-center/approval-policy-engine/rule-engine.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/rule-engine.js";
 import type {
   ApprovalPolicyBundle,
   ApprovalPolicyContext,
   ApprovalPolicyRule,
-} from "../../../../../../src/platform/control-plane/approval-center/approval-policy-engine/types.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/types.js";
 import type {
   PolicyRiskCategory,
   PolicyMode,
   PolicyAction,
-} from "../../../../../../src/platform/control-plane/policy-center/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/policy-center/index.js";
 
 // ---------------------------------------------------------------------------
 // Helper

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath } from "../../../helpers/fs.js";
 

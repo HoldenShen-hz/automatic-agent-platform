@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
-import { HumanWaitExecutor, type HumanWaitExecutionContext, type HumanWaitResolution } from "../../../../../src/platform/execution/plugin-executor/human-wait-executor.js";
+import { HumanWaitExecutor, type HumanWaitExecutionContext, type HumanWaitResolution } from "../../../../../src/platform/five-plane-execution/plugin-executor/human-wait-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

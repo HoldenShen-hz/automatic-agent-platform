@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SessionRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/session-repository.js";
-import type { SqliteConnection } from "../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
+import { SessionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/session-repository.js";
+import type { SqliteConnection } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/query-helper.js";
 import type {
   CompactionRecord,
   GatewayTargetRecord,

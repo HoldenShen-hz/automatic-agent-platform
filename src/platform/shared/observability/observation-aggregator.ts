@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { TaskSituation } from "../../orchestration/oapeflir/types/task-situation.js";
+import type { TaskSituation } from "../../five-plane-orchestration/oapeflir/types/task-situation.js";
 import type { SystemSituation } from "./system-situation-model.js";
 import { SystemSituationSchema } from "./system-situation-model.js";
 import { StructuredLogger } from "./structured-logger.js";
-import type { Tier1EventType } from "../../state-evidence/events/event-types.js";
+import type { Tier1EventType } from "../../five-plane-state-evidence/events/event-types.js";
 
 // R5-11: Extended observation scope — Observer now also captures EventFlow, GoalDecomposition, and Memory situations
 
@@ -14,7 +14,7 @@ import type { Tier1EventType } from "../../state-evidence/events/event-types.js"
  * have been emitted, pending, or failed in the recent execution flow.
  *
  * Architecture note: Event flow is derived from the durable-event-bus and
- * layered-event-inbox components in src/platform/state-evidence/events/.
+ * layered-event-inbox components in src/platform/five-plane-state-evidence/events/.
  */
 export interface EventFlowSituation {
   /** Count of Tier-1 events emitted in the current observation window */
@@ -85,7 +85,7 @@ export const GoalDecompositionSituationSchema = z.object({
  * including layer distribution, promotion candidates, and staleness metrics.
  *
  * Architecture note: Memory state is derived from the memory-layer-model
- * and memory services in src/platform/state-evidence/memory/.
+ * and memory services in src/platform/five-plane-state-evidence/memory/.
  */
 export interface MemorySituation {
   /** Count of memory records in working/runtime layer */
@@ -157,9 +157,35 @@ export interface UnifiedObservation {
 export const UnifiedObservationSchema = z.object({
   task: z.unknown(), // TaskSituation validated separately by caller
   system: SystemSituationSchema,
-  eventFlow: EventFlowSituationSchema,
-  goalDecomposition: GoalDecompositionSituationSchema,
-  memory: MemorySituationSchema,
+  eventFlow: EventFlowSituationSchema.default({
+    tier1EventCount: 0,
+    tier1PendingAcks: 0,
+    dlqSize: 0,
+    recentEventTypes: [],
+    backlogDegraded: false,
+    lastEventAt: null,
+  }),
+  goalDecomposition: GoalDecompositionSituationSchema.default({
+    goalId: null,
+    lifecycleState: "draft",
+    strategy: null,
+    taskCount: 0,
+    decompositionConfidence: 0,
+    requiresHumanReview: false,
+    overallRisk: null,
+  }),
+  memory: MemorySituationSchema.default({
+    workingLayerCount: 0,
+    sessionLayerCount: 0,
+    episodicLayerCount: 0,
+    semanticLayerCount: 0,
+    proceduralLayerCount: 0,
+    metaLayerCount: 0,
+    totalMemoryCount: 0,
+    promotionCandidateCount: 0,
+    staleMemoryCount: 0,
+    averageQualityScore: 0,
+  }),
   observedAt: z.number().int().nonnegative(),
 });
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadDiagnosticsCliEnv } from "../../../../../src/platform/control-plane/config-center/diagnostics-cli-env.js";
+import { loadDiagnosticsCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/diagnostics-cli-env.js";
 
 test("diagnostics env loader parses required kind and optional scope", () => {
   const config = loadDiagnosticsCliEnv({

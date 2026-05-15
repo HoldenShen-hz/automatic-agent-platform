@@ -7,7 +7,7 @@ import {
   matchesMemoryRecallQuery,
   filterAndSortMemories,
   type MemoryRecallQuery,
-} from "../../../../../src/platform/state-evidence/memory/memory-quality.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-quality.js";
 
 // =============================================================================
 // Mock Factory

@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadStableSoakCliEnv } from "../../../../src/platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableSoakCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 // ---------------------------------------------------------------------------
 // Tests for loadStableSoakCliEnv

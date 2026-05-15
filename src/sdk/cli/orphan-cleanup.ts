@@ -20,9 +20,9 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadOrphanCleanupCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
+import { loadOrphanCleanupCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { OrphanCleanupService } from "../../platform/execution/execution-engine/orphan-cleanup-service.js";
+import { OrphanCleanupService } from "../../platform/five-plane-execution/execution-engine/orphan-cleanup-service.js";
 
 /**
  * Main entry point for the orphan cleanup CLI.

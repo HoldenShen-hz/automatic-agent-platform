@@ -5,7 +5,7 @@ import {
   CoordinatorLoadBalancingService,
   type RegisterCoordinatorHeartbeatInput,
   type CoordinatorSelectionInput,
-} from "../../../../../src/platform/execution/ha/coordinator-load-balancing-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 import type { CoordinatorInstanceRecord, CoordinatorInstanceStatus } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

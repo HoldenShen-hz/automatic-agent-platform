@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PlanStrategySelector } from "../../../../../src/platform/orchestration/planner/plan-strategy-selector.js";
-import type { PlanStrategy } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { PlanStrategySelector } from "../../../../../src/platform/five-plane-orchestration/planner/plan-strategy-selector.js";
+import type { PlanStrategy } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 function createMockWorkflow(stepCount: number, divisionCount: number = 1) {
   const steps = Array.from({ length: stepCount }, (_, i) => ({

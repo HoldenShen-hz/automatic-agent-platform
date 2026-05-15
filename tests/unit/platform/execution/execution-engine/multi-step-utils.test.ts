@@ -16,7 +16,7 @@ import {
   parseOptionalStringArray,
   resolveMultiStepToolPath,
   safeParseToolResult,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-utils.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js";
 import { ToolExecutionError } from "../../../../../src/platform/contracts/errors.js";
 
 // =============================================================================

@@ -16,12 +16,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
-import { getRegisteredConsumers } from "../../../../../src/platform/state-evidence/events/event-registry.js";
+import { getRegisteredConsumers } from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 test("durable event bus integration: event persists after publish and dispose", () => {
   const workspace = createTempWorkspace("aa-integration-persist-");

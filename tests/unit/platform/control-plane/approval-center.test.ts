@@ -15,7 +15,7 @@ import {
   validateApprovalDecision,
   type ApprovalRequest,
   type ApprovalDecision,
-} from "../../../../src/platform/control-plane/approval-center/index.js";
+} from "../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 import {
   QuorumConfig,
@@ -25,7 +25,7 @@ import {
   calculateQuorumStatus,
   isQuorumMet,
   isDenied,
-} from "../../../../src/platform/control-plane/approval-center/index.js";
+} from "../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 import {
   EscalationManager,
@@ -36,7 +36,7 @@ import {
   type NotificationChannel,
   type NotificationMessage,
   type Delegation,
-} from "../../../../src/platform/control-plane/approval-center/index.js";
+} from "../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 import {
   ApprovalFlowEngine,
@@ -46,7 +46,7 @@ import {
   type ApprovalTimeoutConfig,
   type FeedbackLoopConfig,
   type HumanFeedback,
-} from "../../../../src/platform/control-plane/approval-center/index.js";
+} from "../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 // ============================================================================
 // Approval Service Tests (via barrel export)

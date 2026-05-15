@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
+import { runMultiStepOrchestration } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { createMinimalHarnessRun } from "../helpers/fixtures/base.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";

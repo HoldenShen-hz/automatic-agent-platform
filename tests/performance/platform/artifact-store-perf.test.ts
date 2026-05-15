@@ -17,7 +17,7 @@ import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 
-import { ArtifactStore } from "../../../src/platform/state-evidence/artifacts/artifact-store.js";
+import { ArtifactStore } from "../../../src/platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import { newId } from "../../../src/platform/contracts/types/ids.js";
 import { cleanupPath } from "../../helpers/fs.js";
 

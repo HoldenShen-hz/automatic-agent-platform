@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DistributedRateLimiter, RateLimitCheckResult } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter, RateLimitCheckResult } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 // Mock RedisRateLimiter
 const mockCheckAndConsumeResults: Array<{ allowed: boolean; remaining: number; retryAfterMs?: number }> = [];

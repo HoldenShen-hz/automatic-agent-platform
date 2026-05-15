@@ -9,7 +9,7 @@ import {
   parseCreateTaskPayload,
   parseUpdateTaskPayload,
   parseCreateWebhookEndpointPayload,
-} from "../../../../../../src/platform/interface/api/http-server/schemas.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/schemas.js";
 
 // parseGatewayWebhookPayload tests
 

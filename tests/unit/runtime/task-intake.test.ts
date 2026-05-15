@@ -8,13 +8,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IntakeRouter } from "../../../src/platform/orchestration/routing/intake-router.js";
+import { IntakeRouter } from "../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
 // ---------------------------------------------------------------------------
 
-import type { IntakeRouteInput } from "../../../src/platform/orchestration/routing/intake-router.js";
+import type { IntakeRouteInput } from "../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 
 function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRouteInput {
   return {

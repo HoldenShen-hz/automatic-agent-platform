@@ -18,7 +18,7 @@ import test from "node:test";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { GoalDecompositionService, type Goal, type PlannedTask } from "../../src/interaction/goal-decomposer/index.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 
 const DEFAULT_OWNER = "e2e-goal-decomp-owner";
 

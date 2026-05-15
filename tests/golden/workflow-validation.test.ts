@@ -8,8 +8,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { WorkflowValidator } from "../../src/platform/orchestration/oapeflir/workflow/workflow-validator.js";
-import { SINGLE_AGENT_MINIMAL_WORKFLOW, WORKFLOW_DEFINITIONS } from "../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import { WorkflowValidator } from "../../src/platform/five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
+import { SINGLE_AGENT_MINIMAL_WORKFLOW, WORKFLOW_DEFINITIONS } from "../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 test("golden: workflow validator accepts built-in single agent workflow", () => {
   const validator = new WorkflowValidator();

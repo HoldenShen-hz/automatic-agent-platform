@@ -9,8 +9,8 @@ import {
   DEFAULT_NAMESPACE_STRATEGY,
   type NamespaceStrategyConfig,
   type NamespaceConflict,
-} from "../../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import type { KnowledgeNamespace } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import type { KnowledgeNamespace } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function createTestNamespace(overrides?: Partial<KnowledgeNamespace>): KnowledgeNamespace {
   return {

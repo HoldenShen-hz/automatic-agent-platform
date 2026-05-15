@@ -8,14 +8,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HttpApiServer } from "../../../../src/platform/interface/api/http-api-server.js";
-import { ApiAuthService, type ApiKeyRecord } from "../../../../src/platform/interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { ApiAuthService, type ApiKeyRecord } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { PrometheusMetricsExporter } from "../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
-import type { MissionControlService } from "../../../../src/platform/interface/api/mission-control-service.js";
+import type { MissionControlService } from "../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
-import type { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { BillingService } from "../../../../src/scale-ecosystem/billing/billing-service.js";
-import type { ApiDelegationService } from "../../../../src/platform/interface/api/facade-interfaces.js";
+import type { ApiDelegationService } from "../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 
 class MockPrometheusMetricsExporter extends PrometheusMetricsExporter {
   constructor() {

@@ -9,13 +9,13 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
-import { WorkflowPlanner } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { IntakeRouter } from "../../../../src/platform/orchestration/routing/intake-router.js";
+import { WorkflowPlanner } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { IntakeRouter } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 
 function createOrchestrationContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);

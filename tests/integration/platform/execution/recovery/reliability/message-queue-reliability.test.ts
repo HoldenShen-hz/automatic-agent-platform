@@ -9,12 +9,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import {
   SqliteQueueAdapter,
   createQueueAdapter,
   QUEUE_JOBS_DDL,
-} from "../../../../../../src/platform/execution/queue/queue-adapter.js";
+} from "../../../../../../src/platform/five-plane-execution/queue/queue-adapter.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 function createQueueHarness(prefix: string) {

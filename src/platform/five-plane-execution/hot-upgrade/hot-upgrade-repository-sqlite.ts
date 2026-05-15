@@ -5,8 +5,8 @@
  * Uses synchronous operations via AuthoritativeSqlDatabase.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import { queryAll, queryOne } from "../../state-evidence/truth/sqlite/query-helper.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { queryAll, queryOne } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 import type { HotUpgradeRepository, UpgradeAuditEntry } from "./hot-upgrade-repository.js";
 import type { UpgradePlan, UpgradeBatch, VersionCompatibility, RollbackTrigger, HealthCheckResult } from "./hot-upgrade-service.js";
 

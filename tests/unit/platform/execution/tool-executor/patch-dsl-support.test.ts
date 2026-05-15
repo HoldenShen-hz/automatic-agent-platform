@@ -5,7 +5,7 @@ import {
   parsePatch,
   isNullPath,
   createSkippedResult,
-} from "../../../../../src/platform/execution/tool-executor/patch-dsl-support.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/patch-dsl-support.js";
 
 test("parsePatch handles empty string", () => {
   const result = parsePatch("");

@@ -11,10 +11,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { createRuntimeLifecycleRepository } from "../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("[SYS-REL-2.6] task state transition writes outbox entry in same transaction", async () => {

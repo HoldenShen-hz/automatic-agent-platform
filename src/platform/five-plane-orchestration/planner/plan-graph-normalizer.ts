@@ -43,7 +43,7 @@ export class PlanGraphNormalizer {
     // 3. Risk propagation
     const riskPropagation = this.propagateRisk(sorted.sorted, assessment);
 
-    // @ts-ignore - exactOptionalPropertyTypes complexity
+    // @ts-expect-error - exactOptionalPropertyTypes complexity
     return {
       valid: issues.length === 0,
       issues,

@@ -7,7 +7,7 @@ import {
   readRequiredTrimmedEnv,
   parseStringRecordJson,
   loadGatewayEnv,
-} from "../../../../../src/platform/control-plane/config-center/gateway-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/gateway-env.js";
 
 test("readTrimmedEnv returns null for missing key", () => {
   const env = {};

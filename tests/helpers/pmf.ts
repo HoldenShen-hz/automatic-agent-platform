@@ -1,5 +1,5 @@
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 export const PMF_EVALUATED_AT = "2026-04-08T12:00:00.000Z";
 

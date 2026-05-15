@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { FeedbackSignal } from "../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import { FeedbackQualityGrader } from "../../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
 
 function makeSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {

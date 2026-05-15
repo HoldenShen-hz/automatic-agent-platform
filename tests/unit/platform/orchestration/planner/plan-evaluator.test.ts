@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanEvaluator } from "../../../../../src/platform/orchestration/planner/plan-evaluator.js";
+import { PlanEvaluator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
 
 function createValidAssessment(overrides: Partial<{
   risk: "low" | "medium" | "high" | "critical";

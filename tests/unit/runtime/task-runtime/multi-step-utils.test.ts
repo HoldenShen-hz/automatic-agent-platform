@@ -5,7 +5,7 @@ import {
   parseOptionalStringArray,
   resolveMultiStepToolPath,
   safeParseToolResult,
-} from "../../../../src/platform/execution/execution-engine/multi-step-utils.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js";
 
 test("parseOptionalPositiveInteger accepts positive finite numbers", () => {
   assert.equal(parseOptionalPositiveInteger(1), 1);

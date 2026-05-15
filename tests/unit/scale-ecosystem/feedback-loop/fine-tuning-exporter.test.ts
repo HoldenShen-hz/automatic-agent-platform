@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { FineTuningExporter } from "../../../../src/scale-ecosystem/feedback-loop/fine-tuning-exporter.js";
 import { FeedbackQualityGrader } from "../../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
 import { parseLearningSignal } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { FeedbackSignal } from "../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   return {

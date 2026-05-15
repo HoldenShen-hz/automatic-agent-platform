@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
-import { GcpSecretManagerHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/gcp-secret-manager-http-secret-provider.js";
-import { VaultHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/vault-http-secret-provider.js";
+import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/aws-kms-http-secret-provider.js";
+import { GcpSecretManagerHttpSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/gcp-secret-manager-http-secret-provider.js";
+import { VaultHttpSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/vault-http-secret-provider.js";
 
 type FetchCall = {
   url: string;

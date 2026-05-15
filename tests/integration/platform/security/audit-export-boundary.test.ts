@@ -5,9 +5,9 @@ import test from "node:test";
 import {
   AuditExportService,
   AUDIT_EXPORT_DDL,
-} from "../../../../src/platform/control-plane/audit-export/audit-export-service.js";
-import { AUDIT_INTEGRITY_DDL } from "../../../../src/platform/control-plane/iam/audit-integrity-repository.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../src/platform/five-plane-control-plane/audit-export/audit-export-service.js";
+import { AUDIT_INTEGRITY_DDL } from "../../../../src/platform/five-plane-control-plane/iam/audit-integrity-repository.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createHarness(prefix: string) {

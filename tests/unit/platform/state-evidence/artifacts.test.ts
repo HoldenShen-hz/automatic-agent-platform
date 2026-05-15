@@ -1,22 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SensitiveContentScanner } from "../../../../src/platform/state-evidence/artifacts/sensitive-content-scanner.js";
-import { ArtifactGovernanceService } from "../../../../src/platform/state-evidence/artifacts/artifact-governance-service.js";
-import { ArtifactBundleService } from "../../../../src/platform/state-evidence/artifacts/artifact-bundle-service.js";
-import { ArtifactPublishLedger } from "../../../../src/platform/state-evidence/artifacts/artifact-publish-ledger.js";
-import { ArtifactPreviewService } from "../../../../src/platform/state-evidence/artifacts/artifact-preview-service.js";
-import { ArtifactPublishService } from "../../../../src/platform/state-evidence/artifacts/artifact-publish-service.js";
-import { ArtifactResolver } from "../../../../src/platform/state-evidence/artifacts/artifact-resolver.js";
-import { ArtifactVersioningService } from "../../../../src/platform/state-evidence/artifacts/artifact-versioning.js";
-import { ArtifactPlaneService } from "../../../../src/platform/state-evidence/artifacts/artifact-plane-service.js";
+import { SensitiveContentScanner } from "../../../../src/platform/five-plane-state-evidence/artifacts/sensitive-content-scanner.js";
+import { ArtifactGovernanceService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-governance-service.js";
+import { ArtifactBundleService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-bundle-service.js";
+import { ArtifactPublishLedger } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-publish-ledger.js";
+import { ArtifactPreviewService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-preview-service.js";
+import { ArtifactPublishService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-publish-service.js";
+import { ArtifactResolver } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-resolver.js";
+import { ArtifactVersioningService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-versioning.js";
+import { ArtifactPlaneService } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";
 import type {
   ArtifactBundleExtended,
   ArtifactRecord,
   ArtifactLink,
   ArtifactLinkExtended,
   ArtifactRecordExtended,
-} from "../../../../src/platform/state-evidence/artifacts/artifact-model.js";
+} from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-model.js";
 
 // ---------------------------------------------------------------------------
 // SensitiveContentScanner - edge cases

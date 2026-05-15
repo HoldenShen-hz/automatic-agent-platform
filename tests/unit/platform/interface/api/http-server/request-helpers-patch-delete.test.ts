@@ -10,8 +10,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { matchRoute } from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
-import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { matchRoute } from "../../../../../../src/platform/five-plane-interface/api/http-server/request-helpers.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("R25-01: matchRoute accepts PATCH method - verifies PATCH handlers are reachable", () => {
   const request: ApiRequestLike = {

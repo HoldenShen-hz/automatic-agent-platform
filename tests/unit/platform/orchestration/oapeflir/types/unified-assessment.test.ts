@@ -10,7 +10,7 @@ import {
   AssessmentRiskSchema,
   ApprovalLevelSchema,
   ExecutionModeSchema,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 
 test("AssessmentPhaseSchema accepts valid phases", () => {
   const phases = ["pre-execution", "post-execution"] as const;

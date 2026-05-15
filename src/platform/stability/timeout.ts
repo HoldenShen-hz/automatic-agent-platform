@@ -22,7 +22,7 @@ export interface TimeoutStats {
   state: TimeoutState;
   elapsedMs: number;
   remainingMs: number;
-  result?: any;
+  result?: unknown;
   error?: Error | undefined;
 }
 
@@ -33,7 +33,7 @@ export class Timeout {
 
   private state: TimeoutState = TimeoutState.PENDING;
   private startTime: number = 0;
-  private result: any;
+  private result: unknown;
   private error: Error | undefined;
 
   constructor(options: TimeoutOptions) {
@@ -127,18 +127,18 @@ export class TimeoutError extends Error {
 /**
  * Creates a timeout-wrapped version of a function
  */
-export function withTimeout<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function withTimeout<TArgs extends readonly unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   timeoutMs: number,
   cleanupFn?: () => void
-): T {
-  return ((...args: Parameters<T>) => {
+): (...args: TArgs) => Promise<TResult> {
+  return (...args: TArgs) => {
     const options = cleanupFn !== undefined
       ? { timeoutMs, cleanupFn, propagateError: true }
       : { timeoutMs, propagateError: true };
     const timeout = new Timeout(options);
     return timeout.wrap(() => fn(...args));
-  }) as T;
+  };
 }
 
 /**

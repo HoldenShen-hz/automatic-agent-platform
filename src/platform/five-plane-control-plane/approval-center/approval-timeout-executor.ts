@@ -16,9 +16,9 @@ import { ApprovalService } from "./approval-service.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { ApprovalRecord } from "../../contracts/types/domain.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { ApprovalRepository } from "../../state-evidence/truth/sqlite/repositories/approval-repository.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ApprovalRepository } from "../../five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
 
 /** Default timeout per policy in milliseconds (24 hours). */
 const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1000;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ChargebackService, type ChargebackReportSource } from "../../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
-import { CostReportService } from "../../../../../src/platform/interface/api/cost-report-service.js";
+import { CostReportService } from "../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 test("ChargebackService aggregates report costs by tenant resource and currency", () => {
   const costReports = new CostReportService();

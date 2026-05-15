@@ -44,12 +44,12 @@
 import type { ApprovalRecord, ArtifactRecord, DeadLetterRecord, EventRecord } from "../../contracts/types/domain.js";
 
 import { nowIso } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore, type RuntimeRecoveryRecord } from "../../state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore, type RuntimeRecoveryRecord } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import {
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
   type WorkflowStepCheckpointSummary,
-} from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError, AppError, isAppError } from "../../contracts/errors.js";
 import {

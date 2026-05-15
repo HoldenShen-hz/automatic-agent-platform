@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   reindentBlock,
   reindentBlockToMatch,
-} from "../../../../../../src/platform/execution/tool-executor/edit-replacement/apply.js";
+} from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/apply.js";
 
 // reindentBlock tests
 

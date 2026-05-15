@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadReleasePipelineCliEnv } from "../../../../src/platform/control-plane/config-center/release-pipeline-env.js";
+import { loadReleasePipelineCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/release-pipeline-env.js";
 
 // ---------------------------------------------------------------------------
 // Tests for loadReleasePipelineCliEnv - using list action (no required env vars)

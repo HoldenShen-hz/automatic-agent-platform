@@ -11,7 +11,7 @@ import {
   checkFreshness,
   type FileSnapshot,
   type FreshnessConfig,
-} from "../../../../../src/platform/control-plane/iam/file-freshness.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/file-freshness.js";
 
 const TEST_DIR = join(tmpdir(), "file-freshness-test-" + Date.now());
 mkdirSync(TEST_DIR, { recursive: true });

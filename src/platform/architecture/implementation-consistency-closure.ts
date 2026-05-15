@@ -58,8 +58,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     closureMode: "guard_or_state_machine",
     evidenceRefs: [
       "src/platform/contracts/executable-contracts/index.ts",
-      "src/platform/execution/runtime-state-machine.ts",
-      "src/platform/orchestration/harness/index.ts",
+      "src/platform/five-plane-execution/runtime-state-machine.ts",
+      "src/platform/five-plane-orchestration/harness/index.ts",
       "tests/invariants/canonical-runtime-contract-boundary.test.ts",
     ],
   },
@@ -97,7 +97,7 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     category: "configuration",
     closureMode: "guard_or_state_machine",
     evidenceRefs: [
-      "src/platform/control-plane/config-center/config-drift-reconciler.ts",
+      "src/platform/five-plane-control-plane/config-center/config-drift-reconciler.ts",
       "src/platform/architecture/invariant-registry.ts",
       "tests/invariants/architecture-invariant-registry.test.ts",
     ],
@@ -126,8 +126,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     closureMode: "release_gate",
     evidenceRefs: [
       "src/platform/stability/dr-drill-gate.ts",
-      "src/platform/state-evidence/truth/cross-region-truth-leader.ts",
-      "src/platform/execution/worker-pool/worker-service-identity.ts",
+      "src/platform/five-plane-state-evidence/truth/cross-region-truth-leader.ts",
+      "src/platform/five-plane-execution/worker-pool/worker-service-identity.ts",
       "src/scale-ecosystem/architecture-remediation.ts",
       "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
@@ -157,7 +157,7 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     evidenceRefs: [
       "docs_zh/architecture/00-platform-architecture.md",
       "docs_zh/architecture/oapeflir-v4.4-executable-spec.md",
-      "src/platform/state-evidence/events/layered-event-inbox.ts",
+      "src/platform/five-plane-state-evidence/events/layered-event-inbox.ts",
       "tests/invariants/contract-and-oapeflir-remediation.test.ts",
       "tests/invariants/canonical-runtime-contract-boundary.test.ts",
     ],
@@ -171,7 +171,7 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     evidenceRefs: [
       "src/platform/contracts/executable-contracts/index.ts",
       "src/platform/model-gateway/degradation/deterministic-hot-path-gate.ts",
-      "src/platform/orchestration/agent-delegation/call-depth-budget.ts",
+      "src/platform/five-plane-orchestration/agent-delegation/call-depth-budget.ts",
       "src/interaction/architecture-remediation.ts",
       "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",

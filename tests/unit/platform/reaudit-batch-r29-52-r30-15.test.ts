@@ -3,29 +3,29 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { AutoStopLossService, type StopLossPlaybook } from "../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
+import { AutoStopLossService, type StopLossPlaybook } from "../../../src/platform/five-plane-control-plane/incident-control/auto-stop-loss-service.js";
 import {
   computeTier1AuditChainHash,
   computeTier1AuditEventChecksum,
   verifyTier1AuditIntegrity,
-} from "../../../src/platform/control-plane/iam/audit-event-integrity.js";
+} from "../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import { DegradationController } from "../../../src/platform/model-gateway/degradation/degradation-controller.js";
 import {
   ComplianceReportPipelineService,
   type ComplianceReportArtifact,
   type ComplianceReportTemplateDefinition,
 } from "../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
-import { CommandSafetyClassifier } from "../../../src/platform/execution/tool-executor/command-security.js";
-import { FencingTokenService } from "../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
-import { CasService } from "../../../src/platform/state-evidence/events/cas/cas-service.js";
-import { approvalQueueProjectionHandler, type ApprovalQueueState } from "../../../src/platform/state-evidence/events/projections/approval-queue-projection.js";
-import { toolUsageProjectionHandler, type ToolUsageState } from "../../../src/platform/state-evidence/events/projections/tool-usage-projection.js";
-import { workflowRunProjectionHandler, type WorkflowRunState } from "../../../src/platform/state-evidence/events/projections/workflow-run-projection.js";
-import { LayeredEventInbox } from "../../../src/platform/state-evidence/events/layered-event-inbox.js";
-import { KnowledgeArchive } from "../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import { KnowledgeSnapshotStore } from "../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import { SemanticKnowledgeGraph } from "../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import { LayerTransitionService } from "../../../src/platform/state-evidence/memory/layer-transition-service.js";
+import { CommandSafetyClassifier } from "../../../src/platform/five-plane-execution/tool-executor/command-security.js";
+import { FencingTokenService } from "../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
+import { CasService } from "../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { approvalQueueProjectionHandler, type ApprovalQueueState } from "../../../src/platform/five-plane-state-evidence/events/projections/approval-queue-projection.js";
+import { toolUsageProjectionHandler, type ToolUsageState } from "../../../src/platform/five-plane-state-evidence/events/projections/tool-usage-projection.js";
+import { workflowRunProjectionHandler, type WorkflowRunState } from "../../../src/platform/five-plane-state-evidence/events/projections/workflow-run-projection.js";
+import { LayeredEventInbox } from "../../../src/platform/five-plane-state-evidence/events/layered-event-inbox.js";
+import { KnowledgeArchive } from "../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import { KnowledgeSnapshotStore } from "../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import { SemanticKnowledgeGraph } from "../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import { LayerTransitionService } from "../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";
 import {
   createPlatformFactEvent,
   type EventEnvelope,

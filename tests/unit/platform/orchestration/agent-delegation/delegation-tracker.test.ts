@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDelegationTracker, DelegationTracker } from "../../../../../src/platform/orchestration/agent-delegation/delegation-tracker.js";
-import type { DelegationResult, DelegationEvent } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import { createDelegationTracker, DelegationTracker } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-tracker.js";
+import type { DelegationResult, DelegationEvent } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

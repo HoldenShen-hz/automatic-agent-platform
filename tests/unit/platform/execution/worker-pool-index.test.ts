@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Import from the worker-pool index to verify exports
-import { toWorkerSchedulingStatus } from "../../../../src/platform/execution/worker-pool/worker/worker-scheduling-status.js";
+import { toWorkerSchedulingStatus } from "../../../../src/platform/five-plane-execution/worker-pool/worker/worker-scheduling-status.js";
 import {
   computeWorkerLoadScore,
   computeEffectiveActiveLeaseCount,
   summarizeWorkerLoadSkew,
   MAX_RECOMMENDED_STICKY_SHARE,
-} from "../../../../src/platform/execution/worker-pool/worker/worker-load-balancing.js";
+} from "../../../../src/platform/five-plane-execution/worker-pool/worker/worker-load-balancing.js";
 
 // Re-export types from worker-pool index files
 import type {
@@ -17,7 +17,7 @@ import type {
   WorkerRemoteLogInput,
   WorkerHandshakeDecision,
   ExecutionWorkerHandshakeServiceOptions,
-} from "../../../../src/platform/execution/worker-pool/worker/execution-worker-handshake-types.js";
+} from "../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-types.js";
 
 import type { WorkerSchedulingStatus, WorkerStatus } from "../../../../src/platform/contracts/types/domain.js";
 

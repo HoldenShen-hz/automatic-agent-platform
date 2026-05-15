@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
-import { createLockAdapter } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-factory.js";
-import { DISTRIBUTED_LOCKS_DDL } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { createLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import { DISTRIBUTED_LOCKS_DDL } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 test("createLockAdapter creates PostgreSQL advisory lock adapter", () => {
   const adapter = createLockAdapter("pg_advisory");

@@ -9,7 +9,7 @@ import {
   partitionPromptForCache,
   PromptPartitionCacheService,
   type PromptPartitionInput,
-} from "../../../../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 test("partitionPromptForCache separates static and dynamic messages", () => {
   const input: PromptPartitionInput = {

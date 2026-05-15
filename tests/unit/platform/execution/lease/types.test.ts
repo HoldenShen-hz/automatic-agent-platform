@@ -6,7 +6,7 @@ import {
   MIN_LEASE_TTL_MS,
   MAX_LEASE_TTL_MS,
   DEFAULT_RENEWAL_INTERVAL_MS,
-} from "../../../../../src/platform/execution/lease/types.js";
+} from "../../../../../src/platform/five-plane-execution/lease/types.js";
 
 // ---------------------------------------------------------------------------
 // Constants

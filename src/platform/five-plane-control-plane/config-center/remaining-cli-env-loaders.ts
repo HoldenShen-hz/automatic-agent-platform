@@ -1,8 +1,8 @@
 export * from "./remaining-cli-env-support.js";
 
 import type { EnvironmentName, MemoryLayer, MemorySourceTrustLevel } from "../../contracts/types/domain.js";
-import type { MemoryProviderQuery } from "../../state-evidence/memory/memory-provider.js";
-import type { StructuredMemoryContent } from "../../state-evidence/memory/memory-schema.js";
+import type { MemoryProviderQuery } from "../../five-plane-state-evidence/memory/memory-provider.js";
+import type { StructuredMemoryContent } from "../../five-plane-state-evidence/memory/memory-schema.js";
 import type { ModelGovernanceSnapshot } from "../../prompt-engine/eval/prompt-model-policy-governance-service.js";
 import type { ModelRouteFallbackLease } from "../../model-gateway/provider-registry/model-routing-service.js";
 import {

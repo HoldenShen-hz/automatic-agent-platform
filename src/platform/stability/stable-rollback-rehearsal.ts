@@ -11,12 +11,12 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { HumanTakeoverService } from "../control-plane/incident-control/human-takeover-service.js";
-import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../control-plane/incident-control/runtime-version-snapshot.js";
-import { RuntimeRepairService } from "../execution/recovery/runtime-repair-service-root.js";
-import { StartupConsistencyChecker } from "../execution/startup/startup-consistency-checker.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { HumanTakeoverService } from "../five-plane-control-plane/incident-control/human-takeover-service.js";
+import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../five-plane-control-plane/incident-control/runtime-version-snapshot.js";
+import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 export interface StableRollbackRehearsalOptions {
@@ -324,12 +324,12 @@ function seedTaskAndExecution(
       startedAt: now,
       updatedAt: now,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-general",
       roleId: "general_executor",
       runKind: "task_run",
@@ -339,6 +339,8 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

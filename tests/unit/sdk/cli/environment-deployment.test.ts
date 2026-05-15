@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadEnvironmentDeploymentCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
+import { loadEnvironmentDeploymentCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadEnvironmentDeploymentCliEnv parses current deployment env names", () => {

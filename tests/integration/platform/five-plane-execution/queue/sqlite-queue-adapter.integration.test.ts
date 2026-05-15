@@ -14,9 +14,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteQueueAdapter } from "../../../../../src/platform/execution/queue/sqlite-queue-adapter.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { QUEUE_JOBS_DDL, type EnqueueInput, type QueueJobRecord } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { SqliteQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/sqlite-queue-adapter.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { QUEUE_JOBS_DDL, type EnqueueInput, type QueueJobRecord } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 

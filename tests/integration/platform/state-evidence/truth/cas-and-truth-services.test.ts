@@ -15,12 +15,12 @@ import test from "node:test";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { CasService, createInMemoryCasService } from "../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
 import { FencingTokenService } from "../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
 import { SqliteCasRepository } from "../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
-import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeTruthRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 import {
   createHarnessRun,
   createNodeRun,

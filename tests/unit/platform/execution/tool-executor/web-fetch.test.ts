@@ -5,11 +5,11 @@ import {
   isBlockedIpOrHostname,
   isDomainAllowed,
   isInternalUrl,
-} from "../../../../../src/platform/execution/tool-executor/web-fetch.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/web-fetch.js";
 import {
   parseSafeOutboundUrl,
   sanitizeUrlForTelemetry,
-} from "../../../../../src/platform/control-plane/iam/outbound-url-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/outbound-url-policy.js";
 
 test("isBlockedIpOrHostname blocks localhost IP patterns", () => {
   assert.ok(isBlockedIpOrHostname("127.0.0.1"));

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RecoveryController, type HarnessFailureType } from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { HarnessRuntimeService, type HarnessRun, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { RecoveryController, type HarnessFailureType } from "../../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
+import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type HarnessRun, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides = {}): ConstraintPack {
   return {

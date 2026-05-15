@@ -12,7 +12,7 @@ import {
   type ImpactSeverity,
   type ImpactCategory,
   type RolloutStrategy,
-} from "../../../../../src/platform/control-plane/config-center/config-impact-analyzer.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-impact-analyzer.js";
 
 test("ConfigImpactAnalyzer.analyzeImpact detects security-sensitive key changes as critical", () => {
   const analyzer = new ConfigImpactAnalyzer();

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HarnessRuntimeService } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessRuntimeService } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("HarnessRuntimeService.decide emits canonical decision linkage alongside local action projection", () => {
   const runtime = new HarnessRuntimeService();

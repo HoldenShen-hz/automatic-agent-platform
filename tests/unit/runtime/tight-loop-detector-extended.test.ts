@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   TightLoopDetector,
   createTightLoopDetector,
-} from "../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
 test("TightLoopDetector recentInputs limited to 5 entries", () => {
   const detector = createTightLoopDetector({ warnThreshold: 1, escalateThreshold: 3 });

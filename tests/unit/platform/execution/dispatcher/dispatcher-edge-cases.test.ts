@@ -10,8 +10,8 @@ import {
   meetsIsolationRequirement,
   isElevatedPriority,
   isRemoteSessionReadyForDispatch,
-} from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
-import type { RegisteredWorkerView } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
+import type { RegisteredWorkerView } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import type { ExecutionStatus } from "../../../../../src/platform/contracts/types/status.js";
 
 // ---------------------------------------------------------------------------

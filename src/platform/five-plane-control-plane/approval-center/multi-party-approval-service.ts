@@ -8,10 +8,10 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { ApprovalDecision, ApprovalRequest } from "./approval-service.js";
 import { validateApprovalDecision } from "./approval-service.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { createRuntimeLifecycleRepository, type RuntimeLifecycleRepository } from "../../state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { TransitionService } from "../../execution/state-transition/transition-service.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { createRuntimeLifecycleRepository, type RuntimeLifecycleRepository } from "../../five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { TransitionService } from "../../five-plane-execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 
 export interface MultiPartyApprovalOptions {

@@ -18,9 +18,9 @@ import { existsSync } from "node:fs";
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { loadLeaseHandoverCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
-import { readTrimmedEnv } from "../../platform/control-plane/config-center/runtime-env.js";
-import { ExecutionLeaseService } from "../../platform/execution/lease/execution-lease-service.js";
+import { loadLeaseHandoverCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
+import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
+import { ExecutionLeaseService } from "../../platform/five-plane-execution/lease/execution-lease-service.js";
 
 function printHelp(): void {
   process.stdout.write(

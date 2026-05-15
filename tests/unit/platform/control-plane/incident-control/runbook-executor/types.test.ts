@@ -15,8 +15,8 @@ import type {
   RunbookSectionExecutionResult,
   RunbookExecutorConfig,
   RunbookExecutionContext,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
-import { DEFAULT_RUNBOOK_EXECUTOR_CONFIG } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
+import { DEFAULT_RUNBOOK_EXECUTOR_CONFIG } from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
 
 test("RunbookStepStatus is a string union type", () => {
   const statuses: RunbookStepStatus[] = [

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemoryDecayService, DEFAULT_DECAY_CONFIGS } from "../../../../../src/platform/state-evidence/memory/memory-decay-service.js";
-import { MemoryService } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { MemoryDecayService, DEFAULT_DECAY_CONFIGS } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-decay-service.js";
+import { MemoryService } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("decay integration: calculateFreshness for working layer decays rapidly", () => {

@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { RouteDefinition, RouteHandler, RouteContext, ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { RouteDefinition, RouteHandler, RouteContext, ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("RouteDefinition accepts valid route definition", () => {
   const handler: RouteHandler = async () => ({

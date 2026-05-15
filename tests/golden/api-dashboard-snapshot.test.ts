@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildOpenApiDocument } from "../../src/platform/interface/api/openapi-document.js";
+import { buildOpenApiDocument } from "../../src/platform/five-plane-interface/api/openapi-document.js";
 
 test("golden: API dashboard snapshot endpoint structure", () => {
   const document = buildOpenApiDocument() as { paths: Record<string, Record<string, unknown>> };

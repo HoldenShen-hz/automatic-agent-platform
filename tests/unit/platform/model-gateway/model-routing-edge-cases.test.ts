@@ -9,7 +9,7 @@ import {
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
   type ModelProfileMetadata,
-} from "../../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+} from "../../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import { ModelRoutingService } from "../../../../src/platform/model-gateway/provider-registry/model-routing-service.js";
 
 function buildRegistry(): ModelMetadataRegistry {

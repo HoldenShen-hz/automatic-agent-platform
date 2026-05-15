@@ -13,8 +13,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { CommandExecutor } from "../../../src/platform/execution/tool-executor/command-executor.js";
-import { SandboxPolicy } from "../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { CommandExecutor } from "../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
+import { SandboxPolicy } from "../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createTempWorkspace, createSymlink } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 
@@ -364,7 +364,7 @@ test("sandbox policy denies access to explicitly denied roots", async () => {
       processRuleMode: "allow",
     };
 
-    const { checkSandboxPath } = await import("../../../src/platform/control-plane/iam/sandbox-policy.js");
+    const { checkSandboxPath } = await import("../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js");
     const result = checkSandboxPath(policy, "/etc/passwd");
 
     assert.equal(result.allowed, false, "Explicitly denied path should be blocked");

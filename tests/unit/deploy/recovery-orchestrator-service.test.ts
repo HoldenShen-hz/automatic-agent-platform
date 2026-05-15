@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RecoveryOrchestratorService } from "../../../src/platform/execution/ha/recovery-orchestrator-service.js";
+import { RecoveryOrchestratorService } from "../../../src/platform/five-plane-execution/ha/recovery-orchestrator-service.js";
 import type { RecoveryCadence, RecoveryReport, RecoveryWorker } from "../../../src/platform/contracts/types/recovery-cadence.js";
 import { buildRecoveryCadence } from "../../../src/platform/contracts/types/recovery-cadence.js";
 

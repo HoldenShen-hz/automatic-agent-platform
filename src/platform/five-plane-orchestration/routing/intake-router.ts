@@ -120,9 +120,11 @@ export class IntakeRouter {
     const routeTrace: string[] = [];
     if (input.tenantId != null && input.tenantId.length > 0) {
       routeTrace.push(`tenantId:${input.tenantId}`);
+      routeTrace.push(`pipeline_context:tenantId=${input.tenantId}`);
     }
     if (input.traceId != null && input.traceId.length > 0) {
       routeTrace.push(`traceId:${input.traceId}`);
+      routeTrace.push(`pipeline_context:traceId=${input.traceId}`);
     }
     if (input.confirmedTaskSpecId != null && input.confirmedTaskSpecId.length > 0) {
       routeTrace.push(`confirmedTaskSpecId:${input.confirmedTaskSpecId}`);
@@ -210,21 +212,21 @@ export class IntakeRouter {
       const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
       routeTrace.push(`route:selected:${workflowId}`);
       routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
-      return withOptionalConfirmedTaskSpecId({
+      return materializePipelineContext(withOptionalConfirmedTaskSpecId({
         workflowId,
         divisionId: division?.id ?? "general_ops",
         routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.multi_step_or_high_context",
         routeTrace,
         requiresOrchestration: true,
         classification: finalClassification,
-      }, input.confirmedTaskSpecId);
+      }, input.confirmedTaskSpecId), input, normalized);
     }
 
     // Simple request - use the division's default workflow
     const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
     routeTrace.push(`route:selected:${workflowId}`);
     routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
-    return withOptionalConfirmedTaskSpecId({
+    return materializePipelineContext(withOptionalConfirmedTaskSpecId({
       workflowId,
       divisionId: division?.id ?? "general_ops",
       agentId: `${division?.id ?? "general_ops"}_agent`,
@@ -232,7 +234,7 @@ export class IntakeRouter {
       routeTrace,
       requiresOrchestration: false,
       classification: finalClassification,
-    }, input.confirmedTaskSpecId);
+    }, input.confirmedTaskSpecId), input, normalized);
   }
 
   /**
@@ -558,4 +560,65 @@ export class IntakeRouter {
       matchedSkills: best.matchedKeywords,
     };
   }
+}
+
+function materializePipelineContext(
+  decision: IntakeRouteDecision,
+  input: IntakeRouteInput,
+  normalized: string,
+): IntakeRouteDecision {
+  const seed = stableIdSeed(input);
+  const taskDraft = {
+    taskDraftId: `draft:${seed}`,
+    ...(input.title != null ? { title: input.title } : {}),
+    request: input.request,
+    ...(input.tenantId != null ? { tenantId: input.tenantId } : {}),
+    ...(input.principal != null ? { principal: input.principal } : {}),
+  };
+  const confirmedTaskSpec = {
+    confirmedTaskSpecId: input.confirmedTaskSpecId ?? `ctspec:${seed}`,
+    taskDraftId: taskDraft.taskDraftId,
+    ...(input.tenantId != null ? { tenantId: input.tenantId } : {}),
+    ...(input.traceId != null ? { traceId: input.traceId } : {}),
+    ...(input.idempotencyKey != null ? { idempotencyKey: input.idempotencyKey } : {}),
+  };
+  const requestEnvelope = {
+    requestEnvelopeId: `request:${seed}`,
+    confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
+    ...(input.tenantId != null ? { tenantId: input.tenantId } : {}),
+    ...(input.traceId != null ? { traceId: input.traceId } : {}),
+    ...(input.idempotencyKey != null ? { idempotencyKey: input.idempotencyKey } : {}),
+  };
+  decision.confirmedTaskSpecId = confirmedTaskSpec.confirmedTaskSpecId;
+  decision.taskDraft = taskDraft;
+  decision.confirmedTaskSpec = confirmedTaskSpec;
+  decision.requestEnvelope = requestEnvelope;
+  if (isAmbiguousRequest(normalized, decision.classification)) {
+    decision.clarificationSession = {
+      clarificationSessionId: `clarification:${seed}`,
+      taskDraftId: taskDraft.taskDraftId,
+      questions: decision.classification.suggestedClarifications ?? ["Please clarify the intended workflow change."],
+    };
+  }
+  decision.routeDecision = decision;
+  return decision;
+}
+
+function stableIdSeed(input: IntakeRouteInput): string {
+  const raw = [
+    input.tenantId ?? "tenant",
+    input.traceId ?? "trace",
+    input.idempotencyKey ?? "idem",
+    input.title ?? "",
+    input.request,
+  ].join(":");
+  let hash = 0;
+  for (const char of raw) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return hash.toString(16);
+}
+
+function isAmbiguousRequest(normalized: string, classification: IntakeIntentClassification): boolean {
+  return classification.ambiguityDetected === true || /\b(maybe|perhaps|rough|unclear)\b/.test(normalized);
 }

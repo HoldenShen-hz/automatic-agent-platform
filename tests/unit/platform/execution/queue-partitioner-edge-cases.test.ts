@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { QueuePartitioner, type QueuePartition, type PartitionKey } from "../../../../src/platform/execution/queue/queue-partitioner.js";
-import type { QueueAdapter, QueueJobRecord, QueueJobStatus } from "../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { QueuePartitioner, type QueuePartition, type PartitionKey } from "../../../../src/platform/five-plane-execution/queue/queue-partitioner.js";
+import type { QueueAdapter, QueueJobRecord, QueueJobStatus } from "../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
 // =============================================================================
 // Mock QueueAdapter for testing partitioner logic

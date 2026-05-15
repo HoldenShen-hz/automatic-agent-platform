@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sanitizeToolOutput } from "../../../../src/platform/execution/tool-executor/tool-output-sanitizer.js";
+import { sanitizeToolOutput } from "../../../../src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.js";
 
 test("security: OpenAI API key is redacted in tool output", () => {
   const output = "Using OpenAI API key sk-1234567890abcdefghij for request";

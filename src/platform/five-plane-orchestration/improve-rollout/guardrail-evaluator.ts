@@ -51,8 +51,12 @@ export class GuardrailEvaluator {
     if ((strategyVersion.sourceLearningObjectIds ?? []).length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
-    if (normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off" && candidate.status !== "approved") {
-      reasonCodes.push("improvement.guardrail_requires_approval");
+    if (requiresApprovedCandidate(strategyVersion.releaseLevel) && !isApprovedForRollout(candidate.status)) {
+      reasonCodes.push(
+        strategyVersion.releaseLevel === "shadow"
+          ? "improvement.guardrail_shadow_requires_approval"
+          : "improvement.guardrail_requires_approval",
+      );
     }
     for (const guardrail of guardrails) {
       if (rolloutLevelRank(strategyVersion.releaseLevel) < rolloutLevelRank(guardrail.requiredLevel)) {
@@ -105,6 +109,14 @@ export class GuardrailEvaluator {
       guardrailResults,
     };
   }
+}
+
+function isApprovedForRollout(status: ImprovementCandidate["status"] | string): boolean {
+  return status === "approved" || status === "shadow_running";
+}
+
+function requiresApprovedCandidate(level: StrategyReleaseLevel | string): boolean {
+  return level === "shadow" || normalizeRolloutLevel(level) !== "L0_off";
 }
 
 function rolloutLevelRank(level: RolloutLevel | StrategyReleaseLevel): number {

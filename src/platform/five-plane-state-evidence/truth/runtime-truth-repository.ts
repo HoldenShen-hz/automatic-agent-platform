@@ -17,7 +17,8 @@ import {
   type RuntimeStateAggregateType,
   type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
-} from "../../execution/runtime-state-machine.js";
+} from "../../five-plane-execution/runtime-state-machine.js";
+import type { RuntimeStatus } from "../../five-plane-execution/runtime-state-machine-model.js";
 
 /** R11-12: Snapshot version for CAS operations */
 export interface SnapshotVersion {
@@ -284,8 +285,10 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       }
 
       // Apply event to reconstruct state - we extract the toStatus from the event payload
-      const payload = event.payload as { toStatus?: string; fromStatus?: string } | null;
-      if (!payload?.toStatus) {
+      const payload = event.payload as { toStatus?: unknown; fromStatus?: unknown } | null;
+      const fromStatus = toRuntimeStatus(payload?.fromStatus);
+      const toStatus = toRuntimeStatus(payload?.toStatus);
+      if (toStatus == null) {
         continue;
       }
 
@@ -296,8 +299,8 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         entityId: aggregateId,
         aggregateType: aggregateType,
         aggregate: currentAggregate,
-        fromStatus: payload.fromStatus as any,
-        toStatus: payload.toStatus as any,
+        fromStatus: fromStatus ?? statusOf(currentAggregate),
+        toStatus,
         principal: "system",
         traceId: event.traceId ?? newId("trace"),
         tenantId: event.tenantId,
@@ -427,6 +430,14 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     this.state.outbox.push(normalizedEvent);
     return normalizedEvent;
   }
+}
+
+function toRuntimeStatus(value: unknown): RuntimeStatus<RuntimeStateAggregate> | null {
+  return typeof value === "string" ? value as RuntimeStatus<RuntimeStateAggregate> : null;
+}
+
+function statusOf(aggregate: RuntimeStateAggregate): RuntimeStatus<RuntimeStateAggregate> {
+  return aggregate.status as RuntimeStatus<RuntimeStateAggregate>;
 }
 
 function createEmptyState(): RuntimeTruthRepositoryState {

@@ -7,10 +7,10 @@ const SYNC_BACKED_ASYNC_FACADES = [
   "src/scale-ecosystem/intelligence/perception-service-async.ts",
   "src/scale-ecosystem/tenant-platform/data-plane-flow-service-async.ts",
   "src/scale-ecosystem/tenant-platform/tenant-platform-service-async.ts",
-  "src/platform/execution/dispatcher/execution-dispatch-service-async.ts",
-  "src/platform/execution/dispatcher/execution-priority-preemption-service-async.ts",
-  "src/platform/execution/worker-pool/execution-worker-handshake-service-async.ts",
-  "src/platform/execution/worker-pool/execution-worker-writeback-service-async.ts",
+  "src/platform/five-plane-execution/dispatcher/execution-dispatch-service-async.ts",
+  "src/platform/five-plane-execution/dispatcher/execution-priority-preemption-service-async.ts",
+  "src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service-async.ts",
+  "src/platform/five-plane-execution/worker-pool/execution-worker-writeback-service-async.ts",
   "src/ops-maturity/drift-detection/evolution-mvp-service-async.ts",
 ] as const;
 

@@ -11,7 +11,7 @@ import {
   InMemoryQuotaRepository,
   InMemoryBillingRepository,
   type CreateTenantInput,
-} from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/tenant-repository.js";
+} from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/tenant-repository.js";
 
 test("InMemoryTenantRepository creates tenant", async () => {
   const repo = new InMemoryTenantRepository();

@@ -7,7 +7,7 @@ import {
   type PromptPartitionInput,
   type PromptPartitionResult,
   type PromptPartitionMessageLike,
-} from "../../../../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 test("partitionPromptForCache exports partitionPromptForCache function", () => {
   assert.equal(typeof partitionPromptForCache, "function");

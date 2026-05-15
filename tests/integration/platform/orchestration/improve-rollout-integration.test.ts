@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Improve Rollout Module
  *
@@ -10,13 +9,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
-import { PolicyRolloutService } from "../../../../src/platform/orchestration/improve-rollout/policy-rollout-service.js";
-import { AutoRollbackService, type RolloutMetrics } from "../../../../src/platform/orchestration/improve-rollout/auto-rollback-service.js";
-import { GuardrailEvaluator } from "../../../../src/platform/orchestration/improve-rollout/guardrail-evaluator.js";
-import { RolloutStateMachine } from "../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
-import type { ImprovementCandidate } from "../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { StrategyVersion } from "../../../../src/platform/orchestration/improve-rollout/strategy-versioning.js";
-import type { RolloutRecord } from "../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+import { PolicyRolloutService } from "../../../../src/platform/five-plane-orchestration/improve-rollout/policy-rollout-service.js";
+import { AutoRollbackService, type RolloutMetrics } from "../../../../src/platform/five-plane-orchestration/improve-rollout/auto-rollback-service.js";
+import { GuardrailEvaluator } from "../../../../src/platform/five-plane-orchestration/improve-rollout/guardrail-evaluator.js";
+import { RolloutStateMachine } from "../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { StrategyVersion } from "../../../../src/platform/five-plane-orchestration/improve-rollout/strategy-versioning.js";
+import type { RolloutRecord } from "../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 function makeCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {

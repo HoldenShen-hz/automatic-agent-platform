@@ -7,7 +7,7 @@ import {
   extractContinuationPoint,
   OutputContinuationService,
   getGlobalContinuationService,
-} from "../../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 test("parseFinishReason maps length variants to max_tokens_exceeded", () => {
   assert.equal(parseFinishReason("length"), "max_tokens_exceeded");

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decryptField, encryptField } from "../../../../../src/platform/control-plane/iam/field-encryption.js";
+import { decryptField, encryptField } from "../../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
 
 const RAW_KEY = Buffer.from("0123456789abcdef0123456789abcdef", "utf8");
 const PASSPHRASE = "field-encryption-passphrase-with-32bytes-minimum";

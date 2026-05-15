@@ -14,12 +14,12 @@ import {
   summarizeDoctorChecks,
   type DoctorCheckReport,
   type DoctorCheckStatus,
-} from "../../../../../src/platform/control-plane/incident-control/doctor-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/doctor-service.js";
 import type { HealthService } from "../../../../../src/platform/shared/observability/health-service.js";
-import type { StartupConsistencyChecker } from "../../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import type { SqliteReliabilityService } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
-import type { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { StartupConsistencyChecker } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import type { SqliteReliabilityService } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import type { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createMockHealthService(overrides?: Partial<ReturnType<HealthService["getReport"]>>): HealthService {
   return {

@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { OapeflirLoopService } from "../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import { RuntimeExecuteBridge } from "../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
+import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { RuntimeExecuteBridge } from "../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("RuntimeExecuteBridge executes a 2-step OAPEFLIR plan via runMultiStepOrchestration oapeflir://plan bypass", async () => {

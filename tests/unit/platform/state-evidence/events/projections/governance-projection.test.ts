@@ -9,7 +9,7 @@ import {
   type GovernanceActionType,
   type GovernanceStatus,
   type ProjectionInputEvent,
-} from "../../../../../../src/platform/state-evidence/events/projections/governance-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/governance-projection.js";
 
 /**
  * Helper to create a projection input event

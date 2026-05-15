@@ -1,15 +1,14 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ArchivedKnowledgeRecord } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
-import { KnowledgeQueryService, QueryLevel } from "../../../../../src/platform/state-evidence/knowledge/knowledge-query-service.js";
-import { SemanticKnowledgeGraph } from "../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import { LocalHashSemanticVectorStore } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
-import type { RetrievalHit } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
-import type { KnowledgeRetrievalService } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import type { SemanticKnowledgeGraph as SKGType } from "../../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
+import { ArchivedKnowledgeRecord } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import { KnowledgePlaneService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import { KnowledgeQueryService, QueryLevel } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
+import { SemanticKnowledgeGraph } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import { LocalHashSemanticVectorStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import type { RetrievalHit } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
+import type { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import type { SemanticKnowledgeGraph as SKGType } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
 
 // =============================================================================
 // Supplemental tests for knowledge-plane-service.ts

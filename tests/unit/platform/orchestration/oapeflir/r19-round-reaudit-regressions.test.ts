@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AssessmentService } from "../../../../../src/platform/orchestration/oapeflir/assessment-service.js";
-import { OapeflirLoopService } from "../../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import { StageTransitionFSM } from "../../../../../src/platform/orchestration/oapeflir/stage-transition-fsm.js";
+import { AssessmentService } from "../../../../../src/platform/five-plane-orchestration/oapeflir/assessment-service.js";
+import { OapeflirLoopService } from "../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { StageTransitionFSM } from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 import type {
   ExecuteBridge,
   ExecutionContext,
   ExecutionResult,
   StepResult,
-} from "../../../../../src/platform/orchestration/oapeflir/execute-bridge.js";
-import type { Plan, PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
-import type { DualChannelStepOutput } from "../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/execute-bridge.js";
+import type { Plan, PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
+import type { DualChannelStepOutput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
 
 class ReplanAwareBridge implements ExecuteBridge {
   public readonly contexts: ExecutionContext[] = [];

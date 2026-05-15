@@ -13,8 +13,8 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
-import { ensureAgentProfileHome, resolveAgentProfileHome } from "../../platform/control-plane/config-center/profile-home.js";
-import { loadProfileHomeCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
+import { ensureAgentProfileHome, resolveAgentProfileHome } from "../../platform/five-plane-control-plane/config-center/profile-home.js";
+import { loadProfileHomeCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 
 // Determine whether to create the profile home directories or just resolve the layout
 const create = loadProfileHomeCliEnv().create;

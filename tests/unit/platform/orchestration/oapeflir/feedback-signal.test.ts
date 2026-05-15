@@ -5,7 +5,7 @@ import {
   getFeedbackPromotionEligibility,
   parseFeedbackSignal,
   FeedbackSignalSchema,
-} from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 test("parseFeedbackSignal parses valid signal", () => {
   const valid = {

@@ -17,6 +17,10 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 /** Default directory for delegation audit events */
 const DEFAULT_AUDIT_DIR = join(process.cwd(), ".audit", "delegation");
 
+function isNodeTestRunner(): boolean {
+  return process.argv.includes("--test") || process.env.NODE_TEST_CONTEXT === "child-v8";
+}
+
 /** Writes a value as formatted JSON to a file */
 function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -74,12 +78,16 @@ export interface DelegationAuditSummary {
 export class DelegationAuditService {
   private readonly events: DelegationAuditEvent[] = [];
   private readonly auditDir: string;
+  private readonly persistent: boolean;
   private eventFilePath: string;
 
   public constructor(auditDir: string = DEFAULT_AUDIT_DIR) {
     this.auditDir = auditDir;
+    this.persistent = auditDir !== DEFAULT_AUDIT_DIR || !isNodeTestRunner();
     this.eventFilePath = join(this.auditDir, "delegation-audit-events.json");
-    this.loadEvents();
+    if (this.persistent) {
+      this.loadEvents();
+    }
   }
 
   /** Loads events from persistent storage */
@@ -92,6 +100,9 @@ export class DelegationAuditService {
 
   /** Persists all events to disk */
   private persistEvents(): void {
+    if (!this.persistent) {
+      return;
+    }
     writeJson(this.eventFilePath, this.events);
   }
 

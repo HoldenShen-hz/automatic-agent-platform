@@ -9,7 +9,7 @@ import {
   DEFAULT_DECAY_CONFIGS,
   type DecayConfig,
   type SixLayerMemoryType,
-} from "../../../../../src/platform/state-evidence/memory/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/index.js";
 
 function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   const now = new Date().toISOString() as any;

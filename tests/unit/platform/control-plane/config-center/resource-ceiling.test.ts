@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   ResourceCeilingGuard,
   createDefaultResourceCeilingGuard,
-} from "../../../../../src/platform/control-plane/config-center/resource-ceiling.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/resource-ceiling.js";
 
 test("ResourceCeilingGuard interface exists", () => {
   // Verify the interface type is available

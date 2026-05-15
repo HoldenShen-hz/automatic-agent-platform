@@ -8,7 +8,7 @@ import {
   createEmbeddingProviderFromEnv,
   EMBEDDING_PROVIDER_TYPES,
   type EmbeddingProvider,
-} from "../../../../../src/platform/state-evidence/knowledge/indexing/embedding-provider.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
 
 test("HashEmbeddingProvider produces 32-dim normalized vectors", async () => {
   const provider = new HashEmbeddingProvider();

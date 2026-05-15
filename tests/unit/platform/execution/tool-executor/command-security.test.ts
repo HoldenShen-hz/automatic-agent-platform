@@ -13,7 +13,7 @@ import {
   assessCommand,
   CommandSafetyClassifier,
   createDefaultCommandPolicies,
-} from "../../../../../src/platform/execution/tool-executor/command-security.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 
 const CLASSIFIER = new CommandSafetyClassifier();
 

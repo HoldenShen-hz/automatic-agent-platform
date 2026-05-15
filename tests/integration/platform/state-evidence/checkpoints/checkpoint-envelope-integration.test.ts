@@ -14,8 +14,8 @@ import {
   CheckpointSizeExceededError,
   CheckpointEnvelopeInvalidError,
   CheckpointEnvelope,
-} from "../../../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js";
-import { createWorkflowStepCheckpoint } from "../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.js";
+import { createWorkflowStepCheckpoint } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 
 test("createCheckpointEnvelope creates valid envelope with gzip compression", async () => {
   const data = { message: "test checkpoint data", values: [1, 2, 3] };

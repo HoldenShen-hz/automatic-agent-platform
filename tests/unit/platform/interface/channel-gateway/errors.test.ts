@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/interface/channel-gateway/errors.js";
+import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/five-plane-interface/channel-gateway/errors.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
 test("GatewayRateLimitError creates error with correct properties", () => {

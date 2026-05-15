@@ -15,7 +15,7 @@ import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseApprovalDecisionPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, readLimit, readStatusFilter } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
-import type { ApprovalService } from "../../../control-plane/approval-center/approval-service.js";
+import type { ApprovalService } from "../../../five-plane-control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiPrincipal } from "../api-auth-service.js";

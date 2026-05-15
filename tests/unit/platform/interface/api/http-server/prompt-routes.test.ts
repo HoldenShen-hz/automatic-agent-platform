@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { HierarchicalPromptRegistryService } from "../../../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
-import { createPromptRoutes } from "../../../../../../src/platform/interface/api/http-server/prompt-routes.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createPromptRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/prompt-routes.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
   return {

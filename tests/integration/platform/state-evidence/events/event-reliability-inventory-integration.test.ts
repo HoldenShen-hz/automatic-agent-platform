@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
-import { EventOpsService } from "../../../../../src/platform/state-evidence/events/event-ops-service.js";
-import { EventReliabilityInventoryService } from "../../../../../src/platform/state-evidence/events/event-reliability-inventory-service.js";
+import { DeadLetterQueueService } from "../../../../../src/platform/five-plane-state-evidence/dlq/index.js";
+import { EventOpsService } from "../../../../../src/platform/five-plane-state-evidence/events/event-ops-service.js";
+import { EventReliabilityInventoryService } from "../../../../../src/platform/five-plane-state-evidence/events/event-reliability-inventory-service.js";
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("integration: event reliability inventory stays aligned with event ops default consumers and DLQ state", async () => {

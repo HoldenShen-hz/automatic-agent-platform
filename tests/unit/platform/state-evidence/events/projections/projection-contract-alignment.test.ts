@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ProjectionInputEvent } from "../../../../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
-import { artifactCatalogProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/artifact-catalog-projection.js";
-import { governanceProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/governance-projection.js";
-import { riskActionProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/risk-action-projection.js";
-import { workerStatusProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/worker-status-projection.js";
-import { toolUsageProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/tool-usage-projection.js";
-import { workflowTimelineProjectionHandler } from "../../../../../../src/platform/state-evidence/events/projections/workflow-timeline-projection.js";
+import type { ProjectionInputEvent } from "../../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
+import { artifactCatalogProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/artifact-catalog-projection.js";
+import { governanceProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/governance-projection.js";
+import { riskActionProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/risk-action-projection.js";
+import { workerStatusProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/worker-status-projection.js";
+import { toolUsageProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/tool-usage-projection.js";
+import { workflowTimelineProjectionHandler } from "../../../../../../src/platform/five-plane-state-evidence/events/projections/workflow-timeline-projection.js";
 
 type ProjectionHandlerFn = (state: Record<string, unknown> | null, event: ProjectionInputEvent) => Record<string, unknown>;
 

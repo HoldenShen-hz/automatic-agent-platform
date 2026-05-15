@@ -18,7 +18,7 @@ import type {
   RecoveryCheckpoint,
   WorkProduct,
   WorkflowSleepLease,
-} from "../../../../../src/platform/orchestration/harness/protocol/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/protocol/index.js";
 
 test("protocol exports HarnessDecisionAction type", () => {
   const action: HarnessDecisionAction = "accept";

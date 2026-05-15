@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BuiltInMemoryProvider } from "../../../../src/platform/state-evidence/memory/builtin-memory-provider.js";
-import { MemoryService } from "../../../../src/platform/state-evidence/memory/memory-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { BuiltInMemoryProvider } from "../../../../src/platform/five-plane-state-evidence/memory/builtin-memory-provider.js";
+import { MemoryService } from "../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("memory provider seam does not widen scope or trust boundaries during prefetch", async () => {

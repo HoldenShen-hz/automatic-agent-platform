@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataResidencyService } from "../../../../../src/platform/control-plane/compliance/data-residency-service.js";
-import type { DataPlacement, ResidencyViolation } from "../../../../../src/platform/control-plane/compliance/data-residency-service.js";
-import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
+import { DataResidencyService } from "../../../../../src/platform/five-plane-control-plane/compliance/data-residency-service.js";
+import type { DataPlacement, ResidencyViolation } from "../../../../../src/platform/five-plane-control-plane/compliance/data-residency-service.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
 
 // Mock data
 const dataPlacements = new Map<string, DataPlacement>();

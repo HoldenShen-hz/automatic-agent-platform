@@ -11,7 +11,7 @@ import {
   PlanGraphAnalyzer,
   PlanGraphScheduler,
   PlanGraphHarnessRuntime,
-} from "../../../../../../src/platform/orchestration/harness/runtime/plan-graph-harness-runtime.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/plan-graph-harness-runtime.js";
 
 const budgetIntent: BudgetIntent = {
   amount: 10,

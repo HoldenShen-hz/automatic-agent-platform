@@ -7,10 +7,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RecoveryController, type HarnessFailureType, type RecoveryScope } from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { HarnessRuntimeService, type HarnessRun, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../src/platform/orchestration/harness/index.js";
-import { HarnessLoopController } from "../../../../../src/platform/orchestration/harness/loop/index.js";
+import { RecoveryController, type HarnessFailureType, type RecoveryScope } from "../../../../../src/platform/five-plane-orchestration/harness/recovery-controller.js";
+import { DurableHarnessService } from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type HarnessRun, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
@@ -444,7 +444,7 @@ test("RecoveryController.handleFailure includes guard violation reason code", ()
 // handleFailure Platform Panic Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecoveryController.handleFailure with platform_panic resumes run", () => {
+test("RecoveryController.handleFailure with platform_panic waits for resume", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
@@ -452,8 +452,8 @@ test("RecoveryController.handleFailure with platform_panic resumes run", () => {
   const run = createRun();
   const result = controller.handleFailure(run, "platform_panic");
 
-  // platform_panic should result in running state after recovery + resume
-  assert.equal(result.status, "running");
+  // Platform panic must not resume implicitly; it waits for an explicit recovery plan.
+  assert.equal(result.status, "paused");
 });
 
 test("RecoveryController.handleFailure with platform_panic uses graph scope (replan semantics)", () => {
@@ -464,9 +464,9 @@ test("RecoveryController.handleFailure with platform_panic uses graph scope (rep
   const run = createRun();
   const result = controller.handleFailure(run, "platform_panic");
 
-  // Graph scope means full replan - run should be resumed
-  assert.equal(result.status, "running");
-  assert.equal(result.pauseReason, null);
+  // Without an active retry lease, platform panic stays in recovery pause until an explicit ResumePlan.
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

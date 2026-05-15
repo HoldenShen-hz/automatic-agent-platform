@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { detectLlmTruncation } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/truncation-detector.js";
-import { detectSchemaValidationLoop } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/schema-loop-detector.js";
-import { detectToolPermissionDenial } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/permission-detector.js";
-import { detectModelHallucination } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/hallucination-detector.js";
+import { detectLlmTruncation } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/truncation-detector.js";
+import { detectSchemaValidationLoop } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/schema-loop-detector.js";
+import { detectToolPermissionDenial } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/permission-detector.js";
+import { detectModelHallucination } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/hallucination-detector.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/index.js";
-import type { FailurePattern } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/index.js";
+import type { FailurePattern } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/index.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {

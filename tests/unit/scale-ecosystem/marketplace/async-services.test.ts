@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { BillingServiceAsync } from "../../../../src/scale-ecosystem/marketplace/billing-service-async.js";
 import { DataPlaneFlowServiceAsync } from "../../../../src/scale-ecosystem/marketplace/data-plane-flow-service-async.js";
 import { PerceptionServiceAsync } from "../../../../src/scale-ecosystem/marketplace/perception-service-async.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("BillingServiceAsync wraps sync BillingService and provides async createAccount", async () => {

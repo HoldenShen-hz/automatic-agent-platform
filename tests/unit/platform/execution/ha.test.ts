@@ -3,10 +3,10 @@ import test from "node:test";
 
 import {
   WAL_CHECKPOINT_DDL,
-} from "../../../../src/platform/execution/ha/wal-checkpoint-service.js";
+} from "../../../../src/platform/five-plane-execution/ha/wal-checkpoint-service.js";
 import {
   CROSS_REGION_DDL,
-} from "../../../../src/platform/execution/ha/cross-region-deployment-service.js";
+} from "../../../../src/platform/five-plane-execution/ha/cross-region-deployment-service.js";
 import {
   HA_LEVEL_CONFIGS,
   HA_COORDINATOR_DDL,
@@ -23,7 +23,7 @@ import {
   type LeadershipQueryResult,
   type LeaderActionAuthorization,
   type LeaderActionAuthority,
-} from "../../../../src/platform/execution/ha/types.js";
+} from "../../../../src/platform/five-plane-execution/ha/types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests: WAL_CHECKPOINT_DDL

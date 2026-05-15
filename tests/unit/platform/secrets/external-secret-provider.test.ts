@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../src/platform/control-plane/iam/external-secret-provider.js";
+import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../src/platform/five-plane-control-plane/iam/external-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

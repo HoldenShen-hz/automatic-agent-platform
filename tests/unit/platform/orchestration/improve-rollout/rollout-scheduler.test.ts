@@ -5,9 +5,9 @@ import {
   RolloutScheduler,
   type ScheduledRollout,
   type RolloutMetrics,
-} from "../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-scheduler.js";
-import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { RolloutRecord } from "../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+} from "../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-scheduler.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { RolloutRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 
 function makeCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {

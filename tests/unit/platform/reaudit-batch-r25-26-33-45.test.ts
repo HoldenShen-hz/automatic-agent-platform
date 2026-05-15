@@ -6,19 +6,19 @@ import test from "node:test";
 import {
   normalizeConstraintPack,
   type ConstraintPack,
-} from "../../../src/platform/orchestration/harness/index.js";
+} from "../../../src/platform/five-plane-orchestration/harness/index.js";
 import {
   PHASE_1_LEARNING_TYPES,
   normalizeLearningType,
-} from "../../../src/platform/orchestration/learn/learning-object-model.js";
+} from "../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 import {
   AgentDefinitionSchema,
 } from "../../../src/ops-maturity/agent-lifecycle/agent-registry/index.js";
 import {
   HANDOFF_LEVEL_TOKEN_BUDGET,
   createAgentHandoff,
-} from "../../../src/platform/orchestration/oapeflir/handoff-model.js";
-import { serializeHandoff } from "../../../src/platform/orchestration/oapeflir/handoff-serializer.js";
+} from "../../../src/platform/five-plane-orchestration/oapeflir/handoff-model.js";
+import { serializeHandoff } from "../../../src/platform/five-plane-orchestration/oapeflir/handoff-serializer.js";
 
 function readRepoFile(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), "utf8");

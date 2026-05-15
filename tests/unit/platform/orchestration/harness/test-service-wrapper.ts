@@ -8,7 +8,7 @@
  * Used to fix R10-39: Harness loop tests never call real planner/generator.
  */
 
-import type { ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import type { ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 /**
  * Captured planner input for test verification

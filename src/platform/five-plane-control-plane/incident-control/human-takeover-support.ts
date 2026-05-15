@@ -2,7 +2,7 @@ import type { TaskSnapshot } from "../../contracts/types/domain.js";
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
 
 import { WorkflowStateError, StorageError, ValidationError } from "../../contracts/errors.js";
-import { getWorkflowDefinition } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
+import { getWorkflowDefinition } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

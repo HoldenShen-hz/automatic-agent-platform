@@ -7,7 +7,7 @@ import {
   planSqliteToPgMigration,
   validateTableName,
 } from "../../../../src/sdk/cli/migrate-sqlite-to-pg.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("parseMigrateSqliteToPgArgs parses required flags", () => {

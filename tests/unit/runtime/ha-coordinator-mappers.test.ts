@@ -6,7 +6,7 @@ import {
   mapLease,
   mapEpoch,
   mapFailoverDecision,
-} from "../../../src/platform/execution/ha/mappers.js";
+} from "../../../src/platform/five-plane-execution/ha/mappers.js";
 
 // mapNode tests
 

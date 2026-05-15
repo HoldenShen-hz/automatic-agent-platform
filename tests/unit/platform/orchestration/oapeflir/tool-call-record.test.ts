@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ToolCallRecord } from "../../../../../src/platform/orchestration/oapeflir/tool-call-record.js";
+import type { ToolCallRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/tool-call-record.js";
 
 function createToolCallRecord(overrides: Partial<ToolCallRecord> = {}): ToolCallRecord {
   return {

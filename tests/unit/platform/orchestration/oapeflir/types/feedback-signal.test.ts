@@ -8,7 +8,7 @@ import {
   FeedbackCategorySchema,
   FeedbackSeveritySchema,
   getFeedbackPromotionEligibility,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
 test("FeedbackSourceSchema accepts valid sources", () => {
   const sources = ["execution", "user", "hitl", "validation", "system"] as const;

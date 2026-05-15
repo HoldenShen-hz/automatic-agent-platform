@@ -1,6 +1,6 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import { normalizeSandboxMode, type SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxModeLike } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 
 export interface PackCatalogEntry {
   readonly packId: string;

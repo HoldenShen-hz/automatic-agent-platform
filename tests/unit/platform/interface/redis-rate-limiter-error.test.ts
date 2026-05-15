@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisRateLimiter } from "../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { RedisRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 import type { StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
 

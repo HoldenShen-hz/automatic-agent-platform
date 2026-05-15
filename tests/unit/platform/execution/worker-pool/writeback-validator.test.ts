@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAgentExecutionRecord, persistRemoteLogs } from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-support.js";
-import { resolveRemoteAuthorityBlockReason } from "../../../../../src/platform/execution/worker-pool/remote-session-guard.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { buildAgentExecutionRecord, persistRemoteLogs } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-support.js";
+import { resolveRemoteAuthorityBlockReason } from "../../../../../src/platform/five-plane-execution/worker-pool/remote-session-guard.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AgentExecutionRecord, ExecutionRecord, TaskRecord, WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

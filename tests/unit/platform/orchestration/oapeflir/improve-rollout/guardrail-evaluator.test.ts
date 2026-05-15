@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { GuardrailEvaluator } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/guardrail-evaluator.js";
-import { createStrategyVersion } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/strategy-versioning.js";
+import { GuardrailEvaluator } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/guardrail-evaluator.js";
+import { createStrategyVersion } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/strategy-versioning.js";
 
 test("GuardrailEvaluator allows candidate with all evidence", () => {
   const evaluator = new GuardrailEvaluator();

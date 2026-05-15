@@ -43,8 +43,8 @@ import { VaultHttpSecretProvider } from "./vault-http-secret-provider.js";
 import { AwsKmsHttpSecretProvider } from "./aws-kms-http-secret-provider.js";
 import { GcpSecretManagerHttpSecretProvider } from "./gcp-secret-manager-http-secret-provider.js";
 import { PolicyDeniedError, ProviderError, StorageError, ValidationError } from "../../contracts/errors.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   SecretCategory,
   SecretProviderKind,

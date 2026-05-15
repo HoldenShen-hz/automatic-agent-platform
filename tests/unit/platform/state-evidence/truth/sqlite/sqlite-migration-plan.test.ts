@@ -6,7 +6,7 @@ import {
   SQLITE_MIGRATIONS,
   SQLITE_MIGRATION_LEDGER_SQL,
   type SqliteMigrationDefinition,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 
 test("SQLITE_MIGRATIONS is a non-empty readonly array", () => {
   assert.ok(Array.isArray(SQLITE_MIGRATIONS));

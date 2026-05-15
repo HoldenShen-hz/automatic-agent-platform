@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ConfigLifecycleManager } from "../../../../../src/platform/control-plane/config-center/config-lifecycle-types.js";
+import { ConfigLifecycleManager } from "../../../../../src/platform/five-plane-control-plane/config-center/config-lifecycle-types.js";
 
 test("ConfigLifecycleManager.createAdmissionLocked creates locked record", () => {
   const manager = new ConfigLifecycleManager();

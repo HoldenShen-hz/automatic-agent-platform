@@ -4,13 +4,13 @@ import test from "node:test";
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
 import { FieldEncryptionService } from "../../../src/platform/compliance/encryption/index.js";
 import { DataLineageService } from "../../../src/platform/compliance/lineage/index.js";
-import { GcpSecretManagerHttpSecretProvider } from "../../../src/platform/control-plane/iam/gcp-secret-manager-http-secret-provider.js";
-import { AwsKmsHttpSecretProvider } from "../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
-import { createWebFetchTool } from "../../../src/platform/execution/tool-executor/web-fetch.js";
-import { extractSearchResults } from "../../../src/platform/execution/tool-executor/web-search.js";
-import { ShadowSnapshotService } from "../../../src/platform/execution/tool-executor/shadow-snapshot-service.js";
-import { SkillGovernanceService } from "../../../src/platform/execution/tool-executor/skill-governance-service.js";
-import { EditSnapshotService } from "../../../src/platform/execution/tool-executor/edit-snapshot-service.js";
+import { GcpSecretManagerHttpSecretProvider } from "../../../src/platform/five-plane-control-plane/iam/gcp-secret-manager-http-secret-provider.js";
+import { AwsKmsHttpSecretProvider } from "../../../src/platform/five-plane-control-plane/iam/aws-kms-http-secret-provider.js";
+import { createWebFetchTool } from "../../../src/platform/five-plane-execution/tool-executor/web-fetch.js";
+import { extractSearchResults } from "../../../src/platform/five-plane-execution/tool-executor/web-search.js";
+import { ShadowSnapshotService } from "../../../src/platform/five-plane-execution/tool-executor/shadow-snapshot-service.js";
+import { SkillGovernanceService } from "../../../src/platform/five-plane-execution/tool-executor/skill-governance-service.js";
+import { EditSnapshotService } from "../../../src/platform/five-plane-execution/tool-executor/edit-snapshot-service.js";
 
 function createMockStore(capture?: { sql?: string; params?: unknown[] }) {
   const connection = {

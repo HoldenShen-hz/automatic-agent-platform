@@ -13,9 +13,9 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { RuntimeRecoveryService } from "../../execution/recovery/runtime-recovery-service-root.js";
-import { toWorkerSchedulingStatus } from "../../execution/worker-pool/worker-scheduling-status.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { toWorkerSchedulingStatus } from "../../five-plane-execution/worker-pool/worker-scheduling-status.js";
 import { buildTaskResultEnvelope } from "../../contracts/result-envelope/result-envelope.js";
 import {
   buildLeaseHandoverSummary,

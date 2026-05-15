@@ -399,7 +399,7 @@ export class ProjectionRebuildService {
     state: Record<string, unknown>,
     sourceEventCount: number,
   ): ProjectionSnapshot {
-    const normalizedState = sortRecord(state);
+    const normalizedState = sortRecord(state) as Record<string, unknown>;
     const builtAt = new Date().toISOString();
     const stateHash = createHash("sha256").update(JSON.stringify(normalizedState)).digest("hex");
     return {
@@ -664,7 +664,9 @@ export class ProjectionRebuildService {
   }
 }
 
-function sortRecord(value: unknown): any {
+type SortableJson = null | boolean | number | string | SortableJson[] | { readonly [key: string]: SortableJson };
+
+function sortRecord(value: unknown): SortableJson {
   if (Array.isArray(value)) {
     return value.map((item) => sortRecord(item));
   }
@@ -675,5 +677,5 @@ function sortRecord(value: unknown): any {
         .map(([key, child]) => [key, sortRecord(child)]),
     );
   }
-  return value;
+  return value as SortableJson;
 }

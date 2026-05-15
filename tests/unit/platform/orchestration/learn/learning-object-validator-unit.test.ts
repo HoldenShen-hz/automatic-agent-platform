@@ -5,8 +5,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LearningObjectValidator } from "../../../../../src/platform/orchestration/learn/learning-object-validator.js";
-import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import { LearningObjectValidator } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
+import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {
@@ -52,7 +52,7 @@ test("LearningObjectValidator.validate returns valid=false for object without ev
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
   assert.equal(result.learningObject.validatedBy, "none");
-  assert.equal(result.learningObject.promotionStatus, "draft");
+  assert.equal(result.learningObject.promotionStatus, "quarantined");
 });
 
 test("LearningObjectValidator.validate returns valid=false for failure_pattern with confidence below 0.5", () => {

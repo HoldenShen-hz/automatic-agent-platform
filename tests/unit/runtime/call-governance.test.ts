@@ -11,7 +11,7 @@ import {
   createRetryPolicy,
   createBreakerPolicy,
   createLimiterPolicy,
-} from "../../../src/platform/execution/execution-engine/call-governance.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/call-governance.js";
 
 test("CallRateLimiter enforces per-key windows independently", () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });

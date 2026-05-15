@@ -8,7 +8,7 @@ import {
   type WorkflowTimelineState,
   type WorkflowTimelineStatus,
   type ProjectionInputEvent,
-} from "../../../../../../src/platform/state-evidence/events/projections/workflow-timeline-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/workflow-timeline-projection.js";
 
 /**
  * Helper to create a projection input event

@@ -10,19 +10,19 @@ import type {
   OidcOAuthConfig,
   ApiKeyRecord,
   FetchLike,
-} from "../../../../../src/platform/interface/api/oidc-oauth/types.js";
+} from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/types.js";
 
 import {
   decodeJwtJsonSegment,
   parseJwtHeader,
   parseFederatedTokenClaims,
-} from "../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
+} from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/jwt-utils.js";
 
 import {
   rsaAlgToNode,
   ecAlgToNode,
   hmacAlgToNode,
-} from "../../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
+} from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/crypto-utils.js";
 
 test("OidcProvider type accepts valid configuration", () => {
   const provider: OidcProvider = {

@@ -1,12 +1,12 @@
 /**
  * Unit tests for ReleasePolicy types
  *
- * @see src/platform/orchestration/improve-rollout/release-policy.ts
+ * @see src/platform/five-plane-orchestration/improve-rollout/release-policy.ts
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult } from "../../../../../src/platform/orchestration/improve-rollout/release-policy.js";
+import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/release-policy.js";
 
 function createMockReleasePolicy(overrides: Partial<ReleasePolicy> = {}): ReleasePolicy {
   return {

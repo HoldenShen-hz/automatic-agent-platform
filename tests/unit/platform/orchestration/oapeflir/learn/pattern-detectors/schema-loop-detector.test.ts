@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { detectSchemaValidationLoop } from "../../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/schema-loop-detector.js";
+import { detectSchemaValidationLoop } from "../../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/schema-loop-detector.js";
 import { parseLearningSignal } from "../../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import type { LearningSignal } from "../../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 

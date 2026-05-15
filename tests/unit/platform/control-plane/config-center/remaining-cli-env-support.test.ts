@@ -38,7 +38,7 @@ import {
   MEMORY_ACTIONS,
   MODEL_ROUTE_CLASSES,
   MODEL_ROUTE_RISK_LEVELS,
-} from "../../../../../src/platform/control-plane/config-center/remaining-cli-env-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-support.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 const mockEnv: NodeJS.ProcessEnv = {};

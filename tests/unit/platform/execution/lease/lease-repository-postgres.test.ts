@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PostgresLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository-postgres.js";
+import { PostgresLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository-postgres.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Mock async database

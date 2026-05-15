@@ -7,8 +7,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DistributedRateLimiter } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
-import type { RateLimitResult } from "../../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+import type { RateLimitResult } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 
 // Mock RedisRateLimiter for testing Redis path
 class MockRedisRateLimiter {

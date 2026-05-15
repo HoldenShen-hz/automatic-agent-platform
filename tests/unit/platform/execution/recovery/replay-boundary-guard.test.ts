@@ -6,7 +6,7 @@ import {
   type ReplayMode,
   type ReplayOperation,
   type ReplayBoundaryDecision,
-} from "../../../../../src/platform/execution/recovery/replay-boundary-guard.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/replay-boundary-guard.js";
 
 test("ReplayBoundaryGuard is instantiable", () => {
   const guard = new ReplayBoundaryGuard();

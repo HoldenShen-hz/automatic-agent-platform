@@ -3,8 +3,8 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { SecretManagementService } from "../../../../src/platform/five-plane-control-plane/iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 import { EnvSecretProvider } from "../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 

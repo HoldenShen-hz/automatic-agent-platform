@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { provideContext, getContext, getContextOrNull, getTenantId, getWorkspaceId } from "../../../../../src/platform/execution/execution-engine/runtime-context.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { provideContext, getContext, getContextOrNull, getTenantId, getWorkspaceId } from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 

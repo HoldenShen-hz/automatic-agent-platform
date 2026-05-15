@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   parseDbQueueDisconnectRepairTemplate,
-} from "../../../../../src/platform/execution/recovery/execution-db-queue-disconnect-repair-service.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/execution-db-queue-disconnect-repair-service.js";
 
 test("parseDbQueueDisconnectRepairTemplate returns empty template for null input", () => {
   const result = parseDbQueueDisconnectRepairTemplate(null);

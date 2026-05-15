@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApiResourceCatalogService } from "../../../../../src/platform/interface/api/api-resource-catalog-service.js";
+import { ApiResourceCatalogService } from "../../../../../src/platform/five-plane-interface/api/api-resource-catalog-service.js";
 
 test("ApiResourceCatalogService is instantiable", () => {
   const service = new ApiResourceCatalogService();

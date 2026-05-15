@@ -4,10 +4,10 @@ import { DatabaseSync } from "node:sqlite";
 import {
   DurableHarnessService,
   SqliteDurableHarnessStore,
-} from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { HarnessSleepScheduler } from "../../../../../src/platform/orchestration/harness/durable/sleep-scheduler.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/durable/durable-harness-service.js";
+import { HarnessSleepScheduler } from "../../../../../src/platform/five-plane-orchestration/harness/durable/sleep-scheduler.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
-import type { HarnessRun, ConstraintPack, HarnessRunStatus } from "../../../../../src/platform/orchestration/harness/index.js";
+import type { HarnessRun, ConstraintPack, HarnessRunStatus } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

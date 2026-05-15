@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { TaskSituationReportService } from "../../src/platform/shared/observability/task-situation-report-service.js";
-import type { TaskSituation } from "../../src/platform/orchestration/oapeflir/types/task-situation.js";
+import type { TaskSituation } from "../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 import { assertGolden } from "../helpers/golden.js";
 
 test("golden: task situation report renders minimal situation", () => {

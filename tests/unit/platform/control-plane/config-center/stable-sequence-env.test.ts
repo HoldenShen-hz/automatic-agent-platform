@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadStableSequenceCliEnv } from "../../../../../src/platform/control-plane/config-center/stable-cli-env.js";
+import { loadStableSequenceCliEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 test("stable sequence env loader parses profiles and timing options", () => {
   const config = loadStableSequenceCliEnv({

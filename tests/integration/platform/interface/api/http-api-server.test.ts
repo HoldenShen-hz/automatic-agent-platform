@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { InjectResponse } from "../../../../../src/platform/interface/api/http-api-server.js";
+import type { InjectResponse } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 

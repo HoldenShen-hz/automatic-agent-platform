@@ -1,7 +1,7 @@
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { StreamEventFrame } from "../../interface/channel-gateway/stream-bridge.js";
-import type { IntakeRouter } from "../../orchestration/routing/intake-router.js";
-import type { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { StreamEventFrame } from "../../five-plane-interface/channel-gateway/stream-bridge.js";
+import type { IntakeRouter } from "../../five-plane-orchestration/routing/intake-router.js";
+import type { WorkflowPlanner } from "../../five-plane-orchestration/routing/workflow-planner.js";
 import type { AdmissionBackpressureSnapshot, AdmissionPolicy } from "../dispatcher/admission-controller.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
 

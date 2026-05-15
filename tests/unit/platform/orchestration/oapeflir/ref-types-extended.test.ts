@@ -16,7 +16,7 @@ import {
   type EvidenceRef,
   type ArtifactRef,
   type MemoryRef,
-} from "../../../../../src/platform/orchestration/oapeflir/ref-types.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/ref-types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RefId Schema Tests

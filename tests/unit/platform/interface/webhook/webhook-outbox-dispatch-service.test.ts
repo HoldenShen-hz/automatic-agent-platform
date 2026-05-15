@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
-import { WebhookOutboxDispatchService } from "../../../../../src/platform/interface/webhook/webhook-outbox-dispatch-service.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
+import { WebhookOutboxDispatchService } from "../../../../../src/platform/five-plane-interface/webhook/webhook-outbox-dispatch-service.js";
 import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 
 test("WebhookOutboxDispatchService writes accepted webhook envelopes into outbox and de-duplicates repeats", () => {
   const workspace = createTempWorkspace("aa-webhook-outbox-");

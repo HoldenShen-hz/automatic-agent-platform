@@ -6,7 +6,7 @@
  */
 
 import { createHash } from "node:crypto";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
 

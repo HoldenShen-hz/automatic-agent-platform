@@ -17,9 +17,9 @@ import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SqliteQueueAdapter } from "../../../src/platform/execution/queue/sqlite-queue-adapter.js";
-import { QUEUE_JOBS_DDL } from "../../../src/platform/execution/queue/queue-adapter-types.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteQueueAdapter } from "../../../src/platform/five-plane-execution/queue/sqlite-queue-adapter.js";
+import { QUEUE_JOBS_DDL } from "../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 import { newId } from "../../../src/platform/contracts/types/ids.js";
 
 function createTempDb(): SqliteDatabase {

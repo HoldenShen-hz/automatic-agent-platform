@@ -18,7 +18,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { runMultiStepOrchestration } from "../../platform/execution/execution-engine/multi-step-orchestration.js";
+import { runMultiStepOrchestration } from "../../platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
 /**
  * Resolves the path to the SQLite database file for the multi-step demo.

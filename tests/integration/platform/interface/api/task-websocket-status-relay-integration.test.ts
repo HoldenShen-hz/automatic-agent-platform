@@ -9,9 +9,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TaskWebSocketStatusRelay } from "../../../../../src/platform/interface/api/task-websocket-status-relay.js";
+import { TaskWebSocketStatusRelay } from "../../../../../src/platform/five-plane-interface/api/task-websocket-status-relay.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { TaskWebSocketEvent } from "../../../../../src/platform/interface/channel-gateway/websocket-bridge.js";
+import type { TaskWebSocketEvent } from "../../../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
 
 function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {

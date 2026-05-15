@@ -9,7 +9,7 @@ import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
   createDefaultStartupConsistencyCheckerOptions,
-} from "../../../../../src/platform/execution/startup/startup-preflight.js";
+} from "../../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests - deriveProviderApiKeyEnvName

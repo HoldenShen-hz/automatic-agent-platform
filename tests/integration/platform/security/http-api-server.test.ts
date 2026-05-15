@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ApiAuthService } from "../../../../src/platform/interface/api/api-auth-service.js";
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
-import { HttpApiServer } from "../../../../src/platform/interface/api/http-api-server.js";
-import { MissionControlService } from "../../../../src/platform/interface/api/mission-control-service.js";
-import { GatewayTargetDirectoryService } from "../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
+import { ApiAuthService } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { HttpApiServer } from "../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { MissionControlService } from "../../../../src/platform/five-plane-interface/api/mission-control-service.js";
+import { GatewayTargetDirectoryService } from "../../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 import { HealthService } from "../../../../src/platform/shared/observability/health-service.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import { MetricsService } from "../../../../src/platform/shared/observability/metrics-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/execution/execution-engine/single-task-execution.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 

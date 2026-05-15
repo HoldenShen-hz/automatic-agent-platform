@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ConfigStore } from "../../../../../src/platform/control-plane/config-center/config-store.js";
+import { ConfigStore } from "../../../../../src/platform/five-plane-control-plane/config-center/config-store.js";
 
 test("ConfigStore.set and get basic operations", () => {
   const store = new ConfigStore();

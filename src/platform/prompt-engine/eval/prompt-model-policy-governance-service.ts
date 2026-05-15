@@ -8,7 +8,7 @@
 
 import type {
   AuthoritativeSqlDatabase,
-} from "../../state-evidence/truth/authoritative-sql-database.js";
+} from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 export { PROMPT_MODEL_POLICY_GOVERNANCE_DDL } from "./prompt-model-policy-governance-schema.js";

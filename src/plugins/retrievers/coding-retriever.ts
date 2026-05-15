@@ -3,7 +3,7 @@ import { relative } from "node:path";
 import { cwd } from "node:process";
 
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
-import { SemanticRepoMapService } from "../../platform/execution/tool-executor/semantic-repo-map-service.js";
+import { SemanticRepoMapService } from "../../platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 
 export interface CodingRetrieverPluginOptions {
   rootPath?: string;

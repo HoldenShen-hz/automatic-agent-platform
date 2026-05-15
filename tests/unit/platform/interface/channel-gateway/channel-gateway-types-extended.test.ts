@@ -11,7 +11,7 @@ import {
   buildDeadLetterCountQuery,
   type DeliveryGuaranteeConfig,
   type RateLimitConfig,
-} from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-support.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 
 test("calculateBackoffForAttempt handles attempt number of 0", () => {
   const config: DeliveryGuaranteeConfig = {

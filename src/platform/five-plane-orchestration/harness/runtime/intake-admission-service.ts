@@ -19,7 +19,7 @@ import {
   type TaskInputSource,
   type UserConfirmationReceipt,
 } from "../../../contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../../five-plane-execution/runtime-state-machine.js";
 import {
   InMemoryClarificationSessionRepository,
   type ClarificationSessionRepository,
@@ -521,7 +521,6 @@ export class IntakeAdmissionService {
       versionLockId: runVersionLock.runVersionLockId,
     };
     const admitted = this.stateMachine.transition({
-      // @ts-ignore - commandId not in RuntimeTransitionCommand type
       commandId: `cmd:${createdRun.harnessRunId}:admission`,
       entityType: "HarnessRun",
       entityId: runnable.harnessRunId,

@@ -9,7 +9,7 @@ import {
   removeExecutionId,
   toWorkerStatus,
   type LeaseRepository,
-} from "../../../../../src/platform/execution/lease/index.js";
+} from "../../../../../src/platform/five-plane-execution/lease/index.js";
 
 test("createExecutionLeaseService is exported as function", () => {
   assert.equal(typeof createExecutionLeaseService, "function");
@@ -21,7 +21,7 @@ test("ExecutionLeaseService is exported as function", () => {
 
 test("LeaseRepository type can be used in type annotations", () => {
   // LeaseRepository is a type, so we verify it can be used in type annotations
-  type TestLeaseRepo = import("../../../../../src/platform/execution/lease/index.js").LeaseRepository;
+  type TestLeaseRepo = import("../../../../../src/platform/five-plane-execution/lease/index.js").LeaseRepository;
   const _repo: TestLeaseRepo | undefined = undefined;
   assert.ok(true); // Type check passed
 });

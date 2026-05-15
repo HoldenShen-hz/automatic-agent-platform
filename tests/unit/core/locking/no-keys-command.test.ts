@@ -19,7 +19,7 @@ test("[SYS-PERF-3.2] redis lock adapter uses SCAN not KEYS", () => {
 
   const lockAdapterPath = join(
     process.cwd(),
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
   );
 
   assert.ok(
@@ -52,7 +52,7 @@ test("[SYS-PERF-3.2] redis lock adapter listHeldAsync uses SCAN", () => {
   // Verify that listHeldAsync properly uses SCAN for iteration
   const lockAdapterPath = join(
     process.cwd(),
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
   );
 
   const content = readFileSync(lockAdapterPath, "utf8");
@@ -79,9 +79,9 @@ test("[SYS-PERF-3.2] redis lock adapter listHeldAsync uses SCAN", () => {
 test("[SYS-PERF-3.2] other files in execution layer must not use KEYS", () => {
   // Check other Redis-using files for the same issue
   const filesToCheck = [
-    "src/platform/execution/queue/redis-queue-adapter.ts",
+    "src/platform/five-plane-execution/queue/redis-queue-adapter.ts",
     "src/platform/shared/cache/stores/redis-cache-store.ts",
-    "src/platform/interface/ingress/redis-rate-limiter.ts",
+    "src/platform/five-plane-interface/ingress/redis-rate-limiter.ts",
   ];
 
   for (const filePath of filesToCheck) {

@@ -13,8 +13,8 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { ToolExecutor } from "../../src/platform/execution/tool-executor/tool-executor.js";
-import type { CommandToolRequest } from "../../src/platform/execution/tool-executor/tool-metadata.js";
+import { ToolExecutor } from "../../src/platform/five-plane-execution/tool-executor/tool-executor.js";
+import type { CommandToolRequest } from "../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 /**

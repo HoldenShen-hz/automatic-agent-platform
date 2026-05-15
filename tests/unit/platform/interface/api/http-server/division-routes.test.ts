@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDivisionRoutes } from "../../../../../../src/platform/interface/api/http-server/division-routes.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
+import { createDivisionRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/division-routes.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { DivisionRegistry } from "../../../../../../src/domains/governance/division-loader.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(divisions: Record<string, unknown>[] = []): MissionControlService {
   return {

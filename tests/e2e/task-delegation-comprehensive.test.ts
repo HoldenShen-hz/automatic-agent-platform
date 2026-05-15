@@ -12,9 +12,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDelegationManager, DelegationManagerService } from "../../src/platform/orchestration/agent-delegation/delegation-manager.service.js";
+import { createDelegationManager, DelegationManagerService } from "../../src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.js";
 // @ts-ignore
-import type { AgentContext, DelegationSpec, DelegationChain, DelegationRecord } from "../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import type { AgentContext, DelegationSpec, DelegationChain, DelegationRecord } from "../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures

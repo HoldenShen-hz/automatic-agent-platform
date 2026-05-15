@@ -13,7 +13,7 @@ import test from "node:test";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { SessionDualStorageService } from "../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+import { SessionDualStorageService } from "../../../../src/platform/five-plane-state-evidence/truth/session-dual-storage.js";
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 test("[SYS-REL-2.8] dual storage detects and repairs partial write", async () => {

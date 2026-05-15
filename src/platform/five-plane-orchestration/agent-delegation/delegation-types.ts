@@ -9,7 +9,7 @@
 // Context Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
+import type { SandboxMode } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 
 export interface AgentContext {
   agentId: string;

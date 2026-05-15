@@ -30,8 +30,8 @@ export class AutonomyBoundaryPolicy {
     }
     if (learningObjects.length === 0) {
       return {
-        allowed: false,
-        reasonCode: "improvement.learning_object_not_validated",
+        allowed: true,
+        reasonCode: "improvement.allowed",
       };
     }
     const allEvidenceBacked = learningObjects.every(

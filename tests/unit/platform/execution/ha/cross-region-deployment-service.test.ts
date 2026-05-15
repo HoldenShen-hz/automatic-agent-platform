@@ -12,7 +12,7 @@ import {
   type TrafficWeight,
   type RoutingStrategy,
   type RegionEvaluation,
-} from "../../../../../src/platform/execution/ha/cross-region-deployment-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/cross-region-deployment-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests: DDL and Constants

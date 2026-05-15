@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExternalSecretProvider } from "../../../../src/platform/control-plane/iam/external-secret-provider.js";
+import { ExternalSecretProvider } from "../../../../src/platform/five-plane-control-plane/iam/external-secret-provider.js";
 
 test("vault provider can be smoke-tested with inline fixtures", async () => {
   const provider = new ExternalSecretProvider({

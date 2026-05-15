@@ -248,12 +248,7 @@ export class DelegationGovernanceService {
   }
 
   private matchesTargetAgentType(expected: string, actual: string): boolean {
-    if (expected === actual) {
-      return true;
-    }
-    const normalizedExpected = this.normalizeActorClass(expected);
-    const normalizedActual = this.normalizeActorClass(actual);
-    return normalizedExpected !== null && normalizedExpected === normalizedActual;
+    return expected.trim().toLowerCase() === actual.trim().toLowerCase();
   }
 
   private normalizeActorClass(value: string | undefined): GovernanceActorClass | null {

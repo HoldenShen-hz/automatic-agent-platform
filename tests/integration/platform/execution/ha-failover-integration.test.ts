@@ -15,8 +15,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { HaCoordinatorService, HA_COORDINATOR_DDL } from "../../../../src/platform/execution/ha/index.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { HaCoordinatorService, HA_COORDINATOR_DDL } from "../../../../src/platform/five-plane-execution/ha/index.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 

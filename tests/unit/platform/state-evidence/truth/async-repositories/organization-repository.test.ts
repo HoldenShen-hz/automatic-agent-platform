@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncOrganizationRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/organization-repository.js";
+import { AsyncOrganizationRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/organization-repository.js";
 import type {
   WorkspaceRecord,
   WorkspaceMembershipRecord,

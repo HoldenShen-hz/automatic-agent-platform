@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("sandbox: blocked status returned when command attempts to escape workspace root", async () => {
   const workspace = createTempWorkspace("aa-sandbox-");
   const outside = createTempWorkspace("aa-sandbox-outside-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -37,7 +37,7 @@ test("sandbox: declared read path outside workspace is blocked", async () => {
   const outside = createTempWorkspace("aa-sandbox-read-outside-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -67,7 +67,7 @@ test("sandbox: declared write path outside workspace is blocked", async () => {
   const outside = createTempWorkspace("aa-sandbox-write-outside-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -96,7 +96,7 @@ test("sandbox: command arguments with null-byte injection are blocked", async ()
   const workspace = createTempWorkspace("aa-sandbox-nullbyte-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -123,7 +123,7 @@ test("sandbox: timeout results in timed_out status with retryable flag set", asy
   const workspace = createTempWorkspace("aa-sandbox-timeout-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -152,7 +152,7 @@ test("sandbox: cancellation via AbortSignal yields cancelled status", async () =
   const workspace = createTempWorkspace("aa-sandbox-cancel-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
     const controller = new AbortController();
 
@@ -187,7 +187,7 @@ test("sandbox: execution result includes injection risk metadata", async () => {
   const workspace = createTempWorkspace("aa-sandbox-injection-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -214,7 +214,7 @@ test("sandbox: successful command execution returns succeeded status with saniti
   const workspace = createTempWorkspace("aa-sandbox-success-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -250,7 +250,7 @@ test("sandbox: artifact is created when output exceeds persisted message limit",
       `process.stdout.write("A".repeat(7000));`,
     );
 
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -279,7 +279,7 @@ test("sandbox: process limit exceeded blocks with tool.process_limit_exceeded", 
   const workspace = createTempWorkspace("aa-sandbox-proclimit-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
 
     // Simulate by calling with process count already at limit via module-level state
     // For a direct unit test, we just verify the blocked response structure
@@ -313,7 +313,7 @@ test("sandbox: read-only workspace mode blocks write operations", async () => {
   const workspace = createTempWorkspace("aa-sandbox-readonly-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -340,7 +340,7 @@ test("sandbox: command execution populates data.injectionRisk and matchedInjecti
   const workspace = createTempWorkspace("aa-sandbox-injectionrisk-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -368,7 +368,7 @@ test("sandbox: command failure with non-zero exit code returns failed status", a
   const workspace = createTempWorkspace("aa-sandbox-fail-");
 
   try {
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -403,7 +403,7 @@ test("sandbox: output sanitization removes ANSI escape sequences", async () => {
       `process.stdout.write("\\u001b[31mError: \\u001b[0mSomething went wrong");`,
     );
 
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -437,7 +437,7 @@ test("sandbox: secret redaction is applied to output containing API keys", async
       `process.stdout.write("API Key: sk-abcdefghijklmnopqrstuvwxyz1234567890123456");`,
     );
 
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({
@@ -472,7 +472,7 @@ test("sandbox: path scope enforcement blocks commands when cwd is outside allowe
     createFile(`${scopedDir}/marker.txt`, "ok\n");
     createFile(`${outsideDir}/marker.txt`, "bad\n");
 
-    const { CommandExecutor } = await import("../../../../../src/platform/execution/tool-executor/command-executor.js");
+    const { CommandExecutor } = await import("../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js");
     const executor = new CommandExecutor();
 
     const result = await executor.execute({

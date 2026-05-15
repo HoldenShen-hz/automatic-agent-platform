@@ -6,23 +6,23 @@ import {
   buildSemanticEmbedding,
   semanticEmbeddingId,
   cosineSimilarity,
-} from "../../../../src/platform/state-evidence/knowledge/semantic-embedding.js";
-import { KeywordKnowledgeIndex } from "../../../../src/platform/state-evidence/knowledge/keyword-index.js";
-import { KnowledgeArchive } from "../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
-import { NamespacePolicyStore } from "../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import { KnowledgeRetrievalService } from "../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
-import { SemanticKnowledgeGraph } from "../../../../src/platform/state-evidence/knowledge/semantic-knowledge-graph.js";
-import { FreshnessTracker } from "../../../../src/platform/state-evidence/knowledge/governance/freshness-tracker.js";
-import { CitationBuilder } from "../../../../src/platform/state-evidence/knowledge/governance/citation-builder.js";
-import { KnowledgeAccessControl } from "../../../../src/platform/state-evidence/knowledge/governance/access-control.js";
-import { SourceTrustPolicyRegistry } from "../../../../src/platform/state-evidence/knowledge/governance/source-trust-policy.js";
-import { KnowledgeAuditLogger } from "../../../../src/platform/state-evidence/knowledge/governance/knowledge-audit-logger.js";
-import { KnowledgeIngestionPipeline } from "../../../../src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+} from "../../../../src/platform/five-plane-state-evidence/knowledge/semantic-embedding.js";
+import { KeywordKnowledgeIndex } from "../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
+import { KnowledgeArchive } from "../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
+import { NamespacePolicyStore } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import { KnowledgeRetrievalService } from "../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import { SemanticKnowledgeGraph } from "../../../../src/platform/five-plane-state-evidence/knowledge/semantic-knowledge-graph.js";
+import { FreshnessTracker } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/freshness-tracker.js";
+import { CitationBuilder } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/citation-builder.js";
+import { KnowledgeAccessControl } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/access-control.js";
+import { SourceTrustPolicyRegistry } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/source-trust-policy.js";
+import { KnowledgeAuditLogger } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-audit-logger.js";
+import { KnowledgeIngestionPipeline } from "../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
 import type {
   KnowledgeChunk,
   KnowledgeSource,
   RetrievalHit,
-} from "../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+} from "../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 function makeChunk(overrides: Partial<KnowledgeChunk> = {}): KnowledgeChunk {
   return {

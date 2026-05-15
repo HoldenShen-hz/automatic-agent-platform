@@ -7,7 +7,7 @@ import {
 } from "../../../../src/interaction/goal-decomposer/llm-plan-generator.js";
 import type { Goal } from "../../../../src/interaction/goal-decomposer/index.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import type { UnifiedChatProvider } from "../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
 /**

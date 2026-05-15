@@ -10,21 +10,21 @@ import {
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
   type ControlPlaneBootstrap,
   type ControlPlaneCapabilityBaseline,
-} from "./control-plane/control-plane-bootstrap.js";
+} from "./five-plane-control-plane/control-plane-bootstrap.js";
 import {
   buildExecutionPlaneBootstrap,
   registerExecutionPlaneBootstrap,
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
   type ExecutionPlaneBootstrap,
   type ExecutionCapabilityBaseline,
-} from "./execution/execution-plane-bootstrap.js";
+} from "./five-plane-execution/execution-plane-bootstrap.js";
 import {
   buildInterfacePlaneBootstrap,
   registerInterfacePlaneBootstrap,
   INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
   type InterfacePlaneBootstrap,
   type InterfaceCapabilityBaseline,
-} from "./interface/interface-plane-bootstrap.js";
+} from "./five-plane-interface/interface-plane-bootstrap.js";
 import {
   buildModelGatewayBootstrap,
   registerModelGatewayBootstrap,
@@ -36,7 +36,7 @@ import {
   ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
   type OrchestrationPlaneBootstrap,
   type OrchestrationCapabilityBaseline,
-} from "./orchestration/orchestration-plane-bootstrap.js";
+} from "./five-plane-orchestration/orchestration-plane-bootstrap.js";
 import {
   buildPromptEngineBootstrap,
   registerPromptEngineBootstrap,
@@ -48,7 +48,7 @@ import {
   STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
   type StateEvidencePlaneBootstrap,
   type StateEvidenceCapabilityBaseline,
-} from "./state-evidence/state-evidence-plane-bootstrap.js";
+} from "./five-plane-state-evidence/state-evidence-plane-bootstrap.js";
 
 export const FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID = "plane.runtime.catalog";
 export const X1_FABRIC_BOOTSTRAP_SERVICE_ID = "plane.x1-fabric.bootstrap";

@@ -8,7 +8,7 @@ import type {
   TaskCard,
   TaskCheck,
   ReleaseStrategy,
-} from "../../../../../src/platform/execution/recovery/index.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/index.js";
 
 test("TaskRiskLevel type accepts valid values", () => {
   const levels: TaskRiskLevel[] = ["low", "medium", "high", "critical"];

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchService } from "../../src/platform/execution/dispatcher/execution-dispatch-service.js";
-import { WorkerRegistryService } from "../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { ExecutionDispatchService } from "../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { WorkerRegistryService } from "../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { ExecutionWorkerHandshakeServiceAsync } from "../../src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.js";
 import { ExecutionWorkerWritebackServiceAsync } from "../../src/scale-ecosystem/runtime-services/execution-worker-writeback-service-async.js";
 import { nowIso } from "../../src/platform/contracts/types/ids.js";

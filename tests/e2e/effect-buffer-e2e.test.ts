@@ -19,7 +19,7 @@ import {
   EffectBuffer,
   type Effect,
   type EffectScopeOptions,
-} from "../../src/platform/execution/execution-engine/effect-buffer.js";
+} from "../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
 // ============================================================================
 // Test Suite 1: EffectBuilder

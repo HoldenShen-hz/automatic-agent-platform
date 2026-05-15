@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayBoundaryGuard, type ReplayOperation } from "../../src/platform/execution/recovery/replay-boundary-guard.js";
-import { ReplayWorker } from "../../src/platform/execution/ha/replay-worker.js";
+import { ReplayBoundaryGuard, type ReplayOperation } from "../../src/platform/five-plane-execution/recovery/replay-boundary-guard.js";
+import { ReplayWorker } from "../../src/platform/five-plane-execution/ha/replay-worker.js";
 
 /**
  * INV-REPLAY-001: Replay and simulation must never produce real external side effects.

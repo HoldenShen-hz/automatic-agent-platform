@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadApiServerEnv } from "../../../../../src/platform/control-plane/config-center/api-server-env.js";
+import { loadApiServerEnv } from "../../../../../src/platform/five-plane-control-plane/config-center/api-server-env.js";
 
 test("loadApiServerEnv parses auth tenant scope and gateway config", () => {
   const config = loadApiServerEnv({

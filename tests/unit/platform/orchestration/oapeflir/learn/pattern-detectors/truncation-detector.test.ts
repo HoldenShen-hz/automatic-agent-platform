@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { detectLlmTruncation } from "../../../../../../../src/platform/orchestration/oapeflir/learn/pattern-detectors/truncation-detector.js";
+import { detectLlmTruncation } from "../../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/pattern-detectors/truncation-detector.js";
 import { parseLearningSignal } from "../../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import type { LearningSignal } from "../../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 

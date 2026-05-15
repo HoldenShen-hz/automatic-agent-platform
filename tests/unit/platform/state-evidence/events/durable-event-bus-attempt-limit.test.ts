@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 
 test("DurableEventBus retries exactly three delivery attempts before marking failed", async () => {
   const ackUpdates: Array<Record<string, unknown>> = [];

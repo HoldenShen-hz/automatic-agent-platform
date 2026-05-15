@@ -51,7 +51,7 @@ import {
   SESSION_EVENTS_SQL,
   DLQ_RECORDS_SQL,
 } from "./sqlite-migration-runtime-part3.js";
-import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
+import { ENTERPRISE_GOVERNANCE_DDL } from "../../../five-plane-control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";

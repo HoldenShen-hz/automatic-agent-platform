@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataClassificationService } from "../../../../../src/platform/control-plane/iam/data-classification-service.js";
+import { DataClassificationService } from "../../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 
 test("DataClassificationService ignores unsafe custom regex rules instead of evaluating them", () => {
   const service = new DataClassificationService();

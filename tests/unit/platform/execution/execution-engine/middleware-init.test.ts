@@ -7,9 +7,9 @@ import {
   getGlobalMiddlewareChain,
   resetMiddleware,
   type MiddlewareInitOptions,
-} from "../../../../../src/platform/execution/execution-engine/middleware-init.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/middleware-init.js";
 
-import { globalMiddlewareChain } from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+import { globalMiddlewareChain } from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 // ---------------------------------------------------------------------------
 // Test setup and teardown

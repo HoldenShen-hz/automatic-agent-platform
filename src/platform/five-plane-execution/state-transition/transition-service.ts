@@ -37,12 +37,12 @@ import type {
   WorkflowStatusTransitionCommand,
 } from "../../contracts/types/domain.js";
 
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   createRuntimeLifecycleRepository,
   type RuntimeLifecycleRepository,
-} from "../../state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { injectTraceContext, toAuditContextTraceContext } from "../../shared/observability/trace-context.js";
 import { newId } from "../../contracts/types/ids.js";
 import {

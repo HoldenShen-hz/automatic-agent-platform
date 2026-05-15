@@ -26,6 +26,10 @@ export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-mor
 export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
 const ASSERTION_REPLAY_TTL_MS = 5 * 60 * 1000;
 
+interface SignedXmlValidationErrors {
+  readonly validationErrors?: readonly string[];
+}
+
 /**
  * Validates XML signature using xml-crypto library
  * @param signature - The XML signature to validate
@@ -54,7 +58,7 @@ export function validateXmlSignature(
 
     const isValid = sig.checkSignature(xml);
     if (!isValid) {
-      const err = (sig as any).validationErrors;
+      const err = (sig as SignedXmlValidationErrors).validationErrors;
       return {
         valid: false,
         error: Array.isArray(err) ? err.join("; ") : "Signature validation failed",

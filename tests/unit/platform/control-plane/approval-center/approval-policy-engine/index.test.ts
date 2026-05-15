@@ -11,7 +11,7 @@ import {
   type ApprovalPolicyBundle,
   type ApprovalPolicyContext,
   type VersionedPolicyBundle,
-} from "../../../../../../src/platform/control-plane/approval-center/approval-policy-engine/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-policy-engine/index.js";
 
 test("ApprovalPolicyEngine evaluates default policy for destructive action", () => {
   const engine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);

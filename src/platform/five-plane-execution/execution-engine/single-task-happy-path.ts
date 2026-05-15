@@ -36,18 +36,18 @@ import { createPlatformFactEvent, createSideEffectRecord, type SideEffectRecord,
 import { createEvidenceRecord } from "../../contracts/index.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
+import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import { HealthService } from "../../shared/observability/health-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { createChildTraceContext, createRootTraceContext, injectTraceContext } from "../../shared/observability/trace-context.js";
-import { SINGLE_AGENT_MINIMAL_WORKFLOW } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
-import { validateWorkflowStepOutput } from "../../orchestration/oapeflir/workflow/output-schema.js";
-import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workflow-validator.js";
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
-import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { SINGLE_AGENT_MINIMAL_WORKFLOW } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
+import { validateWorkflowStepOutput } from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
+import { assertWorkflowValid } from "../../five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
-import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
+import { createWorkflowStepCheckpoint } from "../../five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import {
   AdmissionController,
 } from "../dispatcher/admission-controller.js";

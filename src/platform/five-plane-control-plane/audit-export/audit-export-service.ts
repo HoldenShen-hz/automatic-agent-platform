@@ -10,7 +10,7 @@
  * @see docs_zh/contracts/audit_lineage_and_retention_contract.md
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { createAuditIntegrityRepository, type AuditIntegrityRepository, AUDIT_INTEGRITY_DDL } from "../iam/audit-integrity-repository.js";
 

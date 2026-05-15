@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { ValidationError } from "../../contracts/errors.js";
-import { GrpcAdapterService, type GrpcCallResponse } from "../../interface/api/grpc-adapter-service.js";
+import { GrpcAdapterService, type GrpcCallResponse } from "../../five-plane-interface/api/grpc-adapter-service.js";
 
 export type AdapterProtocol = "rest" | "grpc" | "mq";
 

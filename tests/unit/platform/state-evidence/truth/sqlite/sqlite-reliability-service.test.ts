@@ -3,8 +3,8 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SqliteReliabilityService } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteReliabilityService } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 function createHarness(prefix: string) {

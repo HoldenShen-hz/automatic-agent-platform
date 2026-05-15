@@ -3,9 +3,9 @@
 // Supports audit reporting and rotation scheduling for credential management.
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadSecretManagementCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
+import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 
 (async () => {
   const envConfig = loadSecretManagementCliEnv();

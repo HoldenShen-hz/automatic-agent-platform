@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EventProjectionService, type ProjectionInputEvent, type ProjectionRecord } from "../../../../../src/platform/state-evidence/projections/index.js";
+import { EventProjectionService, type ProjectionInputEvent, type ProjectionRecord } from "../../../../../src/platform/five-plane-state-evidence/projections/index.js";
 
 // =============================================================================
 // mock factories

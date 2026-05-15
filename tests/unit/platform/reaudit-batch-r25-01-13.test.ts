@@ -4,17 +4,17 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 
 import { AppError } from "../../../src/platform/contracts/errors.js";
-import { HttpApiServer } from "../../../src/platform/interface/api/http-api-server.js";
-import { buildJsonErrorResponse } from "../../../src/platform/interface/api/http-server/utils.js";
-import { normalizeError } from "../../../src/platform/interface/api/http-server/api-error.js";
-import { GatewayTargetNotFoundError } from "../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
+import { HttpApiServer } from "../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { buildJsonErrorResponse } from "../../../src/platform/five-plane-interface/api/http-server/utils.js";
+import { normalizeError } from "../../../src/platform/five-plane-interface/api/http-server/api-error.js";
+import { GatewayTargetNotFoundError } from "../../../src/platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 import {
   CHANNEL_DELIVERY_DDL,
   ChannelGatewayDeliveryService,
-} from "../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
-import { WebSocketBridge } from "../../../src/platform/interface/channel-gateway/websocket-bridge.js";
-import { StreamBridge } from "../../../src/platform/interface/channel-gateway/stream-bridge.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
+import { WebSocketBridge } from "../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
+import { StreamBridge } from "../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { join } from "node:path";
 

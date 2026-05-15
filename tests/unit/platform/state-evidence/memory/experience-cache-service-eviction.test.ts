@@ -15,8 +15,8 @@ import {
   type RecordExperienceInput,
   type SimilarExperienceQuery,
   type FewShotExample,
-} from "../../../../../src/platform/state-evidence/memory/experience-cache-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/experience-cache-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // =============================================================================
 // Enhanced Mock Store with proper eviction support

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Tests: Event Store Operations
  *

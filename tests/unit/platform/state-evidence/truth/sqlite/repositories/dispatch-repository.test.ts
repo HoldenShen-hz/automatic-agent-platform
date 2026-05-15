@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DispatchRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/dispatch-repository.js";
+import { DispatchRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/dispatch-repository.js";
 
 function createMockConn() {
   return {

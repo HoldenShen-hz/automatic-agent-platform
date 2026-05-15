@@ -11,7 +11,7 @@
  *   - AA_DB_PATH: Path to SQLite database (defaults to data/sqlite/authoritative-demo.db)
  *   - AA_QUEUE_NAME: Target queue name for the ticket
  *   - AA_PRIORITY: Ticket priority (low, normal, high, urgent)
- *   - AA_DISPATCH_TARGET: any, local_only, prefer_remote, require_remote
+ *   - AA_DISPATCH_TARGET: unrestricted, local_only, prefer_remote, require_remote
  *   - AA_REQUIRED_ISOLATION_LEVEL: standard, hardened, strict
  *   - AA_REQUIRED_REPO_VERSION: required repo/workspace version mounted by the worker
  *   - AA_REQUIRED_CAPABILITIES_JSON: JSON array of required capability strings
@@ -30,8 +30,8 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadDispatchExecutionCliEnv } from "../../platform/control-plane/config-center/runtime-ops-env.js";
-import { ExecutionDispatchService } from "../../platform/execution/dispatcher/execution-dispatch-service.js";
+import { loadDispatchExecutionCliEnv } from "../../platform/five-plane-control-plane/config-center/runtime-ops-env.js";
+import { ExecutionDispatchService } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 
 /**
  * Main entry point for the dispatch execution CLI.

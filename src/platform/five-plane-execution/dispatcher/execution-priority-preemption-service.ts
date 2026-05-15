@@ -34,8 +34,8 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { newId } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { resolveRemoteAuthorityBlockReason } from "../worker-pool/remote-session-guard.js";
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { ExecutionLeaseService } from "../lease/execution-lease-service.js";

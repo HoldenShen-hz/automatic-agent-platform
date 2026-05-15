@@ -1,12 +1,12 @@
 /**
  * Unit tests for top-level interface barrel exports
- * Tests src/platform/interface/index.ts
+ * Tests src/platform/five-plane-interface/index.ts
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as interfaceIndex from "../../../../src/platform/interface/index.js";
+import * as interfaceIndex from "../../../../src/platform/five-plane-interface/index.js";
 
 test("interface index exports api namespace", () => {
   assert.ok("api" in interfaceIndex);

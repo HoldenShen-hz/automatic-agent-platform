@@ -17,7 +17,7 @@ import {
   type OapeflirStage,
   type OapeflirStageStatus,
   type OapeflirStageRecord,
-} from "../../../../../src/platform/orchestration/oapeflir/stage-timeline.js";
+} from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-timeline.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OapeflirStage Schema Tests

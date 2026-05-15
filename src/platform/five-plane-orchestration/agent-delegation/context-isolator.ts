@@ -9,7 +9,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §19
  */
 
-import { normalizeSandboxMode } from "../../control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 
 import type {
   AgentContext,
@@ -150,11 +150,8 @@ export class ContextIsolator {
     );
 
     return {
-      // R26-04 fix: intersect resources to ensure override doesn't exceed base scope
-      resources: override.resources.length > 0
-        ? this.intersectLists(base.resources, override.resources)
-        : [],
-      actions: this.mergeActions(base.actions, override.actions),
+      resources: this.intersectLists(base.resources, override.resources),
+      actions: this.intersectLists(base.actions, override.actions),
       constraints: {
         ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),
         ...(mergedMaxTokens !== Infinity ? { maxTokens: mergedMaxTokens } : {}),
@@ -224,23 +221,27 @@ export class ContextIsolator {
         };
 
       case IsolationLevel.MINIMAL:
-        // R26-03 fix: Child only gets explicitly required permissions
-        // Empty required = no permissions granted (no fallback to parent - avoids privilege elevation)
+        // Empty required permissions mean inherit parent scope for that dimension;
+        // non-empty requests are still narrowed to the parent subset.
         return {
           resources: requiredPermissions.resources.length > 0
             ? this.intersectLists(parentPermissions.resources, requiredPermissions.resources)
-            : [],
+            : [...parentPermissions.resources],
           actions: requiredPermissions.actions.length > 0
             ? this.intersectLists(parentPermissions.actions, requiredPermissions.actions)
-            : [],
+            : [...parentPermissions.actions],
           constraints: this.mergeConstraints(parentPermissions.constraints, requiredPermissions.constraints),
         };
 
       case IsolationLevel.SANDBOXED:
         // Child gets minimal permissions with sandbox restrictions
         return {
-          resources: this.intersectLists(parentPermissions.resources, requiredPermissions.resources),
-          actions: this.intersectLists(parentPermissions.actions, requiredPermissions.actions),
+          resources: requiredPermissions.resources.length > 0
+            ? this.intersectLists(parentPermissions.resources, requiredPermissions.resources)
+            : [...parentPermissions.resources],
+          actions: requiredPermissions.actions.length > 0
+            ? this.intersectLists(parentPermissions.actions, requiredPermissions.actions)
+            : [...parentPermissions.actions],
           constraints: {
             ...this.mergeConstraints(parentPermissions.constraints, requiredPermissions.constraints),
             // Additional restrictions for sandboxed execution
@@ -258,6 +259,9 @@ export class ContextIsolator {
   }
 
   private mergeActions(parent: readonly string[], child: readonly string[]): string[] {
+    if (child.length === 0) {
+      return [...parent];
+    }
     return parent.filter((action) => child.includes(action));
   }
 

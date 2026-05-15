@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace billing-service-async re-export
  *

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
-import { KnowledgeQueryService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-query-service.js";
-import type { KnowledgeRetrievalService } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import { KnowledgeQueryService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.js";
+import type { KnowledgeRetrievalService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
 
 function createRetrievalService(): KnowledgeRetrievalService {
   return {

@@ -9,12 +9,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 // Import services under test
-import { EventTopologyService } from "../../../../../src/platform/state-evidence/events/event-topology-service.js";
-import { EventReliabilityInventoryService } from "../../../../../src/platform/state-evidence/events/event-reliability-inventory-service.js";
-import { DlqService, type FailureCategory } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+import { EventTopologyService } from "../../../../../src/platform/five-plane-state-evidence/events/event-topology-service.js";
+import { EventReliabilityInventoryService } from "../../../../../src/platform/five-plane-state-evidence/events/event-reliability-inventory-service.js";
+import { DlqService, type FailureCategory } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 
 // Import registry for validation
-import { EVENT_SCHEMA_REGISTRY } from "../../../../../src/platform/state-evidence/events/event-registry.js";
+import { EVENT_SCHEMA_REGISTRY } from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 test("EventTopologyService.listEntries returns all registered events", () => {
   const service = new EventTopologyService();

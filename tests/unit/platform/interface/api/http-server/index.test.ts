@@ -9,7 +9,7 @@ import type {
   ApiRequestLike,
   ApiResponsePayload,
   RouteHandler,
-} from "../../../../../../src/platform/interface/api/http-server/index.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/index.js";
 
 test("RouteMatch structure is correct", () => {
   const match: RouteMatch = {

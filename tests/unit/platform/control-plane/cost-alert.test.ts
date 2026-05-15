@@ -13,8 +13,8 @@ import type {
   CostEvaluationResult,
   CostThresholdExceededEvent,
   StepUsageRecord,
-} from "../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
-import { CostAlertService } from "../../../../src/platform/control-plane/cost-alert/cost-alert-service.js";
+} from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
+import { CostAlertService } from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 
 // Mock dependencies
 const mockDb = {

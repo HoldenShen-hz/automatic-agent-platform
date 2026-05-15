@@ -29,20 +29,20 @@ import type {
   WorkflowStateRecord,
   WorkflowStatusTransitionCommand,
 } from "../../../../../src/platform/contracts/types/domain.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { ArtifactStore } from "../../../../../src/platform/state-evidence/artifacts/artifact-store.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { StreamBridge } from "../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
-import type { TransitionService } from "../../../../../src/platform/execution/state-transition/transition-service.js";
-import type { ContextCompactionResult, ContextCompactionService } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
-import type { MultiStepToolExecutionInput } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
-import type { AdmissionDecision } from "../../../../../src/platform/execution/dispatcher/admission-controller.js";
-import type { RoleToolExposureService } from "../../../../../src/platform/execution/tool-executor/role-tool-exposure-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { ArtifactStore } from "../../../../../src/platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { StreamBridge } from "../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
+import type { TransitionService } from "../../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import type { ContextCompactionResult, ContextCompactionService } from "../../../../../src/platform/five-plane-execution/execution-engine/context-compaction-service.js";
+import type { MultiStepToolExecutionInput } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
+import type { AdmissionDecision } from "../../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import type { RoleToolExposureService } from "../../../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
 import {
   executeStepLoop,
   type StepSupervisorContext,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-supervisor.js";
-import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-supervisor.js";
+import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 // =============================================================================
 // Mock Dependencies Factory

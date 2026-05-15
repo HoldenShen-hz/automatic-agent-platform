@@ -9,7 +9,7 @@ import {
   CHANNEL_DELIVERY_DDL,
   DEFAULT_DELIVERY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
-} from "../../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-support.js";
+} from "../../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 
 test("calculateBackoffForAttempt computes exponential backoff", () => {
   const config = { ...DEFAULT_DELIVERY_CONFIG };

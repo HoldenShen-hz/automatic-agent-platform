@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GuardrailEvaluator } from "../../../../../src/platform/orchestration/improve-rollout/guardrail-evaluator.js";
-import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { StrategyVersion } from "../../../../../src/platform/orchestration/improve-rollout/strategy-versioning.js";
+import { GuardrailEvaluator } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/guardrail-evaluator.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { StrategyVersion } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/strategy-versioning.js";
 
 function makeCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {
@@ -36,6 +36,7 @@ test("GuardrailEvaluator returns allowed true when all checks pass", () => {
   const candidate = makeCandidate({
     sourceSignalRefs: ["signal-1"],
     sourceLearningObjectIds: ["lo-1"],
+    status: "approved",
   });
   const strategyVersion = makeStrategyVersion({
     sourceLearningObjectIds: ["lo-1"],

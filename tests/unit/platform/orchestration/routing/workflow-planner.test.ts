@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
+import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 import { StorageError } from "../../../../../src/platform/contracts/errors.js";
 
 test("WorkflowPlanner type exports are correct", () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PolicyCenterService, toUnifiedRuntimeMode } from "../../../../../src/platform/control-plane/policy-center/index.js";
+import { PolicyCenterService, toUnifiedRuntimeMode } from "../../../../../src/platform/five-plane-control-plane/policy-center/index.js";
 import type {
   PolicySubjectType,
   PolicyAction,
@@ -12,7 +12,7 @@ import type {
   PolicyDecisionRequest,
   PolicyDecisionResult,
   PolicyCenterOptions,
-} from "../../../../../src/platform/control-plane/policy-center/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/policy-center/index.js";
 
 // ---------------------------------------------------------------------------
 // toUnifiedRuntimeMode exported function

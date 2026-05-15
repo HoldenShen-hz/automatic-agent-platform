@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   UnifiedObservationSchema,
   type UnifiedObservation,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/unified-observation.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/unified-observation.js";
 
 test("UnifiedObservationSchema parses valid unified observation", () => {
   const validData = {

@@ -22,7 +22,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
-import type { CompensationModel } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
+import type { CompensationModel } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

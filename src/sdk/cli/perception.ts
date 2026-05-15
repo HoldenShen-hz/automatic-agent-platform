@@ -41,7 +41,7 @@
  */
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadPerceptionCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
+import { loadPerceptionCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import { PerceptionService } from "../../scale-ecosystem/intelligence/perception-service.js";

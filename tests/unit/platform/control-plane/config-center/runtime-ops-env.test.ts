@@ -5,7 +5,7 @@ import {
   loadDispatchExecutionCliEnv,
   loadWorkerHandshakeCliEnv,
   loadWorkerWritebackCliEnv,
-} from "../../../../../src/platform/control-plane/config-center/runtime-ops-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/runtime-ops-env.js";
 
 test("runtime ops env loader parses dispatch execution settings", () => {
   const config = loadDispatchExecutionCliEnv({

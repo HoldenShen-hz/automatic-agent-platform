@@ -7,7 +7,7 @@ import {
   type ExecutionMetrics,
   type HistoricalMetricsInput,
 } from "../../../../src/interaction/autonomy/historical-metrics-provider.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 function makeMetrics(overrides: Partial<ExecutionMetrics> = {}): ExecutionMetrics {
   return {

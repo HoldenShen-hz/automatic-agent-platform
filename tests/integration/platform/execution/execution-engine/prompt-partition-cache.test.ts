@@ -12,7 +12,7 @@ import {
   partitionPromptForCache,
   PromptPartitionCacheService,
   type PromptPartitionInput,
-} from "../../../../../src/platform/execution/execution-engine/prompt-partition-cache.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
 test("prompt partition cache: system message is classified as static", () => {
   const input: PromptPartitionInput = {

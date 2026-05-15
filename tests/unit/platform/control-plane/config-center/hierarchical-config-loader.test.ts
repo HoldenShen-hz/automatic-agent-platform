@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { HierarchicalConfigLoader, type ConfigHierarchyLayer } from "../../../../../src/platform/control-plane/config-center/hierarchical-config-loader.js";
+import { HierarchicalConfigLoader, type ConfigHierarchyLayer } from "../../../../../src/platform/five-plane-control-plane/config-center/hierarchical-config-loader.js";
 
 test("HierarchicalConfigLoader.loadConfig merges platform config as base", () => {
   const loader = new HierarchicalConfigLoader();

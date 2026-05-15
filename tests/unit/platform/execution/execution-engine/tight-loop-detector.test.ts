@@ -6,7 +6,7 @@ import {
   createTightLoopDetector,
   type TightLoopConfig,
   type TightLoopPattern,
-} from "../../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
 test("TightLoopDetector exports createTightLoopDetector function", () => {
   assert.equal(typeof createTightLoopDetector, "function");

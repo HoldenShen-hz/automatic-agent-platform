@@ -12,7 +12,7 @@ import {
   createResourceQuota,
   canAllocate,
 } from "../../src/platform/shared/scaling/resource-quota.js";
-import * as stateEvidence from "../../src/platform/state-evidence/index.js";
+import * as stateEvidence from "../../src/platform/five-plane-state-evidence/index.js";
 
 test("quant trading domain config conforms to DomainDefinitionSchema", () => {
   const config = JSON.parse(readFileSync("config/domains/quant-trading.json", "utf8"));

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EventProjectionService } from "../../../../../src/platform/state-evidence/projections/index.js";
+import { EventProjectionService } from "../../../../../src/platform/five-plane-state-evidence/projections/index.js";
 
 test("EventProjectionService creates and updates workflow projections from events", () => {
   const service = new EventProjectionService();

@@ -5,7 +5,7 @@ import {
   BoundedDispatchQueueEventFactory,
   type BoundedDispatchQueueSnapshot,
   type BoundedDispatchEvent,
-} from "../../../../../src/platform/execution/queue/bounded-dispatch-event.js";
+} from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 
 test("BoundedDispatchQueueEventFactory.create returns accepted event when queue has capacity", () => {
   const factory = new BoundedDispatchQueueEventFactory();

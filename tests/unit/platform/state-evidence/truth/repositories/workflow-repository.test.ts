@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { WorkflowRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/workflow-repository.js";
-import { TaskRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { WorkflowRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/workflow-repository.js";
+import { TaskRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/task-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 function createTestTask(db: SqliteDatabase, taskId: string, tenantId: string | null, now: string): void {

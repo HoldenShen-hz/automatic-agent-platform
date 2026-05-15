@@ -19,8 +19,8 @@ import type { ExecutionTicketRecord } from "../../contracts/types/domain.js";
 import type { ExecutionStatus } from "../../contracts/types/status.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ExecutionDispatchService } from "./execution-dispatch-service.js";
 import { buildWorkerSnapshotRefreshInput, removeExecutionId } from "../lease/utils.js";
 import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";

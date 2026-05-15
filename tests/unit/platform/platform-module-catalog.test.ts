@@ -336,7 +336,7 @@ test("expansion ring includes org-governance and scale-ecosystem modules", () =>
 test("interface surface has correct properties", () => {
   const manifest = resolvePlatformSurfaceManifest("interface");
 
-  assert.strictEqual(manifest.entryModule, "src/platform/interface/index.ts");
+  assert.strictEqual(manifest.entryModule, "src/platform/five-plane-interface/index.ts");
   assert.ok(manifest.architectureSections.includes("§4"));
   assert.ok(manifest.architectureSections.includes("§6"));
   assert.ok(manifest.architectureSections.includes("§7"));
@@ -348,7 +348,7 @@ test("interface surface has correct properties", () => {
 test("control-plane surface has correct properties", () => {
   const manifest = resolvePlatformSurfaceManifest("control-plane");
 
-  assert.strictEqual(manifest.entryModule, "src/platform/control-plane/index.ts");
+  assert.strictEqual(manifest.entryModule, "src/platform/five-plane-control-plane/index.ts");
   assert.ok(manifest.architectureSections.includes("§10"));
   assert.ok(manifest.canonicalSubdomains.includes("iam"));
   assert.ok(manifest.canonicalSubdomains.includes("approval-center"));
@@ -358,7 +358,7 @@ test("control-plane surface has correct properties", () => {
 test("orchestration surface has correct properties", () => {
   const manifest = resolvePlatformSurfaceManifest("orchestration");
 
-  assert.strictEqual(manifest.entryModule, "src/platform/orchestration/index.ts");
+  assert.strictEqual(manifest.entryModule, "src/platform/five-plane-orchestration/index.ts");
   assert.ok(manifest.architectureSections.includes("§13"));
   assert.ok(manifest.canonicalSubdomains.includes("oapeflir"));
   assert.ok(manifest.canonicalSubdomains.includes("planner"));

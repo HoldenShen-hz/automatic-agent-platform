@@ -16,7 +16,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary - retention, compaction}
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { EventTier } from "../../contracts/types/domain.js";
 

@@ -5,7 +5,7 @@ import {
   SubWorkflowExecutor,
   type SubWorkflowContext,
   type SubWorkflowDefinition,
-} from "../../../../../src/platform/execution/plugin-executor/sub-workflow-executor.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
 
 const context: SubWorkflowContext = {
   harnessRunId: "harness-run-001",

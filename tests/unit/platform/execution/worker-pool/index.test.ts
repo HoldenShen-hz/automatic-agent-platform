@@ -15,7 +15,7 @@ import {
   writebackSupport,
   type RemoteAuthorityBlockReason,
   type RemoteSessionAuthorityState,
-} from "../../../../../src/platform/execution/worker-pool/index.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/index.js";
 
 test("ExecutionWorkerHandshakeService is exported", () => {
   assert.equal(typeof ExecutionWorkerHandshakeService, "function");

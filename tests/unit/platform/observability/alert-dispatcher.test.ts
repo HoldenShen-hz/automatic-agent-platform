@@ -11,7 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { AlertDispatcher } from "../../../../src/platform/shared/observability/alert-dispatcher.js";
 import { SLO_ALERTING_DDL } from "../../../../src/platform/shared/observability/slo-alerting/types.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AlertEvent, AlertChannelKind } from "../../../../src/platform/shared/observability/slo-alerting/types.js";
 
 // =============================================================================

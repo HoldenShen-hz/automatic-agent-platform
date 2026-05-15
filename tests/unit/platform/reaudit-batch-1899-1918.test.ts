@@ -9,8 +9,8 @@ import { TimeTravelDebugService } from "../../../src/ops-maturity/workflow-debug
 import { HaProgramService } from "../../../src/scale-ecosystem/tenant-platform/ha-program-service.js";
 
 test("1899..1912: runtime-state-machine, dispatcher, reconciliation, and budget reserve paths stay fixed", () => {
-  const runtimeStateMachineSource = readFileSync("src/platform/execution/runtime-state-machine.ts", "utf8");
-  const dispatchServiceSource = readFileSync("src/platform/execution/dispatcher/execution-dispatch-service.ts", "utf8");
+  const runtimeStateMachineSource = readFileSync("src/platform/five-plane-execution/runtime-state-machine.ts", "utf8");
+  const dispatchServiceSource = readFileSync("src/platform/five-plane-execution/dispatcher/execution-dispatch-service.ts", "utf8");
   const leaseServiceSource = readFileSync("src/platform/five-plane-execution/lease/execution-lease-service.ts", "utf8");
   const preemptionSource = readFileSync("src/platform/five-plane-execution/dispatcher/execution-priority-preemption-service.ts", "utf8");
   const reconciliationSource = readFileSync("src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.ts", "utf8");

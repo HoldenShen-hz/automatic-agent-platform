@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ChargebackService, type ChargebackReportSource, type ChargebackAllocation } from "../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
-import type { CostReportRecord } from "../../../../src/platform/interface/api/cost-report-service.js";
+import type { CostReportRecord } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 function createMockCostReportSource(reports: CostReportRecord[]): ChargebackReportSource {
   return {

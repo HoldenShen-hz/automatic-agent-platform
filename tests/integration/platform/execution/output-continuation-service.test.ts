@@ -6,7 +6,7 @@ import {
   parseFinishReason,
   canContinueResponse,
   buildContinuationPrompt,
-} from "../../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 test("OutputContinuationService sandbox: creates record for max_tokens", () => {
   const service = new OutputContinuationService();

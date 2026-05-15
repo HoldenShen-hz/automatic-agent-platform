@@ -31,10 +31,10 @@
 import { dirname } from "node:path";
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadMarketplaceCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadMarketplaceCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { MarketplaceGovernanceService } from "../../scale-ecosystem/marketplace/marketplace-governance-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 const envConfig = loadMarketplaceCliEnv();
 const result = withCliStorage((storage) => {

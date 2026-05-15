@@ -9,7 +9,7 @@ import {
   createNodeRun,
   createSideEffectRecord,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeStateMachine, type PlatformFactEvent } from "../../../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine, type PlatformFactEvent } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 // Track persisted events for testing
 const persistedEvents: PlatformFactEvent[] = [];

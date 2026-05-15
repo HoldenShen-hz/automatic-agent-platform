@@ -10,7 +10,7 @@ import {
   InMemoryDeadLetterQueueRepository,
   DeadLetterQueueService,
   DeadLetterQueueRetryWorker,
-} from "../../../../../src/platform/state-evidence/dlq/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/dlq/index.js";
 
 test("DeadLetterStatus type has all expected values", () => {
   const values: DeadLetterStatus[] = ["pending", "retrying", "discarded", "resolved"];

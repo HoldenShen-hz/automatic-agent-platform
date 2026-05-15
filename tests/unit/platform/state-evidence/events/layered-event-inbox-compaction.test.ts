@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPlatformFactEvent } from "../../../../../src/platform/contracts/executable-contracts/index.js";
-import { LayeredEventInbox } from "../../../../../src/platform/state-evidence/events/layered-event-inbox.js";
+import { LayeredEventInbox } from "../../../../../src/platform/five-plane-state-evidence/events/layered-event-inbox.js";
 
 function makePlatformFact(seq: number) {
   return createPlatformFactEvent({

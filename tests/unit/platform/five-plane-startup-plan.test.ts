@@ -30,7 +30,7 @@ test("five-plane startup plan registers after plane bootstraps are available", a
   try {
     registerFivePlaneRuntimeCatalog(registry);
     const plan = registerFivePlaneStartupPlan(registry);
-    assert.equal(plan.steps[0]?.entryModule, "src/platform/interface/index.ts");
+    assert.equal(plan.steps[0]?.entryModule, "src/platform/five-plane-interface/index.ts");
     assert.equal(plan.steps[5]?.dependsOnStepIds.includes("execution"), true);
     assert.equal(registry.isInitialized(FIVE_PLANE_STARTUP_PLAN_SERVICE_ID), true);
   } finally {

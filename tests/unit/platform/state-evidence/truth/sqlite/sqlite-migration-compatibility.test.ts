@@ -7,7 +7,7 @@ import {
   type SqliteMigrationCompatibilityIssue,
   type SqliteMigrationCompatibilityReport,
   type SqliteMigrationDefinition,
-} from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
 
 test("evaluateSqliteMigrationCompatibility returns valid report structure", () => {
   const report = evaluateSqliteMigrationCompatibility([]);

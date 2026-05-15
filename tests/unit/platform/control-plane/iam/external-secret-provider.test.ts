@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ExternalSecretProvider } from "../../../../../src/platform/control-plane/iam/external-secret-provider.js";
+import { ExternalSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/external-secret-provider.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("external secret provider resolves provider-specific JSON mappings", async () => {

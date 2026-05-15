@@ -4,11 +4,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuditExportService, AUDIT_EXPORT_DDL } from "../../../../../src/platform/control-plane/audit-export/audit-export-service.js";
-import { createAuditIntegrityRepository, AUDIT_INTEGRITY_DDL } from "../../../../../src/platform/control-plane/iam/audit-integrity-repository.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { Tier1AuditIntegrityRecord } from "../../../../../src/platform/control-plane/iam/audit-event-integrity.js";
-import type { AuditExportRecord, AuditEventSummary, IntegrityCheckResult, Soc2EvidencePackage } from "../../../../../src/platform/control-plane/audit-export/index.js";
+import { AuditExportService, AUDIT_EXPORT_DDL } from "../../../../../src/platform/five-plane-control-plane/audit-export/audit-export-service.js";
+import { createAuditIntegrityRepository, AUDIT_INTEGRITY_DDL } from "../../../../../src/platform/five-plane-control-plane/iam/audit-integrity-repository.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { Tier1AuditIntegrityRecord } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
+import type { AuditExportRecord, AuditEventSummary, IntegrityCheckResult, Soc2EvidencePackage } from "../../../../../src/platform/five-plane-control-plane/audit-export/index.js";
 
 function createMockDatabase(): AuthoritativeSqlDatabase {
   const auditExports: Map<string, Record<string, unknown>> = new Map();

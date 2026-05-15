@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, ChildProcess } from 'node:child_process';
-import { ProcessTracker, getProcessTracker, resetProcessTracker } from '../../../../src/platform/execution/resource/process-tracker.js';
+import { ProcessTracker, getProcessTracker, resetProcessTracker } from '../../../../src/platform/five-plane-execution/resource/process-tracker.js';
 
 // Extended type for pgid access
 interface ChildProcessWithPgid extends ChildProcess {

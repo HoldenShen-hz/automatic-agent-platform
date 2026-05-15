@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MultiPartyApprovalService } from "../../../../../src/platform/control-plane/approval-center/multi-party-approval-service.js";
-import type { ApprovalDecision, ApprovalRequest } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { MultiPartyApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.js";
+import type { ApprovalDecision, ApprovalRequest } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { ApprovalRecord, EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import type { EventTier } from "../../../../../src/platform/contracts/types/domain/primitives.js";
 import type { ApprovalStatus } from "../../../../../src/platform/contracts/types/status.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
 // Mock Infrastructure

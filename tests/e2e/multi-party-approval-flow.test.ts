@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MultiPartyApprovalService } from "../../src/platform/control-plane/approval-center/multi-party-approval-service.js";
+import { MultiPartyApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.js";
 import { createSeededE2EHarness } from "../helpers/e2e-harness.js";
 
 test("E2E: multi-party approval records partial approvals before quorum is met", () => {

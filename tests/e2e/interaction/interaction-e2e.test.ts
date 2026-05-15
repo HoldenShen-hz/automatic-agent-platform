@@ -17,7 +17,7 @@ import { ProactiveAgentService, type TriggerDefinition } from "../../../src/inte
 import { NlEntryService } from "../../../src/interaction/nl-gateway/index.js";
 import { DashboardAggregationService } from "../../../src/interaction/dashboard/index.js";
 import { DashboardWebSocketServer } from "../../../src/interaction/dashboard/dashboard-websocket-server.js";
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
 
 // Mock IntakeRouter for NL Gateway tests

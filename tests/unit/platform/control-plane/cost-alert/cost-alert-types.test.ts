@@ -13,7 +13,7 @@ import type {
   CostThresholdExceededEvent,
   CostAlertConfig,
   StepUsageRecord,
-} from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+} from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 test("BudgetScope is a union type with correct values", () => {
   const scopes: BudgetScope[] = ["platform", "tenant", "pack", "step"];

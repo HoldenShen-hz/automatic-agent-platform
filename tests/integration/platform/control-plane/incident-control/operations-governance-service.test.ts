@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Tests: Operations Governance Service
  *
@@ -15,15 +14,15 @@ import { HealthService } from "../../../../../src/platform/shared/observability/
 import { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
 import { MetricsService } from "../../../../../src/platform/shared/observability/metrics-service.js";
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
-import { DoctorService } from "../../../../../src/platform/control-plane/incident-control/doctor-service.js";
-import { OperationsGovernanceService, type OperationsSloKey } from "../../../../../src/platform/control-plane/incident-control/operations-governance-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { SqliteReliabilityService } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
-import { StalledExecutionDetector } from "../../../../../src/platform/execution/recovery/stalled-execution-detector.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import { StartupConsistencyChecker } from "../../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { DoctorService } from "../../../../../src/platform/five-plane-control-plane/incident-control/doctor-service.js";
+import { OperationsGovernanceService, type OperationsSloKey } from "../../../../../src/platform/five-plane-control-plane/incident-control/operations-governance-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteReliabilityService } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import { StalledExecutionDetector } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { StartupConsistencyChecker } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 

@@ -23,10 +23,10 @@
  * @see docs_zh/contracts/platform_operator_contract.md
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
-import { toWorkerSchedulingStatus } from "../../platform/execution/worker-pool/worker-scheduling-status.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import { toWorkerSchedulingStatus } from "../../platform/five-plane-execution/worker-pool/worker-scheduling-status.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   createStableReleasePackage,
   type StableReleasePackageReport,

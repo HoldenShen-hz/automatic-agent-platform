@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   TakeoverEscalationManager,
-} from "../../../../../src/platform/control-plane/incident-control/takeover-escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/takeover-escalation-manager.js";
 import type {
   TakeoverLifecycleEvent,
   TakeoverEventPayload,
@@ -11,7 +11,7 @@ import type {
   EscalationLevel,
   TakeoverAckStatus,
   AckResult,
-} from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 
 test.describe("TakeoverEscalationManager", () => {
   // Track managers created in tests for cleanup

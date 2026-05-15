@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import type { AsyncSqlDatabase } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { SqliteAsyncAdapter } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-async-adapter.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import type { AsyncSqlDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 interface SampleItem {

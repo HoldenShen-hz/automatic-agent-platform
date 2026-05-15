@@ -33,17 +33,17 @@ import {
   DeploymentExecutionService,
   type DeploymentCommandRequest,
   type DeploymentCommandResult,
-} from "../../platform/control-plane/incident-control/deployment-execution-service.js";
+} from "../../platform/five-plane-control-plane/incident-control/deployment-execution-service.js";
 import {
   ReleasePipelineService,
   type ReleasePipelineCommandRequest,
   type ReleasePipelineCommandResult,
-} from "../../platform/control-plane/incident-control/release-pipeline-service.js";
+} from "../../platform/five-plane-control-plane/incident-control/release-pipeline-service.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
-import { loadReleasePipelineCliEnv } from "../../platform/control-plane/config-center/release-pipeline-env.js";
+import { loadReleasePipelineCliEnv } from "../../platform/five-plane-control-plane/config-center/release-pipeline-env.js";
 
 /**
  * Retrieves a required environment variable value mapped from CLI config.

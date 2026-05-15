@@ -15,7 +15,7 @@ import type {
 } from "../../platform/contracts/types/domain.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type { BudgetPolicy } from "../../platform/model-gateway/cost-tracker/budget-guard.js";
-import type { ApprovalRequest } from "../../platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalRequest } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 
 /**
  * Evidence supporting a budget adjustment proposal.

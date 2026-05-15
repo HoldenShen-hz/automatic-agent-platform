@@ -11,21 +11,21 @@ import { readFileSync } from "fs";
  */
 
 const ROUTE_FILES = [
-  "src/platform/interface/api/http-server/plane-routes.ts",
-  "src/platform/interface/api/http-server/auth-routes.ts",
-  "src/platform/interface/api/http-server/gateway-routes.ts",
-  "src/platform/interface/api/http-server/approval-routes.ts",
-  "src/platform/interface/api/http-server/billing-routes.ts",
-  "src/platform/interface/api/http-server/console-routes.ts",
-  "src/platform/interface/api/http-server/division-routes.ts",
-  "src/platform/interface/api/http-server/dashboard-routes.ts",
-  "src/platform/interface/api/http-server/task-routes.ts",
-  "src/platform/interface/api/http-server/webhook-routes.ts",
-  "src/platform/interface/api/http-server/admin-routes.ts",
-  "src/platform/interface/api/http-server/cost-routes.ts",
-  "src/platform/interface/api/http-server/incident-routes.ts",
-  "src/platform/interface/api/http-server/pack-routes.ts",
-  "src/platform/interface/api/http-server/prompt-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/plane-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/auth-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/gateway-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/approval-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/billing-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/console-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/division-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/dashboard-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/task-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/webhook-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/admin-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/cost-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/incident-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/pack-routes.ts",
+  "src/platform/five-plane-interface/api/http-server/prompt-routes.ts",
 ];
 
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {

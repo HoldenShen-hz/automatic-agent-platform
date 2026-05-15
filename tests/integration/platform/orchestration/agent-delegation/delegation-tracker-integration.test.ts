@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Delegation Tracker
  *
@@ -15,7 +14,7 @@ import {
   createDelegationTracker,
   type DelegationResult,
   type DelegationEvent,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-tracker.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-tracker.js";
 
 function createDelegationResult(overrides: Partial<DelegationResult> = {}): DelegationResult {
   return {

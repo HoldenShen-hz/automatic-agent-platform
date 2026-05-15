@@ -13,8 +13,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { StructuredLogger } from "../../../../../../src/platform/shared/observability/structured-logger.js";
-import { KnowledgeAuditLogger } from "../../../../../../src/platform/state-evidence/knowledge/governance/knowledge-audit-logger.js";
-import type { KnowledgeAccessDecision } from "../../../../../../src/platform/state-evidence/knowledge/governance/access-control.js";
+import { KnowledgeAuditLogger } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-audit-logger.js";
+import type { KnowledgeAccessDecision } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/access-control.js";
 
 function createDecision(overrides: Partial<KnowledgeAccessDecision> = {}): KnowledgeAccessDecision {
   return {

@@ -6,7 +6,7 @@ import {
   parseGatewaySendPayload,
   parseApprovalDecisionPayload,
   parseBillingReconcilePayload,
-} from "../../../../../../src/platform/interface/api/http-server/schemas.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/schemas.js";
 
 test("parseGatewaySendPayload parses valid payload", () => {
   const payload = parseGatewaySendPayload({

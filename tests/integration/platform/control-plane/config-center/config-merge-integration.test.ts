@@ -10,7 +10,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("config: database config directory is accessible", () => {

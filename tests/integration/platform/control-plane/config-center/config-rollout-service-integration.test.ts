@@ -46,7 +46,7 @@ import {
   ConfigRolloutService,
   RolloutPhase,
   ConfigRollout,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 
 test("rollout integration: startRollout creates rollout with default stages", () => {
   const service = new ConfigRolloutService();
@@ -250,7 +250,7 @@ test("rollout integration: getActiveRollouts returns all active rollouts", () =>
 
 test("rollout integration: eventBus receives publish calls when eventBus is provided", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   // Use targetPercentage=75 to start at FULL stage
   const rollout = service.startRollout("runtime.timeout", "platform", null, 75);
@@ -265,7 +265,7 @@ test("rollout integration: eventBus receives publish calls when eventBus is prov
 
 test("rollout integration: promoteRollout emits config.rollout.promoted event", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
   mockBus.getEvents().length = 0; // Clear start event
@@ -282,7 +282,7 @@ test("rollout integration: promoteRollout emits config.rollout.promoted event", 
 
 test("rollout integration: cancelRollout emits config.rollout.cancelled event", () => {
   const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus });
 
   const rollout = service.startRollout("runtime.timeout", "platform", null);
   mockBus.getEvents().length = 0; // Clear start event

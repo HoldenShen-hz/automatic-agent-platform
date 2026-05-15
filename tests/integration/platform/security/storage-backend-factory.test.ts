@@ -52,7 +52,7 @@ test("single-task runtime routes postgres dual-run sync access through shadow sq
   try {
     createFile(shadowPath, "");
     const source = `
-      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/single-task-execution.ts"))};
+      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.ts"))};
       void (async () => {
         await runSingleTaskExecution({
           dbPath: ${JSON.stringify(dbPath)},
@@ -84,7 +84,7 @@ test("multi-step runtime routes postgres dual-run sync access through shadow sql
   try {
     createFile(shadowPath, "");
     const source = `
-      import { runMultiStepOrchestration } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/multi-step-orchestration.ts"))};
+      import { runMultiStepOrchestration } from ${JSON.stringify(distModuleHref("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts"))};
       void (async () => {
         await runMultiStepOrchestration({
           dbPath: ${JSON.stringify(dbPath)},

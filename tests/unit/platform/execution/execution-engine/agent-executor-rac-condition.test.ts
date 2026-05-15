@@ -22,13 +22,13 @@ import {
   type AgentExecutorContext,
   type AgentExecutorInput,
   type AgentExecutorResult,
-} from "../../../../../src/platform/execution/execution-engine/agent-executor.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
 import {
   AgentMiddlewareChain,
   globalMiddlewareChain,
   type MiddlewareContext,
-} from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
-import type { LoopDetectionConfig, LoopPattern } from "../../../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
+import type { LoopDetectionConfig, LoopPattern } from "../../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 import { RuntimeError } from "../../../../../src/platform/contracts/errors.js";
 
 // ---------------------------------------------------------------------------

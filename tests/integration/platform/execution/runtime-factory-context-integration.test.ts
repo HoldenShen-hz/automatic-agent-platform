@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createRuntimeServices, runtimeFactories } from "../../../../src/platform/execution/execution-engine/runtime-factory.js";
+import { createRuntimeServices, runtimeFactories } from "../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js";
 import {
   provideContext,
   getContext,
@@ -20,9 +20,9 @@ import {
   hasTenantContext,
   hasWorkspaceContext,
 } from "../../../../src/platform/shared/context/runtime-context.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
-import type { PostgresAuthoritativeStorageBackendHandle } from "../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import type { PostgresAuthoritativeStorageBackendHandle } from "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import type { RuntimeContextSnapshot } from "../../../../src/platform/shared/context/runtime-context.js";
 
 function createSqliteBackend(dbPath: string): SqliteDatabase {

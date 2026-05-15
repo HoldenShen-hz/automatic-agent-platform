@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HitlRuntime } from "../../../../../src/platform/orchestration/harness/hitl-runtime.js";
+import { HitlRuntime } from "../../../../../src/platform/five-plane-orchestration/harness/hitl-runtime.js";
 
 test("HitlRuntime.open creates pending request", () => {
   const runtime = new HitlRuntime();

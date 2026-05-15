@@ -8,8 +8,8 @@ import {
   isOriginAllowed,
   buildPreflightHeaders,
   decorateResponseHeaders,
-} from "../../../../../src/platform/interface/api/http-server/response-hardening.js";
-import type { ApiResponsePayload } from "../../../../../src/platform/interface/api/http-server/types.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
+import type { ApiResponsePayload } from "../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("DEFAULT_CORS_CONFIG has correct structure", () => {
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, []);

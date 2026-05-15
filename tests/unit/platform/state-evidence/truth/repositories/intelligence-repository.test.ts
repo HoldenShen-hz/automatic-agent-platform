@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { IntelligenceRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/intelligence-repository.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { IntelligenceRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/intelligence-repository.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 const now = "2026-04-15T10:00:00.000Z";

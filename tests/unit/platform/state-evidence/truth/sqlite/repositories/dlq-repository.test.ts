@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-import { SqliteDeadLetterQueueRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/dlq-repository.js";
+import { SqliteDeadLetterQueueRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/dlq-repository.js";
 
 function createConnection(): DatabaseSync {
   const connection = new DatabaseSync(":memory:");

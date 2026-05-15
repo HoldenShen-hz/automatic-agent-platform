@@ -7,7 +7,7 @@ import type {
   ApiResponsePayload,
   RouteContext,
   RouteDefinition,
-} from "../../../../../../src/platform/interface/api/http-server/types.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("RouteMatch structure is correct", () => {
   const match: RouteMatch = {

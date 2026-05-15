@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Tests: Tenant Execution Isolation Service
  *
@@ -10,9 +9,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { TenantExecutionIsolationService, TENANT_ISOLATION_DDL, type TenantQuota, type QuotaUsage, type TenantIsolationStatus, type ExecutionResourceUsage } from "../../../../../src/platform/control-plane/incident-control/tenant-execution-isolation-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { TenantExecutionIsolationService, TENANT_ISOLATION_DDL, type TenantQuota, type QuotaUsage, type TenantIsolationStatus, type ExecutionResourceUsage } from "../../../../../src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";

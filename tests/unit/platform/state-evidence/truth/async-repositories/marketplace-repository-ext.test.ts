@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncMarketplaceListingRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository-ext.js";
+import { AsyncMarketplaceListingRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/marketplace-repository-ext.js";
 import type {
   MarketplaceListingRecord,
   PackReviewRecord,
   PackDownloadRecord,
-} from "../../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository-ext.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/marketplace-repository-ext.js";
 
 function createMockAsyncConnection(): any {
   const storage: {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAsyncRepositoryRegistry } from "../../../../../src/platform/state-evidence/truth/async-repository-registry.js";
+import { createAsyncRepositoryRegistry } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repository-registry.js";
 import { createTestPgDatabase, resetPgTables, shouldRunPgIntegration } from "../../../../helpers/pg-test-helper.js";
 
 const pgSupport = shouldRunPgIntegration();

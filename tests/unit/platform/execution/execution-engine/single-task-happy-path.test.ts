@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { runSingleTaskExecution, runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/platform/execution/execution-engine/single-task-happy-path.js";
+import { runSingleTaskExecution, runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

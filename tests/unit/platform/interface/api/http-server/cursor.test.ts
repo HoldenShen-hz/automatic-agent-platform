@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   encodeOpaqueCursor,
   decodeOpaqueCursor,
-} from "../../../../../../src/platform/interface/api/http-server/utils.js";
+} from "../../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
 
 test("encodeOpaqueCursor encodes empty object to base64url", () => {
   const encoded = encodeOpaqueCursor({});

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as orchestrationPlanner from "../../../../../src/platform/orchestration/planner/index.js";
+import * as orchestrationPlanner from "../../../../../src/platform/five-plane-orchestration/planner/index.js";
 
 test("planner module exports TaskDecompositionService", () => {
   assert.ok("TaskDecompositionService" in orchestrationPlanner);

@@ -11,7 +11,7 @@ import {
   removeExecutionId,
   toWorkerStatus,
   toExecutionTerminalStatus,
-} from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-support.js";
+} from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-writeback-support.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import type { TaskTerminalStatus } from "../../../../../src/platform/contracts/types/status.js";
 

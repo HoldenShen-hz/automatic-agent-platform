@@ -6,7 +6,7 @@ import {
   computeWorkerLoadScore,
   summarizeWorkerLoadSkew,
   MAX_RECOMMENDED_STICKY_SHARE,
-} from "../../../src/platform/execution/worker-pool/worker-load-balancing.js";
+} from "../../../src/platform/five-plane-execution/worker-pool/worker-load-balancing.js";
 
 test("worker load balancing computes effective active leases from the stronger of active leases and running work", () => {
   assert.equal(

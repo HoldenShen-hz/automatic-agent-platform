@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildOpenApiDocument, listApiRoutes, type ApiRouteSpec } from "../../../../../src/platform/interface/api/openapi-document.js";
+import { buildOpenApiDocument, listApiRoutes, type ApiRouteSpec } from "../../../../../src/platform/five-plane-interface/api/openapi-document.js";
 
 test("buildOpenApiDocument returns valid OpenAPI 3.1 document", () => {
   const doc = buildOpenApiDocument();

@@ -5,15 +5,14 @@
  * These tests measure retry timing and count behavior.
  */
 
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
-import { DurableEventBus } from "../../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
+import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";

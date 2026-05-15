@@ -9,7 +9,7 @@ import {
   detectToolPermissionDenial,
   FailurePatternSchema,
   FailurePatternTypeSchema,
-} from "../../../../../../src/platform/orchestration/learn/pattern-detectors/index.js";
+} from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/index.js";
 
 test("detectLlmTruncation is exported as function", () => {
   assert.equal(typeof detectLlmTruncation, "function");

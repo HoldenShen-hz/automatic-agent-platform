@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decryptField, encryptField } from "../../../../../src/platform/control-plane/iam/field-encryption.js";
+import { decryptField, encryptField } from "../../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
 
 test("field encryption round-trips plaintext", () => {
   const key = "production-encryption-key";

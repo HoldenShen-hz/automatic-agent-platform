@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeIngestionPipeline } from "../../../../../src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.js";
-import { NamespacePolicyStore } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import { KeywordKnowledgeIndex } from "../../../../../src/platform/state-evidence/knowledge/keyword-index.js";
+import { KnowledgeIngestionPipeline } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+import { NamespacePolicyStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import { KeywordKnowledgeIndex } from "../../../../../src/platform/five-plane-state-evidence/knowledge/keyword-index.js";
 
 test("KnowledgeIngestionPipeline constructor creates instance with default values", () => {
   const pipeline = new KnowledgeIngestionPipeline();

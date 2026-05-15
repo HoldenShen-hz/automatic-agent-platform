@@ -10,7 +10,7 @@ import {
   computeLeaseExpiry,
   normalizeLeaseStatus,
   type SecretRotationPolicy,
-} from "../../../../../src/platform/control-plane/iam/secret-management-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 import type { SecretLeaseStatus } from "../../../../../src/platform/contracts/types/domain/primitives.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 

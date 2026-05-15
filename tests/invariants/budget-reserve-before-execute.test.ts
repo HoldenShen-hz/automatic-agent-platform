@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BudgetAllocator } from "../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../src/platform/five-plane-execution/budget-allocator.js";
 import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 import { ValidationError, WorkflowStateError } from "../../src/platform/contracts/errors.js";
 

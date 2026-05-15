@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TicketPriorityQueue, type Ticket, type EnqueueTicketInput } from "../../../../../src/platform/execution/queue/ticket-priority-queue.js";
+import { TicketPriorityQueue, type Ticket, type EnqueueTicketInput } from "../../../../../src/platform/five-plane-execution/queue/ticket-priority-queue.js";
 
 test("TicketPriorityQueue enqueue returns ticket with correct shape", () => {
   const queue = new TicketPriorityQueue();

@@ -14,7 +14,7 @@ import {
   createDefaultCommandPolicies,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 
-import { createWorkspaceWritePolicy, checkSandboxPath, type SandboxPolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy, checkSandboxPath, type SandboxPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Traversal Tests

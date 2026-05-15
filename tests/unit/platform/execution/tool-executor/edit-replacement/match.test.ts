@@ -15,7 +15,7 @@ import {
   type MatchCandidate,
   type MatchOutcome,
   type EditInstruction,
-} from "../../../../../../src/platform/execution/tool-executor/edit-replacement/match.js";
+} from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/match.js";
 
 test("findAllOccurrences returns empty array for empty needle", () => {
   assert.deepEqual(findAllOccurrences("content", ""), []);

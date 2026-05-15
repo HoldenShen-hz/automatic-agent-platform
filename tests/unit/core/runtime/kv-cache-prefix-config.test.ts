@@ -7,7 +7,7 @@ import {
   isWithinFixedPrefixBudget,
   isWithinDomainBlockBudget,
   type KvCachePrefixConfig,
-} from "../../../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
 
 test("createKvCachePrefixConfig returns config with defaults", () => {
   const config = createKvCachePrefixConfig();

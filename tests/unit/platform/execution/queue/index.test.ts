@@ -10,7 +10,7 @@ import type {
   DequeueResult,
   QueueStats,
   RetryPolicy,
-} from "../../../../../src/platform/execution/queue/index.js";
+} from "../../../../../src/platform/five-plane-execution/queue/index.js";
 
 test("QueueBackendKind type accepts valid values", () => {
   const kinds: QueueBackendKind[] = ["sqlite", "redis"];

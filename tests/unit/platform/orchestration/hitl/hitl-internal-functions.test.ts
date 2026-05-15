@@ -8,14 +8,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HitlInboxService } from "../../../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
-import { HitlOperatorConsoleService } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
+import { HitlInboxService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
+import { HitlOperatorConsoleService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
 import type {
   ApprovalPacket,
   ApprovalFeedbackLink,
   ApprovalPacketOption,
-} from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
-import type { HitlNotificationChannel } from "../../../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
+} from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
+import type { HitlNotificationChannel } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
@@ -613,7 +613,7 @@ test("HitlApprovalOrchestrationService requestApproval with default mode", async
     }),
   };
 
-  const { HitlApprovalOrchestrationService } = await import("../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js");
+  const { HitlApprovalOrchestrationService } = await import("../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js");
   const service = new HitlApprovalOrchestrationService(
     mockApprovalService as any,
     mockExplainService as any,
@@ -671,7 +671,7 @@ test("HitlApprovalOrchestrationService requestApproval passes context to explain
     },
   };
 
-  const { HitlApprovalOrchestrationService } = await import("../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js");
+  const { HitlApprovalOrchestrationService } = await import("../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js");
   const service = new HitlApprovalOrchestrationService(
     mockApprovalService as any,
     mockExplainService as any,

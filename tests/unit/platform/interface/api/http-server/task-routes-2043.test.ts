@@ -10,14 +10,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createTaskRoutes } from "../../../../../../src/platform/interface/api/http-server/task-routes.js";
-import { parseUpdateTaskPayload } from "../../../../../../src/platform/interface/api/http-server/schemas.js";
-import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
+import { createTaskRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/task-routes.js";
+import { parseUpdateTaskPayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/schemas.js";
+import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../../../src/platform/shared/observability/inspect-service.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { IntakeAdmissionService } from "../../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
-import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { IntakeAdmissionService } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {

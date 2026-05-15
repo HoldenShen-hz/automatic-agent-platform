@@ -14,12 +14,12 @@ import {
   type EscalationLevel,
   type AckResult,
   type TakeoverRequestResult,
-} from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 
 import {
   TakeoverQueueManager,
   type TakeoverQueueConfig,
-} from "../../../../../src/platform/control-plane/incident-control/takeover-queue-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/takeover-queue-manager.js";
 
 // =============================================================================
 // Type Tests

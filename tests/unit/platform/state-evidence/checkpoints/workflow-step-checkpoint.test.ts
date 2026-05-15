@@ -6,7 +6,7 @@ import {
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
-} from "../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("createWorkflowStepCheckpoint builds correct structure", () => {

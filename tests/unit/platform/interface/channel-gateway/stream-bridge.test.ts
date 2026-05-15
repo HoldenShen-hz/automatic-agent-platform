@@ -5,7 +5,7 @@ import {
   type StreamEventFrame,
   type StreamBridgeOptions,
   type StreamReplayResult,
-} from "../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockEventRecord(taskId: string, eventType: string, payloadJson: string, createdAt = "2024-01-01T00:00:00.000Z"): EventRecord {

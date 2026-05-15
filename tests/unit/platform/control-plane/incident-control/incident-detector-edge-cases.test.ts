@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   IncidentDetector,
   type IncidentDetection,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 test("IncidentDetector handles unknown check ID mapping to system_health", () => {
   const detector = new IncidentDetector();

@@ -9,7 +9,7 @@ import {
   withCliStorage,
 } from "../../../../src/sdk/cli/authoritative-storage.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
-import type { SqliteAuthoritativeStorageContext } from "../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import type { SqliteAuthoritativeStorageContext } from "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 
 test("cli authoritative storage context binds store and sql handle from AA_DB_PATH", () => {
   const workspace = createTempWorkspace("aa-cli-storage-context-");

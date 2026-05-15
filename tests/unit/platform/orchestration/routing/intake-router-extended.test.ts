@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IntakeRouter, type IntakeRouteInput } from "../../../../../src/platform/orchestration/routing/intake-router.js";
+import { IntakeRouter, type IntakeRouteInput } from "../../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../../../src/domains/governance/division-loader.js";
 
 function createMockDivision(overrides: Partial<LoadedDivisionDefinition> & { id: string }): LoadedDivisionDefinition {

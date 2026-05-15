@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   validateContentType,
   createContentTypeValidationMiddleware,
-} from "../../../../../../src/platform/interface/api/middleware/content-type.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/content-type.js";
 
 function buildRequest(overrides: Partial<{ method: string; headers: Record<string, string | undefined> }> = {}): ApiRequestLike {
   return {

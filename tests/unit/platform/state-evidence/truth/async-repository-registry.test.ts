@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAsyncRepositoryRegistry } from "../../../../../src/platform/state-evidence/truth/async-repository-registry.js";
-import type { AsyncSqlConnection, AsyncSqlDatabase } from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { createAsyncRepositoryRegistry } from "../../../../../src/platform/five-plane-state-evidence/truth/async-repository-registry.js";
+import type { AsyncSqlConnection, AsyncSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 
 function createConnection(): AsyncSqlConnection {
   return {

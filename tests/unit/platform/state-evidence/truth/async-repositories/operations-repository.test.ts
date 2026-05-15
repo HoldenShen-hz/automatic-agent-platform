@@ -1,9 +1,8 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncOperationsRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/operations-repository.js";
-import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/state-evidence/truth/async-sql-database.js";
+import { AsyncOperationsRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-repositories/operations-repository.js";
+import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../../src/platform/five-plane-state-evidence/truth/async-sql-database.js";
 import type {
   AnalyticsFactRecord,
   ArchiveBundleRecord,

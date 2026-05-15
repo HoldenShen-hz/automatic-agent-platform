@@ -6,7 +6,7 @@ import {
   decodeHTMLEntities,
   extractSearchResults,
   type WebSearchRequest,
-} from "../../../../../src/platform/execution/tool-executor/web-search.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/web-search.js";
 
 test("isBlockedHostname blocks private IP patterns", () => {
   assert.ok(isBlockedHostname("127.0.0.1"));

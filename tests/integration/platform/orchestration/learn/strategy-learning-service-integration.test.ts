@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSeededIntegrationContext } from "../../../../helpers/integration-context.js";
-import { StrategyLearningService } from "../../../../../src/platform/orchestration/learn/strategy-learning-service.js";
+import { StrategyLearningService } from "../../../../../src/platform/five-plane-orchestration/learn/strategy-learning-service.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> & { learningSignalId: string; taskId: string }): LearningSignal {

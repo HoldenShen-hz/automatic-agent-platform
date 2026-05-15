@@ -18,7 +18,7 @@ import {
   type CodeTrustLevel,
   type DocMemoryLayer,
   type CodeMemoryLayer,
-} from "../../../../../../src/platform/state-evidence/knowledge/governance/knowledge-naming-mapper.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-naming-mapper.js";
 
 /* ============================================================
    Trust Level Mapping

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHotUpgradeRepository, type HotUpgradeRepository, type UpgradeAuditEntry } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
+import { createHotUpgradeRepository, type HotUpgradeRepository, type UpgradeAuditEntry } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
 
 const mockSqliteBackend = {
   driver: "sqlite",

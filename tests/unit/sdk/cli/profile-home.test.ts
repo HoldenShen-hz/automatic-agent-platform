@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadProfileHomeCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadProfileHomeCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 
 test("loadProfileHomeCliEnv returns create false when AA_PROFILE_HOME_CREATE is not set", () => {
   const config = loadProfileHomeCliEnv({});

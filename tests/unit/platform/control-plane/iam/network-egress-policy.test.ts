@@ -6,7 +6,7 @@ import {
   loadNetworkEgressPolicyConfigFromEnv,
   NetworkEgressPolicyService,
   type NetworkEgressPolicyConfig,
-} from "../../../../../src/platform/control-plane/iam/network-egress-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
 test("loadNetworkEgressPolicyConfigFromEnv returns deny mode by default", () => {

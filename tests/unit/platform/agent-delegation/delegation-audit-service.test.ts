@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { DelegationAuditService } from "../../../../src/platform/orchestration/agent-delegation/delegation-audit-service.js";
+import { DelegationAuditService } from "../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-audit-service.js";
 
 function createService(): DelegationAuditService {
   return new DelegationAuditService(mkdtempSync(join(tmpdir(), "delegation-audit-test-")));

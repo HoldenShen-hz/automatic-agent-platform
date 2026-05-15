@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: IAM Access Policy
  *
@@ -15,7 +14,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../../helpers/integration-context.js";
-import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/control-plane/iam/policy-engine.js";
+import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
 import { BudgetPolicy } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 import {
   checkSandboxPath,
@@ -24,7 +23,7 @@ import {
   createRestrictedExecPolicy,
   createConfigReadPolicy,
   type SandboxPolicy,
-} from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDecisionRequest {
   return {

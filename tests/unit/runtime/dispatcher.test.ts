@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-} from "../../../src/platform/execution/dispatcher/index.js";
+} from "../../../src/platform/five-plane-execution/dispatcher/index.js";
 
 test.afterEach(() => {
   resetMultiStepToolRegistryForTests();

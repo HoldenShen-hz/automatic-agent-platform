@@ -16,8 +16,8 @@ import {
   IncidentDrillService,
   PREDEFINED_SCENARIOS,
   type IncidentDrillScenario,
-} from "../../src/platform/control-plane/incident-control/runbook-executor/incident-drill-service.js";
-import { RunbookExecutor } from "../../src/platform/control-plane/incident-control/runbook-executor/runbook-executor.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/runbook-executor/incident-drill-service.js";
+import { RunbookExecutor } from "../../src/platform/five-plane-control-plane/incident-control/runbook-executor/runbook-executor.js";
 
 function createDrillService(): IncidentDrillService {
   // IncidentDrillService stores the executor but doesn't call its methods in the tested scenarios

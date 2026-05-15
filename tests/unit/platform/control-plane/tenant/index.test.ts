@@ -6,7 +6,7 @@ import {
   type UserAccount,
   type TenantBoundaryTopologySeed,
   type TenantAccessDecision,
-} from "../../../../../src/platform/control-plane/tenant/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
 
 test("TenantBoundaryRegistryService can be instantiated with no seed", () => {
   const service = new TenantBoundaryRegistryService();

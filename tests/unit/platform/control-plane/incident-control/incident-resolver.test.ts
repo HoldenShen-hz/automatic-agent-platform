@@ -6,12 +6,12 @@ import {
   type IncidentResolution,
   type ResolutionStrategy,
   type ResolutionAction,
-} from "../../../../../src/platform/control-plane/incident-control/incident-resolver.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-resolver.js";
 import type {
   IncidentDetection,
   IncidentSeverity,
   IncidentCategory,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 function createMockIncident(overrides: Partial<IncidentDetection> = {}): IncidentDetection {
   return {

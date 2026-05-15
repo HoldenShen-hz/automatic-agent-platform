@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
 
-import { DlqService } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+import { DlqService } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 
 test("DlqService enqueue creates a pending record", () => {
   const service = new DlqService();

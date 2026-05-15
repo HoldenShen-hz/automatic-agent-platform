@@ -41,7 +41,7 @@ export class PolicyRolloutService {
     if (rolloutFreezeManager.isFrozen()) {
       return {
         allowed: false,
-        releaseLevel: "L0_off",
+        releaseLevel: "off",
         reasonCode: "rollout.frozen_error_budget",
         reasonCodes: ["rollout.frozen_error_budget: rollouts are frozen due to error budget exhaustion"],
       };
@@ -51,7 +51,7 @@ export class PolicyRolloutService {
     if (!guardrailDecision.allowed) {
       return {
         allowed: false,
-        releaseLevel: "L0_off",
+        releaseLevel: "off",
         reasonCode: guardrailDecision.reasonCodes[0] ?? "improvement.guardrail_blocked",
         reasonCodes: guardrailDecision.reasonCodes,
       };
@@ -77,7 +77,7 @@ export class PolicyRolloutService {
     if (!decision.allowed) {
       return null;
     }
-    return this.stateMachine.transition(candidate, normalizeRolloutLevel(decision.releaseLevel), {
+    return this.stateMachine.transition(candidate, decision.releaseLevel, {
       approvedBy,
       strategyVersionId: strategyVersion.strategyVersionId,
       guardrailReasonCodes: decision.reasonCodes,
@@ -124,7 +124,7 @@ export class PolicyRolloutService {
     approvedBy?: string,
   ): RolloutRecord {
     const rollbackDecision = this.autoRollback.evaluate(current, metrics);
-    return this.stateMachine.transition(candidate, "L0_off", {
+    return this.stateMachine.transition(candidate, "off", {
       currentStatus: current.status,
       targetStatus: "rolled_back",
       approvedBy,
@@ -187,22 +187,37 @@ export class PolicyRolloutService {
 function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
   switch (status) {
     case "candidate_created":
+    case "proposed":
+    case "draft":
     case "under_review":
     case "approved":
+    case "shadow_running":
     case "rejected":
     case "rolled_back":
     case "paused":
-      return "L0_off";
+      return "off";
+    case "pending_approval":
+      return "suggest";
+    case "shadow":
+      return "shadow";
     case "evaluation_enabled":
-      return "L1_evaluate";
+      return "suggest";
     case "canary_5":
-      return "L2_canary";
+      return "canary_5";
     case "partial_25":
-      return "L3_partial";
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
     case "stable_75":
-      return "L4_stable";
+      return "stable_75";
+    case "stable":
+      return "stable";
     case "stable_100":
+      return "stable_100";
     case "released":
-      return "L5_full";
+      return "stable";
   }
+  return "off";
 }

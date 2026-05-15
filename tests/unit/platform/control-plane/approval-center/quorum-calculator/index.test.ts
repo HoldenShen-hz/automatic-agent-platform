@@ -18,7 +18,7 @@ import {
   hasApproverVoted,
   getApproverVote,
   QuorumCalculator,
-} from "../../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 
 test("createInitialQuorumStatus returns correct initial state", () => {
   const status = createInitialQuorumStatus();

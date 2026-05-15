@@ -5,7 +5,7 @@ import type {
   WorkflowOutputSchemaProperty,
   WorkflowOutputSchemaDefinition,
   WorkflowOutputValidationResult,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/output-schema.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/output-schema.js";
 
 test("WorkflowOutputSchemaProperty structure is correct", () => {
   const prop: WorkflowOutputSchemaProperty = {

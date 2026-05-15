@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadOrphanCleanupCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadOrphanCleanupCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // ---------------------------------------------------------------------------

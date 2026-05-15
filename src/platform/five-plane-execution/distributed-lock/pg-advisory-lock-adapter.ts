@@ -1,4 +1,4 @@
-import { loadPostgresPoolEnv } from "../../control-plane/config-center/postgres-pool-env.js";
+import { loadPostgresPoolEnv } from "../../five-plane-control-plane/config-center/postgres-pool-env.js";
 import { LockingError } from "../../contracts/errors.js";
 import { defaultPostgresFactory, inferPgSslFromDsn } from "./locking-support.js";
 import type { AcquireLockInput, AcquireLockResult, DistributedLockAdapter, LockBackendKind, LockRecord, PgAdvisoryLockConfig, PostgresFactory, PostgresSqlDriver } from "./distributed-lock-types.js";
@@ -83,8 +83,9 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
       this.ensureConnected();
       const driver = this.sql!;
       const advisoryKey = this.lockKeyToAdvisoryKey(lockKey);
-      interface AcquireRow { acquired: boolean }
-      const [result] = await driver<AcquireRow[]>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired`;
+      interface AcquireRow extends Record<string, unknown> { acquired: boolean }
+      const rows = await driver<AcquireRow>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired`;
+      const result = rows[0];
       if (result?.acquired) {
         return { acquired: true, lock: { lockKey, owner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata: null } };
       }

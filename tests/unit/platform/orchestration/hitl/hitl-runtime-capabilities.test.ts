@@ -5,7 +5,7 @@ import {
   HitlForceTerminateService,
   HitlOverrideService,
   HitlPatchService,
-} from "../../../../../src/platform/orchestration/hitl/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/hitl/index.js";
 
 test("HitlPatchService supports modify-and-approve flow", () => {
   const service = new HitlPatchService();

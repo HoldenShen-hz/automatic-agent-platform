@@ -5,7 +5,7 @@
  * Uses AsyncSqlDatabase for async operations with proper connection pooling.
  */
 
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type { LeaseRepository } from "./lease-repository.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../contracts/types/domain.js";
 

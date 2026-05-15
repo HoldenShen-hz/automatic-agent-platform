@@ -6,9 +6,9 @@ import { dirname } from "node:path";
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
-import { loadOpsGovernanceCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { OperationsGovernanceService, type OperationsGovernanceBuildInput } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import { loadOpsGovernanceCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { OperationsGovernanceService, type OperationsGovernanceBuildInput } from "../../platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 
 /**

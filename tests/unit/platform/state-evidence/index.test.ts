@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import * as stateEvidence from "../../../../src/platform/state-evidence/index.js";
+import * as stateEvidence from "../../../../src/platform/five-plane-state-evidence/index.js";
 
 test("state-evidence/index exports artifacts namespace", () => {
   assert.ok(stateEvidence.artifacts !== undefined);

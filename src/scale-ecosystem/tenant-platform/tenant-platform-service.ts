@@ -18,8 +18,8 @@
  */
 
 import { MonetizationError, PolicyDeniedError, TenantBoundaryError, ValidationError } from "../../platform/contracts/errors.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { NoisyNeighborProtectionService, getNoisyNeighborProtectionService, type ResourceType } from "../multi-region/noisy-neighbor-protection.js";
 import { PerTenantEncryptionService, getPerTenantEncryptionService, type EncryptionAlgorithm, type EncryptedRecord } from "../multi-region/per-tenant-encryption.js";
 import { ResourcePoolService, type ResourcePool } from "../resource-manager/resource-pool-service.js";

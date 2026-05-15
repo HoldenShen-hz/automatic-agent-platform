@@ -4,7 +4,7 @@ import { writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { loadRiskConfig } from "../../../../../src/platform/control-plane/risk-control/risk-config-loader.js";
+import { loadRiskConfig } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
 
 test("loadRiskConfig parses valid risk config file", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-config-test-"));

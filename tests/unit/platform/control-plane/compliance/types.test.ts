@@ -4,11 +4,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
-import type { ErasureRequest } from "../../../../../src/platform/control-plane/compliance/erasure-request-service.js";
-import type { ErasureReport } from "../../../../../src/platform/control-plane/compliance/erasure-report-service.js";
-import type { DataEncryptionKey } from "../../../../../src/platform/control-plane/compliance/data-encryption-key-service.js";
-import type { DataPlacement, ResidencyViolation } from "../../../../../src/platform/control-plane/compliance/data-residency-service.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
+import type { ErasureRequest } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-request-service.js";
+import type { ErasureReport } from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-report-service.js";
+import type { DataEncryptionKey } from "../../../../../src/platform/five-plane-control-plane/compliance/data-encryption-key-service.js";
+import type { DataPlacement, ResidencyViolation } from "../../../../../src/platform/five-plane-control-plane/compliance/data-residency-service.js";
 
 test("ComplianceStore interface defines all required methods", () => {
   // Verify the interface defines all required storage operations

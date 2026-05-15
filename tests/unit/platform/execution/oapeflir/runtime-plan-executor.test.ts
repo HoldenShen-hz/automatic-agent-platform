@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SINGLE_AGENT_MINIMAL_WORKFLOW } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import { SINGLE_AGENT_MINIMAL_WORKFLOW } from "../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { executeOapeflirRuntimePlan } from "../../../../../src/platform/five-plane-execution/oapeflir/runtime-plan-executor.js";
 import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.ts";

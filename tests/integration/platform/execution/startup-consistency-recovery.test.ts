@@ -2,22 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { ExecutionDispatchService } from "../../../../src/platform/execution/dispatcher/execution-dispatch-service.js";
-import { ExecutionLeaseService } from "../../../../src/platform/execution/lease/execution-lease-service.js";
-import { ExecutionWorkerHandshakeService } from "../../../../src/platform/execution/worker-pool/execution-worker-handshake-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/execution/execution-engine/single-task-execution.js";
+import { ExecutionDispatchService } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { ExecutionLeaseService } from "../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
+import { ExecutionWorkerHandshakeService } from "../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
 import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
-} from "../../../../src/platform/execution/startup/startup-preflight.js";
-import { RuntimeRepairService } from "../../../../src/platform/execution/recovery/runtime-repair-service-root.js";
-import { StartupConsistencyChecker } from "../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { WorkerRegistryService } from "../../../../src/platform/execution/worker-pool/worker-registry-service.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
+import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { WorkerRegistryService } from "../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
-import type { ToolContractViolation } from "../../../../src/platform/execution/tool-executor/tool-contract-validator.js";
+import type { ToolContractViolation } from "../../../../src/platform/five-plane-execution/tool-executor/tool-contract-validator.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 

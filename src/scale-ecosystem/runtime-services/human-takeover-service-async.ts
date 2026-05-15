@@ -16,15 +16,15 @@
  * @see HumanTakeoverService for the sync implementation
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { TaskTerminalStatus } from "../../platform/contracts/types/status.js";
-import type { TakeoverActionResult } from "../../platform/control-plane/incident-control/human-takeover-service.js";
-import { HumanTakeoverService } from "../../platform/control-plane/incident-control/human-takeover-service.js";
+import type { TakeoverActionResult } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
+import { HumanTakeoverService } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
 
-export type { TakeoverActionResult } from "../../platform/control-plane/incident-control/human-takeover-service.js";
+export type { TakeoverActionResult } from "../../platform/five-plane-control-plane/incident-control/human-takeover-service.js";
 
 /**
  * Options for configuring the async HumanTakeoverService

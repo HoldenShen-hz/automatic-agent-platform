@@ -12,8 +12,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { CommandExecutor } from "../../../../src/platform/execution/tool-executor/command-executor.js";
+import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { CommandExecutor } from "../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("integration: sandbox blocks path traversal via ../", async () => {

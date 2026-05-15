@@ -13,7 +13,7 @@ import { createIntegrationContext } from "../../../../helpers/integration-contex
 import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { TransitionService } from "../../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { createRuntimeLifecycleRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("execution: dispatch service creates and claims ticket with worker", () => {

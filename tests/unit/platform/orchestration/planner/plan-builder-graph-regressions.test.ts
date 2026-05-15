@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlanBuilder } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
-import type { TaskSituation } from "../../../../../src/platform/orchestration/oapeflir/types/task-situation.js";
-import type { UnifiedAssessment } from "../../../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
+import { PlanBuilder } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import type { TaskSituation } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
+import type { UnifiedAssessment } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 
 test("plan builder returns a graph bundle with validation, risk propagation and worst path", () => {
   const builder = new PlanBuilder();

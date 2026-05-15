@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { IntelligenceRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/intelligence-repository.js";
+import { IntelligenceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/intelligence-repository.js";
 
 function createMockDb() {
   return {

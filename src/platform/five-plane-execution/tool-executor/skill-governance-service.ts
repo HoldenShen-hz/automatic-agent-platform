@@ -12,7 +12,7 @@
  * - Skill dependency validation
  */
 
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../contracts/types/ids.js";
 
 export type SkillLifecycle = "draft" | "active" | "deprecated" | "archived";

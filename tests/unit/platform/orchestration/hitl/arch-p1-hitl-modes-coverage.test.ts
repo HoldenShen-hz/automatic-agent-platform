@@ -16,7 +16,7 @@ import {
   validateHitlModeRequest,
   HITL_MODES,
   type HitlMode,
-} from "../../../../../src/platform/orchestration/hitl/hitl-modes.js";
+} from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-modes.js";
 
 /**
  * The 7 HITL interaction modes required by architecture §21.1.

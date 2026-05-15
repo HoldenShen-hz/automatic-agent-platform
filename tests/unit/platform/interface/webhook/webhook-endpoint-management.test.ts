@@ -1,11 +1,11 @@
 /**
  * Unit tests for Webhook Ingress Service endpoint management
- * Tests src/platform/interface/webhook/index.ts - endpoint management methods
+ * Tests src/platform/five-plane-interface/webhook/index.ts - endpoint management methods
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
+import { WebhookIngressService } from "../../../../../src/platform/five-plane-interface/webhook/index.js";
 
 test("WebhookIngressService registerEndpoint normalizes tenantId to null", () => {
   const service = new WebhookIngressService();

@@ -12,12 +12,12 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { ApprovalService } from "../control-plane/approval-center/approval-service.js";
-import { RuntimeRecoveryDecisionService } from "../execution/recovery/runtime-recovery-decision-service-root.js";
-import { RuntimeRecoveryReplayService } from "../execution/recovery/runtime-recovery-replay-service-root.js";
-import { RuntimeRecoveryService } from "../execution/recovery/runtime-recovery-service-root.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { ApprovalService } from "../five-plane-control-plane/approval-center/approval-service.js";
+import { RuntimeRecoveryDecisionService } from "../five-plane-execution/recovery/runtime-recovery-decision-service-root.js";
+import { RuntimeRecoveryReplayService } from "../five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+import { RuntimeRecoveryService } from "../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 export interface StableCrossDivisionRecoveryDrillOptions {
@@ -105,12 +105,12 @@ function seedExecution(
       updatedAt: input.updatedAt,
       completedAt: null,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,
       workflowId: input.workflowId,
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: input.agentId,
       roleId: input.roleId,
       runKind: "task_run",
@@ -120,6 +120,8 @@ function seedExecution(
       attempt: input.attempt ?? 1,
       timeoutMs: 1_500,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: input.requiresApproval ?? 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["analysis"]),

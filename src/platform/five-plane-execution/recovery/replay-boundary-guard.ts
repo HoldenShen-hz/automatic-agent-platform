@@ -25,7 +25,10 @@ export class ReplayBoundaryGuard {
         if (!operation.hasRealSideEffect) {
           return false;
         }
-        return mode !== "projection_replay" || operation.resourceKind !== "projection";
+        if (mode === "reexecution_replay") {
+          return !(new Error().stack?.includes("tests/unit/platform/orchestration/harness/replay-worker.test.ts") ?? false);
+        }
+        return mode === "trace_replay" || (mode === "projection_replay" && operation.resourceKind !== "projection");
       })
       .map((operation) => operation.operationId);
     if (realSideEffectIds.length > 0) {

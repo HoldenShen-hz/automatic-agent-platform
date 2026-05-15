@@ -18,8 +18,8 @@ import {
   runMultiStepOrchestration,
   type StepFailurePlan,
 } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { CompensationManager } from "../../src/platform/execution/compensation-manager.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
+import { CompensationManager } from "../../src/platform/five-plane-execution/compensation-manager.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { SideEffectRecord } from "../../src/platform/contracts/executable-contracts/index.js";
 

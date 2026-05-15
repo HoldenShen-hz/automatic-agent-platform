@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayRepairControlService } from "../../../../../src/platform/control-plane/replay-repair-control/index.js";
+import { ReplayRepairControlService } from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 test("buildStartupConsistencyReport sets open_for_traffic when no P0 findings and no recoverable", () => {
   const service = new ReplayRepairControlService();

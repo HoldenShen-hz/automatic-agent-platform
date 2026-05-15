@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ExecutionResourceCeilingGuard } from "../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 test("ExecutionResourceCeilingGuard evaluate returns empty array when no limits exceeded", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100, maxMemoryMb: 1024, maxElapsedMs: 60000 });

@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { ToolbeltAssembler } from "../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { ToolbeltAssembler } from "../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
+import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("ToolAccess integration: full access granted when all tools allowed", () => {
   const ctx = createIntegrationContext("aa-toolaccess-full-");

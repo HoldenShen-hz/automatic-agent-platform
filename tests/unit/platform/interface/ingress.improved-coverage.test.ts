@@ -1,5 +1,5 @@
 /**
- * @fileoverview Improved coverage tests for src/platform/interface/ingress
+ * @fileoverview Improved coverage tests for src/platform/five-plane-interface/ingress
  * Tests RedisRateLimiter and DistributedRateLimiter - focusing on in-memory and type tests
  */
 
@@ -9,7 +9,7 @@ import test from "node:test";
 // Note: Redis-dependent tests skipped - they require live Redis connection
 // Tests focus on in-memory DistributedRateLimiter and algorithm/type validation
 
-import { DistributedRateLimiter } from "../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter checkAndConsume with exact limit", async () => {
   const limiter = new DistributedRateLimiter({

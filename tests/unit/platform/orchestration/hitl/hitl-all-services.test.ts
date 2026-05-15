@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/orchestration/hitl/approval-context-summary-service.js";
-import { HITLExplainabilityService } from "../../../../../src/platform/orchestration/hitl/hitl-explainability-service.js";
-import { HitlInboxService } from "../../../../../src/platform/orchestration/hitl/hitl-inbox-service.js";
-import { HitlApprovalOrchestrationService } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
-import { HitlOperatorConsoleService } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
-import type { ApprovalPacket, ApprovalPacketOption } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { ApprovalContextSummaryService, type ExecutionContextForSummary } from "../../../../../src/platform/five-plane-orchestration/hitl/approval-context-summary-service.js";
+import { HITLExplainabilityService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-explainability-service.js";
+import { HitlInboxService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
+import { HitlApprovalOrchestrationService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
+import { HitlOperatorConsoleService } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-operator-console-service.js";
+import type { ApprovalPacket, ApprovalPacketOption } from "../../../../../src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ import {
   validateRolloutRecord,
   validateLearningSignalsArray,
   BOUNDARY_STRATEGY,
-} from "../../../../../../src/platform/orchestration/oapeflir/schemas/validators.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/schemas/validators.js";
 
 test("BOUNDARY_STRATEGY has correct strategies for each boundary", () => {
   assert.equal(BOUNDARY_STRATEGY["O→A"], "degrade");

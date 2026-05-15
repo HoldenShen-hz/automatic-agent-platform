@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SchemaInventoryService } from "../../../../../src/platform/state-evidence/truth/schema-inventory-service.js";
+import { SchemaInventoryService } from "../../../../../src/platform/five-plane-state-evidence/truth/schema-inventory-service.js";
 
 test("SchemaInventoryService exposes authoritative logical table inventory", () => {
   const service = new SchemaInventoryService();

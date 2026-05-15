@@ -10,7 +10,7 @@ import {
   validateEventPayload,
   type EventSchemaDefinition,
   type KnownEventType,
-} from "../../../../../src/platform/state-evidence/events/event-registry.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 test("EVENT_SCHEMA_REGISTRY contains known event types", () => {
   assert.ok(EVENT_SCHEMA_REGISTRY["task:status_changed"]);

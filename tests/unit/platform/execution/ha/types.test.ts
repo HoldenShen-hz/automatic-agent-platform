@@ -32,7 +32,7 @@ import {
   type LeaseReclaimerConfig,
   type EventReplayPosition,
   type EventReplayResult,
-} from "../../../../../src/platform/execution/ha/types.js";
+} from "../../../../../src/platform/five-plane-execution/ha/types.js";
 
 test("HA_COORDINATOR_DDL contains required tables", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE TABLE IF NOT EXISTS coordinator_nodes"));

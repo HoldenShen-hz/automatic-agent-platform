@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // Test the core/runtime shim files directly to improve coverage
-// These files are re-export wrappers that point to platform/execution/
+// These files are re-export wrappers that point to platform/five-plane-execution/
 
 // Test 1: distributed-lock-service.ts re-exports correctly
 test("core/runtime distributed-lock-service module is importable", async () => {
@@ -169,7 +169,7 @@ test("core/runtime index exports orchestrator submodule functions", async () => 
 // Test 20: Verify shims point to same implementations as platform
 test("core/runtime distributed-lock shim is consistent with platform", async () => {
   const shim = await import("../../../../src/core/runtime/distributed-lock-service.js");
-  const platform = await import("../../../../src/platform/execution/distributed-lock/distributed-lock-service.js");
+  const platform = await import("../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js");
 
   // Both should export the same classes
   assert.equal(shim.RedisLockAdapter, platform.RedisLockAdapter);
@@ -180,7 +180,7 @@ test("core/runtime distributed-lock shim is consistent with platform", async () 
 // Test 21: Verify queue-adapter shim is consistent with platform
 test("core/runtime queue-adapter shim is consistent with platform", async () => {
   const shim = await import("../../../../src/core/runtime/queue-adapter.js");
-  const platform = await import("../../../../src/platform/execution/queue/queue-adapter.js");
+  const platform = await import("../../../../src/platform/five-plane-execution/queue/queue-adapter.js");
 
   // Both should export the same classes
   assert.equal(shim.RedisQueueAdapter, platform.RedisQueueAdapter);
@@ -190,7 +190,7 @@ test("core/runtime queue-adapter shim is consistent with platform", async () => 
 // Test 22: Verify process-tracker shim is consistent with platform
 test("core/runtime process-tracker shim is consistent with platform", async () => {
   const shim = await import("../../../../src/core/runtime/process-tracker.js");
-  const platform = await import("../../../../src/platform/execution/resource/process-tracker.js");
+  const platform = await import("../../../../src/platform/five-plane-execution/resource/process-tracker.js");
 
   // Both should export the same functions
   assert.equal(shim.getProcessTracker, platform.getProcessTracker);

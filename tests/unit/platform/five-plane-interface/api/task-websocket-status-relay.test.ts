@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
 import { TaskWebSocketStatusRelay } from "../../../../../src/platform/five-plane-interface/api/task-websocket-status-relay.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 

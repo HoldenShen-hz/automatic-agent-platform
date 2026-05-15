@@ -5,7 +5,7 @@
  * Provides a clean separation of concerns for alert dispatching logic.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { alertSeverityToUnifiedSeverity } from "../../contracts/types/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type {

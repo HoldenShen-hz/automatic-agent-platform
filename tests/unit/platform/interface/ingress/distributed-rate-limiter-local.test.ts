@@ -1,12 +1,12 @@
 /**
  * Unit tests for DistributedRateLimiter local fallback behavior
- * Tests src/platform/interface/ingress/distributed-rate-limiter.ts
+ * Tests src/platform/five-plane-interface/ingress/distributed-rate-limiter.ts
  * Specifically focuses on local/in-memory fallback edge cases
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DistributedRateLimiter } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
+import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter local mode tracks count correctly at boundary", async () => {
   const limiter = new DistributedRateLimiter({

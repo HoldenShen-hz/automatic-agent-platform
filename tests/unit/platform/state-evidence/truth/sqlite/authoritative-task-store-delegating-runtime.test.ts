@@ -7,9 +7,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
-import { AuthoritativeTaskStoreDelegatingRuntime } from "../../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-delegating-runtime.js";
+import { AuthoritativeTaskStoreDelegatingRuntime } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-delegating-runtime.js";
 
 // Test double that records which methods were called and with what arguments
 class SpyDelegatingRuntime extends AuthoritativeTaskStoreDelegatingRuntime {

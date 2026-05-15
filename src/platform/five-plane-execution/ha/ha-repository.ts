@@ -5,12 +5,12 @@
  * enabling both SQLite (single-node) and PostgreSQL (multi-node HA) backends.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
 import type {
   SqliteAuthoritativeStorageBackendHandle,
   PostgresAuthoritativeStorageBackendHandle,
-} from "../../state-evidence/truth/storage-backend-factory.js";
+} from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
 import { SqliteHaRepository } from "./ha-repository-sqlite.js";
 import { PostgresHaRepository } from "./ha-repository-postgres.js";

@@ -36,7 +36,7 @@ const PII_PATTERNS = [
 const SECRET_KEYWORDS = [
   "password", "passwd", "secret", "api_key", "apikey",
   "api key", "access token",
-  "auth", "credential", "private_key", "access_token", "bearer",
+  "auth", "credential", "private_key", "access_token", "token", "bearer",
 ];
 
 function scanForPiiAndSecrets(text: string): PiiScanResult {
@@ -142,7 +142,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: [`PII detected: ${piiResult.piiTypes.join(", ")}`],
       };
@@ -156,7 +156,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: [`Secrets detected: ${piiResult.secretTypes.join(", ")}`],
       };
@@ -171,7 +171,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: ["Object failed diversity check - possible contamination or duplication"],
       };
@@ -185,7 +185,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
       };
     }
@@ -198,7 +198,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
       };
     }

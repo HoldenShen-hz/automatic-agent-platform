@@ -22,7 +22,7 @@ import {
   CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
   type CheckpointEnvelope,
   type WorkflowStepCheckpoint,
-} from "../../../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 
 function createMinimalCheckpoint(): WorkflowStepCheckpoint {
   return {

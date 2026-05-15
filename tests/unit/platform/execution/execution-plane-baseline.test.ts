@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   listExecutionCapabilityBaselines,
   resolveExecutionCapabilityBaseline,
-} from "../../../../src/platform/execution/execution-plane-baseline.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 
 test("execution plane baseline covers execution entry modules", () => {
   const baselines = listExecutionCapabilityBaselines();

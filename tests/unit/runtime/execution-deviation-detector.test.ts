@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ExecutionDeviationDetector, type ExecutionDeviation } from "../../../src/platform/execution/dispatcher/execution-deviation-detector.js";
+import { ExecutionDeviationDetector, type ExecutionDeviation } from "../../../src/platform/five-plane-execution/dispatcher/execution-deviation-detector.js";
 import type { Plan } from "../../../src/orchestration/oapeflir/types/index.js";
 import type { FeedbackBatch } from "../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 

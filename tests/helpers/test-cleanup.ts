@@ -4,7 +4,7 @@
  * Provides unified singleton reset and process cleanup for tests per ADR-072.
  */
 
-import { resetProcessTracker } from '../../src/platform/execution/resource/process-tracker.js';
+import { resetProcessTracker } from '../../src/platform/five-plane-execution/resource/process-tracker.js';
 
 /**
  * Reset all global singletons and resources.

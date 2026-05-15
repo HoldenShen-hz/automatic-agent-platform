@@ -8,7 +8,7 @@ import {
   type WorkflowStepCheckpointResumeContext,
   type WorkflowStepCheckpointFileDiffSummary,
   type CreateWorkflowStepCheckpointInput,
-} from "../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import type { ArtifactRef } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMinimalDecisionContext(): WorkflowStepCheckpointDecisionContext {

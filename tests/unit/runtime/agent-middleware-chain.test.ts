@@ -10,7 +10,7 @@ import {
   type WrapToolCallHook,
   type AfterAgentHook,
   type MiddlewareContext,
-} from "../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 function createMockContext(): MiddlewareContext {
   return {

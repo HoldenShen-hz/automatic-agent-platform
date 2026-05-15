@@ -5,7 +5,7 @@ import {
   ExecutionResourceCeilingGuard,
   type ExecutionResourceCeilingOptions,
   type ExecutionResourceUsageSample,
-} from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
 test("ExecutionResourceCeilingGuard evaluate returns empty array when no limits exceeded", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100, maxMemoryMb: 2048, maxElapsedMs: 900000 });

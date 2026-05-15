@@ -10,11 +10,11 @@ import {
   type ConsistencySeverity,
   type StartupReportStatus,
   type RepairActionType,
-} from "../../../../../src/platform/execution/startup/startup-consistency-checker.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { ConfigBundle } from "../../../../../src/platform/control-plane/config-center/config-governance-service.js";
-import type { ToolContractViolation } from "../../../../../src/platform/execution/tool-executor/tool-contract-validator.js";
+} from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { ConfigBundle } from "../../../../../src/platform/five-plane-control-plane/config-center/config-governance-service.js";
+import type { ToolContractViolation } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-contract-validator.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Types and Builders

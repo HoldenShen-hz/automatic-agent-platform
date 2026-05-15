@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DlqService } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+import { DlqService } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("integration: DLQ service enqueue creates record with correct fields", () => {

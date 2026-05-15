@@ -6,7 +6,7 @@ import {
   resolveInterfaceCapabilityBaseline,
   INTERFACE_CAPABILITY_BASELINES,
   type InterfaceCapabilityBaseline,
-} from "../../../../src/platform/interface/interface-plane-baseline.js";
+} from "../../../../src/platform/five-plane-interface/interface-plane-baseline.js";
 
 test("interface plane baseline covers interface entry modules", () => {
   const baselines = listInterfaceCapabilityBaselines();

@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign as signDetached } from "node:crypto";
 import test from "node:test";
 
-import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/execution/plugin-executor/index.js";
+import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
 import { registerPluginSigningVerificationKey } from "../../../../../src/sdk/plugin-sdk/index.js";
 

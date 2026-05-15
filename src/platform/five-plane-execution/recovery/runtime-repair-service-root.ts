@@ -23,15 +23,15 @@
 
 import type { RepairAction, StartupConsistencyReport } from "../startup/startup-consistency-checker.js";
 
-import { EventOpsService } from "../../state-evidence/events/event-ops-service.js";
-import { getRegisteredConsumers, hasEventSchema } from "../../state-evidence/events/event-registry.js";
+import { EventOpsService } from "../../five-plane-state-evidence/events/event-ops-service.js";
+import { getRegisteredConsumers, hasEventSchema } from "../../five-plane-state-evidence/events/event-registry.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ExecutionDispatchService } from "../dispatcher/execution-dispatch-service.js";
 import { ExecutionDispatchReconciliationService } from "../dispatcher/execution-dispatch-reconciliation-service.js";
 import { ExecutionLeaseService } from "../lease/execution-lease-service.js";
 import { createRecoverySession, isSessionTerminalStatus, isTaskActiveStatus } from "../execution-engine/session-lifecycle.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import {
   PlanBuilder,
   type PlanBuilderInput,
-} from "../../../../../src/platform/orchestration/planner/plan-builder.js";
-import { PlanEvaluator } from "../../../../../src/platform/orchestration/planner/plan-evaluator.js";
-import { PlanDagValidator } from "../../../../../src/platform/orchestration/planner/plan-dag-validator.js";
-import type { Plan, PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import { PlanEvaluator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import { PlanDagValidator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import type { Plan, PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 
 function createMinimalObservation(taskId: string) {
   return {

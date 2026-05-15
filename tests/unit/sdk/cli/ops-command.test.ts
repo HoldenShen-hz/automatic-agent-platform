@@ -8,8 +8,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadOpsProgramCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
-import { loadOpsGovernanceCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadOpsProgramCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/operations-cli-env.js";
+import { loadOpsGovernanceCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadOpsProgramCliEnv parses valid summary action", () => {

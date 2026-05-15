@@ -4,7 +4,7 @@
  * Implements §22.4 Plugin lifecycle: PluginContext for runtime context injection.
  */
 
-import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 export interface PluginContextConfig {
   pluginId: string;

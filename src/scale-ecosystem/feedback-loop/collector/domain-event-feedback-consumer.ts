@@ -1,14 +1,14 @@
 import { newId } from "../../../platform/contracts/types/ids.js";
 import type { FeedbackBatch, LearningSignal } from "./feedback-model.js";
 import { FeedbackCollector } from "./feedback-collector.js";
-import { deriveFeedbackTrustScore } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
-import type { FeedbackSignal } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
-import type { TypedEventBus, TypedEventEnvelope } from "../../../platform/state-evidence/events/typed-event-bus.js";
+import { deriveFeedbackTrustScore } from "../../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import type { FeedbackSignal } from "../../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
+import type { TypedEventBus, TypedEventEnvelope } from "../../../platform/five-plane-state-evidence/events/typed-event-bus.js";
 import type {
   DomainLifecyclePayload,
   KnowledgeChunkIndexedPayload,
   PluginLifecycleEventPayload,
-} from "../../../platform/state-evidence/events/typed-event-payloads.js";
+} from "../../../platform/five-plane-state-evidence/events/typed-event-payloads.js";
 
 const DOMAIN_EVENT_FEEDBACK_TYPES = [
   "domain:registered",

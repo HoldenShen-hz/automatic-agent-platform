@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionPriorityPreemptionService, type PriorityPreemptionRequest } from "../../../../../src/platform/execution/dispatcher/execution-priority-preemption-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { ExecutionPriorityPreemptionService, type PriorityPreemptionRequest } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-priority-preemption-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionTicketRecord, TaskPriority, WorkerIsolationLevel } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------

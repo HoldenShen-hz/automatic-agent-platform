@@ -13,7 +13,7 @@ import type {
   RecoveryCheckpoint,
   WorkProduct,
   WorkflowSleepLease,
-} from "../../../../../src/platform/orchestration/harness/types/index.js";
+} from "../../../../../src/platform/five-plane-orchestration/harness/types/index.js";
 
 test("types/index.ts exports ConstraintPack", () => {
   const pack: ConstraintPack = {

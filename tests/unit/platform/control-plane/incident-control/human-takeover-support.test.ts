@@ -12,7 +12,7 @@ import {
   serializeSnapshot,
   throwTakeoverStorageError,
   throwTakeoverWorkflowError,
-} from "../../../../../src/platform/control-plane/incident-control/human-takeover-support.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-support.js";
 
 test("workflowTerminalForTask maps done to completed", () => {
   assert.equal(workflowTerminalForTask("done"), "completed");

@@ -1,7 +1,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { z } from "zod";
 

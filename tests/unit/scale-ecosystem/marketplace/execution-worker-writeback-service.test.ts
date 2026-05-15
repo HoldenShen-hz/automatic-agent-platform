@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace execution-worker-writeback-service re-export
  *

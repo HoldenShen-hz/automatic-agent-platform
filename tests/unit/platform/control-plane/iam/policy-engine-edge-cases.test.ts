@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/control-plane/iam/policy-engine.js";
+import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
 import {
   evaluateAuthorizationContext,
   capabilitiesForRole,
@@ -23,7 +23,7 @@ import {
   type PlatformPrincipalType,
   type PlatformRole,
   type AuthorizationAction,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 import type { BudgetPolicy } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 
 // ---------------------------------------------------------------------------

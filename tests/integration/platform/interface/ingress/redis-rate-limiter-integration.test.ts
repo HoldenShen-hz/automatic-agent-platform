@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisRateLimiter, type RateLimitResult } from "../../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { RedisRateLimiter, type RateLimitResult } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 
 // Note: RedisRateLimiter requires a Redis connection for actual distributed rate limiting.
 // These tests verify the interface and error handling behavior without requiring Redis.

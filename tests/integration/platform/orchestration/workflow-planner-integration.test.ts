@@ -9,10 +9,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
+import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
-import { getWorkflowDefinition } from "../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+import { getWorkflowDefinition } from "../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 test("WorkflowPlanner creates a single-step execution plan from single_agent_minimal workflow", () => {
   const ctx = createIntegrationContext("aa-planner-single-");

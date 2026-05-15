@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHaRepository } from "../../../../../src/platform/execution/ha/ha-repository.js";
-import { SqliteHaRepository } from "../../../../../src/platform/execution/ha/ha-repository-sqlite.js";
-import { PostgresHaRepository } from "../../../../../src/platform/execution/ha/ha-repository-postgres.js";
+import { createHaRepository } from "../../../../../src/platform/five-plane-execution/ha/ha-repository.js";
+import { SqliteHaRepository } from "../../../../../src/platform/five-plane-execution/ha/ha-repository-sqlite.js";
+import { PostgresHaRepository } from "../../../../../src/platform/five-plane-execution/ha/ha-repository-postgres.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Storage Backends - using any to bypass complex type requirements

@@ -5,7 +5,7 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 
 // Re-export barrel exports from index.ts
-import * as ApiModule from "../../../../../src/platform/interface/api/index.js";
+import * as ApiModule from "../../../../../src/platform/five-plane-interface/api/index.js";
 
 // Test the barrel file exports
 test("api barrel exports AdminConfigService", () => {

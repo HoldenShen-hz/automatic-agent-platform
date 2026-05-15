@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integration Test: Context Isolator
  *
@@ -11,8 +10,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { ContextIsolator, createContextIsolator, IsolationLevel } from "../../../../../src/platform/orchestration/agent-delegation/context-isolator.js";
-import type { AgentContext, DelegationSpec } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+import { ContextIsolator, createContextIsolator, IsolationLevel } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/context-isolator.js";
+import type { AgentContext, DelegationSpec } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 function createTestAgentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   HotUpgradeService,
   HOT_UPGRADE_DDL,
-} from "../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-service.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { join } from "node:path";
 

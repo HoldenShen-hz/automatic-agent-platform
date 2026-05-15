@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataEncryptionKeyService } from "../../../../../src/platform/control-plane/compliance/data-encryption-key-service.js";
-import type { DataEncryptionKey } from "../../../../../src/platform/control-plane/compliance/data-encryption-key-service.js";
-import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
+import { DataEncryptionKeyService } from "../../../../../src/platform/five-plane-control-plane/compliance/data-encryption-key-service.js";
+import type { DataEncryptionKey } from "../../../../../src/platform/five-plane-control-plane/compliance/data-encryption-key-service.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
 
 // Mock data
 const dataEncryptionKeys = new Map<string, DataEncryptionKey>();

@@ -12,9 +12,9 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { WorkflowStateError } from "../contracts/errors.js";
-import { EventOpsService } from "../state-evidence/events/event-ops-service.js";
-import { AuthoritativeTaskStore } from "../state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { EventOpsService } from "../five-plane-state-evidence/events/event-ops-service.js";
+import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../contracts/types/ids.js";
 
 export interface StableEventReplayRehearsalOptions {
@@ -66,12 +66,12 @@ function seedTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore)
       updatedAt: now,
       completedAt: null,
     });
-    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: "exec-replay-rehearsal",
       taskId: "task-replay-rehearsal",
       workflowId: "single_agent_minimal",
       parentExecutionId: null,
+      harnessRunId: null,
       agentId: "agent-replay",
       roleId: "general_executor",
       runKind: "task_run",
@@ -81,6 +81,8 @@ function seedTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore)
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

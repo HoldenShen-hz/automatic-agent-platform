@@ -18,7 +18,7 @@ import type {
   MatchOutcome,
   StageEvaluation,
   PreparedEdit,
-} from "../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-types.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
 test("EditReplacementAttemptLevel type accepts valid values", () => {
   const levels: EditReplacementAttemptLevel[] = [

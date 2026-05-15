@@ -2,21 +2,21 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { KnowledgeArchive } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-archive.js";
+import { KnowledgeArchive } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
 import { DomainRegistryService } from "../../../../../src/domains/registry/domain-registry-service.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import type { RetrieverKnowledgeResult } from "../../../../../src/domains/registry/plugin-spi.js";
 import { PluginSpiRegistry } from "../../../../../src/domains/registry/plugin-spi-registry.js";
-import { KnowledgeSnapshotStore } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import { KnowledgeAuditLogger } from "../../../../../src/platform/state-evidence/knowledge/governance/knowledge-audit-logger.js";
-import { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+import { KnowledgeSnapshotStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import { KnowledgeAuditLogger } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-audit-logger.js";
+import { KnowledgePlaneService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import type {
   SemanticVectorCandidate,
   SemanticVectorChunkRecord,
   SemanticVectorStore,
   SemanticVectorStoreProfile,
-} from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
-import { LocalHashSemanticVectorStore } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import { LocalHashSemanticVectorStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
 import { cleanupPath } from "../../../../helpers/fs.js";
 

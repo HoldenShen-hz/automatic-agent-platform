@@ -9,7 +9,7 @@ import {
   computeSymbolRelevance,
   type RepoSymbol,
   type RepoFileNode,
-} from "../../../../../src/platform/execution/tool-executor/semantic-repo-map-service.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 
 test("extractImports extracts ES6 imports", () => {
   const content = `

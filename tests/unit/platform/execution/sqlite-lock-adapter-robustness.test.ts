@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { unlinkSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-import { SqliteLockAdapter } from "../../../../src/platform/execution/distributed-lock/sqlite-lock-adapter.js";
-import { DISTRIBUTED_LOCKS_DDL } from "../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
+import { DISTRIBUTED_LOCKS_DDL } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 function createTempDb(): { path: string; db: DatabaseSync } {
   const dir = mkdtempSync(join(tmpdir(), "sqlite-lock-test-"));

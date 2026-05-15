@@ -14,7 +14,7 @@ import type { MissionControlService } from "../mission-control-service.js";
 import { PlatformWorkbenchSnapshotService } from "../../../shared/ux/platform-workbench-snapshot-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
-import { ProjectionInventoryService } from "../../../state-evidence/events/projection-inventory-service.js";
+import { ProjectionInventoryService } from "../../../five-plane-state-evidence/events/projection-inventory-service.js";
 import { ComplianceProgramTemplateService } from "../../../compliance/compliance-program-template-service.js";
 import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
 

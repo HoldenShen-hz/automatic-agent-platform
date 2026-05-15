@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { TaskBoardItem } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { TaskBoardService } from "../../../../../src/platform/shared/observability/task-board-service.js";
 import type { TaskStatus } from "../../../../../src/platform/contracts/types/status.js";
 import type { TaskPriority } from "../../../../../src/platform/contracts/types/domain.js";

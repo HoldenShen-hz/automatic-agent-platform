@@ -14,17 +14,17 @@
  * @see ExecutionDispatchService for the sync implementation
  */
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { AdmissionBackpressureSnapshot } from "../../platform/execution/dispatcher/admission-controller.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AdmissionBackpressureSnapshot } from "../../platform/five-plane-execution/dispatcher/admission-controller.js";
 import type {
   CreateExecutionTicketInput,
   DispatchExecutionDecision,
   DispatchExecutionOptions,
   DispatchQueueAvailabilitySnapshot,
   ExecutionTicketDecision,
-} from "../../platform/execution/dispatcher/execution-dispatch-support.js";
-import { ExecutionDispatchService } from "../../platform/execution/dispatcher/execution-dispatch-service.js";
+} from "../../platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
+import { ExecutionDispatchService } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import { LocalTypedEventEmitter } from "../../platform/shared/events/local-typed-event-emitter.js";
@@ -35,7 +35,7 @@ export type {
   DispatchExecutionOptions,
   DispatchQueueAvailabilitySnapshot,
   ExecutionTicketDecision,
-} from "../../platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 /**
  * Options for configuring the async ExecutionDispatchService

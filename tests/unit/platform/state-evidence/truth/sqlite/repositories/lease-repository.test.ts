@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SqliteConnection } from "../../../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
-import { LeaseRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/lease-repository.js";
+import type { SqliteConnection } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/query-helper.js";
+import { LeaseRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/lease-repository.js";
 
 /**
  * Creates a mock SqliteConnection for testing

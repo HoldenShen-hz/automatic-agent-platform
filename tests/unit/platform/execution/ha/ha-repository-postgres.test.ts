@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PostgresHaRepository } from "../../../../../src/platform/execution/ha/ha-repository-postgres.js";
-import type { CoordinatorNode, FailoverDecision, LeaderLease, LeadershipEpoch } from "../../../../../src/platform/execution/ha/types.js";
+import { PostgresHaRepository } from "../../../../../src/platform/five-plane-execution/ha/ha-repository-postgres.js";
+import type { CoordinatorNode, FailoverDecision, LeaderLease, LeadershipEpoch } from "../../../../../src/platform/five-plane-execution/ha/types.js";
 
 // Mock database
 function createMockAsyncDb() {

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   listInterfaceCapabilityBaselines,
   resolveInterfaceCapabilityBaseline,
-} from "../../../../src/platform/interface/interface-plane-baseline.js";
+} from "../../../../src/platform/five-plane-interface/interface-plane-baseline.js";
 
 test("listInterfaceCapabilityBaselines returns all six capabilities", () => {
   const baselines = listInterfaceCapabilityBaselines();
@@ -17,7 +17,7 @@ test("listInterfaceCapabilityBaselines includes api capability", () => {
 
   const api = baselines.find((b) => b.capabilityId === "api");
   assert.ok(api != null);
-  assert.equal(api!.entryModule, "src/platform/interface/api/index.ts");
+  assert.equal(api!.entryModule, "src/platform/five-plane-interface/api/index.ts");
   assert.ok(api!.baselineServices.includes("HttpApiServer"));
   assert.ok(api!.baselineServices.includes("ApiResourceCatalogService"));
 });
@@ -27,7 +27,7 @@ test("listInterfaceCapabilityBaselines includes channel-gateway capability", () 
 
   const cg = baselines.find((b) => b.capabilityId === "channel-gateway");
   assert.ok(cg != null);
-  assert.equal(cg!.entryModule, "src/platform/interface/channel-gateway/index.ts");
+  assert.equal(cg!.entryModule, "src/platform/five-plane-interface/channel-gateway/index.ts");
   assert.ok(cg!.baselineServices.includes("ChannelGatewayService"));
 });
 
@@ -36,7 +36,7 @@ test("listInterfaceCapabilityBaselines includes console-backend capability", () 
 
   const cb = baselines.find((b) => b.capabilityId === "console-backend");
   assert.ok(cb != null);
-  assert.equal(cb!.entryModule, "src/platform/interface/console-backend/index.ts");
+  assert.equal(cb!.entryModule, "src/platform/five-plane-interface/console-backend/index.ts");
   assert.ok(cb!.baselineServices.includes("OperatorConsoleBackendService"));
 });
 
@@ -45,7 +45,7 @@ test("listInterfaceCapabilityBaselines includes ingress capability", () => {
 
   const ingress = baselines.find((b) => b.capabilityId === "ingress");
   assert.ok(ingress != null);
-  assert.equal(ingress!.entryModule, "src/platform/interface/ingress/index.ts");
+  assert.equal(ingress!.entryModule, "src/platform/five-plane-interface/ingress/index.ts");
   assert.ok(ingress!.baselineServices.includes("IngressGovernanceService"));
 });
 
@@ -54,7 +54,7 @@ test("listInterfaceCapabilityBaselines includes scheduler capability", () => {
 
   const scheduler = baselines.find((b) => b.capabilityId === "scheduler");
   assert.ok(scheduler != null);
-  assert.equal(scheduler!.entryModule, "src/platform/interface/scheduler/index.ts");
+  assert.equal(scheduler!.entryModule, "src/platform/five-plane-interface/scheduler/index.ts");
   assert.ok(scheduler!.baselineServices.includes("LongRunningWorkflowService"));
 });
 
@@ -63,7 +63,7 @@ test("listInterfaceCapabilityBaselines includes webhook capability", () => {
 
   const webhook = baselines.find((b) => b.capabilityId === "webhook");
   assert.ok(webhook != null);
-  assert.equal(webhook!.entryModule, "src/platform/interface/webhook/index.ts");
+  assert.equal(webhook!.entryModule, "src/platform/five-plane-interface/webhook/index.ts");
   assert.ok(webhook!.baselineServices.includes("WebhookIngressService"));
 });
 

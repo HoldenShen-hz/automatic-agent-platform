@@ -5,7 +5,7 @@ import {
   StalledExecutionDetector,
   type StalledExecutionDetectionOptions,
   type StalledExecutionFinding,
-} from "../../../../../src/platform/execution/recovery/stalled-execution-detector.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
 
 // Mock store for testing
 function createMockStore(records: Array<{

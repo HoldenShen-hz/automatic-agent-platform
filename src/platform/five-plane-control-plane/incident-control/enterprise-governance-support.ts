@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import type { ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
+import type { ArtifactStoreOptions } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import type {
   ArtifactRef,
   EnterpriseGovernanceReportRecord,
@@ -16,10 +16,10 @@ import type { IndustrialOpsProgramReport } from "./industrial-ops-program-servic
 import type { OperationsGovernanceReport, RunbookSeverity } from "./operations-governance-service.js";
 import type {
   SqliteMigrationCompatibilityReport,
-} from "../../state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+} from "../../five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
 import type {
   SqliteSchemaCompatibilityReport,
-} from "../../state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+} from "../../five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
 
 export type EnterpriseGovernanceStatus = "pass" | "warning" | "fail";
 export type IncidentHandoffStatus = "ready" | "warning" | "blocked";

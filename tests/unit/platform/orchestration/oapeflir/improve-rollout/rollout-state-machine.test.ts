@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RolloutStateMachine } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/oapeflir/types/improvement-candidate.js";
+import { RolloutStateMachine } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 function createCandidate(status: ImprovementCandidate["status"]): ImprovementCandidate {
   return {

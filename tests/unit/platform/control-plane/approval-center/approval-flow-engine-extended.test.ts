@@ -13,13 +13,13 @@ import {
   type ApprovalRequest,
   type ApprovalFlowState,
   type EscalationContext,
-} from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
-import { VoteType } from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import {
   EscalationManager,
   EscalationReason,
   DelegationStatus,
-} from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 
 // ============================================================================
 // Helper Functions

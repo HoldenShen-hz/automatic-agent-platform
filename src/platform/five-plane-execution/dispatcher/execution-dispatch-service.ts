@@ -11,8 +11,8 @@ import type {
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { HealthReportProvider } from "../../contracts/types/health.js";
 import { createNoOpHealthReportProvider } from "../../contracts/types/health.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
 import { ExecutionLeaseService, type ExecutionLeaseDecision } from "../lease/execution-lease-service.js";
 import { MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "../lease/types.js";
@@ -25,7 +25,7 @@ import {
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError } from "../../contracts/errors.js";
-import type { FailureCategory } from "../../state-evidence/events/dlq-service.js";
+import type { FailureCategory } from "../../five-plane-state-evidence/events/dlq-service.js";
 import {
   AFFINITY_SELECTION_BONUS,
   buildDispatchAgentExecutionRecord,

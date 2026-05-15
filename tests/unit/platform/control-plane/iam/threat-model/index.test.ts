@@ -12,12 +12,12 @@ import {
   type StrideCategory,
   type ThreatMatrix,
   type ThreatEntry,
-} from "../../../../../../src/platform/control-plane/iam/threat-model/stride-framework.js";
+} from "../../../../../../src/platform/five-plane-control-plane/iam/threat-model/stride-framework.js";
 
 import {
   ThreatMatrixRegistry,
   defaultThreatMatrixRegistry,
-} from "../../../../../../src/platform/control-plane/iam/threat-model/threat-matrix-registry.js";
+} from "../../../../../../src/platform/five-plane-control-plane/iam/threat-model/threat-matrix-registry.js";
 
 // ============================================================================
 // STRIDE Framework Tests

@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisQueueAdapter } from "../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 import type { StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
 

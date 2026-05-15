@@ -15,8 +15,8 @@
  * @see docs_zh/contracts/release_rollout_and_rollback_contract.md for rollout phases
  */
 
-import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
-import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
+import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ArtifactRef, EnvironmentName } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 

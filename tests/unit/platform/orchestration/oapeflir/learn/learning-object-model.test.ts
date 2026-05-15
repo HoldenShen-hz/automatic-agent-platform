@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { LearningObjectSchema, parseLearningObject } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+import { LearningObjectSchema, parseLearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 test("LearningObjectSchema parses valid learning object", () => {
   const input = {

@@ -91,7 +91,7 @@ import {
   // From typed-event-publisher
   TypedEventBusPublisher,
   type TypedEventPublisher,
-} from "../../../../../src/platform/state-evidence/events/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/index.js";
 
 // ============================================================================
 // CAS Types

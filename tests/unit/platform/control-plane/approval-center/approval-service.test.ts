@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateApprovalDecision as validateDecision } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import { validateApprovalDecision as validateDecision } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 /**
  * TEST-N01: These tests must exercise the real `validateApprovalDecision`

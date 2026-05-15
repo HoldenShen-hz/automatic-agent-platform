@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseDbQueueDisconnectRepairTemplate } from "../../../src/platform/execution/recovery/execution-db-queue-disconnect-repair-service.js";
+import { parseDbQueueDisconnectRepairTemplate } from "../../../src/platform/five-plane-execution/recovery/execution-db-queue-disconnect-repair-service.js";
 
 test("parseDbQueueDisconnectRepairTemplate recovers queue dispatch metadata from agent execution plan JSON", () => {
   const parsed = parseDbQueueDisconnectRepairTemplate(

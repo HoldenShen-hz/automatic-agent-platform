@@ -12,7 +12,7 @@ import {
   type IncidentSeverity,
   type IncidentCategory,
   type IncidentDetectorOptions,
-} from "../../../../../src/platform/control-plane/incident-control/incident-detector.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 
 // ============================================================================
 // Detection Rule Tests - using actual implementation methods

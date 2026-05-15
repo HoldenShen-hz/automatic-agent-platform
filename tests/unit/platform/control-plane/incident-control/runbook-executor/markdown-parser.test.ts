@@ -8,8 +8,8 @@ import test from "node:test";
 import {
   parseRunbookMarkdown,
   createEmptyStepResult,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/markdown-parser.js";
-import type { ParsedRunbook, RunbookSection, RunbookStep, RunbookStepResult } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/markdown-parser.js";
+import type { ParsedRunbook, RunbookSection, RunbookStep, RunbookStepResult } from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/types.js";
 
 // Re-export types for use in tests
 type RunbookSeverity = "P0" | "P1" | "P2" | "P3";

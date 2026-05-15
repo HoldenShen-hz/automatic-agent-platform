@@ -8,6 +8,7 @@
 
 import type { RedisRateLimiterConfig, RateLimitResult } from "./redis-rate-limiter.js";
 import { RedisRateLimiter } from "./redis-rate-limiter.js";
+import { MS_PER_SECOND } from "../../contracts/constants/time.js";
 
 export interface RateLimiterConfig {
   /** Redis configuration for distributed rate limiting */
@@ -38,7 +39,7 @@ export class DistributedRateLimiter {
 
   constructor(private config: RateLimiterConfig) {
     this.maxCalls = config.maxCalls ?? 100;
-    this.windowMs = config.windowMs ?? 1000;
+    this.windowMs = config.windowMs ?? MS_PER_SECOND;
 
     if (config.redis) {
       this.redisLimiter = new RedisRateLimiter(config.redis);

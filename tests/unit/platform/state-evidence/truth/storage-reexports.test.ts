@@ -4,29 +4,29 @@ import test from "node:test";
 import {
   isSqliteWriteContentionError as genericIsSqliteWriteContentionError,
   SqliteDatabase as GenericSqliteDatabase,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   isSqliteWriteContentionError as nestedIsSqliteWriteContentionError,
   SqliteDatabase as NestedSqliteDatabase,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import {
   AuthoritativeTaskStore as GenericAuthoritativeTaskStore,
   Phase1aStore as GenericPhase1aStore,
-} from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import {
   AuthoritativeTaskStore as CompatAuthoritativeTaskStore,
   Phase1aStore as CompatPhase1aStore,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-compat.js";
-import * as GenericPhase1aStoreModule from "../../../../../src/platform/state-evidence/truth/phase1a-store.js";
-import * as GenericPhase1aStoreFacadeModule from "../../../../../src/platform/state-evidence/truth/sqlite/phase1a-store-facade.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-compat.js";
+import * as GenericPhase1aStoreModule from "../../../../../src/platform/five-plane-state-evidence/truth/phase1a-store.js";
+import * as GenericPhase1aStoreFacadeModule from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/phase1a-store-facade.js";
 import {
   AuthoritativeTaskStore as NestedAuthoritativeTaskStore,
   Phase1aStore as NestedPhase1aStore,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/phase1a-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/phase1a-store.js";
 import {
   AuthoritativeTaskStoreFacade,
   Phase1aStoreFacade,
-} from "../../../../../src/platform/state-evidence/truth/sqlite/phase1a-store-facade.js";
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/phase1a-store-facade.js";
 
 test("storage generic sqlite facade re-exports nested sqlite database implementation", () => {
   assert.equal(GenericSqliteDatabase, NestedSqliteDatabase);

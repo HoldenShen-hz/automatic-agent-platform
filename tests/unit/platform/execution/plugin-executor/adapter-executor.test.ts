@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AdapterExecutor } from "../../../../../src/platform/execution/plugin-executor/adapter-executor.js";
+import { AdapterExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/adapter-executor.js";
 
 test("AdapterExecutor executes REST adapters with injected fetch", async () => {
   const executor = new AdapterExecutor({

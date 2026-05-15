@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ToolExecutor } from "../../../../../src/platform/execution/tool-executor/tool-executor.js";
-import type { CommandExecutor, CommandExecutionResult } from "../../../../../src/platform/execution/tool-executor/command-executor.js";
-import type { CommandToolRequest } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
-import type { ToolSideEffectScope, ToolRiskLevel, ToolPathScopeMode, ToolOutputKind, ToolApprovalMode, ToolNeedsFileLock, ToolRecoveryStrategy, ToolExecutionMetadata } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+import { ToolExecutor } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-executor.js";
+import type { CommandExecutor, CommandExecutionResult } from "../../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
+import type { CommandToolRequest } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
+import type { ToolSideEffectScope, ToolRiskLevel, ToolPathScopeMode, ToolOutputKind, ToolApprovalMode, ToolNeedsFileLock, ToolRecoveryStrategy, ToolExecutionMetadata } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
 function mockCommandExecutor(
   execute: (request: CommandToolRequest) => Promise<CommandExecutionResult>,

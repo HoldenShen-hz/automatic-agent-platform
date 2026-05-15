@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { VaultHttpSecretProvider } from "../../../../src/platform/control-plane/iam/vault-http-secret-provider.js";
-import { maskSecretValue } from "../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import { VaultHttpSecretProvider } from "../../../../src/platform/five-plane-control-plane/iam/vault-http-secret-provider.js";
+import { maskSecretValue } from "../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

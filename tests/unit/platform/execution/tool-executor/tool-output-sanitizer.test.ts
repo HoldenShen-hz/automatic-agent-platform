@@ -8,7 +8,7 @@ import {
   type SanitizedStructuredOutput,
   type InjectionRisk,
   type PromptInjectionRuleId,
-} from "../../../../../src/platform/execution/tool-executor/tool-output-sanitizer.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.js";
 
 test("sanitizeToolOutput removes ANSI escape sequences", () => {
   const result = sanitizeToolOutput("\u001b[31mred text\u001b[0m");

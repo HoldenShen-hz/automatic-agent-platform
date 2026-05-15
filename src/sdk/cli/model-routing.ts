@@ -29,8 +29,8 @@
 import { join } from "node:path";
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadModelRoutingCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
-import { loadModelMetadataRegistry } from "../../platform/control-plane/config-center/model-metadata-registry.js";
+import { loadModelRoutingCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
+import { loadModelMetadataRegistry } from "../../platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import {
   LlmEvalService,
 } from "../../platform/prompt-engine/eval/llm-eval-service.js";
@@ -41,7 +41,7 @@ import type { ModelGovernanceSnapshot } from "../../platform/contracts/types/gov
 import {
   ModelRoutingService,
 } from "../../platform/model-gateway/provider-registry/model-routing-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 /**
  * Loads the governance snapshot from storage or inline JSON environment variable.

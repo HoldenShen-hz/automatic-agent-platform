@@ -134,8 +134,8 @@ test("golden: structured logger log levels are correct", () => {
 });
 
 test("golden: structured logger plane inference", () => {
-  const loggerP1 = new StructuredLogger({ planeSourceFile: "/path/to/platform/interface/api/index.ts" });
-  const loggerP4 = new StructuredLogger({ planeSourceFile: "/path/to/platform/execution/dispatcher/index.ts" });
+  const loggerP1 = new StructuredLogger({ planeSourceFile: "/path/to/platform/five-plane-interface/api/index.ts" });
+  const loggerP4 = new StructuredLogger({ planeSourceFile: "/path/to/platform/five-plane-execution/dispatcher/index.ts" });
   const loggerUnknown = new StructuredLogger({});
 
   assert.equal(loggerP1.plane, "P1", "Interface layer should be P1");

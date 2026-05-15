@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { StalledExecutionDetector } from "../../../src/platform/execution/recovery/stalled-execution-detector.js";
-import type { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { StalledExecutionDetector } from "../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
+import type { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ExecutionStatus } from "../../../src/platform/contracts/types/status.js";
 
 function makeMockStore(activeExecutions: Array<{

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createExecutionLeaseService } from "../../../../../src/platform/execution/lease/execution-lease-factory.js";
-import { ExecutionLeaseServiceAsync } from "../../../../../src/platform/execution/lease/execution-lease-service-async.js";
-import { createLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository.js";
-import { SqliteLeaseRepository } from "../../../../../src/platform/execution/lease/lease-repository-sqlite.js";
+import { createExecutionLeaseService } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-factory.js";
+import { ExecutionLeaseServiceAsync } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service-async.js";
+import { createLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository.js";
+import { SqliteLeaseRepository } from "../../../../../src/platform/five-plane-execution/lease/lease-repository-sqlite.js";
 
 // ---------------------------------------------------------------------------
 // Mock backend factories

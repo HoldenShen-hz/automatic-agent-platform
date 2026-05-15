@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LearningObjectValidator } from "../../../../../../src/platform/orchestration/oapeflir/learn/learning-object-validator.js";
+import { LearningObjectValidator } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-validator.js";
 
 test("LearningObjectValidator promotes evidence-backed learning objects to validated", () => {
   const validator = new LearningObjectValidator();

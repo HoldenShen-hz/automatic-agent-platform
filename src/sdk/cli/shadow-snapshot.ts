@@ -25,10 +25,10 @@
  * @see {@link docs_zh/contracts/artifact_store_contract.md} for artifact contracts
  */
 
-import { loadShadowSnapshotCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadShadowSnapshotCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { ShadowSnapshotService } from "../../platform/execution/tool-executor/shadow-snapshot-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { ShadowSnapshotService } from "../../platform/five-plane-execution/tool-executor/shadow-snapshot-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // R31-43 FIX: Defer environment loading and service creation to main() to avoid module-level side effects
 function main(): void {

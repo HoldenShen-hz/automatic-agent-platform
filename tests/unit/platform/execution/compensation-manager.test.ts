@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSideEffectRecord, type ArtifactRef, type SideEffectRecord, type SideEffectStatus } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { CompensationManager, type CompensationContext } from "../../../../src/platform/execution/compensation-manager.js";
+import { CompensationManager, type CompensationContext } from "../../../../src/platform/five-plane-execution/compensation-manager.js";
 
 const artifact: ArtifactRef = {
   artifactId: "artifact-1",

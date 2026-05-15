@@ -8,7 +8,7 @@ import {
   type ToolCallErrorSource,
   type ToolCallError,
   type ToolCallResult,
-} from "../../../../../src/platform/execution/tool-executor/tool-call-result.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-call-result.js";
 
 test("ToolCallStatus type accepts valid values", () => {
   const statuses: ToolCallStatus[] = ["succeeded", "failed", "timed_out", "blocked", "cancelled"];

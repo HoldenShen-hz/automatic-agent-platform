@@ -11,7 +11,7 @@ import {
   type ConfigHotReloadSubscription,
   type ConfigChangeSeverity,
   type ConfigChangeSource,
-} from "../../../../../src/platform/control-plane/config-center/config-hot-reload-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-hot-reload-service.js";
 
 // ============================================================================
 // ConfigHotReloadService Creation Tests

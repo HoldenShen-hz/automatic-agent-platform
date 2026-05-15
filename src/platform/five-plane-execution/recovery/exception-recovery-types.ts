@@ -40,9 +40,9 @@ export interface ExceptionStrategy {
   /** Maximum number of retry attempts */
   maxRetries: number;
   /** Backoff multiplier for exponential backoff (if retryable) */
-  backoffMultiplier?: number;
+  backoffMultiplier?: number | undefined;
   /** Initial delay in milliseconds before first retry (if retryable) */
-  initialDelayMs?: number;
+  initialDelayMs?: number | undefined;
 }
 
 /**

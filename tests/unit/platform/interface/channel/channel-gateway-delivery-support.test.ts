@@ -8,8 +8,8 @@ import {
   buildDeadLetterCountQuery,
   DEFAULT_DELIVERY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
-} from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-support.js";
-import type { DeliveryGuaranteeConfig } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-support.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
+import type { DeliveryGuaranteeConfig } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 
 test("calculateBackoffForAttempt returns initial backoff for first attempt", () => {
   const config: DeliveryGuaranteeConfig = { ...DEFAULT_DELIVERY_CONFIG };

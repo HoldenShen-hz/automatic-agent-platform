@@ -12,7 +12,7 @@ import {
   type GrpcMethodDefinition,
   type GrpcCallRequest,
   type GrpcServer,
-} from "../../../../../src/platform/interface/api/grpc-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/grpc-adapter-service.js";
 
 test("GrpcAdapterService isAvailable returns true", () => {
   const service = new GrpcAdapterService({

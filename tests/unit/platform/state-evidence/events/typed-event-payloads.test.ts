@@ -45,7 +45,7 @@ import type {
   ApprovalContext,
   PromptRuntimeContext,
   CostMetadata,
-} from "../../../../../src/platform/state-evidence/events/typed-event-payloads.js";
+} from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-payloads.js";
 
 test("ClassifiedAnomalyEventPayload structure is correct", () => {
   const payload: ClassifiedAnomalyEventPayload = {

@@ -24,9 +24,9 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { evaluateSqliteMigrationCompatibility } from "../state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
-import { getLatestSqliteMigrationVersion } from "../state-evidence/truth/sqlite/sqlite-migration-plan.js";
-import { SqliteDatabase } from "../state-evidence/truth/sqlite-database.js";
+import { evaluateSqliteMigrationCompatibility } from "../five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
+import { getLatestSqliteMigrationVersion } from "../five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 
 /** Options for running the migration compatibility rehearsal */
 export interface StableMigrationCompatibilityRehearsalOptions {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { EventTopologyService } from "../../../../../src/platform/state-evidence/events/event-topology-service.js";
-import { EVENT_SCHEMA_REGISTRY } from "../../../../../src/platform/state-evidence/events/event-registry.js";
+import { EventTopologyService } from "../../../../../src/platform/five-plane-state-evidence/events/event-topology-service.js";
+import { EVENT_SCHEMA_REGISTRY } from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
 const KNOWN_TIERS = ["tier_1", "tier_2", "tier_3"] as const;
 const EXPECTED_NAMESPACES = [

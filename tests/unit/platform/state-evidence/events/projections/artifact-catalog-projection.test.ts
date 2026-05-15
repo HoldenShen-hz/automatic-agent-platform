@@ -7,7 +7,7 @@ import {
   createArtifactCatalogProjectionHandler,
   type ArtifactCatalogState,
   type ProjectionInputEvent,
-} from "../../../../../../src/platform/state-evidence/events/projections/artifact-catalog-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/artifact-catalog-projection.js";
 
 /**
  * Helper to create a projection input event

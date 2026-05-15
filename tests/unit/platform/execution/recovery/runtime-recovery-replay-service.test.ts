@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -9,7 +8,7 @@ import {
   type RecoveryReplayDecision,
   type RecoveryReplayRepair,
   type RecoveryReplayTimelineEvent,
-} from "../../../../../src/platform/execution/recovery/runtime-recovery-replay-service.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
 
 // Mock store helper - minimal mock for basic tests
 function createMockStore(overrides: {

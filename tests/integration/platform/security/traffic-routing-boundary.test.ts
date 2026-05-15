@@ -6,8 +6,8 @@ import {
   TrafficRoutingService,
   TRAFFIC_ROUTING_DDL,
   DEFAULT_CANARY_CONFIG,
-} from "../../../../src/platform/control-plane/rollout-controller/traffic-routing-service.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../src/platform/five-plane-control-plane/rollout-controller/traffic-routing-service.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createHarness(prefix: string) {

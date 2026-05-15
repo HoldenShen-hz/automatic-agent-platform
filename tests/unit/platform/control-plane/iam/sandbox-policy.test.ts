@@ -15,7 +15,7 @@ import {
   type SandboxPolicy,
   type SandboxMode,
   type SandboxPathCheckResult,
-} from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 test("createWorkspaceWritePolicy creates valid policy", () => {
   const policy = createWorkspaceWritePolicy("/workspace/root");

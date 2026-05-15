@@ -16,8 +16,8 @@ import { BudgetGuard } from "../../../../src/platform/model-gateway/cost-tracker
 import { estimateTextTokens } from "../../../../src/platform/model-gateway/messages/index.js";
 import { ComplianceCaseOrchestrationService } from "../../../../src/platform/compliance/compliance-case-orchestration-service.js";
 import { ComplianceGovernanceService } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
-import { DataClassificationService } from "../../../../src/platform/control-plane/iam/data-classification-service.js";
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../src/platform/orchestration/harness/index.js";
+import { DataClassificationService } from "../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
+import { HarnessRuntimeService, type ConstraintPack } from "../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 test("integration: ai operations mainline composes prompt governance, model rollback, compliance evidence, and harness runtime", async () => {
   const registry = ServiceRegistry.getInstance();

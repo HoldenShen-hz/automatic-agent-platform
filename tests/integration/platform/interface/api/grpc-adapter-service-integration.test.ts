@@ -17,7 +17,7 @@ import {
   GRPC_ERROR_CODES,
   type GrpcServiceDefinition,
   type GrpcCallResponse,
-} from "../../../../../src/platform/interface/api/grpc-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/grpc-adapter-service.js";
 
 test("integration: gRPC adapter service lifecycle", async () => {
   const adapter = new GrpcAdapterService({

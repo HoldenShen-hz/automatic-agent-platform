@@ -3,9 +3,9 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import test from "node:test";
 
-import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
@@ -15,7 +15,7 @@ const repoRoot = process.cwd();
 function seedOpsDb(workspace: string): { dbPath: string; taskId: string } {
   const dbPath = join(workspace, "ops-governance-cli.db");
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Ops governance CLI task",

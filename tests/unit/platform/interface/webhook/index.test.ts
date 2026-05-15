@@ -8,7 +8,7 @@ import {
   type WebhookDispatchState,
   type WebhookDispatchEnvelope,
   type WebhookSignatureAlgorithm,
-} from "../../../../../src/platform/interface/webhook/index.js";
+} from "../../../../../src/platform/five-plane-interface/webhook/index.js";
 
 test("WebhookIngressService registers and retrieves endpoints", () => {
   const service = new WebhookIngressService();

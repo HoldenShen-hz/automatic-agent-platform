@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { CostAlertConfig, BudgetPolicy, CostThresholdExceededEvent } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+import type { CostAlertConfig, BudgetPolicy, CostThresholdExceededEvent } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 // Mock the dependencies - simulating real database/store behavior
 interface MockEventRecord {
@@ -65,7 +65,7 @@ const mockStore = {
   },
 } as any;
 
-import { CostAlertService } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-service.js";
+import { CostAlertService } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 
 function createPolicy(scopeId: string, limit: number, warningThreshold = 0.8): BudgetPolicy {
   return {

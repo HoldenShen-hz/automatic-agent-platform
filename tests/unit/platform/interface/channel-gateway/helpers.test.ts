@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseMetadata, requireNonEmpty, readTrackedDeliveryPayload } from "../../../../../src/platform/interface/channel-gateway/helpers.js";
+import { parseMetadata, requireNonEmpty, readTrackedDeliveryPayload } from "../../../../../src/platform/five-plane-interface/channel-gateway/helpers.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("parseMetadata returns empty object for null", () => {

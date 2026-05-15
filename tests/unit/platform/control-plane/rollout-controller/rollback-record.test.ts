@@ -14,8 +14,8 @@ import {
   TRAFFIC_ROUTING_DDL,
   DEFAULT_CANARY_CONFIG,
   type RollbackRecord,
-} from "../../../../../src/platform/control-plane/rollout-controller/traffic-routing-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+} from "../../../../../src/platform/five-plane-control-plane/rollout-controller/traffic-routing-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 /**
  * Creates an in-memory database with the traffic routing schema.

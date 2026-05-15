@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DashboardProjectionService, createDashboardProjectionService } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
-import type { ProjectionRecord } from "../../../../src/platform/state-evidence/projections/index.js";
+import type { ProjectionRecord } from "../../../../src/platform/five-plane-state-evidence/projections/index.js";
 
 function createProjectionRecord(overrides: Partial<ProjectionRecord> = {}): ProjectionRecord {
   return {

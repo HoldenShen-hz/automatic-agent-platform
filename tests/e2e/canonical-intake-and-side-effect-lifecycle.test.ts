@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IntakeRouter } from "../../src/platform/orchestration/routing/intake-router.js";
+import { IntakeRouter } from "../../src/platform/five-plane-orchestration/routing/intake-router.js";
 import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import {
   createPrincipalRef,

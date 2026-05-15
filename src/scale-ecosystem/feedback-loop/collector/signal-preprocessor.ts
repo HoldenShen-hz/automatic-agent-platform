@@ -1,4 +1,4 @@
-import { parseFeedbackSignal, type FeedbackSignal } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
+import { parseFeedbackSignal, type FeedbackSignal } from "../../../platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 import type { FeedbackBatch } from "./feedback-model.js";
 import { parseLearningSignal, type LearningSignal } from "./feedback-model.js";
 

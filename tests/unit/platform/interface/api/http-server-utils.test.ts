@@ -12,7 +12,7 @@ import {
   buildJsonDocumentResponse,
   buildHtmlResponse,
   buildTextResponse,
-} from "../../../../../src/platform/interface/api/http-server/utils.js";
+} from "../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
 
 function createMockRequest(overrides: Partial<{ method: string; url: string; headers: Record<string, string | undefined>; body: string | null | undefined }> = {}): any {
   return {

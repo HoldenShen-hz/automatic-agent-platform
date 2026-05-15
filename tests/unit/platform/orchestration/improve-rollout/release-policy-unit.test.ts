@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, ReleaseAction } from "../../../../../src/platform/orchestration/improve-rollout/release-policy.js";
+import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, ReleaseAction } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/release-policy.js";
 
 function createMockReleasePolicy(overrides: Partial<ReleasePolicy> = {}): ReleasePolicy {
   return {

@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 // Helper to create adapter with mock redis client

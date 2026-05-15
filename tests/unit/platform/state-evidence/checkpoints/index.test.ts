@@ -35,7 +35,7 @@ import {
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
-} from "../../../../../src/platform/state-evidence/checkpoints/index.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 
 test("CHECKPOINT_ENVELOPE_SCHEMA_VERSION is correct", () => {
   assert.equal(CHECKPOINT_ENVELOPE_SCHEMA_VERSION, "checkpoint_envelope.v1");

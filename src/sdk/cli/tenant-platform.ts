@@ -3,7 +3,7 @@
 // Provides topology summary for understanding the tenant structure.
 
 import { withCliStorage } from "./authoritative-storage.js";
-import { loadTenantPlatformCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadTenantPlatformCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { TenantPlatformService } from "../../scale-ecosystem/tenant-platform/tenant-platform-service.js";
 

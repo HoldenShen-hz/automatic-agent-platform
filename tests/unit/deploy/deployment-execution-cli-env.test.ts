@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadDeploymentExecutionCliEnv } from "../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { loadDeploymentExecutionCliEnv } from "../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env-loaders.js";
 
 test("loadDeploymentExecutionCliEnv parses all environment variables", () => {
   const config = loadDeploymentExecutionCliEnv({

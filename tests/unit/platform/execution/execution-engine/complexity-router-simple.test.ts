@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { routeComplexity, type ComplexityPath } from "../../../../../src/platform/execution/execution-engine/complexity-router.js";
+import { routeComplexity, type ComplexityPath } from "../../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
 test("complexity-router exports routeComplexity function", () => {
   assert.equal(typeof routeComplexity, "function");

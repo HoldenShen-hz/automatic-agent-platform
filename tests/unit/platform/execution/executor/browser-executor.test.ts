@@ -27,7 +27,7 @@ import {
   type BrowserWaitForSelectorOptions,
   type BrowserGetAttributeOptions,
   type BrowserScrollOptions,
-} from "../../../../../src/platform/execution/plugin-executor/index.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

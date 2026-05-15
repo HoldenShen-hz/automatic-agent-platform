@@ -11,7 +11,7 @@ import type {
   MemoryTurnSyncInput,
   MemoryTurnSyncResult,
   QueuedMemoryPrefetch,
-} from "../../../../../src/platform/state-evidence/memory/memory-provider.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/memory-provider.js";
 
 function createContractProvider(): MemoryProvider {
   return {

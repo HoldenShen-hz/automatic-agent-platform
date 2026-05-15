@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import type { SqliteMigrationDefinition } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
-import { SQLITE_MIGRATIONS } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
-import { PHASE_1A_SCHEMA_SQL } from "../../../../../src/platform/state-evidence/truth/sql/phase1a-schema.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import type { SqliteMigrationDefinition } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SQLITE_MIGRATIONS } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { PHASE_1A_SCHEMA_SQL } from "../../../../../src/platform/five-plane-state-evidence/truth/sql/phase1a-schema.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("sqlite database records migration ledger entries and stays idempotent across repeated migrate calls", () => {

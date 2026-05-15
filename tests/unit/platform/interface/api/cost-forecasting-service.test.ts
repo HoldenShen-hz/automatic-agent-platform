@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CostForecastingService, type CostDataPoint, type ForecastingConfig, type SeasonalityPattern, type CostForecast } from "../../../../../src/platform/interface/api/cost-forecasting-service.js";
+import { CostForecastingService, type CostDataPoint, type ForecastingConfig, type SeasonalityPattern, type CostForecast } from "../../../../../src/platform/five-plane-interface/api/cost-forecasting-service.js";
 
 function makeDataPoints(overrides: Partial<CostDataPoint>[] = []): CostDataPoint[] {
   const defaults: CostDataPoint[] = [

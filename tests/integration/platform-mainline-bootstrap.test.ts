@@ -152,7 +152,7 @@ test("compliance capability is last in the list and covers data governance", () 
 
 test("interface capability entry module maps to interface plane", () => {
   const interfaceCap = resolvePlatformMainlineCapability("interface");
-  assert.equal(interfaceCap.entryModule, "src/platform/interface/index.ts");
+  assert.equal(interfaceCap.entryModule, "src/platform/five-plane-interface/index.ts");
 });
 
 test("critical submodules are meaningful names, not file paths", () => {

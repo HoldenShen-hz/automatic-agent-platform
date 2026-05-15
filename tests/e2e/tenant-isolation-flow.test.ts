@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   TENANT_ISOLATION_DDL,
   TenantExecutionIsolationService,
-} from "../../src/platform/control-plane/incident-control/tenant-execution-isolation-service.js";
+} from "../../src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.js";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 
 function prepareIsolationSchema(): ReturnType<typeof createE2EHarness> {

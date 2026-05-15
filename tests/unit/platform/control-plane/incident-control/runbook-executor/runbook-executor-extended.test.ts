@@ -8,8 +8,8 @@ import test from "node:test";
 import {
   RunbookExecutor,
   parseRunbookMarkdown,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/index.js";
-import type { RunbookSection, RunbookStep, RunbookExecutorConfig } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/index.js";
+import type { RunbookSection, RunbookStep, RunbookExecutorConfig } from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/index.js";
 
 function createExecutorWithConfig(config: Partial<RunbookExecutorConfig> = {}) {
   return new RunbookExecutor(config);

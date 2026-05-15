@@ -26,8 +26,8 @@ import {
   type ModelCallProviderConfig,
   type LlmModelCallRequest,
   type LlmModelCallResult,
-} from "../../../../../src/platform/execution/execution-engine/model-call-provider.js";
-import { globalMiddlewareChain } from "../../../../../src/platform/execution/execution-engine/agent-middleware-chain.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
+import { globalMiddlewareChain } from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
 // ---------------------------------------------------------------------------
 // Helper function tests (via resolveCallRateLimit behavior)

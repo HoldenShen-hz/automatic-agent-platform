@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AutoRollbackService } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
-import { PolicyRolloutService } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/policy-rollout-service.js";
-import type { RolloutRecord, RolloutStatus } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
-import type { RolloutMetrics } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
-import type { StrategyVersion } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/strategy-versioning.js";
+import { AutoRollbackService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
+import { PolicyRolloutService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/policy-rollout-service.js";
+import type { RolloutRecord, RolloutStatus } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import type { RolloutMetrics } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
+import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
+import type { StrategyVersion } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/strategy-versioning.js";
 import { rolloutFreezeManager } from "../../../../../../src/platform/shared/observability/rollout-freeze-manager.js";
 
 // Helper to run test with frozen rollout state

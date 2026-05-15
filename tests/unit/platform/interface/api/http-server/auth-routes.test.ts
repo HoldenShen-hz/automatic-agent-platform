@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAuthRoutes } from "../../../../../../src/platform/interface/api/http-server/auth-routes.js";
-import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
-import type { RouteContext } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { createAuthRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/auth-routes.js";
+import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { RouteContext } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(tokenResult: Record<string, unknown> = { token: "abc123", expiresAt: "2026-04-17T00:00:00.000Z" }): ApiAuthService {
   return {

@@ -7,7 +7,7 @@
  * Architecture: §4 P4 Execution Plane
  * @see docs_zh/architecture/00-platform-architecture.md §4
  * @see src/domains/registry/plugin-spi.ts (PluginManifest, PluginLifecycleHooks)
- * @see src/platform/control-plane/iam/sandbox-policy.ts (SandboxPolicy)
+ * @see src/platform/five-plane-control-plane/iam/sandbox-policy.ts (SandboxPolicy)
  */
 
 import { dirname, join } from "node:path";
@@ -28,8 +28,8 @@ import {
   type SandboxPolicy,
   type SandboxMode,
   type SandboxModeLike,
-} from "../../control-plane/iam/sandbox-policy.js";
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
+} from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
   ScopedExternalAccessSandbox,

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HarnessMemoryManager } from "../../../../../src/platform/orchestration/harness/memory-manager.js";
+import { HarnessMemoryManager } from "../../../../../src/platform/five-plane-orchestration/harness/memory-manager.js";
 
 test("HarnessMemoryManager is exported and can be instantiated", () => {
   const manager = new HarnessMemoryManager();

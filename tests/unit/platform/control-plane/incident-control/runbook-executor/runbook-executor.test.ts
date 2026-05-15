@@ -9,8 +9,8 @@ import {
   RunbookExecutor,
   IncidentDrillService,
   parseRunbookMarkdown,
-} from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/index.js";
-import type { RunbookSection, RunbookStep, RunbookExecutionResult } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/index.js";
+} from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/index.js";
+import type { RunbookSection, RunbookStep, RunbookExecutionResult } from "../../../../../../src/platform/five-plane-control-plane/incident-control/runbook-executor/index.js";
 
 test("RunbookExecutor parse handles backtick commands as requiring confirmation", () => {
   const markdown = `# Test Runbook

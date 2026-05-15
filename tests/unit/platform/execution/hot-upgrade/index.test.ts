@@ -14,7 +14,7 @@ import {
   type UpgradePlan,
   type UpgradeProgress,
   type VersionCompatibility,
-} from "../../../../../src/platform/execution/hot-upgrade/index.js";
+} from "../../../../../src/platform/five-plane-execution/hot-upgrade/index.js";
 
 test("createHotUpgradeService is exported as function", () => {
   assert.equal(typeof createHotUpgradeService, "function");

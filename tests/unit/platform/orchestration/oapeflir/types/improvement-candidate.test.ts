@@ -6,7 +6,7 @@ import {
   parseImprovementCandidate,
   ImprovementChangeScopeSchema,
   ImprovementCandidateStatusSchema,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/improvement-candidate.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 test("ImprovementChangeScopeSchema accepts valid scopes", () => {
   const scopes = ["prompt", "policy", "model", "workflow", "tool_config"] as const;

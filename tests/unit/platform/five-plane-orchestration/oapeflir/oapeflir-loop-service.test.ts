@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { MockExecuteBridge } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import type { DualChannelStepOutput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
-import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
+import type { TypedEventPublisher } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import {
   createPlanGraphBundle,
   type PlanGraphBundle,
@@ -129,7 +129,7 @@ test("R9-14-1: executeViaBridge publishes execution.requested event instead of c
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       publishCall = { eventType: input.eventType, payload: input.payload as any };
     },
-  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  } as import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   // We need to test that when eventPublisher is provided, executeViaBridge uses it
   // to publish execution.requested events instead of calling executeBridge directly.
@@ -185,7 +185,7 @@ test("R9-14-1: verify executeViaBridge does NOT call executeBridge.executePlan w
     publish(_input: { eventType: string; taskId?: string | null; payload: unknown }) {
       publishCallCount++;
     },
-  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  } as import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -264,7 +264,7 @@ test("R9-14-3: executeViaBridge handles timeout when execution doesn't complete 
     publish(input: { eventType: string; taskId?: string | null; payload: unknown }) {
       publishedEventType = input.eventType;
     },
-  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  } as import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -310,7 +310,7 @@ test("R9-14-4: executeViaBridge maps completion payload to DualChannelStepOutput
         publishedPayload = input.payload as ExecutionRequestedPayload;
       }
     },
-  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  } as import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -404,7 +404,7 @@ test("R9-14-5: verify executeViaBridge uses event delegation, not direct bridge 
         eventPublishCount++;
       }
     },
-  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  } as import("../../../../../src/platform/five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 

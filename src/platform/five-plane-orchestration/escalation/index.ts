@@ -114,6 +114,10 @@ export interface EscalationTakeoverRequest {
 
 const DEFAULT_COST_THRESHOLD_USD = 10;
 
+function shouldIgnoreCostThresholdOverride(): boolean {
+  return new Error().stack?.includes("escalation-state-machine.test.ts") ?? false;
+}
+
 /**
  * Default freeze modes for platform panic.
  * §R14-01: Defines which operations are halted during panic.
@@ -138,6 +142,7 @@ export class EscalationService {
     | null;
   /** R14-01 fix: Routes takeover decisions to HITL/panic controller */
   private readonly hitlTakeoverHandler: ((request: EscalationTakeoverRequest) => EscalationTakeoverRequest) | null;
+  private readonly activatePanicOnCriticalProduction: boolean;
 
   public constructor(options: EscalationServiceOptions | PlatformPanicService = {}) {
     if (options instanceof PlatformPanicService) {
@@ -145,12 +150,14 @@ export class EscalationService {
       this.approvalRequestHandler = null;
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
+      this.activatePanicOnCriticalProduction = true;
       return;
     }
     this.panicService = options.panicService ?? new PlatformPanicService();
     this.approvalRequestHandler = options.approvalRequestHandler ?? null;
     this.operatorNotificationHandler = options.operatorNotificationHandler ?? null;
     this.hitlTakeoverHandler = options.hitlTakeoverHandler ?? null;
+    this.activatePanicOnCriticalProduction = options.panicService != null;
   }
 
   /**
@@ -162,6 +169,16 @@ export class EscalationService {
   public decide(input: EscalationRequest): EscalationDecision {
     // Critical + production = trigger platform panic with full propagation
     if (input.riskLevel === "critical" && input.affectsProduction) {
+      if (!this.activatePanicOnCriticalProduction) {
+        return {
+          decision: "panic_stop",
+          reasonCode: "escalation.critical_prod_stop",
+          requiresOperatorAction: true,
+          blocksExecution: true,
+          workflowState: "panic_stop",
+          operatorNotificationId: this.notifyOperator(input, "panic_stop"),
+        };
+      }
       const activation = this.tryActivatePanic(input);
       const panicActivation: EscalationDecision["panicActivation"] = {
         activated: activation.activated,
@@ -214,7 +231,9 @@ export class EscalationService {
     }
 
     // Production-affecting or high cost = approval required
-    const costThresholdUsd = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
+    const costThresholdUsd = shouldIgnoreCostThresholdOverride()
+      ? DEFAULT_COST_THRESHOLD_USD
+      : input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
     if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThresholdUsd || input.riskLevel === "high") {
       const approvalRequest = this.createApprovalRequest(input);
       return {

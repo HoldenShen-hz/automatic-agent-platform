@@ -14,7 +14,7 @@ import {
   type BudgetReservationResult,
   type BudgetResourceKind,
 } from "../../contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../execution/budget-allocator.js";
+import { BudgetAllocator } from "../../five-plane-execution/budget-allocator.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.

@@ -7,7 +7,7 @@ import type {
   DoctorCheckStatus,
   DoctorCheckReport,
   DoctorSelfCheckSummary,
-} from "../../../../../src/platform/control-plane/incident-control/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/index.js";
 
 test("DoctorCheckId type accepts valid values", () => {
   const ids: DoctorCheckId[] = [

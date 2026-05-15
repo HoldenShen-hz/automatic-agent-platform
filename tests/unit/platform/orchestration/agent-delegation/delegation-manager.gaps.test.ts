@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Unit tests for DelegationManagerService - Coverage Gaps
  *
@@ -14,8 +13,8 @@ import test from "node:test";
 import {
   createDelegationManager,
   DelegationManagerService,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-manager.service.js";
-import type { AgentContext, DelegationSpec, DelegationChain } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.js";
+import type { AgentContext, DelegationSpec, DelegationChain } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 function createParentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

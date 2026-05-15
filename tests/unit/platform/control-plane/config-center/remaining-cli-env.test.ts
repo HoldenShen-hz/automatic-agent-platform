@@ -10,7 +10,7 @@ import {
   loadSecretManagementCliEnv,
   loadTenantPlatformCliEnv,
   loadWorkerRegisterCliEnv,
-} from "../../../../../src/platform/control-plane/config-center/remaining-cli-env.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 
 test("remaining CLI env loader parses tenant platform creation inputs", () => {
   const config = loadTenantPlatformCliEnv({

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PlanDagValidator } from "../../../../../src/platform/orchestration/planner/plan-dag-validator.js";
-import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { PlanDagValidator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 
 function makeStep(stepId: string, dependencies: string[] = []): PlanStep {
   return {

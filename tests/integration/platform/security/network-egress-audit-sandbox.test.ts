@@ -6,7 +6,7 @@ import {
   recordEgress,
   classifyUrl,
   type EgressDestinationType,
-} from "../../../../src/platform/control-plane/iam/network-egress-audit.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/network-egress-audit.js";
 
 test("NetworkEgressAudit sandbox: records URL egress", () => {
   const service = new NetworkEgressAuditService();

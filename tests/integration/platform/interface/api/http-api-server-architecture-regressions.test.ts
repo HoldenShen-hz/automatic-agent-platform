@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
-import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
-import { IncidentCaseService } from "../../../../../src/platform/state-evidence/incident/index.js";
-import { IntakeAdmissionService } from "../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
+import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { IncidentCaseService } from "../../../../../src/platform/five-plane-state-evidence/incident/index.js";
+import { IntakeAdmissionService } from "../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 
 function createServerHarness(options: {
   workerHeartbeatSweepIntervalMs?: number;

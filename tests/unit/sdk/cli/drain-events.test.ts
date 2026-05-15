@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadEventOpsCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadEventOpsCliEnv } from "../../../../src/platform/five-plane-control-plane/config-center/ops-cli-env.js";
 
 test("loadEventOpsCliEnv parses dbPath from AA_DB_PATH for drain-events", () => {
   const config = loadEventOpsCliEnv({

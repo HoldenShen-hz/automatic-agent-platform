@@ -81,9 +81,7 @@ export class ModelGatewayFallbackService {
     });
     const selected = sorted[0] ?? null;
     const fallbackChain = [input.primaryProfileName, ...sorted.map((c) => c.profileName)];
-    const attemptedProfiles = selected == null
-      ? []
-      : sorted.map((candidate) => candidate.profileName);
+    const attemptedProfiles = sorted.map((candidate) => candidate.profileName);
     return {
       selectedProfileName: selected?.profileName ?? null,
       reasonCode: selected == null ? "fallback.no_candidate_available" : "fallback.healthy_alternative_selected",

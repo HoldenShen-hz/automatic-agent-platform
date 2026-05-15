@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { GoalDecompositionService, type Goal, type LlmPlanGenerator } from "../../../src/interaction/goal-decomposer/index.js";
 import { ProactiveAgentService, type TriggerDefinition } from "../../../src/interaction/proactive-agent/index.js";
 import { DashboardAggregationService } from "../../../src/interaction/dashboard/index.js";
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
 
 test("integration: Full goal decomposition flow with marketing campaign", async () => {

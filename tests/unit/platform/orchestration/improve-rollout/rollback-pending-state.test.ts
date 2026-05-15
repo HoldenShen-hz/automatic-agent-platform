@@ -5,7 +5,7 @@ import {
   ImprovementRollbackStateMachine,
   type ImprovementRollbackReceipt,
   type ImprovementReleaseState,
-} from "../../../../../src/platform/orchestration/improve-rollout/rollback-pending-state.js";
+} from "../../../../../src/platform/five-plane-orchestration/improve-rollout/rollback-pending-state.js";
 
 test("ImprovementRollbackStateMachine.requestRollback creates receipt for released state", () => {
   const machine = new ImprovementRollbackStateMachine();

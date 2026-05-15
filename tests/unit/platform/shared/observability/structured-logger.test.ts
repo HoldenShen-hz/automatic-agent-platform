@@ -46,7 +46,7 @@ test("StructuredLogger.log adds entry with timestamp", () => {
 test("StructuredLogger infers plane from source file path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
 
   const entry = logger.info("dispatch");
@@ -76,7 +76,7 @@ test("StructuredLogger.log includes optional fields when provided", () => {
 test("StructuredLogger normalizes service name from source file and supports structuredPayload aliases", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+    planeSourceFile: "/workspace/src/platform/five-plane-execution/dispatcher/index.ts",
   });
   const entry = logger.log({
     level: "fatal",

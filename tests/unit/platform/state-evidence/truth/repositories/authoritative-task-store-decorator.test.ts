@@ -6,7 +6,7 @@ import {
   resetAuthoritativeTaskStoreDecoratorMetrics,
   decorateAuthoritativeTaskStore,
   type DecoratedAuthoritativeTaskStoreOptions,
-} from "../../../../../../src/platform/state-evidence/truth/repositories/authoritative-task-store-decorator.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/truth/repositories/authoritative-task-store-decorator.js";
 
 test("getAuthoritativeTaskStoreDecoratorMetricsSnapshot returns empty object initially", () => {
   resetAuthoritativeTaskStoreDecoratorMetrics();

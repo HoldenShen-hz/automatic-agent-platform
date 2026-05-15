@@ -5,7 +5,7 @@ import {
   decodeJwtJsonSegment,
   parseJwtHeader,
   parseFederatedTokenClaims,
-} from "../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
+} from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/jwt-utils.js";
 import { AuthError, ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("decodeJwtJsonSegment decodes valid base64url segment", () => {

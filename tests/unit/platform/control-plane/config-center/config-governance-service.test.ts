@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { ConfigGovernanceService } from "../../../../../src/platform/control-plane/config-center/config-governance-service.js";
+import { ConfigGovernanceService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-governance-service.js";
 import {
   BOOTSTRAP_LAYER_SCHEMA,
   GATEWAYS_LAYER_SCHEMA,
@@ -29,8 +29,8 @@ import {
   type ConfigBundle,
   type ConfigDiffEntry,
   type ConfigVersion,
-} from "../../../../../src/platform/control-plane/config-center/config-governance-support.js";
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/config-governance-support.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 // ---------------------------------------------------------------------------

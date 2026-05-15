@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { compactAgentHandoff, createAgentHandoff } from "../../../../../src/platform/orchestration/oapeflir/handoff-model.js";
+import { compactAgentHandoff, createAgentHandoff } from "../../../../../src/platform/five-plane-orchestration/oapeflir/handoff-model.js";
 
 test("compactAgentHandoff trims lower-priority layers first", () => {
   const handoff = createAgentHandoff({

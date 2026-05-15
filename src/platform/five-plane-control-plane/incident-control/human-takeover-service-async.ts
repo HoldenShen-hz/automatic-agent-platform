@@ -18,10 +18,10 @@ import { createRequire } from "node:module";
 
 import type {
   AuthoritativeSqlDatabase,
-} from "../../state-evidence/truth/authoritative-sql-database.js";
+} from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   AuthoritativeTaskStore,
-} from "../../state-evidence/truth/authoritative-task-store.js";
+} from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type {
   TaskTerminalStatus,
 } from "../../contracts/types/status.js";

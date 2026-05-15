@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GcpSecretManagerHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/gcp-secret-manager-http-secret-provider.js";
+import { GcpSecretManagerHttpSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/gcp-secret-manager-http-secret-provider.js";
 
 // Helper to create a mock env
 function createMockEnv(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {

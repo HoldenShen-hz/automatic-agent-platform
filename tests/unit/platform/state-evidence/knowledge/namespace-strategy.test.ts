@@ -14,8 +14,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY, type NamespaceConflict } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import type { KnowledgeNamespace } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY, type NamespaceConflict } from "../../../../../src/platform/five-plane-state-evidence/knowledge/governance/namespace-policy.js";
+import type { KnowledgeNamespace } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

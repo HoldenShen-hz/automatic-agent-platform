@@ -2,7 +2,7 @@ import type {
   RiskConfig,
   RiskEvaluationRequest,
   RiskFactors,
-} from "../../src/platform/control-plane/risk-control/types.js";
+} from "../../src/platform/five-plane-control-plane/risk-control/types.js";
 
 export function createCanonicalRiskConfig(): RiskConfig {
   return {

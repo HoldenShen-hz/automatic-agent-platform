@@ -1,7 +1,7 @@
 import {
   createStableReleasePackage,
 } from "../../platform/shared/stability/stable-release-package.js";
-import { loadStablePackageCliEnv } from "../../platform/control-plane/config-center/stable-cli-env.js";
+import { loadStablePackageCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 import { createStableCli } from "./stable-runner-factory.js";
 
 createStableCli({
@@ -13,7 +13,7 @@ createStableCli({
     const envConfig = loadStablePackageCliEnv();
     return {
       outputDir: envConfig.outputDir,
-      evidenceRootDir: envConfig.evidenceRootDir ?? undefined,
+      ...(envConfig.evidenceRootDir != null ? { evidenceRootDir: envConfig.evidenceRootDir } : {}),
       targetStatus: envConfig.targetStatus,
     };
   },

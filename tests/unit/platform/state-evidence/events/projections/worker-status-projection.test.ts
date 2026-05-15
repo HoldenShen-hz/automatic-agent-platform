@@ -7,7 +7,7 @@ import {
   createWorkerStatusProjectionHandler,
   type WorkerStatusState,
   type ProjectionInputEvent,
-} from "../../../../../../src/platform/state-evidence/events/projections/worker-status-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/worker-status-projection.js";
 
 /**
  * Helper to create a projection input event

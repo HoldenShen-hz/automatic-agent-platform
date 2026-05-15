@@ -10,7 +10,7 @@ import {
   PADDLE_API_URL,
   TELEGRAM_API_URL,
   SLACK_API_URL,
-} from "../../../../../src/platform/control-plane/config-center/provider-defaults.js";
+} from "../../../../../src/platform/five-plane-control-plane/config-center/provider-defaults.js";
 
 test("Provider API URLs are properly formatted", () => {
   assert.equal(ANTHROPIC_API_URL.startsWith("https://"), true);

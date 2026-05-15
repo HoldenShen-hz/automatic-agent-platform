@@ -54,7 +54,7 @@ import {
   type ApprovalFlowState,
   type VoteResult,
   type FeedbackResult,
-} from "../../../../../src/platform/control-plane/approval-center/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 // ============================================
 // Quorum Calculator Tests

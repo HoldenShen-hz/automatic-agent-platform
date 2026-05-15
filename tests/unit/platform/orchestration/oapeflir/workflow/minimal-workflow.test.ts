@@ -9,7 +9,7 @@ import {
   type MinimalWorkflowStep,
   type MinimalWorkflowDefinition,
   type CompensationModel,
-} from "../../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure", () => {
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId, "single_agent_minimal");

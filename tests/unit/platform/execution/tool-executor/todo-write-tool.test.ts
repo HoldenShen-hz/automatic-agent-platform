@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import {
   TodoWriteToolService,
   validateTodoTitle,
@@ -10,7 +10,7 @@ import {
   executeTodoOperation,
   type TodoWriteToolRequest,
   type TodoStatus,
-} from "../../../../../src/platform/execution/tool-executor/todo-write-tool.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/todo-write-tool.js";
 
 function createMockRequest(overrides: Partial<TodoWriteToolRequest> = {}): TodoWriteToolRequest {
   return {

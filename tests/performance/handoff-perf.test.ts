@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
-import type { AgentHandoff } from "../../src/platform/orchestration/oapeflir/handoff-model.js";
-import { serializeHandoff } from "../../src/platform/orchestration/oapeflir/handoff-serializer.js";
+import type { AgentHandoff } from "../../src/platform/five-plane-orchestration/oapeflir/handoff-model.js";
+import { serializeHandoff } from "../../src/platform/five-plane-orchestration/oapeflir/handoff-serializer.js";
 
 function createTestHandoff(): AgentHandoff {
   return {

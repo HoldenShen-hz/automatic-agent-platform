@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WalCheckpointService, createWalCheckpointService, WAL_CHECKPOINT_DDL } from "../../../../../src/platform/execution/ha/wal-checkpoint-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { WalEntryType, CheckpointOptions, EventReplayPosition } from "../../../../../src/platform/execution/ha/types.js";
+import { WalCheckpointService, createWalCheckpointService, WAL_CHECKPOINT_DDL } from "../../../../../src/platform/five-plane-execution/ha/wal-checkpoint-service.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { WalEntryType, CheckpointOptions, EventReplayPosition } from "../../../../../src/platform/five-plane-execution/ha/types.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

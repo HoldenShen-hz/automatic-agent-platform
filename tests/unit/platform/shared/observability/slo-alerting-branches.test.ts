@@ -9,7 +9,7 @@ import {
   SLO_ALERTING_DDL,
   type AlertEvent,
 } from "../../../../../src/platform/shared/observability/slo-alerting-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { rolloutFreezeManager } from "../../../../../src/platform/shared/observability/rollout-freeze-manager.js";
 

@@ -5,7 +5,7 @@ import {
   GatewayRateLimitError,
   GatewayDeliveryError,
   normalizeGatewayDeliveryFailure,
-} from "../../../../../../src/platform/interface/channel-gateway/errors.js";
+} from "../../../../../../src/platform/five-plane-interface/channel-gateway/errors.js";
 
 test("GatewayRateLimitError has correct properties", () => {
   const error = new GatewayRateLimitError("telegram_123", 5000, 100, 50);

@@ -9,8 +9,8 @@ import {
   type ExperienceToolCall,
   type RecordExperienceInput,
   type SimilarExperienceQuery,
-} from "../../../../../src/platform/state-evidence/memory/experience-cache-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/experience-cache-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 // =============================================================================
 // computeKeywordSimilarity tests

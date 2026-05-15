@@ -9,7 +9,7 @@ import {
   deriveProviderApiKeySecretRefEnvNameForStartup,
   deriveProviderApiKeySecretRefsJsonEnvNameForStartup,
   deriveProviderApiKeysJsonEnvNameForStartup,
-} from "../../../../src/platform/execution/startup/startup-preflight.js";
+} from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
 
 test("startup-preflight module exists and exports expected functions", async () => {
   assert.ok(typeof buildDefaultStartupConfigValidator === "function", "Should export buildDefaultStartupConfigValidator function");

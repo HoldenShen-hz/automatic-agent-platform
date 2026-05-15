@@ -11,7 +11,7 @@ import {
   BoundedDispatchQueueEventFactory,
   type BoundedDispatchQueueSnapshot,
   type BoundedDispatchEvent,
-} from "../../../../../src/platform/execution/queue/bounded-dispatch-event.js";
+} from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
 test("BoundedDispatchQueueEventFactory create returns accepted event when queue has capacity", () => {

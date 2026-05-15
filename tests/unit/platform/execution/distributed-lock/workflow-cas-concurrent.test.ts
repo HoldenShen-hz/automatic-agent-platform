@@ -14,11 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import { WorkflowTransitionService } from "../../../../../src/platform/execution/state-transition/transition-service.js";
+import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
+import { WorkflowTransitionService } from "../../../../../src/platform/five-plane-execution/state-transition/transition-service.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 import type { WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
-import type { RuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import type { RuntimeLifecycleRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 
 // ============================================================================
 // SYS-REL-2.7: Workflow CAS Tests

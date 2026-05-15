@@ -13,8 +13,8 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
-import { loadWorkerWritebackCliEnv } from "../../platform/control-plane/config-center/runtime-ops-env.js";
-import { ExecutionWorkerWritebackService } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";
+import { loadWorkerWritebackCliEnv } from "../../platform/five-plane-control-plane/config-center/runtime-ops-env.js";
+import { ExecutionWorkerWritebackService } from "../../platform/five-plane-execution/worker-pool/execution-worker-writeback-service.js";
 import { withCliStorage } from "./authoritative-storage.js";
 
 /**

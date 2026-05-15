@@ -10,7 +10,7 @@ import {
   type GraphQLSchemaDefinition,
   type GraphQLRequest,
   type GraphQLOperationType,
-} from "../../../../../src/platform/interface/api/graphql-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/graphql-adapter-service.js";
 
 test("GraphQLAdapterService isAvailable returns true", () => {
   const service = new GraphQLAdapterService({ endpoint: "http://localhost/graphql" });

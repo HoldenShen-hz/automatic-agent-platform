@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   createEmptyWorkerStatusState,
   workerStatusProjectionHandler,
-} from "../../../../../../src/platform/state-evidence/events/projections/worker-status-projection.js";
+} from "../../../../../../src/platform/five-plane-state-evidence/events/projections/worker-status-projection.js";
 
 test("workerStatusProjectionHandler records processed event IDs", () => {
   const state = workerStatusProjectionHandler(null, {

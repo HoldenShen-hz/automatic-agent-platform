@@ -14,7 +14,7 @@ import {
   HarnessRuntimeService,
   HarnessLoopController,
   type ConstraintPack,
-} from "../../src/platform/orchestration/harness/index.js";
+} from "../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   // R10-39 fix: Use proper ConstraintPack structure instead of @ts-ignore bypass

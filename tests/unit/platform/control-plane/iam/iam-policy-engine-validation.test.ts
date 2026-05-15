@@ -11,7 +11,7 @@ import {
   type PolicyDecisionRequest,
   type PolicyDecisionResult,
   type PolicyEngineOptions,
-} from "../../../../../src/platform/control-plane/iam/policy-engine.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/policy-engine.js";
 
 function createValidRequest(): PolicyDecisionRequest {
   return {

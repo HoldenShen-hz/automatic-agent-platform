@@ -5,8 +5,8 @@ import {
   resolveStepFailurePlan,
   normalizeStepErrorCode,
   buildStepFailureSummary,
-} from "../../../../src/platform/execution/execution-engine/multi-step-supervisor.js";
-import type { MultiStepToolExecutionInput } from "../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
+} from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-supervisor.js";
+import type { MultiStepToolExecutionInput } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 
 test("normalizeStepFailurePlan converts string to StepFailurePlan", () => {
   const result = normalizeStepFailurePlan("E001");

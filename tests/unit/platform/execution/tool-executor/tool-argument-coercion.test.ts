@@ -5,7 +5,7 @@ import {
   formatToolArgumentCoercionWarnings,
   coerceToolArguments,
   type ToolArgumentCoercionTrace,
-} from "../../../../../src/platform/execution/tool-executor/tool-argument-coercion.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/tool-argument-coercion.js";
 
 test("formatToolArgumentCoercionWarnings formats single trace", () => {
   const traces: ToolArgumentCoercionTrace[] = [

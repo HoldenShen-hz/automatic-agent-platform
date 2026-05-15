@@ -18,7 +18,7 @@ import { createAssetProductionAdapterPlugin } from "../../../src/plugins/adapter
 import { createLivestreamAdapterPlugin } from "../../../src/plugins/adapters/livestream-adapter.js";
 import { createGrowthPresenterPlugin } from "../../../src/plugins/presenters/growth-presenter.js";
 import { createOperationsPresenterPlugin } from "../../../src/plugins/presenters/operations-presenter.js";
-import { NetworkEgressPolicyService } from "../../../src/platform/control-plane/iam/network-egress-policy.js";
+import { NetworkEgressPolicyService } from "../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import type { DomainPlannerPlugin, DomainEvaluatorPlugin, DomainPresenterPlugin, ExternalAdapterPlugin } from "../../../src/domains/registry/plugin-spi.js";
 
 // ---------------------------------------------------------------------------

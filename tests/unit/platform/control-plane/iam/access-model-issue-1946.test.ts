@@ -8,14 +8,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as iam from "../../../../../src/platform/control-plane/iam/index.js";
+import * as iam from "../../../../../src/platform/five-plane-control-plane/iam/index.js";
 import type {
   PlatformPrincipalType,
   PlatformRole,
   PlatformCapability,
   AuthorizationAction,
   AuthorizationContext,
-} from "../../../../../src/platform/control-plane/iam/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/index.js";
 
 test("Issue 1946: iam.index exports RBAC capability enforcement functions", () => {
   // Verify the functions are exported via the barrel

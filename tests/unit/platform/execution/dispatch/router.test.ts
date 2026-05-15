@@ -18,7 +18,7 @@ import {
   isElevatedPriority,
   type CreateExecutionTicketInput,
   type DispatchExecutionOptions,
-} from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 import type { DispatchTarget, WorkerIsolationLevel, TaskPriority } from "../../../../../src/platform/contracts/types/domain/index.js";
 

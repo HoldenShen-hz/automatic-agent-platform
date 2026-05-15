@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadChannelGatewayEnv } from "../../../../src/platform/control-plane/config-center/channel-gateway-env.js";
+import { loadChannelGatewayEnv } from "../../../../src/platform/five-plane-control-plane/config-center/channel-gateway-env.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadChannelGatewayEnv parses send action with current gateway env names", () => {

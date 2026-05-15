@@ -12,7 +12,7 @@ import {
   type GraphQLSchemaWithResolvers,
   type GraphQLRequest,
   GRAPHQL_ERROR_CODES,
-} from "../../../../../src/platform/interface/api/graphql-adapter-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/graphql-adapter-service.js";
 
 function createTestSchema(): GraphQLSchemaWithResolvers {
   const schema = new GraphQLSchemaBuilder()

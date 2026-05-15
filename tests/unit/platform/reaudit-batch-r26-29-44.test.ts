@@ -21,10 +21,10 @@ import {
 import {
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
-} from "../../../src/platform/control-plane/config-center/model-metadata-registry.js";
+} from "../../../src/platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 import { MetricsService } from "../../../src/platform/shared/observability/metrics-service.js";
 import { runtimeMetricsRegistry } from "../../../src/platform/shared/observability/runtime-metrics-registry.js";
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function buildRegistry(): ModelMetadataRegistry {
   return JSON.parse(JSON.stringify(DEFAULT_MODEL_METADATA_REGISTRY)) as ModelMetadataRegistry;

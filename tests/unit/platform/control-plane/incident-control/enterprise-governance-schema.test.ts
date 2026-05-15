@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 // We can't easily import parseCsvEnv since it's not exported separately.
 // This test validates the SQL schema constant exists and has expected structure.
-import { ENTERPRISE_GOVERNANCE_DDL } from "../../../../../src/platform/control-plane/incident-control/enterprise-governance-schema.js";
+import { ENTERPRISE_GOVERNANCE_DDL } from "../../../../../src/platform/five-plane-control-plane/incident-control/enterprise-governance-schema.js";
 
 test("ENTERPRISE_GOVERNANCE_DDL contains incident_handoff_records table", () => {
   assert.ok(ENTERPRISE_GOVERNANCE_DDL.includes("CREATE TABLE IF NOT EXISTS incident_handoff_records"));

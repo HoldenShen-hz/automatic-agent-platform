@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { HARNESS_PLANNER_ROLE } from "../../../../../src/platform/orchestration/harness/planner/index.js";
+import { HARNESS_PLANNER_ROLE } from "../../../../../src/platform/five-plane-orchestration/harness/planner/index.js";
 
 /**
- * Tests for src/platform/orchestration/harness/planner/index.ts
+ * Tests for src/platform/five-plane-orchestration/harness/planner/index.ts
  *
  * This module exports HARNESS_PLANNER_ROLE, which is a string constant
  * used to identify the planner role within the harness system.
@@ -114,7 +114,7 @@ test("HARNESS_PLANNER_ROLE works with Object.keys on role objects", () => {
 });
 
 test("HARNESS_PLANNER_ROLE is distinct from HARNESS_GENERATOR_ROLE", async () => {
-  const { HARNESS_GENERATOR_ROLE } = await import("../../../../../src/platform/orchestration/harness/generator/index.js");
+  const { HARNESS_GENERATOR_ROLE } = await import("../../../../../src/platform/five-plane-orchestration/harness/generator/index.js");
 
   assert.notEqual(HARNESS_PLANNER_ROLE, HARNESS_GENERATOR_ROLE, "planner and generator roles should be different");
   assert.equal(HARNESS_PLANNER_ROLE, "planner");
@@ -122,8 +122,8 @@ test("HARNESS_PLANNER_ROLE is distinct from HARNESS_GENERATOR_ROLE", async () =>
 });
 
 test("HARNESS_PLANNER_ROLE is distinct from other harness roles", async () => {
-  const { HARNESS_GENERATOR_ROLE } = await import("../../../../../src/platform/orchestration/harness/generator/index.js");
-  const { HARNESS_PLANNER_ROLE: PLANNER_ROLE } = await import("../../../../../src/platform/orchestration/harness/planner/index.js");
+  const { HARNESS_GENERATOR_ROLE } = await import("../../../../../src/platform/five-plane-orchestration/harness/generator/index.js");
+  const { HARNESS_PLANNER_ROLE: PLANNER_ROLE } = await import("../../../../../src/platform/five-plane-orchestration/harness/planner/index.js");
 
   // These should all be different from planner
   const otherRoles = [
@@ -139,8 +139,8 @@ test("HARNESS_PLANNER_ROLE is distinct from other harness roles", async () => {
 });
 
 test("HARNESS_PLANNER_ROLE value is stable across module reloads", async () => {
-  const { HARNESS_PLANNER_ROLE: role1 } = await import("../../../../../src/platform/orchestration/harness/planner/index.js");
-  const { HARNESS_PLANNER_ROLE: role2 } = await import("../../../../../src/platform/orchestration/harness/planner/index.js");
+  const { HARNESS_PLANNER_ROLE: role1 } = await import("../../../../../src/platform/five-plane-orchestration/harness/planner/index.js");
+  const { HARNESS_PLANNER_ROLE: role2 } = await import("../../../../../src/platform/five-plane-orchestration/harness/planner/index.js");
 
   assert.equal(role1, role2, "constant should be identical across imports");
   assert.equal(role1, "planner");

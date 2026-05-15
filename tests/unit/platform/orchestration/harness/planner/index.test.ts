@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HARNESS_PLANNER_ROLE } from "../../../../../../src/platform/orchestration/harness/planner/index.js";
+import { HARNESS_PLANNER_ROLE } from "../../../../../../src/platform/five-plane-orchestration/harness/planner/index.js";
 
 test("HARNESS_PLANNER_ROLE is a string", () => {
   assert.equal(typeof HARNESS_PLANNER_ROLE, "string");

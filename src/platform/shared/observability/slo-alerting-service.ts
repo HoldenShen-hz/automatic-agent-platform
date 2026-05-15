@@ -22,7 +22,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/slo_alerting_and_runbook_contract.md | SLO Alerting and Runbook Contract}
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import {
   alertSeverityToUnifiedSeverity,
   newId,

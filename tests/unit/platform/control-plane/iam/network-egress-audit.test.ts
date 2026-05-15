@@ -9,7 +9,7 @@ import {
   NetworkEgressAuditService,
   type EgressDestinationType,
   type EgressAuditEvent,
-} from "../../../../../src/platform/control-plane/iam/network-egress-audit.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/network-egress-audit.js";
 
 test("parseUrlForAudit parses http URL", () => {
   const result = parseUrlForAudit("http://example.com:8080/path");

@@ -8,7 +8,7 @@ import {
   type BuildStepOutputInput,
   type BuildStepOutputResult,
   type AgentRoundLoopInput,
-} from "../../../../../src/platform/execution/execution-engine/multi-step-agent-round-loop.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js";
 
 test("parseStepOutput extracts summary and result from JSON", () => {
   const content = JSON.stringify({

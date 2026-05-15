@@ -7,10 +7,10 @@ import {
   DEFAULT_MEMORY_PROMOTION_RULES,
 } from "../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import { DEFAULT_SIX_LAYER_TRANSITION_RULES } from "../../../src/platform/five-plane-state-evidence/memory/layer-transition-service.js";
-import { artifactCatalogProjectionHandler } from "../../../src/platform/state-evidence/events/projections/artifact-catalog-projection.js";
-import { governanceProjectionHandler } from "../../../src/platform/state-evidence/events/projections/governance-projection.js";
-import { riskActionProjectionHandler } from "../../../src/platform/state-evidence/events/projections/risk-action-projection.js";
-import type { ProjectionInputEvent } from "../../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import { artifactCatalogProjectionHandler } from "../../../src/platform/five-plane-state-evidence/events/projections/artifact-catalog-projection.js";
+import { governanceProjectionHandler } from "../../../src/platform/five-plane-state-evidence/events/projections/governance-projection.js";
+import { riskActionProjectionHandler } from "../../../src/platform/five-plane-state-evidence/events/projections/risk-action-projection.js";
+import type { ProjectionInputEvent } from "../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 function readSource(relativePath: string): string {
   return readFileSync(new URL(relativePath, import.meta.url), "utf8");

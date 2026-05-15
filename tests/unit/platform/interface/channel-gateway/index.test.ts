@@ -14,7 +14,7 @@ import {
   type PendingDelivery,
   type RetryableDelivery,
   type DeliveryMessageRecord,
-} from "../../../../../src/platform/interface/channel-gateway/index.js";
+} from "../../../../../src/platform/five-plane-interface/channel-gateway/index.js";
 
 test("CHANNEL_DELIVERY_DDL is a non-empty string", () => {
   assert.ok(typeof CHANNEL_DELIVERY_DDL === "string");

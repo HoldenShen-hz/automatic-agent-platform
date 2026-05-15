@@ -11,7 +11,7 @@ import {
   type ContinuationReason,
   type ContinuationStatus,
   type ContinueRequest,
-} from "../../../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 test("OutputContinuationService exports parseFinishReason function", () => {
   assert.equal(typeof parseFinishReason, "function");

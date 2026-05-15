@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
@@ -18,7 +18,7 @@ import {
   unpackCheckpointEnvelope,
   getEnvelopeCompressionRatio,
   type CheckpointEnvelope,
-} from "../../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js";
+} from "../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.js";
 
 test("integration: artifacts can be persisted and retrieved by task", () => {
   const ctx = createIntegrationContext("aa-artifact-retrieval-");

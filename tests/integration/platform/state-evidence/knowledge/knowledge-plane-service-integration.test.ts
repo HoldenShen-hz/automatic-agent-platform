@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
-import type { KnowledgeQueryOptions } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
+import { KnowledgePlaneService } from "../../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
+import type { KnowledgeQueryOptions } from "../../../../../src/platform/five-plane-state-evidence/knowledge/retrieval/knowledge-retrieval.js";
 
 function createTestPlane(): KnowledgePlaneService {
   return new KnowledgePlaneService({});

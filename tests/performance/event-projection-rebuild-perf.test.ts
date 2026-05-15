@@ -16,11 +16,11 @@ import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { ProjectionRebuildService } from "../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ProjectionRebuildService } from "../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
-import type { ProjectionInputEvent } from "../../src/platform/state-evidence/projections/projection-rebuild-service.js";
+import type { ProjectionInputEvent } from "../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 function createTempDb(): SqliteDatabase {
   const dbPath = join(".tmp", `projection-rebuild-perf-${process.pid}-${Date.now()}.db`);

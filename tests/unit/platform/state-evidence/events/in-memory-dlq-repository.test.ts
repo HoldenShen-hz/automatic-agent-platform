@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { type ExtendedDeadLetterRecord, type DlqRepository } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+import { type ExtendedDeadLetterRecord, type DlqRepository } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 
 /**
  * In-memory implementation of DlqRepository for testing

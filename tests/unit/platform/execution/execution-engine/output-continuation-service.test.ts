@@ -12,7 +12,7 @@ import {
   type ContinuationStatus,
   type ContinuationRecord,
   type ContinueRequest,
-} from "../../../../../src/platform/execution/execution-engine/output-continuation-service.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
 // ---------------------------------------------------------------------------
 // parseFinishReason

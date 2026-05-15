@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/interface/channel-gateway/errors.js";
+import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/five-plane-interface/channel-gateway/errors.js";
 
 test("GatewayRateLimitError has correct error code", () => {
   const err = new GatewayRateLimitError("telegram", 5000, 100, 50);

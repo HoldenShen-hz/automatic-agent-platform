@@ -15,7 +15,7 @@ import {
   type NotificationChannel,
   type NotificationMessage,
   type Delegation,
-} from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/escalation-manager.js";
 
 function createTestRule() {
   return {

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   FeedbackCollectiveAnomalyDetector,
   type FeedbackAggregateSignal,
-} from "../../../../../src/platform/state-evidence/memory/feedback-collective-anomaly-detector.js";
+} from "../../../../../src/platform/five-plane-state-evidence/memory/feedback-collective-anomaly-detector.js";
 
 test("FeedbackCollectiveAnomalyDetector.evaluate returns normal when delta is within threshold", () => {
   const detector = new FeedbackCollectiveAnomalyDetector(100, 0.1);

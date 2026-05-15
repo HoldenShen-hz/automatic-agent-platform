@@ -15,7 +15,7 @@ import {
   validateApprovalDecision,
   type ApprovalRequest,
   type ApprovalDecision,
-} from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 // ============================================
 // ApprovalRequest Tests

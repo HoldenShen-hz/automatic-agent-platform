@@ -1,7 +1,7 @@
 /**
  * Comprehensive unit tests for BudgetAllocator
  *
- * @see src/platform/execution/budget-allocator.ts
+ * @see src/platform/five-plane-execution/budget-allocator.ts
  */
 
 import assert from "node:assert/strict";
@@ -13,7 +13,7 @@ import {
   type ArtifactRef,
   type BudgetResourceKind,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 
 function createTestLedger(overrides: Partial<Parameters<typeof createBudgetLedger>[0]> = {}): ReturnType<typeof createBudgetLedger> {
   return createBudgetLedger({

@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ObservationAggregator } from "../../../../../src/platform/shared/observability/observation-aggregator.js";
-import { parseTaskSituation } from "../../../../../src/platform/orchestration/oapeflir/types/task-situation.js";
+import { parseTaskSituation } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 import { parseSystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
-import type { TaskSituation } from "../../../../../src/platform/orchestration/oapeflir/types/task-situation.js";
+import type { TaskSituation } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 import type { SystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
 
 function createMockTaskSituation(): TaskSituation {

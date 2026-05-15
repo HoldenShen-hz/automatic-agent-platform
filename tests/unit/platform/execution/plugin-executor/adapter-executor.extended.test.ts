@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AdapterExecutor, type AdapterDescriptor, type AdapterExecutionRequest } from "../../../../../src/platform/execution/plugin-executor/adapter-executor.js";
+import { AdapterExecutor, type AdapterDescriptor, type AdapterExecutionRequest } from "../../../../../src/platform/five-plane-execution/plugin-executor/adapter-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // gRPC Adapter Tests

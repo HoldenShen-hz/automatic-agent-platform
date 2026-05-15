@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AstStructuralIndex } from "../../../../../../src/platform/state-evidence/knowledge/indexing/ast-index.js";
+import { AstStructuralIndex } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/indexing/ast-index.js";
 
 test("AstStructuralIndex.upsertDocument indexes function declarations", () => {
   const index = new AstStructuralIndex();

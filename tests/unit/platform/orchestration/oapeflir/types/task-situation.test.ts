@@ -5,7 +5,7 @@ import {
   TaskSituationSchema,
   parseTaskSituation,
   createTaskSituationRef,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/task-situation.js";
+} from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/task-situation.js";
 
 test("TaskSituationSchema parses valid task situation", () => {
   const validData = {

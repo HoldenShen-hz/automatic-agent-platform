@@ -20,7 +20,7 @@ import {
   type BlastRadius,
   type ConfidenceLevel,
   type RiskFactors,
-} from "../../../../../src/platform/control-plane/risk-control/types.js";
+} from "../../../../../src/platform/five-plane-control-plane/risk-control/types.js";
 
 test("RiskLevelSchema accepts valid risk levels", () => {
   assert.doesNotThrow(() => RiskLevelSchema.parse("low"));

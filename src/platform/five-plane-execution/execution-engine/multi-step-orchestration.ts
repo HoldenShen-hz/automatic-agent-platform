@@ -14,7 +14,7 @@ import type {
 } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
-import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import { ContextCompactionService, type ContextCompactionResult } from "./context-compaction-service.js";
 import {
   AdmissionController,
@@ -24,15 +24,15 @@ import {
 import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests } from "../dispatcher/index.js";
 import { provideContext } from "./runtime-context.js";
 import { TransitionService } from "../state-transition/transition-service.js";
-import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
-import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
+import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";
 import { HealthService } from "../../shared/observability/health-service.js";
 import { createChildTraceContext, createRootTraceContext, injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ensureMessagePartsJson } from "../../model-gateway/messages/message-parts.js";
-import { IntakeRouter } from "../../orchestration/routing/intake-router.js";
-import { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
-import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workflow-validator.js";
-import { StreamBridge } from "../../interface/channel-gateway/stream-bridge.js";
+import { IntakeRouter } from "../../five-plane-orchestration/routing/intake-router.js";
+import { WorkflowPlanner } from "../../five-plane-orchestration/routing/workflow-planner.js";
+import { assertWorkflowValid } from "../../five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
+import { StreamBridge } from "../../five-plane-interface/channel-gateway/stream-bridge.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import { executeStepLoop } from "./multi-step-supervisor.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
@@ -41,76 +41,16 @@ import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
 } from "./multi-step-orchestration-types.js";
+import {
+  buildOapeflirPlannedWorkflow,
+  deserializeOapeflirPlan,
+  isOapeflirPlanRequest,
+} from "./multi-step-oapeflir-plan.js";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
   eventLoopLagThresholdMs: Number.POSITIVE_INFINITY,
 } as const;
-
-const OAPEFLIR_PLAN_PREFIX = "oapeflir://plan ";
-
-function isOapeflirPlanRequest(request: string): boolean {
-  return request.startsWith(OAPEFLIR_PLAN_PREFIX);
-}
-
-function deserializeOapeflirPlan(request: string): import("../../orchestration/oapeflir/types/plan.js").PlanStep[] {
-  const json = request.slice(OAPEFLIR_PLAN_PREFIX.length);
-  return JSON.parse(json) as import("../../orchestration/oapeflir/types/plan.js").PlanStep[];
-}
-
-function resolveOapeflirRoleId(_step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): string {
-  return "general_executor";
-}
-
-function oapeflirStepToMinimalStep(step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
-  return {
-    stepId: step.stepId,
-    roleId: resolveOapeflirRoleId(step),
-    outputKey: step.outputs?.[0] ?? `output_${step.stepId}`,
-    inputKeys: step.dependencies,
-    timeoutMs: step.timeout,
-    maxAttempts: Math.max(1, step.retryPolicy.maxRetries + 1),
-    dependsOnStepIds: step.dependencies,
-  };
-}
-
-function buildOapeflirPlannedWorkflow(
-  steps: import("../../orchestration/oapeflir/types/plan.js").PlanStep[],
-  planId: string,
-): import("../../orchestration/routing/workflow-planner.js").PlannedWorkflow {
-  const workflowDef: import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
-    workflowId: `oapeflir_${planId}`,
-    divisionId: "general_ops",
-    steps: steps.map(oapeflirStepToMinimalStep),
-  };
-
-  const executionSteps: import("../../orchestration/routing/workflow-planner.js").PlannedExecutionStep[] = workflowDef.steps.map((step) => {
-    const stepDeps = step.dependsOnStepIds ?? [];
-    return {
-      stepId: step.stepId,
-      divisionId: step.divisionId ?? workflowDef.divisionId,
-      roleId: step.roleId,
-      inputKeys: step.inputKeys ?? [],
-      agentId: `agent_${step.roleId}`,
-      outputKey: step.outputKey,
-      outputSchemaPath: step.outputSchemaPath ?? null,
-      dependsOnStepIds: stepDeps,
-      dependencyTypes: Object.fromEntries(
-        stepDeps.map((depId) => [depId, "hard"]),
-      ),
-      timeoutMs: step.timeoutMs,
-      maxAttempts: step.maxAttempts,
-      ...(step.compensationModel ? { compensationModel: step.compensationModel } : {}),
-    };
-  });
-
-  return {
-    workflow: workflowDef,
-    executionSteps,
-    planReason: `oapeflir_bridge: ${planId}`,
-    dependencyEdges: [],
-  };
-}
 
 function createContext(
   traceContext: ReturnType<typeof createRootTraceContext>,
@@ -127,6 +67,28 @@ function createContext(
   if (span.spanId != null) context.spanId = span.spanId;
   if (span.correlationId != null) context.correlationId = span.correlationId;
   return context;
+}
+
+function serializeRoutingDecision(routing: ReturnType<IntakeRouter["route"]>): Record<string, unknown> {
+  return {
+    workflowId: routing.workflowId,
+    divisionId: routing.divisionId,
+    ...(routing.agentId != null ? { agentId: routing.agentId } : {}),
+    routeReason: routing.routeReason,
+    routeTrace: [...routing.routeTrace],
+    requiresOrchestration: routing.requiresOrchestration,
+    classification: {
+      ...routing.classification,
+      matchedRules: [...routing.classification.matchedRules],
+      ...(routing.classification.ambiguityFlags != null ? { ambiguityFlags: [...routing.classification.ambiguityFlags] } : {}),
+      ...(routing.classification.suggestedClarifications != null ? { suggestedClarifications: [...routing.classification.suggestedClarifications] } : {}),
+    },
+    ...(routing.confirmedTaskSpecId != null ? { confirmedTaskSpecId: routing.confirmedTaskSpecId } : {}),
+    ...(routing.taskDraft != null ? { taskDraft: routing.taskDraft } : {}),
+    ...(routing.clarificationSession != null ? { clarificationSession: routing.clarificationSession } : {}),
+    ...(routing.confirmedTaskSpec != null ? { confirmedTaskSpec: routing.confirmedTaskSpec } : {}),
+    ...(routing.requestEnvelope != null ? { requestEnvelope: routing.requestEnvelope } : {}),
+  };
 }
 
 export {
@@ -278,7 +240,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           taskId,
           executionId: null,
           eventType: "routing:decided",
-          payloadJson: JSON.stringify(routing),
+          payloadJson: JSON.stringify(serializeRoutingDecision(routing)),
           traceId,
           createdAt: nowIso(),
           schemaVersion: "1.0",

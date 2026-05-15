@@ -14,7 +14,7 @@ import type {
   EvolutionProposalStatus,
 } from "../../../../../src/platform/contracts/types/domain.js";
 import type { BudgetPolicy } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
-import type { ApprovalRequest, ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalRequest, ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Types and Implementations

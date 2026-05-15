@@ -14,7 +14,7 @@ import test from "node:test";
 import {
   listPlatformPrincipalTypes,
   type PlatformPrincipalType,
-} from "../../../../../src/platform/control-plane/iam/access-model.js";
+} from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
 
 /**
  * The 6 principal types in the implementation.

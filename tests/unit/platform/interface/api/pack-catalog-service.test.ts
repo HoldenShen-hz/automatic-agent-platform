@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PackCatalogService, type CreatePackCatalogInput } from "../../../../../src/platform/interface/api/pack-catalog-service.js";
+import { PackCatalogService, type CreatePackCatalogInput } from "../../../../../src/platform/five-plane-interface/api/pack-catalog-service.js";
 
 test("PackCatalogService.createPack creates a new pack", () => {
   const service = new PackCatalogService();

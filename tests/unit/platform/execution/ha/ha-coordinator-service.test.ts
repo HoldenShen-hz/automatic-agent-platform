@@ -33,7 +33,7 @@ import {
   type LeadershipEpoch,
   type LeadershipQueryResult,
   type LeadershipRenewalInput,
-} from "../../../../../src/platform/execution/ha/ha-coordinator-service.js";
+} from "../../../../../src/platform/five-plane-execution/ha/ha-coordinator-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Storage Backend Factory

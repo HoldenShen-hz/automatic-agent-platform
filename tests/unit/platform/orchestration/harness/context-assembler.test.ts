@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ContextAssembler, type HarnessContextSourceSet } from "../../../../../src/platform/orchestration/harness/context-assembler.js";
-import type { HarnessRun } from "../../../../../src/platform/orchestration/harness/index.js";
+import { ContextAssembler, type HarnessContextSourceSet } from "../../../../../src/platform/five-plane-orchestration/harness/context-assembler.js";
+import type { HarnessRun } from "../../../../../src/platform/five-plane-orchestration/harness/index.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // Helper to create a minimal HarnessRun for snapshot testing

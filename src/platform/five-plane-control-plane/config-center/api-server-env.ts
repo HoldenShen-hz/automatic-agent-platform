@@ -1,4 +1,4 @@
-import type { ApiKeyRecord } from "../../interface/api/api-auth-service.js";
+import type { ApiKeyRecord } from "../../five-plane-interface/api/api-auth-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { loadGatewayEnv, readTrimmedEnv, type GatewayEnvConfig } from "./gateway-env.js";
 import type { DatadogTransportConfig } from "../../shared/observability/transports/datadog-transport.js";

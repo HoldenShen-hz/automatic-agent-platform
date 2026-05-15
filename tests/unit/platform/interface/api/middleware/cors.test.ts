@@ -5,7 +5,7 @@ import {
   DEFAULT_CORS_CONFIG,
   validateCorsConfig,
   type CorsConfig,
-} from "../../../../../../src/platform/interface/api/middleware/cors.js";
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/cors.js";
 
 describe("CorsMiddleware", () => {
   describe("constructor", () => {

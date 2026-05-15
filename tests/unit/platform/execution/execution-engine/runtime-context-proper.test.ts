@@ -20,7 +20,7 @@ import {
   getWorkspaceIdOrNull,
   hasTenantContext,
   hasWorkspaceContext,
-} from "../../../../../src/platform/execution/execution-engine/runtime-context.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
 import type { RuntimeContextSnapshot } from "../../../../../src/platform/shared/context/runtime-context.js";
 
 function createSnapshot(overrides: Partial<RuntimeContextSnapshot> = {}): RuntimeContextSnapshot {

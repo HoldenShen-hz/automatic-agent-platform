@@ -8,7 +8,7 @@ import {
   createLoopDetectionMiddleware,
   createLoopDetectionMiddlewareFull,
   type LoopDetectionConfig,
-} from "../../../src/platform/execution/execution-engine/loop-detection.js";
+} from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
 test("LoopDetectionState custom hashFn produces consistent results", () => {
   const customHashFn = (toolName: string, input: unknown): string => {

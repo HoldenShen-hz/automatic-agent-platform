@@ -3,14 +3,14 @@ import test from "node:test";
 
 import * as platform from "../../../src/platform/index.js";
 import * as contracts from "../../../src/platform/contracts/index.js";
-import * as controlPlane from "../../../src/platform/control-plane/index.js";
-import * as execution from "../../../src/platform/execution/index.js";
-import * as interfacePlane from "../../../src/platform/interface/index.js";
+import * as controlPlane from "../../../src/platform/five-plane-control-plane/index.js";
+import * as execution from "../../../src/platform/five-plane-execution/index.js";
+import * as interfacePlane from "../../../src/platform/five-plane-interface/index.js";
 import * as modelGateway from "../../../src/platform/model-gateway/index.js";
-import * as orchestration from "../../../src/platform/orchestration/index.js";
+import * as orchestration from "../../../src/platform/five-plane-orchestration/index.js";
 import * as promptEngine from "../../../src/platform/prompt-engine/index.js";
 import * as shared from "../../../src/platform/shared/index.js";
-import * as stateEvidence from "../../../src/platform/state-evidence/index.js";
+import * as stateEvidence from "../../../src/platform/five-plane-state-evidence/index.js";
 import * as compliance from "../../../src/platform/compliance/index.js";
 
 test("platform index exports all five planes as namespace objects", () => {

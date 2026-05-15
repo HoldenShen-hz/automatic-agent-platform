@@ -1,4 +1,4 @@
-import type { TaskSituation } from "../../orchestration/oapeflir/types/index.js";
+import type { TaskSituation } from "../../five-plane-orchestration/oapeflir/types/index.js";
 
 export class TaskSituationReportService {
   public renderMarkdown(situation: TaskSituation): string {

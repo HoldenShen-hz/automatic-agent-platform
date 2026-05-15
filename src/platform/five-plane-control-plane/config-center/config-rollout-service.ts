@@ -7,7 +7,7 @@
  * Also emits config.changed events to the event bus when configs are updated.
  */
 
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**

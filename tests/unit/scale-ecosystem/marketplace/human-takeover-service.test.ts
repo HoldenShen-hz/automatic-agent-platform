@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace human-takeover-service re-export
  *

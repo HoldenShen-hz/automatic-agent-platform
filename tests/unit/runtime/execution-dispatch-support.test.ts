@@ -8,7 +8,7 @@ import {
   resolveRequiredIsolationLevel,
   resolveRequiredRepoVersion,
   meetsIsolationRequirement,
-} from "../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
+} from "../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 // isRemoteSessionReadyForDispatch and listEligibleWorkers require database setup.
 // These functions are tested indirectly via execution-dispatch-service integration tests.

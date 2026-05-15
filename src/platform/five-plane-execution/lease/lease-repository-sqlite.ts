@@ -4,7 +4,7 @@
  * Implements LeaseRepository for single-node SQLite-backed lease state.
  */
 
-import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { LeaseRepository } from "./lease-repository.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../contracts/types/domain.js";
 

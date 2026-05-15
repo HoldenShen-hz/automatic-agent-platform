@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for marketplace durable-event-bus re-export
  *

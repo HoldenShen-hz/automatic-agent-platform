@@ -11,7 +11,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { LlmEvalService } from "../../../../src/platform/prompt-engine/eval/llm-eval-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 
 // Create an in-memory SQLite database for testing
 function createMockDatabase(): AuthoritativeSqlDatabase {

@@ -14,9 +14,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { LeaderElectionService, createLeaderElectionService } from "../../../../src/platform/execution/ha/leader-election-service.js";
-import { HaCoordinatorService, HA_COORDINATOR_DDL } from "../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { LeaderElectionService, createLeaderElectionService } from "../../../../src/platform/five-plane-execution/ha/leader-election-service.js";
+import { HaCoordinatorService, HA_COORDINATOR_DDL } from "../../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

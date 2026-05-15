@@ -13,9 +13,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { PluginExecutorService, type ExecutionContext } from "../../../../src/platform/execution/plugin-executor/index.js";
+import { PluginExecutorService, type ExecutionContext } from "../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../src/domains/registry/plugin-spi.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 

@@ -6,11 +6,11 @@ import {
   DeploymentExecutionService,
   type DeploymentCommandRequest,
   type DeploymentCommandResult,
-} from "../../../../../src/platform/control-plane/incident-control/deployment-execution-service.js";
-import { EnvSecretProvider } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
-import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/deployment-execution-service.js";
+import { EnvSecretProvider } from "../../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
+import { SecretManagementService } from "../../../../../src/platform/five-plane-control-plane/iam/secret-management-service.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 

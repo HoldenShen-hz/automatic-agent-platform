@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { HitlApprovalOrchestrationService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
-import type { ApprovalService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/control-plane/approval-center/approval-service.js";
-import type { ApprovalDecision } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { ApprovalDecision } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { ApprovalNotificationPort } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/hitl/hitl-approval-orchestration-service.js";
 import type { HITLExplainabilityService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/hitl/hitl-explainability-service.js";
 import { newId, nowIso } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";

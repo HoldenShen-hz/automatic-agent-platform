@@ -5,7 +5,7 @@ import {
   ToolbeltAssembler,
   type ToolbeltAssemblyRequest,
   type HarnessToolbelt,
-} from "../../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
+} from "../../../../../../src/platform/five-plane-orchestration/harness/toolbelt-assembler.js";
 
 // ToolbeltAssembler tests
 

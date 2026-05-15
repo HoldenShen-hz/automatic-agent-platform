@@ -10,17 +10,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { TaskDecompositionService } from "../../../../../src/platform/orchestration/planner/task-decomposition-service.js";
-import { PlanBuilder } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
-import { PlanDagValidator } from "../../../../../src/platform/orchestration/planner/plan-dag-validator.js";
-import { PlanEvaluator } from "../../../../../src/platform/orchestration/planner/plan-evaluator.js";
-import { ReplanningService } from "../../../../../src/platform/orchestration/planner/replanning-service.js";
-import { parseTaskSituation, parseUnifiedAssessment, type Plan, type PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
+import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { TaskDecompositionService } from "../../../../../src/platform/five-plane-orchestration/planner/task-decomposition-service.js";
+import { PlanBuilder } from "../../../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import { PlanDagValidator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-dag-validator.js";
+import { PlanEvaluator } from "../../../../../src/platform/five-plane-orchestration/planner/plan-evaluator.js";
+import { ReplanningService } from "../../../../../src/platform/five-plane-orchestration/planner/replanning-service.js";
+import { parseTaskSituation, parseUnifiedAssessment, type Plan, type PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/index.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 function createPlannerContext(prefix: string) {

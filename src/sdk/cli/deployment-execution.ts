@@ -23,16 +23,16 @@
 import { dirname } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { loadDeploymentExecutionCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
+import { loadDeploymentExecutionCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import {
   DeploymentExecutionService,
   type DeploymentCommandRequest,
   type DeploymentCommandResult,
   type DeploymentExecutionInput,
-} from "../../platform/control-plane/incident-control/deployment-execution-service.js";
-import { EnvSecretProvider } from "../../platform/control-plane/iam/env-secret-provider.js";
-import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
-import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+} from "../../platform/five-plane-control-plane/incident-control/deployment-execution-service.js";
+import { EnvSecretProvider } from "../../platform/five-plane-control-plane/iam/env-secret-provider.js";
+import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 /**
  * Simulated deployment command runner for testing without actual GitHub Actions.

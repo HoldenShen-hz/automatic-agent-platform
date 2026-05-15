@@ -21,7 +21,7 @@ import {
   type SubWorkflowContext,
   type SubWorkflowDefinition,
   type WorkflowStepDefinition,
-} from "../../../../../src/platform/execution/plugin-executor/sub-workflow-executor.js";
+} from "../../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
