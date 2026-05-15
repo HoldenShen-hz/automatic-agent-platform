@@ -241,14 +241,14 @@ export class ExecutionDispatchService {
 
     let blockedReason: string | null = null;
     let lastTrace: DispatchDecisionTrace | null = null;
+    const backpressure =
+      this.backpressureSnapshot?.() ??
+      this.healthService.getReport();
 
     for (const ticket of tickets) {
       const dispatchTarget = resolveDispatchTarget(ticket.dispatchTarget);
       const requiredIsolationLevel = resolveRequiredIsolationLevel(ticket.requiredIsolationLevel);
       const requiredRepoVersion = resolveRequiredRepoVersion(ticket.requiredRepoVersion);
-      const backpressure =
-        this.backpressureSnapshot?.() ??
-        this.healthService.getReport();
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;

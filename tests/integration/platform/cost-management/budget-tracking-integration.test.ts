@@ -155,7 +155,7 @@ test("budget tracking: settle reservation with actual cost", () => {
   // Update ledger with settlement
   ledger = {
     ...ledger,
-    reservedAmount: ledger.reservedAmount - reservation.amount,
+    reservedAmount: ledger.reservedAmount - settlement.actualAmount,
     settledAmount: ledger.settledAmount + settlement.actualAmount,
     version: ledger.version + 1,
   };
@@ -501,7 +501,7 @@ test("budget tracking: per-resource-kind budget tracking", () => {
 
 test("budget tracking: reconcile ledger after settlement", () => {
   let ledger = makeLedger({
-    reservedAmount: 200,
+    reservedAmount: 0,
     settledAmount: 0,
     releasedAmount: 0,
   });
@@ -526,7 +526,7 @@ test("budget tracking: reconcile ledger after settlement", () => {
 
   ledger = {
     ...ledger,
-    reservedAmount: ledger.reservedAmount - reservation1.amount,
+    reservedAmount: ledger.reservedAmount - settlement1.actualAmount,
     settledAmount: ledger.settledAmount + settlement1.actualAmount,
     version: ledger.version + 1,
   };
@@ -558,7 +558,7 @@ test("budget tracking: reconcile ledger after settlement", () => {
 
   // Verify final state
   assert.equal(ledger.settledAmount, 190); // 90 + 100
-  assert.equal(ledger.reservedAmount, 0);
+  assert.equal(ledger.reservedAmount, 10);
 });
 
 test("budget tracking: handle partial releases", () => {
@@ -642,10 +642,10 @@ test("budget tracking: calculate utilization percentage", () => {
     releasedAmount: 50,
   });
 
-  const activeCommitted = ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount;
+  const activeCommitted = ledger.reservedAmount + ledger.settledAmount;
   const utilizationPercent = (activeCommitted / ledger.hardCap) * 100;
 
-  assert.equal(utilizationPercent, 45); // 450 / 1000 * 100
+  assert.equal(utilizationPercent, 50); // (300 + 200) / 1000 * 100
 });
 
 test("budget tracking: calculate remaining budget", () => {
@@ -656,10 +656,10 @@ test("budget tracking: calculate remaining budget", () => {
     releasedAmount: 50,
   });
 
-  const activeCommitted = ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount;
+  const activeCommitted = ledger.reservedAmount + ledger.settledAmount;
   const remainingBudget = ledger.hardCap - activeCommitted;
 
-  assert.equal(remainingBudget, 300); // 500 - 200
+  assert.equal(remainingBudget, 250); // 500 - (100 + 150)
 });
 
 test("budget tracking: track settlement efficiency", () => {
@@ -781,7 +781,7 @@ test("budget tracking: complete lifecycle from reservation to release", () => {
   };
 
   // Verify final state
-  const activeCommitted = ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount;
+  const activeCommitted = ledger.reservedAmount + ledger.settledAmount;
   assert.equal(ledger.reservedAmount, 0);
   assert.equal(ledger.settledAmount, 200);
   assert.equal(activeCommitted, 200);

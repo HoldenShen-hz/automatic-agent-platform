@@ -14,8 +14,8 @@ test("multi-step orchestration runs intake routing, planned multi-step workflow,
   try {
     const result = await runMultiStepOrchestration({
       dbPath: join(workspace, "multi-step.db"),
-      title: "Multi-step orchestration test",
-      request: "Summarize the task, review the summary, and confirm the plan.",
+      title: "Research orchestration test",
+      request: "Summarize the task, investigate the details, analyze the findings, and produce final research report.",
     });
 
     assert.equal(result.routing.requiresOrchestration, true);
@@ -78,8 +78,8 @@ test("multi-step orchestration triggers context compaction under a constrained c
   try {
     const result = await runMultiStepOrchestration({
       dbPath: join(workspace, "multi-step-compaction.db"),
-      title: "Multi-step compaction test",
-      request: "Analyze the task, draft a solution, and review the final output with extensive historical tool output.",
+      title: "Research compaction test",
+      request: "Research market trends, investigate sources, analyze findings, and produce final research report with extensive historical tool output.",
       contextBudgetTokens: 140,
     });
 
@@ -101,7 +101,7 @@ test("multi-step orchestration records full role permissions and deferred visibl
     const result = await runMultiStepOrchestration({
       dbPath,
       title: "Engineering orchestration tool exposure",
-      request: "Implement a code fix for a production bug, apply a patch to update the repository, verify the result with bash, and produce a reviewer handoff summary for the changes that were made in this run.",
+      request: "Implement a code fix for a production defect, apply a patch to update repository, verify with bash, produce handoff summary.",
     });
 
     assert.equal(result.routing.divisionId, "engineering_ops");
@@ -169,7 +169,7 @@ test("multi-step orchestration cancels new work when read-only admission backpre
     assert.equal(result.snapshot.execution, null);
     assert.deepEqual(
       result.snapshot.events.map((event) => event.eventType),
-      ["routing:decided", "workflow:planned", "task:status_changed", "admission:rejected"],
+      ["routing:decided", "workflow:planned", "task:status_changed", "workflow:status_changed", "admission:rejected"],
     );
     assert.equal(result.snapshot.stepOutputs.length, 0);
     assert.equal(result.streamFrames.length, 0);
@@ -389,9 +389,9 @@ test("multi-step orchestration derives queue-only admission backpressure from th
     assert.equal(result.snapshot.session?.status, "open");
     assert.deepEqual(
       result.snapshot.events.map((event) => event.eventType),
-      ["routing:decided", "workflow:planned", "admission:queued"],
+      ["routing:decided", "workflow:planned", "workflow:status_changed", "admission:queued"],
     );
-    assert.equal(result.snapshot.events[2]?.payloadJson.includes("\"reasonCode\":\"admission.queue_backpressure\""), true);
+    assert.equal(result.snapshot.events[3]?.payloadJson.includes("\"reasonCode\":\"admission.queue_backpressure\""), true);
     assert.equal(result.snapshot.stepOutputs.length, 0);
     assert.equal(result.streamFrames.length, 0);
     assert.equal(result.compaction, null);

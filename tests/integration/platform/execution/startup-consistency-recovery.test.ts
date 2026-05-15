@@ -594,9 +594,27 @@ test("startup consistency checker fail-closes when default provider credentials 
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const checker = new StartupConsistencyChecker(db, store, {
-      configValidator: buildDefaultStartupConfigValidator({
+      configValidator: () => ({
+        ok: true,
+        environment: "test",
         configRoot,
-        sandboxPolicy: createWorkspaceWritePolicy(configRoot),
+        issues: [],
+        bundle: {
+          environment: "test",
+          configRoot,
+          version: {
+            versionId: "test",
+            bundleHash: "test",
+            layerHashes: {},
+            generatedAt: new Date().toISOString(),
+          },
+          layers: {
+            providers: {
+              defaultProvider: "openai",
+            },
+          },
+          issues: [],
+        },
       }),
       providerReadinessProbe: buildEnvironmentProviderReadinessProbe({
         providerEnv: {},

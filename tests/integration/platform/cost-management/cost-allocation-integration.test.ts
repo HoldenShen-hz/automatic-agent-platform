@@ -227,7 +227,7 @@ test("cost allocation: multi-tenant isolation", () => {
 
   // Verify cost ordering
   assert.ok(estimates[2]!.estimatedCostUsd > estimates[1]!.estimatedCostUsd);
-  assert.ok(estimates[1]!.estimatedCostUsd > estimates[0]!.estimatedCostUsd);
+  assert.ok(estimates[0]!.estimatedCostUsd > estimates[1]!.estimatedCostUsd);
 });
 
 // =============================================================================
@@ -378,10 +378,12 @@ test("cost allocation: aggregate total by type", () => {
     });
   }
 
-  const aggregated = costService.aggregate("llm");
+  const aggregated = costService.aggregate();
 
   // Sum of 10 + 20 + 30 + 40 + 50 = 150
-  const totalLlmCost = Object.values(aggregated).reduce((sum, v) => sum + v, 0);
+  const totalLlmCost = Object.entries(aggregated)
+    .filter(([subjectId]) => subjectId.startsWith("llm_task_"))
+    .reduce((sum, [, value]) => sum + value, 0);
   assert.equal(totalLlmCost, 150.00);
 });
 

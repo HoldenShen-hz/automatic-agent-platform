@@ -183,12 +183,12 @@ describe("openapi-document", () => {
       }
     });
 
-    it("should include only GET and POST methods", () => {
+    it("should include only supported HTTP methods", () => {
       const routes = listApiRoutes();
 
       for (const route of routes) {
         assert.ok(
-          route.method === "GET" || route.method === "POST",
+          ["GET", "POST", "PATCH", "DELETE"].includes(route.method),
           `Unexpected method: ${route.method}`,
         );
       }

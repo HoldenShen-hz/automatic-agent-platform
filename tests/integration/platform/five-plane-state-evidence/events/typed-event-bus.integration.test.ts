@@ -6,6 +6,9 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { TypedEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
@@ -14,9 +17,9 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 function createTypedEventBusContext(prefix: string) {
-  const workspace = require("path").join(require("os").tmpdir(), `${prefix}${Date.now()}`);
-  require("fs").mkdirSync(workspace, { recursive: true });
-  const dbPath = require("path").join(workspace, "integration-test.db");
+  const workspace = join(tmpdir(), `${prefix}${Date.now()}`);
+  mkdirSync(workspace, { recursive: true });
+  const dbPath = join(workspace, "integration-test.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
@@ -24,7 +27,7 @@ function createTypedEventBusContext(prefix: string) {
     db,
     store,
     cleanup() {
-      try { db.close(); } finally { require("fs").rmSync(workspace, { recursive: true, force: true }); }
+      try { db.close(); } finally { rmSync(workspace, { recursive: true, force: true }); }
     },
   };
 }

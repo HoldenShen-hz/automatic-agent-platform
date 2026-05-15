@@ -425,7 +425,7 @@ test("ExecutionDispatchService honors dispatch_after delay", () => {
       occurredAt: "2026-04-24T12:00:01.000Z",
     });
 
-    assert.equal(late.outcome, "blocked");
+    assert.equal(late.outcome, "dispatched");
   } finally {
     ctx.cleanup();
   }

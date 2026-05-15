@@ -605,14 +605,13 @@ test("lease: release is blocked when lease is already released", async () => {
     });
     assert.equal(first.outcome, "released");
 
-    // Note: Async releaseLease does not check lease status before releasing
-    // so the second release also succeeds (idempotent behavior)
     const second = await service.releaseLease({
       leaseId: granted.lease!.id,
       workerId: "worker-double-release",
       occurredAt: advanceTime(11_000),
     });
-    assert.equal(second.outcome, "released");
+    assert.equal(second.outcome, "blocked");
+    assert.equal(second.reasonCode, "lease_not_active");
     assert.equal(second.lease!.status, "released");
 
     db.close();
@@ -636,11 +635,10 @@ test("lease: acquire after expired lease reclaims and grants new lease", async (
       executionId: "exec-expire-reacquire",
     });
 
-    // Acquire with very short TTL
     const first = await service.acquireLease({
       executionId: "exec-expire-reacquire",
       workerId: "worker-expire-reacquire",
-      ttlMs: 1_000,
+      ttlMs: 5_000,
       occurredAt: BASE_TIME,
     });
     assert.equal(first.outcome, "granted");
@@ -650,7 +648,7 @@ test("lease: acquire after expired lease reclaims and grants new lease", async (
       executionId: "exec-expire-reacquire",
       workerId: "worker-expire-reacquire",
       ttlMs: TTL_MS,
-      occurredAt: advanceTime(5_000), // Past expiration
+      occurredAt: advanceTime(6_000),
     });
     assert.equal(second.outcome, "granted");
     assert.equal(second.lease!.workerId, "worker-expire-reacquire");

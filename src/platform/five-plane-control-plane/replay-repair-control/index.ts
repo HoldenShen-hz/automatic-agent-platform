@@ -91,7 +91,10 @@ export class ReplayRepairControlService {
 
   public listRecoveryCandidates(report: StartupConsistencyReport): RecoveryCandidate[] {
     return report.findings
-      .filter((finding) => finding.recoverable || finding.severity === "p0")
+      .filter((finding) => (
+        finding.severity !== "info" &&
+        (finding.recoverable || finding.severity === "p0")
+      ))
       .map((finding) => ({
         candidateId: newId("recovery_candidate"),
         entityRef: finding.entityRef,

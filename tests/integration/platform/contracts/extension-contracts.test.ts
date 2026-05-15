@@ -472,7 +472,11 @@ test("contract: RuntimeGovernanceService surfaces quota, SLA, and failover state
       { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 40, residencyAllowed: true, provider: "aws", endpoints: { api: "https://eu-west-1.api.example.com" }, dataResidencyPolicy: "regional" as const },
     ],
     primaryRegionHealthy: false,
-    quotaPolicy: { scope: "tenant", scopeId: "tenant_x" },
+    quotaPolicy: {
+      scope: "tenant",
+      scopeId: "tenant_x",
+      workerUnits: { hardLimit: 0, currentUsage: 0 },
+    },
     requestedUnits: 1,
     queueItems: [{ itemId: "job_sync", tenantId: "tenant_x", priority: 1, ageMs: 1000 }],
     preemptionCandidates: [{ executionId: "exec_sync", priority: 1, progressPercent: 10 }],
@@ -1023,7 +1027,8 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
     },
     primaryRegionHealthy: false,
   });
-  assert.equal(route.selectedRegionId, "cn-sh");
+  assert.equal(route.selectedRegionId, null);
+  assert.equal(route.recoveryTopology.failoverRegionId, null);
   assert.ok(route.blockedRegions.includes("us-west-2"));
 
   const scheduling = new FairSchedulingService();
@@ -1031,7 +1036,7 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
     quotaPolicy: {
       scope: "tenant",
       scopeId: "tenant_a",
-      worker_concurrency: 5,
+      workerUnits: { hardLimit: 5, currentUsage: 5 },
     },
     claim: {
       claimId: "claim_a",
@@ -1049,7 +1054,7 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
       { itemId: "job_new", tenantId: "tenant_a", priority: 10, ageMs: 30_000 },
     ],
     preemptionCandidates: [
-      { executionId: "exec_low", priority: 1, progressPercent: 5 },
+      { executionId: "exec_low", priority: 1, progressPercent: 5, lastCheckpointTimestampMs: Date.now(), checkpointLatencyMs: 25 },
     ],
   });
   assert.equal(queue.queue.quotaExceeded, true);

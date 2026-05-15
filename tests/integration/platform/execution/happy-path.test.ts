@@ -25,7 +25,7 @@ test("single-task execution persists task, workflow, execution, session, and tie
     assert.equal(snapshot.stepOutputs.length, 1);
     assert.deepEqual(
       snapshot.events.map((event) => event.eventType),
-      ["task:status_changed", "workflow:step_completed", "task:status_changed"],
+      ["task:status_changed", "workflow:step_completed", "platform.workflow.step_completed", "task:status_changed"],
     );
 
     // Verify cost events were recorded during execution
@@ -91,7 +91,7 @@ test("single-task execution respects queue-only admission backpressure and defer
     assert.equal(snapshot.session?.status, "open");
     assert.deepEqual(
       snapshot.events.map((event) => event.eventType),
-      ["admission:queued"],
+      ["workflow:status_changed", "admission:queued"],
     );
     assert.equal(snapshot.stepOutputs.length, 0);
   } finally {
@@ -125,9 +125,9 @@ test("single-task execution derives queue-only admission backpressure from the l
     assert.equal(snapshot.session?.status, "open");
     assert.deepEqual(
       snapshot.events.map((event) => event.eventType),
-      ["admission:queued"],
+      ["workflow:status_changed", "admission:queued"],
     );
-    assert.equal(snapshot.events[0]?.payloadJson.includes("\"reasonCode\":\"admission.queue_backpressure\""), true);
+    assert.equal(snapshot.events.at(-1)?.payloadJson.includes("\"reasonCode\":\"admission.queue_backpressure\""), true);
     assert.equal(snapshot.stepOutputs.length, 0);
   } finally {
     cleanupPath(workspace);

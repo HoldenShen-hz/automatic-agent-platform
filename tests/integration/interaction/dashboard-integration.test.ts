@@ -259,10 +259,13 @@ test("integration: DashboardProjectionService clears pending deltas", () => {
 // Dashboard WebSocket Server Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
+const TEST_WS_PRINCIPAL = "dashboard-test-principal";
+const TEST_WS_TENANT = "tenant-dashboard-test";
+
 test("integration: DashboardWebSocketServer registers and unregisters clients", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId, ack } = server.registerClient(["dashboard_delta", "attentionQueue"]);
+  const { clientId, ack } = server.registerClient(["dashboard_delta", "attentionQueue"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   assert.ok(clientId.length > 0);
   assert.equal(ack.type, "connection_ack");
@@ -280,9 +283,9 @@ test("integration: DashboardWebSocketServer registers and unregisters clients", 
 test("integration: DashboardWebSocketServer rejects connection when max clients reached", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000, maxClients: 1 });
 
-  server.registerClient(["*"]);
+  server.registerClient(["*"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
-  const { clientId: secondClient, ack } = server.registerClient(["*"]);
+  const { clientId: secondClient, ack } = server.registerClient(["*"], "dashboard-test-principal-2", TEST_WS_TENANT);
 
   assert.equal(secondClient, "");
   assert.equal(ack.type, "error");
@@ -293,7 +296,7 @@ test("integration: DashboardWebSocketServer rejects connection when max clients 
 test("integration: DashboardWebSocketServer updates client subscriptions", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId } = server.registerClient(["attentionQueue"]);
+  const { clientId } = server.registerClient(["attentionQueue"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   const updated = server.updateSubscriptions(clientId, ["budgetAlerts", "incidentCount"]);
 
@@ -306,7 +309,7 @@ test("integration: DashboardWebSocketServer updates client subscriptions", () =>
 test("integration: DashboardWebSocketServer pushes delta to subscribed clients", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId } = server.registerClient(["totalTasks", "tasksByStatus"]);
+  const { clientId } = server.registerClient(["totalTasks", "tasksByStatus"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   const delta: DashboardDelta = {
     deltaId: "delta-1",
@@ -328,7 +331,7 @@ test("integration: DashboardWebSocketServer pushes delta to subscribed clients",
 test("integration: DashboardWebSocketServer pushes snapshot to specific client", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId } = server.registerClient(["snapshot"]);
+  const { clientId } = server.registerClient(["snapshot"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   const snapshot = {
     generatedAt: nowIso(),
@@ -348,8 +351,8 @@ test("integration: DashboardWebSocketServer pushes snapshot to specific client",
 test("integration: DashboardWebSocketServer broadcasts to all connected clients", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId: client1 } = server.registerClient(["*"]);
-  const { clientId: client2 } = server.registerClient(["*"]);
+  const { clientId: client1 } = server.registerClient(["*"], "dashboard-test-principal-1", TEST_WS_TENANT);
+  const { clientId: client2 } = server.registerClient(["*"], "dashboard-test-principal-2", TEST_WS_TENANT);
 
   const message = {
     type: "dashboard_snapshot" as const,
@@ -370,7 +373,7 @@ test("integration: DashboardWebSocketServer broadcasts to all connected clients"
 test("integration: DashboardWebSocketServer handles projection delta", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId } = server.registerClient(["totalTasks"]);
+  const { clientId } = server.registerClient(["totalTasks"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   const delta: DashboardDelta = {
     deltaId: "delta-projection",
@@ -390,8 +393,8 @@ test("integration: DashboardWebSocketServer handles projection delta", () => {
 test("integration: DashboardWebSocketServer getConnectedClients returns client list", () => {
   const server = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId: client1 } = server.registerClient(["dashboard_delta"]);
-  const { clientId: client2 } = server.registerClient(["attentionQueue"]);
+  const { clientId: client1 } = server.registerClient(["dashboard_delta"], "dashboard-test-principal-1", TEST_WS_TENANT);
+  const { clientId: client2 } = server.registerClient(["attentionQueue"], "dashboard-test-principal-2", TEST_WS_TENANT);
 
   const clients = server.getConnectedClients();
 
@@ -412,7 +415,7 @@ test("integration: Full dashboard pipeline - task events flow through projection
   const projectionService = new DashboardProjectionService({ emitDebounceMs: 10 });
   const wsServer = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  const { clientId } = wsServer.registerClient(["totalTasks", "incidentCount"]);
+  const { clientId } = wsServer.registerClient(["totalTasks", "incidentCount"], TEST_WS_PRINCIPAL, TEST_WS_TENANT);
 
   projectionService.processEvent("task:status_changed", { taskId: "task-pipeline-1", previousStatus: "pending", newStatus: "in_progress", changedAt: nowIso() } as any);
   projectionService.processEvent("task:status_changed", { taskId: "task-pipeline-1", previousStatus: "in_progress", newStatus: "completed", changedAt: nowIso() } as any);

@@ -13,7 +13,6 @@ import { ExecutionResourceMonitor } from "../../../../../src/platform/five-plane
 import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 import {
-  buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
 } from "../../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
 import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
@@ -78,6 +77,13 @@ function seedProtectedGovernanceTree(workspace: string): {
   return { configRoot, divisionsRoot, agentsPath };
 }
 
+function ackAllEventConsumers(store: AuthoritativeTaskStore): void {
+  const occurredAt = new Date().toISOString();
+  for (const event of store.event.listAllEvents()) {
+    store.event.ackAllConsumersForEvent(event.id, occurredAt);
+  }
+}
+
 test("doctor service summarizes a clean runtime as ok", async () => {
   const workspace = createTempWorkspace("aa-doctor-");
   const dbPath = join(workspace, "doctor.db");
@@ -92,6 +98,7 @@ test("doctor service summarizes a clean runtime as ok", async () => {
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     workers.recordHeartbeat({
       workerId: "worker-doctor-clean",
@@ -142,7 +149,7 @@ test("doctor service summarizes a clean runtime as ok", async () => {
     assert.equal(report.sqliteReliability.backup?.valid, true);
     assert.equal(report.lockSummary.checked, true);
     assert.equal(report.lockSummary.totalLocks, 0);
-    assert.ok(report.eventBacklogSummary.pendingTier1Acks >= 1);
+    assert.equal(report.eventBacklogSummary.pendingTier1Acks, 0);
     assert.equal(report.checks.find((check) => check.checkId === "db")?.status, "ok");
     assert.equal(report.checks.find((check) => check.checkId === "config")?.status, "ok");
     assert.equal(report.checks.find((check) => check.checkId === "backup")?.status, "ok");
@@ -702,6 +709,7 @@ test("doctor service fail-closes when startup consistency reports invalid tool c
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     const doctor = new DoctorService(
       new HealthService(db, store),
@@ -746,13 +754,32 @@ test("doctor service fail-closes when startup preflight detects missing provider
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     const doctor = new DoctorService(
       new HealthService(db, store),
       new StartupConsistencyChecker(db, store, {
-        configValidator: buildDefaultStartupConfigValidator({
+        configValidator: () => ({
+          ok: true,
+          environment: "test",
           configRoot,
-          sandboxPolicy: createWorkspaceWritePolicy(configRoot),
+          issues: [],
+          bundle: {
+            environment: "test",
+            configRoot,
+            version: {
+              versionId: "test",
+              bundleHash: "test",
+              layerHashes: {},
+              generatedAt: new Date().toISOString(),
+            },
+            layers: {
+              providers: {
+                defaultProvider: "openai",
+              },
+            },
+            issues: [],
+          },
         }),
         providerReadinessProbe: buildEnvironmentProviderReadinessProbe({
           providerEnv: {},
@@ -790,6 +817,7 @@ test("doctor service fail-closes when the sqlite schema ledger is not current", 
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     db.connection.prepare(`DELETE FROM schema_migrations WHERE version = ?`).run(1);
 
@@ -1042,6 +1070,7 @@ test("doctor service degrades when protected governance drift is detected", asyn
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     const doctor = new DoctorService(
       new HealthService(db, store),
@@ -1086,6 +1115,7 @@ test("doctor service degrades when managed storage remains over quota", async ()
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
+    ackAllEventConsumers(store);
     const workers = new WorkerRegistryService(store);
     const storageQuota = new StorageQuotaService({
       sandboxPolicy: createWorkspaceWritePolicy(workspace),

@@ -124,9 +124,9 @@ test("listApiRoutes routes have valid tags", () => {
 
 test("listApiRoutes returns distinct routes", () => {
   const routes = listApiRoutes();
-  const paths = routes.map((r) => r.path);
-  const uniquePaths = new Set(paths);
-  assert.equal(paths.length, uniquePaths.size);
+  const routeKeys = routes.map((r) => `${r.method} ${r.path}`);
+  const uniqueRouteKeys = new Set(routeKeys);
+  assert.equal(routeKeys.length, uniqueRouteKeys.size);
 });
 
 test("buildOpenApiDocument responses have 200 status", () => {

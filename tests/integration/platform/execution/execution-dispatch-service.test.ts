@@ -339,7 +339,8 @@ test("execution dispatch service does not preempt when the running execution has
     const events = store.listEventsForTask("task-dispatch-low-no-preempt");
     db.close();
 
-    assert.equal(decision.outcome, "no_worker");
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "dispatch.no_emergency_worker_available");
     assert.equal(lowExecution?.status, "executing");
     assert.ok(events.every((event) => event.eventType !== "dispatch:execution_preempted"));
   } finally {
@@ -1513,6 +1514,15 @@ test("execution dispatch service honors dispatch_after before routing tickets", 
       queueName: "default",
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-04T10:01:00.000Z",
+    });
+    workers.recordHeartbeat({
+      workerId: "worker-delay",
+      status: "idle",
+      capabilities: ["bash"],
+      runningExecutionIds: [],
+      maxConcurrency: 1,
+      queueAffinity: "default",
+      occurredAt: "2026-04-04T10:05:00.000Z",
     });
     const later = dispatch.dispatchNext({
       queueName: "default",

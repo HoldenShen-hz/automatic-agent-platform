@@ -76,6 +76,18 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "transition_service",
     consumers: getRequiredConsumers("task:status_changed"),
   },
+  "session:status_changed": {
+    type: "session:status_changed",
+    tier: "tier_1",
+    producer: "transition_service",
+    consumers: getRequiredConsumers("session:status_changed"),
+  },
+  "execution:status_changed": {
+    type: "execution:status_changed",
+    tier: "tier_1",
+    producer: "transition_service",
+    consumers: getRequiredConsumers("execution:status_changed"),
+  },
   "workflow:step_completed": {
     type: "workflow:step_completed",
     tier: "tier_1",

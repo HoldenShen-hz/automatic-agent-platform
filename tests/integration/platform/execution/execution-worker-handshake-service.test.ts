@@ -530,7 +530,7 @@ test("execution worker handshake service rejects remote workspace sync conflicts
     const handshake = new ExecutionWorkerHandshakeService(db, store);
     const seeded = seedClaimableExecution(db, store, {
       placement: "remote",
-      registrationVerifiedAt: "2026-04-07T11:00:06.000Z",
+      registrationVerifiedAt: "2026-04-04T11:00:06.000Z",
       remoteSessionStatus: "connected",
       lastAcknowledgedStreamOffset: "stream:900",
       sessionConsistencyCheckStatus: "passed",
@@ -546,8 +546,8 @@ test("execution worker handshake service rejects remote workspace sync conflicts
       lastAcknowledgedStreamOffset: "stream:901",
       sessionConsistencyCheckStatus: "passed",
       workspaceSyncStatus: "conflict",
-      workspaceSyncCheckedAt: "2026-04-07T11:00:07.000Z",
-      occurredAt: "2026-04-07T11:00:07.000Z",
+      workspaceSyncCheckedAt: "2026-04-04T11:00:07.000Z",
+      occurredAt: "2026-04-04T11:00:07.000Z",
     });
     const ticket = store.getExecutionTicket(seeded.ticketId);
     const execution = store.getExecution("exec-worker-claim");

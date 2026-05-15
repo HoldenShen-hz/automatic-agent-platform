@@ -189,10 +189,8 @@ test("integration: State command validation errors are properly typed", () => {
     caughtError = error;
   }
 
-  // createStateCommand is deprecated and throws UnimplementedError
   assert.ok(caughtError instanceof AppError);
-  assert.ok(caughtError instanceof UnimplementedError);
-  assert.equal((caughtError as UnimplementedError).code, "DEPRECATED_STATE_COMMAND");
+  assert.equal((caughtError as AppError).code, "state_command.entity_kind_required");
 });
 
 // =============================================================================

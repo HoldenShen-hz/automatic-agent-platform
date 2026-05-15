@@ -22,7 +22,7 @@ test("listResources returns all resources with no filters", () => {
   // Each resource should have required fields
   for (const resource of resources) {
     assert.ok(resource.resourceId != null, "resourceId should exist");
-    assert.ok(resource.method === "GET" || resource.method === "POST", "method should be GET or POST");
+    assert.ok(["GET", "POST", "PATCH", "DELETE"].includes(resource.method), "method should be GET, POST, PATCH, or DELETE");
     assert.ok(resource.path.startsWith("/"), "path should start with /");
     assert.ok(resource.summary.length > 0, "summary should not be empty");
     assert.ok(Array.isArray(resource.tags), "tags should be an array");

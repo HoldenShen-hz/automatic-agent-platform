@@ -180,7 +180,7 @@ test("OapeflirLoopService with dbPath uses RuntimeExecuteBridge by default", asy
       result.timeline.some((e) => e.stage === "execute"),
       "execute stage should be recorded",
     );
-    assert.equal(result.outcome.taskId, "task_default_test");
+    assert.equal(result.plan.taskId, "task_default_test");
     assert.ok(
       ["completed", "failed", "repairable", "partial", "escalated"].includes(result.feedback.outcome),
       "feedback outcome should remain within the declared contract",

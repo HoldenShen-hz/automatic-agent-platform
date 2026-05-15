@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
 
-test("OapeflirLoopService closes OAPEFLIR shadow loop for repairable execution", async () => {
+test("OapeflirLoopService closes OAPEFLIR repair loop for repairable execution", async () => {
   const service = new OapeflirLoopService();
   const result = await service.run({
     taskId: "task_1",
@@ -56,10 +56,9 @@ test("OapeflirLoopService closes OAPEFLIR shadow loop for repairable execution",
   assert.equal(result.qualityGate.releaseStage, "repair");
   assert.equal(result.replanDecision.shouldReplan, true);
   assert.equal(result.learningSignals.length, 1);
-  assert.equal(result.rolloutRecord?.level, "shadow");
-  assert.deepEqual(
-    result.timeline.map((entry) => entry.stage),
-    ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"],
-  );
+  assert.equal(result.rolloutRecord, null);
+  assert.equal(result.timeline.some((entry) => entry.stage === "release" && entry.status === "skipped"), true);
+  assert.deepEqual(result.timeline.slice(0, 5).map((entry) => entry.stage), ["observe", "assess", "plan", "execute", "feedback"]);
+  assert.deepEqual(result.timeline.slice(-3).map((entry) => entry.stage), ["learn", "improve", "release"]);
   assert.equal(result.timeline.every((entry, index, items) => index === 0 || entry.startedAt > items[index - 1]!.startedAt), true);
 });

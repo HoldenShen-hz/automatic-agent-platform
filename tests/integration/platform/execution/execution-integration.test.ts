@@ -334,6 +334,15 @@ test("integration: execution dispatch honors dispatch_after delay before routing
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-10T10:01:00.000Z",
     });
+    workers.recordHeartbeat({
+      workerId: "worker-delay",
+      status: "idle",
+      capabilities: ["bash"],
+      runningExecutionIds: [],
+      maxConcurrency: 1,
+      queueAffinity: "default",
+      occurredAt: "2026-04-10T10:05:00.000Z",
+    });
     const later = dispatch.dispatchNext({
       queueName: "default",
       leaseTtlMs: 30_000,

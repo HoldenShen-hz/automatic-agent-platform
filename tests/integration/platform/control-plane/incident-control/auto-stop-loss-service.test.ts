@@ -472,7 +472,7 @@ test("AutoStopLossService integration: approvePendingExecution approves event", 
   const event = await service.executePlaybook(playbook, "needs approval");
   assert.equal(event.humanApproved, false);
 
-  const approved = service.approvePendingExecution(event.id, true);
+  const approved = await service.approvePendingExecution(event.id, true);
   assert.equal(approved, true);
 
   const pending = service.getPendingApprovals();
@@ -492,7 +492,7 @@ test("AutoStopLossService integration: approvePendingExecution rejects event", a
 
   const event = await service.executePlaybook(playbook, "will reject");
 
-  const rejected = service.approvePendingExecution(event.id, false);
+  const rejected = await service.approvePendingExecution(event.id, false);
   assert.equal(rejected, true);
 
   const history = service.getExecutionHistory(10);
@@ -501,10 +501,10 @@ test("AutoStopLossService integration: approvePendingExecution rejects event", a
   assert.equal(rejectedEvent?.errorMessage, "Rejected by human");
 });
 
-test("AutoStopLossService integration: approvePendingExecution returns false for unknown event", () => {
+test("AutoStopLossService integration: approvePendingExecution returns false for unknown event", async () => {
   const service = new AutoStopLossService();
 
-  const result = service.approvePendingExecution("non_existent_id", true);
+  const result = await service.approvePendingExecution("non_existent_id", true);
   assert.equal(result, false);
 });
 

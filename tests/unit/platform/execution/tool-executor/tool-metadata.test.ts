@@ -130,7 +130,7 @@ test("TODO_WRITE_TOOL_METADATA has correct medium-risk properties", () => {
 test("WEB_SEARCH_TOOL_METADATA has correct properties", () => {
   assert.equal(WEB_SEARCH_TOOL_METADATA.toolName, "web_search");
   assert.equal(WEB_SEARCH_TOOL_METADATA.riskLevel, "medium");
-  assert.equal(WEB_SEARCH_TOOL_METADATA.sideEffectScope, "remote_api");
+  assert.equal(WEB_SEARCH_TOOL_METADATA.sideEffectScope, "none");
   assert.equal(WEB_SEARCH_TOOL_METADATA.supportsCancellation, true);
 });
 

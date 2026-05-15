@@ -411,12 +411,12 @@ async function runRuntimeRepairRehearsal(outputDir: string): Promise<StableRollb
 
     return {
       passed:
-        before.status === "fail_closed" &&
-        applied.some((item) => item.action === "manual_intervention_required" && !item.applied) &&
-        after.status === "fail_closed" &&
-        snapshot.task.status === "in_progress" &&
-        snapshot.execution?.status === "executing",
-      summary: "runtime repair rehearsal detects stale execution and fails closed with manual-intervention evidence",
+        before.status === "repairable" &&
+        applied.some((item) => item.action === "requeue_execution" && item.applied) &&
+        after.status === "pass" &&
+        snapshot.task.status === "pending" &&
+        snapshot.execution?.status === "created",
+      summary: "runtime repair rehearsal detects stale execution, requeues it, and restores startup consistency",
       details: {
         beforeStatus: before.status,
         afterStatus: after.status,

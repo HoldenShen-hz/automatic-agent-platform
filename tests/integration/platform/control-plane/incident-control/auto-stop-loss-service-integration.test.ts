@@ -179,7 +179,7 @@ test("AutoStopLossService: approvePendingExecution approves and completes event"
     const playbook = service.getPlaybook("playbook-approve-test")!;
     const pendingEvent = await service.executePlaybook(playbook, "Unhealthy detected");
 
-    const approved = service.approvePendingExecution(pendingEvent.id, true);
+    const approved = await service.approvePendingExecution(pendingEvent.id, true);
 
     assert.strictEqual(approved, true);
     const history = service.getExecutionHistory(10);
@@ -220,7 +220,7 @@ test("AutoStopLossService: rejectPendingExecution rejects the event", async () =
     const playbook = service.getPlaybook("playbook-reject-test")!;
     const pendingEvent = await service.executePlaybook(playbook, "Unhealthy detected");
 
-    const rejected = service.approvePendingExecution(pendingEvent.id, false);
+    const rejected = await service.approvePendingExecution(pendingEvent.id, false);
 
     assert.strictEqual(rejected, true);
     const history = service.getExecutionHistory(10);

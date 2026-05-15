@@ -138,7 +138,7 @@ test("TenantExecutionIsolationService integration: getQuota returns null for mis
   }
 });
 
-test("TenantExecutionIsolationService integration: listQuotas returns all quotas", () => {
+test("TenantExecutionIsolationService integration: listQuotas returns tenant-scoped quotas only", () => {
   const workspace = createTempWorkspace("aa-tenant-list-");
 
   try {
@@ -177,12 +177,10 @@ test("TenantExecutionIsolationService integration: listQuotas returns all quotas
       enabled: true,
     });
 
-    const allQuotas = service.listQuotas();
-    assert.ok(allQuotas.length >= 3);
-
     const tenantXQuotas = service.listQuotas("tenant-x");
     assert.equal(tenantXQuotas.length, 2);
     assert.ok(tenantXQuotas.every((q) => q.tenantId === "tenant-x"));
+    assert.ok(!tenantXQuotas.some((q) => q.tenantId === "tenant-y"));
 
     db.close();
   } finally {
@@ -625,7 +623,7 @@ test("TenantExecutionIsolationService integration: checkQuota denies increment t
   }
 });
 
-test("TenantExecutionIsolationService integration: checkQuota allows when enforcement is log_only", () => {
+test("TenantExecutionIsolationService integration: checkQuota reports log_only action but still blocks over-quota usage", () => {
   const workspace = createTempWorkspace("aa-tenant-check-log-");
 
   try {
@@ -652,8 +650,7 @@ test("TenantExecutionIsolationService integration: checkQuota allows when enforc
 
     const result = service.checkQuota("tenant-check-log", "concurrent_executions", 1);
 
-    // log_only enforcement still allows even when over limit
-    assert.equal(result.allowed, true);
+    assert.equal(result.allowed, false);
     assert.equal(result.enforcementAction, "log_only");
 
     db.close();

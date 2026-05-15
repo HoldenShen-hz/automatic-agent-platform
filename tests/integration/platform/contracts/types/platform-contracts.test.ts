@@ -83,7 +83,7 @@ test("platform-contracts: createControlDirective generates valid directive", () 
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
@@ -102,7 +102,7 @@ test("platform-contracts: createControlDirective handles optional expiresAt", ()
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      && (error as Error & { code?: string }).code === "control_directive.legacy_contract_forbidden",
   );
 });
 
@@ -168,23 +168,19 @@ test("platform-contracts: createStateCommand generates valid command", () => {
     tenantId: null,
   });
 
-  // createStateCommand is deprecated and always throws
-  assert.throws(
-    () =>
-      createStateCommand({
-        traceId: "trace_xyz",
-        principal,
-        type: "update_truth",
-        aggregateId: "task_123",
-        expectedVersion: 5,
-        fencingToken: "token_abc",
-        payload: { status: "done" },
-      }),
-    (error: unknown) =>
-      error instanceof Error &&
-      "code" in error &&
-      (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
-  );
+  const command = createStateCommand({
+    traceId: "trace_xyz",
+    principal,
+    type: "update_truth",
+    aggregateId: "task_123",
+    expectedVersion: 5,
+    fencingToken: "token_abc",
+    payload: { status: "done" },
+  });
+
+  assert.equal(command.aggregateId, "task_123");
+  assert.equal(command.action, "upsert");
+  assert.equal(command.expectedVersion, 5);
 });
 
 test("platform-contracts: createEvidenceRecord generates valid record", () => {

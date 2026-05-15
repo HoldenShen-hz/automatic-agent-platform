@@ -41,7 +41,7 @@ test("IncidentDetector: detects P1 incidents from multiple fail_closed checks", 
     const incidents = detector.detectFromChecks(checks);
 
     assert.strictEqual(incidents.length, 2);
-    assert.ok(incidents.every((i) => i.severity === "p1"), "All should be P1");
+    assert.ok(incidents.every((i) => i.severity === "SEV1"), "All should be SEV1");
     assert.ok(incidents.some((i) => i.category === "data_integrity"), "Should detect data_integrity");
     assert.ok(incidents.some((i) => i.category === "availability"), "Should detect availability");
   } finally {
@@ -104,10 +104,10 @@ test("IncidentDetector: creates incidents with all required fields", () => {
     });
 
     // Verify structure
-    assert.ok(incident.incidentId.match(/^incident_\d+_[a-z0-9]+$/), "Should have valid incident ID format");
+    assert.ok(incident.incidentId.match(/^incident_[0-9a-f-]{36}$/), "Should have valid incident ID format");
     assert.ok(incident.detectedAt, "Should have detectedAt timestamp");
     assert.strictEqual(incident.category, "performance");
-    assert.strictEqual(incident.severity, "p3");
+    assert.strictEqual(incident.severity, "SEV3");
     assert.strictEqual(incident.status, "open");
     assert.strictEqual(incident.title, "High latency detected");
     assert.strictEqual(incident.description, "P95 latency exceeds 5000ms threshold");
@@ -170,8 +170,8 @@ test("IncidentDetector: handles mixed severity checks from health report", () =>
     const incidents = detector.detectFromChecks(checks);
 
     assert.strictEqual(incidents.length, 2);
-    assert.strictEqual(incidents.filter((i) => i.severity === "p1").length, 1);
-    assert.strictEqual(incidents.filter((i) => i.severity === "p2").length, 1);
+    assert.strictEqual(incidents.filter((i) => i.severity === "SEV1").length, 1);
+    assert.strictEqual(incidents.filter((i) => i.severity === "SEV2").length, 1);
   } finally {
     ctx.cleanup();
   }
@@ -229,7 +229,7 @@ test("IncidentDetector: detects incidents from degraded checks with P2 severity"
     const incidents = detector.detectFromChecks(checks);
 
     assert.strictEqual(incidents.length, 2);
-    assert.ok(incidents.every((i) => i.severity === "p2"), "Degraded checks should produce P2");
+    assert.ok(incidents.every((i) => i.severity === "SEV2"), "Degraded checks should produce SEV2");
     assert.ok(incidents.every((i) => i.status === "open"), "All should be open");
   } finally {
     ctx.cleanup();

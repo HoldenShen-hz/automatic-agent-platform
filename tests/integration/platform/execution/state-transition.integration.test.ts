@@ -75,6 +75,28 @@ test("state-transition: Task transitions from queued -> in_progress -> done", ()
         createdAt: now,
         updatedAt: now,
       });
+      ctx.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+      ctx.store.insertSession({
+        id: "sess-state-001",
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
 
     // Transition: queued -> in_progress
@@ -92,6 +114,7 @@ test("state-transition: Task transitions from queued -> in_progress -> done", ()
 
     let task = ctx.store.getTask(taskId);
     assert.equal(task?.status, "in_progress", "Task should be in_progress after first transition");
+    ctx.store.updateExecutionStatus(executionId, "executing", nowIso());
 
     // Transition: in_progress -> done (terminal)
     transitions.transitionTaskTerminalState({
@@ -139,7 +162,7 @@ test("state-transition: Task transitions from queued -> in_progress -> failed", 
         divisionId: "general_ops",
         tenantId: null,
         title: "State transition failure test",
-        status: "queued",
+        status: "in_progress",
         source: "user",
         priority: "normal",
         inputJson: "{}",

@@ -181,6 +181,8 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
       mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
+      domainOwnerApproval: true,
+      rollbackPlanPresent: true,
       results: Array.from({ length: 200 }, (_, index) => ({
           caseId: index === 0 ? "render_case" : `render_case_${index}`,
           output: "rendered output",
@@ -189,7 +191,7 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
         })),
     });
 
-    assert.equal(promptRelease.rollout.status, "canary_5");
+    assert.equal(promptRelease.rollout.status, "stable");
 
     const rendered = renderer.render({
       template: promptRelease.template,

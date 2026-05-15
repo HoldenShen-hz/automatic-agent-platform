@@ -81,6 +81,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
       mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
+      domainOwnerApproval: true,
+      rollbackPlanPresent: true,
       results: Array.from({ length: 200 }, (_, index) => ({
           caseId: index === 0 ? "explain_rollback" : `explain_rollback_${index}`,
           output: "rollback evidence with compliance lineage",
@@ -89,7 +91,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
         })),
     });
 
-    assert.equal(promptRelease.rollout.status, "canary_5");
+    assert.equal(promptRelease.rollout.status, "stable");
 
     const evalService = new LlmEvalService(ctx.db);
     const suite = evalService.defineSuite({

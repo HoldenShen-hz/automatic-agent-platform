@@ -354,7 +354,7 @@ test("identity provider: evaluateAuthorizationContext allows action with tenant 
   try {
     const decision = evaluateAuthorizationContext({
       principalType: "user",
-      roles: ["viewer"],
+      roles: ["service_operator"],
       action: "org_change",
       context: { requiresTenantScope: true, tenantId: "tenant-001" },
       mode: "auto",

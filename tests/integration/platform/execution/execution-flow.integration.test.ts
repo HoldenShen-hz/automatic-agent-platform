@@ -21,6 +21,7 @@ import { TransitionService } from "../../../../src/platform/five-plane-execution
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { BudgetAllocator, BudgetTier } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import { ExecutionLeaseService } from "../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
+import { createHarnessRun, createNodeRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
 /**
  * Creates a temporary directory for integration tests.
@@ -497,8 +498,6 @@ test("Integration: budget operations during execution", () => {
 test("Integration: RuntimeStateMachine enforces terminal state transitions", () => {
   const machine = new RuntimeStateMachine();
 
-  const { createHarnessRun } = await import("../../../../src/platform/contracts/executable-contracts/index.js");
-
   const run = createHarnessRun({
     harnessRunId: "run-terminal",
     tenantId: "tenant-1",
@@ -532,8 +531,6 @@ test("Integration: RuntimeStateMachine enforces terminal state transitions", () 
 
 test("Integration: RuntimeStateMachine self-transition is rejected", () => {
   const machine = new RuntimeStateMachine();
-
-  const { createNodeRun } = await import("../../../../src/platform/contracts/executable-contracts/index.js");
 
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",

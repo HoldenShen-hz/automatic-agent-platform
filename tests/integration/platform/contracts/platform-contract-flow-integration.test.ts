@@ -7,7 +7,7 @@ import { createExecutionPlan } from "../../../../src/platform/contracts/executio
 import { createExecutionReceipt } from "../../../../src/platform/contracts/execution-receipt/index.js";
 import { createModelRequest } from "../../../../src/platform/contracts/model-request/index.js";
 import { createStateCommand } from "../../../../src/platform/contracts/state-command/index.js";
-import { ValidationError, UnimplementedError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { createPlatformPrincipal, createRequestEnvelope } from "../../../../src/platform/contracts/types/platform-contracts.js";
 
 test("integration: supported platform contract objects compose while legacy plan/directive/receipt factories fail fast", () => {
@@ -41,20 +41,16 @@ test("integration: supported platform contract objects compose while legacy plan
 
   assert.equal(delegation.contextRef, modelRequest.requestId);
 
-  // createStateCommand is deprecated and always throws
-  assert.throws(
-    () =>
-      createStateCommand({
-        entityKind: "delegation_request",
-        entityId: delegation.requestId,
-        action: "transition",
-        expectedVersion: null,
-        payload: { nextStatus: "queued", delegationRequestId: delegation.requestId },
-        emittedBy: "planner",
-      }),
-    (error: unknown) =>
-      error instanceof UnimplementedError && error.code === "DEPRECATED_STATE_COMMAND",
-  );
+  const command = createStateCommand({
+    entityKind: "delegation_request",
+    entityId: delegation.requestId,
+    action: "transition",
+    expectedVersion: null,
+    payload: { nextStatus: "queued", delegationRequestId: delegation.requestId },
+    emittedBy: "planner",
+  });
+  assert.equal(command.entityId, delegation.requestId);
+  assert.equal(command.action, "transition");
   assert.throws(
     () =>
       createExecutionPlan({
@@ -78,7 +74,7 @@ test("integration: supported platform contract objects compose while legacy plan
         executionId: null,
         metadata: { delegationRequestId: delegation.requestId },
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
   assert.throws(
     () =>

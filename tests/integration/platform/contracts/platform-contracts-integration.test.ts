@@ -58,7 +58,7 @@ import {
   type ArtifactWriteCommand,
 } from "../../../../src/platform/contracts/state-command/index.js";
 
-import { ValidationError, UnimplementedError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // =============================================================================
 // Full Task Lifecycle Integration Tests
@@ -613,37 +613,32 @@ test("integration: legacy request envelope throws for empty requestId", () => {
 // =============================================================================
 
 test("integration: legacy state command creation", () => {
-  assert.throws(
-    () =>
-      createLegacyStateCommand({
-        entityKind: "Task",
-        entityId: "task-state-1",
-        action: "upsert",
-        expectedVersion: null,
-        payload: { status: "running" },
-        emittedBy: "worker-state-1",
-      }),
-    (error: unknown) =>
-      error instanceof UnimplementedError &&
-      error.code === "DEPRECATED_STATE_COMMAND",
-  );
+  const command = createLegacyStateCommand({
+    entityKind: "Task",
+    entityId: "task-state-1",
+    action: "upsert",
+    expectedVersion: null,
+    payload: { status: "running" },
+    emittedBy: "worker-state-1",
+  });
+
+  assert.equal(command.entityKind, "Task");
+  assert.equal(command.entityId, "task-state-1");
+  assert.equal(command.action, "upsert");
 });
 
 test("integration: legacy state command with transition action", () => {
-  assert.throws(
-    () =>
-      createLegacyStateCommand({
-        entityKind: "Task",
-        entityId: "task-transition-1",
-        action: "transition",
-        expectedVersion: 5,
-        payload: { nextStatus: "completed" },
-        emittedBy: "orchestrator",
-      }),
-    (error: unknown) =>
-      error instanceof UnimplementedError &&
-      error.code === "DEPRECATED_STATE_COMMAND",
-  );
+  const command = createLegacyStateCommand({
+    entityKind: "Task",
+    entityId: "task-transition-1",
+    action: "transition",
+    expectedVersion: 5,
+    payload: { nextStatus: "completed" },
+    emittedBy: "orchestrator",
+  });
+
+  assert.equal(command.action, "transition");
+  assert.equal(command.expectedVersion, 5);
 });
 
 test("integration: legacy state command throws for invalid transition", () => {
@@ -664,8 +659,8 @@ test("integration: legacy state command throws for invalid transition", () => {
         emittedBy: "worker-1",
       }),
     (error: unknown) =>
-      error instanceof UnimplementedError &&
-      error.code === "DEPRECATED_STATE_COMMAND",
+      error instanceof ValidationError &&
+      error.code === "state_command.transition_next_status_required",
   );
 });
 
@@ -687,8 +682,8 @@ test("integration: legacy state command throws for missing required fields", () 
         emittedBy: "worker-1",
       }),
     (error: unknown) =>
-      error instanceof UnimplementedError &&
-      error.code === "DEPRECATED_STATE_COMMAND",
+      error instanceof ValidationError &&
+      error.code === "state_command.entity_kind_required",
   );
 });
 
@@ -728,25 +723,21 @@ test("integration: platform state command creation", () => {
     roles: [],
   });
 
-  // createStateCommand is deprecated and always throws
-  assert.throws(
-    () =>
-      createStateCommand({
-        traceId: "platform-trace-1",
-        principal,
-        leaseId: "platform-lease-1",
-        fencingToken: "platform-token-1",
-        event: "PlatformTaskCreated",
-        type: "update_truth",
-        aggregateId: "platform-task-1",
-        expectedVersion: 1,
-        payload: { platformField: "platformValue" },
-      }),
-    (error: unknown) =>
-      error instanceof Error &&
-      "code" in error &&
-      (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
-  );
+  const command = createStateCommand({
+    traceId: "platform-trace-1",
+    principal,
+    leaseId: "platform-lease-1",
+    fencingToken: "platform-token-1",
+    event: "PlatformTaskCreated",
+    type: "update_truth",
+    aggregateId: "platform-task-1",
+    expectedVersion: 1,
+    payload: { platformField: "platformValue" },
+  });
+
+  assert.equal(command.aggregateId, "platform-task-1");
+  assert.equal(command.action, "upsert");
+  assert.equal(command.type, "update_truth");
 });
 
 test("integration: evidence record creation with platform principal", () => {

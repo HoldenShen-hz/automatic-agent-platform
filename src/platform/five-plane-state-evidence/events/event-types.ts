@@ -41,6 +41,8 @@ import type { EventTier } from "../../contracts/types/domain.js";
  */
 export const TIER_1_EVENT_TYPES = [
   "task:status_changed",
+  "session:status_changed",
+  "execution:status_changed",
   "workflow:step_completed",
   "decision:requested",
   "decision:responded",
@@ -101,6 +103,8 @@ export type Tier1EventType = (typeof TIER_1_EVENT_TYPES)[number];
  */
 export const REQUIRED_CONSUMERS_BY_EVENT_TYPE: Record<Tier1EventType, readonly string[]> = {
   "task:status_changed": ["task_projection", "inspect_projection"],
+  "session:status_changed": ["task_projection", "inspect_projection"],
+  "execution:status_changed": ["task_projection", "inspect_projection"],
   "workflow:step_completed": ["workflow_projection", "inspect_projection"],
   "decision:requested": ["approval_projection", "inspect_projection"],
   "decision:responded": ["approval_projection", "inspect_projection"],

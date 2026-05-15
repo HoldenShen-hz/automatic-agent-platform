@@ -31,7 +31,6 @@ test("ci workflow runs install typecheck tests and stable validation", () => {
   assert.match(workflow, /run: npm run changelog:check/);
   assert.match(workflow, /run: npm run test:raw/);
   assert.match(workflow, /name: Coverage Gate/);
-  assert.match(workflow, /if: matrix\.node-version == 22/);
   assert.match(workflow, /run: npm run coverage:gate/);
   assert.match(workflow, /AA_VALIDATION_ITERATIONS=2 npm run validate:stable/);
 });

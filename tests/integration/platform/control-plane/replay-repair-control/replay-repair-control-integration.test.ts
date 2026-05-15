@@ -266,25 +266,25 @@ test("replay-repair-integration: disposition inference for different action type
   const service = new ReplayRepairControlService();
 
   const requeueReport = service.buildStartupConsistencyReport({
-    findings: [createFinding({ checkId: "stale_execution", suggestedRepairAction: "requeue_execution" })],
+    findings: [createFinding({ checkId: "stale_execution", severity: "p1", recoverable: true, suggestedRepairAction: "requeue_execution" })],
   });
   const requeueCandidates = service.listRecoveryCandidates(requeueReport);
   assert.strictEqual(requeueCandidates[0]!.disposition, "retry");
 
   const rebuildReport = service.buildStartupConsistencyReport({
-    findings: [createFinding({ checkId: "tier1_ack_backlog", suggestedRepairAction: "rebuild_ack" })],
+    findings: [createFinding({ checkId: "tier1_ack_backlog", severity: "p1", recoverable: true, suggestedRepairAction: "rebuild_ack" })],
   });
   const rebuildCandidates = service.listRecoveryCandidates(rebuildReport);
   assert.strictEqual(rebuildCandidates[0]!.disposition, "resume");
 
   const closeReport = service.buildStartupConsistencyReport({
-    findings: [createFinding({ checkId: "orphan_session", suggestedRepairAction: "close_orphan_session" })],
+    findings: [createFinding({ checkId: "orphan_session", severity: "p1", recoverable: true, suggestedRepairAction: "close_orphan_session" })],
   });
   const closeCandidates = service.listRecoveryCandidates(closeReport);
   assert.strictEqual(closeCandidates[0]!.disposition, "resume");
 
   const manualReport = service.buildStartupConsistencyReport({
-    findings: [createFinding({ suggestedRepairAction: "manual_intervention_required" })],
+    findings: [createFinding({ severity: "p1", recoverable: true, suggestedRepairAction: "manual_intervention_required" })],
   });
   const manualCandidates = service.listRecoveryCandidates(manualReport);
   assert.strictEqual(manualCandidates[0]!.disposition, "manual_handoff");
@@ -300,7 +300,7 @@ test("replay-repair-integration: requires manual approval for P0 or manual inter
   assert.strictEqual(p0Candidates[0]!.requiresManualApproval, true);
 
   const manualReport = service.buildStartupConsistencyReport({
-    findings: [createFinding({ severity: "p1", suggestedRepairAction: "manual_intervention_required" })],
+    findings: [createFinding({ severity: "p1", recoverable: true, suggestedRepairAction: "manual_intervention_required" })],
   });
   const manualCandidates = service.listRecoveryCandidates(manualReport);
   assert.strictEqual(manualCandidates[0]!.requiresManualApproval, true);
@@ -320,7 +320,7 @@ test("replay-repair-integration: findings are defensively copied in report", () 
   ];
   const report = service.buildStartupConsistencyReport({ findings: originalFindings });
 
-  (report.findings as StartupConsistencyFinding[]).push(
+  originalFindings.push(
     createFinding({ entityRef: "exec:modified" }),
   );
 
@@ -432,7 +432,7 @@ test("replay-repair-integration: suggested repair action is preserved in candida
 
   for (const actionType of actionTypes) {
     const report = service.buildStartupConsistencyReport({
-      findings: [createFinding({ suggestedRepairAction: actionType, recoverable: true })],
+      findings: [createFinding({ severity: "p1", suggestedRepairAction: actionType, recoverable: true })],
     });
     const candidates = service.listRecoveryCandidates(report);
     assert.strictEqual(candidates[0]!.suggestedRepairAction, actionType);

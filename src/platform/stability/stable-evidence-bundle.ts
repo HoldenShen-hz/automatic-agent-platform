@@ -340,7 +340,10 @@ export async function createStableEvidenceBundle(
   let acceptanceLine: StableAcceptanceLineReport;
 
   try {
-    // Run doctor, repair, and diagnostics
+    drainReport = await eventOps.drainDefaultConsumers();
+    pendingAckBacklogAfterDrain = store.event.countPendingTier1Acks();
+    // Run doctor, repair, and diagnostics after draining default consumers so
+    // evidence health reflects the post-drain backlog state captured below.
     doctorReport = doctor.run();
     const repairBefore = checker.run();
     const repairApplied = await repairService.apply(repairBefore);
@@ -353,8 +356,6 @@ export async function createStableEvidenceBundle(
     diagnosticSnapshot = diagnostics.buildTaskSnapshot(happyPathSnapshot.task.id);
     debugDump = diagnostics.buildDebugDump(happyPathSnapshot.task.id);
     takeoverSample = buildTakeoverEvidenceSample(db, store, logger);
-    drainReport = await eventOps.drainDefaultConsumers();
-    pendingAckBacklogAfterDrain = store.event.countPendingTier1Acks();
 
     // Write all reports
     writeJson(artifacts.doctorReportPath, doctorReport);

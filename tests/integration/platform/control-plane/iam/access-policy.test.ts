@@ -331,7 +331,7 @@ test("access policy: sandbox path check denies path outside workspace", () => {
     const policy = createWorkspaceWritePolicy(ctx.workspace);
     const result = checkSandboxPath(policy, "/etc/passwd");
     assert.strictEqual(result.allowed, false);
-    assert.strictEqual(result.reasonCode, "sandbox.path_outside_allowed_roots");
+    assert.strictEqual(result.reasonCode, "sandbox.path_in_denied_root");
   } finally {
     ctx.cleanup();
   }
@@ -549,14 +549,13 @@ test("access policy: multiple policy engines can coexist with different configur
   }
 });
 
-test("access policy: sandbox policy with restricted_exec mode does not enforce allowed_roots boundary", () => {
+test("access policy: sandbox policy with restricted_exec mode enforces allowed_roots boundary", () => {
   const ctx = createIntegrationContext("aa-sandbox-restricted-no-boundary-");
   try {
     const policy = createRestrictedExecPolicy(ctx.workspace);
-    // restricted_exec mode should not check path against allowed_roots
     const result = checkSandboxPath(policy, "/etc/passwd");
-    // In restricted_exec mode, the allowed_roots check is bypassed
-    assert.strictEqual(result.allowed, true);
+    assert.strictEqual(result.allowed, false);
+    assert.strictEqual(result.reasonCode, "sandbox.path_outside_allowed_roots");
   } finally {
     ctx.cleanup();
   }
