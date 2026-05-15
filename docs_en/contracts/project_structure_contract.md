@@ -180,6 +180,6 @@ Rules:
 
 ## 8. Supplementary Rules
 
-- Route modules under `src/platform/interface/api/http-server/` should be named by resource, such as `task-routes.ts`, `approval-routes.ts`, `health-routes.ts`; avoid splitting by HTTP verbs.
+- Route modules under `src/platform/five-plane-interface/api/http-server/` should be named by resource, such as `task-routes.ts`, `approval-routes.ts`, `health-routes.ts`; avoid splitting by HTTP verbs.
 - `tests/` at minimum is divided into `unit/`, `integration/`, `e2e/` three layers; fixtures and replay resources are separately placed in shared directory.
 - Production environment does not depend on local `data/`; should be replaced with database, object storage, and centralized logging/audit backend.

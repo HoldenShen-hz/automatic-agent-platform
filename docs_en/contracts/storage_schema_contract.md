@@ -69,7 +69,7 @@ Notes:
 
 The current repository no longer uses static "total table count" from architecture documents as acceptance criteria, but rather authoritative inventory:
 
-- Authoritative service: `src/platform/state-evidence/truth/schema-inventory-service.ts`
+- Authoritative service: `src/platform/five-plane-state-evidence/truth/schema-inventory-service.ts`
 - Authoritative API surface: `GET /v1/admin/inventories/schema`
 - Current inventory reconciliation baseline: `86` logical tables
 - Classification summary:

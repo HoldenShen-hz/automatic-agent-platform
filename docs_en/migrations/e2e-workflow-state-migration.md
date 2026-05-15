@@ -11,9 +11,9 @@ E2E tests were written against the old direct-insert API (`store.insertWorkflowS
 ### OLD Pattern (Legacy - Do Not Use)
 ```typescript
 import { WorkflowStateRecord } from "../../src/platform/contracts/types/domain.js";
-import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../src/platform/five-plane-execution/state-transition/transition-service.js";
 
 function createE2eHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -63,7 +63,7 @@ test("legacy: multi-step workflow", () => {
 ```typescript
 import { join } from "node:path";
 import { existsSync, unlinkSync } from "node:fs";
-import { runMultiStepOrchestration, type MultiStepToolExecutionInput } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { runMultiStepOrchestration, type MultiStepToolExecutionInput } from "../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
 test("canonical: multi-step workflow via runMultiStepOrchestration", async () => {
   const dbPath = join(__dirname, "test-canonical-workflow.db");
@@ -234,14 +234,14 @@ test("canonical: RuntimeTruthRepository seed pattern", () => {
 - `tests/integration/cross-plane-event-propagation.test.ts`
 - `tests/integration/core/runtime/kernel.test.ts`
 - `tests/integration/platform/platform-wide-integration.test.ts`
-- `tests/integration/platform/interface/scheduler.test.ts`
-- `tests/integration/platform/state-evidence/truth/async-repositories/workflow-repository.test.ts`
+- `tests/integration/platform/five-plane-interface/scheduler.test.ts`
+- `tests/integration/platform/five-plane-state-evidence/truth/async-repositories/workflow-repository.test.ts`
 
 ### Unit Tests (use Option C for complex scenarios)
-- `tests/unit/platform/state-evidence/truth/authoritative-task-store.test.ts`
-- `tests/unit/platform/state-evidence/truth/sqlite/authoritative-task-store.test.ts`
-- `tests/unit/platform/state-evidence/truth/async-repositories/workflow-repository.test.ts`
-- `tests/unit/platform/state-evidence/truth/repositories/workflow-repository.test.ts`
+- `tests/unit/platform/five-plane-state-evidence/truth/authoritative-task-store.test.ts`
+- `tests/unit/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store.test.ts`
+- `tests/unit/platform/five-plane-state-evidence/truth/async-repositories/workflow-repository.test.ts`
+- `tests/unit/platform/five-plane-state-evidence/truth/repositories/workflow-repository.test.ts`
 - `tests/unit/runtime/execution-dispatch-service.test.ts`
 - `tests/unit/runtime/transition-service.test.ts`
 

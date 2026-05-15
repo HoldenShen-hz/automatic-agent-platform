@@ -17,11 +17,11 @@ Rules:
 
 Current implementation structure (Phase 1a-4) covers the following engineering assets:
 
-- `src/platform/control-plane/` — IAM, Config Center, Approval Center, Incident Control
-- `src/platform/execution/` — Scheduler, Execution Engine, Recovery, Worker Pool
-- `src/platform/orchestration/` — OAPEFLIR, Routing, Planner, HITL
-- `src/platform/state-evidence/` — Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
-- `src/platform/interface/` — API, Channel Gateway, Ingress, Scheduler
+- `src/platform/five-plane-control-plane/` — IAM, Config Center, Approval Center, Incident Control
+- `src/platform/five-plane-execution/` — Scheduler, Execution Engine, Recovery, Worker Pool
+- `src/platform/five-plane-orchestration/` — OAPEFLIR, Routing, Planner, HITL
+- `src/platform/five-plane-state-evidence/` — Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+- `src/platform/five-plane-interface/` — API, Channel Gateway, Ingress, Scheduler
 - `src/platform/shared/` — Observability, Stability, Tool Metadata
 - `src/platform/model-gateway/` — Model Gateway, Cost Tracking
 - `src/platform/prompt-engine/` — Prompt Engine

@@ -123,4 +123,4 @@ interface AutonomyAuditLog {
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](../adr/016-oapeflir-loop-model.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
-- [autonomy-boundary-policy.ts](../../src/platform/orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.ts)
+- [autonomy-boundary-policy.ts](../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.ts)
