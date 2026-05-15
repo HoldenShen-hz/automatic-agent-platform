@@ -71,11 +71,11 @@ test("determineNextAction: failed + critical risk -> escalate_hitl", () => {
   assert.equal(action, "escalate_hitl");
 });
 
-test("determineNextAction: failed + high risk -> compensate", () => {
+test("determineNextAction: failed + high risk -> escalate_hitl", () => {
   const worker = new ReconciliationWorker();
   const action = worker.determineNextAction("failed", "high");
 
-  assert.equal(action, "compensate");
+  assert.equal(action, "escalate_hitl");
 });
 
 test("determineNextAction: failed + medium risk -> compensate", () => {
@@ -85,11 +85,11 @@ test("determineNextAction: failed + medium risk -> compensate", () => {
   assert.equal(action, "compensate");
 });
 
-test("determineNextAction: failed + low risk -> compensate", () => {
+test("determineNextAction: failed + low risk -> mark_failed", () => {
   const worker = new ReconciliationWorker();
   const action = worker.determineNextAction("failed", "low");
 
-  assert.equal(action, "compensate");
+  assert.equal(action, "mark_failed");
 });
 
 // ---------------------------------------------------------------------------

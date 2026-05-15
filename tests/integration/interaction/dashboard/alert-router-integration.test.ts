@@ -41,7 +41,7 @@ test("sortAttentionQueue respects createdAt within same priority", () => {
 
   const sorted = sortAttentionQueue(items);
 
-  assert.ok(sorted[0]!.createdAt < sorted[1]!.createdAt);
+  assert.ok(sorted[0]!.createdAt > sorted[1]!.createdAt);
 });
 
 test("sortAttentionQueue handles empty array", () => {

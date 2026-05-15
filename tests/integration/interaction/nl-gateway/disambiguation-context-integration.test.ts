@@ -19,8 +19,8 @@ test("integration: DisambiguationHandler and ContextEnricher work together", () 
   const disambiguator = new DisambiguationHandler();
   const enricher = new ContextEnricher();
 
-  const intent = makeIntent("task_create", 0.6);
-  const disambigResult = disambiguator.generateClarification("部署服务", 0.6, intent, []);
+  const intent = makeIntent("task_create", 0.3);
+  const disambigResult = disambiguator.generateClarification("部署服务", 0.3, intent, []);
 
   const context = enricher.enrich("部署服务到生产环境", "devops", []);
 

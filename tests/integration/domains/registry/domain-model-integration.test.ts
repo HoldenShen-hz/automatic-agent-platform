@@ -149,11 +149,19 @@ test("DomainDefinitionSchema integration: rejects invalid status", () => {
 });
 
 test("DomainLifecycleStateSchema integration: accepts all valid states", () => {
-  const states = ["draft", "validated", "registered", "active", "updating", "deprecated", "archived"] as const;
+  const states = {
+    draft: "validating",
+    validated: "certified",
+    registered: "canary",
+    active: "active",
+    updating: "canary",
+    deprecated: "deprecated",
+    archived: "retired",
+  } as const;
 
-  for (const state of states) {
+  for (const [state, canonical] of Object.entries(states)) {
     const result = DomainLifecycleStateSchema.parse(state);
-    assert.equal(result, state);
+    assert.equal(result, canonical);
   }
 });
 

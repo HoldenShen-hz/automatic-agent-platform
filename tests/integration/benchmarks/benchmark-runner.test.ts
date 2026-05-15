@@ -5,6 +5,7 @@ import {
   BenchmarkCase,
   type EvaluationReport,
   type BenchmarkResult,
+  type ProposalExecutor,
 } from "../../../src/ops-maturity/drift-detection/benchmark-runner.js";
 import type { ImprovementProposal } from "../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
@@ -29,8 +30,31 @@ function createMockProposal(overrides: Partial<ImprovementProposal> = {}): Impro
   };
 }
 
+const mockProposalExecutor: ProposalExecutor = {
+  async execute(_proposal, input) {
+    return {
+      success: true,
+      costUsd: 0.1,
+      latencyMs: 100,
+      output: { testCaseId: input.testCaseId },
+      violations: [],
+    };
+  },
+};
+
+function createRunner(): SimpleBenchmarkRunner {
+  return new SimpleBenchmarkRunner({
+    baseline: {
+      successRate: 0.85,
+      avgCostUsd: 0.25,
+      avgLatencyMs: 4500,
+    },
+    proposalExecutor: mockProposalExecutor,
+  });
+}
+
 test("SimpleBenchmarkRunner end-to-end: evaluate a complete proposal lifecycle", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   // Add multiple benchmark cases
   const cases: BenchmarkCase[] = [
@@ -59,7 +83,7 @@ test("SimpleBenchmarkRunner end-to-end: evaluate a complete proposal lifecycle",
 });
 
 test("SimpleBenchmarkRunner end-to-end: workflow proposal evaluation", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "wf_case_1", taskType: "workflow_planning", input: { steps: 5 } },
@@ -85,7 +109,7 @@ test("SimpleBenchmarkRunner end-to-end: workflow proposal evaluation", async () 
 });
 
 test("SimpleBenchmarkRunner end-to-end: skill proposal evaluation", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "skill_case_1", taskType: "skill_discovery", input: { domain: "testing" } },
@@ -111,7 +135,7 @@ test("SimpleBenchmarkRunner end-to-end: skill proposal evaluation", async () => 
 });
 
 test("SimpleBenchmarkRunner end-to-end: multiple proposals in sequence", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "seq_case_1", taskType: "tool_use", input: {} },
@@ -137,7 +161,7 @@ test("SimpleBenchmarkRunner end-to-end: multiple proposals in sequence", async (
 });
 
 test("SimpleBenchmarkRunner end-to-end: runBenchmarks returns consistent results structure", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "struct_1", taskType: "tool_use", input: { test: true } },
@@ -160,7 +184,7 @@ test("SimpleBenchmarkRunner end-to-end: runBenchmarks returns consistent results
 });
 
 test("SimpleBenchmarkRunner end-to-end: critical cases are included in evaluation", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const criticalCase: BenchmarkCase = {
     id: "critical_case",
@@ -177,7 +201,7 @@ test("SimpleBenchmarkRunner end-to-end: critical cases are included in evaluatio
 });
 
 test("SimpleBenchmarkRunner end-to-end: evaluate with expected benefit in proposal", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "benefit_case", taskType: "tool_use", input: {} },
@@ -202,7 +226,7 @@ test("SimpleBenchmarkRunner end-to-end: evaluate with expected benefit in propos
 });
 
 test("SimpleBenchmarkRunner end-to-end: large number of benchmark cases", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   // Add 50 benchmark cases
   for (let i = 0; i < 50; i++) {
@@ -220,7 +244,7 @@ test("SimpleBenchmarkRunner end-to-end: large number of benchmark cases", async 
 });
 
 test("SimpleBenchmarkRunner end-to-end: proposal with high risk is evaluated", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "high_risk_case", taskType: "tool_use", input: {} },
@@ -242,7 +266,7 @@ test("SimpleBenchmarkRunner end-to-end: proposal with high risk is evaluated", a
 });
 
 test("SimpleBenchmarkRunner end-to-end: verify latency and cost calculations", async () => {
-  const runner = new SimpleBenchmarkRunner();
+  const runner = createRunner();
 
   const cases: BenchmarkCase[] = [
     { id: "calc_case_1", taskType: "tool_use", input: {} },

@@ -110,11 +110,16 @@ test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", 
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_node_001",
+    deviceId: "device_node_001",
+    deviceAttestation: { attestedAt: "2026-04-23T00:00:00.000Z", status: "valid" as const },
     capabilities: ["bash", "edit"],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 24,
+    offlineMaxDuration: 86_400_000,
+    keyLease: "lease_node_001",
     allowedModels: ["model_local_001", "model_local_002"],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: true },
+    riskLevel: "low" as const,
   };
   const models = [
     { modelId: "model_local_001", modalities: ["text", "code"] as readonly string[], priority: 1 },
@@ -126,7 +131,7 @@ test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", 
   assert.equal(receipt.record.taskId, "task_offline_001");
   assert.equal(receipt.record.syncRequired, true);
   assert.equal(receipt.selectedModelId, "model_local_001");
-  assert.deepEqual(receipt.executionPlan, ["task_offline_001"]);
+  assert.deepEqual(receipt.executionPlan, ["edge_node_task_offline_001"]);
   const completedRecord = completeOfflineExecution(receipt.record, "2026-04-23T10:00:00.000Z");
   assert.equal(completedRecord.status, "completed");
   assert.equal(completedRecord.completedAt, "2026-04-23T10:00:00.000Z");
@@ -166,11 +171,16 @@ test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest",
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_node_003",
+    deviceId: "device_node_003",
+    deviceAttestation: { attestedAt: "2026-04-23T00:00:00.000Z", status: "valid" as const },
     capabilities: [],
     connectivityMode: "online" as const,
     maxLocalRetentionHours: 24,
+    offlineMaxDuration: 86_400_000,
+    keyLease: "lease_node_003",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
+    riskLevel: "low" as const,
   };
   const record = buildOfflineExecutionRecord("edge_node_003", "task_101", "2026-04-23T00:00:00.000Z");
   const envelopes = [
@@ -180,7 +190,7 @@ test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest",
   const receipt = service.sync(profile, envelopes, cloudDigests);
   assert.deepEqual(receipt.acceptedEnvelopeIds, [envelopes[0]!.envelopeId]);
   assert.equal(receipt.decisions[0]?.resolution, "merge");
-  assert.equal(receipt.decisions[0]?.rationale, "edge.sync_conflict_merge_required");
+  assert.equal(receipt.decisions[0]?.rationale, "edge.sync_conflict_merged");
 });
 
 test("buildEdgeExecutionPlan creates ordered execution plan with priority", () => {

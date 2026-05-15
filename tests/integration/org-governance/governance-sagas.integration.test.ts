@@ -277,7 +277,7 @@ test("integration: ChineseWallAccessSaga executes grant and release flow", () =>
 
     assert.equal(receipt.accessId, "access_chinese_wall_001");
     assert.equal(receipt.status, "committed");
-    assert.deepEqual(receipt.committedActions, ["prepare_grant", "commit_grant", "prepare_release", "commit_release"]);
+    assert.deepEqual(receipt.committedActions, ["commit_grant", "commit_release"]);
     assert.equal(receipt.rollbackRequired, false);
     assert.ok(actionLog.length > 0);
   } finally {
@@ -373,7 +373,7 @@ test("integration: ChineseWallAccessSaga with database checkpoint", () => {
     const receipt = saga.execute("access_db_001", steps);
 
     assert.equal(receipt.status, "committed");
-    assert.deepEqual(receipt.committedActions, ["prepare_grant", "commit_grant"]);
+    assert.deepEqual(receipt.committedActions, ["commit_grant"]);
   } finally {
     ctx.cleanup();
   }
@@ -563,6 +563,9 @@ test("integration: OrgGovernanceSaga with database state tracking", () => {
       commit: (_step, _context) => {
         // Commit tracked
       },
+      compensate: (_step, _context) => {
+        // Required by the saga contract whenever commit steps are present.
+      },
       audit: () => {
         // no-op
       },
@@ -614,6 +617,9 @@ test("integration: Multi-saga coordination between GovernanceDelegationRevocatio
       },
       commit: (_step, _context) => {
         // no-op
+      },
+      compensate: (_step, _context) => {
+        // Required by the saga contract whenever commit steps are present.
       },
       audit: () => {
         // no-op

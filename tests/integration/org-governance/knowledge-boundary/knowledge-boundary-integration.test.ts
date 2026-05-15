@@ -339,7 +339,7 @@ test("Knowledge Boundary: listRedactedLogs returns redacted access records", () 
   }
 });
 
-test("Knowledge Boundary: canAccessKnowledgeBoundary requires explicit allowlist even for public boundary", () => {
+test("Knowledge Boundary: canAccessKnowledgeBoundary allows public boundary", () => {
   const boundary: KnowledgeBoundary = {
     boundaryId: "kb-test",
     ownerOrgNodeId: "org-owner",
@@ -348,7 +348,7 @@ test("Knowledge Boundary: canAccessKnowledgeBoundary requires explicit allowlist
     allowedOrgNodeIds: [],
   };
 
-  assert.equal(canAccessKnowledgeBoundary(boundary, "any-org-node"), false);
+  assert.equal(canAccessKnowledgeBoundary(boundary, "any-org-node"), true);
 });
 
 test("Knowledge Boundary: canAccessKnowledgeBoundary returns true for owner", () => {
@@ -399,7 +399,7 @@ test("Knowledge Boundary: evaluateKnowledgeShare returns true for boundary owner
 
   const grants: KnowledgeShareGrant[] = [];
 
-  assert.equal(evaluateKnowledgeShare(boundary, "org-owner", grants, "2026-04-20T10:00:00.000Z"), true);
+  assert.equal(evaluateKnowledgeShare(boundary, "org-owner", grants, "2026-04-20T10:00:00.000Z")?.allowed, true);
 });
 
 test("Knowledge Boundary: evaluateKnowledgeShare returns true for valid non-expired grant", () => {
@@ -421,7 +421,7 @@ test("Knowledge Boundary: evaluateKnowledgeShare returns true for valid non-expi
     },
   ];
 
-  assert.equal(evaluateKnowledgeShare(boundary, "org-requester", grants, "2026-04-20T10:00:00.000Z"), true);
+  assert.equal(evaluateKnowledgeShare(boundary, "org-requester", grants, "2026-04-20T10:00:00.000Z")?.allowed, true);
 });
 
 test("Knowledge Boundary: evaluateKnowledgeShare returns false for expired grant", () => {
@@ -443,7 +443,7 @@ test("Knowledge Boundary: evaluateKnowledgeShare returns false for expired grant
     },
   ];
 
-  assert.equal(evaluateKnowledgeShare(boundary, "org-requester", grants, "2026-04-20T10:00:00.000Z"), false);
+  assert.equal(evaluateKnowledgeShare(boundary, "org-requester", grants, "2026-04-20T10:00:00.000Z"), null);
 });
 
 test("Knowledge Boundary: evaluateChineseWallPolicy blocks access in same conflict group", () => {

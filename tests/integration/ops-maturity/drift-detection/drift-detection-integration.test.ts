@@ -254,5 +254,5 @@ test("drift pipeline: stable agents do not trigger alerts", () => {
 
   assert.equal(stableDrift.detected, false);
   assert.equal(stableDrift.reasonCode, "drift.stable");
-  assert.equal(analysis.recommendation, "agents_are_consistent");
+  assert.equal(analysis.recommendation.action, "agents_consistent");
 });

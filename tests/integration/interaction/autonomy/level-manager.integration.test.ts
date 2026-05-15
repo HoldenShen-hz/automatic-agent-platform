@@ -118,11 +118,11 @@ test("LevelManager: frozen does NOT compare as greater than full_auto (root caus
 // Next Level Calculation
 // ============================================================================
 
-test("LevelManager: nextAutonomyLevel from frozen returns suggestion", () => {
+test("LevelManager: nextAutonomyLevel from frozen stays frozen", () => {
   const ctx = createIntegrationContext("aa-next-frozen-");
   try {
     const result = nextAutonomyLevel("frozen");
-    assert.equal(result, "suggestion", "frozen -> suggestion");
+    assert.equal(result, "frozen", "frozen requires explicit recovery");
   } finally {
     ctx.cleanup();
   }
@@ -200,10 +200,10 @@ test("LevelManager: every level can be compared with every other level", () => {
 // Level chain verification
 // ============================================================================
 
-test("LevelManager: chain from frozen to full_auto covers all levels", () => {
+test("LevelManager: chain from suggestion to full_auto covers promotable levels", () => {
   const ctx = createIntegrationContext("aa-chain-");
   try {
-    let current: AutonomyLevel = "frozen";
+    let current: AutonomyLevel = "suggestion";
     const visited: AutonomyLevel[] = [current];
 
     for (let i = 0; i < 10; i++) { // Safety limit
@@ -217,7 +217,7 @@ test("LevelManager: chain from frozen to full_auto covers all levels", () => {
     assert.ok(visited.includes("supervised"), "Chain should reach supervised");
     assert.ok(visited.includes("semi_auto"), "Chain should reach semi_auto");
     assert.ok(visited.includes("full_auto"), "Chain should reach full_auto");
-    assert.equal(visited.length, 5, "Chain should visit exactly 5 levels");
+    assert.equal(visited.length, 4, "Chain should visit exactly 4 promotable levels");
   } finally {
     ctx.cleanup();
   }

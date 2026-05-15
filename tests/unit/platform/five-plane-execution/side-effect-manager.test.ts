@@ -26,6 +26,8 @@ function createTestSideEffect(overrides: Partial<SideEffectRecord> = {}): SideEf
     idempotencyKey: newId("idem"),
     status: "ambiguous",
     riskClass: "medium",
+    leaseId: "lease-test-side-effect",
+    fencingToken: "fence-test-side-effect",
     preCommitPolicyProofRef: { artifactId: newId("art"), uri: "policy://proof" },
     deadline: new Date(Date.now() + 60_000).toISOString(),
     createdAt: new Date().toISOString(),

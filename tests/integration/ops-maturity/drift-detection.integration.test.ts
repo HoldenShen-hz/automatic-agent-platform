@@ -11,6 +11,7 @@ import test from "node:test";
 import { SimpleReflectionEngine } from "../../../src/ops-maturity/drift-detection/reflection-engine.js";
 import { SimpleRolloutManager } from "../../../src/ops-maturity/drift-detection/rollout-manager.js";
 import { SimpleBenchmarkRunner, type BenchmarkCase } from "../../../src/ops-maturity/drift-detection/benchmark-runner.js";
+import { CrossAgentAnalyzerService } from "../../../src/ops-maturity/drift-detection/cross-agent-analyzer/index.js";
 import type { ImprovementProposal } from "../../../src/ops-maturity/drift-detection/proposal-engine.js";
 import type { EvidenceRecord } from "../../../src/ops-maturity/drift-detection/evidence-store.js";
 
@@ -99,10 +100,16 @@ test("DriftDetectionIntegration: Rollout manager handles threshold breaches", as
     latencyMs: 3000,   // Above 2000 threshold
     costUsd: 0.15,     // Above 0.10 threshold
   });
+  await manager.evaluateAndTriggerRollback("prop_1", {
+    successRateFloor: 0.95,
+    errorRateCeiling: 0.05,
+    latencyCeilingMs: 2000,
+    costCeilingUsd: 0.10,
+  });
 
   record = await manager.getRollout("prop_1");
   assert.equal(record!.status, "rollback_pending");
-  assert.ok(record!.failureReason!.includes("Metric threshold breach"));
+  assert.ok(record!.failureReason!.includes("Metric threshold violations"));
 
   // Manual rollback
   await manager.rollback("prop_1", "Manual intervention");
@@ -183,6 +190,12 @@ test("DriftDetectionIntegration: Full pipeline from evidence to proposal", async
   // Run benchmark
   const runner = new SimpleBenchmarkRunner();
   runner.addBenchmarkCase({ id: "tc_reflect", taskType: "workflow_exec", input: {} });
+  runner.setBaseline("tc_reflect", {
+    successRate: 0.9,
+    avgCost: 0.10,
+    avgLatencyMs: 500,
+    sampleCount: 100,
+  });
   runner.setProposalExecutor({
     execute: async () => ({
       success: true,
@@ -252,7 +265,6 @@ test("DriftDetectionIntegration: Rollout progresses through stages", async () =>
  * Integration test: Cross-agent analysis with drift detection
  */
 test("DriftDetectionIntegration: Cross-agent metrics trigger drift alerts", () => {
-  const { CrossAgentAnalyzerService } = require("../../../src/ops-maturity/drift-detection/cross-agent-analyzer/index.js");
   const service = new CrossAgentAnalyzerService();
 
   const metrics = [

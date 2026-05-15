@@ -276,8 +276,8 @@ test("save handles empty namespaces and records arrays", () => {
 
 test("load returns null for directory path that exists but is not a file", () => {
   // Use a path that won't be symlink-resolved
-  const path = "/tmp/aa-sandbox/ktest_dir_test.json";
-  mkdirSync("/tmp/aa-sandbox", { recursive: true });
+  const path = createTempPath("dir_test.json");
+  mkdirSync(path, { recursive: true });
 
   const store = new KnowledgeSnapshotStore({ snapshotPath: path });
   const result = store.load();
@@ -285,5 +285,7 @@ test("load returns null for directory path that exists but is not a file", () =>
   // Directory exists at path, but load expects a file so result depends on implementation
   // This test verifies the store can be created with this path
 
-  rmSync("/tmp/aa-sandbox", { recursive: true, force: true });
+  assert.equal(result, null);
+
+  rmSync(path, { recursive: true, force: true });
 });

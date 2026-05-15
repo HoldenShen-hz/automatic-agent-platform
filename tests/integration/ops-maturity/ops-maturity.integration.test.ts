@@ -59,7 +59,9 @@ test("explainability integration: L3 pipeline with causal chain and redaction", 
     allowedEvidenceCategories: ["public"],
   };
 
-  const bundle = service.generate(request, "L3");
+  const bundle = service.generate(request, "L3", {
+    forensicBudgetReservationId: "forensic-budget-l3-001",
+  });
 
   assert.strictEqual(bundle.rationale.evidenceRefs.length, 1);
   assert.strictEqual(bundle.redactedEvidenceRefs.length, 2);
@@ -140,6 +142,7 @@ test("edge integration: offline execution through sync envelope to receipt", () 
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-integrated",
     deviceId: "device-integrated",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
     capabilities: ["text", "vision"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 48,
@@ -174,6 +177,7 @@ test("edge integration: conflict resolution when cloud has newer digest", () => 
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-conflict",
     deviceId: "device-conflict",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
@@ -197,8 +201,8 @@ test("edge integration: conflict resolution when cloud has newer digest", () => 
 
   const syncReceipt = service.sync(profile, [envelope], cloudDigests);
 
-  assert.strictEqual(syncReceipt.rejectedEnvelopeIds.length, 1);
-  assert.strictEqual(syncReceipt.decisions[0]?.resolution, "accept_central");
+  assert.strictEqual(syncReceipt.acceptedEnvelopeIds.length, 1);
+  assert.strictEqual(syncReceipt.decisions[0]?.resolution, "merge");
   assert.ok(syncReceipt.decisions[0]?.incidentId != null);
 });
 
@@ -411,6 +415,7 @@ test("edge integration: restricted data upload blocked by policy", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-restrict",
     deviceId: "device-restrict",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,

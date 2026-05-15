@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute } from "node:path";
 
@@ -52,6 +52,9 @@ export class KnowledgeSnapshotStore {
 
   public load(): KnowledgePlaneSnapshot | null {
     if (!existsSync(this.snapshotPath)) {
+      return null;
+    }
+    if (!statSync(this.snapshotPath).isFile()) {
       return null;
     }
     // R30-13 fix: Validate JSON structure before returning to prevent corrupted/tampered data

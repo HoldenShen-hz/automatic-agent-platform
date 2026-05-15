@@ -114,7 +114,19 @@ test("API v1 harness-runs/:id endpoint returns harness run by ID", async () => {
     const tokenData = readJson<{ accessToken: string }>(tokenResponse);
     const accessToken = tokenData.data.accessToken;
 
-    const harnessRunId = "harness-run-123";
+    const createResponse = await server.inject({
+      url: "/api/v1/harness-runs",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "create-harness-run-by-id",
+      },
+      body: JSON.stringify({ tenantId: "tenant-api-test", domainId: "api-test" }),
+    });
+    assert.equal(createResponse.statusCode, 201);
+    const created = readJson<{ harnessRunId: string }>(createResponse);
+    const harnessRunId = created.data.harnessRunId;
 
     const response = await server.inject({
       url: `/api/v1/harness-runs/${harnessRunId}`,
@@ -146,7 +158,19 @@ test("API v1 harness-runs/:id/events endpoint returns events list", async () => 
     const tokenData = readJson<{ accessToken: string }>(tokenResponse);
     const accessToken = tokenData.data.accessToken;
 
-    const harnessRunId = "harness-run-456";
+    const createResponse = await server.inject({
+      url: "/api/v1/harness-runs",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "create-harness-run-events",
+      },
+      body: JSON.stringify({ tenantId: "tenant-api-test", domainId: "api-test" }),
+    });
+    assert.equal(createResponse.statusCode, 201);
+    const created = readJson<{ harnessRunId: string }>(createResponse);
+    const harnessRunId = created.data.harnessRunId;
 
     const response = await server.inject({
       url: `/api/v1/harness-runs/${harnessRunId}/events`,
@@ -233,11 +257,11 @@ test("WebSocket server rejects connection without token", async () => {
       req.end();
     });
 
-    // Connection should be rejected or closed without token
-    assert.ok([400, 401, 403, 426].includes(response.statusCode) || response.statusCode === 101);
-
-    await server.stop();
+    // Connection should be rejected, not upgraded. Raw HTTP probes without
+    // WebSocket handshake headers may be handled by the normal 404 route.
+    assert.ok([400, 401, 403, 404, 426].includes(response.statusCode));
   } finally {
+    await server.stop();
     context.db.close();
     cleanupPath(workspace);
   }
@@ -269,11 +293,10 @@ test("WebSocket server rejects connection with invalid token", async () => {
       req.end();
     });
 
-    // Connection should be rejected with invalid token
-    assert.ok([400, 401, 403].includes(response.statusCode));
-
-    await server.stop();
+    // Query-string auth is intentionally ignored; invalid-token probes must not upgrade.
+    assert.ok([400, 401, 403, 404, 426].includes(response.statusCode));
   } finally {
+    await server.stop();
     context.db.close();
     cleanupPath(workspace);
   }

@@ -4,26 +4,31 @@ import test from "node:test";
 import {
   createPlatformPrincipal,
   createRequestEnvelope,
-  createControlDirective,
-  createExecutionPlan,
-  createExecutionReceipt,
-  createStateCommand,
   createEvidenceRecord,
   createProjectionUpdate,
   type PlatformPrincipal,
   type RequestEnvelope,
-  type ControlDirective,
-  type ControlDirectiveType,
   type SideEffectExpectation,
   type SideEffectRecord,
   type ExecutionPlanBudget,
-  type ExecutionPlan,
-  type ExecutionReceipt,
   type ExecutionReceiptErrorDetail,
-  type StateCommand,
   type EvidenceRecord,
   type ProjectionUpdate,
 } from "../../../../../src/platform/contracts/types/platform-contracts.js";
+import {
+  createControlDirective,
+  type ControlDirective,
+  type ControlDirectiveKind as ControlDirectiveType,
+} from "../../../../../src/platform/contracts/control-directive/index.js";
+import { createExecutionPlan } from "../../../../../src/platform/contracts/execution-plan/index.js";
+import {
+  createExecutionReceipt,
+  type ExecutionReceipt,
+} from "../../../../../src/platform/contracts/execution-receipt/index.js";
+import {
+  createStateCommand,
+  type StateCommand,
+} from "../../../../../src/platform/contracts/state-command/index.js";
 
 // Minimal PlanStep for testing (normally imported from oapeflir)
 // Note: retryPolicy uses maxRetries (not maxAttempts)

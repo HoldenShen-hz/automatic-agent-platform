@@ -47,8 +47,8 @@ test("integration: ApprovalRoutingService routes by org chart when no amount rul
 
   const service = new ApprovalRoutingService({ orgNodes });
 
-  const now = "2025-01-01T00:00:00.000Z";
-  const createdAt = "2025-01-01T00:00:00.000Z";
+  const now = new Date().toISOString();
+  const createdAt = now;
 
   const request = {
     requesterId: "requester-1",
@@ -121,8 +121,8 @@ test("integration: ApprovalRoutingService amount threshold rules route to higher
 
   const service = new ApprovalRoutingService({ orgNodes, amountThresholdRules: amountRules });
 
-  const now = "2025-01-01T00:00:00.000Z";
-  const createdAt = "2025-01-01T00:00:00.000Z";
+  const now = new Date().toISOString();
+  const createdAt = now;
 
   // High amount request
   const highAmountRequest = {
@@ -190,8 +190,8 @@ test("integration: ApprovalRoutingService low amount stays at department level",
 
   const service = new ApprovalRoutingService({ orgNodes, amountThresholdRules: amountRules });
 
-  const now = "2025-01-01T00:00:00.000Z";
-  const createdAt = "2025-01-01T00:00:00.000Z";
+  const now = new Date().toISOString();
+  const createdAt = now;
 
   // Low amount request - use different requester to avoid conflicts
   const lowAmountRequest = {
@@ -241,8 +241,8 @@ test("integration: ApprovalRoutingService returns audit record in result", () =>
 
   const service = new ApprovalRoutingService({ orgNodes });
 
-  const now = "2025-01-01T00:00:00.000Z";
-  const createdAt = "2025-01-01T00:00:00.000Z";
+  const now = new Date().toISOString();
+  const createdAt = now;
 
   const request = {
     requesterId: "requester-1",
@@ -296,8 +296,8 @@ test("integration: ApprovalRoutingService with USD amount and fx conversion", ()
 
   const service = new ApprovalRoutingService({ orgNodes, amountThresholdRules: amountRules });
 
-  const now = "2025-01-01T00:00:00.000Z";
-  const createdAt = "2025-01-01T00:00:00.000Z";
+  const now = new Date().toISOString();
+  const createdAt = now;
 
   // USD amount request - using different requester to avoid conflicts
   const usdRequest = {
@@ -706,7 +706,7 @@ test("integration: ApprovalRoutingService includes execution and budget owner in
   assert.ok(!result.approverChain.includes("same-person"), "same-person should not be in approver chain");
 });
 
-test("integration: ApprovalRoutingService handles missing org node gracefully", () => {
+test("integration: ApprovalRoutingService rejects missing org node", () => {
   const orgNodes: readonly OrgNode[] = [
     {
       orgNodeId: "company-1",
@@ -737,9 +737,8 @@ test("integration: ApprovalRoutingService handles missing org node gracefully", 
     evidenceRefs: [],
   };
 
-  // Should not throw - should fall back to first available node or use default
-  const result = service.route(request, createdAt, now);
-
-  assert.ok(result !== undefined, "should return a result even for missing org node");
-  assert.ok(result.matchedOrgNodeId.length > 0, "should have some matched org node ID");
+  assert.throws(
+    () => service.route(request, createdAt, now),
+    /approval_route\.org_node_not_found:non-existent-org/,
+  );
 });

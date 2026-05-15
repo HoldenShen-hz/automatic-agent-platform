@@ -60,7 +60,7 @@ test("GracefulShutdown integration with handler failure", async () => {
 
   const result = await shutdown.shutdown();
 
-  assert.strictEqual(result.handlersRun, 1);
+  assert.strictEqual(result.handlersRun, 2);
   assert.strictEqual(result.handlersFailed, 1);
   assert.strictEqual(result.success, false);
   assert.ok(result.errors[0]?.includes("failing-handler"));
@@ -109,6 +109,8 @@ test("GracefulShutdown with multiple sequential shutdowns", async () => {
   assert.strictEqual(result2.handlersRun, 1);
 
   shutdown.reset();
+
+  shutdown.addHandler({ name: "test", handler: async () => {} });
 
   const result3 = await shutdown.shutdown();
   assert.strictEqual(result3.handlersRun, 1);
@@ -221,6 +223,8 @@ test("GracefulShutdown reset allows new shutdown cycle", async () => {
 
   shutdown.reset();
   assert.strictEqual(shutdown.isShuttingDownState(), false);
+
+  shutdown.addHandler({ name: "test", handler: async () => {} });
 
   const result = await shutdown.shutdown();
   assert.strictEqual(result.handlersRun, 1);

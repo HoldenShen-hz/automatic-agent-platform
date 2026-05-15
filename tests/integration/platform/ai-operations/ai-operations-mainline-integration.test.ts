@@ -40,9 +40,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
       version: "2026.04.22",
       stage: "assess",
       createdBy: "quality",
-      cases: [
-        {
-          caseId: "explain_rollback",
+      cases: Array.from({ length: 200 }, (_, index) => ({
+          caseId: index === 0 ? "explain_rollback" : `explain_rollback_${index}`,
           input: { request: "explain rollback plan" },
           expectedOutput: "rollback evidence",
           tags: ["rollback", "evidence"],
@@ -56,8 +55,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
               threshold: 1,
             },
           ],
-        },
-      ],
+        })),
     });
     datasetJudge.activateDataset("dataset_aiops_release");
 
@@ -83,14 +81,12 @@ test("integration: ai operations mainline composes prompt governance, model roll
       mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
-      results: [
-        {
-          caseId: "explain_rollback",
+      results: Array.from({ length: 200 }, (_, index) => ({
+          caseId: index === 0 ? "explain_rollback" : `explain_rollback_${index}`,
           output: "rollback evidence with compliance lineage",
           latencyMs: 85,
           costUsd: 0.004,
-        },
-      ],
+        })),
     });
 
     assert.equal(promptRelease.rollout.status, "canary_5");

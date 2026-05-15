@@ -140,9 +140,8 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
       version: "2026.04.23",
       stage: "assess",
       createdBy: "quality",
-      cases: [
-        {
-          caseId: "render_case",
+      cases: Array.from({ length: 200 }, (_, index) => ({
+          caseId: index === 0 ? "render_case" : `render_case_${index}`,
           input: { request: "test render" },
           expectedOutput: "rendered output",
           tags: ["render"],
@@ -156,8 +155,7 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
               threshold: 1,
             },
           ],
-        },
-      ],
+        })),
     });
     datasetJudge.activateDataset("dataset_render_coverage");
 
@@ -183,14 +181,12 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
       mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
-      results: [
-        {
-          caseId: "render_case",
+      results: Array.from({ length: 200 }, (_, index) => ({
+          caseId: index === 0 ? "render_case" : `render_case_${index}`,
           output: "rendered output",
           latencyMs: 45,
           costUsd: 0.002,
-        },
-      ],
+        })),
     });
 
     assert.equal(promptRelease.rollout.status, "canary_5");

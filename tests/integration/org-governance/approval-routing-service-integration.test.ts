@@ -231,7 +231,7 @@ test("integration: ApprovalRoutingService.route through org hierarchy", () => {
   }
 });
 
-test("integration: ApprovalRoutingService.route falls back to parent org node", () => {
+test("integration: ApprovalRoutingService.route rejects unknown org node", () => {
   const ctx = createIntegrationContext("aa-approval-fallback-db-");
   try {
     // Team node only, no parent in orgNodes
@@ -239,15 +239,14 @@ test("integration: ApprovalRoutingService.route falls back to parent org node", 
       orgNodes: [TEAM_NODE],
     });
 
-    // Request for non-existent org node should fall back to first available
-    const result = service.route({
-      requesterId: "engineer-6",
-      orgNodeId: "nonexistent",
-      riskLevel: "low",
-    }, nowIso(), nowIso());
-
-    // Should still return a result (falls back to first org node)
-    assert.ok(result);
+    assert.throws(
+      () => service.route({
+        requesterId: "engineer-6",
+        orgNodeId: "nonexistent",
+        riskLevel: "low",
+      }, nowIso(), nowIso()),
+      /approval_route\.org_node_not_found:nonexistent/,
+    );
   } finally {
     ctx.cleanup();
   }

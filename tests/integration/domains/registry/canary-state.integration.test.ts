@@ -74,14 +74,16 @@ test("canary: activate from registered state with canary=true succeeds", async (
   assert.equal(activated.status, "active");
 });
 
-test("canary: activate from updating state with canary=true succeeds", async () => {
+test("canary: activate from updating state fails", async () => {
   const service = new DomainRegistryService();
   const domain = createTestDomain({ domainId: "canary-activate-from-updating", status: "updating" as DomainDefinition["status"] });
   service.register(domain);
 
-  const activated = service.activate("canary-activate-from-updating", true);
-
-  assert.equal(activated.status, "active");
+  assert.throws(
+    () => service.activate("canary-activate-from-updating"),
+    (err: unknown) =>
+      err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
+  );
 });
 
 test("canary: standard activation (canary=false) from registered succeeds", async () => {

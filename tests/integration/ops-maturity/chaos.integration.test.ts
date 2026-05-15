@@ -186,9 +186,10 @@ test("ChaosIntegration: Auto-rollback triggered on hypothesis violation", () => 
   scheduler.recordSteadyStateResult(experiment.experimentId, "availability", 0.85, false, "Availability degraded below threshold");
 
   const completed = scheduler.getExperiment(experiment.experimentId);
-  assert.equal(completed!.status, "violated");
+  assert.equal(completed!.status, "rollback");
   assert.equal(completed!.boundaryControl.autoRollbackOnViolation, true);
   assert.ok(completed!.violationDetectedAt !== null);
+  assert.equal(scheduler.isRollbackInProgress(experiment.experimentId), true);
 });
 
 /**
@@ -204,7 +205,7 @@ test("ChaosIntegration: Experiment auto-terminates after max duration", () => {
     fault: { faultType: "latency", intensity: 100, durationMs: 1, parameters: {} },
     steadyStateHypotheses: [],
     scheduledAt: new Date().toISOString(),
-    maxDurationMs: 1, // 1ms duration - will expire immediately
+    maxDurationMs: 0, // Immediate expiry without relying on wall-clock delay.
   });
 
   scheduler.startExperiment(experiment.experimentId);

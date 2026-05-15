@@ -156,7 +156,7 @@ function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
   const rawConstraints = [goal.description, ...goal.constraints].join(" ");
   const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(rawConstraints);
   const requiredPermissions = [
-    ...( /(deploy|release|publish|上线|发布)/i.test(rawConstraints) ? ["deployment:write"] : []),
+    ...( /(deploy|release|publish|上线|发布|部署)/i.test(rawConstraints) ? ["deployment:write"] : []),
     ...( /(delete|drop|remove|删除|清空)/i.test(rawConstraints) ? ["destructive:write"] : []),
   ];
   const requiredCapabilities = [
@@ -166,7 +166,7 @@ function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
   return {
     budgetLimitUsd: budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!),
     riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
-    requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
+    requiresApproval: /(approval|审批|deploy|release|publish|上线|发布|部署|delete|删除)/i.test(rawConstraints),
     requiredPermissions,
     requiredCapabilities,
   };

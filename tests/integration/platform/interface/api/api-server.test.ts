@@ -208,10 +208,10 @@ test("Integration: API key exchange for bearer token", async () => {
   }
 });
 
-test("Integration: POST /v1/tasks creates task through server", async () => {
+test("Integration: POST /v1/tasks reports unavailable without task store", async () => {
   const ctx = createIntegrationContext("aa-api-server-");
+  const { server, authService } = createTestServer();
   try {
-    const { server, authService } = createTestServer();
     await server.start({ port: 0 });
 
     const token = authService.exchangeApiKey("test-operator-key").accessToken;
@@ -222,17 +222,19 @@ test("Integration: POST /v1/tasks creates task through server", async () => {
       headers: {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
+        "idempotency-key": "api-server-create-task",
       },
       body: JSON.stringify({
         title: "Integration test task",
-        input: { request: "test" },
+        inputJson: JSON.stringify({ request: "test" }),
       }),
     });
 
-    // Server returns 404 for /api/v1/tasks since route doesn't exist
-    // or may return 200/201 if route exists
-    assert.ok([200, 201, 404].includes(response.statusCode), `Unexpected status: ${response.statusCode}`);
+    assert.equal(response.statusCode, 503);
+    const body = response.json();
+    assert.equal(body.error?.code, "api.task_store_unavailable");
   } finally {
+    await server.stop();
     ctx.cleanup();
   }
 });

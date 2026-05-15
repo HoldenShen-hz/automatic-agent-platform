@@ -193,7 +193,7 @@ test("Delegation inheritance validation", () => {
     "division_admin",
     "loosen",
   );
-  assert.equal(loosenResult.allowed, true);
+  assert.equal(loosenResult.allowed, false);
 
   const appendResult = governanceService.validateInheritanceRule(
     "platform_team",

@@ -60,13 +60,13 @@ test("ReconciliationWorker: determineNextAction for failed with critical risk", 
   assert.equal(action, "escalate_hitl");
 });
 
-test("ReconciliationWorker: determineNextAction for failed without critical risk", () => {
+test("ReconciliationWorker: determineNextAction for failed with low risk", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("failed", "low");
 
-  // Not critical: compensate
-  assert.equal(action, "compensate");
+  // Low-risk failed effects are terminally marked failed; high/critical require HITL escalation.
+  assert.equal(action, "mark_failed");
 });
 
 // ── Expiration Checking Tests ──────────────────────────────────────────────────

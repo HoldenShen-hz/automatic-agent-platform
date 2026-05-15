@@ -54,7 +54,7 @@ test("review documents reference existing contract files", () => {
 
   for (const reviewFile of reviewFiles) {
     const content = readFileSync(join(REVIEWS_ROOT, reviewFile), "utf8");
-    const contractRefs = Array.from(content.matchAll(/contracts\/([^)\s]+\.md)/g))
+    const contractRefs = Array.from(content.matchAll(/contracts\/([^`\s)]+\.md)/g))
       .map((m) => m[1])
       .filter((r): r is string => r !== undefined);
 

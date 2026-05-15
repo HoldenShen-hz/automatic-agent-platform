@@ -199,13 +199,15 @@ test("integration: GovernanceDelegationRevocationSaga respects cascade scope wit
 test("integration: GovernanceDelegationRevocationSaga calculates SLO metrics correctly", () => {
   const ctx = createIntegrationContext("aa-delegation-slo-");
   try {
-    const saga = new GovernanceDelegationRevocationSaga({});
+    const saga = new GovernanceDelegationRevocationSaga({
+      revokeDerivedDelegation: () => {},
+    });
 
     const fastReceipt = saga.revoke({
       delegationId: "del-slo-fast",
       requestedAtMs: Date.now() - 30_000,
       derivedResourceIds: ["res-fast"],
-      derivedDelegationIds: [],
+      derivedDelegationIds: ["del-slo-fast-child"],
     }, Date.now());
 
     assert.equal(fastReceipt.revokeWithinSlo, true);
@@ -215,9 +217,10 @@ test("integration: GovernanceDelegationRevocationSaga calculates SLO metrics cor
       delegationId: "del-slo-slow",
       requestedAtMs: Date.now() - 400_000,
       derivedResourceIds: ["res-slow"],
-      derivedDelegationIds: [],
+      derivedDelegationIds: ["del-slo-slow-child"],
     }, Date.now());
 
+    assert.equal(slowReceipt.revokeWithinSlo, false);
     assert.equal(slowReceipt.cascadeWithinSlo, false);
   } finally {
     ctx.cleanup();

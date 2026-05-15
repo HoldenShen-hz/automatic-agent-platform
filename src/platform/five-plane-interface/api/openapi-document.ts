@@ -153,15 +153,13 @@ export function buildOpenApiDocument() {
 
 export function listApiRoutes(): ApiRouteSpec[] {
   const distinctRoutes: ApiRouteSpec[] = [];
-  const seenPaths = new Set<string>();
+  const seenRoutes = new Set<string>();
   for (const route of ROUTES) {
-    if (route.method !== "GET" && route.method !== "POST") {
+    const key = `${route.method}:${route.path}`;
+    if (seenRoutes.has(key)) {
       continue;
     }
-    if (seenPaths.has(route.path)) {
-      continue;
-    }
-    seenPaths.add(route.path);
+    seenRoutes.add(key);
     distinctRoutes.push(route);
   }
   return distinctRoutes;

@@ -10,15 +10,17 @@ import assert from "node:assert/strict";
 import {
   createPlatformPrincipal,
   createRequestEnvelope,
-  createStateCommand,
   createEvidenceRecord,
   createProjectionUpdate,
   type PlatformPrincipal,
-  type StateCommand,
   type EvidenceRecord,
   type ProjectionUpdate,
-  StateCommandType,
 } from "../../../../../src/platform/contracts/types/platform-contracts.js";
+import {
+  createStateCommand,
+  type LegacyStateCommandType as StateCommandType,
+  type StateCommand,
+} from "../../../../../src/platform/contracts/state-command/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("platform-contracts: createPlatformPrincipal creates valid principal", () => {

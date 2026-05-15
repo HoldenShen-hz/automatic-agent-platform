@@ -69,6 +69,7 @@ class InMemoryHarnessRunStore {
 
   list(limit: number, cursor: string | undefined): {
     runs: readonly CanonicalHarnessRun[];
+    total: number;
     nextCursor: string | null;
     hasMore: boolean;
   } {
@@ -94,19 +95,37 @@ class InMemoryHarnessRunStore {
         ? Buffer.from(JSON.stringify({ updatedAt: pageRuns.at(-1)!.updatedAt, harnessRunId: pageRuns.at(-1)!.harnessRunId })).toString("base64")
         : null;
 
-    return { runs: pageRuns, nextCursor, hasMore };
+    return { runs: pageRuns, total: allRuns.length, nextCursor, hasMore };
   }
 }
 
 // Module-level store instance (shared across route handlers)
 const harnessRunStore = new InMemoryHarnessRunStore();
 
+function parseHarnessRunPath(
+  segments: readonly string[],
+): { harnessRunId: string; tail: string | undefined } | null {
+  const prefixLength = segments[0] === "api" && segments[1] === "v1"
+    ? 2
+    : segments[0] === "v1"
+      ? 1
+      : -1;
+  if (prefixLength < 0 || segments[prefixLength] !== "harness-runs") {
+    return null;
+  }
+  const harnessRunId = segments[prefixLength + 1];
+  if (harnessRunId == null || segments.length > prefixLength + 3) {
+    return null;
+  }
+  return { harnessRunId, tail: segments[prefixLength + 2] };
+}
+
 export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefinition[] {
   return [
     // ── GET /api/v1/harness-runs ───────────────────────────────────────────────
     {
       method: "GET",
-      pathname: "/api/v1/harness-runs",
+      pathname: "/v1/harness-runs",
       handler: (ctx) => {
         const _principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = readLimit(ctx.request, 25);
@@ -114,9 +133,31 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
         const result = harnessRunStore.list(limit, cursor);
         return buildJsonResponse(ctx.requestId, 200, {
           harnessRuns: result.runs,
+          total: result.total,
           nextCursor: result.nextCursor,
           hasMore: result.hasMore,
           limit,
+        });
+      },
+    },
+    // ── GET /api/v1/harness-runs/:id/events ───────────────────────────────────
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const match = parseHarnessRunPath(ctx.route.segments);
+        if (match == null || match.tail !== "events") {
+          return null;
+        }
+        const _principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const run = harnessRunStore.get(match.harnessRunId);
+        if (!run) {
+          throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
+        }
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRunId: match.harnessRunId,
+          events: [],
         });
       },
     },
@@ -126,16 +167,12 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "harness-runs" || segments.length !== 4) {
+        const match = parseHarnessRunPath(ctx.route.segments);
+        if (match == null || match.tail != null) {
           return null;
         }
         const _principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const harnessRunId = segments[3];
-        if (harnessRunId == null) {
-          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
-        }
-        const run = harnessRunStore.get(harnessRunId);
+        const run = harnessRunStore.get(match.harnessRunId);
         if (!run) {
           throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
         }
@@ -145,7 +182,7 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
     // ── POST /api/v1/harness-runs ───────────────────────────────────────────────
     {
       method: "POST",
-      pathname: "/api/v1/harness-runs",
+      pathname: "/v1/harness-runs",
       handler: (ctx) => {
         const _principal = requirePrincipal(ctx.request, deps.authService, "operator");
         let body: Record<string, unknown> = {};
@@ -206,16 +243,12 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "harness-runs" || segments.length !== 4) {
+        const match = parseHarnessRunPath(ctx.route.segments);
+        if (match == null || match.tail != null) {
           return null;
         }
         const _principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const harnessRunId = segments[3];
-        if (harnessRunId == null) {
-          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
-        }
-        const existing = harnessRunStore.get(harnessRunId);
+        const existing = harnessRunStore.get(match.harnessRunId);
         if (!existing) {
           throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
         }
@@ -229,7 +262,7 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
           throw new HarnessRunsApiError(400, "api.invalid_json", "Request body must be valid JSON.");
         }
 
-        const updated = harnessRunStore.update(harnessRunId, {
+        const updated = harnessRunStore.update(match.harnessRunId, {
           ...(body.status !== undefined ? { status: body.status as HarnessRunStatus } : {}),
           ...(body.goal !== undefined ? { goal: body.goal as string } : {}),
           ...(body.mode !== undefined ? { mode: body.mode as string } : {}),
@@ -245,21 +278,17 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
       pathname: null,
       segments: true,
       handler: (ctx) => {
-        const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "harness-runs" || segments.length !== 4) {
+        const match = parseHarnessRunPath(ctx.route.segments);
+        if (match == null || match.tail != null) {
           return null;
         }
         const _principal = requirePrincipal(ctx.request, deps.authService, "admin");
-        const harnessRunId = segments[3];
-        if (harnessRunId == null) {
-          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
-        }
-        const existing = harnessRunStore.get(harnessRunId);
+        const existing = harnessRunStore.get(match.harnessRunId);
         if (!existing) {
           throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
         }
-        harnessRunStore.delete(harnessRunId);
-        return buildJsonResponse(ctx.requestId, 200, { harnessRunId, status: "deleted" });
+        harnessRunStore.delete(match.harnessRunId);
+        return buildJsonResponse(ctx.requestId, 200, { harnessRunId: match.harnessRunId, status: "deleted" });
       },
     },
   ];

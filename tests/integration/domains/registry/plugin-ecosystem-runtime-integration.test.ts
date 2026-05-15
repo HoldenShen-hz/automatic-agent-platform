@@ -125,7 +125,16 @@ test("integration: plugin ecosystem runtime aligns domain activation with connec
     autoBindConnectors: true,
   });
 
-  assert.equal(activation.plan.ready, true);
+  assert.equal(activation.plan.ready, false);
+  assert.ok(activation.plan.findings.includes("connector not bound: crm_salesforce"));
   assert.deepEqual(activation.activatedPluginIds, ["plugin.sales.retriever"]);
   assert.equal(activation.connectorBindings[0]?.connectorId, "crm_salesforce");
+
+  const readyPlan = service.buildPlan({
+    domainId: "sales",
+    tenantId: "tenant-sales",
+    environment: "prod",
+    connectorIds: ["crm_salesforce"],
+  });
+  assert.equal(readyPlan.ready, true);
 });

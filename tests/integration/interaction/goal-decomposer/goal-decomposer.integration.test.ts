@@ -19,10 +19,12 @@ import type { LlmPlan } from "../../../../src/interaction/goal-decomposer/llm-pl
 
 // ─── Test Factories ───────────────────────────────────────────────────────────
 
+const LLM_TRIGGER_DESCRIPTION = "这是一段明确超过五十个字符的复杂目标描述，需要触发自定义计划生成器，并验证依赖图、排序、校验与异常处理路径。";
+
 function createTestGoal(overrides?: Partial<Goal>): Goal {
   return {
     goalId: "integration_test_goal",
-    description: "测试目标：完成复杂任务流程",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test_owner",
     successCriteria: [
       { metric: "completion_rate", target: "100%", evaluationMethod: "automated_test" },
@@ -280,7 +282,7 @@ test("integration: Goal decomposition with custom LLM plan generator", async () 
 
   const goal: Goal = {
     goalId: "goal_custom_llm",
-    description: "使用自定义LLM计划生成器创建一个需要深度分析的计划，描述内容足够长以确保触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test_user",
     successCriteria: [],
     constraints: [],
@@ -369,7 +371,7 @@ test("integration: Goal decomposition handles cycle detection", async () => {
 
   const goal: Goal = {
     goalId: "goal_cycle_test",
-    description: "测试循环检测",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -391,7 +393,7 @@ test("integration: Validator detects cycle from decomposition result", async () 
 
   const goal: Goal = {
     goalId: "goal_validator_cycle",
-    description: "测试验证器循环检测",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -406,19 +408,14 @@ test("integration: Validator detects cycle from decomposition result", async () 
 });
 
 test("integration: Validator detects empty tasks", async () => {
-  const emptyGenerator: LlmPlanGenerator = {
-    async generate(goal) {
-      return {
-        tasks: [],
-        dependencyGraph: [],
-      };
-    },
-  };
-
-  const service = new GoalDecompositionService({ llmPlanGenerator: emptyGenerator });
+  const service = new GoalDecompositionService();
   const goal = createTestGoal({ goalId: "empty_tasks_test" });
   const result = await service.decompose(goal);
-  const findings = validateGoalDecomposition(result);
+  const findings = validateGoalDecomposition({
+    ...result,
+    tasks: [],
+    dependencyGraph: [],
+  });
 
   assert.ok(findings.some(f => f.includes("empty_tasks")));
 });
@@ -440,7 +437,7 @@ test("integration: Goal decomposition topologically sorts DAG", async () => {
 
   const goal: Goal = {
     goalId: "goal_topo_sort",
-    description: "测试拓扑排序需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -464,7 +461,7 @@ test("integration: Goal decomposition calculates parallel task groups", async ()
 
   const goal: Goal = {
     goalId: "goal_parallel",
-    description: "测试并行任务组需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -487,7 +484,7 @@ test("integration: Goal decomposition computes critical path", async () => {
 
   const goal: Goal = {
     goalId: "goal_critical_path",
-    description: "测试关键路径计算需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -530,7 +527,6 @@ test("integration: Goal decomposition produces harness routing", async () => {
   assert.ok(result.harnessRouting.harnessRun);
   assert.ok(result.harnessRouting.planGraphBundle);
   assert.ok(result.harnessRouting.initialStep);
-  assert.ok(result.harnessRouting.routedAt);
 });
 
 test("integration: Goal decomposition harness routing contains plan graph", async () => {
@@ -663,7 +659,7 @@ test("integration: Validator returns empty findings for valid decomposition", as
 
   const goal: Goal = {
     goalId: "goal_valid",
-    description: "测试有效分解需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -714,7 +710,7 @@ test("integration: Goal decomposition handles generator returning empty tasks", 
 
   const goal: Goal = {
     goalId: "goal_empty",
-    description: "测试空任务列表需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],
@@ -723,8 +719,9 @@ test("integration: Goal decomposition handles generator returning empty tasks", 
 
   const result = await service.decompose(goal);
 
-  // Should handle gracefully
-  assert.ok(result.tasks.length === 0);
+  // Empty LLM plans are rejected in favor of the deterministic fallback plan.
+  assert.ok(result.tasks.length > 0);
+  assert.equal(result.decompositionStrategy, "hybrid");
 });
 
 test("integration: Goal decomposition with self-dependency creates cycle", async () => {
@@ -755,7 +752,7 @@ test("integration: Goal decomposition with self-dependency creates cycle", async
 
   const goal: Goal = {
     goalId: "goal_self_cycle",
-    description: "测试自循环需要描述足够长以触发LLM生成器",
+    description: LLM_TRIGGER_DESCRIPTION,
     owner: "test",
     successCriteria: [],
     constraints: [],

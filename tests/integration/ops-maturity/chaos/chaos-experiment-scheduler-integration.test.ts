@@ -125,7 +125,8 @@ test("ChaosExperimentScheduler marks experiment violated when hypothesis fails",
 
   scheduler.recordSteadyStateResult(experiment.experimentId, "error_rate", 0.05, false, "error rate exceeded threshold");
   const afterFailure = scheduler.getExperiment(experiment.experimentId);
-  assert.equal(afterFailure?.status, "violated");
+  assert.equal(afterFailure?.status, "rollback");
+  assert.equal(scheduler.isRollbackInProgress(experiment.experimentId), true);
 });
 
 test("ChaosExperimentScheduler auto-terminates experiments exceeding max duration", () => {

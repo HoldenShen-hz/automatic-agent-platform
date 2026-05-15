@@ -20,6 +20,8 @@ const context = {
   traceId: "trace-1",
   emittedBy: "side-effect-manager",
   occurredAt: "2026-04-27T00:00:00.000Z",
+  leaseId: "lease-side-effect-test",
+  fencingToken: "fence-side-effect-test",
 };
 
 test("SideEffectManager applies reconciliation mark_confirmed through RuntimeStateMachine", () => {
@@ -32,6 +34,8 @@ test("SideEffectManager applies reconciliation mark_confirmed through RuntimeSta
     idempotencyKey: "idem-1",
     status: "reconciling",
     riskClass: "medium",
+    leaseId: context.leaseId,
+    fencingToken: context.fencingToken,
     preCommitPolicyProofRef: artifact,
   });
   const reconciliation = createReconciliationRecord({
@@ -59,6 +63,8 @@ test("SideEffectManager routes ambiguous reconciliation to HITL-safe ambiguous s
     idempotencyKey: "idem-1",
     status: "committing",
     riskClass: "high",
+    leaseId: context.leaseId,
+    fencingToken: context.fencingToken,
     preCommitPolicyProofRef: artifact,
   });
   const reconciliation = createReconciliationRecord({

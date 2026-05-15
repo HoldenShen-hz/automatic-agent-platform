@@ -648,7 +648,7 @@ export class OidcIdentityService {
       givenName: "Test",
       familyName: "User",
       preferredUsername: "testuser",
-      groups: ["engineers", "admins"],
+      groups: ["engineers"],
     };
   }
 

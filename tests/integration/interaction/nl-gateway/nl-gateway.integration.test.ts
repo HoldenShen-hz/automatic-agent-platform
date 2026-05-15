@@ -201,11 +201,16 @@ test("Integration: multi-turn clarification flow", async () => {
   const second = await service.buildTask(request);
   assert.equal(second.clarificationState.rounds, 2);
 
-  // Third turn - exceeds max, blocked
+  // Third turn - still reaches the configured max; the next turn is blocked.
   const third = await service.buildTask(request);
-  assert.equal(third.clarificationState.state, "blocked");
-  assert.ok(third.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
-  assert.equal(third.requestEnvelope, null);
+  assert.equal(third.clarificationState.rounds, 3);
+  assert.equal(third.clarificationState.state, "required");
+
+  // Fourth turn - exceeds max, blocked.
+  const fourth = await service.buildTask(request);
+  assert.equal(fourth.clarificationState.state, "blocked");
+  assert.ok(fourth.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
+  assert.equal(fourth.requestEnvelope, null);
 });
 
 test("Integration: clarification rounds increment within same service", async () => {

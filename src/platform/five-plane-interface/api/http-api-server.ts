@@ -723,6 +723,9 @@ export class HttpApiServer {
         approvalService: this.options.approvalService,
         inspectService: this.options.inspectService,
       }),
+      ...createHarnessRunsRoutes({
+        authService: this.options.authService ?? null,
+      }),
       ...createAdminRoutes({
         authService: this.options.authService ?? null,
         missionControlService: this.options.missionControlService,
@@ -760,9 +763,6 @@ export class HttpApiServer {
       ...createPromptRoutes({
         authService: this.options.authService ?? null,
         promptRegistryService: this.promptRegistryService,
-      }),
-      ...createHarnessRunsRoutes({
-        authService: this.options.authService ?? null,
       }),
       ...createReplaySessionRoutes({
         authService: this.options.authService ?? null,
