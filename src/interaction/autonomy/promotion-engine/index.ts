@@ -28,6 +28,21 @@ const PROMOTION_TIME_WINDOWS: Record<AutonomyLevel, number> = {
   frozen: 0,         // N/A - cannot promote from frozen
 };
 
+function maxFailedExecutionsForPromotion(score: CapabilityTrustScore): number {
+  switch (score.currentAutonomy) {
+    case "suggestion":
+      return 2;
+    case "supervised":
+      return score.totalExecutions >= 200 ? 4 : 2;
+    case "semi_auto":
+      return 5;
+    case "full_auto":
+    case "frozen":
+    default:
+      return 0;
+  }
+}
+
 export function assessPromotion(score: CapabilityTrustScore): PromotionAssessment {
   const rate = successRate(score);
   // R9-43: Check override rate - high override rate blocks promotion
@@ -38,6 +53,17 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
   const requiredIncidentFreeDays = PROMOTION_TIME_WINDOWS[score.currentAutonomy] ?? 0;
   const incidentFreeDays = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
   const timeWindowMet = incidentFreeDays >= requiredIncidentFreeDays;
+
+  if (score.currentAutonomy === "full_auto" || score.currentAutonomy === "frozen") {
+    return {
+      shouldPromote: false,
+      currentLevel: score.currentAutonomy,
+      targetLevel: score.currentAutonomy,
+      approvalRequired: false,
+      approvalRole: null,
+      reasonCodes: ["autonomy.promotion_threshold_not_met"],
+    };
+  }
 
   // R9-43: Block promotion if override rate exceeds threshold
   if (overrideRate >= overrideThreshold) {
@@ -51,7 +77,8 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
     };
   }
 
-  if (score.incidents > 0 || score.failedExecutions > 2) {
+  const maxFailedExecutions = maxFailedExecutionsForPromotion(score);
+  if (score.incidents > 0 || (score.failedExecutions > maxFailedExecutions && rate <= 0.95)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

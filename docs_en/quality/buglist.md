@@ -53,7 +53,7 @@ Total Failures: 399 out of 4582 tests
 **Error:** `Runtime truth writes must be backed by platform.* fact events.` (19 failures)
 
 **Affected Tests:** 19 failures
-- Likely tests in platform/state-evidence/truth/ that write directly without proper event sourcing
+- Likely tests in platform/five-plane-state-evidence/truth/ that write directly without proper event sourcing
 
 **Fix Required:** Use proper event sourcing pattern - write events first, then update truth
 
@@ -246,9 +246,9 @@ Total Failures: 399 out of 4582 tests
 
 ## Files Requiring src Modifications (Cannot Fix Without)
 
-1. `src/platform/state-evidence/truth/sqlite/` - Add schema_version column
+1. `src/platform/five-plane-state-evidence/truth/sqlite/` - Add schema_version column
 2. `src/domains/registry/` - Domain activation state machine
 3. `src/ops-maturity/drift-detection/benchmark-runner.ts` - ProposalExecutor requirement
-4. `src/platform/orchestration/` - RecipeExecutor implementation
+4. `src/platform/five-plane-orchestration/` - RecipeExecutor implementation
 5. `src/domains/onboarding/` - DomainOnboardingService state transitions
 6. Various schema definition files - Zod schema adjustments

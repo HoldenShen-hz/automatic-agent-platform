@@ -1,5 +1,5 @@
 import { ValidationError } from "../../platform/contracts/errors.js";
-import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import type { TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import type { DomainDefinition, OutputContractConfig, ToolBundleConfig, WorkflowConfig } from "./domain-model.js";
 import type { PluginBinding } from "./domain-model.js";
@@ -9,6 +9,7 @@ import { DomainSmokeTestRunner, type DomainSmokeTestResult } from "./domain-smok
 import { PluginSpiRegistry } from "./plugin-spi-registry.js";
 import { ToolBundleRegistry } from "./tool-bundle-registry.js";
 import { WorkflowRegistry } from "./workflow-registry.js";
+import type { PluginSpiType } from "./plugin-spi.js";
 
 export interface DomainRegistryServiceOptions {
   installedPluginIds?: readonly string[];
@@ -386,7 +387,7 @@ export class DomainRegistryService {
       const registryRecord = this.pluginRegistry?.get(binding.pluginId) ?? null;
       if (registryRecord) {
         const manifestTypes = new Set(registryRecord.manifest.spiTypes.flatMap((type: string) => normalizePluginManifestType(type)));
-        if (!manifestTypes.has(binding.pluginType) && !registryRecord.manifest.spiTypes.includes(bindingRole as any)) {
+        if (!manifestTypes.has(binding.pluginType) && !registryRecord.manifest.spiTypes.includes(bindingRole as PluginSpiType)) {
           throw this.validationError("domain_registry.plugin_type_mismatch", "Plugin binding type does not match plugin manifest.");
         }
         if (registryRecord.manifest.domainIds.length > 0 && !registryRecord.manifest.domainIds.includes(parsed.domainId)) {

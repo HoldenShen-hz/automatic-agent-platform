@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { ArtifactRef, KnowledgeRef } from "../../platform/orchestration/oapeflir/ref-types.js";
-import type { UnifiedAssessment } from "../../platform/orchestration/oapeflir/types/unified-assessment.js";
+import type { ArtifactRef, KnowledgeRef } from "../../platform/five-plane-orchestration/oapeflir/ref-types.js";
+import type { UnifiedAssessment } from "../../platform/five-plane-orchestration/oapeflir/types/unified-assessment.js";
 import type { StepTemplateConfig } from "./domain-model.js";
 
 export interface MachineOutput {

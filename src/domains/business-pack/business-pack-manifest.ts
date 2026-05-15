@@ -12,7 +12,7 @@
 import { z } from "zod";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
-import type { SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
+import type { SandboxMode } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // ============================================================================
 // Supporting Types

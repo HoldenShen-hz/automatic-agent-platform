@@ -103,7 +103,7 @@
 | 全局函数覆盖率（c8 实测）       | **0.61%**   |
 | 全局分支覆盖率（c8 实测）       | **0.61%**   |
 
-> **v4.0 变更**: 源文件从 1,335 → 1,387（+52），测试文件从 1,341 → 1,803（+462），断言从 ~34,061 → ~52,480（+18,419）。E2E 从 10 → 17，Performance 从 7 → 10。**覆盖率重大修正**：v3.0 文档声称全局行覆盖率 82.4%，经本次 c8 实测验证仅为 **0.75%**（182,253 行中仅 1,384 行被覆盖，全部位于 `src/platform/state-evidence/truth/sqlite/` 的 6 个 authoritative-task-store-delegating-\*.ts 文件）。`.coverage-baseline.json` 基线文件所有值为 null，从未被真正填充。这表明 v3.0 引用的覆盖率数据来自增量构建而非全量 c8 分析，本版已修正为实测值。
+> **v4.0 变更**: 源文件从 1,335 → 1,387（+52），测试文件从 1,341 → 1,803（+462），断言从 ~34,061 → ~52,480（+18,419）。E2E 从 10 → 17，Performance 从 7 → 10。**覆盖率重大修正**：v3.0 文档声称全局行覆盖率 82.4%，经本次 c8 实测验证仅为 **0.75%**（182,253 行中仅 1,384 行被覆盖，全部位于 `src/platform/five-plane-state-evidence/truth/sqlite/` 的 6 个 authoritative-task-store-delegating-\*.ts 文件）。`.coverage-baseline.json` 基线文件所有值为 null，从未被真正填充。这表明 v3.0 引用的覆盖率数据来自增量构建而非全量 c8 分析，本版已修正为实测值。
 
 ---
 
@@ -122,7 +122,7 @@ npm run test:integration
 npm run test:golden
 
 # 特定文件
-npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
 # PostgreSQL 集成测试（需 PG 环境）
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -504,7 +504,7 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 | Functions  | **0.61%** | 88.5%         | 983 个函数中仅 6 个被覆盖     |
 | Branches   | **0.61%** | 80.6%         | 同上                          |
 
-> **v4.0 重大修正**: `.coverage-baseline.json` 当前所有值为 null（`directories: {}`），基线从未被真正填充。v3.0 文档声称的 82.4% 行覆盖率经 c8 `all: true` 全量分析验证为 **0.75%**。实际被覆盖的仅有 `src/platform/state-evidence/truth/sqlite/` 下 6 个 authoritative-task-store-delegating-\*.ts 文件（共 1,384 行，均 100% 覆盖）。其余 977 个源文件覆盖率均为 0%。这表明 v3.0 的覆盖率数据可能来自不完整的增量构建或已过时的报告。
+> **v4.0 重大修正**: `.coverage-baseline.json` 当前所有值为 null（`directories: {}`），基线从未被真正填充。v3.0 文档声称的 82.4% 行覆盖率经 c8 `all: true` 全量分析验证为 **0.75%**。实际被覆盖的仅有 `src/platform/five-plane-state-evidence/truth/sqlite/` 下 6 个 authoritative-task-store-delegating-\*.ts 文件（共 1,384 行，均 100% 覆盖）。其余 977 个源文件覆盖率均为 0%。这表明 v3.0 的覆盖率数据可能来自不完整的增量构建或已过时的报告。
 >
 > **行动项**: 需要 (1) 运行完整 `npm test` + c8 全量覆盖率分析，(2) 填充 `.coverage-baseline.json` 基线，(3) 在 CI 中启用覆盖率门禁。
 
@@ -523,7 +523,7 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 
 | 目录                                        | 文件数 | 被覆盖文件 | Lines                | Functions |
 | ------------------------------------------- | ------ | ---------- | -------------------- | --------- |
-| `src/platform/state-evidence/truth/sqlite/` | 25     | 6          | 1,384/36,219 (3.82%) | 6/167     |
+| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25     | 6          | 1,384/36,219 (3.82%) | 6/167     |
 
 被覆盖的 6 个文件（均 100%）：
 
@@ -538,11 +538,11 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 
 | 目录                                 | 文件数 | 总行数 | Lines 覆盖率 |
 | ------------------------------------ | ------ | ------ | ------------ |
-| `src/platform/execution/`            | 162    | 43,202 | 0%           |
+| `src/platform/five-plane-execution/`            | 162    | 43,202 | 0%           |
 | `src/platform/shared/`               | 100    | 24,079 | 0%           |
-| `src/platform/control-plane/`        | 75     | 23,555 | 0%           |
-| `src/platform/orchestration/`        | 81     | 9,332  | 0%           |
-| `src/platform/interface/`            | 49     | 8,705  | 0%           |
+| `src/platform/five-plane-control-plane/`        | 75     | 23,555 | 0%           |
+| `src/platform/five-plane-orchestration/`        | 81     | 9,332  | 0%           |
+| `src/platform/five-plane-interface/`            | 49     | 8,705  | 0%           |
 | `src/scale-ecosystem/marketplace/`   | 26     | 7,737  | 0%           |
 | `src/sdk/cli/`                       | 78     | 6,148  | 0%           |
 | `src/platform/model-gateway/`        | 17     | 5,012  | 0%           |
@@ -1124,7 +1124,7 @@ CI 自动上传以下 artifacts：
 
 | 状态机        | 定义文件                                           | 验证文件                                                        | 状态数 | 终态                                     |
 | ------------- | -------------------------------------------------- | --------------------------------------------------------------- | ------ | ---------------------------------------- |
-| **Task**      | `src/platform/execution/state-transition/types.ts` | `src/platform/execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                  |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                  |
 | **Workflow**  | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
 | **Session**   | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
 | **Execution** | 同上                                               | 同上                                                            | 8      | succeeded, failed, cancelled, superseded |
@@ -1232,7 +1232,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // 从 production map 自动生成合法迁移对
 const validPairs: Array<[string, string]> = [];
@@ -1861,7 +1861,7 @@ src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/fee
 #### 表 2：源文件 → Integration 测试
 
 ```
-src/platform/execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
+src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
 #### 表 3：设计规格 → 测试
@@ -2219,17 +2219,17 @@ function normalizeForGolden(output: unknown): unknown {
 
 | 模块                                    | 级别     | 当前 Lines | 红线 | 当前 Branches | 红线 | 状态                |
 | --------------------------------------- | -------- | ---------- | ---- | ------------- | ---- | ------------------- |
-| `platform/execution/distributed-lock`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/execution/state-transition`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/control-plane/iam`            | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-execution/distributed-lock`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-execution/state-transition`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-control-plane/iam`            | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
 | `platform/compliance`                   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/orchestration/oapeflir`       | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/memory`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/events`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/execution/execution-engine`   | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/knowledge`     | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/orchestration/oapeflir/learn` | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
-| `platform/state-evidence/artifacts`     | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
+| `platform/five-plane-orchestration/oapeflir`       | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/memory`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/events`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-execution/execution-engine`   | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/knowledge`     | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-orchestration/oapeflir/learn` | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
+| `platform/five-plane-state-evidence/artifacts`     | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
 | `platform/prompt-engine`                | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
 | `plugins`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
 | `sdk/cli`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
@@ -2908,9 +2908,9 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 
 | 文件                                               | 测试文件                                                         |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
-| `execution/distributed-lock/redis-lock-adapter.ts` | `tests/unit/platform/execution/redis-lock-error.test.ts`         |
-| `execution/queue/redis-queue-adapter.ts`           | `tests/unit/platform/execution/redis-queue-error.test.ts`        |
-| `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts` |
+| `execution/distributed-lock/redis-lock-adapter.ts` | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`         |
+| `execution/queue/redis-queue-adapter.ts`           | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`        |
+| `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts` |
 | `shared/cache/stores/redis-cache-store.ts`         | `tests/unit/platform/shared/redis-cache-error.test.ts`           |
 
 ### 29.2 [SYS-REL-2.3] DLQ 纯内存，重启丢失
@@ -3250,7 +3250,7 @@ test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
 
 ```typescript
 test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", () => {
-  const stateEvidenceFiles = globSync("src/platform/state-evidence/**/*.ts");
+  const stateEvidenceFiles = globSync("src/platform/five-plane-state-evidence/**/*.ts");
   for (const file of stateEvidenceFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -3262,7 +3262,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", (
 });
 
 test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence", () => {
-  const controlPlaneFiles = globSync("src/platform/control-plane/**/*.ts");
+  const controlPlaneFiles = globSync("src/platform/five-plane-control-plane/**/*.ts");
   for (const file of controlPlaneFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -3290,7 +3290,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence
 
 ```typescript
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
-  const oapeflirFiles = globSync("src/platform/orchestration/oapeflir/**/*.ts");
+  const oapeflirFiles = globSync("src/platform/five-plane-orchestration/oapeflir/**/*.ts");
   for (const file of oapeflirFiles) {
     const content = readFileSync(file, "utf8");
     const consoleMatches = content.match(/console\.(log|warn|error|info)\(/g);
@@ -3355,7 +3355,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 ```typescript
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
   assert.ok(!content.includes(".keys("), "Must use SCAN, not KEYS command");
@@ -3475,7 +3475,7 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars", () => {
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 
@@ -3776,7 +3776,7 @@ test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
 | 全局函数覆盖率（c8 实测）       | **0.61%**   |
 | 全局分支覆盖率（c8 实测）       | **0.61%**   |
 
-> **v4.0 变更**: 源文件从 1,335 → 1,387（+52），测试文件从 1,341 → 1,803（+462），断言从 ~34,061 → ~52,480（+18,419）。E2E 从 10 → 17，Performance 从 7 → 10。**覆盖率重大修正**：v3.0 文档声称全局行覆盖率 82.4%，经本次 c8 实测验证仅为 **0.75%**（182,253 行中仅 1,384 行被覆盖，全部位于 `src/platform/state-evidence/truth/sqlite/` 的 6 个 authoritative-task-store-delegating-\*.ts 文件）。`.coverage-baseline.json` 基线文件所有值为 null，从未被真正填充。这表明 v3.0 引用的覆盖率数据来自增量构建而非全量 c8 分析，本版已修正为实测值。
+> **v4.0 变更**: 源文件从 1,335 → 1,387（+52），测试文件从 1,341 → 1,803（+462），断言从 ~34,061 → ~52,480（+18,419）。E2E 从 10 → 17，Performance 从 7 → 10。**覆盖率重大修正**：v3.0 文档声称全局行覆盖率 82.4%，经本次 c8 实测验证仅为 **0.75%**（182,253 行中仅 1,384 行被覆盖，全部位于 `src/platform/five-plane-state-evidence/truth/sqlite/` 的 6 个 authoritative-task-store-delegating-\*.ts 文件）。`.coverage-baseline.json` 基线文件所有值为 null，从未被真正填充。这表明 v3.0 引用的覆盖率数据来自增量构建而非全量 c8 分析，本版已修正为实测值。
 
 ---
 
@@ -3795,7 +3795,7 @@ npm run test:integration
 npm run test:golden
 
 # 特定文件
-npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
 # PostgreSQL 集成测试（需 PG 环境）
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -4177,7 +4177,7 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 | Functions  | **0.61%** | 88.5%         | 983 个函数中仅 6 个被覆盖     |
 | Branches   | **0.61%** | 80.6%         | 同上                          |
 
-> **v4.0 重大修正**: `.coverage-baseline.json` 当前所有值为 null（`directories: {}`），基线从未被真正填充。v3.0 文档声称的 82.4% 行覆盖率经 c8 `all: true` 全量分析验证为 **0.75%**。实际被覆盖的仅有 `src/platform/state-evidence/truth/sqlite/` 下 6 个 authoritative-task-store-delegating-\*.ts 文件（共 1,384 行，均 100% 覆盖）。其余 977 个源文件覆盖率均为 0%。这表明 v3.0 的覆盖率数据可能来自不完整的增量构建或已过时的报告。
+> **v4.0 重大修正**: `.coverage-baseline.json` 当前所有值为 null（`directories: {}`），基线从未被真正填充。v3.0 文档声称的 82.4% 行覆盖率经 c8 `all: true` 全量分析验证为 **0.75%**。实际被覆盖的仅有 `src/platform/five-plane-state-evidence/truth/sqlite/` 下 6 个 authoritative-task-store-delegating-\*.ts 文件（共 1,384 行，均 100% 覆盖）。其余 977 个源文件覆盖率均为 0%。这表明 v3.0 的覆盖率数据可能来自不完整的增量构建或已过时的报告。
 >
 > **行动项**: 需要 (1) 运行完整 `npm test` + c8 全量覆盖率分析，(2) 填充 `.coverage-baseline.json` 基线，(3) 在 CI 中启用覆盖率门禁。
 
@@ -4196,7 +4196,7 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 
 | 目录                                        | 文件数 | 被覆盖文件 | Lines                | Functions |
 | ------------------------------------------- | ------ | ---------- | -------------------- | --------- |
-| `src/platform/state-evidence/truth/sqlite/` | 25     | 6          | 1,384/36,219 (3.82%) | 6/167     |
+| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25     | 6          | 1,384/36,219 (3.82%) | 6/167     |
 
 被覆盖的 6 个文件（均 100%）：
 
@@ -4211,11 +4211,11 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 
 | 目录                                 | 文件数 | 总行数 | Lines 覆盖率 |
 | ------------------------------------ | ------ | ------ | ------------ |
-| `src/platform/execution/`            | 162    | 43,202 | 0%           |
+| `src/platform/five-plane-execution/`            | 162    | 43,202 | 0%           |
 | `src/platform/shared/`               | 100    | 24,079 | 0%           |
-| `src/platform/control-plane/`        | 75     | 23,555 | 0%           |
-| `src/platform/orchestration/`        | 81     | 9,332  | 0%           |
-| `src/platform/interface/`            | 49     | 8,705  | 0%           |
+| `src/platform/five-plane-control-plane/`        | 75     | 23,555 | 0%           |
+| `src/platform/five-plane-orchestration/`        | 81     | 9,332  | 0%           |
+| `src/platform/five-plane-interface/`            | 49     | 8,705  | 0%           |
 | `src/scale-ecosystem/marketplace/`   | 26     | 7,737  | 0%           |
 | `src/sdk/cli/`                       | 78     | 6,148  | 0%           |
 | `src/platform/model-gateway/`        | 17     | 5,012  | 0%           |
@@ -4797,7 +4797,7 @@ CI 自动上传以下 artifacts：
 
 | 状态机        | 定义文件                                           | 验证文件                                                        | 状态数 | 终态                                     |
 | ------------- | -------------------------------------------------- | --------------------------------------------------------------- | ------ | ---------------------------------------- |
-| **Task**      | `src/platform/execution/state-transition/types.ts` | `src/platform/execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                  |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                  |
 | **Workflow**  | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
 | **Session**   | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
 | **Execution** | 同上                                               | 同上                                                            | 8      | succeeded, failed, cancelled, superseded |
@@ -4905,7 +4905,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // 从 production map 自动生成合法迁移对
 const validPairs: Array<[string, string]> = [];
@@ -5534,7 +5534,7 @@ src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/fee
 #### 表 2：源文件 → Integration 测试
 
 ```
-src/platform/execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
+src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
 #### 表 3：设计规格 → 测试
@@ -5892,17 +5892,17 @@ function normalizeForGolden(output: unknown): unknown {
 
 | 模块                                    | 级别     | 当前 Lines | 红线 | 当前 Branches | 红线 | 状态                |
 | --------------------------------------- | -------- | ---------- | ---- | ------------- | ---- | ------------------- |
-| `platform/execution/distributed-lock`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/execution/state-transition`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/control-plane/iam`            | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-execution/distributed-lock`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-execution/state-transition`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
+| `platform/five-plane-control-plane/iam`            | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
 | `platform/compliance`                   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/orchestration/oapeflir`       | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/memory`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/events`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/execution/execution-engine`   | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/state-evidence/knowledge`     | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/orchestration/oapeflir/learn` | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
-| `platform/state-evidence/artifacts`     | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
+| `platform/five-plane-orchestration/oapeflir`       | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/memory`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/events`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-execution/execution-engine`   | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-state-evidence/knowledge`     | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
+| `platform/five-plane-orchestration/oapeflir/learn` | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
+| `platform/five-plane-state-evidence/artifacts`     | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
 | `platform/prompt-engine`                | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
 | `plugins`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
 | `sdk/cli`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
@@ -6581,9 +6581,9 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 
 | 文件                                               | 测试文件                                                         |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
-| `execution/distributed-lock/redis-lock-adapter.ts` | `tests/unit/platform/execution/redis-lock-error.test.ts`         |
-| `execution/queue/redis-queue-adapter.ts`           | `tests/unit/platform/execution/redis-queue-error.test.ts`        |
-| `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts` |
+| `execution/distributed-lock/redis-lock-adapter.ts` | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`         |
+| `execution/queue/redis-queue-adapter.ts`           | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`        |
+| `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts` |
 | `shared/cache/stores/redis-cache-store.ts`         | `tests/unit/platform/shared/redis-cache-error.test.ts`           |
 
 ### 29.2 [SYS-REL-2.3] DLQ 纯内存，重启丢失
@@ -6923,7 +6923,7 @@ test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
 
 ```typescript
 test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", () => {
-  const stateEvidenceFiles = globSync("src/platform/state-evidence/**/*.ts");
+  const stateEvidenceFiles = globSync("src/platform/five-plane-state-evidence/**/*.ts");
   for (const file of stateEvidenceFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -6935,7 +6935,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", (
 });
 
 test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence", () => {
-  const controlPlaneFiles = globSync("src/platform/control-plane/**/*.ts");
+  const controlPlaneFiles = globSync("src/platform/five-plane-control-plane/**/*.ts");
   for (const file of controlPlaneFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -6963,7 +6963,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence
 
 ```typescript
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
-  const oapeflirFiles = globSync("src/platform/orchestration/oapeflir/**/*.ts");
+  const oapeflirFiles = globSync("src/platform/five-plane-orchestration/oapeflir/**/*.ts");
   for (const file of oapeflirFiles) {
     const content = readFileSync(file, "utf8");
     const consoleMatches = content.match(/console\.(log|warn|error|info)\(/g);
@@ -7028,7 +7028,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 ```typescript
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
   assert.ok(!content.includes(".keys("), "Must use SCAN, not KEYS command");
@@ -7148,7 +7148,7 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars", () => {
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 

@@ -2120,7 +2120,7 @@ replay mismatch
 # 39. 实现目录建议
 
 ```text
-src/platform/orchestration/harness/
+src/platform/five-plane-orchestration/harness/
   index.ts
   runtime-state-machine.ts
   runtime/
@@ -2128,13 +2128,13 @@ src/platform/orchestration/harness/
   decision/
   replay/
 
-src/platform/state-evidence/
+src/platform/five-plane-state-evidence/
   outbox/
   reconciliation/
   side-effect-ledger/
   truth/
 
-src/platform/control-plane/
+src/platform/five-plane-control-plane/
   approval-center/
   incident-control/
   directives/

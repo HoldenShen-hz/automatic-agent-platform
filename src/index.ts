@@ -8,8 +8,8 @@ import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governan
 import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
 import { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
-import { requireValidStartupEnv } from "./platform/control-plane/config-center/startup-env-schema.js";
-import { runSingleTaskExecution } from "./platform/execution/execution-engine/single-task-execution.js";
+import { requireValidStartupEnv } from "./platform/five-plane-control-plane/config-center/startup-env-schema.js";
+import { runSingleTaskExecution } from "./platform/five-plane-execution/execution-engine/single-task-execution.js";
 import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
 import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";

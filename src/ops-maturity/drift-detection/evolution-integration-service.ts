@@ -16,9 +16,9 @@ import { SimpleReflectionEngine } from './learning/reflection-engine.js';
 import { SimpleProposalEngine } from './learning/proposal-engine.js';
 import { SimpleBenchmarkRunner } from './learning/benchmark-runner.js';
 import { PromotionGate, DEFAULT_PROMOTION_GATE_CONFIG } from './learning/promotion-gate.js';
-import type { AuthoritativeTaskStore } from '../../platform/state-evidence/truth/authoritative-task-store.js';
-import type { ApprovalService } from '../../platform/control-plane/approval-center/approval-service.js';
-import type { LearningObject } from '../../platform/orchestration/learn/learning-object-model.js';
+import type { AuthoritativeTaskStore } from '../../platform/five-plane-state-evidence/truth/authoritative-task-store.js';
+import type { ApprovalService } from '../../platform/five-plane-control-plane/approval-center/approval-service.js';
+import type { LearningObject } from '../../platform/five-plane-orchestration/learn/learning-object-model.js';
 
 /**
  * R13-06: Bridge interface to the main learning pipeline.

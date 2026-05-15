@@ -1,6 +1,6 @@
 export * from "./dashboard-projection-service.js";
 
-import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
+import type { TaskBoardItem } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface DashboardSnapshot {
   readonly generatedAt: string;

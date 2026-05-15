@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { getProcessTracker } from "../../platform/execution/resource/process-tracker.js";
+import { getProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
 import { newId } from "../../platform/contracts/types/ids.js";
 import type {
   PluginLifecycleContext,

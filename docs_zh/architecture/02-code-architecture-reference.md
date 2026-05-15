@@ -383,10 +383,10 @@ OapeflirLoopService.run()
 | 依赖目标                             | 用途                                           |
 | ------------------------------------ | ---------------------------------------------- |
 | `platform/shared/observability/`     | 任务/系统态势构建、OTel tracing、冻结管理器    |
-| `platform/execution/`                | MultiStepOrchestrationResult、StepOutputRecord |
+| `platform/five-plane-execution/`                | MultiStepOrchestrationResult、StepOutputRecord |
 | `platform/prompt-engine/eval/`       | 执行结果评估器、质量门                         |
-| `platform/state-evidence/knowledge/` | 知识平面（Learn 阶段知识提升）                 |
-| `platform/state-evidence/events/`    | TypedEventPublisher（学习事件发布）            |
+| `platform/five-plane-state-evidence/knowledge/` | 知识平面（Learn 阶段知识提升）                 |
+| `platform/five-plane-state-evidence/events/`    | TypedEventPublisher（学习事件发布）            |
 | `platform/contracts/`                | ID 生成、时间戳、错误类型                      |
 | `platform/model-gateway/`            | LLM 改进生成                                   |
 | `scale-ecosystem/feedback-loop/`     | FeedbackCollector、FeedbackModel               |
@@ -552,9 +552,9 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 | 模块                                       | async 文件 | 行数  | 缺少 sync 对应 |
 | ------------------------------------------ | ---------- | ----- | -------------- |
 | `scale-ecosystem/marketplace/`             | 9          | 4,215 | **5**          |
-| `platform/execution/` (跨 4 子目录)        | 7          | 1,766 | 0              |
-| `platform/control-plane/incident-control/` | 1          | 784   | 0              |
-| `platform/state-evidence/events/`          | 1          | 121   | 0              |
+| `platform/five-plane-execution/` (跨 4 子目录)        | 7          | 1,766 | 0              |
+| `platform/five-plane-control-plane/incident-control/` | 1          | 784   | 0              |
+| `platform/five-plane-state-evidence/events/`          | 1          | 121   | 0              |
 | `ops-maturity/drift-detection/`            | 1          | 48    | 0              |
 
 > **风险**: marketplace/ 的 5 个无 sync 对应的 async 文件（human-takeover/handshake/writeback/dispatch/event-bus）占总 async 行数的 61%。这些文件直接实现 PG 特化逻辑而非包装现有 sync 服务。
@@ -727,7 +727,7 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 #### 10.1.1 状态更新（2026-04-24）
 
 - `TD-1` 状态：已解决核心缺口。新增 `src/scale-ecosystem/runtime-services/` 子模块，marketplace 根目录原先缺失 sync 对应的 5 个 async 入口已全部补齐兼容 sync/sync-shim，孤儿镜像数 `5 -> 0`。
-- `TD-2` 状态：已完成第一阶段拆边界。新增 `src/platform/orchestration/learn/` 与 `src/platform/orchestration/improve-rollout/` 顶层导出面，`learn/ + improve-rollout/` 不再只挂在 `oapeflir/` 内部路径下。
+- `TD-2` 状态：已完成第一阶段拆边界。新增 `src/platform/five-plane-orchestration/learn/` 与 `src/platform/five-plane-orchestration/improve-rollout/` 顶层导出面，`learn/ + improve-rollout/` 不再只挂在 `oapeflir/` 内部路径下。
 - `TD-3` 状态：已加严守卫。`stub-count-ratchet` 现在剔除纯兼容 facade/re-export 模块，避免把兼容层误计为桩；当前 ratchet 基线收紧为 `111`。
 - `TD-4` 状态：本轮已消除文中列出的 4 个 `1000+` 文件。当前行数分别为 `DomainBaselineCatalog 599`、`WorkerRepository 711`、`SloAlerting 992`、`ApprovalFlow 885`。
 - `TD-5` 状态：已解决。`.coverage-baseline.json` 当前为数值阈值，且 `compareAgainstBaseline()` 现会对 `null/缺失/非法` baseline 直接报错，不再存在“阈值为空但 CI 放行”的漏洞。
@@ -735,7 +735,7 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 - `TD-7` 状态：已完成顶层拆分入口。新增 `src/platform/stability/index.ts` 与 package subpath export，`shared/stability/` 已具备独立顶层消费面，后续可继续做物理迁移。
 - `TD-8` 状态：已部分解决。`marketplace/` 中 5 个重型运行时 async 实现已迁出到 `runtime-services/`；`marketplace/` 当前约 `7,537` 行，对比表中 `11,972` 行已显著下降。
 - `TD-9` 状态：已解决。`package.json` 新增选择性 subpath exports，root `src/index.ts` 改为命名导出 + namespace 导出组合，避免继续只靠全量 barrel 暴露架构面。
-- `TD-2` 追加状态：已完成物理拆分。`oapeflir/learn/` 与 `oapeflir/improve-rollout/` 的实现文件已迁入 `src/platform/orchestration/learn/`、`src/platform/orchestration/improve-rollout/`，旧路径保留兼容 re-export shim；迁移后 `tsc`、相关 `281` 个 unit 测试与 `15` 个 integration/e2e 测试全部通过。
+- `TD-2` 追加状态：已完成物理拆分。`oapeflir/learn/` 与 `oapeflir/improve-rollout/` 的实现文件已迁入 `src/platform/five-plane-orchestration/learn/`、`src/platform/five-plane-orchestration/improve-rollout/`，旧路径保留兼容 re-export shim；迁移后 `tsc`、相关 `281` 个 unit 测试与 `15` 个 integration/e2e 测试全部通过。
 - `TD-7` 追加状态：已完成物理拆分。`shared/stability/` 的 `34` 个实现文件已迁入 `src/platform/stability/`，旧目录仅保留兼容 shim；当前 `src/platform/stability/` 约 `13,642` 行，`src/platform/shared/stability/` 降至 `35` 行，相关 `384` 个 stability 测试全部通过。
 - `TD-6` 追加状态：测试质量守卫已继续收紧。当前 `tests/e2e/` 为 `24` 文件、约 `231` 个 `test/it` 用例；本轮已清零仓库内 `test.skip / it.skip / describe.skip`（`0` 条），并修复了对应的真实缺口，包括 `availability` 异常阈值方向、`CallCircuitBreaker` 首次失败记录/状态流转、`CallGovernance` 非重试错误判定，以及 Harness 终态 invariant 校验。相关 `153` 个受影响测试已全部通过。
 - `TD-8` 追加状态：已完成结构去失衡。`marketplace/` 的 billing、tenant-platform、intelligence、enterprise、operations 已拆为 `src/scale-ecosystem/` 下独立顶层子模块，并保留旧路径 shim 兼容；当前 `marketplace/` 实现行数约 `1,202` 行，占 `scale-ecosystem/` 实现行数约 `7.66%`，已不再是单目录吞噬式体量。

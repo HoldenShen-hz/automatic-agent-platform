@@ -176,7 +176,7 @@
 | R4-11 | MEDIUM   | platform/contracts/executable-contracts/       | LEGACY_CONTRACT_NAMES list has no enforcement mechanism——no deprecation warning/re-export guard/CI lint to prevent new code importing deprecated modules                                            |
 | R4-12 | MEDIUM   | platform/contracts/index.ts                    | Barrel export prefers deprecated type(requestEnvelopeContract) over executable-contracts——incentivizes consuming deprecated interface                                                            |
 | R4-13 | MEDIUM   | platform/contracts/executable-contracts/       | EventEnvelope missing required runId(§28.1); replayBehavior is optional(§28.1 requires explicitly declared); eventVersion is string instead of §28.1 numeric schemaVersion |
-| R4-14 | MEDIUM   | platform/control-plane/                        | P2 module has no OperationalDirective/DecisionDirective emission or consumption——P2→P3/P4 governance gate structurally missing                                                           |
+| R4-14 | MEDIUM   | platform/five-plane-control-plane/                        | P2 module has no OperationalDirective/DecisionDirective emission or consumption——P2→P3/P4 governance gate structurally missing                                                           |
 
 ### 18. Execution + State-Evidence Plane Gaps (§13-§14)
 
@@ -295,12 +295,12 @@
 | #     | Severity   | File                                             | Issue                                                                                                                                                          |
 | ----- | -------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R5-33 | CRITICAL | platform/contracts/types/domain/session-types.ts | EventRecord missing §28.1 required fields: schemaVersion/aggregateId/runId/sequence/replayBehavior/principal/evidenceRefs                                                 |
-| R5-34 | CRITICAL | platform/state-evidence/events/event-registry.ts | Two non-interoperating event registries coexist: legacy task:_ colon namespace vs canonical platform._ dot namespace; platform.* has no Tier-1 routing/Zod validation/typed payload                |
-| R5-35 | CRITICAL | platform/interface/api/http-server/              | No /api/v1/harness-runs and sub-resource routes(§6 canonical API); only has legacy /v1/tasks                                                                                 |
-| R5-36 | HIGH     | platform/interface/api/http-server/              | Missing /api/v1/replay-sessions(§28.5 MVP); admin routes missing all write methods(PUT config/POST panic-directives/POST resume-directives)                                     |
+| R5-34 | CRITICAL | platform/five-plane-state-evidence/events/event-registry.ts | Two non-interoperating event registries coexist: legacy task:_ colon namespace vs canonical platform._ dot namespace; platform.* has no Tier-1 routing/Zod validation/typed payload                |
+| R5-35 | CRITICAL | platform/five-plane-interface/api/http-server/              | No /api/v1/harness-runs and sub-resource routes(§6 canonical API); only has legacy /v1/tasks                                                                                 |
+| R5-36 | HIGH     | platform/five-plane-interface/api/http-server/              | Missing /api/v1/replay-sessions(§28.5 MVP); admin routes missing all write methods(PUT config/POST panic-directives/POST resume-directives)                                     |
 | R5-37 | HIGH     | state-evidence/events/durable-event-bus.ts       | publish() doesn't persist aggregateId/runId/sequence/schemaVersion——replay ordering impossible(§28.5)                                                                    |
 | R5-38 | HIGH     | state-evidence/events/event-types.ts             | Tier-1 list includes non-architecture events(delegation:_/prompt:_/tenant:_) but missing architecture core facts(platform.harness_run._/platform.node*run.*/platform.side*effect.*/platform.budget.*) |
-| R5-39 | MEDIUM   | platform/interface/api/http-server/              | WebSocket bound to /ws instead of §6 required /ws/v1/stream; task-routes uses /v1/tasks without /api/ prefix                                                                       |
+| R5-39 | MEDIUM   | platform/five-plane-interface/api/http-server/              | WebSocket bound to /ws instead of §6 required /ws/v1/stream; task-routes uses /v1/tasks without /api/ prefix                                                                       |
 | R5-40 | MEDIUM   | state-evidence/events/event-registry.ts          | replayBehavior uses simulate_projection instead of §28.1 canonical simulate                                                                                           |
 | R5-41 | MEDIUM   | state-evidence/events/typed-event-bus.ts         | TypedEventPayloadMap doesn't include platform._/oapeflir._ events——compile-time type check silently excludes all canonical runtime events                                                         |
 
@@ -452,9 +452,9 @@
 | R7-19 | P1     | src/interaction/dashboard/metric-aggregator/           | Only covers ~15% of required metrics; UI spec 4-layer 28-panel requires complete metric set                                                           |
 | R7-20 | P1     | src/interaction/dashboard/health-scorer/               | Returns single value; UI spec StabilityPanelView requires 8 fields(uptime/error_rate/p99 etc)                                      |
 | R7-21 | P1     | src/interaction/dashboard/alert-router/                | Only sorts; no real-time routing/overlay/push/haptic notification                                                                          |
-| R7-22 | P1     | src/platform/interface/api/mission-control-service     | MissionControlSnapshot DTO doesn't match UI spec Dashboard wireframe fields                                                 |
-| R7-23 | P1     | src/platform/interface/api/mission-control-service     | getWorkflowCockpit() returns inspect-oriented shape not UI spec presentation shape                                     |
-| R7-24 | P1     | src/platform/interface/api/mission-control-service     | getStabilityPanel() returns array not UI spec required scalar count                                                              |
+| R7-22 | P1     | src/platform/five-plane-interface/api/mission-control-service     | MissionControlSnapshot DTO doesn't match UI spec Dashboard wireframe fields                                                 |
+| R7-23 | P1     | src/platform/five-plane-interface/api/mission-control-service     | getWorkflowCockpit() returns inspect-oriented shape not UI spec presentation shape                                     |
+| R7-24 | P1     | src/platform/five-plane-interface/api/mission-control-service     | getStabilityPanel() returns array not UI spec required scalar count                                                              |
 | R7-25 | P1     | src/interaction/ux/workflow-builder-service            | Only internal methods no REST endpoint; UI spec requires CRUD + validate + publish API                                                   |
 | R7-26 | P1     | src/interaction/ux/conversation-history-service        | Missing clarificationState/riskPreview/actionOptions[] fields                                                               |
 | R7-27 | P1     | src/interaction/ux/conversation-history-service        | No WS event emission; UI spec requires nl.clarification_needed real-time push                                                        |
@@ -481,16 +481,16 @@
 
 | #     | Severity | File/Domain                                    | Issue                                                                         |
 | ----- | ------ | -------------------------------------------- | ---------------------------------------------------------------------------- |
-| R7-41 | P0     | src/platform/interface/api/middleware/       | No rate-limiting middleware; §9.2 requires per-endpoint-class rate limiting           |
-| R7-42 | P0     | src/platform/interface/api/middleware/       | No Idempotency-Key middleware; §6.2 requires idempotency guarantee                             |
-| R7-43 | P0     | src/platform/interface/api/http-server/      | Response missing X-Trace-Id header; §6.2 requires full链路 tracking propagation                            |
+| R7-41 | P0     | src/platform/five-plane-interface/api/middleware/       | No rate-limiting middleware; §9.2 requires per-endpoint-class rate limiting           |
+| R7-42 | P0     | src/platform/five-plane-interface/api/middleware/       | No Idempotency-Key middleware; §6.2 requires idempotency guarantee                             |
+| R7-43 | P0     | src/platform/five-plane-interface/api/http-server/      | Response missing X-Trace-Id header; §6.2 requires full链路 tracking propagation                            |
 | R7-44 | P0     | src/platform/contracts/                      | No inter-plane ContractEnvelope signature verification; §5.2 requires signature+version verification             |
 | R7-45 | P0     | src/platform/                                | No bulkhead isolation pattern; §9.1 requires inter-plane fault isolation                       |
-| R7-46 | P0     | src/platform/control-plane/iam/              | SAML implementation missing X.509 trust-chain validation/C14N/encrypted assertion (security critical TODO) |
-| R7-47 | P1     | src/platform/interface/api/                  | No API version routing/negotiation mechanism; §6.4 requires Accept-Version header routing               |
+| R7-46 | P0     | src/platform/five-plane-control-plane/iam/              | SAML implementation missing X.509 trust-chain validation/C14N/encrypted assertion (security critical TODO) |
+| R7-47 | P1     | src/platform/five-plane-interface/api/                  | No API version routing/negotiation mechanism; §6.4 requires Accept-Version header routing               |
 | R7-48 | P1     | src/platform/stability/                      | Only rehearsal runner no reusable reliability library (circuit-breaker/retry/timeout all missing) |
-| R7-49 | P1     | src/platform/interface/api/middleware/       | CORS default allowedOrigins:["*"] + credentials:true——security anti-pattern                |
-| R7-50 | P1     | src/platform/execution/worker-pool/          | WorkerDrainProtocol 40-line stub missing §8.2 drain-quiesce-terminate three-phase behavior     |
+| R7-49 | P1     | src/platform/five-plane-interface/api/middleware/       | CORS default allowedOrigins:["*"] + credentials:true——security anti-pattern                |
+| R7-50 | P1     | src/platform/five-plane-execution/worker-pool/          | WorkerDrainProtocol 40-line stub missing §8.2 drain-quiesce-terminate three-phase behavior     |
 | R7-51 | P1     | src/org-governance/                          | Governance console missing persistent audit log + RBAC check (marked TODO)                            |
 | R7-52 | P2     | src/platform/shared/stability/ vs stability/ | Duplicate module tree; responsibility boundary unclear                                                     |
 
@@ -499,4 +499,4 @@
 | #     | Severity | File/Domain                                                             | Issue                                                                                                                                |
 | ----- | ------ | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | R8-01 | P0     | src/platform/model-gateway/cost-tracker/budget-guard.ts               | Budget check is stateless comparison; §18.3 requires atomic reserve→execute→settle + BudgetReservation state machine; concurrent can overspend                               |
-| R8-02 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts           | Recovery service is read-only——classifies faults and suggests actions but never executes; no saga rollback/compensation executor/CompensationRecord                          |
+| R8-02 | P0     | src/platform/five-plane-execution/recovery/runtime-recovery-service.ts           | Recovery service is read-only——classifies faults and suggests actions but never executes; no saga rollback/compensation executor/CompensationRecord                          |

@@ -69,7 +69,7 @@ authoritative schema 至少包含以下核心表：
 
 当前仓内不再用架构文档中的静态“总表数”直接做验收口径，而是以 authoritative inventory 为准：
 
-- authoritative service：`src/platform/state-evidence/truth/schema-inventory-service.ts`
+- authoritative service：`src/platform/five-plane-state-evidence/truth/schema-inventory-service.ts`
 - authoritative API surface：`GET /v1/admin/inventories/schema`
 - 当前 inventory 对账口径：`86` 张唯一逻辑表
 - 分类汇总：

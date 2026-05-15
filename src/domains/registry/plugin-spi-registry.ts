@@ -1,6 +1,6 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import type { ArtifactRef } from "../../platform/orchestration/oapeflir/ref-types.js";
+import type { ArtifactRef } from "../../platform/five-plane-orchestration/oapeflir/ref-types.js";
 import { getBuiltinPluginManifest, hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
   HumanOutput,
@@ -14,7 +14,7 @@ import type {
   RetrieverKnowledgeResult,
 } from "./plugin-spi.js";
 import { PluginLifecycleStateSchema, PluginManifestSchema } from "./plugin-spi.js";
-import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import type { TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
 
 export interface RegisteredPluginRecord<TPlugin extends RegisteredPlugin = RegisteredPlugin> {

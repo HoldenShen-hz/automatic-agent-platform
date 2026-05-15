@@ -23,12 +23,12 @@ import {
   checkSandboxPath,
   createWorkspaceWritePolicy,
   type SandboxPolicy,
-} from "../../platform/control-plane/iam/sandbox-policy.js";
-import { ConfigGovernanceService } from "../../platform/control-plane/config-center/config-governance-service.js";
-import { resolveConfigEnvironment } from "../../platform/control-plane/config-center/runtime-env.js";
-import type { MinimalWorkflowDefinition, MinimalWorkflowStep } from "../../platform/orchestration/oapeflir/workflow/minimal-workflow.js";
-import { parseWorkflowOutputSchema } from "../../platform/orchestration/oapeflir/workflow/output-schema.js";
-import { WorkflowValidator } from "../../platform/orchestration/oapeflir/workflow/workflow-validator.js";
+} from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { ConfigGovernanceService } from "../../platform/five-plane-control-plane/config-center/config-governance-service.js";
+import { resolveConfigEnvironment } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
+import type { MinimalWorkflowDefinition, MinimalWorkflowStep } from "../../platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
+import { parseWorkflowOutputSchema } from "../../platform/five-plane-orchestration/oapeflir/workflow/output-schema.js";
+import { WorkflowValidator } from "../../platform/five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { SandboxError, ValidationError } from "../../platform/contracts/errors.js";
 import {

@@ -2132,7 +2132,7 @@ const settingsRoutes = [
 | WS Needs             | `workflow.updated` · `workflow.published` · `workflow.validation_result`                                  |
 | Offline Rule         | 画布编辑允许离线排队（本地草稿）；发布/验证必须在线                                                       |
 | API Endpoint         | `CRUD /api/v1/workflows` · `POST /api/v1/workflows/{id}/validate` · `POST /api/v1/workflows/{id}/publish` |
-| Authoritative Source | `WorkflowDefinitionService` (src/platform/orchestration/)                                                 |
+| Authoritative Source | `WorkflowDefinitionService` (src/platform/five-plane-orchestration/)                                                 |
 | Derived Source       | `MissionControlService.getWorkflowCockpit()` → workflow 摘要（非权威，仅投影）                            |
 | Projection Owner     | 前端 `feature-workflow-builder` 模块                                                                      |
 

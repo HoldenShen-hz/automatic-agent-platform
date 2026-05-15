@@ -180,6 +180,6 @@ data/
 
 ## 8. 补充规则
 
-- `src/platform/interface/api/http-server/` 下的 route 模块应按资源命名，如 `task-routes.ts`、`approval-routes.ts`、`health-routes.ts`，避免按 HTTP 动词拆分。
+- `src/platform/five-plane-interface/api/http-server/` 下的 route 模块应按资源命名，如 `task-routes.ts`、`approval-routes.ts`、`health-routes.ts`，避免按 HTTP 动词拆分。
 - `tests/` 最少分为 `unit/`、`integration/`、`e2e/` 三层，fixture 与 replay 资源单独放在共享目录。
 - 生产环境不依赖本地 `data/`，应替换为数据库、对象存储和集中日志/审计后端。

@@ -9,9 +9,9 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { ProjectionRecord } from "../../platform/state-evidence/projections/index.js";
-import type { TypedEventType } from "../../platform/state-evidence/events/typed-event-bus.js";
+import type { TaskBoardItem } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { ProjectionRecord } from "../../platform/five-plane-state-evidence/projections/index.js";
+import type { TypedEventType } from "../../platform/five-plane-state-evidence/events/typed-event-bus.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -106,7 +106,7 @@ export class DashboardProjectionService {
     };
 
     // System health events are global; all others are tenant-scoped
-    // @ts-ignore - system.health.changed may not be in TypedEventType but is handled at runtime
+    // @ts-expect-error - system.health.changed may not be in TypedEventType but is handled at runtime
     const isSystemHealth = eventType === "system.health.changed";
     const rawPayload = payload as Record<string, unknown>;
     const tenantId = isSystemHealth ? null : (rawPayload?.tenantId as string ?? null);

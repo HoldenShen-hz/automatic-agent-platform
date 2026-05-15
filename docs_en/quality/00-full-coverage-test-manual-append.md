@@ -103,7 +103,7 @@
 | Global function coverage (c8)       | **0.61%**     |
 | Global branch coverage (c8)         | **0.61%**     |
 
-> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 claimed global line coverage of 82.4%, but c8 full analysis this time verified it is only **0.75%** (only 1,384 of 182,253 lines covered, all in 6 `src/platform/state-evidence/truth/sqlite/` authoritative-task-store-delegating-\*.ts files). `.coverage-baseline.json` baseline file has all null values, never actually populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis, corrected to measured values in this version.
+> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 claimed global line coverage of 82.4%, but c8 full analysis this time verified it is only **0.75%** (only 1,384 of 182,253 lines covered, all in 6 `src/platform/five-plane-state-evidence/truth/sqlite/` authoritative-task-store-delegating-\*.ts files). `.coverage-baseline.json` baseline file has all null values, never actually populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis, corrected to measured values in this version.
 
 ---
 
@@ -122,7 +122,7 @@ npm run test:integration
 npm run test:golden
 
 # Specific files
-npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
 # PostgreSQL integration tests (requires PG environment)
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -504,7 +504,7 @@ Global thresholds (v4.0 c8 measured data):
 | Functions  | **0.61%**      | 88.5%        | Only 6 of 983 functions covered        |
 | Branches   | **0.61%**      | 80.6%        | Same as above                          |
 
-> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), baseline was never truly populated. The 82.4% line coverage claimed in v3.0 was verified by c8 `all: true` full analysis to be **0.75%**. Actually covered are only 6 files in `src/platform/state-evidence/truth/sqlite/` (1,384 lines, all 100% covered). The remaining 977 source files all have 0% coverage. This indicates v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
+> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), baseline was never truly populated. The 82.4% line coverage claimed in v3.0 was verified by c8 `all: true` full analysis to be **0.75%**. Actually covered are only 6 files in `src/platform/five-plane-state-evidence/truth/sqlite/` (1,384 lines, all 100% covered). The remaining 977 source files all have 0% coverage. This indicates v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
 >
 > **Action Items**: (1) Run complete `npm test` + c8 full coverage analysis, (2) populate `.coverage-baseline.json` baseline, (3) enable coverage gate in CI.
 
@@ -523,7 +523,7 @@ Global thresholds (v4.0 c8 measured data):
 
 | Directory                              | Files | Covered Files | Lines                  | Functions |
 | -------------------------------------- | ----- | ------------- | ---------------------- | --------- |
-| `src/platform/state-evidence/truth/sqlite/` | 25    | 6             | 1,384/36,219 (3.82%) | 6/167     |
+| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25    | 6             | 1,384/36,219 (3.82%) | 6/167     |
 
 The 6 covered files (all 100%):
 
@@ -538,11 +538,11 @@ The 6 covered files (all 100%):
 
 | Directory                        | Files | Total Lines | Lines Coverage |
 | -------------------------------- | ----- | ----------- | -------------- |
-| `src/platform/execution/`        | 162   | 43,202      | 0%             |
+| `src/platform/five-plane-execution/`        | 162   | 43,202      | 0%             |
 | `src/platform/shared/`           | 100   | 24,079      | 0%             |
-| `src/platform/control-plane/`    | 75    | 23,555      | 0%             |
-| `src/platform/orchestration/`    | 81    | 9,332       | 0%             |
-| `src/platform/interface/`        | 49    | 8,705       | 0%             |
+| `src/platform/five-plane-control-plane/`    | 75    | 23,555      | 0%             |
+| `src/platform/five-plane-orchestration/`    | 81    | 9,332       | 0%             |
+| `src/platform/five-plane-interface/`        | 49    | 8,705       | 0%             |
 | `src/scale-ecosystem/marketplace/` | 26  | 7,737       | 0%             |
 | `src/sdk/cli/`                   | 78    | 6,148       | 0%             |
 | `src/platform/model-gateway/`    | 17    | 5,012       | 0%             |
@@ -1126,7 +1126,7 @@ Regular line/branch coverage cannot guarantee:
 
 | State Machine | Definition File                                           | Validation File                                                        | States | Terminal States                             |
 | ------------- | -------------------------------------------------------- | --------------------------------------------------------------------- | ------ | ------------------------------------------ |
-| **Task**      | `src/platform/execution/state-transition/types.ts` | `src/platform/execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
 | **Workflow**  | same                                                      | same                                                                  | 7      | completed, failed, cancelled                |
 | **Session**   | same                                                      | same                                                                  | 7      | completed, failed, cancelled                |
 | **Execution** | same                                                      | same                                                                  | 8      | succeeded, failed, cancelled, superseded   |
@@ -1234,7 +1234,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // Auto-generate legal transition pairs from production map
 const validPairs: Array<[string, string]> = [];
@@ -1659,7 +1659,7 @@ src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/fee
 #### Table 2: Source File → Integration Test
 
 ```
-src/platform/execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
+src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
 ---
@@ -2105,9 +2105,9 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 
 | File                                                       | Test File                                                           |
 | ---------------------------------------------------------- | ------------------------------------------------------------------- |
-| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/execution/redis-lock-error.test.ts`            |
-| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/execution/redis-queue-error.test.ts`          |
-| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts`    |
+| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`            |
+| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`          |
+| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts`    |
 | `shared/cache/stores/redis-cache-store.ts`                 | `tests/unit/platform/shared/redis-cache-error.test.ts`              |
 
 ### 29.2 [SYS-REL-2.3] DLQ In-Memory Only, Lost on Restart
@@ -2411,7 +2411,7 @@ Convert structural issues found in architecture review into **continuously runni
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 

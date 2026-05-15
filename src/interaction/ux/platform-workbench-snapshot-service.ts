@@ -1,6 +1,6 @@
 import type { AttentionItem, OperatorDashboard } from "../dashboard/index.js";
 import type { GuidedOnboardingSession } from "./user-experience-orchestration-service.js";
-import type { HitlInboxItem } from "../../platform/orchestration/hitl/hitl-inbox-service.js";
+import type { HitlInboxItem } from "../../platform/five-plane-orchestration/hitl/hitl-inbox-service.js";
 import type { SdkWorkbenchShortcut } from "../../sdk/workbench/index.js";
 
 export interface WorkbenchApprovalQueueItem {

@@ -20,11 +20,11 @@ src/
 
 | 模块 | 说明 |
 | --- | --- |
-| `platform/interface/` | API、channel gateway、ingress、scheduler、console/webhook 边界 |
-| `platform/control-plane/` | 配置、IAM、审批、事件导出、发布与事故控制 |
-| `platform/orchestration/` | OAPEFLIR、planner、routing、HITL |
-| `platform/execution/` | dispatcher、execution-engine、worker、queue、lease、recovery |
-| `platform/state-evidence/` | truth、events、checkpoints、artifacts、knowledge、memory |
+| `platform/five-plane-interface/` | API、channel gateway、ingress、scheduler、console/webhook 边界 |
+| `platform/five-plane-control-plane/` | 配置、IAM、审批、事件导出、发布与事故控制 |
+| `platform/five-plane-orchestration/` | OAPEFLIR、planner、routing、HITL |
+| `platform/five-plane-execution/` | dispatcher、execution-engine、worker、queue、lease、recovery |
+| `platform/five-plane-state-evidence/` | truth、events、checkpoints、artifacts、knowledge、memory |
 
 ## 说明
 

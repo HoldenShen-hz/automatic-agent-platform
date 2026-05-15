@@ -41,7 +41,7 @@
 
 **过长的import语句**: 查看源文件发现大量deep import，例如:
 ```typescript
-import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 ```
 应优先使用包导出 (`import { BudgetAllocator } from "@automatic-agent/platform/execution"`)
 
@@ -341,8 +341,8 @@ deploy/
 - **文件/路径**: `tsconfig.json` exclude 部分
 - **问题描述**: 排除了约80个测试文件和目录，包括：
   - 大量 `*.extended.test.ts` 文件
-  - 整个 `tests/unit/platform/execution/**/*.test.ts` 目录
-  - 整个 `tests/integration/platform/orchestration/**/*.test.ts` 目录
+  - 整个 `tests/unit/platform/five-plane-execution/**/*.test.ts` 目录
+  - 整个 `tests/integration/platform/five-plane-orchestration/**/*.test.ts` 目录
   - 多个 `tests/e2e/*.test.ts` 文件
   - 多个 `tests/unit/interaction/**/*.test.ts`, `tests/unit/ops-maturity/**/*.test.ts` 等
 - **建议修复**: 调查这些测试被排除的根本原因：
@@ -366,7 +366,7 @@ deploy/
 
 #### 6. [源代码] [低严重] [过深的import路径]
 - **文件/路径**: 多个源文件
-- **问题描述**: 发现类似 `../../../../src/platform/execution/budget-allocator.js` 的深层相对导入，这种写法：
+- **问题描述**: 发现类似 `../../../../src/platform/five-plane-execution/budget-allocator.js` 的深层相对导入，这种写法：
   1. 暴露内部结构
   2. 使重构困难
   3. 与 package exports 导出方式不一致
@@ -393,9 +393,9 @@ deploy/
   3. 设置 lint 规则检查这些标记
 
 #### 9. [测试] [高严重] [测试覆盖率分布不均]
-- **文件/路径**: `tests/unit/platform/execution/` (整个目录被exclude)
+- **文件/路径**: `tests/unit/platform/five-plane-execution/` (整个目录被exclude)
 - **问题描述**: 
-  - `tests/unit/platform/execution/` 目录被完全排除在 TypeScript 编译之外
+  - `tests/unit/platform/five-plane-execution/` 目录被完全排除在 TypeScript 编译之外
   - 包含 budget-allocator、dispatcher、execution-engine 等核心功能的测试
   - 这意味着这些关键路径没有 CI 级别的测试保护
 - **建议修复**: 修复或重新启用这些测试
@@ -403,17 +403,17 @@ deploy/
 #### 10. [测试] [高严重] [大量集成测试被排除]
 - **文件/路径**: 多个 `tests/integration/**` 目录
 - **问题描述**: 以下集成测试目录被排除：
-  - `tests/integration/platform/orchestration/**/*.test.ts`
-  - `tests/integration/platform/execution/**/*.test.ts`
-  - `tests/integration/platform/control-plane/**/*.test.ts`
-  - `tests/integration/platform/interface/**/*.test.ts`
+  - `tests/integration/platform/five-plane-orchestration/**/*.test.ts`
+  - `tests/integration/platform/five-plane-execution/**/*.test.ts`
+  - `tests/integration/platform/five-plane-control-plane/**/*.test.ts`
+  - `tests/integration/platform/five-plane-interface/**/*.test.ts`
   - `tests/integration/platform/model-gateway/**/*.test.ts`
   - `tests/integration/platform/security/**/*.test.ts`
   - `tests/integration/platform/shared/cache/**/*.test.ts`
   - `tests/integration/platform/shared/stability/**/*.test.ts`
-  - `tests/integration/platform/state-evidence/events/**/*.test.ts`
-  - `tests/integration/platform/state-evidence/knowledge/**/*.test.ts`
-  - `tests/integration/platform/state-evidence/memory/**/*.test.ts`
+  - `tests/integration/platform/five-plane-state-evidence/events/**/*.test.ts`
+  - `tests/integration/platform/five-plane-state-evidence/knowledge/**/*.test.ts`
+  - `tests/integration/platform/five-plane-state-evidence/memory/**/*.test.ts`
   - `tests/integration/domains/governance/**/*.test.ts`
   - `tests/integration/interaction/**/*.test.ts`
   - `tests/integration/org-governance/**/*.test.ts`
@@ -1034,7 +1034,7 @@ deploy/
 - **文件/路径**: `tsconfig.json` exclude 部分
 - **问题描述**: 
   - 排除了约 80 个测试文件和目录
-  - 包括整个 `tests/unit/platform/execution/` 目录
+  - 包括整个 `tests/unit/platform/five-plane-execution/` 目录
   - 包括所有 `tests/integration/platform/*/` 目录
   - 包括多个 E2E 测试文件
 - **建议修复**: 
@@ -1136,7 +1136,7 @@ deploy/
   3. 在 CI 中优先运行 IAM 相关测试
 
 #### 69. [源代码] [高严重] [接口一致性问题 - durable-event-bus 测试失败]
-- **文件/路径**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts`
 - **问题描述**: 
   - `durable-event-bus.ts` (1214行) 是巨型源文件
   - 对应的 `durable-event-bus-async.test.ts` 测试失败
@@ -1190,7 +1190,7 @@ deploy/
 - **文件/路径**: `tsconfig.json` exclude 部分
 - **问题描述**: 
   - 排除了约 80+ 个测试文件
-  - 包括整个 `tests/unit/platform/execution/` 目录
+  - 包括整个 `tests/unit/platform/five-plane-execution/` 目录
   - 包括所有 `tests/integration/platform/*/` 目录
   - 之前的问题 #63 提到但未分析根本原因
   - 这么多测试被排除不是正常现象
@@ -1640,7 +1640,7 @@ deploy/
   4. 确保 budget allocator 有完整的单元测试覆盖
 
 #### 108. [测试] [中严重] [worker-pool 测试失败 - 关键并发模块无保护]
-- **文件/路径**: `tests/unit/platform/execution/worker-pool/worker-pool-comprehensive.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/worker-pool/worker-pool-comprehensive.test.ts`
 - **问题描述**: 
   - 根据 `.audit/quality.md`，该测试失败
   - worker-pool 是执行引擎的关键并发组件
@@ -2032,7 +2032,7 @@ deploy/
 - **文件/路径**: `tsconfig.json` exclude 部分
 - **问题描述**: 
   - 排除了约 80+ 个测试文件和目录
-  - 包括整个 `tests/unit/platform/execution/` 目录
+  - 包括整个 `tests/unit/platform/five-plane-execution/` 目录
   - 包括所有 `tests/integration/platform/*/` 目录
   - 包括 11 个 `tests/unit/platform/***/` 目录
   - 包括 13 个 `tests/unit/scale-ecosystem/***/` 目录
@@ -2507,13 +2507,13 @@ deploy/
 - **问题描述**: 
   - 排除了所有 `tests/integration/platform/*/` 目录
   - 包括:
-    - tests/integration/platform/orchestration/
-    - tests/integration/platform/execution/
-    - tests/integration/platform/control-plane/
-    - tests/integration/platform/interface/
+    - tests/integration/platform/five-plane-orchestration/
+    - tests/integration/platform/five-plane-execution/
+    - tests/integration/platform/five-plane-control-plane/
+    - tests/integration/platform/five-plane-interface/
     - tests/integration/platform/model-gateway/
     - tests/integration/platform/security/
-    - tests/integration/platform/state-evidence/
+    - tests/integration/platform/five-plane-state-evidence/
   - 这意味着平台集成测试在 CI 中不运行
 - **建议修复**: 
   1. 调查 integration 测试被排除的原因
@@ -3105,8 +3105,8 @@ deploy/
 #### 2. [src/代码质量] [严重-高] [巨型源文件未拆分 - 违反单一职责原则]
 - **文件/路径**: 
   - `src/platform/five-plane-orchestration/harness/index.ts` (2317行)
-  - `src/platform/execution/budget-allocator.ts` (34KB+)
-  - `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+  - `src/platform/five-plane-execution/budget-allocator.ts` (34KB+)
+  - `src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts`
   - `src/domains/domain-baseline-seeds.ts` (35KB+)
 - **问题描述**: 多个源文件超过 1000 行，违反单一职责原则，导致：
   1. 代码难以维护和测试
@@ -3207,7 +3207,7 @@ if (process.env.AA_RUNNING_TESTS === "1") {
 #### 14. [tests/测试质量] [严重-中] [测试存在 TODO 注释表明未完成]
 - **文件/路径**: 
   - `tests/unit/platform/contracts/anomaly-event-classification.test.ts:61,80,85,114`
-  - `tests/integration/platform/interface/api/http-api-server.test.ts:17`
+  - `tests/integration/platform/five-plane-interface/api/http-api-server.test.ts:17`
   - `tests/integration/platform/security/enterprise-capability-boundary.test.ts:72`
   - `tests/integration/platform/security/sandbox-patch-dsl-service.test.ts:195,240`
 - **问题描述**: 多个测试文件包含 `// TODO: fix` 注释，表明测试尚未完成或存在已知问题
@@ -3322,7 +3322,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 添加核心场景（服务中断、网络分区、资源耗尽等）
 
 #### 31. [src/并发] [严重-中] [Distributed Lock 实现可能存在问题]
-- **文件/路径**: `src/platform/execution/distributed-lock/`
+- **文件/路径**: `src/platform/five-plane-execution/distributed-lock/`
 - **问题描述**: 
   1. 锁的 TTL 管理可能存在问题
   2. 未看到锁续期机制
@@ -3330,7 +3330,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 添加锁续期机制和改进错误处理
 
 #### 32. [src/性能] [严重-低] [N+1 查询风险]
-- **文件/路径**: `src/platform/state-evidence/` 中的 repository 实现
+- **文件/路径**: `src/platform/five-plane-state-evidence/` 中的 repository 实现
 - **问题描述**: 在批量操作中可能存在 N+1 查询问题
 - **建议修复**: 使用批量查询或 JOIN
 
@@ -3345,7 +3345,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 添加 aria-label 到所有交互元素
 
 #### 35. [src/错误恢复] [严重-中] [错误恢复机制不完整]
-- **文件/路径**: `src/platform/execution/recovery/`
+- **文件/路径**: `src/platform/five-plane-execution/recovery/`
 - **问题描述**: 恢复逻辑可能未覆盖所有故障场景
 - **建议修复**: 补充测试覆盖所有故障场景
 
@@ -3476,8 +3476,8 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 #### 5. [测试] [中严重] [tsconfig exclude列表过长 - 100+条目]
 - **文件/路径**: `tsconfig.json`
 - **问题描述**: exclude列表包含100+个条目，排除了大量测试文件：
-  - `tests/unit/platform/execution/**/*.test.ts`
-  - `tests/integration/platform/orchestration/**/*.test.ts`
+  - `tests/unit/platform/five-plane-execution/**/*.test.ts`
+  - `tests/integration/platform/five-plane-orchestration/**/*.test.ts`
   - `tests/e2e/multi-region-failover.test.ts`
   - 等
   这表明可能存在：
@@ -4788,7 +4788,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 #### 140. [测试] [高严重] [大量测试被exclude导致覆盖缺口巨大]
 - **文件/路径**: `tsconfig.json` exclude 部分 (约80个条目)
 - **问题描述**: 
-  - 排除了整个 `tests/unit/platform/execution/` 目录
+  - 排除了整个 `tests/unit/platform/five-plane-execution/` 目录
   - 排除了所有 `tests/integration/platform/*/` 目录
   - 排除了 5 个 E2E 测试文件
   - 包括 `budget-allocator.test.ts`、`durable-event-bus-async.test.ts` 等核心测试
@@ -4811,7 +4811,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保在 PR 合并前测试通过
 
 #### 142. [测试] [高严重] [durable-event-bus-async.test.ts 测试失败]
-- **文件/路径**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts`
 - **问题描述**: 
   - `durable-event-bus.ts` (1214行) 是巨型文件
   - 对应的异步测试失败
@@ -4822,7 +4822,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保事件投递、重试、背压等核心逻辑有测试覆盖
 
 #### 143. [测试] [高严重] [checkpoint迁移测试失败]
-- **文件/路径**: `tests/unit/platform/state-evidence/checkpoints/node-run-checkpoint-migration.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-state-evidence/checkpoints/node-run-checkpoint-migration.test.ts`
 - **问题描述**: 
   - checkpoint 是工作流恢复的关键机制
   - 迁移测试失败可能导致数据丢失风险
@@ -5312,7 +5312,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 保留 index.ts 作为 barrel 导出文件
 
 #### 184. [源代码] [高严重] [budget-allocator.ts 文件体积异常 - 34KB]
-- **文件/路径**: `src/platform/execution/budget-allocator.ts`
+- **文件/路径**: `src/platform/five-plane-execution/budget-allocator.ts`
 - **问题描述**: 
   - 文件大小达到 34KB（931行）
   - 包含预算分配、结算、预留等复杂逻辑
@@ -5324,7 +5324,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 创建明确模块边界
 
 #### 185. [源代码] [高严重] [runtime-state-machine.ts 体积过大 - 26KB]
-- **文件/路径**: `src/platform/execution/runtime-state-machine.ts`
+- **文件/路径**: `src/platform/five-plane-execution/runtime-state-machine.ts`
 - **问题描述**: 
   - 文件大小 26KB (约 800+ 行)
   - 包含多个状态机定义 (HarnessRun, NodeRun, SideEffect, BudgetLedger, BudgetReservation)
@@ -6005,7 +6005,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   4. 实现密钥轮换时的会话失效机制
 
 #### 15. [访问控制] [中严重] [缺少细粒度的权限控制模型]
-- **文件/路径**: `src/platform/control-plane/iam/`, `config/security/`
+- **文件/路径**: `src/platform/five-plane-control-plane/iam/`, `config/security/`
 - **问题描述**: 
   - 安全配置中只有 approvalMode 和 sandboxMode
   - 没有基于角色的访问控制 (RBAC) 实现细节
@@ -6044,7 +6044,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   4. 定期更新禁止列表
 
 #### 18. [安全审计日志] [高严重] [审计日志缺少完整性验证机制]
-- **文件/路径**: `src/platform/state-evidence/audit/`, `.audit/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/audit/`, `.audit/`
 - **问题描述**: 
   - .audit/ 目录包含审计数据但未被 gitignore
   - 没有看到防篡改机制
@@ -7608,7 +7608,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 #### 207. [源代码] [中严重] [API设计和版本管理 - 深层 import 路径混乱]
 - **文件/路径**: 多个源文件使用深层相对导入
 - **问题描述**: 
-  - `import { newId } from "../../../../src/platform/execution/budget-allocator.js"` 类型的导入
+  - `import { newId } from "../../../../src/platform/five-plane-execution/budget-allocator.js"` 类型的导入
   - 不使用 package exports 定义的路径
   - 使重构困难
 - **建议修复**: 
@@ -8603,7 +8603,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **文件/路径**: `tsconfig.json` exclude 部分
 - **问题描述**: 
   - 排除了114个测试文件和目录
-  - 包括整个 `tests/unit/platform/execution/` 目录
+  - 包括整个 `tests/unit/platform/five-plane-execution/` 目录
   - 包括所有 `tests/integration/platform/*/` 目录
   - 这么多测试被排除不是正常现象
   - 可能表明：
@@ -8621,7 +8621,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   4. 如果确实需要排除，明确记录原因并设置复查日期
 
 #### 284. [测试] [高严重] [durable-event-bus-async.test.ts 测试失败]
-- **文件/路径**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts`
 - **问题描述**: 
   - `durable-event-bus.ts` (1214行) 是巨型源文件
   - 对应的异步测试失败
@@ -8632,7 +8632,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保事件投递、重试、背压等核心逻辑有测试覆盖
 
 #### 285. [测试] [高严重] [budget-allocator.test.ts 测试失败]
-- **文件/路径**: `tests/unit/platform/execution/budget-allocator.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/budget-allocator.test.ts`
 - **问题描述**: 
   - `budget-allocator.ts` (931行) 是巨型源文件
   - 对应测试 `budget-allocator.test.ts` 失败
@@ -9939,7 +9939,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -10189,7 +10189,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -10287,7 +10287,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -10514,7 +10514,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -10751,7 +10751,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -10797,7 +10797,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -10809,7 +10809,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -10874,7 +10874,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -11103,7 +11103,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -11353,7 +11353,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -11451,7 +11451,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -11678,7 +11678,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -11957,7 +11957,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -12275,7 +12275,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -12525,7 +12525,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -12623,7 +12623,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -12850,7 +12850,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -13087,7 +13087,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -13133,7 +13133,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -13145,7 +13145,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -13210,7 +13210,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -13439,7 +13439,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -13689,7 +13689,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -13787,7 +13787,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -14014,7 +14014,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -14610,7 +14610,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -14860,7 +14860,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -14958,7 +14958,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -15185,7 +15185,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -15422,7 +15422,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -15468,7 +15468,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -15480,7 +15480,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -15545,7 +15545,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -15774,7 +15774,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -16024,7 +16024,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -16122,7 +16122,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -16349,7 +16349,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -16628,7 +16628,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -16946,7 +16946,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -17196,7 +17196,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -17294,7 +17294,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -17521,7 +17521,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -17758,7 +17758,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -17804,7 +17804,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -17816,7 +17816,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -17881,7 +17881,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -18110,7 +18110,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -18360,7 +18360,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -18458,7 +18458,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -18685,7 +18685,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -18919,7 +18919,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在修改时复制一份 scopes
 
 #### 8. [源代码] [中严重] [OIDC _skipSignatureVerification 标志存在风险]
-- **文件/路径**: `src/platform/interface/api/oidc-oauth-service.ts:92,108-111`
+- **文件/路径**: `src/platform/five-plane-interface/api/oidc-oauth-service.ts:92,108-111`
 - **问题描述**: 
   - `_skipSignatureVerification` 标志存在于生产代码路径
   - 虽然标记为仅测试使用，但配置错误可能导致安全问题
@@ -19286,7 +19286,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -19536,7 +19536,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -19634,7 +19634,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -19861,7 +19861,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -20098,7 +20098,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -20144,7 +20144,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -20156,7 +20156,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -20221,7 +20221,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -20450,7 +20450,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -20700,7 +20700,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -20798,7 +20798,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -21025,7 +21025,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -21304,7 +21304,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -21622,7 +21622,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -21872,7 +21872,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -21970,7 +21970,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -22197,7 +22197,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -22434,7 +22434,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -22480,7 +22480,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -22492,7 +22492,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -22557,7 +22557,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -22786,7 +22786,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -23036,7 +23036,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -23134,7 +23134,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -23361,7 +23361,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -23957,7 +23957,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -24207,7 +24207,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -24305,7 +24305,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -24532,7 +24532,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -24769,7 +24769,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -24815,7 +24815,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -24827,7 +24827,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -24892,7 +24892,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -25121,7 +25121,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -25371,7 +25371,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -25469,7 +25469,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -25696,7 +25696,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -25975,7 +25975,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -26293,7 +26293,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -26543,7 +26543,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -26641,7 +26641,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -26868,7 +26868,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -27105,7 +27105,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -27151,7 +27151,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -27163,7 +27163,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -27228,7 +27228,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -27457,7 +27457,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -27707,7 +27707,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -27805,7 +27805,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -28032,7 +28032,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -28200,7 +28200,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 TODO 完成前添加监控告警
 
 #### 3. [源代码] [高严重] [SDK 与 Server 路由不匹配 - /handshake 和 /version 缺失]
-- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 及 `src/platform/interface/api/`
+- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 及 `src/platform/five-plane-interface/api/`
 - **问题描述**: 
   - SDK client 调用 `/handshake` 和 `/version` 端点
   - 但服务器端没有这些路由的处理程序
@@ -28234,7 +28234,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 启用 `order_execution` 或从 requiredTools 中移除
 
 #### 6. [源代码] [中严重] [SDK 与 Server 错误类别不一致]
-- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 和 `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 和 `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   - SDK 映射: 4xx → BUSINESS, 400 为 BUSINESS
   - Server 映射: 400 → validation, 422 → business-rule
@@ -28305,7 +28305,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 或使用事件驱动而非轮询
 
 #### 11. [源代码] [中严重] [VersionRoutingMiddleware 未连接到路由]
-- **文件/路径**: `src/platform/interface/api/middleware/version-routing.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/middleware/version-routing.ts`
 - **问题描述**: 
   - `VersionRoutingMiddleware` 存在但从未应用到任何路由
   - `supportedVersions: ["2026-04-01", "2026-01-01"]` 未生效
@@ -28428,7 +28428,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 使用 // @ts-expect-error 替代单个错误
 
 #### 21. [测试] [中严重] [3个集成测试因缺少 workflow_state 设置而跳过]
-- **文件/路径**: `tests/integration/platform/execution/budget-allocation.integration.test.ts`
+- **文件/路径**: `tests/integration/platform/five-plane-execution/budget-allocation.integration.test.ts`
 - **问题描述**: 
   - 3个测试因缺少 `evaluateMultiDimensionalQuota` 和 `workflow_state` 记录而跳过
   - 关键预算分配功能未测试
@@ -28712,7 +28712,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -28962,7 +28962,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -29060,7 +29060,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -29287,7 +29287,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -29524,7 +29524,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -29570,7 +29570,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -29582,7 +29582,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -29647,7 +29647,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -29876,7 +29876,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -30126,7 +30126,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -30224,7 +30224,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -30451,7 +30451,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -30730,7 +30730,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -31048,7 +31048,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -31298,7 +31298,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -31396,7 +31396,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -31623,7 +31623,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -31860,7 +31860,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -31906,7 +31906,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -31918,7 +31918,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -31983,7 +31983,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -32212,7 +32212,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -32462,7 +32462,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -32560,7 +32560,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -32787,7 +32787,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -33383,7 +33383,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -33633,7 +33633,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -33731,7 +33731,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -33958,7 +33958,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -34195,7 +34195,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -34241,7 +34241,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -34253,7 +34253,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -34318,7 +34318,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -34547,7 +34547,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -34797,7 +34797,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -34895,7 +34895,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -35122,7 +35122,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -35401,7 +35401,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -35719,7 +35719,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -35969,7 +35969,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -36067,7 +36067,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -36294,7 +36294,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -36531,7 +36531,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -36577,7 +36577,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -36589,7 +36589,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -36654,7 +36654,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -36883,7 +36883,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -37133,7 +37133,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -37231,7 +37231,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -37458,7 +37458,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -37692,7 +37692,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在修改时复制一份 scopes
 
 #### 8. [源代码] [中严重] [OIDC _skipSignatureVerification 标志存在风险]
-- **文件/路径**: `src/platform/interface/api/oidc-oauth-service.ts:92,108-111`
+- **文件/路径**: `src/platform/five-plane-interface/api/oidc-oauth-service.ts:92,108-111`
 - **问题描述**: 
   - `_skipSignatureVerification` 标志存在于生产代码路径
   - 虽然标记为仅测试使用，但配置错误可能导致安全问题
@@ -38059,7 +38059,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -38309,7 +38309,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -38407,7 +38407,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -38634,7 +38634,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -38871,7 +38871,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -38917,7 +38917,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -38929,7 +38929,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -38994,7 +38994,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -39223,7 +39223,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -39473,7 +39473,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -39571,7 +39571,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -39798,7 +39798,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -40077,7 +40077,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -40395,7 +40395,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -40645,7 +40645,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -40743,7 +40743,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -40970,7 +40970,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -41207,7 +41207,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -41253,7 +41253,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -41265,7 +41265,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -41330,7 +41330,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -41559,7 +41559,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -41809,7 +41809,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -41907,7 +41907,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -42134,7 +42134,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -42730,7 +42730,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -42980,7 +42980,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -43078,7 +43078,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -43305,7 +43305,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -43542,7 +43542,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -43588,7 +43588,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -43600,7 +43600,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -43665,7 +43665,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -43894,7 +43894,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -44144,7 +44144,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -44242,7 +44242,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -44469,7 +44469,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -44748,7 +44748,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -45066,7 +45066,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -45316,7 +45316,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -45414,7 +45414,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -45641,7 +45641,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -45878,7 +45878,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -45924,7 +45924,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -45936,7 +45936,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -46001,7 +46001,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -46230,7 +46230,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -46480,7 +46480,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -46578,7 +46578,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -46805,7 +46805,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -47037,8 +47037,8 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 #### 8. [源代码] [高严重] [core/runtime 是空壳，只做重导出]
 - **文件/路径**: `src/core/runtime/`
 - **问题描述**: 
-  - `orchestrator/index.ts` -> 重导出 `platform/execution/execution-engine/multi-step-orchestration.js`
-  - `supervisor/index.ts` -> 重导出 `platform/execution/execution-engine/multi-step-supervisor.js`
+  - `orchestrator/index.ts` -> 重导出 `platform/five-plane-execution/execution-engine/multi-step-orchestration.js`
+  - `supervisor/index.ts` -> 重导出 `platform/five-plane-execution/execution-engine/multi-step-supervisor.js`
   - 实际实现在 platform/，core/runtime 只是兼容层
   - CLAUDE.md 说这是兼容性目录，但可能造成混淆
 - **建议修复**: 
@@ -47532,7 +47532,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -47782,7 +47782,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -47880,7 +47880,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -48107,7 +48107,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -48344,7 +48344,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -48390,7 +48390,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -48402,7 +48402,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -48467,7 +48467,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -48696,7 +48696,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -48946,7 +48946,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -49044,7 +49044,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -49271,7 +49271,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -49550,7 +49550,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -49868,7 +49868,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -50118,7 +50118,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -50216,7 +50216,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -50443,7 +50443,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -50680,7 +50680,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -50726,7 +50726,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -50738,7 +50738,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -50803,7 +50803,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -51032,7 +51032,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -51282,7 +51282,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -51380,7 +51380,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -51607,7 +51607,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -52203,7 +52203,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -52453,7 +52453,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -52551,7 +52551,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -52778,7 +52778,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -53015,7 +53015,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -53061,7 +53061,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -53073,7 +53073,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -53138,7 +53138,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -53367,7 +53367,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -53617,7 +53617,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -53715,7 +53715,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -53942,7 +53942,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -54221,7 +54221,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -54539,7 +54539,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -54789,7 +54789,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -54887,7 +54887,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -55114,7 +55114,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -55351,7 +55351,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -55397,7 +55397,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -55409,7 +55409,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -55474,7 +55474,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -55703,7 +55703,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -55953,7 +55953,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -56051,7 +56051,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -56278,7 +56278,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -56512,7 +56512,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在修改时复制一份 scopes
 
 #### 8. [源代码] [中严重] [OIDC _skipSignatureVerification 标志存在风险]
-- **文件/路径**: `src/platform/interface/api/oidc-oauth-service.ts:92,108-111`
+- **文件/路径**: `src/platform/five-plane-interface/api/oidc-oauth-service.ts:92,108-111`
 - **问题描述**: 
   - `_skipSignatureVerification` 标志存在于生产代码路径
   - 虽然标记为仅测试使用，但配置错误可能导致安全问题
@@ -56879,7 +56879,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -57129,7 +57129,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -57227,7 +57227,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -57454,7 +57454,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -57691,7 +57691,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -57737,7 +57737,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -57749,7 +57749,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -57814,7 +57814,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -58043,7 +58043,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -58293,7 +58293,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -58391,7 +58391,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -58618,7 +58618,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -58897,7 +58897,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -59215,7 +59215,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -59465,7 +59465,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -59563,7 +59563,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -59790,7 +59790,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -60027,7 +60027,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -60073,7 +60073,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -60085,7 +60085,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -60150,7 +60150,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -60379,7 +60379,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -60629,7 +60629,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -60727,7 +60727,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -60954,7 +60954,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -61550,7 +61550,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -61800,7 +61800,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -61898,7 +61898,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -62125,7 +62125,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -62362,7 +62362,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -62408,7 +62408,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -62420,7 +62420,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -62485,7 +62485,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -62714,7 +62714,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -62964,7 +62964,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -63062,7 +63062,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -63289,7 +63289,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -63568,7 +63568,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -63886,7 +63886,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -64136,7 +64136,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -64234,7 +64234,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -64461,7 +64461,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -64698,7 +64698,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -64744,7 +64744,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -64756,7 +64756,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -64821,7 +64821,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -65050,7 +65050,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -65300,7 +65300,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -65398,7 +65398,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -65625,7 +65625,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -65793,7 +65793,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 TODO 完成前添加监控告警
 
 #### 3. [源代码] [高严重] [SDK 与 Server 路由不匹配 - /handshake 和 /version 缺失]
-- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 及 `src/platform/interface/api/`
+- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 及 `src/platform/five-plane-interface/api/`
 - **问题描述**: 
   - SDK client 调用 `/handshake` 和 `/version` 端点
   - 但服务器端没有这些路由的处理程序
@@ -65827,7 +65827,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 启用 `order_execution` 或从 requiredTools 中移除
 
 #### 6. [源代码] [中严重] [SDK 与 Server 错误类别不一致]
-- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 和 `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/sdk/client-sdk/api-client.ts` 和 `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   - SDK 映射: 4xx → BUSINESS, 400 为 BUSINESS
   - Server 映射: 400 → validation, 422 → business-rule
@@ -65898,7 +65898,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 或使用事件驱动而非轮询
 
 #### 11. [源代码] [中严重] [VersionRoutingMiddleware 未连接到路由]
-- **文件/路径**: `src/platform/interface/api/middleware/version-routing.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/middleware/version-routing.ts`
 - **问题描述**: 
   - `VersionRoutingMiddleware` 存在但从未应用到任何路由
   - `supportedVersions: ["2026-04-01", "2026-01-01"]` 未生效
@@ -66021,7 +66021,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 使用 // @ts-expect-error 替代单个错误
 
 #### 21. [测试] [中严重] [3个集成测试因缺少 workflow_state 设置而跳过]
-- **文件/路径**: `tests/integration/platform/execution/budget-allocation.integration.test.ts`
+- **文件/路径**: `tests/integration/platform/five-plane-execution/budget-allocation.integration.test.ts`
 - **问题描述**: 
   - 3个测试因缺少 `evaluateMultiDimensionalQuota` 和 `workflow_state` 记录而跳过
   - 关键预算分配功能未测试
@@ -66305,7 +66305,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -66555,7 +66555,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -66653,7 +66653,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -66880,7 +66880,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -67117,7 +67117,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -67163,7 +67163,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -67175,7 +67175,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -67240,7 +67240,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -67469,7 +67469,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -67719,7 +67719,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -67817,7 +67817,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -68044,7 +68044,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -68323,7 +68323,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -68641,7 +68641,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -68891,7 +68891,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -68989,7 +68989,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -69216,7 +69216,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -69453,7 +69453,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -69499,7 +69499,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -69511,7 +69511,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -69576,7 +69576,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -69805,7 +69805,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -70055,7 +70055,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -70153,7 +70153,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -70380,7 +70380,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -70976,7 +70976,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -71226,7 +71226,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -71324,7 +71324,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -71551,7 +71551,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -71788,7 +71788,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -71834,7 +71834,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -71846,7 +71846,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -71911,7 +71911,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -72140,7 +72140,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -72390,7 +72390,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -72488,7 +72488,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -72715,7 +72715,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -72994,7 +72994,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -73312,7 +73312,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -73562,7 +73562,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -73660,7 +73660,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -73887,7 +73887,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -74124,7 +74124,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -74170,7 +74170,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -74182,7 +74182,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -74247,7 +74247,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -74476,7 +74476,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -74726,7 +74726,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -74824,7 +74824,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -75051,7 +75051,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -75285,7 +75285,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在修改时复制一份 scopes
 
 #### 8. [源代码] [中严重] [OIDC _skipSignatureVerification 标志存在风险]
-- **文件/路径**: `src/platform/interface/api/oidc-oauth-service.ts:92,108-111`
+- **文件/路径**: `src/platform/five-plane-interface/api/oidc-oauth-service.ts:92,108-111`
 - **问题描述**: 
   - `_skipSignatureVerification` 标志存在于生产代码路径
   - 虽然标记为仅测试使用，但配置错误可能导致安全问题
@@ -75652,7 +75652,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -75902,7 +75902,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -76000,7 +76000,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -76227,7 +76227,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -76464,7 +76464,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -76510,7 +76510,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -76522,7 +76522,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -76587,7 +76587,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -76816,7 +76816,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -77066,7 +77066,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -77164,7 +77164,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -77391,7 +77391,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -77670,7 +77670,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -77988,7 +77988,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -78238,7 +78238,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -78336,7 +78336,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -78563,7 +78563,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -78800,7 +78800,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -78846,7 +78846,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -78858,7 +78858,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -78923,7 +78923,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -79152,7 +79152,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -79402,7 +79402,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -79500,7 +79500,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -79727,7 +79727,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -80323,7 +80323,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -80573,7 +80573,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -80671,7 +80671,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -80898,7 +80898,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -81135,7 +81135,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -81181,7 +81181,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -81193,7 +81193,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -81258,7 +81258,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -81487,7 +81487,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -81737,7 +81737,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -81835,7 +81835,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -82062,7 +82062,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -82341,7 +82341,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加响应格式验证测试
 
 #### 12. [源代码] [中严重] [Redis 队列缺少 idempotency 索引支持]
-- **文件/路径**: `src/platform/execution/queue/redis-queue-adapter.ts`
+- **文件/路径**: `src/platform/five-plane-execution/queue/redis-queue-adapter.ts`
 - **问题描述**: 
   - SQLite 有部分唯一索引支持 idempotency
   - Redis 实现使用哈希索引但实现不完整
@@ -82659,7 +82659,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -82909,7 +82909,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -83007,7 +83007,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -83234,7 +83234,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -83471,7 +83471,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前置条件验证
 
 #### 9. [国际化] [高严重] [API 错误消息硬编码英文]
-- **文件/路径**: `src/platform/interface/api/http-server/api-error.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/api-error.ts`
 - **问题描述**: 
   ```typescript
   return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -83517,7 +83517,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 确保 UI 不显示 undefined
 
 #### 13. [运维] [高严重] [健康检查无 readiness/liveness 区分]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - /healthz, /v1/healthz, /health 返回相同报告
   - 无 readiness probe（可处理流量？）
@@ -83529,7 +83529,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. Liveness 检查进程健康
 
 #### 14. [运维] [高严重] [shutdown 期间健康检查存在竞态]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts`
 - **问题描述**: 
   - getHealthReportAsync() 异步检查 dbWritable
   - shutdown 期间数据库连接可能关闭
@@ -83594,7 +83594,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 在 CI 中检测混用情况
 
 #### 20. [源代码] [低严重] [无事件排序保证]
-- **文件/路径**: `src/platform/state-evidence/events/`
+- **文件/路径**: `src/platform/five-plane-state-evidence/events/`
 - **问题描述**: 
   - 无明确的事件排序保证文档
   - 事件处理可能乱序
@@ -83823,7 +83823,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -84073,7 +84073,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加 mocking 最佳实践文档
 
 #### 11. [测试] [中严重] [Singleton 状态重置未标准化]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher.test.ts`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher.test.ts`
 - **问题描述**: 
   - 测试通过特定函数重置 singletons
   - 每个测试重复自己的 reset 逻辑
@@ -84171,7 +84171,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 减少非空断言使用
 
 #### 20. [API] [中严重] [API 路由 schema 版本硬编码]
-- **文件/路径**: `src/platform/interface/api/federation-routing-service.ts`
+- **文件/路径**: `src/platform/five-plane-interface/api/federation-routing-service.ts`
 - **问题描述**: 
   - Zod schema 验证存在
   - 但 schema 版本未与 contract 版本同步
@@ -84398,7 +84398,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   3. 添加转换前条件检查
 
 #### 12. [安全] [中严重] [OpenAPI 端点公开无认证]
-- **文件/路径**: `src/platform/interface/api/http-server/health-routes.ts:41`
+- **文件/路径**: `src/platform/five-plane-interface/api/http-server/health-routes.ts:41`
 - **问题描述**: 
   ```typescript
   { method: "GET", pathname: "/v1/openapi.json", handler: () => buildJsonDocumentResponse(buildOpenApiDocument()) }
@@ -84620,14 +84620,14 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 将 CAS 检查移入原子事务
 
 #### 11. [测试] [高] [budget-allocator.test.ts 缺少 throttle ratio 断言]
-- **文件/路径**: `tests/unit/platform/execution/budget-allocator.test.ts:286-335`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/budget-allocator.test.ts:286-335`
 - **问题描述**: 
   - 测试应该验证 throttle ratio 但实际未验证
   - 导致关键功能未被测试覆盖
 - **建议修复**: 添加 throttle ratio 的断言
 
 #### 12. [测试] [高] [durable-event-bus-async.test.ts 定时器时序问题]
-- **文件/路径**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
+- **文件/路径**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
 - **问题描述**: 
   - 使用 setTimeout 断言但时间不确定
   - 可能导致测试不稳定
@@ -84848,25 +84848,25 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 添加 Error Boundaries
 
 #### 46. [测试] [低] [execution-dispatch-service-async.test.ts 仍然失败]
-- **文件/路径**: `tests/unit/platform/execution/dispatcher/`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/dispatcher/`
 - **问题描述**: 
   - 测试持续失败
 - **建议修复**: 分析修复
 
 #### 47. [测试] [低] [nodeRunId-canonization.test.ts 仍然失败]
-- **文件/路径**: `tests/unit/platform/execution/execution-engine/`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/execution-engine/`
 - **问题描述**: 
   - 测试持续失败
 - **建议修复**: 分析修复
 
 #### 48. [测试] [低] [runtime-plan-executor.test.ts 仍然失败]
-- **文件/路径**: `tests/unit/platform/execution/oapeflir/`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/oapeflir/`
 - **问题描述**: 
   - 测试持续失败
 - **建议修复**: 分析修复
 
 #### 49. [测试] [低] [worker-pool-comprehensive.test.ts 仍然失败]
-- **文件/路径**: `tests/unit/platform/execution/worker-pool/`
+- **文件/路径**: `tests/unit/platform/five-plane-execution/worker-pool/`
 - **问题描述**: 
   - 测试持续失败
 - **建议修复**: 分析修复
@@ -84909,7 +84909,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **建议修复**: 拆分
 
 #### 56. [源代码] [低] [runMultiStepOrchestration 复杂度高]
-- **文件/路径**: `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+- **文件/路径**: `src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts`
 - **问题描述**: 
   - 核心编排逻辑复杂
 - **建议修复**: 拆分职责
@@ -85215,12 +85215,12 @@ if (lowerPath.includes("lodash")) {
 - **建议**: 添加 `assert.equal(result.reservation.effectiveAmount, 50)`
 
 #### D2. [测试] [中] durable-event-bus-async.test.ts setTimeout 时序问题
-- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
+- **文件**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts:74,104,117`
 - **问题**: `setTimeout(resolve, 20)` 在负载高时可能不足
 - **建议**: 使用事件监听或轮询模式
 
 #### D3. [测试] [中] pendingForConsumer 返回值未验证
-- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:174-176`
+- **文件**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts:174-176`
 - **问题**: `pending` 变量无 assert
 - **建议**: 添加 `assert.ok(pending.length > 0)`
 
@@ -85235,7 +85235,7 @@ if (lowerPath.includes("lodash")) {
 - **建议**: 使用确定性 ID 生成
 
 #### D6. [资源] [中] 部分测试缺少 bus.dispose() 调用
-- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
+- **文件**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts`
 - **问题**: publish/subscribe/pendingForConsumer 测试只调用 db.close() 但未 dispose bus
 - **建议**: 在 db.close() 前添加 `bus.dispose()`
 
@@ -85253,7 +85253,7 @@ if (lowerPath.includes("lodash")) {
 - **建议**: 增加至 100ms+ 或使用轮询
 
 #### D10. [测试] [低] deliverPending 测试注释与实现不符
-- **文件**: `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts:233-234`
+- **文件**: `tests/unit/platform/five-plane-state-evidence/events/durable-event-bus-async.test.ts:233-234`
 - **问题**: 注释暗示验证投递行为但实际只验证返回值类型
 - **建议**: 添加断言验证 delivered.length
 

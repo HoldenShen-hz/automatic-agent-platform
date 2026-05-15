@@ -16,7 +16,7 @@
 > A9 Closure Evidence (2026-04-28):
 > - Fixed real implementation issues: `StructuredLogger.recent()` returns recent window order, `ModelRoutingService` trace variable initialization timing, `DomainDefinitionSchema` default `capabilities`, `KvCachePrefix` default constant export, `RecoveryOrchestratorService` cycle time/fault tolerance, baseline constant deep freeze.
 > - Aligned stable semantic tests: task/workflow terminal step index keeps final step, task timeline golden dual test unified `entryKinds`, `routeComplexity` keyword and passthrough priority, dispatcher `require_remote` fail-close as `blocked`, plugin cooldown behavior, DLQ `setReason` update time, baseline description relevance assertion, etc.
-> - Passed targeted regression coverage: `tests/unit/platform/orchestration/harness/loop-controller.test.ts`, `tests/unit/platform/execution/execution-engine/complexity-router.test.ts`, `tests/unit/platform/execution/execution-business-logic.test.ts`, `tests/unit/domains/registry/domain-model-validation.test.ts`, `tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts`, `tests/unit/platform/execution/dispatcher/*.test.ts`, `tests/unit/platform/control-plane/control-plane-baseline-extended.test.ts`, `tests/unit/platform/model-gateway/model-gateway-baseline-extended.test.ts`, `tests/integration/interaction/autonomy/autonomy-integration.test.ts`, `tests/integration/platform/shared/outbox/durable-event-bus-integration.test.ts`, `tests/integration/platform/shared/observability/structured-logging-integration.test.ts`, `tests/integration/platform/execution/execution-engine.test.ts`, `tests/integration/platform/state-evidence/events/dlq-integration.test.ts`, `tests/golden/task-timeline-output.test.ts`, `tests/golden/task-timeline-service.test.ts`, `tests/e2e/task-terminal-state-flow.test.ts` and other batches.
+> - Passed targeted regression coverage: `tests/unit/platform/five-plane-orchestration/harness/loop-controller.test.ts`, `tests/unit/platform/five-plane-execution/execution-engine/complexity-router.test.ts`, `tests/unit/platform/five-plane-execution/execution-business-logic.test.ts`, `tests/unit/domains/registry/domain-model-validation.test.ts`, `tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts`, `tests/unit/platform/five-plane-execution/dispatcher/*.test.ts`, `tests/unit/platform/five-plane-control-plane/control-plane-baseline-extended.test.ts`, `tests/unit/platform/model-gateway/model-gateway-baseline-extended.test.ts`, `tests/integration/interaction/autonomy/autonomy-integration.test.ts`, `tests/integration/platform/shared/outbox/durable-event-bus-integration.test.ts`, `tests/integration/platform/shared/observability/structured-logging-integration.test.ts`, `tests/integration/platform/five-plane-execution/execution-engine.test.ts`, `tests/integration/platform/five-plane-state-evidence/events/dlq-integration.test.ts`, `tests/golden/task-timeline-output.test.ts`, `tests/golden/task-timeline-service.test.ts`, `tests/e2e/task-terminal-state-flow.test.ts` and other batches.
 
 ### A8 Continue Closing Remaining Test Failure Clusters (2026-04-28)
 
@@ -30,7 +30,7 @@
 > A8 Closure Evidence (2026-04-28, supplement):
 > - Fixed and retested real semantic issues continued coverage: `TaskWebSocketStatusRelay` reverse-time broadcast order, `ModelRoutingService` cost-cap fallback, `PluginSpiRegistry` cooldown gate, `ApiKeyService` expired key rotate fail-close, cross-division replay report detail compatible output.
 > - Aligned and retested outdated assertions continued coverage: failure miner non-failure signal filtering, plugin runtime protocol input structure, sandbox root path spec, stability rehearsal single scenario report assertion, dashboard event type/entity extraction, domain helper / vertical architecture import paths, etc.
-> - This round's new targeted retests passed: `tests/integration/platform/interface/api/task-websocket-status-relay-integration.test.ts`, `tests/integration/platform/orchestration/learn/failure-pattern-miner-integration.test.ts`, `tests/integration/platform/security/sandbox-command-executor.test.ts`, `tests/integration/platform/shared/stability/cross-service-stability-integration.test.ts`, `tests/integration/platform/stability/stable-cross-division-recovery-drill-integration.test.ts`, `tests/integration/platform/model-gateway/model-routing-integration.test.ts`, along with corresponding domain / plugin / dashboard / governance / api-key unit test batches.
+> - This round's new targeted retests passed: `tests/integration/platform/five-plane-interface/api/task-websocket-status-relay-integration.test.ts`, `tests/integration/platform/five-plane-orchestration/learn/failure-pattern-miner-integration.test.ts`, `tests/integration/platform/security/sandbox-command-executor.test.ts`, `tests/integration/platform/shared/stability/cross-service-stability-integration.test.ts`, `tests/integration/platform/stability/stable-cross-division-recovery-drill-integration.test.ts`, `tests/integration/platform/model-gateway/model-routing-integration.test.ts`, along with corresponding domain / plugin / dashboard / governance / api-key unit test batches.
 
 ### A7 Full Test Closure Batch (2026-04-28)
 
@@ -210,16 +210,16 @@
 
 ## Test Failures by Directory
 
-### 1. unit/platform/state-evidence/truth (84 failures)
+### 1. unit/platform/five-plane-state-evidence/truth (84 failures)
 - SQLite repositories related tests
 
 ### 2. unit/platform/shared/observability (55 failures)
 - observability related tests
 
-### 3. unit/platform/interface/api (52 failures)
+### 3. unit/platform/five-plane-interface/api (52 failures)
 - API interface related tests
 
-### 4. unit/platform/orchestration/oapeflir (50 failures)
+### 4. unit/platform/five-plane-orchestration/oapeflir (50 failures)
 - oapeflir related tests
 
 ### 5. unit/platform/shared/stability (43 failures)
@@ -228,31 +228,31 @@
 ### 6. unit/platform/shared/cache (35 failures)
 - cache related tests
 
-### 7. unit/platform/state-evidence/knowledge (33 failures)
+### 7. unit/platform/five-plane-state-evidence/knowledge (33 failures)
 - knowledge related tests
 
-### 8. unit/platform/state-evidence/events (30 failures)
+### 8. unit/platform/five-plane-state-evidence/events (30 failures)
 - events related tests
 
-### 9. unit/platform/orchestration/harness (30 failures)
+### 9. unit/platform/five-plane-orchestration/harness (30 failures)
 - harness related tests
 
-### 10. unit/platform/state-evidence/memory (24 failures)
+### 10. unit/platform/five-plane-state-evidence/memory (24 failures)
 - memory related tests
 
-### 11. unit/platform/execution/worker-pool (22 failures)
+### 11. unit/platform/five-plane-execution/worker-pool (22 failures)
 - worker-pool related tests
 
-### 12. unit/platform/interface/channel-gateway (16 failures)
+### 12. unit/platform/five-plane-interface/channel-gateway (16 failures)
 - channel-gateway related tests
 
 ### 13. unit/platform/model-gateway/provider-registry (15 failures)
 - provider-registry related tests
 
-### 14. unit/platform/orchestration/agent-delegation (14 failures)
+### 14. unit/platform/five-plane-orchestration/agent-delegation (14 failures)
 - agent-delegation related tests
 
-### 15. unit/platform/state-evidence/artifacts (13 failures)
+### 15. unit/platform/five-plane-state-evidence/artifacts (13 failures)
 - artifacts related tests
 
 ### 16. Other directories (~50 failures)
@@ -512,21 +512,21 @@
 | Task ID | Directory | Failures | Status |
 |-------|------|--------|------|
 | #15 | unit/platform/shared/observability | 55 | Archived |
-| #16 | unit/platform/state-evidence/memory | 24 | Archived |
-| #17 | unit/platform/interface/channel-gateway | 16 | Archived |
-| #18 | unit/platform/execution/worker-pool | 22 | Archived |
+| #16 | unit/platform/five-plane-state-evidence/memory | 24 | Archived |
+| #17 | unit/platform/five-plane-interface/channel-gateway | 16 | Archived |
+| #18 | unit/platform/five-plane-execution/worker-pool | 22 | Archived |
 | #19 | unit/platform/model-gateway/provider-registry | 15 | Archived |
-| #20 | unit/platform/state-evidence/knowledge | 33 | Archived |
-| #21 | unit/platform/state-evidence/artifacts | 13 | Archived |
-| #22 | unit/platform/orchestration/agent-delegation | 14 | Archived |
+| #20 | unit/platform/five-plane-state-evidence/knowledge | 33 | Archived |
+| #21 | unit/platform/five-plane-state-evidence/artifacts | 13 | Archived |
+| #22 | unit/platform/five-plane-orchestration/agent-delegation | 14 | Archived |
 | #23 | Other directories | ~50 | Archived |
-| #24 | unit/platform/state-evidence/events | 30 | Archived |
-| #25 | unit/platform/orchestration/harness | 30 | Archived |
+| #24 | unit/platform/five-plane-state-evidence/events | 30 | Archived |
+| #25 | unit/platform/five-plane-orchestration/harness | 30 | Archived |
 | #26 | unit/platform/shared/stability | 43 | Archived |
-| #27 | unit/platform/state-evidence/truth | 84 | Archived |
-| #28 | unit/platform/orchestration/oapeflir | 50 | Archived |
+| #27 | unit/platform/five-plane-state-evidence/truth | 84 | Archived |
+| #28 | unit/platform/five-plane-orchestration/oapeflir | 50 | Archived |
 | #29 | unit/platform/shared/cache | 35 | Archived |
-| #30 | unit/platform/interface/api | 52 | Archived |
+| #30 | unit/platform/five-plane-interface/api | 52 | Archived |
 
 **Total**: 354 test failures, distributed across 16 main directories
 

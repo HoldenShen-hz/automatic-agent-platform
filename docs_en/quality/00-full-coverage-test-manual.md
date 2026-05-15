@@ -103,7 +103,7 @@
 | Global function coverage (c8 measured) | **0.61%**  |
 | Global branch coverage (c8 measured) | **0.61%**     |
 
-> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 documentation claimed 82.4% global line coverage, but c8 verification in this release measured only **0.75%** (only 1,384 lines covered out of 182,253 lines, all in 6 files under `src/platform/state-evidence/truth/sqlite/`). All values in `.coverage-baseline.json` baseline file are null and have never been truly populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis; this version corrects to measured values.
+> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 documentation claimed 82.4% global line coverage, but c8 verification in this release measured only **0.75%** (only 1,384 lines covered out of 182,253 lines, all in 6 files under `src/platform/five-plane-state-evidence/truth/sqlite/`). All values in `.coverage-baseline.json` baseline file are null and have never been truly populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis; this version corrects to measured values.
 
 ---
 
@@ -122,7 +122,7 @@ npm run test:integration
 npm run test:golden
 
 # Specific file
-npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
 # PostgreSQL integration tests (requires PG environment)
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -504,7 +504,7 @@ Global thresholds (v4.0 c8 measured data):
 | Functions  | **0.61%**        | 88.5%        | Only 6 out of 983 functions covered    |
 | Branches   | **0.61%**        | 80.6%        | Same as above                          |
 
-> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), meaning the baseline has never been truly populated. The 82.4% line coverage claimed in v3.0 documentation was verified by c8 `all: true` full analysis to be **0.75%**. The only code actually covered is 6 files under `src/platform/state-evidence/truth/sqlite/` (1,384 lines, all at 100% coverage). The remaining 977 source files all have 0% coverage. This confirms v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
+> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), meaning the baseline has never been truly populated. The 82.4% line coverage claimed in v3.0 documentation was verified by c8 `all: true` full analysis to be **0.75%**. The only code actually covered is 6 files under `src/platform/five-plane-state-evidence/truth/sqlite/` (1,384 lines, all at 100% coverage). The remaining 977 source files all have 0% coverage. This confirms v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
 >
 > **Action Items**: (1) Run full `npm test` + c8 full coverage analysis, (2) populate `.coverage-baseline.json` baseline, (3) enable coverage gate in CI.
 
@@ -523,7 +523,7 @@ Global thresholds (v4.0 c8 measured data):
 
 | Directory                                    | File Count | Covered Files | Lines                | Functions |
 | -------------------------------------------- | ---------- | ------------- | -------------------- | --------- |
-| `src/platform/state-evidence/truth/sqlite/`  | 25         | 6             | 1,384/36,219 (3.82%) | 6/167     |
+| `src/platform/five-plane-state-evidence/truth/sqlite/`  | 25         | 6             | 1,384/36,219 (3.82%) | 6/167     |
 
 The 6 covered files (all at 100%):
 
@@ -538,11 +538,11 @@ The 6 covered files (all at 100%):
 
 | Directory                              | File Count | Total Lines | Lines Coverage |
 | -------------------------------------- | ---------- | ----------- | ------------- |
-| `src/platform/execution/`              | 162        | 43,202      | 0%            |
+| `src/platform/five-plane-execution/`              | 162        | 43,202      | 0%            |
 | `src/platform/shared/`                 | 100        | 24,079      | 0%            |
-| `src/platform/control-plane/`          | 75         | 23,555      | 0%            |
-| `src/platform/orchestration/`          | 81         | 9,332       | 0%            |
-| `src/platform/interface/`              | 49         | 8,705       | 0%            |
+| `src/platform/five-plane-control-plane/`          | 75         | 23,555      | 0%            |
+| `src/platform/five-plane-orchestration/`          | 81         | 9,332       | 0%            |
+| `src/platform/five-plane-interface/`              | 49         | 8,705       | 0%            |
 | `src/scale-ecosystem/marketplace/`     | 26         | 7,737       | 0%            |
 | `src/sdk/cli/`                         | 78         | 6,148       | 0%            |
 | `src/platform/model-gateway/`          | 17         | 5,012       | 0%            |
@@ -1126,7 +1126,7 @@ Regular line/branch coverage cannot guarantee:
 
 | State Machine | Definition File                                      | Verification File                                                     | State Count | Terminal States                               |
 | ------------- | ---------------------------------------------------- | --------------------------------------------------------------------- | ----------- | --------------------------------------------- |
-| **Task**      | `src/platform/execution/state-transition/types.ts`   | `src/platform/execution/state-transition/transition-service.ts`       | 7           | done, failed, cancelled                        |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts`   | `src/platform/five-plane-execution/state-transition/transition-service.ts`       | 7           | done, failed, cancelled                        |
 | **Workflow**  | Same as above                                        | Same as above                                                         | 7           | completed, failed, cancelled                  |
 | **Session**   | Same as above                                        | Same as above                                                         | 7           | completed, failed, cancelled                  |
 | **Execution** | Same as above                                        | Same as above                                                         | 8           | succeeded, failed, cancelled, superseded      |
@@ -1234,7 +1234,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // Auto-generate legal transition pairs from production map
 const validPairs: Array<[string, string]> = [];
@@ -1477,7 +1477,7 @@ Regular line/branch coverage cannot guarantee:
 
 | State Machine | Definition File                                           | Validation File                                                        | States | Terminal States                             |
 | ------------- | -------------------------------------------------------- | --------------------------------------------------------------------- | ------ | ------------------------------------------ |
-| **Task**      | `src/platform/execution/state-transition/types.ts` | `src/platform/execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
 | **Workflow**  | same                                                      | same                                                                  | 7      | completed, failed, cancelled                |
 | **Session**   | same                                                      | same                                                                  | 7      | completed, failed, cancelled               |
 | **Execution** | same                                                      | same                                                                  | 8      | succeeded, failed, cancelled, superseded  |
@@ -1585,7 +1585,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // Auto-generate legal transition pairs from production map
 const validPairs: Array<[string, string]> = [];
@@ -2214,7 +2214,7 @@ src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/fee
 #### Table 2: Source File → Integration Test
 
 ```
-src/platform/execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
+src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
 #### Table 3: Design Specification → Test
@@ -2572,17 +2572,17 @@ Global 82.4% line coverage may mask low coverage in critical modules. Need to de
 
 | Module                                       | Level     | Current Lines | Redline | Current Branches | Redline | Status                |
 | -------------------------------------------- | --------- | ------------- | ------- | ---------------- | ------- | --------------------- |
-| `platform/execution/distributed-lock`        | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
-| `platform/execution/state-transition`        | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
-| `platform/control-plane/iam`                 | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
+| `platform/five-plane-execution/distributed-lock`        | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
+| `platform/five-plane-execution/state-transition`        | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
+| `platform/five-plane-control-plane/iam`                 | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
 | `platform/compliance`                        | Critical  | 0%            | 90%     | 0%               | 80%     | Lines **gap 90%**     |
-| `platform/orchestration/oapeflir`            | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
-| `platform/state-evidence/memory`             | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
-| `platform/state-evidence/events`             | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
-| `platform/execution/execution-engine`         | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
-| `platform/state-evidence/knowledge`          | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
-| `platform/orchestration/oapeflir/learn`      | Standard  | 0%            | 80%     | 0%               | 70%     | Lines **gap 80%**     |
-| `platform/state-evidence/artifacts`          | Standard  | 0%            | 80%     | 0%               | 70%     | Lines **gap 80%**     |
+| `platform/five-plane-orchestration/oapeflir`            | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
+| `platform/five-plane-state-evidence/memory`             | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
+| `platform/five-plane-state-evidence/events`             | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
+| `platform/five-plane-execution/execution-engine`         | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
+| `platform/five-plane-state-evidence/knowledge`          | High      | 0%            | 85%     | 0%               | 75%     | Lines **gap 85%**     |
+| `platform/five-plane-orchestration/oapeflir/learn`      | Standard  | 0%            | 80%     | 0%               | 70%     | Lines **gap 80%**     |
+| `platform/five-plane-state-evidence/artifacts`          | Standard  | 0%            | 80%     | 0%               | 70%     | Lines **gap 80%**     |
 | `platform/prompt-engine`                     | Standard  | 0%            | 80%     | 0%               | 70%     | Lines **gap 80%**     |
 | `plugins`                                    | Baseline  | 0%            | 75%     | 0%               | 60%     | Lines **gap 75%**     |
 | `sdk/cli`                                    | Baseline  | 0%            | 75%     | 0%               | 60%     | Lines **gap 75%**     |
@@ -3299,9 +3299,9 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 
 | File                                                       | Test File                                                           |
 | ---------------------------------------------------------- | ------------------------------------------------------------------- |
-| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/execution/redis-lock-error.test.ts`            |
-| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/execution/redis-queue-error.test.ts`           |
-| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts`    |
+| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`            |
+| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`           |
+| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts`    |
 | `shared/cache/stores/redis-cache-store.ts`                 | `tests/unit/platform/shared/redis-cache-error.test.ts`             |
 
 ### 29.2 [SYS-REL-2.3] DLQ Pure In-Memory, Lost on Restart
@@ -3641,7 +3641,7 @@ test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
 
 ```typescript
 test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", () => {
-  const stateEvidenceFiles = globSync("src/platform/state-evidence/**/*.ts");
+  const stateEvidenceFiles = globSync("src/platform/five-plane-state-evidence/**/*.ts");
   for (const file of stateEvidenceFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -3653,7 +3653,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", (
 });
 
 test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence", () => {
-  const controlPlaneFiles = globSync("src/platform/control-plane/**/*.ts");
+  const controlPlaneFiles = globSync("src/platform/five-plane-control-plane/**/*.ts");
   for (const file of controlPlaneFiles) {
     const content = readFileSync(file, "utf8");
     assert.ok(
@@ -3681,7 +3681,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence
 
 ```typescript
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
-  const oapeflirFiles = globSync("src/platform/orchestration/oapeflir/**/*.ts");
+  const oapeflirFiles = globSync("src/platform/five-plane-orchestration/oapeflir/**/*.ts");
   for (const file of oapeflirFiles) {
     const content = readFileSync(file, "utf8");
     const consoleMatches = content.match(/console\.(log|warn|error|info)\(/g);
@@ -3746,7 +3746,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 ```typescript
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
   assert.ok(!content.includes(".keys("), "Must use SCAN, not KEYS command");
@@ -3866,7 +3866,7 @@ Convert structural issues found in architecture review into **continuously runni
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 
@@ -4106,7 +4106,7 @@ A stub file is considered "implemented" when:
 | Global function coverage (c8)       | **0.61%**     |
 | Global branch coverage (c8)         | **0.61%**     |
 
-> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 claimed global line coverage of 82.4%, but c8 full analysis this time verified it is only **0.75%** (only 1,384 of 182,253 lines covered, all in 6 `src/platform/state-evidence/truth/sqlite/` authoritative-task-store-delegating-\*.ts files). `.coverage-baseline.json` baseline file has all null values, never actually populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis, corrected to measured values in this version.
+> **v4.0 Changes**: Source files from 1,335 → 1,387 (+52), test files from 1,341 → 1,803 (+462), assertions from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 claimed global line coverage of 82.4%, but c8 full analysis this time verified it is only **0.75%** (only 1,384 of 182,253 lines covered, all in 6 `src/platform/five-plane-state-evidence/truth/sqlite/` authoritative-task-store-delegating-\*.ts files). `.coverage-baseline.json` baseline file has all null values, never actually populated. This indicates v3.0 coverage data came from incremental builds rather than full c8 analysis, corrected to measured values in this version.
 
 ---
 
@@ -4125,7 +4125,7 @@ npm run test:integration
 npm run test:golden
 
 # Specific files
-npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
 # PostgreSQL integration tests (requires PG environment)
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -4507,7 +4507,7 @@ Global thresholds (v4.0 c8 measured data):
 | Functions  | **0.61%**      | 88.5%        | Only 6 of 983 functions covered        |
 | Branches   | **0.61%**      | 80.6%        | Same as above                          |
 
-> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), baseline was never truly populated. The 82.4% line coverage claimed in v3.0 was verified by c8 `all: true` full analysis to be **0.75%**. Actually covered are only 6 files in `src/platform/state-evidence/truth/sqlite/` (1,384 lines, all 100% covered). The remaining 977 source files all have 0% coverage. This indicates v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
+> **v4.0 Major Correction**: `.coverage-baseline.json` currently has all null values (`directories: {}`), baseline was never truly populated. The 82.4% line coverage claimed in v3.0 was verified by c8 `all: true` full analysis to be **0.75%**. Actually covered are only 6 files in `src/platform/five-plane-state-evidence/truth/sqlite/` (1,384 lines, all 100% covered). The remaining 977 source files all have 0% coverage. This indicates v3.0 coverage data may have come from incomplete incremental builds or outdated reports.
 >
 > **Action Items**: (1) Run complete `npm test` + c8 full coverage analysis, (2) populate `.coverage-baseline.json` baseline, (3) enable coverage gate in CI.
 
@@ -4526,7 +4526,7 @@ Global thresholds (v4.0 c8 measured data):
 
 | Directory                              | Files | Covered Files | Lines                  | Functions |
 | -------------------------------------- | ----- | ------------- | ---------------------- | --------- |
-| `src/platform/state-evidence/truth/sqlite/` | 25    | 6             | 1,384/36,219 (3.82%) | 6/167     |
+| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25    | 6             | 1,384/36,219 (3.82%) | 6/167     |
 
 The 6 covered files (all 100%):
 
@@ -4541,11 +4541,11 @@ The 6 covered files (all 100%):
 
 | Directory                        | Files | Total Lines | Lines Coverage |
 | -------------------------------- | ----- | ----------- | -------------- |
-| `src/platform/execution/`        | 162   | 43,202      | 0%             |
+| `src/platform/five-plane-execution/`        | 162   | 43,202      | 0%             |
 | `src/platform/shared/`           | 100   | 24,079      | 0%             |
-| `src/platform/control-plane/`    | 75    | 23,555      | 0%             |
-| `src/platform/orchestration/`    | 81    | 9,332       | 0%             |
-| `src/platform/interface/`        | 49    | 8,705       | 0%             |
+| `src/platform/five-plane-control-plane/`    | 75    | 23,555      | 0%             |
+| `src/platform/five-plane-orchestration/`    | 81    | 9,332       | 0%             |
+| `src/platform/five-plane-interface/`        | 49    | 8,705       | 0%             |
 | `src/scale-ecosystem/marketplace/` | 26  | 7,737       | 0%             |
 | `src/sdk/cli/`                   | 78    | 6,148       | 0%             |
 | `src/platform/model-gateway/`    | 17    | 5,012       | 0%             |
@@ -5129,7 +5129,7 @@ Regular line/branch coverage cannot guarantee:
 
 | State Machine | Definition File                                           | Validation File                                                        | States | Terminal States                             |
 | ------------- | -------------------------------------------------------- | --------------------------------------------------------------------- | ------ | ------------------------------------------ |
-| **Task**      | `src/platform/execution/state-transition/types.ts` | `src/platform/execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
+| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                     |
 | **Workflow**  | same                                                      | same                                                                  | 7      | completed, failed, cancelled                |
 | **Session**   | same                                                      | same                                                                  | 7      | completed, failed, cancelled                |
 | **Execution** | same                                                      | same                                                                  | 8      | succeeded, failed, cancelled, superseded   |
@@ -5237,7 +5237,7 @@ import assert from "node:assert/strict";
 import {
   TRANSITION_MAP,
   ALL_STATES,
-} from "../../src/platform/execution/state-transition/types.js";
+} from "../../src/platform/five-plane-execution/state-transition/types.js";
 
 // Auto-generate legal transition pairs from production map
 const validPairs: Array<[string, string]> = [];
@@ -5662,7 +5662,7 @@ src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/fee
 #### Table 2: Source File → Integration Test
 
 ```
-src/platform/execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
+src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
 ---
@@ -6108,9 +6108,9 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 
 | File                                                       | Test File                                                           |
 | ---------------------------------------------------------- | ------------------------------------------------------------------- |
-| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/execution/redis-lock-error.test.ts`            |
-| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/execution/redis-queue-error.test.ts`          |
-| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts`    |
+| `execution/distributed-lock/redis-lock-adapter.ts`         | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`            |
+| `execution/queue/redis-queue-adapter.ts`                   | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`          |
+| `interface/ingress/redis-rate-limiter.ts`                   | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts`    |
 | `shared/cache/stores/redis-cache-store.ts`                 | `tests/unit/platform/shared/redis-cache-error.test.ts`              |
 
 ### 29.2 [SYS-REL-2.3] DLQ In-Memory Only, Lost on Restart
@@ -6414,7 +6414,7 @@ Convert structural issues found in architecture review into **continuously runni
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 
@@ -6617,7 +6617,7 @@ A stub file is considered "implemented" when:
 
 ```typescript
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
-  const oapeflirFiles = globSync("src/platform/orchestration/oapeflir/**/*.ts");
+  const oapeflirFiles = globSync("src/platform/five-plane-orchestration/oapeflir/**/*.ts");
   for (const file of oapeflirFiles) {
     const content = readFileSync(file, "utf8");
     const consoleMatches = content.match(/console\.(log|warn|error|info)\(/g);
@@ -6682,7 +6682,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 ```typescript
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
   const content = readFileSync(
-    "src/platform/execution/distributed-lock/redis-lock-adapter.ts",
+    "src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts",
     "utf8",
   );
   assert.ok(!content.includes(".keys("), "Must use SCAN, not KEYS command");
@@ -6802,7 +6802,7 @@ Convert structural issues found in architecture review into **continuously runni
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
   const routeFiles = globSync(
-    "src/platform/interface/api/http-server/*-routes.ts",
+    "src/platform/five-plane-interface/api/http-server/*-routes.ts",
   );
   let violations = 0;
 

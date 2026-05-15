@@ -17,11 +17,11 @@
 
 当前实现结构（Phase 1a-4）已覆盖以下工程资产：
 
-- `src/platform/control-plane/` — IAM, 配置中心, 审批中心, 事件控制
-- `src/platform/execution/` — 调度器, 执行引擎, 恢复, Worker池
-- `src/platform/orchestration/` — OAPEFLIR, 路由, planner, HITL
-- `src/platform/state-evidence/` — Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
-- `src/platform/interface/` — API, Channel Gateway, Ingress, Scheduler
+- `src/platform/five-plane-control-plane/` — IAM, 配置中心, 审批中心, 事件控制
+- `src/platform/five-plane-execution/` — 调度器, 执行引擎, 恢复, Worker池
+- `src/platform/five-plane-orchestration/` — OAPEFLIR, 路由, planner, HITL
+- `src/platform/five-plane-state-evidence/` — Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+- `src/platform/five-plane-interface/` — API, Channel Gateway, Ingress, Scheduler
 - `src/platform/shared/` — 可观测性, 稳定性, 工具元数据
 - `src/platform/model-gateway/` — 模型网关, 成本追踪
 - `src/platform/prompt-engine/` — Prompt引擎

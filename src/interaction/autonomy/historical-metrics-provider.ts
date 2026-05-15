@@ -27,7 +27,7 @@ export interface HistoricalMetricsProvider {
   fetchMetrics(input: HistoricalMetricsInput): Promise<ExecutionMetrics>;
 }
 
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionStatus } from "../../platform/contracts/types/status.js";
 
 function isIncidentExecution(row: { status: ExecutionStatus; last_error_code: string | null }): boolean {

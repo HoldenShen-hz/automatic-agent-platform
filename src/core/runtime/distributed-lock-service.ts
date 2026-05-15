@@ -1,1 +1,1 @@
-export * from "../../platform/execution/distributed-lock/distributed-lock-service.js";
+export * from "../../platform/five-plane-execution/distributed-lock/distributed-lock-service.js";

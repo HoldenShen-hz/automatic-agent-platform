@@ -17,7 +17,7 @@
 
 - 七层目录结构已稳定存在，并且上层五个能力域都已形成 ADR -> contract -> src -> tests 的主闭环。
 - `docs_zh/analysis/00-architecture-coverage-matrix.md` 已成为 authoritative 覆盖入口；大多数 v2.7 章节状态是 `exists`，剩余缺口主要集中在 `partial`，而不是 `missing` 或 `skeleton`。
-- `src/core/runtime/` 已收敛为兼容性 shim；canonical 多步编排实现位于 `src/platform/execution/execution-engine/`。
+- `src/core/runtime/` 已收敛为兼容性 shim；canonical 多步编排实现位于 `src/platform/five-plane-execution/execution-engine/`。
 
 ## 2. 本轮确认已完成的收敛
 
@@ -31,20 +31,20 @@
 
 以下整理项已在当前代码库完成：
 
-- `src/platform/execution/execution-engine/` 补齐了目录级 `index.ts`
+- `src/platform/five-plane-execution/execution-engine/` 补齐了目录级 `index.ts`
 - `src/domains/governance/`
 - `src/interaction/ux/`
 - `src/org-governance/*` 五个二级目录
 - `src/scale-ecosystem/*` 五个二级目录
 - `src/ops-maturity/*` 十个二级目录
 - `src/sdk/cli/index.ts`
-- `src/platform/interface/ingress/index.ts` 已正确导出两个限流器模块
+- `src/platform/five-plane-interface/ingress/index.ts` 已正确导出两个限流器模块
 
 ### 2.3 `core/runtime` 收敛状态
 
 当前 `src/core/runtime/` 的定位已经从“残留真实实现”变成“兼容性 re-export 层”：
 
-- `orchestrator/index.ts` → re-export `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+- `orchestrator/index.ts` → re-export `src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts`
 - `orchestrator/types.ts` → re-export `multi-step-orchestration-types.ts`
 - `planner/index.ts` → re-export agent round loop / tool definitions / utils
 - `supervisor/index.ts` → re-export `multi-step-supervisor.ts`

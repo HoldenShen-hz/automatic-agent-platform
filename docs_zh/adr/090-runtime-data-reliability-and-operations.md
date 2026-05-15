@@ -51,10 +51,10 @@ Accepted
 
 对应实现边界：
 
-- `src/platform/execution/*`
-- `src/platform/state-evidence/*`
+- `src/platform/five-plane-execution/*`
+- `src/platform/five-plane-state-evidence/*`
 - `src/platform/shared/stability/*`
-- `src/platform/control-plane/config-center/*`
+- `src/platform/five-plane-control-plane/config-center/*`
 - `config/*`
 
 ## 测试要求

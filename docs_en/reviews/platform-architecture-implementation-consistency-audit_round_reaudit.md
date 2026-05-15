@@ -53,7 +53,7 @@ Currently directly fixed and targeted-verified real issues:
 
 Targeted verification results:
 
-- `node --test --import tsx tests/unit/platform/control-plane/iam/network-egress-policy.test.ts tests/unit/platform/model-gateway/cost-tracker/budget-guard.test.ts tests/unit/platform/model-gateway/cost-tracker/budget-guard-types.test.ts tests/unit/interaction/autonomy/trust-scorer/index.test.ts tests/unit/interaction/autonomy/promotion-engine/index.test.ts tests/unit/interaction/proactive-agent/trigger-engine/index.test.ts tests/unit/interaction/proactive-agent/trigger-engine/trigger-engine.test.ts tests/unit/interaction/proactive-agent/trigger-engine/resolve-trigger-action-mode.unit.test.ts tests/unit/interaction/proactive-agent/trigger-engine.test.ts tests/unit/platform/interaction/proactive-agent/trigger-engine.test.ts`
+- `node --test --import tsx tests/unit/platform/five-plane-control-plane/iam/network-egress-policy.test.ts tests/unit/platform/model-gateway/cost-tracker/budget-guard.test.ts tests/unit/platform/model-gateway/cost-tracker/budget-guard-types.test.ts tests/unit/interaction/autonomy/trust-scorer/index.test.ts tests/unit/interaction/autonomy/promotion-engine/index.test.ts tests/unit/interaction/proactive-agent/trigger-engine/index.test.ts tests/unit/interaction/proactive-agent/trigger-engine/trigger-engine.test.ts tests/unit/interaction/proactive-agent/trigger-engine/resolve-trigger-action-mode.unit.test.ts tests/unit/interaction/proactive-agent/trigger-engine.test.ts tests/unit/platform/interaction/proactive-agent/trigger-engine.test.ts`
 - Result: `152 passed / 0 failed / 0 skipped`
 - Additional targeted tests: `62 passed / 0 failed / 0 skipped`
 - Additional targeted tests: `10 passed / 0 failed / 0 skipped`

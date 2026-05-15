@@ -2,7 +2,7 @@ import {
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
   type ModelProfileMetadata,
-} from "../../../platform/control-plane/config-center/model-metadata-registry.js";
+} from "../../../platform/five-plane-control-plane/config-center/model-metadata-registry.js";
 
 export interface CostOptimizationRecommendation {
   readonly recommendationId: string;

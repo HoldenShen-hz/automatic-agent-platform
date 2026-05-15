@@ -123,4 +123,4 @@ interface AutonomyAuditLog {
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](../adr/016-oapeflir-loop-model.md)
 - [ADR-075 六级受控发布与 Rollout 状态机](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
-- [autonomy-boundary-policy.ts](../../src/platform/orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.ts)
+- [autonomy-boundary-policy.ts](../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.ts)

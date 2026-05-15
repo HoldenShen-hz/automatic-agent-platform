@@ -1,9 +1,9 @@
-import { ConfigGovernanceService } from "../../platform/control-plane/config-center/config-governance-service.js";
-import { resolveConfigEnvironment } from "../../platform/control-plane/config-center/runtime-env.js";
-import type { KnowledgeNamespace } from "../../platform/state-evidence/knowledge/knowledge-model.js";
-import { KnowledgeNamespaceSchema } from "../../platform/state-evidence/knowledge/knowledge-model.js";
-import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import { ConfigGovernanceService } from "../../platform/five-plane-control-plane/config-center/config-governance-service.js";
+import { resolveConfigEnvironment } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
+import type { KnowledgeNamespace } from "../../platform/five-plane-state-evidence/knowledge/knowledge-model.js";
+import { KnowledgeNamespaceSchema } from "../../platform/five-plane-state-evidence/knowledge/knowledge-model.js";
+import type { SandboxPolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import type { TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import { DomainDefinitionSchema } from "./domain-model.js";
 import { DomainRegistryService } from "./domain-registry-service.js";

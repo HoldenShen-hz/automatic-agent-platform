@@ -46,7 +46,7 @@ Accepted
 对应实现边界：
 
 - `src/gateway/*`
-- `src/platform/state-evidence/events/*`
+- `src/platform/five-plane-state-evidence/events/*`
 - `src/domains/registry/*`
 - `src/plugins/*`
 - `src/scale-ecosystem/marketplace/*`

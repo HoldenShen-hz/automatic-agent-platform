@@ -1194,7 +1194,7 @@ Used to centralize recovery actions, budget, audit, and runbook evidence.
 ## 19. Final Recommended Directory Structure
 
 ```text
-src/platform/control-plane/mission/
+src/platform/five-plane-control-plane/mission/
   mission-record.ts
   mission-membership.ts
   mission-policy.ts
@@ -1209,18 +1209,18 @@ src/platform/control-plane/mission/
   mission-events.ts
   mission-errors.ts
 
-src/platform/state-evidence/events/projections/mission/
+src/platform/five-plane-state-evidence/events/projections/mission/
   mission-dashboard-projection.ts
   mission-task-board-projection.ts
   mission-budget-projection.ts
   mission-evidence-projection.ts
 
-src/platform/orchestration/mission/
+src/platform/five-plane-orchestration/mission/
   mission-aware-plan-validator.ts
   mission-oapeflir-guard.ts
   mission-learning-gate.ts
 
-src/platform/execution/mission/
+src/platform/five-plane-execution/mission/
   mission-runtime-guard.ts
   mission-budget-reservation-adapter.ts
   mission-live-revocation-checker.ts
@@ -1295,11 +1295,11 @@ This way the system can obtain:
 | Task | Status | Implementation Evidence | Test Evidence |
 |---|---|---|---|
 | T-MIS-001 Mission schemas/types | Implemented | `src/platform/contracts/mission/index.ts`; `src/platform/contracts/index.ts` export | `tests/unit/platform/contracts/mission-contracts.test.ts` |
-| T-MIS-002 Mission truth tables/repository | Implemented | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`; `src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
+| T-MIS-002 Mission truth tables/repository | Implemented | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`; `src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/five-plane-control-plane/mission-services.test.ts` |
 | T-MIS-003 `platform.mission.*` event schemas | Implemented | `MissionEventTypeSchema`, `MissionEventEnvelopeSchema`, repository sequence allocator | `mission-contracts.test.ts`, `mission-services.test.ts` |
 | T-MIS-004 MissionLifecycleService + CAS | Implemented | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
 | T-MIS-005 MissionResolver + Governance | Implemented | `MissionResolver`, `MissionGovernanceService` | `mission-services.test.ts` |
-| T-MIS-006 Mission API + ErrorEnvelope | Implemented | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`; OpenAPI route list; coverage of create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`, `tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| T-MIS-006 Mission API + ErrorEnvelope | Implemented | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`; OpenAPI route list; coverage of create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, dry-run resolution | `tests/integration/platform/five-plane-interface/api/mission-routes.test.ts`, `tests/integration/platform/contracts/api-openapi-contract.test.ts` |
 | T-MIS-007 PlanGraphBundle missionSnapshotRef | Implemented | `PlanGraphBundle` contract/schema/factory extension; `MissionRuntimeBindingService`; `POST /v1/tasks` connects Mission resolution/snapshot binding | `mission-services.test.ts`, `mission-task-binding.test.ts` |
 | T-MIS-008 HarnessRun missionBinding | Implemented | `HarnessRun` contract/schema/factory extension; single-binding guard | `mission-services.test.ts` |
 | T-MIS-009 NodeRun MissionLiveGuard | Implemented | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
@@ -1322,7 +1322,7 @@ The following are external deployment or cross-system wiring evolution items, an
 
 | Verification Item | Result |
 |---|---|
-| Mission-targeted contract/unit/integration/invariant tests | `node --import tsx --test tests/integration/platform/interface/api/mission-routes.test.ts tests/integration/platform/interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| Mission-targeted contract/unit/integration/invariant tests | `node --import tsx --test tests/integration/platform/five-plane-interface/api/mission-routes.test.ts tests/integration/platform/five-plane-interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/five-plane-control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
 | TypeScript build test | `npm run build:test` |
 | OpenAPI contract targeted tests | `node --import tsx --test tests/integration/platform/contracts/api-openapi-contract.test.ts` |
 
@@ -2929,9 +2929,9 @@ Recommended to add static scanning rules:
 
 ```text
 Prohibited from adding stepId / currentStep / steps[] in src/platform/contracts/**
-Prohibited from adding StepStatus / WorkflowStep in src/platform/execution/**
-Prohibited from outputting PlanStep[] as plan contract in src/platform/orchestration/**
-Prohibited from exposing Step-centric response in src/platform/interface/api/**
+Prohibited from adding StepStatus / WorkflowStep in src/platform/five-plane-execution/**
+Prohibited from outputting PlanStep[] as plan contract in src/platform/five-plane-orchestration/**
+Prohibited from exposing Step-centric response in src/platform/five-plane-interface/api/**
 ```
 
 ---

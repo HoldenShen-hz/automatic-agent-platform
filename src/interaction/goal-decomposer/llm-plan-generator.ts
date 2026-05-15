@@ -3,7 +3,7 @@ import type {
   BudgetLedger,
   BudgetResourceKind,
 } from "../../platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../platform/five-plane-execution/budget-allocator.js";
 import type { Goal, PlannedTask, TaskDependency } from "./index.js";
 
 export interface LlmPlan {

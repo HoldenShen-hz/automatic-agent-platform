@@ -8,7 +8,7 @@
  * §44 UX Workflow - A/B Testing Framework + User Event Tracking
  */
 
-import { TypedEventBusPublisher, type TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import { TypedEventBusPublisher, type TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface UxEventTrack {

@@ -13,11 +13,11 @@ import type {
 import { PolicyDeniedError, StorageError, WorkflowStateError } from "../../platform/contracts/errors.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { BudgetPolicy } from "../../platform/model-gateway/cost-tracker/budget-guard.js";
-import type { ApprovalRequest, ApprovalService } from "../../platform/control-plane/approval-center/approval-service.js";
-import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import { ExperienceCacheService } from "../../platform/state-evidence/memory/experience-cache-service.js";
-import type { MemoryService } from "../../platform/state-evidence/memory/memory-service.js";
+import type { ApprovalRequest, ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ExperienceCacheService } from "../../platform/five-plane-state-evidence/memory/experience-cache-service.js";
+import type { MemoryService } from "../../platform/five-plane-state-evidence/memory/memory-service.js";
 import {
   assertEvolutionScope,
   buildRecommendedBudgetPolicy,

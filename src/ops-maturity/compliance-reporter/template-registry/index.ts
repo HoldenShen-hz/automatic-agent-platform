@@ -98,12 +98,12 @@ type ComplianceTemplateLike = {
   readonly migrationRule?: string;
 };
 
-// @ts-ignore - generic constraint issue with ComplianceTemplateLike
+// @ts-expect-error - generic constraint issue with ComplianceTemplateLike
 export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike = ComplianceReportTemplate> {
   private readonly templates: readonly T[];
 
   public constructor(templates: readonly T[]) {
-    // @ts-ignore - generic type conversion issue
+    // @ts-expect-error - generic type conversion issue
     this.templates = templates.map((item) => normalizeComplianceTemplate(item) as unknown as T);
   }
 

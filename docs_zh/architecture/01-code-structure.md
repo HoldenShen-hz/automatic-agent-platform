@@ -66,7 +66,7 @@ new-platform/
 |--------|--------|---------|
 | `src/core/` (42 个扁平模块) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | 扁平 core/ 拆分为按七层架构组织的 6 个顶层目录 |
 | `src/cli/` (78 个脚本) | `src/sdk/cli/` | CLI 归入 SDK 层 |
-| `src/gateway/` (13 文件) | `src/platform/interface/` + `src/interaction/nl-gateway/` | API gateway 归入 P1 Interface，NL gateway 归入 Layer 4 |
+| `src/gateway/` (13 文件) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway 归入 P1 Interface，NL gateway 归入 Layer 4 |
 | `src/plugins/` (20 文件) | `src/plugins/` | 保持独立，结构不变 |
 | `src/index.ts` | `src/index.ts` | 保持 |
 
@@ -80,53 +80,53 @@ new-platform/
 | `core/results/` | `platform/contracts/result-envelope/` | 跨层契约 |
 | `core/utils/` | `platform/shared/utils/` | 跨层共享 |
 | `core/lifecycle/` | `platform/shared/lifecycle/` | 跨层共享 |
-| `core/config/` | `platform/control-plane/config-center/` | P2 控制平面 |
-| `core/storage/` | `platform/state-evidence/truth/` | P5 状态与证据 |
-| `core/events/` | `platform/state-evidence/events/` | P5 状态与证据 |
-| `core/locking/` | `platform/execution/distributed-lock/` | P4 执行平面 |
-| `core/queue/` | `platform/execution/queue/` | P4 执行平面 |
+| `core/config/` | `platform/five-plane-control-plane/config-center/` | P2 控制平面 |
+| `core/storage/` | `platform/five-plane-state-evidence/truth/` | P5 状态与证据 |
+| `core/events/` | `platform/five-plane-state-evidence/events/` | P5 状态与证据 |
+| `core/locking/` | `platform/five-plane-execution/distributed-lock/` | P4 执行平面 |
+| `core/queue/` | `platform/five-plane-execution/queue/` | P4 执行平面 |
 | `core/cache/` | `platform/shared/cache/` | 跨层共享 |
-| `core/api/` | `platform/interface/api/` | P1 接口平面 |
-| `core/resource/` | `platform/execution/resource/` | P4 执行平面 |
-| `core/runtime/` → Dispatch | `platform/execution/dispatcher/` | P4 执行平面 |
-| `core/runtime/` → Lease | `platform/execution/lease/` | P4 执行平面 |
-| `core/runtime/` → Worker | `platform/execution/worker-pool/` | P4 执行平面 |
-| `core/runtime/` → HA | `platform/execution/ha/` | P4 执行平面 |
-| `core/runtime/` → Recovery | `platform/execution/recovery/` | P4 执行平面 |
-| `core/runtime/` → HotUpgrade | `platform/execution/hot-upgrade/` | P4 执行平面 |
-| `core/runtime/` → StateMachine | `platform/execution/state-transition/` | P4 执行平面 |
-| `core/runtime/` → AgentExec | `platform/execution/execution-engine/` | P4 执行平面 |
-| `core/runtime/` → HITL | `platform/orchestration/hitl/` | P3 编排平面 |
-| `core/runtime/` → Orchestration | `platform/orchestration/routing/` | P3 编排平面 |
-| `core/agent-loop/` | `platform/orchestration/oapeflir/` | P3 编排平面 |
-| `core/planning/` | `platform/orchestration/planner/` | P3 编排平面 |
-| `core/orchestration/` | `platform/orchestration/routing/` | P3 编排平面 |
+| `core/api/` | `platform/five-plane-interface/api/` | P1 接口平面 |
+| `core/resource/` | `platform/five-plane-execution/resource/` | P4 执行平面 |
+| `core/runtime/` → Dispatch | `platform/five-plane-execution/dispatcher/` | P4 执行平面 |
+| `core/runtime/` → Lease | `platform/five-plane-execution/lease/` | P4 执行平面 |
+| `core/runtime/` → Worker | `platform/five-plane-execution/worker-pool/` | P4 执行平面 |
+| `core/runtime/` → HA | `platform/five-plane-execution/ha/` | P4 执行平面 |
+| `core/runtime/` → Recovery | `platform/five-plane-execution/recovery/` | P4 执行平面 |
+| `core/runtime/` → HotUpgrade | `platform/five-plane-execution/hot-upgrade/` | P4 执行平面 |
+| `core/runtime/` → StateMachine | `platform/five-plane-execution/state-transition/` | P4 执行平面 |
+| `core/runtime/` → AgentExec | `platform/five-plane-execution/execution-engine/` | P4 执行平面 |
+| `core/runtime/` → HITL | `platform/five-plane-orchestration/hitl/` | P3 编排平面 |
+| `core/runtime/` → Orchestration | `platform/five-plane-orchestration/routing/` | P3 编排平面 |
+| `core/agent-loop/` | `platform/five-plane-orchestration/oapeflir/` | P3 编排平面 |
+| `core/planning/` | `platform/five-plane-orchestration/planner/` | P3 编排平面 |
+| `core/orchestration/` | `platform/five-plane-orchestration/routing/` | P3 编排平面 |
 | `core/providers/` | `platform/model-gateway/provider-registry/` | AI 运营 |
-| `core/tools/` | `platform/execution/tool-executor/` | P4 执行平面 |
-| `core/workflow/` | `platform/orchestration/oapeflir/workflow/` | P3 编排平面 |
-| `core/artifacts/` | `platform/state-evidence/artifacts/` | P5 状态与证据 |
+| `core/tools/` | `platform/five-plane-execution/tool-executor/` | P4 执行平面 |
+| `core/workflow/` | `platform/five-plane-orchestration/oapeflir/workflow/` | P3 编排平面 |
+| `core/artifacts/` | `platform/five-plane-state-evidence/artifacts/` | P5 状态与证据 |
 | `core/feedback/` | `scale-ecosystem/feedback-loop/` | Layer 6 |
-| `core/learning/` | `platform/orchestration/oapeflir/learn/` | P3 编排平面 |
+| `core/learning/` | `platform/five-plane-orchestration/oapeflir/learn/` | P3 编排平面 |
 | `core/evaluation/` | `platform/prompt-engine/eval/` | AI 运营 |
-| `core/memory/` | `platform/state-evidence/memory/` | P5 状态与证据 |
-| `core/knowledge/` | `platform/state-evidence/knowledge/` | P5 状态与证据 |
+| `core/memory/` | `platform/five-plane-state-evidence/memory/` | P5 状态与证据 |
+| `core/knowledge/` | `platform/five-plane-state-evidence/knowledge/` | P5 状态与证据 |
 | `core/messages/` | `platform/model-gateway/messages/` | AI 运营 |
 | `core/domain-registry/` | `domains/registry/` | Layer 3 |
 | `core/divisions/` | `domains/governance/` | Layer 3 |
-| `core/security/` | `platform/control-plane/iam/` | P2 控制平面 |
-| `core/approvals/` | `platform/control-plane/approval-center/` | P2 控制平面 |
+| `core/security/` | `platform/five-plane-control-plane/iam/` | P2 控制平面 |
+| `core/approvals/` | `platform/five-plane-control-plane/approval-center/` | P2 控制平面 |
 | `core/compliance/` | `platform/compliance/` | AI 运营 |
 | `core/cost/` | `platform/model-gateway/cost-tracker/` | AI 运营 |
 | `core/hr/` | `org-governance/org-model/` | Layer 5 |
-| `core/deployment/` | `platform/control-plane/rollout-controller/` | P2 控制平面 |
-| `core/improvement/` | `platform/orchestration/oapeflir/improve-rollout/` | P3 编排平面 |
+| `core/deployment/` | `platform/five-plane-control-plane/rollout-controller/` | P2 控制平面 |
+| `core/improvement/` | `platform/five-plane-orchestration/oapeflir/improve-rollout/` | P3 编排平面 |
 | `core/observability/` | `platform/shared/observability/` | 跨层共享 |
-| `core/ops/` | `platform/control-plane/incident-control/` | P2 控制平面 |
+| `core/ops/` | `platform/five-plane-control-plane/incident-control/` | P2 控制平面 |
 | `core/stability/` | `platform/shared/stability/` | 跨层共享 |
 | `core/evolution/` | `ops-maturity/drift-detection/` | Layer 7 |
-| `core/reliability/` | `platform/execution/recovery/` | P4 执行平面 |
+| `core/reliability/` | `platform/five-plane-execution/recovery/` | P4 执行平面 |
 | `core/product/` | `scale-ecosystem/marketplace/` | Layer 6 |
-| `gateway/` | `platform/interface/` (拆分) | P1 接口平面 |
+| `gateway/` | `platform/five-plane-interface/` (拆分) | P1 接口平面 |
 | `plugins/` | `plugins/` | 跨层 |
 | `cli/` | `sdk/cli/` | 跨层 SDK |
 
@@ -138,7 +138,7 @@ new-platform/
 
 ```
 src/platform/
-├── interface/              # P1 接口平面 ── §6 API 契约
+├── five-plane-interface/              # P1 接口平面 ── §6 API 契约
 │   ├── api/                #   HTTP API server + OIDC/OAuth + WebSocket
 │   │   ├── http-api-server.ts
 │   │   ├── api-auth-service.ts
@@ -170,7 +170,7 @@ src/platform/
 │   └── ingress/            #   入口流量治理（限流/路由/灰度）
 │       └── index.ts
 │
-├── control-plane/          # P2 控制平面 ── §24 配置 / §11 安全 / §21 审批
+├── five-plane-control-plane/          # P2 控制平面 ── §24 配置 / §11 安全 / §21 审批
 │   ├── tenant/             #   租户管理
 │   │   └── index.ts
 │   ├── iam/                #   身份与访问管理（← core/security/）
@@ -247,7 +247,7 @@ src/platform/
 │       ├── audit-export-service.ts
 │       └── index.ts
 │
-├── orchestration/          # P3 编排平面 ── §13 OAPEFLIR
+├── five-plane-orchestration/          # P3 编排平面 ── §13 OAPEFLIR
 │   ├── oapeflir/           #   OAPEFLIR 受控认知内核（← core/agent-loop/ + core/workflow/）
 │   │   ├── oapeflir-loop-service.ts
 │   │   ├── execute-bridge.ts
@@ -311,7 +311,7 @@ src/platform/
 │       ├── hitl-explainability-service.ts
 │       └── index.ts
 │
-├── execution/              # P4 执行平面 ── §14 Runtime
+├── five-plane-execution/              # P4 执行平面 ── §14 Runtime
 │   ├── dispatcher/         #   执行调度（← runtime/BC1 Dispatch）
 │   │   ├── execution-dispatch-service.ts
 │   │   ├── execution-dispatch-service-async.ts
@@ -463,7 +463,7 @@ src/platform/
 │       ├── graceful-shutdown.ts
 │       └── index.ts
 │
-├── state-evidence/         # P5 状态与证据平面 ── §25-§29
+├── five-plane-state-evidence/         # P5 状态与证据平面 ── §25-§29
 │   ├── truth/              #   权威数据存储（← core/storage/ 拆分后）
 │   │   ├── sqlite-database.ts
 │   │   ├── async-sql-database.ts
@@ -1174,11 +1174,11 @@ src/sdk/
 
 ```
 src/apps/
-├── api/                    # API Server 入口（组装 platform/interface/ 模块）
+├── api/                    # API Server 入口（组装 platform/five-plane-interface/ 模块）
 │   └── index.ts
 ├── console/                # Console UI 后端入口
 │   └── index.ts
-└── workers/                # Worker 进程入口（组装 platform/execution/ 模块）
+└── workers/                # Worker 进程入口（组装 platform/five-plane-execution/ 模块）
     └── index.ts
 ```
 
@@ -1240,22 +1240,22 @@ tests/
 │
 ├── unit/                   # 单元测试（镜像 src/ 结构）
 │   ├── platform/
-│   │   ├── interface/
+│   │   ├── five-plane-interface/
 │   │   │   ├── api/
 │   │   │   └── channel-gateway/
-│   │   ├── control-plane/
+│   │   ├── five-plane-control-plane/
 │   │   │   ├── iam/
 │   │   │   ├── approval-center/
 │   │   │   ├── config-center/
 │   │   │   ├── incident-control/
 │   │   │   ├── rollout-controller/
 │   │   │   └── audit-export/
-│   │   ├── orchestration/
+│   │   ├── five-plane-orchestration/
 │   │   │   ├── oapeflir/
 │   │   │   ├── planner/
 │   │   │   ├── routing/
 │   │   │   └── hitl/
-│   │   ├── execution/
+│   │   ├── five-plane-execution/
 │   │   │   ├── dispatcher/
 │   │   │   ├── lease/
 │   │   │   ├── worker-pool/
@@ -1267,7 +1267,7 @@ tests/
 │   │   │   ├── tool-executor/
 │   │   │   ├── distributed-lock/
 │   │   │   └── queue/
-│   │   ├── state-evidence/
+│   │   ├── five-plane-state-evidence/
 │   │   │   ├── truth/
 │   │   │   ├── events/
 │   │   │   ├── artifacts/

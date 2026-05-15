@@ -25,7 +25,7 @@ export type {
   EntityExtractionConfig,
 } from "./nl-gateway-config-loader.js";
 
-import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
+import { IntakeRouter } from "../../platform/five-plane-orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import { createPlatformPrincipal } from "../../platform/contracts/index.js";
 import {
@@ -92,6 +92,7 @@ import type {
   NlEntryPort,
   NlEntryRequest,
   NlEntryServiceOptions,
+  NlRequestPayload,
   PromptInjectionFinding,
   RequestEnvelope,
   RiskPreview,
@@ -263,7 +264,7 @@ export class NlEntryService implements NlEntryPort {
     const priorConversationContext = this.getPriorConversationContext(request);
     const securityFindings = detectPromptInjection(request.message);
     const blockedByPolicy = securityFindings.some((item) => item.blocked);
-    const route = await Promise.resolve((this.intakeRouter as any).route({
+    const route = await Promise.resolve(this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
       priorConversationContext,
@@ -273,7 +274,7 @@ export class NlEntryService implements NlEntryPort {
       ? []
       : await parseIntentTokensWithModel(request.message, {
           locale,
-          // @ts-ignore - parser type mismatch: IntentParserPort vs ModelIntentParserPort
+          // @ts-expect-error - parser type mismatch: IntentParserPort vs ModelIntentParserPort
           parser: this.intentParser?.parseWithLlm == null
             ? null
             : {
@@ -583,7 +584,6 @@ export class NlEntryService implements NlEntryPort {
       : null;
 
     const result = {
-      // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope
       requestEnvelope: shouldEmitEnvelope
         ? createRequestEnvelope<NlRequestPayload>({
             principal: createPlatformPrincipal({

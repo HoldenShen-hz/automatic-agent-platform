@@ -44,7 +44,7 @@ Harness 采用固定八支柱模型：
 
 ## 后果
 
-- `src/platform/orchestration/harness` 必须围绕八支柱组织目录和导出面
+- `src/platform/five-plane-orchestration/harness` 必须围绕八支柱组织目录和导出面
 - `Ring 2` 的验收要按支柱拆解
 - review 中对 Harness 的缺口以支柱为最小整改单元
 
