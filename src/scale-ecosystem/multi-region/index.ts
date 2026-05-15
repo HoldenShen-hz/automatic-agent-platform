@@ -10,7 +10,23 @@ export * from "./region-health-check-service.js";
 export * from "./fencing-token-service.js";
 export * from "./split-brain-protection.js";
 export * from "./rpo-rto-tracking.js";
-export * from "./topology-declaration.js";
+export {
+  buildActiveActiveTopology,
+  buildActivePassiveTopology,
+  canFailoverTo,
+  getPrimaryRegion,
+  getReadReplicaRegions,
+  getSecondaryRegions,
+  getWritableRegions,
+  supportsAutomaticFailover,
+  validateTopology,
+  type MultiRegionTopology,
+  type RegionPairConfig,
+  type RegionRole,
+  type ReplicationMode,
+  type TopologyRegion,
+  type TopologyType,
+} from "./topology-declaration.js";
 export * from "./tenant-lifecycle-service.js";
 export * from "./per-tenant-encryption.js";
 export * from "./noisy-neighbor-protection.js";

@@ -95,9 +95,11 @@ export class ConnectorFrameworkService {
     const options = typeof storageDirOrOptions === "object" && storageDirOrOptions !== null
       ? storageDirOrOptions
       : null;
-    this.storageDir = options != null
-      ? options.storageDir ?? null
-      : storageDirOrOptions;
+    if (options != null) {
+      this.storageDir = options.storageDir ?? null;
+    } else {
+      this.storageDir = typeof storageDirOrOptions === "string" ? storageDirOrOptions : null;
+    }
     this.maxBindingAgeMs = options?.maxBindingAgeMs ?? maxBindingAgeMs;
     this.healthRetentionCount = options?.healthRetentionCount ?? healthRetentionCount;
     this.maxBindings = options?.maxBindings ?? maxBindings;

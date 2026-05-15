@@ -266,15 +266,17 @@ function createMockStoreWithReadiness(readinessRecords: MockEnvironmentReadiness
 
 // Test overallStatus determination logic
 test("overallStatus returns pass when all components are ready", () => {
-  const store = createMockStoreWithReadiness([
+  const readinessRecords: MockEnvironmentReadinessRecord[] = [
     { componentType: "external_service", componentId: "ha_coordinator", status: "ready" },
     { componentType: "external_service", componentId: "postgres_primary", status: "ready" },
     { componentType: "external_service", componentId: "redis_queue", status: "ready" },
     { componentType: "external_service", componentId: "distributed_lock", status: "ready" },
-  ]);
+  ];
+  const store = createMockStoreWithReadiness(readinessRecords);
   // Note: Full integration test requires actual HaProgramService instantiation
   // This tests the readiness record format that drives the status logic
   const readinessIds = new Set(readinessRecords.map((item) => `${item.componentType}:${item.componentId}`));
+  assert.equal(store.release.listEnvironmentReadinessRecords().length, readinessRecords.length);
   assert.ok(readinessIds.has("external_service:ha_coordinator"));
   assert.ok(readinessIds.has("external_service:postgres_primary"));
   assert.ok(readinessIds.has("external_service:redis_queue"));

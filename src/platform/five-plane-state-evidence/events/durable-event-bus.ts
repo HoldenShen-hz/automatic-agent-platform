@@ -961,6 +961,12 @@ export class DurableEventBus {
         this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
       }
     }
+    for (const consumerId of this.subscribers.keys()) {
+      if (!processedConsumerIds.has(consumerId)) {
+        processedConsumerIds.add(consumerId);
+        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      }
+    }
   }
 
   private registerActiveConsumer(consumerId: string): void {

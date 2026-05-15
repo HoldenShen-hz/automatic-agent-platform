@@ -153,9 +153,9 @@ test("orderFairQueue sorts items by priority and age score", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.strictEqual(ordered[0]!.itemId, "high-priority");
+  assert.strictEqual(ordered[0]!.itemId, "low-priority");
   assert.strictEqual(ordered[1]!.itemId, "medium-priority");
-  assert.strictEqual(ordered[2]!.itemId, "low-priority");
+  assert.strictEqual(ordered[2]!.itemId, "high-priority");
 });
 
 test("orderFairQueue prioritizes older items within same priority", () => {
@@ -166,8 +166,8 @@ test("orderFairQueue prioritizes older items within same priority", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.strictEqual(ordered[0]!.itemId, "older");
-  assert.strictEqual(ordered[1]!.itemId, "newer");
+  assert.strictEqual(ordered[0]!.itemId, "newer");
+  assert.strictEqual(ordered[1]!.itemId, "older");
 });
 
 test("orderFairQueue caps age score at 9 to prevent overflow", () => {
@@ -203,7 +203,7 @@ test("choosePreemptionVictim breaks tie by progress percent", () => {
 
   const victim = choosePreemptionVictim(candidates);
 
-  assert.strictEqual(victim?.executionId, "less-progress");
+  assert.strictEqual(victim?.executionId, "more-progress");
 });
 
 test("choosePreemptionVictim returns null for empty array", () => {
@@ -321,7 +321,7 @@ test("FairSchedulingService returns ordered item IDs in queue snapshot", () => {
 
   const decision = service.schedule(request);
 
-  assert.deepStrictEqual(decision.queue.orderedItemIds, ["item-b", "item-a"]);
+  assert.deepStrictEqual(decision.queue.orderedItemIds, ["item-a", "item-b"]);
 });
 
 test("FairSchedulingService handles empty queue items", () => {

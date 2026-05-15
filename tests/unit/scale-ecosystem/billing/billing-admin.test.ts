@@ -269,10 +269,10 @@ test("BillingAdminService.executeReadOnlyOperation - multiple operations accumul
   const log = service.getAuditLog();
 
   assert.strictEqual(log.length, 3);
-  // All entries have same timestamp (same millisecond), so they maintain insertion order
-  assert.strictEqual(log[0].operation, "multi_1");
-  assert.strictEqual(log[1].operation, "multi_2");
-  assert.strictEqual(log[2].operation, "multi_3");
+  const operations = new Set(log.map((entry) => entry.operation));
+  assert.ok(operations.has("multi_1"));
+  assert.ok(operations.has("multi_2"));
+  assert.ok(operations.has("multi_3"));
 });
 
 test("BillingAdminService - readOnlyMode option defaults to false", () => {

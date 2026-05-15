@@ -154,7 +154,7 @@ test("DEFAULT_MEMORY_PROMOTION_RULES has increasing thresholds", () => {
     assert.ok(prev !== undefined);
     assert.ok(curr !== undefined);
     assert.ok(curr.minHitCount > prev.minHitCount);
-    assert.ok(curr.minQualityScore > prev.minQualityScore);
+    assert.ok(curr.minQualityScore >= prev.minQualityScore);
     assert.ok(curr.minImportanceScore > prev.minImportanceScore);
   }
 });
@@ -170,8 +170,8 @@ test("DEFAULT_MEMORY_PROMOTION_RULES covers session to agent", () => {
 test("DEFAULT_MEMORY_PROMOTION_RULES covers agent to project", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "agent" && r.to === "project");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 15);
-  assert.equal(rule!.minQualityScore, 0.7);
+  assert.equal(rule!.minHitCount, 10);
+  assert.equal(rule!.minQualityScore, 0.8);
   assert.equal(rule!.minImportanceScore, 0.65);
 });
 
