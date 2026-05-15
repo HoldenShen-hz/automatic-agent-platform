@@ -147,7 +147,7 @@ export class RecoveryController {
         // Operator abort: no retry, transition to aborted and require human review per §45.11
         const abortedRun = {
           ...recovering,
-          status: "aborted",
+          status: "aborted" as const,
           pauseReason: null,
           completedAt: run.completedAt ?? nowIso(),
         };

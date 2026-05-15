@@ -339,7 +339,7 @@ export class IntakeAdmissionService {
       || policyGuardResult.reasonCode === "policy.pre_approved_critical";
     // R6-12: For policy-bypassed cases, create a synthetic confirmation receipt to satisfy contract requirements
     const effectiveConfirmationReceipt = input.confirmationReceipt ?? (hasPolicyBypass
-      ? { receiptId: `policy-bypass:${input.idempotencyKey}`, confirmedAt: new Date().toISOString(), confirmedBy: input.principal, scope: `policy:${policyGuardResult.reasonCode}`, riskClass: input.riskPreview.riskClass, state: "confirmed" as const, expiresAt: undefined, riskPreviewVersion: undefined, actor: undefined, timestamp: undefined }
+      ? { receiptId: `policy-bypass:${input.idempotencyKey}`, confirmedAt: new Date().toISOString(), confirmedBy: input.principal, scope: `policy:${policyGuardResult.reasonCode}`, riskClass: input.riskPreview.riskClass, state: "confirmed" as const }
       : null);
     if (requiresMandatoryConfirmation && !hasPolicyBypass && input.confirmationReceipt == null) {
       throw new Error(
