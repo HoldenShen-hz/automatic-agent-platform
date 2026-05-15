@@ -44,7 +44,7 @@ test("queue adapter: enqueue creates waiting job", () => {
 
     const job = adapter.enqueue(input);
 
-    assert.ok(job.id.startsWith("job_"));
+    assert.ok(job.id.startsWith("qjob_"));
     assert.equal(job.queueName, "default");
     assert.equal(job.status, "waiting");
     assert.equal(job.priority, 0);
