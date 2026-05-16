@@ -24,7 +24,7 @@ export {
   type DelegationExpirationConfig,
   type ExpirationScanResult,
 } from "../five-plane-orchestration/agent-delegation/delegation-manager.service.js";
-export { createDelegationManager } from "../five-plane-orchestration/agent-delegation/delegation-manager.service.js";
+export { createDelegationManager } from "../five-plane-orchestration/agent-delegation/delegation-manager-factory.js";
 
 export {
   DelegationTracker,

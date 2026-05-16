@@ -14,7 +14,12 @@ function buildCompatibilityResult(
     ...policy,
     _denyByDefault: denyByDefault,
   };
-  Object.defineProperties(flattenedPolicy, {
+  const compatibilityResult: PolicyResolutionResult & Record<string, unknown> = {
+    ...flattenedPolicy,
+    policy: flattenedPolicy,
+    denyByDefault,
+  };
+  Object.defineProperties(compatibilityResult, {
     policy: {
       value: flattenedPolicy,
       enumerable: false,
@@ -28,7 +33,7 @@ function buildCompatibilityResult(
       writable: false,
     },
   });
-  return flattenedPolicy as unknown as PolicyResolutionResult & Record<string, unknown>;
+  return compatibilityResult;
 }
 
 export function resolveCompliancePolicyForNode(

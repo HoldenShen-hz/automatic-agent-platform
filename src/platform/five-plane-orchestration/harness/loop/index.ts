@@ -1,3 +1,4 @@
+import { MS_PER_HOUR } from "../../../contracts/constants/time.js";
 import type { ConstraintPack, HarnessDecisionAction } from "../index.js";
 
 export interface HarnessLoopGuards {
@@ -41,7 +42,7 @@ export class HarnessLoopController {
     const budget = constraintPack.budgetEnvelope ?? constraintPack.budget ?? {
       maxSteps: 100,
       maxCost: 100000,
-      maxDurationMs: 3600000,
+      maxDurationMs: MS_PER_HOUR,
     };
     const rawIterations = Math.max(0, Math.floor(budget.maxSteps / 3));
     this.guards = {

@@ -8,6 +8,7 @@
  */
 
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
+import { MS_PER_DAY } from "../../contracts/constants/time.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
@@ -392,7 +393,7 @@ export class ConfigRolloutService {
    * @param maxAgeMs - Maximum age in milliseconds
    * @returns Number of rollouts cleaned up
    */
-  public cleanupRollouts(maxAgeMs: number = 86400000): number {
+  public cleanupRollouts(maxAgeMs: number = MS_PER_DAY): number {
     const cutoff = Date.now() - maxAgeMs;
     let cleaned = 0;
 

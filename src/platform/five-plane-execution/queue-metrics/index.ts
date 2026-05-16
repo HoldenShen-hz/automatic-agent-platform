@@ -5,6 +5,7 @@
  * Tracks queue depth, throughput, wait times, and failure rates.
  */
 
+import { MS_PER_HOUR } from "../../contracts/constants/time.js";
 import type { QueueStats } from "../../five-plane-execution/queue/queue-adapter-types.js";
 
 /**
@@ -50,7 +51,7 @@ export class QueueMetricCollector {
     public readonly queueName: string,
     options: { ttlMs?: number; maxSize?: number } = {},
   ) {
-    this.ttlMs = options.ttlMs ?? 3600000; // Default 1 hour TTL
+    this.ttlMs = options.ttlMs ?? MS_PER_HOUR;
     this.maxSize = options.maxSize ?? 10000; // Default max 10000 entries
   }
 

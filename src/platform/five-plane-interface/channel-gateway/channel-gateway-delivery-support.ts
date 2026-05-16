@@ -1,4 +1,6 @@
 import type { SQLInputValue } from "node:sqlite";
+import { HTTP_STATUS_GATEWAY_TIMEOUT } from "../../contracts/constants/network.js";
+import { SECONDS_PER_HOUR } from "../../contracts/constants/time.js";
 
 export interface WebhookSignatureConfig {
   secret: string;
@@ -147,7 +149,7 @@ export const DEFAULT_DELIVERY_CONFIG: DeliveryGuaranteeConfig = {
   maxBackoffMs: 60000,
   backoffMultiplier: 2,
   timeoutMs: 30000,
-  retryableStatuses: [408, 429, 500, 502, 503, 504],
+  retryableStatuses: [408, 429, 500, 502, 503, HTTP_STATUS_GATEWAY_TIMEOUT],
 };
 
 export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {

@@ -98,6 +98,14 @@ export function toOidcSession(record: SessionRecord): OidcSession {
   return result;
 }
 
+import {
+  FIVE_MINUTES_MS,
+  MS_PER_DAY,
+  MS_PER_HOUR,
+  MS_PER_SECOND,
+  SECONDS_PER_HOUR,
+} from "../../../platform/contracts/constants/time.js";
+
 export interface OidcStateStore {
   saveState(state: string, nonce: string, redirectUri: string, codeVerifier: string): void;
   getState(state: string): { nonce: string; redirectUri: string; codeVerifier: string } | null;
@@ -114,9 +122,9 @@ export interface OidcServiceConfig {
 }
 
 const DEFAULT_CONFIG: OidcServiceConfig = {
-  sessionTtlMs: 3600000, // 1 hour
-  refreshThresholdMs: 300000, // 5 minutes
-  maxSessionAgeMs: 86400000, // 24 hours
+  sessionTtlMs: MS_PER_HOUR,
+  refreshThresholdMs: FIVE_MINUTES_MS,
+  maxSessionAgeMs: MS_PER_DAY,
   fetchTimeoutMs: 10_000,
   allowMockFallback: false, // §48: Disabled in production
 };
@@ -585,7 +593,7 @@ export class OidcIdentityService {
           : this.simulateRefreshResponse(input.refreshToken ?? "");
       }
       const payload = await response.json() as Record<string, unknown>;
-      const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : 3600;
+      const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : SECONDS_PER_HOUR;
 
       // §48: Validate tokens are not mock in production
       const accessToken = String(payload.access_token ?? "");
@@ -603,7 +611,7 @@ export class OidcIdentityService {
         ...(newRefreshToken ? { refreshToken: newRefreshToken } : {}),
         expiresIn,
         tokenType: typeof payload.token_type === "string" ? payload.token_type : "Bearer",
-        expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + expiresIn * MS_PER_SECOND).toISOString(),
       };
     } catch (err) {
       // §48: If in production and mock fallback disabled, propagate error
@@ -629,14 +637,14 @@ export class OidcIdentityService {
   }
 
   private simulateTokenResponse(code: string, nonce: string): OidcTokenResponse {
-    const expiresIn = 3600;
+    const expiresIn = SECONDS_PER_HOUR;
     return {
       accessToken: `at_${newId("access")}`,
       idToken: `id_${newId("id")}`,
       refreshToken: `rt_${newId("refresh")}`,
       expiresIn,
       tokenType: "Bearer",
-      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + expiresIn * MS_PER_SECOND).toISOString(),
     };
   }
 
@@ -653,14 +661,14 @@ export class OidcIdentityService {
   }
 
   private simulateRefreshResponse(refreshToken: string): OidcTokenResponse {
-    const expiresIn = 3600;
+    const expiresIn = SECONDS_PER_HOUR;
     return {
       accessToken: `at_${newId("access")}`,
       idToken: `id_${newId("id")}`,
       refreshToken: `rt_${newId("refresh")}`, // §48 Token Rotation: issue new refresh token
       expiresIn,
       tokenType: "Bearer",
-      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + expiresIn * MS_PER_SECOND).toISOString(),
     };
   }
 }

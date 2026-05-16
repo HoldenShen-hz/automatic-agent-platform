@@ -11,6 +11,10 @@ import { WebSocketServer } from "ws";
 import { z } from "zod";
 
 import type { ApiAuthService } from "../api/api-auth-service.js";
+import {
+  WEBSOCKET_CLOSE_CODE_INVALID_TOKEN,
+  WEBSOCKET_CLOSE_CODE_MISSING_TOKEN,
+} from "../../contracts/constants/network.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-scope-filter.js";
 
@@ -158,7 +162,7 @@ export class WebSocketBridge {
     const params = this.extractConnectionParams(req);
 
     if (!params.token) {
-      ws.close(4001, "Missing token");
+      ws.close(WEBSOCKET_CLOSE_CODE_MISSING_TOKEN, "Missing token");
       logger.warn("WebSocket connection rejected: missing subprotocol token");
       return;
     }
@@ -168,7 +172,7 @@ export class WebSocketBridge {
       const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${params.token}` });
       principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
     } catch (error) {
-      ws.close(4003, "Invalid token");
+      ws.close(WEBSOCKET_CLOSE_CODE_INVALID_TOKEN, "Invalid token");
       logger.warn("WebSocket connection rejected: invalid subprotocol token", {
         error: error instanceof Error ? error.message : String(error),
       });

@@ -31,7 +31,31 @@ export const DepartmentComplianceBindingSchema = z.object({
 export type ComplianceFramework = z.infer<typeof ComplianceFrameworkSchema>;
 export type DepartmentComplianceBinding = z.infer<typeof DepartmentComplianceBindingSchema>;
 
-export const DEFAULT_COMPLIANCE_FRAMEWORKS = Object.freeze([
+function createComplianceFramework(input: {
+  frameworkId: string;
+  type: ComplianceFramework["type"];
+  displayName: string;
+  controlIds: readonly string[];
+  auditRequirements: readonly string[];
+  reportTemplate: string;
+  minimumPolicies: Record<string, unknown>;
+}): ComplianceFramework {
+  const framework: ComplianceFramework = {
+    frameworkId: input.frameworkId,
+    type: input.type,
+    displayName: input.displayName,
+    controlIds: [...input.controlIds],
+    auditRequirements: [...input.auditRequirements],
+    reportTemplate: input.reportTemplate,
+    minimumPolicies: { ...input.minimumPolicies },
+  };
+  Object.freeze(framework.controlIds);
+  Object.freeze(framework.auditRequirements);
+  Object.freeze(framework.minimumPolicies);
+  return Object.freeze(framework) as ComplianceFramework;
+}
+
+export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Object.freeze(([
   Object.freeze({
     frameworkId: "sox",
     type: "sox" as const,
@@ -110,7 +134,7 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS = Object.freeze([
       dataClassification: "restricted",
     }),
   }),
-] as const) as unknown as readonly ComplianceFramework[];
+] as const).map((framework) => createComplianceFramework(framework)));
 
 /**
  * Looks up a compliance framework by its type identifier.

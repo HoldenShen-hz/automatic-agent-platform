@@ -315,7 +315,7 @@ export class DelegationManagerService {
       {
         parentPermissions: delegation.permissions,
         parentRiskMode: 100,
-        parentConstraints: delegation.permissions.constraints as unknown as Record<string, unknown>,
+        parentConstraints: { ...delegation.permissions.constraints },
         parentBudgetRemaining: this.resolveParentBudgetRemaining(delegation.permissions),
         // Completion reports are validated against the platform delegation depth budget,
         // not against the child delegation's current depth as an exact ceiling.
@@ -992,16 +992,4 @@ export class DelegationManagerService {
     });
     return handle as AwaitableDelegationHandle;
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Factory Function
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function createDelegationManager(
-  options?: DelegationManagerOptions,
-  delegationRepository?: DelegationRepository,
-  eventRepository?: DelegationEventRepository,
-): DelegationManagerService {
-  return new DelegationManagerService(options, delegationRepository, eventRepository);
 }

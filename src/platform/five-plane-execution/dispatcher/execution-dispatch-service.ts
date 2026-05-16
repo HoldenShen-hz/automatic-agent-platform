@@ -880,7 +880,7 @@ export class ExecutionDispatchService {
   }
 
   private listCandidateWorkers(): RegisteredWorkerView[] {
-    const workerStore = this.store.worker as unknown as {
+    const workerStore = this.store.worker as {
       listWorkers?: () => RegisteredWorkerView[];
     };
     const directWorkers = workerStore.listWorkers?.();
@@ -891,7 +891,7 @@ export class ExecutionDispatchService {
   }
 
   private getCandidateWorker(workerId: string): RegisteredWorkerView | null {
-    const workerStore = this.store.worker as unknown as {
+    const workerStore = this.store.worker as {
       getWorker?: (id: string) => RegisteredWorkerView | null;
       listWorkers?: () => RegisteredWorkerView[];
     };

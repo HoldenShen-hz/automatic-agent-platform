@@ -136,6 +136,25 @@ interface StoredExperience {
   last_accessed_at: string;
 }
 
+function readStoredExperience(row: Record<string, unknown>): StoredExperience {
+  return {
+    id: String(row.id ?? ""),
+    task_id: String(row.task_id ?? ""),
+    session_id: String(row.session_id ?? ""),
+    agent_id: String(row.agent_id ?? ""),
+    execution_id: String(row.execution_id ?? ""),
+    task_context: String(row.task_context ?? ""),
+    task_intent: String(row.task_intent ?? ""),
+    tools_used_json: String(row.tools_used_json ?? "[]"),
+    outcome: String(row.outcome ?? ""),
+    final_error_code: typeof row.final_error_code === "string" ? row.final_error_code : null,
+    quality_score: Number(row.quality_score ?? 0),
+    created_at: String(row.created_at ?? ""),
+    hit_count: Number(row.hit_count ?? 0),
+    last_accessed_at: String(row.last_accessed_at ?? ""),
+  };
+}
+
 /**
  * Computes keyword-based similarity between two text strings using Jaccard index
  * @param text1 - First text string
@@ -364,23 +383,23 @@ export class ExperienceCacheService {
     params.push(scanLimit);
 
     const rows = this.store.withConnection((connection) =>
-      connection.prepare(sql).all(...params as (string | number | null)[]) as unknown as StoredExperience[],
+      connection.prepare(sql).all(...params as (string | number | null)[]) as Record<string, unknown>[],
     );
     const experiences: ExperienceRecord[] = rows.map((row) => ({
-      id: row.id,
-      taskId: row.task_id,
-      sessionId: row.session_id,
-      agentId: row.agent_id,
-      executionId: row.execution_id,
-      taskContext: row.task_context,
-      taskIntent: row.task_intent,
-      toolsUsed: JSON.parse(row.tools_used_json) as ExperienceToolCall[],
-      outcome: row.outcome as ExperienceRecord["outcome"],
-      finalErrorCode: row.final_error_code ?? null,
-      qualityScore: row.quality_score,
-      createdAt: row.created_at,
-      hitCount: row.hit_count,
-      lastAccessedAt: row.last_accessed_at,
+      id: readStoredExperience(row).id,
+      taskId: readStoredExperience(row).task_id,
+      sessionId: readStoredExperience(row).session_id,
+      agentId: readStoredExperience(row).agent_id,
+      executionId: readStoredExperience(row).execution_id,
+      taskContext: readStoredExperience(row).task_context,
+      taskIntent: readStoredExperience(row).task_intent,
+      toolsUsed: JSON.parse(readStoredExperience(row).tools_used_json) as ExperienceToolCall[],
+      outcome: readStoredExperience(row).outcome as ExperienceRecord["outcome"],
+      finalErrorCode: readStoredExperience(row).final_error_code ?? null,
+      qualityScore: readStoredExperience(row).quality_score,
+      createdAt: readStoredExperience(row).created_at,
+      hitCount: readStoredExperience(row).hit_count,
+      lastAccessedAt: readStoredExperience(row).last_accessed_at,
     }));
 
     // Score each experience based on similarity

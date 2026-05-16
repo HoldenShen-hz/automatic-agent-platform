@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import { STDERR_TAIL_BUFFER_BYTES } from "../../platform/contracts/constants/io.js";
 import { getProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
 import { newId } from "../../platform/contracts/types/ids.js";
 import type {
@@ -294,7 +295,7 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
     this.attachChild(child, process.execPath, [this.childModulePath]);
     child.stderr?.setEncoding("utf8");
     child.stderr?.on("data", (chunk: string) => {
-      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
+      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-STDERR_TAIL_BUFFER_BYTES);
     });
     child.on("message", (message: unknown) => {
       this.handleMessage(message);
@@ -378,7 +379,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
     });
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => {
-      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
+      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-STDERR_TAIL_BUFFER_BYTES);
     });
   }
 
@@ -436,7 +437,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
       try {
         this.handleMessage(JSON.parse(line));
       } catch {
-        this.stderrBuffer = `${this.stderrBuffer}\nnon-protocol-stdout:${line}`.trim().slice(-4096);
+        this.stderrBuffer = `${this.stderrBuffer}\nnon-protocol-stdout:${line}`.trim().slice(-STDERR_TAIL_BUFFER_BYTES);
       }
     }
   }

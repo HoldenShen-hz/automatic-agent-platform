@@ -10,6 +10,7 @@
  * @see docs_zh/contracts/release_rollout_and_rollback_contract.md
  */
 
+import { DatabaseSync } from "node:sqlite";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
@@ -179,15 +180,26 @@ CREATE INDEX IF NOT EXISTS idx_rollback_records_shift ON rollback_records(shift_
 type RawRow = Record<string, unknown>;
 
 function createCompatDb(): AuthoritativeSqlDatabase {
+  const connection = new DatabaseSync(":memory:");
   return {
-    connection: {
-      prepare: () => ({
-        run: () => undefined,
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as unknown as AuthoritativeSqlDatabase;
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection,
+    migrate: () => undefined,
+    getSchemaStatus: () => ({
+      currentVersion: 0,
+      expectedVersion: 0,
+      upToDate: true,
+      pendingVersions: [],
+      checksumMismatches: [],
+    }),
+    assertSchemaCurrent: () => undefined,
+    integrityCheck: () => [],
+    healthCheck: async () => true,
+    close: () => connection.close(),
+    transaction: <T>(work: () => T): T => work(),
+    readTransaction: <T>(work: () => T): T => work(),
+  };
 }
 
 // ── Service ────────────────────────────────────────────────────────────

@@ -111,9 +111,10 @@ function installRuntimeGuards(): void {
   net.connect = deny as typeof net.connect;
   net.createConnection = deny as typeof net.createConnection;
   tls.connect = deny as typeof tls.connect;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = async (..._args) => {
     deny();
-  }) as unknown as typeof globalThis.fetch;
+    throw new Error("plugin_runtime_child:network_denied");
+  };
   syncBuiltinESMExports();
 }
 

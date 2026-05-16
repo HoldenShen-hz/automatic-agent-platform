@@ -1,5 +1,6 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { MS_PER_HOUR } from "../../contracts/constants/time.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -180,7 +181,7 @@ export class ChannelGatewayDeliveryService {
       )
       .run(bucket, windowStart);
 
-    const cutoff = new Date(now - 3600000).toISOString();
+    const cutoff = new Date(now - MS_PER_HOUR).toISOString();
     this.db.connection
       .prepare(`DELETE FROM gateway_rate_limits WHERE window_start < ?`)
       .run(cutoff);

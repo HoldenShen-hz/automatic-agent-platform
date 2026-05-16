@@ -1,5 +1,6 @@
 import type { GatewayStoragePort } from "./storage-port.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import { HTTP_STATUS_GATEWAY_TIMEOUT } from "../../contracts/constants/network.js";
 import { PolicyDeniedError, StorageError, ValidationError } from "../../contracts/errors.js";
 import { GatewayTargetDirectoryService } from "./gateway-target-directory-service.js";
 import type { ChannelGatewayDeliveryService } from "./channel-gateway-delivery-service.js";
@@ -561,7 +562,7 @@ export class ChannelGatewayService {
       });
     } catch (error) {
       if (controller.signal.aborted) {
-        throw new GatewayDeliveryError(timeoutCode, 504, true);
+        throw new GatewayDeliveryError(timeoutCode, HTTP_STATUS_GATEWAY_TIMEOUT, true);
       }
       throw error;
     } finally {

@@ -36,7 +36,8 @@ export {
 } from "./topology-validator.js";
 
 // Re-export delegation manager
-export { DelegationManagerService, createDelegationManager } from "./delegation-manager.service.js";
+export { DelegationManagerService } from "./delegation-manager.service.js";
+export { createDelegationManager } from "./delegation-manager-factory.js";
 
 // Re-export context isolator
 export {

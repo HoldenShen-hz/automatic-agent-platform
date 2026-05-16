@@ -30,6 +30,7 @@ import {
   type SecretProviderMetadata,
   type ManagedSecretProvider,
 } from "./env-secret-provider.js";
+import { MS_PER_HOUR } from "../../contracts/constants/time.js";
 import { ProviderError, ValidationError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
@@ -124,7 +125,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
     const explicitToken = this.env["AA_GCP_TOKEN"];
     if (explicitToken) {
       this._cachedToken = explicitToken;
-      this._tokenExpiry = Date.now() + 3600_000; // Assume 1 hour
+      this._tokenExpiry = Date.now() + MS_PER_HOUR;
       return this._cachedToken;
     }
 

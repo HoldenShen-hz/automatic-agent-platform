@@ -132,6 +132,14 @@ function getTemplateKey(taskType?: string): string {
   return "default";
 }
 
+function readProviderProfiles(provider: object | null | undefined): ModelFallbackCandidate[] {
+  if (provider == null) {
+    return [];
+  }
+  const getProfiles = Reflect.get(provider, "getProfiles") as (() => ModelFallbackCandidate[]) | undefined;
+  return typeof getProfiles === "function" ? getProfiles.call(provider) : [];
+}
+
 /**
  * OperationalDirective - sent when degradation level changes
  * R4-47: DegradationController must emit OperationalDirective on level change
@@ -386,17 +394,9 @@ export class DegradationController {
     // If still no candidates, try to get profiles directly from the provider
     if (candidates.length === 0) {
       // Check if provider has a registry or direct profile access
-      const primaryAny = this.primaryProvider as unknown as Record<string, unknown>;
-      if (typeof primaryAny.getProfiles === "function") {
-        const profiles = primaryAny.getProfiles() as ModelFallbackCandidate[];
-        candidates.push(...profiles);
-      }
+      candidates.push(...readProviderProfiles(this.primaryProvider));
       if (this.fallbackProvider != null) {
-        const fallbackAny = this.fallbackProvider as unknown as Record<string, unknown>;
-        if (typeof fallbackAny.getProfiles === "function") {
-          const profiles = fallbackAny.getProfiles() as ModelFallbackCandidate[];
-          candidates.push(...profiles);
-        }
+        candidates.push(...readProviderProfiles(this.fallbackProvider));
       }
     }
 

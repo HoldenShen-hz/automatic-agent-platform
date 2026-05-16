@@ -7,6 +7,14 @@ CREATE TABLE IF NOT EXISTS task_drafts (
   normalized_intent_json TEXT NOT NULL,
   risk_preview_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (task_draft_id) REFERENCES task_drafts(task_draft_id)
 );
 
@@ -20,7 +28,15 @@ CREATE TABLE IF NOT EXISTS confirmed_task_specs (
   risk_class TEXT NOT NULL,
   idempotency_key TEXT NOT NULL UNIQUE,
   trace_id TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS request_envelopes (
@@ -31,6 +47,14 @@ CREATE TABLE IF NOT EXISTS request_envelopes (
   idempotency_key TEXT NOT NULL UNIQUE,
   request_hash TEXT NOT NULL,
   submitted_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id)
 );
 
@@ -51,8 +75,15 @@ CREATE TABLE IF NOT EXISTS harness_runs (
   budget_ledger_id TEXT NOT NULL,
   current_seq INTEGER NOT NULL,
   created_at TEXT NOT NULL,
+  created_by TEXT NULL,
   fencing_token TEXT NOT NULL,
   updated_at TEXT NOT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id),
   FOREIGN KEY (request_envelope_id) REFERENCES request_envelopes(request_id)
 );
@@ -64,6 +95,14 @@ CREATE TABLE IF NOT EXISTS plan_graph_bundles (
   graph_json TEXT NOT NULL,
   validation_report_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
@@ -73,6 +112,15 @@ CREATE TABLE IF NOT EXISTS graph_patches (
   base_graph_version INTEGER NOT NULL,
   new_graph_version INTEGER NOT NULL,
   operations_json TEXT NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
@@ -86,6 +134,14 @@ CREATE TABLE IF NOT EXISTS node_runs (
   fencing_token TEXT,
   current_seq INTEGER NOT NULL,
   updated_at TEXT NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
   FOREIGN KEY (plan_graph_bundle_id) REFERENCES plan_graph_bundles(plan_graph_bundle_id)
 );
@@ -97,6 +153,14 @@ CREATE TABLE IF NOT EXISTS node_attempts (
   attempt_kind TEXT NOT NULL,
   executor_ref TEXT NOT NULL,
   started_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
 );
 
@@ -108,6 +172,14 @@ CREATE TABLE IF NOT EXISTS node_attempt_receipts (
   status TEXT NOT NULL,
   evidence_refs_json TEXT NOT NULL,
   produced_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (node_attempt_id) REFERENCES node_attempts(node_attempt_id),
   FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
 );
@@ -121,6 +193,14 @@ CREATE TABLE IF NOT EXISTS side_effect_records (
   status TEXT NOT NULL,
   risk_class TEXT NOT NULL,
   updated_at TEXT NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
   FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id),
   FOREIGN KEY (node_attempt_id) REFERENCES node_attempts(node_attempt_id)
@@ -137,6 +217,15 @@ CREATE TABLE IF NOT EXISTS budget_ledgers (
   released_amount REAL NOT NULL,
   status TEXT NOT NULL,
   version INTEGER NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id)
 );
 
@@ -150,6 +239,14 @@ CREATE TABLE IF NOT EXISTS budget_reservations (
   status TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (budget_ledger_id) REFERENCES budget_ledgers(budget_ledger_id),
   FOREIGN KEY (harness_run_id) REFERENCES harness_runs(harness_run_id),
   FOREIGN KEY (node_run_id) REFERENCES node_runs(node_run_id)
@@ -161,6 +258,14 @@ CREATE TABLE IF NOT EXISTS budget_settlements (
   actual_amount REAL NOT NULL,
   settlement_kind TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (budget_reservation_id) REFERENCES budget_reservations(budget_reservation_id)
 );
 
@@ -191,6 +296,9 @@ CREATE TABLE IF NOT EXISTS mission_records (
   updated_by TEXT NOT NULL,
   archived_at TEXT NULL,
   archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   version INTEGER NOT NULL,
   etag TEXT NOT NULL,
   CHECK (version >= 0)
@@ -217,6 +325,15 @@ CREATE TABLE IF NOT EXISTS mission_memberships (
   expires_at TEXT NULL,
   metadata_json TEXT NOT NULL,
   version INTEGER NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   UNIQUE (mission_id, principal_type, principal_id),
   FOREIGN KEY (mission_id) REFERENCES mission_records(mission_id)
 );
@@ -239,6 +356,13 @@ CREATE TABLE IF NOT EXISTS mission_context_snapshots (
   correlation_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
   created_by TEXT NOT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL,
   FOREIGN KEY (mission_id) REFERENCES mission_records(mission_id),
   FOREIGN KEY (confirmed_task_spec_id) REFERENCES confirmed_task_specs(confirmed_task_spec_id)
 );
@@ -259,14 +383,30 @@ CREATE TABLE IF NOT EXISTS run_version_locks (
   harness_run_id TEXT NOT NULL,
   schema_version TEXT NOT NULL,
   runtime_profile_version TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS artifact_version_lock_sets (
   artifact_version_lock_set_id TEXT PRIMARY KEY,
   harness_run_id TEXT NOT NULL,
   artifact_locks_json TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS decision_input_bundles (
@@ -275,7 +415,15 @@ CREATE TABLE IF NOT EXISTS decision_input_bundles (
   node_run_id TEXT,
   decision_kind TEXT NOT NULL,
   risk_class TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS harness_decisions (
@@ -284,7 +432,15 @@ CREATE TABLE IF NOT EXISTS harness_decisions (
   decision_kind TEXT NOT NULL,
   decision TEXT NOT NULL,
   decider_type TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS human_responsibility_records (
@@ -293,7 +449,16 @@ CREATE TABLE IF NOT EXISTS human_responsibility_records (
   human_actor_ref_json TEXT NOT NULL,
   responsibility_scope TEXT NOT NULL,
   acknowledged_risk_class TEXT NOT NULL,
-  effective_from TEXT NOT NULL
+  effective_from TEXT NOT NULL,
+  created_at TEXT NULL,
+  created_by TEXT NULL,
+  updated_at TEXT NULL,
+  updated_by TEXT NULL,
+  archived_at TEXT NULL,
+  archived_by TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NULL,
+  deleted_by TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS runtime_event_log (

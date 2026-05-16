@@ -48,6 +48,45 @@ export interface MemoryRetrievalOptions {
   offset?: number;
 }
 
+interface FtsMemoryRow {
+  rank: number;
+  memory: MemoryRecord;
+}
+
+function readMemoryRecord(row: Record<string, unknown>): MemoryRecord {
+  return {
+    id: String(row.id ?? ""),
+    taskId: typeof row.taskId === "string" ? row.taskId : null,
+    sessionId: typeof row.sessionId === "string" ? row.sessionId : null,
+    agentId: typeof row.agentId === "string" ? row.agentId : null,
+    executionId: typeof row.executionId === "string" ? row.executionId : null,
+    memoryLayer: String(row.memoryLayer ?? "") as MemoryRecord["memoryLayer"],
+    scope: String(row.scope ?? ""),
+    contentJson: String(row.contentJson ?? ""),
+    classification: String(row.classification ?? ""),
+    sourceTrustLevel: String(row.sourceTrustLevel ?? "") as MemoryRecord["sourceTrustLevel"],
+    qualityScore: typeof row.qualityScore === "number" ? row.qualityScore : null,
+    hitCount: Number(row.hitCount ?? 0),
+    createdAt: String(row.createdAt ?? ""),
+    lastAccessedAt: typeof row.lastAccessedAt === "string" ? row.lastAccessedAt : null,
+    expiresAt: typeof row.expiresAt === "string" ? row.expiresAt : null,
+    revokedAt: typeof row.revokedAt === "string" ? row.revokedAt : null,
+    revocationReason: typeof row.revocationReason === "string" ? row.revocationReason : null,
+    kind: String(row.kind ?? "") as MemoryRecord["kind"],
+    status: String(row.status ?? "") as MemoryRecord["status"],
+    importanceScore: typeof row.importanceScore === "number" ? row.importanceScore : null,
+    freshnessScore: typeof row.freshnessScore === "number" ? row.freshnessScore : null,
+    contentHash: typeof row.contentHash === "string" ? row.contentHash : null,
+  };
+}
+
+function readFtsMemoryRows(rows: readonly Record<string, unknown>[]): FtsMemoryRow[] {
+  return rows.map((row) => ({
+    rank: Number(row.rank ?? 0),
+    memory: readMemoryRecord(row),
+  }));
+}
+
 /**
  * Builds an FTS5 MATCH query from raw text
  *
@@ -349,13 +388,13 @@ export class MemoryRetrievalService {
 
     // Execute FTS query
     const rows = this.store.withConnection((connection) =>
-      connection.prepare(ftsSql).all(ftsMatchQuery, String(limit), String(offset)) as unknown as
-        (MemoryRecord & { rank: number })[],
+      connection.prepare(ftsSql).all(ftsMatchQuery, String(limit), String(offset)) as Record<string, unknown>[],
     );
+    const ftsRows = readFtsMemoryRows(rows);
 
     // Map results and generate snippets
-    let results: FtsSearchResult[] = rows.map(row => {
-      const memory: MemoryRecord = row as unknown as MemoryRecord;
+    let results: FtsSearchResult[] = ftsRows.map(row => {
+      const memory = row.memory;
       const searchableText = extractSearchableText(memory.contentJson);
       const snippet = createSnippet(searchableText, queryTerms);
 

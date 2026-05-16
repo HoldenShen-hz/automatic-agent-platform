@@ -329,6 +329,9 @@ export abstract class OapeflirLoopSupport {
       const category: FeedbackSignal["category"] = !validationPassed
         ? "failure"
         : "success";
+      const nodeRunId = typeof Reflect.get(output, "nodeRunId") === "string"
+        ? String(Reflect.get(output, "nodeRunId"))
+        : null;
 
       return {
         signalId: `signal_${index + 1}`,
@@ -341,8 +344,8 @@ export abstract class OapeflirLoopSupport {
           durationMs: output.systemTelemetry.durationMs,
           validationPassed,
         },
-        stepOutputRefs: [(output as unknown as { nodeRunId?: string }).nodeRunId ?? output.stepId],
-        ...((output as unknown as { nodeRunId?: string }).nodeRunId != null ? { nodeRunId: (output as unknown as { nodeRunId: string }).nodeRunId } : {}),
+        stepOutputRefs: [nodeRunId ?? output.stepId],
+        ...(nodeRunId != null ? { nodeRunId } : {}),
         timestamp: Date.now() + index,
         feedbackTrustScore: 0.5,
         trustFactors: {

@@ -186,7 +186,7 @@ export class PluginExecutorService {
     const context = this.buildContext(pluginId, instance.manifest);
 
     if (this.enforceSignatures) {
-      enforcePluginSignature(instance.manifest as unknown as PluginDefinition);
+      enforcePluginSignature(toPluginDefinition(instance.manifest));
     }
 
     if (instance.hooks.onLoad) {
@@ -541,6 +541,35 @@ export class PluginExecutorService {
       return undefined;
     }
   }
+}
+
+function toPluginDefinition(manifest: PluginManifest): PluginDefinition {
+  return {
+    pluginId: manifest.pluginId,
+    name: manifest.name,
+    version: manifest.version,
+    type: manifest.spiTypes[0] ?? "tool",
+    capabilities: manifest.capabilityIds.map((capabilityId) => ({
+      name: capabilityId,
+      description: capabilityId,
+      inputSchema: {},
+      outputSchema: {},
+    })),
+    resourceLimits: {
+      maxMemoryMb: 512,
+      maxCpuMs: 5_000,
+      maxDurationMs: manifest.sandbox.timeoutMs,
+    },
+    dependencies: [],
+    security: {
+      sandboxTier: "read_only",
+      egressDomains: [],
+    },
+    spiTypes: [...manifest.spiTypes],
+    domainIds: [...manifest.domainIds],
+    sbomRef: null,
+    signing: null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

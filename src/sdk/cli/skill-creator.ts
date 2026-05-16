@@ -40,6 +40,19 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import { SkillCreatorService, type SkillCreatorResourceDirectory } from "../../platform/five-plane-execution/tool-executor/skill-creator-service.js";
 import { SkillGovernanceService, type SkillLifecycle, type SkillRiskLevel } from "../../platform/five-plane-execution/tool-executor/skill-governance-service.js";
 
+const SKILL_RESOURCE_DIRECTORIES = ["scripts", "references", "assets"] as const satisfies readonly SkillCreatorResourceDirectory[];
+
+function parseResourceDirectories(
+  directories: readonly Record<string, unknown>[],
+): SkillCreatorResourceDirectory[] {
+  return directories
+    .map((directory) => directory.name)
+    .filter((directory): directory is SkillCreatorResourceDirectory =>
+      typeof directory === "string" &&
+      (SKILL_RESOURCE_DIRECTORIES as readonly string[]).includes(directory),
+    );
+}
+
 /**
  * Main entry point for the skill creator CLI.
  *
@@ -88,7 +101,7 @@ function main(): void {
         if (envConfig.tags) createRequest.tags = envConfig.tags;
         if (envConfig.applicableRoles) createRequest.applicableRoles = envConfig.applicableRoles;
         if (envConfig.resourceDirectories) {
-          createRequest.resourceDirectories = envConfig.resourceDirectories as unknown as SkillCreatorResourceDirectory[];
+          createRequest.resourceDirectories = parseResourceDirectories(envConfig.resourceDirectories);
         }
         if (envConfig.includeOpenAiAgent != null) createRequest.includeOpenAiAgent = envConfig.includeOpenAiAgent;
         if (envConfig.overwriteAllowed != null) createRequest.overwriteAllowed = envConfig.overwriteAllowed;

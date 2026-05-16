@@ -26,11 +26,11 @@ export interface HealthRouteDeps {
   isShuttingDown?: () => boolean;
 }
 
-function healthStatusCode(report: Record<string, unknown>, shuttingDown: boolean): number {
+function healthStatusCode(report: { status?: unknown }, shuttingDown: boolean): number {
   if (shuttingDown) {
     return 503;
   }
-  return report["status"] === "ok" || report["status"] === "healthy" ? 200 : 503;
+  return report.status === "ok" || report.status === "healthy" ? 200 : 503;
 }
 
 export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
@@ -47,7 +47,7 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/readyz",
       handler: async (ctx) => {
-        const report = await deps.missionControlService.getHealthReportAsync() as unknown as Record<string, unknown>;
+        const report = await deps.missionControlService.getHealthReportAsync();
         const shuttingDown = deps.isShuttingDown?.() ?? false;
         return buildJsonResponse(ctx.requestId, healthStatusCode(report, shuttingDown), {
           ...report,

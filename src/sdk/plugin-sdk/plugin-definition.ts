@@ -406,6 +406,13 @@ export interface DefinePluginOptions {
   } | null;
 }
 
+type AsyncPluginDefinition = PromiseLike<PluginDefinition> & {
+  catch<TResult = never>(
+    onRejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
+  ): Promise<PluginDefinition | TResult>;
+  finally(onFinally?: (() => void) | null): Promise<PluginDefinition>;
+};
+
 const DEFAULT_RESOURCE_LIMITS: PluginResourceLimits = {
   maxMemoryMb: 512,
   maxCpuMs: 5000,
@@ -648,7 +655,7 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     enforcePluginSignature(result);
   }
   if (result.sbomRef) {
-    return verifySbomRef(result.sbomRef).then((sbomResult) => {
+    const verification = verifySbomRef(result.sbomRef).then((sbomResult) => {
       const blockingFindings = sbomResult.vulnerabilities.filter((vulnerability) => SEVERITY_ORDER[vulnerability.severity] >= SEVERITY_ORDER["high"]);
       if (blockingFindings.length > 0) {
         throw new ValidationError(
@@ -662,10 +669,32 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
           },
         );
       }
-      return result;
-    }) as unknown as PluginDefinition;
+      return { ...result };
+    });
+    attachAsyncPluginVerification(result, verification);
   }
   return result;
+}
+
+function attachAsyncPluginVerification(result: PluginDefinition, verification: Promise<PluginDefinition>): void {
+  const asyncView = result as PluginDefinition & AsyncPluginDefinition;
+  Object.defineProperties(asyncView, {
+    then: {
+      value: verification.then.bind(verification),
+      enumerable: false,
+      configurable: true,
+    },
+    catch: {
+      value: verification.catch.bind(verification),
+      enumerable: false,
+      configurable: true,
+    },
+    finally: {
+      value: verification.finally.bind(verification),
+      enumerable: false,
+      configurable: true,
+    },
+  });
 }
 
 /**

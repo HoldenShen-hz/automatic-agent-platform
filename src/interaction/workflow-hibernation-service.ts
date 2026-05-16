@@ -1,3 +1,4 @@
+import { MS_PER_HOUR } from "../platform/contracts/constants/time.js";
 import { nowIso } from "../platform/contracts/types/ids.js";
 
 export interface WorkflowHibernationRecord {
@@ -25,7 +26,7 @@ export class WorkflowHibernationService {
       taskId,
       status: "hibernated",
       hibernatedAt: now,
-      expiresAt: new Date(new Date(now).getTime() + normalizedTtlHours * 3600 * 1000).toISOString(),
+      expiresAt: new Date(new Date(now).getTime() + normalizedTtlHours * MS_PER_HOUR).toISOString(),
       heartbeatEvents: [],
     };
     this.records.set(workflowId, record);
@@ -67,7 +68,7 @@ export class WorkflowHibernationService {
 
   public emitDueStillHibernatedEvents(asOf = nowIso(), intervalHours = 24): WorkflowHibernationHealthEvent[] {
     const emittedAt = new Date(asOf);
-    const intervalMs = Math.max(1, Math.trunc(intervalHours)) * 3600 * 1000;
+    const intervalMs = Math.max(1, Math.trunc(intervalHours)) * MS_PER_HOUR;
     return [...this.records.values()]
       .filter((record) => record.status === "hibernated")
       .filter((record) => {

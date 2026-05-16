@@ -65,7 +65,7 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
         matchType: "keyword",
       }));
 
-      return [...symbolResults, ...fileResults].slice(0, 12) as unknown as RetrieverKnowledgeResult[];
+      return [...symbolResults, ...fileResults].slice(0, 12) as RetrieverKnowledgeResult[];
     },
   };
 }

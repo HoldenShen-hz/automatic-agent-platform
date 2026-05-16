@@ -37,6 +37,10 @@ export type {
   RuntimeTransitionResult,
 } from "./runtime-state-machine-model.js";
 
+function toJsonObject(value: object): JsonValue {
+  return value as JsonValue;
+}
+
 export class RuntimeStateMachine {
   private readonly persistEvent: EventPersistenceCallback | null;
 
@@ -70,7 +74,7 @@ export class RuntimeStateMachine {
       tenantId: command.tenantId,
       runId: getRunId(command.aggregateType, aggregate),
       traceId: command.traceId,
-      payload: {
+      payload: toJsonObject({
         aggregateType: command.aggregateType,
         fromStatus: command.fromStatus,
         toStatus: command.toStatus,
@@ -81,7 +85,7 @@ export class RuntimeStateMachine {
         ...(command.budgetPrecondition != null ? { budgetPrecondition: command.budgetPrecondition } : {}),
         ...(command.sideEffectSafety != null ? { sideEffectSafety: command.sideEffectSafety } : {}),
         ...(hasAuditRef(command.auditRef) ? { auditRef: command.auditRef } : {}),
-      } as unknown as JsonValue,
+      }),
       occurredAt,
     });
 

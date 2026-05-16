@@ -104,7 +104,7 @@ export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike 
 
   public constructor(templates: readonly T[]) {
     // @ts-expect-error - generic type conversion issue
-    this.templates = templates.map((item) => normalizeComplianceTemplate(item) as unknown as T);
+    this.templates = templates.map((item) => normalizeComplianceTemplate(item) as T);
   }
 
   public find(templateId: string): T | null {

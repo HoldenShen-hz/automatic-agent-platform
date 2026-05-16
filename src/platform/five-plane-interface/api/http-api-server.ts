@@ -19,6 +19,7 @@ import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";
 import { AppError } from "../../contracts/errors.js";
+import { HTTP_STATUS_GATEWAY_TIMEOUT } from "../../contracts/constants/network.js";
 import { BillingService } from "../../../scale-ecosystem/billing/billing-service.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
@@ -88,80 +89,23 @@ import {
   parseAllowedOrigins,
   type CorsConfig,
 } from "./http-server/response-hardening.js";
+import type {
+  HttpApiServerOptions,
+  InjectRequestOptions,
+  InjectResponse,
+  StartServerOptions,
+  StartedServerAddress,
+} from "./http-api-server-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
-export interface HttpApiServerOptions {
-  approvalService: ApprovalService;
-  inspectService: InspectService;
-  missionControlService: MissionControlService;
-  gatewayTargetDirectoryService?: GatewayTargetDirectoryService | null;
-  divisionRegistry?: DivisionRegistry | null;
-  authService?: ApiAuthService | null;
-  channelGatewayService?: ChannelGatewayService | null;
-  channelGatewayDeliveryService?: ChannelGatewayDeliveryService | null;
-  webhookIngressService?: WebhookIngressService | null;
-  webhookOutboxDispatchService?: WebhookOutboxDispatchService | null;
-  webhookSecret?: string | null;
-  coordinatorLoadBalancingService?: ApiDelegationService | null;
-  prometheusMetricsExporter?: PrometheusMetricsExporter | null;
-  billingService?: BillingService | null;
-  incidentService?: IncidentFacadeService | null;
-  packCatalogService?: PackCatalogService | null;
-  costReportService?: CostReportService | null;
-  configRolloutService?: ConfigRolloutService | null;
-  tenantRegistryService?: TenantBoundaryRegistryService | null;
-  adminConfigService?: AdminConfigService | null;
-  adminRuntimeDirectiveService?: AdminRuntimeDirectiveService | null;
-  promptRegistryService?: HierarchicalPromptRegistryService | null;
-  missionRepository?: MissionRepository | null;
-  knowledgePlaneService?: KnowledgePlaneService | null;
-  artifactPlaneService?: ArtifactPlaneService | null;
-  domainRegistryService?: DomainRegistryService | null;
-  pluginRegistry?: PluginSpiRegistry | null;
-  taskStore?: AuthoritativeTaskStore | null;
-  intakeAdmissionService?: IntakeAdmissionService | null;
-  /** Distributed rate limiter for API endpoint protection */
-  rateLimiter?: DistributedRateLimiter | null;
-  /** Enable WebSocket support for real-time task updates */
-  enableWebSocket?: boolean;
-  /** CORS configuration for browser/API callers */
-  cors?: Partial<CorsConfig> | null;
-  /** Default synchronous API timeout in milliseconds */
-  apiDefaultTimeoutMs?: number;
-  /** Maximum allowed synchronous API timeout in milliseconds */
-  apiMaxTimeoutMs?: number;
-  /** Background stale worker sweep interval in milliseconds */
-  workerHeartbeatSweepIntervalMs?: number;
-  /** Worker heartbeat TTL in milliseconds */
-  workerHeartbeatTtlMs?: number;
-}
-
-export interface StartServerOptions {
-  host?: string;
-  port?: number;
-}
-
-export interface StartedServerAddress {
-  host: string;
-  port: number;
-  baseUrl: string;
-}
-
-export interface InjectRequestOptions {
-  method?: string;
-  url: string;
-  headers?: Record<string, string | undefined>;
-  body?: string | null;
-}
-
-export interface InjectResponse {
-  statusCode: number;
-  headers: Record<string, string>;
-  body: string;
-  json<T>(): T;
-  text(): string;
-}
+export type {
+  HttpApiServerOptions,
+  InjectRequestOptions,
+  InjectResponse,
+  StartServerOptions,
+  StartedServerAddress,
+} from "./http-api-server-types.js";
 
 export class HttpApiServer {
   private readonly server: Server;
@@ -702,7 +646,7 @@ export class HttpApiServer {
     const timeoutMs = this.resolveRequestTimeoutMs(request);
     return await new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new ApiError(504, "api.request_timeout", `Request exceeded ${timeoutMs} ms timeout.`));
+        reject(new ApiError(HTTP_STATUS_GATEWAY_TIMEOUT, "api.request_timeout", `Request exceeded ${timeoutMs} ms timeout.`));
       }, timeoutMs);
       void operation.then((value) => {
         clearTimeout(timer);

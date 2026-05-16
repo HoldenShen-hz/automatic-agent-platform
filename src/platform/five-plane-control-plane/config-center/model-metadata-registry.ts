@@ -223,7 +223,11 @@ function parseRegistry(raw: string, filePath: string): ModelMetadataRegistry {
     );
   }
 
-  return parsed as unknown as ModelMetadataRegistry;
+  return {
+    version: parsed.version,
+    providers: parsed.providers,
+    profiles: parsed.profiles,
+  } as ModelMetadataRegistry;
 }
 
 /**

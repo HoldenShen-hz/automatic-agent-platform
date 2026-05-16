@@ -113,7 +113,7 @@ export interface PanicDrillReport {
 
 export function validatePanicDirective(directive: PlatformPanicDirective): readonly string[] {
   const findings: string[] = [];
-  if ((directive.requiredApprovers as unknown as string[]).length < 2) {
+  if (directive.requiredApprovers.length < 2) {
     findings.push("panic.two_approvers_required");
   }
   const effectiveScope = directive.scopeLevel ?? directive.scope;

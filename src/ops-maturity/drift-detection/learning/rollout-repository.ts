@@ -77,10 +77,10 @@ export class RolloutRepository {
         failure_reason AS "failureReason"
       FROM rollout_records
       WHERE proposal_id = ?`,
-    ).get(proposalId) as unknown as RolloutRow | undefined;
+    ).get(proposalId) as Record<string, unknown> | undefined;
 
     if (!row) return null;
-    return this.rowToRecord(row);
+    return this.rowToRecord(readRolloutRow(row));
   }
 
   /**
@@ -100,9 +100,9 @@ export class RolloutRepository {
       FROM rollout_records
       WHERE status IN ('running', 'rollback_pending')
       ORDER BY started_at ASC`,
-    ).all() as unknown as RolloutRow[];
+    ).all() as Record<string, unknown>[];
 
-    return rows.map((row) => this.rowToRecord(row));
+    return rows.map((row) => this.rowToRecord(readRolloutRow(row)));
   }
 
   /**
@@ -121,9 +121,9 @@ export class RolloutRepository {
         failure_reason AS "failureReason"
       FROM rollout_records
       ORDER BY started_at DESC`,
-    ).all() as unknown as RolloutRow[];
+    ).all() as Record<string, unknown>[];
 
-    return rows.map((row) => this.rowToRecord(row));
+    return rows.map((row) => this.rowToRecord(readRolloutRow(row)));
   }
 
   /**
@@ -176,6 +176,19 @@ interface RolloutRow {
   status: string;
   metricsJson: string | null;
   failureReason: string | null;
+}
+
+function readRolloutRow(row: Record<string, unknown>): RolloutRow {
+  return {
+    proposalId: String(row.proposalId ?? ""),
+    stage: String(row.stage ?? ""),
+    percentage: Number(row.percentage ?? 0),
+    startedAt: String(row.startedAt ?? ""),
+    completedAt: typeof row.completedAt === "string" ? row.completedAt : null,
+    status: String(row.status ?? ""),
+    metricsJson: typeof row.metricsJson === "string" ? row.metricsJson : null,
+    failureReason: typeof row.failureReason === "string" ? row.failureReason : null,
+  };
 }
 
 /**

@@ -63,7 +63,7 @@ function safeJsonParse<T>(jsonString: string, schema: z.ZodType<T>, errorContext
       logger.warn(`${errorContext}: schema validation failed`, { error: err.errors });
     }
     // Fallback: return object with raw content if schema validation fails
-    return { originalJson: jsonString } as unknown as T;
+    return { originalJson: jsonString } as T;
   }
 }
 

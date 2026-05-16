@@ -1,3 +1,5 @@
+import { SECONDS_PER_HOUR } from "../../../contracts/constants/time.js";
+
 /**
  * CORS Middleware
  *
@@ -29,7 +31,7 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Trace-Id", "X-Idempotency-Key", "X-Tenant-Id"],
   allowCredentials: true,
-  maxAgeSeconds: 3600,
+  maxAgeSeconds: SECONDS_PER_HOUR,
   exposeTraceId: true,
 };
 

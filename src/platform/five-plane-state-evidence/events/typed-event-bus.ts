@@ -286,7 +286,11 @@ export interface TypedEventPayloadMap {
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
 // Compile-time assertion: MissingTypedEventDefinitions should be never (no missing types)
 // If there are missing definitions, this assignment will fail at compile time
-const _TYPED_EVENT_COVERAGE_ASSERTION: MissingTypedEventDefinitions = null as unknown as never;
+const _TYPED_EVENT_COVERAGE_ASSERTION: MissingTypedEventDefinitions = null as never;
+
+function toEventPayloadRecord(payload: object): Record<string, unknown> {
+  return payload as Record<string, unknown>;
+}
 
 /**
  * Union type of all event types that have typed payloads.
@@ -345,7 +349,7 @@ export class TypedEventBus {
     getEventSchema(input.eventType);
     const event = this.bus.publish({
       ...input,
-      payload: input.payload as unknown as Record<string, unknown>,
+      payload: toEventPayloadRecord(input.payload),
     });
     return event;
   }

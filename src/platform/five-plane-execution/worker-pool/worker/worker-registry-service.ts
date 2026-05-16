@@ -533,9 +533,7 @@ export class WorkerRegistryService {
     occurredAt: string,
   ): void {
     try {
-      const eventBus = (this.store as unknown as {
-        _eventBus?: { publish: (event: unknown) => void };
-      })._eventBus;
+      const eventBus = getEventBusPublisher(this.store);
       if (eventBus) {
         eventBus.publish({
           eventType: signalType,
@@ -788,4 +786,15 @@ export class WorkerRegistryService {
       ),
     };
   }
+}
+
+function getEventBusPublisher(store: object): { publish: (event: unknown) => void } | null {
+  const candidate = Reflect.get(store, "_eventBus");
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+  if (!("publish" in candidate) || typeof candidate.publish !== "function") {
+    return null;
+  }
+  return candidate;
 }

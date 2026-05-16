@@ -402,9 +402,12 @@ async function runAuthoritativeWritebackFailureScenario(
     });
 
     // Inject failure into writeback by temporarily modifying applyTaskTerminalState
-    const transitionService = (writeback as unknown as {
-      transitions: { applyTaskTerminalState: (...args: unknown[]) => unknown };
-    }).transitions;
+    const transitionService = Reflect.get(writeback, "transitions") as
+      | { applyTaskTerminalState: (...args: unknown[]) => unknown }
+      | undefined;
+    if (transitionService == null) {
+      throw new Error("stable_db_queue_disconnect_rehearsal:missing_transition_service");
+    }
     const originalApplyTaskTerminalState = transitionService.applyTaskTerminalState.bind(transitionService);
     transitionService.applyTaskTerminalState = (() => {
       throw new StorageError(

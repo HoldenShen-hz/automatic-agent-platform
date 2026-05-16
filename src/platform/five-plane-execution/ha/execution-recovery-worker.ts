@@ -23,10 +23,29 @@ export interface ExecutionRecoveryWorkerOptions {
   readonly now?: () => string;
 }
 
-type RecoveryCycleMetadata = Readonly<Record<string, unknown>> & {
-  readonly length: number;
-  readonly [index: number]: unknown;
-};
+class RecoveryCycleMetadata extends Array<unknown> {
+  [key: string]: unknown;
+  public activeCandidateCount: number;
+  public staleCandidateCount: number;
+  public blockedCandidateCount: number;
+  public actionableCandidateCount: number;
+  public staleBefore: string;
+
+  public constructor(input: {
+    activeCandidateCount: number;
+    staleCandidateCount: number;
+    blockedCandidateCount: number;
+    actionableCandidateCount: number;
+    staleBefore: string;
+  }) {
+    super();
+    this.activeCandidateCount = input.activeCandidateCount;
+    this.staleCandidateCount = input.staleCandidateCount;
+    this.blockedCandidateCount = input.blockedCandidateCount;
+    this.actionableCandidateCount = input.actionableCandidateCount;
+    this.staleBefore = input.staleBefore;
+  }
+}
 
 export class ExecutionRecoveryWorker implements RecoveryWorker {
   private readonly cadence: RecoveryCadence;
@@ -67,13 +86,13 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
         ...staleCandidates.filter(isAutomaticallyRecoverableCandidate),
       ]);
       const recoveredCount = await this.applyRecoveryActions(actionableCandidates, errors);
-      const metadata = Object.assign([], {
+      const metadata = new RecoveryCycleMetadata({
         activeCandidateCount: activeCandidates.length,
         staleCandidateCount: staleCandidates.length,
         blockedCandidateCount: blockedCandidates.length,
         actionableCandidateCount: actionableCandidates.length,
         staleBefore,
-      }) as unknown as RecoveryCycleMetadata;
+      });
 
       return {
         workerId: this.getWorkerId(),

@@ -84,7 +84,7 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
       closed = true;
       return originalClose();
     };
-  })() as unknown as T["close"];
+  })() as T["close"];
 
   shutdown.addHandler({
     name: `cli_storage:${label}:${storage.driver}`,

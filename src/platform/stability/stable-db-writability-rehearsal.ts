@@ -228,11 +228,11 @@ async function runHealthAndDoctorScenario(outputDir: string): Promise<StableDbWr
     const healthService = new HealthService(db, store);
 
     // Inject failure by making checkDbWritable return false
-    const healthInternals = healthService as unknown as {
-      checkDbWritableSync: () => boolean;
-    };
-    const originalCheckDbWritable = healthInternals.checkDbWritableSync.bind(healthService);
-    healthInternals.checkDbWritableSync = () => false;
+    const originalCheckDbWritable = Reflect.get(healthService, "checkDbWritableSync") as (() => boolean) | undefined;
+    if (typeof originalCheckDbWritable !== "function") {
+      throw new Error("stable_db_writability_rehearsal:missing_check_db_writable_sync");
+    }
+    Reflect.set(healthService, "checkDbWritableSync", () => false);
 
     // Doctor service runs with the injected health state
     const doctor = new DoctorService(
@@ -256,7 +256,7 @@ async function runHealthAndDoctorScenario(outputDir: string): Promise<StableDbWr
     const dbCheck = doctorReport.checks.find((check) => check.checkId === "db") ?? null;
 
     // Restore original behavior
-    healthInternals.checkDbWritableSync = originalCheckDbWritable;
+    Reflect.set(healthService, "checkDbWritableSync", originalCheckDbWritable);
     db.close();
 
     return {

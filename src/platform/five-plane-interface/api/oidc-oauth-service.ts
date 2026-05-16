@@ -13,6 +13,7 @@
 import { createHmac, createHash, timingSafeEqual, randomBytes, createVerify, createPublicKey, type JsonWebKey } from "node:crypto";
 import { BoundedCache } from "../../shared/utils/bounded-cache.js";
 import { ProviderError, ValidationError } from "../../contracts/errors.js";
+import { MS_PER_HOUR } from "../../contracts/constants/time.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
   ecAlgToNode,
@@ -44,7 +45,7 @@ export type {
 // ── OIDC Discovery Cache ─────────────────────────────────────────────
 
 const OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration";
-const JWKS_CACHE_TTL_MS = 3600000; // 1 hour
+const JWKS_CACHE_TTL_MS = MS_PER_HOUR;
 
 /**
  * Creates an OIDC provider error for network issues.
