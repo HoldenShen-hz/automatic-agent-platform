@@ -205,15 +205,18 @@ export class OrgGovernanceSaga {
   }
 
   private sortSteps(steps: readonly OrgGovernanceSagaStep[], action: OrgGovernanceSagaStep["action"]): OrgGovernanceSagaStep[] {
-    return steps
+    const filtered = steps
       .filter((candidate) => candidate.action === action)
+      .map((step, index) => ({ step, index }));
+    return filtered
       .sort((left, right) => {
-        const phaseDelta = PHASE_ORDER.indexOf(this.resolvePhase(left)) - PHASE_ORDER.indexOf(this.resolvePhase(right));
+        const phaseDelta = PHASE_ORDER.indexOf(this.resolvePhase(left.step)) - PHASE_ORDER.indexOf(this.resolvePhase(right.step));
         if (phaseDelta !== 0) {
           return phaseDelta;
         }
-        return left.stepId.localeCompare(right.stepId);
-      });
+        return left.index - right.index;
+      })
+      .map(({ step }) => step);
   }
 
   private validateHandlers(steps: readonly OrgGovernanceSagaStep[]): void {

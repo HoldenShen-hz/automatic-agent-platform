@@ -417,9 +417,13 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           return [];
         })();
 
-        // R5-2: On first iteration, build fresh signals from step outputs; on subsequent iterations
-        // after replan, use previously built signals (do not reuse stale input.feedbackSignals)
-        loopFeedbackSignals = this.buildFeedbackSignals(input.taskId, validatedStepOutputs);
+        // R5-2: On first iteration, use provided feedbackSignals if available;
+        // on subsequent iterations after replan, use previously built signals.
+        // When input.feedbackSignals is not provided, build fresh signals from step outputs.
+        const providedFeedbackSignals = input.feedbackSignals ?? [];
+        loopFeedbackSignals = providedFeedbackSignals.length > 0
+          ? providedFeedbackSignals
+          : this.buildFeedbackSignals(input.taskId, validatedStepOutputs);
         const feedbackSignals: FeedbackSignal[] = (() => {
           const result = validateFeedbackSignals(loopFeedbackSignals);
           if (result.ok) return result.value;

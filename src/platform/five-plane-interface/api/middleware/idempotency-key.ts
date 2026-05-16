@@ -117,13 +117,26 @@ export class IdempotencyKeyMiddleware {
     "/v1/auth/token",
     "/v1/billing/webhooks/reconcile",
     "/v1/gateway/webhooks/receive",
+    "/v1/webhooks",
   ]);
+
+  private static readonly EXEMPT_PREFIXES = [
+    "/v1/webhooks/",
+  ];
 
   /**
    * Check if a path is exempt from idempotency key enforcement.
    */
   private isPathExempt(path: string): boolean {
-    return IdempotencyKeyMiddleware.EXEMPT_PATHS.has(path);
+    if (IdempotencyKeyMiddleware.EXEMPT_PATHS.has(path)) {
+      return true;
+    }
+    for (const prefix of IdempotencyKeyMiddleware.EXEMPT_PREFIXES) {
+      if (path.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

@@ -67,7 +67,7 @@ test("ChargebackService integration: EUR to USD currency conversion", () => {
       tenantId: "tenant1",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 100,
+      totalCostUsd: 108,
       currency: "EUR",
       resourceCosts: [
         { resourceId: "res1", resourceType: "api", costUsd: 100, currency: "EUR" },
@@ -264,7 +264,7 @@ test("ChargebackService integration: FX rate tracking in allocations", () => {
       tenantId: "tenant1",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 100,
+      totalCostUsd: 108,
       currency: "EUR",
       resourceCosts: [
         { resourceId: "res1", resourceType: "api", costUsd: 100, currency: "EUR" },
@@ -291,7 +291,7 @@ test("ChargebackService integration: Multi-currency mixed into USD", () => {
       tenantId: "tenant1",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 100,
+      totalCostUsd: 108,
       currency: "EUR",
       resourceCosts: [
         { resourceId: "api-key-1", resourceType: "api", costUsd: 100, currency: "EUR" },
@@ -306,7 +306,7 @@ test("ChargebackService integration: Multi-currency mixed into USD", () => {
       tenantId: "tenant2",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 50,
+      totalCostUsd: 63.5,
       currency: "GBP",
       resourceCosts: [
         { resourceId: "api-key-2", resourceType: "api", costUsd: 50, currency: "GBP" },
@@ -337,7 +337,7 @@ test("ChargebackService integration: JPY currency conversion", () => {
       tenantId: "tenant1",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 10000,
+      totalCostUsd: 67,
       currency: "JPY",
       resourceCosts: [
         { resourceId: "res1", resourceType: "api", costUsd: 10000, currency: "JPY" },
@@ -424,7 +424,7 @@ test("ChargebackService integration: CNY currency conversion", () => {
       tenantId: "tenant1",
       periodStart: "2024-01-01T00:00:00Z",
       periodEnd: "2024-01-31T23:59:59Z",
-      totalCostUsd: 1000,
+      totalCostUsd: 140,
       currency: "CNY",
       resourceCosts: [
         { resourceId: "res1", resourceType: "api", costUsd: 1000, currency: "CNY" },

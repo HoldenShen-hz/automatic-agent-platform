@@ -179,7 +179,7 @@ test("HarnessRuntimeService integration: resolveHitlReview rejected aborts execu
   run = service.openHitlReview(run, "Need approval", ["evidence-1"]);
   run = service.resolveHitlReview(run, "rejected", "operator-002");
 
-  assert.equal(run.status, "cancelled");
+  assert.equal(run.status, "aborted");
   assert.ok(run.completedAt != null);
 });
 

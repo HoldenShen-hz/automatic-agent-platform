@@ -127,7 +127,7 @@ test("security: createWorkspaceWritePolicy creates valid policy", () => {
   assert.strictEqual(policy.policyId, "workspace_write");
   assert.strictEqual(policy.mode, "workspace_write");
   assert.deepStrictEqual(policy.allowedRoots, ["/workspace/project"]);
-  assert.deepStrictEqual(policy.deniedRoots, []);
+  assert.deepStrictEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
   assert.strictEqual(policy.realpathEnforced, true);
   assert.strictEqual(policy.symlinkPolicy, "deny");
 });

@@ -78,7 +78,7 @@ export class DelegationManagerService {
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
   private readonly delegationRootStore: Map<string, string>;
-  private readonly delegationRepository: DelegationRepository;
+  private readonly delegationRepository: DelegationRepository | null;
   private readonly eventRepository: DelegationEventRepository | null;
   private readonly useRepositoryAsPrimaryStore: boolean = true;
   private readonly MAX_ENTRIES = 1000;
@@ -102,7 +102,7 @@ export class DelegationManagerService {
 
     // R9-06: Repository is the authoritative store when provided
     // If not provided, fall back to in-memory mode (for backward compatibility)
-    this.delegationRepository = delegationRepository!;
+    this.delegationRepository = delegationRepository ?? null;
     this.eventRepository = eventRepository ?? null;
     this.useRepositoryAsPrimaryStore = this.delegationRepository !== null;
 
@@ -728,14 +728,17 @@ export class DelegationManagerService {
   private async collectPackTopologyEdges(rootAgentId: string): Promise<DelegationTopologyEdge[]> {
     const chain = this.chainStore.get(rootAgentId);
     if (chain && chain.nodes.length > 0) {
-      const rootDelegation = chain.nodes.find((node) => node.parentDelegationId === null);
-      const fallbackRootPackId = rootDelegation?.packId ?? rootAgentId;
       const nodeByDelegationId = new Map(chain.nodes.map((node) => [node.delegationId, node]));
       return chain.nodes
         .map((node) => {
-          const parentPackId = node.parentDelegationId
-            ? nodeByDelegationId.get(node.parentDelegationId)?.packId
-            : fallbackRootPackId;
+          if (node.parentDelegationId == null) {
+            // Root node - no delegation edge, skip this node as it represents
+            // the start of the chain, not a delegation edge. The chainPackIds
+            // will include the parent's packId separately via parent.packId.
+            return null;
+          }
+          const parentNode = nodeByDelegationId.get(node.parentDelegationId);
+          const parentPackId = parentNode?.packId;
           if (parentPackId == null || node.packId == null) {
             return null;
           }

@@ -498,31 +498,38 @@ export class HttpApiServer {
         const idempotencyKey = extractIdempotencyKey(request.headers);
 
         if (method !== "GET" && method !== "OPTIONS" && idempotencyKey == null) {
-          const deduplicationKey = this.requestDeduplication.generateKey(tenantId != null ? { tenantId } : {});
-          const fingerprint = this.requestDeduplication.generateFingerprint({
-            method,
-            path: route.pathname,
-            ...(typeof request.body === "string" ? { body: request.body } : {}),
-            ...(tenantId != null ? { tenantId } : {}),
-          });
-          const deduplicationDecision = this.requestDeduplication.check(deduplicationKey, fingerprint);
-          if (!deduplicationDecision.allowed) {
-            return this.attachResponseTracing({
-              ...this.buildJsonErrorResponse(requestId, 409, {
-                code: "api.duplicate_request",
-                message: "Duplicate request rejected within deduplication window.",
-              }),
-              headers: {
-                "content-type": "application/json; charset=utf-8",
-                "x-request-id": requestId,
-                ...(deduplicationDecision.originalRequestId != null
-                  ? { "x-original-request-id": deduplicationDecision.originalRequestId }
-                  : {}),
-                ...(deduplicationDecision.retryAfterMs != null
-                  ? { "retry-after-ms": String(deduplicationDecision.retryAfterMs) }
-                  : {}),
-              },
-            }, requestId, request);
+          // Webhook receive paths use their own de-duplication via idempotency keys in the payload.
+          // Skip request deduplication for these paths to avoid double-de-duplication conflicts.
+          const isWebhookReceivePath = route.pathname != null && (
+            route.pathname === "/v1/webhooks" || route.pathname.startsWith("/v1/webhooks/")
+          );
+          if (!isWebhookReceivePath) {
+            const deduplicationKey = this.requestDeduplication.generateKey(tenantId != null ? { tenantId } : {});
+            const fingerprint = this.requestDeduplication.generateFingerprint({
+              method,
+              path: route.pathname,
+              ...(typeof request.body === "string" ? { body: request.body } : {}),
+              ...(tenantId != null ? { tenantId } : {}),
+            });
+            const deduplicationDecision = this.requestDeduplication.check(deduplicationKey, fingerprint);
+            if (!deduplicationDecision.allowed) {
+              return this.attachResponseTracing({
+                ...this.buildJsonErrorResponse(requestId, 409, {
+                  code: "api.duplicate_request",
+                  message: "Duplicate request rejected within deduplication window.",
+                }),
+                headers: {
+                  "content-type": "application/json; charset=utf-8",
+                  "x-request-id": requestId,
+                  ...(deduplicationDecision.originalRequestId != null
+                    ? { "x-original-request-id": deduplicationDecision.originalRequestId }
+                    : {}),
+                  ...(deduplicationDecision.retryAfterMs != null
+                    ? { "retry-after-ms": String(deduplicationDecision.retryAfterMs) }
+                    : {}),
+                },
+              }, requestId, request);
+            }
           }
         }
 

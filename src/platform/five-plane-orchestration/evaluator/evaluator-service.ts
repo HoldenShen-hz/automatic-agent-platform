@@ -156,16 +156,15 @@ export class EvaluatorService {
       });
     }
 
-    // Evaluate goal deviation
+    // Evaluate goal deviation - always emit finding for completed outcomes
+    // to confirm the goal was achieved (even if with transient issues)
     const deviationResult = this.evaluateGoalDeviation(planGraphBundle, nodeFilteredFeedback);
-    if (deviationResult.hasDeviation) {
-      findings.push({
-        findingId: newId("eval_find"),
-        category: "deviation",
-        severity: deviationResult.severity,
-        message: `${deviationResult.message}${nodeRunId ? ` (node: ${nodeRunId})` : ""}`,
-      });
-    }
+    findings.push({
+      findingId: newId("eval_find"),
+      category: "deviation",
+      severity: deviationResult.severity,
+      message: deviationResult.message,
+    });
 
     // Evaluate risk boundary
     const riskResult = this.evaluateRiskBoundary(planGraphBundle, nodeFilteredFeedback);
@@ -280,6 +279,21 @@ export class EvaluatorService {
       };
     }
 
+    // Completed outcome - check if there were any issues along the way
+    if (feedback.outcome === "completed" && feedback.signals.length > 0) {
+      // Even completed outcomes may have had transient issues worth noting
+      const hasNonSuccessSignals = feedback.signals.some(
+        (s) => s.category !== "success"
+      );
+      if (hasNonSuccessSignals) {
+        return {
+          hasDeviation: true,
+          severity: "info",
+          message: "Goal achieved with transient issues noted",
+        };
+      }
+    }
+
     return {
       hasDeviation: false,
       severity: "info",
@@ -305,13 +319,6 @@ export class EvaluatorService {
         level: baselineRisk === "critical" ? "unchanged" : "elevated",
       };
     }
-    if (failureCount >= 3) {
-      return {
-        severity: "error",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
-        level: "elevated",
-      };
-    }
     if (failureCount === 0) {
       return {
         severity: "info",
@@ -327,6 +334,43 @@ export class EvaluatorService {
       return {
         severity: failureCount >= 3 ? "error" : "warning",
         message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
+        level: "elevated",
+      };
+    }
+    // R11-04 FIX: When baseline is high and there are failures,
+    // the risk should be escalated to critical regardless of evaluated score.
+    // High baseline with failures indicates critical risk.
+    if (failureCount > 0 && baselineRisk === "high") {
+      return {
+        severity: failureCount >= 2 ? "critical" : "error",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
+        level: "elevated",
+      };
+    }
+    // R11-05 FIX: When baseline is critical and there are failures,
+    // risk remains critical (already at maximum).
+    if (failureCount > 0 && baselineRisk === "critical") {
+      return {
+        severity: "critical",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
+        level: "elevated",
+      };
+    }
+    // R11-06 FIX: Medium baseline with failures - use RiskEvaluationEngine for nuanced
+    // assessment. Fall back to warning for moderate failure counts (1-2).
+    if (failureCount === 2) {
+      return {
+        severity: "warning",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
+        level: "elevated",
+      };
+    }
+    // For medium baseline with 1 failure, also check RiskEvaluationEngine
+    // but if it doesn't elevate, fall back to warning
+    if (failureCount >= 3) {
+      return {
+        severity: "error",
+        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
         level: "elevated",
       };
     }
@@ -471,23 +515,39 @@ export class EvaluatorService {
     findings: readonly EvaluatorFinding[],
     feedback: FeedbackBatch
   ): EvaluatorDecision {
-    // Critical findings force escalate/abort
+    // Critical findings force escalate/abort - highest priority
     const criticalFindings = findings.filter((f) => f.severity === "critical");
     if (criticalFindings.length > 0) {
       return "escalate";
     }
 
-    // Failure signals suggest retry - check this FIRST before error findings
-    // because failure signals are the primary indicator of recoverable issues
+    // Error findings suggest replan - but only if NO failure signals
+    // Failure signals are handled separately as they indicate recoverable issues
+    const errorFindings = findings.filter((f) => f.severity === "error");
     const failureSignals = feedback.signals.filter(
       (s) => s.category === "failure" || s.category === "timeout"
     );
+
+    // If there are failure signals, they take priority for retry decision
+    // UNLESS we have critical risk findings (checked above)
     if (failureSignals.length > 0) {
+      // Check if risk boundary is elevated - if so, replan rather than retry
+      const riskFindings = findings.filter((f) => f.category === "risk");
+      const hasElevatedRisk = riskFindings.some((f) => f.severity === "error" || f.severity === "critical");
+      if (hasElevatedRisk) {
+        return "replan";
+      }
+      // R11-07 FIX: If quality gate failed with error/critical severity, replan
+      // rather than retry since the quality issue indicates fundamental problem
+      const qualityFindings = findings.filter((f) => f.category === "quality");
+      const hasQualityError = qualityFindings.some((f) => f.severity === "error" || f.severity === "critical");
+      if (hasQualityError) {
+        return "replan";
+      }
       return "retry";
     }
 
     // Error findings suggest replan (only reached if no failure signals)
-    const errorFindings = findings.filter((f) => f.severity === "error");
     if (errorFindings.length > 0) {
       return "replan";
     }

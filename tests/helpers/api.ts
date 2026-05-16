@@ -147,7 +147,9 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     }).takeoverSessionId;
   }
 
-  const healthService = new HealthService(db, store);
+  const healthService = new HealthService(db, store, {
+    tier1AckDegradedThreshold: 100,
+  });
   const metricsService = new MetricsService(db, healthService);
   const prometheusMetricsExporter = new PrometheusMetricsExporter(db, metricsService);
   const inspectService = new InspectService(store);
@@ -364,6 +366,10 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         artifactPlaneService,
         domainRegistryService,
         pluginRegistry,
+        cors: {
+          allowedOrigins: ["https://console.example.test"],
+        },
+        webhookSecret: "test-webhook-secret",
       });
     },
   };

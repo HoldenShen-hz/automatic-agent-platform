@@ -8,6 +8,7 @@ import { SqliteDatabase } from "../../../../src/platform/five-plane-state-eviden
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 import { EnvSecretProvider } from "../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
 import { ValidationError, StorageError, PolicyDeniedError } from "../../../../src/platform/contracts/errors.js";
+import type { SecretAuthorizationContext } from "../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -38,6 +39,14 @@ function createService(harness: ReturnType<typeof createHarness>, env: Record<st
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Auth context for tests (mimics real caller scope from R12-22)
+// ---------------------------------------------------------------------------
+const AUTH_CONTEXT_SYSTEM: SecretAuthorizationContext = {
+  callerScopeType: "system",
+  callerScopeRef: "system.test",
+};
 
 // ---------------------------------------------------------------------------
 // Registration validation

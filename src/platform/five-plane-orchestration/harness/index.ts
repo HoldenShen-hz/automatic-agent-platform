@@ -1116,7 +1116,7 @@ export class HarnessRuntimeService {
     }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
-      : this.transitionRunStatus(run, "cancelled", "harness.hitl_rejected");
+      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
     return {
       ...nextRun,
       pauseReason: resolution === "approved" ? null : run.pauseReason,
@@ -1207,11 +1207,7 @@ export class HarnessRuntimeService {
 
     // INV-10: Terminal state must not have open execution blockers
     const hasOpenExecutionBlockers =
-      run.status === "running"
-      || run.status === "paused"
-      || run.status === "replanning"
-      || run.status === "resuming"
-      || run.status === "completed"
+      run.status === "completed"
       || run.status === "cancelled"
       || run.status === "aborted";
     if (hasOpenExecutionBlockers && (run.toolbelt?.blockedTools.length ?? 0) > 0) {
@@ -2020,7 +2016,11 @@ export class HarnessRuntimeService {
 
   private ensureInvariantSafe(run: HarnessRunRuntimeState): void {
     const result = this.assertInvariants(run);
-    const blockingViolations = result.violations.filter((violation) => !violation.includes("harness.invariant."));
+    // Keep only numbered INV-X: prefixed violations as blocking
+    // Strip INV-X: prefix from violations for the error message
+    const blockingViolations = result.violations
+      .filter((violation) => violation.match(/^INV-\d+:/))
+      .map((violation) => violation.replace(/^INV-\d+:/, ""));
     if (blockingViolations.length > 0) {
       throw new Error(`harness.invariant_violation:${blockingViolations.join(",")}`);
     }

@@ -50,7 +50,9 @@ export class ChargebackService {
     let hasMultipleCurrencies = false;
 
     for (const report of reports) {
-      totalCostUsd += report.totalCostUsd * resolveFxRate(report.currency, baseCurrency);
+      // NOTE: totalCostUsd is already in the report's currency (pre-converted to USD if needed).
+      // Do NOT multiply by fxRate again - that would double-convert.
+      totalCostUsd += report.totalCostUsd;
       if (firstCurrency === "USD") {
         firstCurrency = report.currency;
       } else if (report.currency !== firstCurrency) {

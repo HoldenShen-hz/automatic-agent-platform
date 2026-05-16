@@ -7,6 +7,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 import { EnvSecretProvider } from "../../../../src/platform/five-plane-control-plane/iam/env-secret-provider.js";
+import type { SecretAuthorizationContext } from "../../../../src/platform/five-plane-control-plane/iam/secret-management-support.js";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -39,8 +40,22 @@ function createService(harness: ReturnType<typeof createHarness>, env: Record<st
 }
 
 // ---------------------------------------------------------------------------
-// End-to-end secret lifecycle
+// Auth context for tests (mimics real caller scope from R12-22)
 // ---------------------------------------------------------------------------
+const AUTH_CONTEXT_SYSTEM: SecretAuthorizationContext = {
+  callerScopeType: "system",
+  callerScopeRef: "system.test",
+};
+
+const AUTH_CONTEXT_TENANT: SecretAuthorizationContext = {
+  callerScopeType: "tenant",
+  callerScopeRef: "tenant.api",
+};
+
+const AUTH_CONTEXT_WORKSPACE: SecretAuthorizationContext = {
+  callerScopeType: "workspace",
+  callerScopeRef: "workspace.db",
+};
 
 test("complete secret lifecycle: register, resolve, lease, revoke", async () => {
   const harness = createHarness("aa-int-lifecycle-");
@@ -64,22 +79,28 @@ test("complete secret lifecycle: register, resolve, lease, revoke", async () => 
     assert.equal(registry.currentVersion, "v1");
 
     // Resolve secret
-    const resolution = await service.resolveSecret({
-      secretRef: "secret://system/lifecycle",
-      requestedBy: "lifecycle.user",
-      grantedTo: "lifecycle.worker",
-      usagePurpose: "initial_resolution",
-    });
+    const resolution = await service.resolveSecret(
+      {
+        secretRef: "secret://system/lifecycle",
+        requestedBy: "lifecycle.user",
+        grantedTo: "lifecycle.worker",
+        usagePurpose: "initial_resolution",
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
     assert.equal(resolution.value, "lifecycle-secret-value");
 
     // Issue lease
-    const lease = await service.issueSecretLease({
-      secretRef: "secret://system/lifecycle",
-      requestedBy: "lease.requester",
-      grantedTo: "lease.holder",
-      usagePurpose: "leased_access",
-      ttlMinutes: 30,
-    });
+    const lease = await service.issueSecretLease(
+      {
+        secretRef: "secret://system/lifecycle",
+        requestedBy: "lease.requester",
+        grantedTo: "lease.holder",
+        usagePurpose: "leased_access",
+        ttlMinutes: 30,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
     assert.equal(lease.lease.status, "active");
 
     // Revoke lease
@@ -168,6 +189,7 @@ test("multiple secrets can be registered and resolved independently", async () =
       scopeType: "tenant",
       scopeRef: "tenant.api",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
 
     service.registerSecret({
@@ -178,6 +200,7 @@ test("multiple secrets can be registered and resolved independently", async () =
       scopeType: "workspace",
       scopeRef: "workspace.db",
       rotationPolicy: { cadenceDays: 30, ttlMinutes: 30, breakGlass: true },
+      currentVersion: "v1",
     });
 
     service.registerSecret({
@@ -188,31 +211,41 @@ test("multiple secrets can be registered and resolved independently", async () =
       scopeType: "system",
       scopeRef: "oauth.client",
       rotationPolicy: { cadenceDays: 180, ttlMinutes: null, breakGlass: false },
+      currentVersion: "v1",
     });
 
     // Resolve each secret
-    const tenantResolution = await service.resolveSecret({
-      secretRef: "secret://tenant/api/key",
-      requestedBy: "user1",
-      grantedTo: "worker1",
-      usagePurpose: "api_access",
-    });
+    const tenantResolution = await service.resolveSecret(
+      {
+        secretRef: "secret://tenant/api/key",
+        requestedBy: "user1",
+        grantedTo: "worker1",
+        usagePurpose: "api_access",
+      },
+      AUTH_CONTEXT_TENANT,
+    );
     assert.equal(tenantResolution.value, "tenant-api-key-value");
 
-    const workspaceResolution = await service.resolveSecret({
-      secretRef: "secret://workspace/db",
-      requestedBy: "user2",
-      grantedTo: "worker2",
-      usagePurpose: "db_access",
-    });
+    const workspaceResolution = await service.resolveSecret(
+      {
+        secretRef: "secret://workspace/db",
+        requestedBy: "user2",
+        grantedTo: "worker2",
+        usagePurpose: "db_access",
+      },
+      AUTH_CONTEXT_WORKSPACE,
+    );
     assert.equal(workspaceResolution.value, "workspace-db-password");
 
-    const oauthResolution = await service.resolveSecret({
-      secretRef: "secret://oauth/client",
-      requestedBy: "user3",
-      grantedTo: "worker3",
-      usagePurpose: "oauth_flow",
-    });
+    const oauthResolution = await service.resolveSecret(
+      {
+        secretRef: "secret://oauth/client",
+        requestedBy: "user3",
+        grantedTo: "worker3",
+        usagePurpose: "oauth_flow",
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
     assert.equal(oauthResolution.value, "oauth-client-secret");
   } finally {
     harness.db.close();
@@ -264,6 +297,7 @@ test("leases are tracked separately per secret", async () => {
       scopeType: "system",
       scopeRef: "lease.first",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
 
     service.registerSecret({
@@ -274,32 +308,42 @@ test("leases are tracked separately per secret", async () => {
       scopeType: "system",
       scopeRef: "lease.second",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
 
     // Issue multiple leases on first secret
-    await service.issueSecretLease({
-      secretRef: "secret://lease/first",
-      requestedBy: "user",
-      grantedTo: "holder1",
-      usagePurpose: "first_lease",
-      ttlMinutes: 60,
-    });
-    await service.issueSecretLease({
-      secretRef: "secret://lease/first",
-      requestedBy: "user",
-      grantedTo: "holder2",
-      usagePurpose: "second_lease",
-      ttlMinutes: 60,
-    });
+    await service.issueSecretLease(
+      {
+        secretRef: "secret://lease/first",
+        requestedBy: "user",
+        grantedTo: "holder1",
+        usagePurpose: "first_lease",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
+    await service.issueSecretLease(
+      {
+        secretRef: "secret://lease/first",
+        requestedBy: "user",
+        grantedTo: "holder2",
+        usagePurpose: "second_lease",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
 
     // Issue one lease on second secret
-    await service.issueSecretLease({
-      secretRef: "secret://lease/second",
-      requestedBy: "user",
-      grantedTo: "holder3",
-      usagePurpose: "third_lease",
-      ttlMinutes: 60,
-    });
+    await service.issueSecretLease(
+      {
+        secretRef: "secret://lease/second",
+        requestedBy: "user",
+        grantedTo: "holder3",
+        usagePurpose: "third_lease",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
 
     const firstLeases = service.listSecretLeases("secret://lease/first");
     const secondLeases = service.listSecretLeases("secret://lease/second");
@@ -327,21 +371,28 @@ test("audit summary aggregates usage audits, rotation events, and leases", async
       scopeType: "system",
       scopeRef: "system.audit.agg",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v1",
     });
 
     // Multiple resolutions
-    await service.resolveSecret({
-      secretRef: "secret://system/audit/agg",
-      requestedBy: "user1",
-      grantedTo: "worker1",
-      usagePurpose: "first_access",
-    });
-    await service.resolveSecret({
-      secretRef: "secret://system/audit/agg",
-      requestedBy: "user2",
-      grantedTo: "worker2",
-      usagePurpose: "second_access",
-    });
+    await service.resolveSecret(
+      {
+        secretRef: "secret://system/audit/agg",
+        requestedBy: "user1",
+        grantedTo: "worker1",
+        usagePurpose: "first_access",
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
+    await service.resolveSecret(
+      {
+        secretRef: "secret://system/audit/agg",
+        requestedBy: "user2",
+        grantedTo: "worker2",
+        usagePurpose: "second_access",
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
 
     // Rotation event
     service.recordRotationEvent({
@@ -353,13 +404,16 @@ test("audit summary aggregates usage audits, rotation events, and leases", async
     });
 
     // Lease
-    await service.issueSecretLease({
-      secretRef: "secret://system/audit/agg",
-      requestedBy: "user3",
-      grantedTo: "worker3",
-      usagePurpose: "leased_access",
-      ttlMinutes: 60,
-    });
+    await service.issueSecretLease(
+      {
+        secretRef: "secret://system/audit/agg",
+        requestedBy: "user3",
+        grantedTo: "worker3",
+        usagePurpose: "leased_access",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
 
     const summary = service.buildAuditSummary("secret://system/audit/agg");
 

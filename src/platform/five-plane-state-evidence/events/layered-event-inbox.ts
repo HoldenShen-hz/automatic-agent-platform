@@ -110,10 +110,14 @@ export class LayeredEventInbox {
 
   public append(event: EventEnvelope, appendedAt = new Date(Date.now()).toISOString()): void {
     if (!isPlatformFactEvent(event) && !isOapeflirViewEvent(event)) {
-      throw new ValidationError(
-        "event_inbox.unsupported_event_namespace",
-        "EventInbox only accepts v4.3 platform facts or OAPEFLIR view events.",
-      );
+      // Also accept legacy event types (task:*, workflow:*, dispatch:*, etc.) that predate the
+      // v4.3 platform fact namespace. These are still used throughout the system.
+      if (!isLegacyEventType(event.eventType)) {
+        throw new ValidationError(
+          "event_inbox.unsupported_event_namespace",
+          "EventInbox only accepts v4.3 platform facts or OAPEFLIR view events.",
+        );
+      }
     }
     this.repository.append({ event, appendedAt });
     this.repository.compact(
@@ -185,4 +189,46 @@ export function canConsumerReceive(consumer: EventInboxConsumer, event: EventEnv
     return isPlatformFactEvent(event) || isOapeflirViewEvent(event);
   }
   return true;
+}
+
+/**
+ * Checks if an event type is a legacy event type (pre-v4.3) that predates the
+ * platform.* namespace. Legacy events like task:status_changed, workflow:step_completed,
+ * etc. are still used throughout the system.
+ */
+function isLegacyEventType(eventType: string): boolean {
+  // Legacy event types that predate v4.3 - these are still used for task/workflow/execution lifecycle
+  return (
+    eventType.startsWith("task:") ||
+    eventType.startsWith("workflow:") ||
+    eventType.startsWith("execution:") ||
+    eventType.startsWith("session:") ||
+    eventType.startsWith("division:") ||
+    eventType.startsWith("subtask:") ||
+    eventType.startsWith("decision:") ||
+    eventType.startsWith("cost:") ||
+    eventType.startsWith("dispatch:") ||
+    eventType.startsWith("worker:") ||
+    eventType.startsWith("takeover:") ||
+    eventType.startsWith("recovery:") ||
+    eventType.startsWith("stream:") ||
+    eventType.startsWith("config.") ||
+    eventType.startsWith("domain:") ||
+    eventType.startsWith("plugin:") ||
+    eventType.startsWith("skill:") ||
+    eventType.startsWith("knowledge:") ||
+    eventType.startsWith("learning:") ||
+    eventType.startsWith("ux:") ||
+    eventType.startsWith("observe:") ||
+    eventType.startsWith("assess:") ||
+    eventType.startsWith("plan:") ||
+    eventType.startsWith("execute:") ||
+    eventType.startsWith("feedback:") ||
+    eventType.startsWith("learn:") ||
+    eventType.startsWith("improve:") ||
+    eventType.startsWith("release:") ||
+    eventType.startsWith("oapeflir.") ||
+    eventType.startsWith("run.") ||
+    eventType.startsWith("perf:")
+  );
 }

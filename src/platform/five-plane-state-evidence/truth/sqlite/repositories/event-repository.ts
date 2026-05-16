@@ -763,11 +763,25 @@ export class EventRepository {
     traceId: string;
     payload: Record<string, unknown>;
   }): EventRecord {
+    // Resolve executionId - if execution doesn't exist but task does, use null instead of failing.
+    // This handles cases where an execution was referenced but was never committed to the database.
+    let resolvedExecutionId = input.executionId;
+    if (resolvedExecutionId != null) {
+      const executionExists = queryOne<{ "1": number }>(
+        this.conn,
+        "SELECT 1 FROM executions WHERE id = ? LIMIT 1",
+        resolvedExecutionId,
+      );
+      if (executionExists == null) {
+        resolvedExecutionId = null; // Downgrade to null rather than failing the event insert
+      }
+    }
+
     const eventRecord = this.insertEvent({
       id: newId("evt"),
       taskId: input.taskId,
       sessionId: input.sessionId ?? null,
-      executionId: input.executionId,
+      executionId: resolvedExecutionId,
       eventType: input.eventType,
       eventTier: "tier_1",
       payloadJson: JSON.stringify(input.payload),

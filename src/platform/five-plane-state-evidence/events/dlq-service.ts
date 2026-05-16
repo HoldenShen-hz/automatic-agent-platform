@@ -222,6 +222,10 @@ export class DlqService {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
 
+    if (record.retryCount >= record.maxRetries) {
+      throw new Error(`dlq.retry_limit_exceeded: retry ${record.retryCount} exhausted (maxRetries ${record.maxRetries})`);
+    }
+
     const backoffDelay = delayMs ?? DEFAULT_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
     const nextRetryAt = new Date(Date.parse(now) + backoffDelay).toISOString();
 

@@ -199,14 +199,29 @@ export class RuntimeTruthRepository implements RuntimeRepository {
               { details: { harnessRunId: harnessRun.harnessRunId, expectedToken: currentRun.fencingToken, actualToken: command.fencingToken } },
             );
           }
+          // R5-44: Lease owner must match the HarnessRun's ownership
+          // The lease holder (leaseId) must match the ownership owner
+          if (currentRun.leaseId != null && currentRun.leaseId !== currentRun.ownership.ownerId) {
+            throw new ValidationError(
+              "runtime_truth_repository.lease_owner_mismatch",
+              `HarnessRun ${harnessRun.harnessRunId} lease holder does not match ownership owner`,
+              { details: { harnessRunId: harnessRun.harnessRunId, leaseHolderId: currentRun.leaseId, ownershipOwnerId: currentRun.ownership.ownerId } },
+            );
+          }
         }
       }
 
       const transactionMarker = `TXN_${Date.now()}_${this.state.auditRefs.length + 1}`;
       this.state.auditRefs.push(`BEGIN_${transactionMarker}`);
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
+      // R5-44 fix: Generate synthetic auditRef for internal transitions that don't have one.
+      // This ensures audited transitions (HarnessRun, SideEffectRecord, succeeded/failed)
+      // always have an audit trail even when callers don't provide one.
+      const effectiveCommand = command.auditRef != null
+        ? command
+        : { ...command, auditRef: `audit://synthetic/${command.aggregateType}/${getAggregateId(command.aggregateType, command.aggregate)}/${Date.now()}` };
       const result = this.stateMachine.transition({
-        ...command,
+        ...effectiveCommand,
         aggregate: stored as TAggregate,
       });
       this.storeAggregate(command.aggregateType, result.aggregate);
@@ -301,6 +316,8 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       }
 
       // Create a transition command to apply the event's status change
+      // R5-44 fix: Generate synthetic auditRef for internal transitions that don't have one.
+      const auditRef = `audit://synthetic/${aggregateType}/${aggregateId}/${Date.now()}`;
       const command: RuntimeTransitionCommand<RuntimeStateAggregate> = {
         commandId: newId("replay"),
         entityType: aggregateType,
@@ -315,6 +332,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         reasonCode: "event_replay",
         emittedBy: "runtime_truth_repository.replay",
         occurredAt: event.occurredAt,
+        auditRef,
       };
 
       // Apply the transition which will update the aggregate and emit a new event

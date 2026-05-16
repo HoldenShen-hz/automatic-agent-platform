@@ -140,9 +140,7 @@ export class PromptRolloutService {
       fixedPrefixHash: input.template.fixedPrefixHash,
       regressionSuiteId: input.regressionSuiteId.trim(),
       regressionPassed: input.regressionPassed,
-      guardrailSummary: decision.allowed && decision.nextStatus === "canary_5"
-        ? "rollout_guardrail_passed"
-        : decision.reason,
+      guardrailSummary: decision.reason,
       createdAt: now,
       updatedAt: now,
       statusEnteredAt: now,
@@ -160,10 +158,10 @@ export class PromptRolloutService {
       canary_20: "stable",
     };
     const nextStatus = nextStatusByCurrent[record.status];
-    if (nextStatus == null) {
+    if (nextStatus == null || record.status === "stable") {
       throw new ValidationError(
-        `prompt_rollout.invalid_transition:${record.status}->next`,
-        `Prompt rollout in status ${record.status} cannot transition forward.`,
+        `prompt_rollout.invalid_transition:${record.status}->active`,
+        `Prompt rollout in status ${record.status} cannot transition to active.`,
       );
     }
     const updated = { ...record, status: nextStatus, updatedAt: nowIso(), statusEnteredAt: nowIso() };

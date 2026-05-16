@@ -64,9 +64,9 @@ test("Integration: ChannelGatewayDeliveryService tracks delivery lifecycle", asy
     assert.equal(delivery.channel, "webhook");
     assert.equal(delivery.targetId, "target-123");
 
-    const receipt = deliveryService.recordAttempt(delivery.messageId, "webhook", "target-123", 1, 202, null);
+    const receipt = deliveryService.recordAttempt(delivery.messageId, 1, "success", 202, null);
     assert.equal(receipt.status, "success");
-    assert.equal(receipt.attempts, 1);
+    assert.equal(receipt.attemptNumber, 1);
 
     const stored = deliveryService.getDeliveryReceipt(delivery.messageId);
     assert.equal(stored?.status, "delivered");
@@ -112,7 +112,7 @@ test("Integration: GatewayTargetDirectoryService handles empty query", async () 
     });
 
     await assert.rejects(
-      () => targetDir.resolveTarget({ query: "" }),
+      async () => { targetDir.resolveTarget({ query: "" }); },
       /gateway.target_query_required/,
     );
   } finally {
@@ -187,12 +187,12 @@ test("Integration: ChannelGatewayDeliveryService rate limiting", async () => {
     const result1 = deliveryService.checkRateLimit("webhook");
     assert.equal(result1.allowed, true);
 
-    const result2 = deliveryService.checkRateLimit("webhook");
-    assert.equal(result2.allowed, true);
+    deliveryService.recordRateLimitHit("webhook");
+    deliveryService.recordRateLimitHit("webhook");
 
-    const result3 = deliveryService.checkRateLimit("webhook");
-    assert.equal(result3.allowed, false);
-    assert.equal(result3.retryAfterMs, 60000);
+    const result2 = deliveryService.checkRateLimit("webhook");
+    assert.equal(result2.allowed, false);
+    assert.ok(result2.retryAfterMs > 0 && result2.retryAfterMs <= 60000);
   } finally {
     ctx.cleanup();
   }

@@ -227,6 +227,7 @@ test("http api server serves mission control snapshot, task inspect, approval qu
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "Idempotency-Key": "test-preview-key",
       },
       body: JSON.stringify({
         taskId: context.seededTaskId,
@@ -235,17 +236,19 @@ test("http api server serves mission control snapshot, task inspect, approval qu
         artifacts: [
           {
             artifactId: "artifact_1",
+            harnessRunId: "harness-1",
             taskId: context.seededTaskId,
             stepId: "respond",
             agentRole: "builder",
             type: "source_code",
             path: "src/index.ts",
-            contentHash: "hash",
+            checksum: "hash",
+            mimeType: "text/typescript",
+            sizeBytes: 128,
             version: 1,
             parentArtifactId: null,
-            size: 128,
             createdAt: new Date().toISOString(),
-            status: "draft",
+            publishStatus: "draft",
           },
         ],
       }),
@@ -261,6 +264,7 @@ test("http api server serves mission control snapshot, task inspect, approval qu
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "Idempotency-Key": "test-publish-key",
       },
       body: JSON.stringify({
         bundle: artifactPreviewPayload.data.bundle,
@@ -314,6 +318,7 @@ test("http api server serves mission control snapshot, task inspect, approval qu
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${accessToken}`,
+        "Idempotency-Key": "test-decision-key",
       },
       body: JSON.stringify({
         decisionType: "option_selected",

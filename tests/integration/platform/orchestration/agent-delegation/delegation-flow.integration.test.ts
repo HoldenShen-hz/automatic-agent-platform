@@ -65,20 +65,20 @@ test("DelegationManager handles full delegation lifecycle", async () => {
     const spec = createTestSpec();
 
     // Create delegation
-    const handle = service.delegate(parent, spec);
+    const handle = await service.delegate(parent, spec);
     assert.ok(handle.delegationId.startsWith("dlg_"));
     assert.equal(handle.status, "pending");
 
     // Get delegation and verify state
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     assert.ok(delegation !== null);
     assert.equal(delegation.parentAgentId, "parent_test");
     assert.equal(delegation.childAgentId, "child_test");
     assert.equal(delegation.status, "pending");
 
     // Complete delegation
-    service.complete(handle.delegationId);
-    const completed = service.getDelegation(handle.delegationId);
+    await service.complete(handle.delegationId);
+    const completed = await service.getDelegation(handle.delegationId);
     assert.equal(completed!.status, "completed");
     assert.ok(completed!.completedAt !== undefined);
   } finally {
@@ -94,7 +94,7 @@ test("DelegationManager delegation chain tracking", async () => {
     // Create first-level delegation
     const parent1 = createTestContext({ agentId: "root" });
     const spec1 = createTestSpec({ targetAgentId: "level1" });
-    const handle1 = service.delegate(parent1, spec1);
+    const handle1 = await service.delegate(parent1, spec1);
 
     // Create second-level delegation
     const parent2 = createTestContext({
@@ -103,10 +103,10 @@ test("DelegationManager delegation chain tracking", async () => {
       activeDelegations: [handle1.delegationId],
     });
     const spec2 = createTestSpec({ targetAgentId: "level2" });
-    const handle2 = service.delegate(parent2, spec2);
+    const handle2 = await service.delegate(parent2, spec2);
 
     // Verify chain for root
-    const chain = service.getDelegationChain("root");
+    const chain = await service.getDelegationChain("root");
     assert.ok(chain !== null);
     assert.equal(chain!.rootAgentId, "root");
     assert.ok(chain!.nodes.length >= 1);
@@ -126,10 +126,10 @@ test("DelegationManager cancel flow", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
-    service.cancel(handle.delegationId);
+    const handle = await service.delegate(parent, spec);
+    await service.cancel(handle.delegationId);
 
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     assert.equal(delegation!.status, "cancelled");
   } finally {
     ctx.cleanup();
@@ -143,10 +143,10 @@ test("DelegationManager fail flow", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
-    service.fail(handle.delegationId, "Test failure");
+    const handle = await service.delegate(parent, spec);
+    await service.fail(handle.delegationId, "Test failure");
 
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     assert.equal(delegation!.status, "failed");
   } finally {
     ctx.cleanup();
@@ -160,10 +160,10 @@ test("DelegationManager timeout handling", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
-    service.handleDelegationTimeout(handle.delegationId);
+    const handle = await service.delegate(parent, spec);
+    await service.handleDelegationTimeout(handle.delegationId);
 
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     assert.equal(delegation!.status, "timed_out");
   } finally {
     ctx.cleanup();
@@ -177,10 +177,10 @@ test("DelegationManager active delegations filtering", async () => {
     const parent = createTestContext({ agentId: "parent_active" });
 
     // Create multiple delegations
-    service.delegate(parent, createTestSpec({ targetAgentId: "child1" }));
-    service.delegate(parent, createTestSpec({ targetAgentId: "child2" }));
+    await service.delegate(parent, createTestSpec({ targetAgentId: "child1" }));
+    await service.delegate(parent, createTestSpec({ targetAgentId: "child2" }));
 
-    const active = service.getActiveDelegations("parent_active");
+    const active = await service.getActiveDelegations("parent_active");
     assert.equal(active.length, 2);
     assert.ok(active.every((d) => d.status === "pending"));
   } finally {
@@ -195,15 +195,15 @@ test("DelegationManager getExpiredDelegations for TTL testing", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
+    const handle = await service.delegate(parent, spec);
 
     // Manually expire the delegation
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     if (delegation) {
       delegation.expiresAt = new Date(Date.now() - 10000).toISOString();
     }
 
-    const expired = service.getExpiredDelegations();
+    const expired = await service.getExpiredDelegations();
     assert.ok(expired.length >= 1);
   } finally {
     ctx.cleanup();
@@ -219,13 +219,13 @@ test("DelegationManager revokeExpiredDelegations scanning", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
-    const delegation = service.getDelegation(handle.delegationId);
+    const handle = await service.delegate(parent, spec);
+    const delegation = await service.getDelegation(handle.delegationId);
     if (delegation) {
       delegation.expiresAt = new Date(Date.now() - 10000).toISOString();
     }
 
-    const result = service.revokeExpiredDelegations();
+    const result = await service.revokeExpiredDelegations();
     assert.ok(result.scanned >= 1);
     assert.ok(result.expired >= 1);
     assert.ok(Array.isArray(result.errors));
@@ -241,7 +241,7 @@ test("DelegationManager requiresApproval sets correct initial status", async () 
     const parent = createTestContext();
     const spec = createTestSpec({ requiresApproval: true });
 
-    const handle = service.delegate(parent, spec);
+    const handle = await service.delegate(parent, spec);
     assert.equal(handle.status, "pending_approval");
     assert.equal(handle.requiresApproval, true);
   } finally {
@@ -256,12 +256,12 @@ test("DelegationManager completeWithEvidence validates ACP", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
+    const handle = await service.delegate(parent, spec);
 
     // Complete with evidence should validate via ACP protocol
     await service.completeWithEvidence(handle.delegationId, ["evidence-1"], "output-ref");
 
-    const delegation = service.getDelegation(handle.delegationId);
+    const delegation = await service.getDelegation(handle.delegationId);
     assert.equal(delegation!.status, "completed");
   } finally {
     ctx.cleanup();
@@ -275,7 +275,7 @@ test("DelegationManager context creation after delegation", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    const handle = service.delegate(parent, spec);
+    const handle = await service.delegate(parent, spec);
     const context = service.createDelegationContext(handle.delegationId);
 
     assert.equal(context.agentId, "child_test");
@@ -293,9 +293,9 @@ test("DelegationManager getPendingExpirationCount returns count", async () => {
     const parent = createTestContext();
     const spec = createTestSpec();
 
-    service.delegate(parent, spec);
+    await service.delegate(parent, spec);
 
-    const count = service.getPendingExpirationCount();
+    const count = await service.getPendingExpirationCount();
     assert.equal(typeof count, "number");
     assert.ok(count >= 0);
   } finally {

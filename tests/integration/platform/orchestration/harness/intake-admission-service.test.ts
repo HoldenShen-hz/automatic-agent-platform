@@ -90,6 +90,7 @@ test("IntakeAdmissionService integration: critical risk requires confirmationRec
   const service = new IntakeAdmissionService();
   // Non-admin, non-pre_approved critical risk should be denied by policy
   const input = createMediumRiskInput({
+    principal: createTestPrincipal({ authorizationLevel: null }),
     riskPreview: { riskClass: "critical", reasons: [] },
     idempotencyKey: "intake-critical-risk-int-001",
   });

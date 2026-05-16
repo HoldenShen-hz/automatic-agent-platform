@@ -153,7 +153,8 @@ export class MemoryService {
     }
 
     // V-04: Deduplication - compute content hash and check for existing
-    const contentHash = createHash("sha256").update(contentText).digest("hex");
+    // Issue #2027: Use first 16 chars to avoid truncation in DB index
+    const contentHash = createHash("sha256").update(contentText).digest("hex").slice(0, 16);
     const existing = this.store.memory.findMemoryByContentHash(contentHash, input.scope);
     if (existing && existing.status === "active") {
       // Update access tracking and return existing memory

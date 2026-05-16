@@ -318,8 +318,8 @@ test("mergePermissions takes minimum for maxDurationMs when child has no constra
   assert.equal(result.constraints.maxDurationMs, 120000, "Should use parent maxDurationMs when child has none");
 });
 
-// R9-07 fix verification: Empty required permissions returns empty intersection
-test("empty required permissions returns empty intersection", () => {
+// R9-07 fix verification: Empty override permissions falls back to base resources
+test("empty override permissions falls back to base resources", () => {
   const parent: PermissionSet = {
     resources: ["resource-a", "resource-b"],
     actions: ["action-read", "action-write"],
@@ -335,8 +335,8 @@ test("empty required permissions returns empty intersection", () => {
   const isolator = new ContextIsolator();
   const result = isolator.mergePermissions(parent, child);
 
-  assert.deepEqual(result.resources, [], "Should return empty resources when child requests none");
-  assert.deepEqual(result.actions, [], "Should return empty actions when child requests none");
+  assert.deepEqual(result.resources, ["resource-a", "resource-b"], "Should return base resources when override is empty");
+  assert.deepEqual(result.actions, ["action-read", "action-write"], "Should return base actions when override is empty");
 });
 
 // R9-07 fix verification: Full isolation level returns parent permissions unchanged

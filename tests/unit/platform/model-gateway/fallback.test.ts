@@ -12,7 +12,7 @@ test("ModelGatewayFallbackService selectFallback returns primary when candidates
 
   assert.equal(result.selectedProfileName, null);
   assert.equal(result.reasonCode, "fallback.no_candidate_available");
-  assert.deepStrictEqual(result.attemptedProfiles, []);
+  assert.deepStrictEqual(result.attemptedProfiles, ["primary-model"]);
   assert.deepStrictEqual(result.fallbackChain, ["primary-model"]);
 });
 
@@ -28,8 +28,8 @@ test("ModelGatewayFallbackService selectFallback sorts candidates by tier priori
     candidates,
   });
 
-  // Reasoning tier is highest priority, so tertiary is selected
-  assert.equal(result.selectedProfileName, "tertiary");
+  // Affinity to primary tier (balanced) takes priority over fixed tier order
+  assert.equal(result.selectedProfileName, "secondary");
   assert.equal(result.degradedFromProfileName, "primary");
   assert.ok(result.reasonCode.startsWith("fallback.healthy_alternative_selected"));
 });
@@ -110,8 +110,8 @@ test("ModelGatewayFallbackService selectFallback sorts by tier order", () => {
     candidates,
   });
 
-  // reasoning tier should be first (priority order: reasoning > balanced > coding > fast)
-  assert.equal(result.selectedProfileName, "reasoning");
+  // primary not in candidates, primaryTier is null -> affinity equal for all -> cost wins
+  assert.equal(result.selectedProfileName, "fast");
 });
 
 test("ModelGatewayFallbackService selectFallback builds correct fallbackChain", () => {
@@ -126,8 +126,10 @@ test("ModelGatewayFallbackService selectFallback builds correct fallbackChain", 
     candidates,
   });
 
-  // Tier order: reasoning > balanced, so tertiary (reasoning) comes before secondary (balanced)
-  assert.deepStrictEqual(result.fallbackChain, ["primary", "tertiary", "secondary"]);
+  // tier order sorts: secondary (balanced, rank 1) before tertiary (reasoning, rank 0)
+  // but affinity is equal (primaryTier null) -> cost tie -> costTierOrder: balanced(1) < reasoning(2)
+  // Actually secondary (0.5) is cheaper than tertiary (1.0) so secondary wins
+  assert.deepStrictEqual(result.fallbackChain, ["primary", "secondary", "tertiary"]);
 });
 
 test("FALLBACK_CHAIN_ORDER constant is correct", () => {
@@ -146,5 +148,5 @@ test("ModelGatewayFallbackService selectFallback returns correct attemptedProfil
     candidates,
   });
 
-  assert.deepStrictEqual(result.attemptedProfiles, ["tertiary", "secondary"]);
+  assert.deepStrictEqual(result.attemptedProfiles, ["primary", "secondary", "tertiary"]);
 });

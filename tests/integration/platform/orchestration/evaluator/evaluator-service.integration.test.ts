@@ -405,7 +405,7 @@ test("EvaluatorService: evaluate detects elevated risk when failures exceed base
 
     const riskFinding = report.findings.find(f => f.category === "risk");
     assert.ok(riskFinding, "Should have risk finding");
-    assert.equal(riskFinding.severity, "warning");
+    assert.equal(riskFinding.severity, "error", "3+ failures on medium baseline should be error");
     assert.equal(report.riskLevel, "elevated", "Risk level should be elevated");
   } finally {
     ctx.cleanup();

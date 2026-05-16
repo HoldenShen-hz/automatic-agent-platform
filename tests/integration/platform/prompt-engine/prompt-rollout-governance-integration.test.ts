@@ -44,7 +44,7 @@ test("integration: prompt registry, renderer, rollout, and governance form a con
     });
 
     assert.match(rendered.prompt, /CPU high/);
-    assert.equal(rolloutRecord.status, "ready");
+    assert.equal(rolloutRecord.status, "canary_5");
     assert.equal(release.status, "approved");
   } finally {
     ctx.cleanup();

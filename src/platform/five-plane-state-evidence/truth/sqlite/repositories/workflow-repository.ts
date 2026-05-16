@@ -27,13 +27,10 @@ function normalizeWorkflowStates(records: WorkflowStateRecord[]): WorkflowStateR
 }
 
 function normalizeResumableFromStep(value: unknown): WorkflowStateRecord["resumableFromStep"] {
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return value as unknown as WorkflowStateRecord["resumableFromStep"];
+  if (value == null) {
+    return null;
   }
-  if (typeof value === "string" && /^\d+(\.0+)?$/.test(value)) {
-    return Number.parseInt(value, 10) as unknown as WorkflowStateRecord["resumableFromStep"];
-  }
-  return value == null ? null : value as WorkflowStateRecord["resumableFromStep"];
+  return value as WorkflowStateRecord["resumableFromStep"];
 }
 
 export class WorkflowRepository {

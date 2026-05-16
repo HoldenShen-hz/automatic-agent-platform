@@ -87,37 +87,12 @@ export class HarnessMemoryManager {
     const recordKey = `${namespace}:${scopeId}:${key}`;
     const record = this.memoryRecords.get(recordKey);
     if (record) {
-      // Update access metadata and trigger tier evaluation
-      const updatedRecord: InternalMemoryRecord = {
+      // Update access metadata
+      this.memoryRecords.set(recordKey, {
         ...record,
         accessCount: record.accessCount + 1,
         lastAccessedAt: new Date().toISOString(),
-      };
-      this.memoryRecords.set(recordKey, updatedRecord);
-      // Evaluate promotion/demotion after read access
-      this.evaluateTierChanges(recordKey, updatedRecord);
-    } else {
-      // Record not in memoryRecords - check if it exists in namespace (was previously evicted)
-      const scoped = this.namespaces[namespace].get(scopeId);
-      const value = scoped?.get(key);
-      if (value !== undefined) {
-        // Recreate the record with initial tier settings
-        const newRecord: InternalMemoryRecord = {
-          namespace,
-          scopeId,
-          key,
-          value,
-          tier: this.inferInitialTier(namespace),
-          accessCount: 1,
-          lastAccessedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          promotionScore: 0,
-          demotionScore: 0,
-        };
-        this.memoryRecords.set(recordKey, newRecord);
-        // Evaluate tier changes for newly recreated record
-        this.evaluateTierChanges(recordKey, newRecord);
-      }
+      });
     }
     return this.namespaces[namespace].get(scopeId)?.get(key) ?? null;
   }

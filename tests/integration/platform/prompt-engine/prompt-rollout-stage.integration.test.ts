@@ -1,6 +1,11 @@
 /**
  * Integration tests for prompt rollout stage
  * Tests the full rollout lifecycle: create -> activate -> rollback
+ *
+ * These tests are updated to match the R16-04 state machine:
+ * - Initial status is set by evaluateGuardrail based on rollout mode
+ * - Stage progression: canary_5 -> canary_20 -> stable
+ * - blocked status cannot be rolled back
  */
 
 import assert from "node:assert/strict";
@@ -13,7 +18,11 @@ import {
 } from "../../../../src/platform/prompt-engine/rollout/index.js";
 import type { PromptTemplateRecord } from "../../../../src/platform/prompt-engine/registry/index.js";
 
+<<<<<<< Updated upstream
 test("PromptRolloutService.createRollout creates a canary_5 rollout when regression passes", () => {
+=======
+test("PromptRolloutService.createRollout creates canary_5 rollout with L1_suggest mode when regression passes", () => {
+>>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_1", "v1.0");
@@ -85,19 +94,25 @@ test("PromptRolloutService.activateRollout transitions canary_5 to canary_20", (
   assert.equal(activated.status, "canary_20");
 });
 
+<<<<<<< Updated upstream
 test("PromptRolloutService.activateRollout transitions canary_20 to stable", () => {
+=======
+test("PromptRolloutService.activateRollout throws for stable rollout (already fully deployed)", () => {
+>>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_5", "v1.0");
+  // L5_stable creates rollout directly in stable status
   const created = service.createRollout({
     template,
-    mode: "L1_suggest",
+    mode: "L5_stable",
     owner: "test@example.com",
     regressionSuiteId: "suite_def",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
+<<<<<<< Updated upstream
   // Activate from canary_5 to canary_20
   const canary20 = service.activateRollout(created.rolloutId);
   assert.equal(canary20.status, "canary_20");
@@ -105,6 +120,15 @@ test("PromptRolloutService.activateRollout transitions canary_20 to stable", () 
   // Activate again from canary_20 -> stable
   const stable = service.activateRollout(created.rolloutId);
   assert.equal(stable.status, "stable");
+=======
+  assert.equal(created.status, "stable");
+
+  // Try to activate stable - should throw
+  assert.throws(
+    () => service.activateRollout(created.rolloutId),
+    /cannot transition to active/,
+  );
+>>>>>>> Stashed changes
 });
 
 test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
@@ -126,24 +150,62 @@ test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
   assert.equal(rolledBack.guardrailSummary, "Test rollback reason");
 });
 
+<<<<<<< Updated upstream
 test("PromptRolloutService.rollbackRollout works on canary_5 status", () => {
+=======
+test("PromptRolloutService.rollbackRollout works on canary_5, canary_20, and stable statuses", () => {
+>>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
+  // L3_canary creates canary_5 status
   const template = createMockTemplate("tpl_test_7", "v1.0");
   const created = service.createRollout({
     template,
+<<<<<<< Updated upstream
     mode: "L1_suggest",
+=======
+    mode: "L3_canary",
+>>>>>>> Stashed changes
     owner: "test@example.com",
     regressionSuiteId: "suite_jkl",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
+<<<<<<< Updated upstream
   // Rollback directly from canary_5 status
   assert.equal(created.status, "canary_5");
   const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");
+=======
+  assert.equal(created.status, "canary_5");
+>>>>>>> Stashed changes
 
+  // Rollback from canary_5 works
+  const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");
   assert.equal(rolledBack.status, "rolled_back");
+});
+
+test("PromptRolloutService.rollbackRollout throws for blocked rollout", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_8", "v1.0");
+  // L0_off creates blocked rollout
+  const created = service.createRollout({
+    template,
+    mode: "L0_off",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_mno",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(created.status, "blocked");
+
+  // Rollback from blocked should throw
+  assert.throws(
+    () => service.rollbackRollout(created.rolloutId, "rollback reason"),
+    /cannot be rolled back/,
+  );
 });
 
 test("PromptRolloutService.listRollouts returns all rollouts when no filter", () => {
@@ -253,7 +315,7 @@ test("PromptRolloutService multiple rollouts can coexist", () => {
     const tpl = createMockTemplate(`tpl_multi_${i}`, "v1.0");
     const record = service.createRollout({
       template: tpl,
-      mode: "L0_off",
+      mode: "L1_suggest",
       owner: `owner${i}@example.com`,
       regressionSuiteId: `suite_${i}`,
       regressionPassed: true,
@@ -264,6 +326,38 @@ test("PromptRolloutService multiple rollouts can coexist", () => {
 
   const all = service.listRollouts();
   assert.ok(all.length >= 5);
+});
+
+test("PromptRolloutService L4_partial creates canary_20 status directly", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_partial_test", "v1.0");
+  const record = service.createRollout({
+    template,
+    mode: "L4_partial",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_partial",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.status, "canary_20");
+});
+
+test("PromptRolloutService L5_stable creates stable status directly", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_stable_test", "v1.0");
+  const record = service.createRollout({
+    template,
+    mode: "L5_stable",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_stable",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.status, "stable");
 });
 
 // Helper

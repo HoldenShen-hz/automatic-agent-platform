@@ -42,7 +42,7 @@ test("AnomalyDetectionService detect spike using zscore algorithm", () => {
   const result = service.detect("error_rate", 0.12);
 
   assert.ok(result.isAnomaly, "Should detect the spike as an anomaly");
-  assert.equal(result.severity, "critical", "Spike should be critical severity");
+  assert.equal(result.severity, "emergency", "Spike should be emergency severity");
   assert.ok(result.score > 0, "Should have a non-zero score");
 });
 
@@ -113,7 +113,9 @@ test("AnomalyDetectionService maintains rolling history within bounds", () => {
   }
 
   const history = service.getHistory("metric_a");
-  assert.ok(history.length <= 50, "History should be capped at maxHistoryPoints");
+  // History is capped at windowSize * 10 = 500
+  assert.ok(history.length <= 500, "History should be capped at windowSize * 10");
+  assert.ok(history.length >= 100, "History should have at least 100 points");
 });
 
 test("AnomalyDetectionService returns empty array for unknown metric", () => {

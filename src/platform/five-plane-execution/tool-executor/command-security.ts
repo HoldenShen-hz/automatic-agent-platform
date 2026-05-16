@@ -96,8 +96,8 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
   ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
-  ["curl", { allowed: true, riskLevel: "high" }],
-  ["wget", { allowed: true, riskLevel: "high" }],
+  ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],
+  ["wget", { allowed: false, riskLevel: "critical", reasonCode: "tool.wget_blocked_requires_egress_policy" }],
   ["tar", { allowed: true, riskLevel: "high" }],
   ["unzip", { allowed: true, riskLevel: "high" }],
   ["zip", { allowed: true, riskLevel: "high" }],
@@ -261,6 +261,10 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     }
     if (scriptPath === "-c" || scriptPath === "-e") {
       return deniedAssessment("tool.inline_code_denied", "critical");
+    }
+    // Block if interpreter flag appears after the script path (e.g., python script.py --flag)
+    if (args.length > 1 && args.slice(1).some((arg) => arg.startsWith("-"))) {
+      return deniedAssessment("tool.command_interpreter_flag_denied", "high");
     }
     return allowedAssessment(riskLevel, [scriptPath]);
   }

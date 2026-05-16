@@ -13,9 +13,19 @@ export const FeedbackTrustFactorsSchema = z.object({
   holdoutOverlap: z.number().min(0).max(1).default(0),
 });
 
+/** TrustScore object structure used in FeedbackSignal */
+export const TrustScoreSchema = z.object({
+  overallScore: z.number().min(0).max(1),
+  sourceReliability: z.number().min(0).max(1).default(0.5),
+  historicalAccuracy: z.number().min(0).max(1).default(0.5),
+  adversarialRisk: z.enum(["low", "medium", "high"]).default("low"),
+  passedSanityCheck: z.boolean().default(true),
+});
+
 export const DIRECT_PROMOTION_TRUST_THRESHOLD = 0.65;
 
 export type FeedbackTrustFactors = z.output<typeof FeedbackTrustFactorsSchema>;
+export type TrustScore = z.output<typeof TrustScoreSchema>;
 
 export function deriveFeedbackTrustScore(trustFactors: FeedbackTrustFactors): number {
   const weightedScore = (
@@ -37,12 +47,16 @@ export const FeedbackSignalSchema = z.object({
   payload: z.record(z.string(), z.unknown()).default({}),
   stepOutputRefs: z.array(z.string()).default([]),
   timestamp: z.number().int().nonnegative(),
-  /** Composite trust score [0,1] derived from source reliability, historical accuracy, authentication, attack surface, and holdout overlap. */
+  /** Trust score object with overallScore and individual factors. */
+  trustScore: TrustScoreSchema.optional(),
+  /** @deprecated Use trustScore.overallScore instead - composite trust score [0,1] derived from trust factors. */
   feedbackTrustScore: z.number().min(0).max(1).optional(),
   trustFactors: FeedbackTrustFactorsSchema.default({}),
 }).transform((signal) => ({
   ...signal,
-  feedbackTrustScore: signal.feedbackTrustScore ?? deriveFeedbackTrustScore(signal.trustFactors),
+  // If trustScore is provided, compute feedbackTrustScore from its overallScore
+  // Otherwise compute from trustFactors
+  feedbackTrustScore: signal.trustScore?.overallScore ?? signal.feedbackTrustScore ?? deriveFeedbackTrustScore(signal.trustFactors),
 }));
 
 export type FeedbackSource = z.infer<typeof FeedbackSourceSchema>;

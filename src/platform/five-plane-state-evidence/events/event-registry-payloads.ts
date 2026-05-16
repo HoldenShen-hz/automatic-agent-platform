@@ -11,7 +11,7 @@ const traceContextSchema = z.object({
 }).passthrough();
 
 const taskStatusChangedPayloadSchema = z.object({
-  fromStatus: optionalStringSchema,
+  fromStatus: optionalNullableStringSchema,
   toStatus: z.string(),
   reasonCode: optionalStringSchema,
   occurredAt: optionalStringSchema,

@@ -12,6 +12,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PanicFreezeMode, PanicScopeLevel } from "../../ops-maturity/platform-panic/index.js";
 import { PlatformPanicService } from "../../ops-maturity/platform-panic/index.js";
 import { ApprovalService } from "../../five-plane-control-plane/approval-center/approval-service.js";
+import type { ResumePlan } from "../../../ops-maturity/emergency/resume-protocol/index.js";
 
 export type EscalationRiskLevel = "low" | "medium" | "high" | "critical";
 export type EscalationDecisionType = "none" | "approval" | "takeover" | "panic_stop" | "panic_activate";
@@ -456,6 +457,24 @@ export class EscalationService {
         createdAt: nowIso(),
       });
     }
+  }
+
+  /**
+   * R14-01: Resume from panic state.
+   * Delegates to PlatformPanicService.resume().
+   */
+  public resumeFromPanic(scope: string, plan: ResumePlan): {
+    scope: string;
+    resumed: boolean;
+    resumedAt: string | null;
+    directiveId: string | null;
+    reasonCodes: readonly string[];
+  } {
+    const result = this.panicService.resume(scope, plan);
+    return {
+      ...result,
+      reasonCodes: [...result.reasonCodes],
+    };
   }
 
   private createApprovalRequest(input: EscalationRequest): EscalationApprovalRequest | null {

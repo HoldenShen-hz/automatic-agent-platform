@@ -65,12 +65,8 @@ test("RuntimeTruthRepository validates HarnessRun lease expiry", () => {
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
     // Simulate a HarnessRun with an expired lease
-    lease: {
-      leaseId: "lease-expired",
-      ownerId: "worker-owner-1",
-      expiresAt: expiredLeaseTime,
-    },
-    ownedBy: "worker-owner-1",
+    leaseId: "lease-expired",
+    ownership: { ownerId: "worker-owner-1", ownerType: "worker" },
   });
 
   repository.seed("HarnessRun", harnessRun);
@@ -108,13 +104,9 @@ test("RuntimeTruthRepository validates HarnessRun lease owner mismatch", () => {
     constraintPackRef: "cp-1",
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
-    // Lease owner does not match ownedBy
-    lease: {
-      leaseId: "lease-mismatch",
-      ownerId: "worker-A",
-      expiresAt: new Date(Date.now() + 60000).toISOString(), // valid expiry
-    },
-    ownedBy: "worker-B", // Different owner!
+    // Lease holder does not match ownership owner
+    leaseId: "worker-A",
+    ownership: { ownerId: "worker-B", ownerType: "worker" }, // Different owner!
   });
 
   repository.seed("HarnessRun", harnessRun);

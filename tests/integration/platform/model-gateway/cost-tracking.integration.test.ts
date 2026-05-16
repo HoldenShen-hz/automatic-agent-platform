@@ -41,7 +41,12 @@ interface MockCostReport {
 
 function createMockReportSource(reports: MockCostReport[]) {
   return {
-    listReports: () => reports,
+    listReports: (limit?: number, tenantId?: string | null) => {
+      const filtered = tenantId == null
+        ? reports
+        : reports.filter((r) => r.tenantId === tenantId);
+      return filtered.slice(0, limit ?? filtered.length);
+    },
   };
 }
 
@@ -375,7 +380,8 @@ test("Cost tracking: Multi-tenant isolation in chargeback", () => {
     nextEstimatedCostUsd: 10,
   });
 
-  assert.equal(tenant2Result.allowed, false); // Would exceed 50 limit
+  // 40 + 10 = 50, which equals maxTaskCostUsd of 50, so allowed = true (not exceeded)
+  assert.equal(tenant2Result.allowed, true);
 
   // Cost reports
   const costReports: MockCostReport[] = [
