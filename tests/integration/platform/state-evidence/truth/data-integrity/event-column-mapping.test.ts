@@ -108,11 +108,6 @@ test("data integrity: event insert and retrieval preserves all fields", () => {
     repo.insertEvent(event);
 
     const retrieved = repo.getEvent(event.id);
-
-    repo.insertEvent(event);
-
-    const retrieved = repo.getEvent(event.id);
-
     assert.ok(retrieved, "Should retrieve the inserted event");
     assert.equal(retrieved!.id, event.id, "ID should match");
     assert.equal(retrieved!.taskId, event.taskId, "taskId should match");

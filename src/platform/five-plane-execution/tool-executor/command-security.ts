@@ -262,6 +262,13 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === "-c" || scriptPath === "-e") {
       return deniedAssessment("tool.inline_code_denied", "critical");
     }
+    // Block if any argument after the script path is a flag (starts with -)
+    // e.g. "python script.py --malicious-flag" should be blocked
+    for (let i = 1; i < args.length; i++) {
+      if (args[i]?.startsWith("-")) {
+        return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
+      }
+    }
     return allowedAssessment(riskLevel, [scriptPath]);
   }
 

@@ -5,7 +5,7 @@
  * Batches entries for efficiency and flushes periodically.
  */
 
-import { request } from "node:https";
+import { Agent, request } from "node:https";
 import type { LogTransport } from "../log-transport.js";
 import type { StructuredLogEntry } from "../structured-logger.js";
 
@@ -18,8 +18,16 @@ export interface DatadogTransportConfig {
   source?: string;
   batchSize?: number;
   flushIntervalMs?: number;
+  agent?: Agent;
   requestFactory?: DatadogRequestFactory;
 }
+
+const DEFAULT_DATADOG_HTTPS_AGENT = new Agent({
+  keepAlive: true,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  timeout: 30_000,
+});
 
 export class DatadogTransport implements LogTransport {
   readonly name = "datadog";
@@ -29,6 +37,7 @@ export class DatadogTransport implements LogTransport {
   private readonly site: string;
   private readonly service: string;
   private readonly source: string;
+  private readonly agent: Agent;
   private readonly requestFactory: DatadogRequestFactory;
   private timer: NodeJS.Timeout | null = null;
 
@@ -38,6 +47,7 @@ export class DatadogTransport implements LogTransport {
     this.site = config.site ?? "datadoghq.com";
     this.service = config.service;
     this.source = config.source ?? "automatic-agent";
+    this.agent = config.agent ?? DEFAULT_DATADOG_HTTPS_AGENT;
     this.requestFactory = config.requestFactory ?? request;
     this.timer = setInterval(() => {
       void this.flushInternal();
@@ -92,6 +102,7 @@ export class DatadogTransport implements LogTransport {
         hostname: `http-intake.logs.${this.site}`,
         path: "/api/v2/logs",
         method: "POST",
+        agent: this.agent,
         headers: {
           "Content-Type": "application/json",
           "DD-API-KEY": this.config.apiKey,

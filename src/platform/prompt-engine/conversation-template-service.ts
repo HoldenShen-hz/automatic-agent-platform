@@ -366,7 +366,8 @@ export class ConversationTemplateExecutor {
     }
 
     let nextIndex = conversation.currentStepIndex;
-    if (response !== undefined) {
+    // R34-04 fix: skip() passes __skip: true in context to advance without a response
+    if (response !== undefined || context?.__skip === true) {
       nextIndex = Math.min(conversation.currentStepIndex + 1, conversation.steps.length);
     }
 
@@ -386,7 +387,8 @@ export class ConversationTemplateExecutor {
       return null;
     }
 
-    return this.next(conversation);
+    // R34-04 fix: pass __skip: true so next() advances without a response
+    return this.next(conversation, undefined, { __skip: true });
   }
 
   /**

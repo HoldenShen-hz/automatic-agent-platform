@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 
+import { ValidationError } from "../../platform/contracts/errors.js";
 import { SqliteDatabase } from "../../platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { PgDatabase } from "../../platform/five-plane-state-evidence/truth/postgres/pg-database.js";
 
@@ -57,7 +58,10 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
     }
   }
   if (!sqlitePath || !pgDsn) {
-    throw new Error("usage: migrate-sqlite-to-pg --sqlite <path> --pg-dsn <dsn> [--dry-run]");
+    throw new ValidationError(
+      "migrate_sqlite_to_pg.usage",
+      "usage: migrate-sqlite-to-pg --sqlite <path> --pg-dsn <dsn> [--dry-run]",
+    );
   }
   return { sqlitePath, pgDsn, dryRun };
 }
@@ -66,7 +70,7 @@ const VALID_TABLES = new Set(TABLES);
 
 export function validateTableName(table: string): void {
   if (!VALID_TABLES.has(table as (typeof TABLES)[number])) {
-    throw new Error(`Invalid table name: ${table}`);
+    throw new ValidationError("migrate_sqlite_to_pg.invalid_table", `Invalid table name: ${table}`);
   }
 }
 

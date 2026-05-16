@@ -71,7 +71,7 @@ export class PromptTemplateRegistryService {
     const version = normalizeRequired(input.version, "version");
     const owner = normalizeRequired(input.owner, "owner");
     const fixedPrefix = normalizeRequired(input.fixedPrefix, "fixedPrefix");
-    const domainBlock = normalizeRequired(input.domainBlock, "domainBlock");
+    const domainBlock = input.domainBlock.trim();
     const variableSuffixTemplate = input.variableSuffixTemplate?.trim() ?? "";
     const variableSpecs = dedupeVariableSpecs(input.variableSpecs ?? []);
     const compatibilityTags = dedupeStrings(input.compatibilityTags ?? []);

@@ -405,11 +405,11 @@ test("security: interpreter with flag instead of path is blocked", () => {
 test("security: interpreter with malicious flag is blocked", () => {
   const classifier = new CommandSafetyClassifier();
 
-  // Interpreter flags after a script path are allowed.
+  // Interpreter flags after a script path are blocked.
   const result = classifier.assess("python", ["script.py", "--malicious-flag"]);
 
-  assert.strictEqual(result.allowed, true, "Interpreter flags after script path should be allowed");
-  assert.strictEqual(result.reasonCode, null);
+  assert.strictEqual(result.allowed, false, "python with flag should be blocked");
+  assert.strictEqual(result.reasonCode, "tool.command_interpreter_flag_denied");
 });
 
 test("security: unknown command is blocked", () => {

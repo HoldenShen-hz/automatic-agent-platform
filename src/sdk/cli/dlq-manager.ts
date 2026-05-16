@@ -19,6 +19,7 @@
 
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { ValidationError } from "../../platform/contracts/errors.js";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
 
 interface DlqAction {
@@ -54,16 +55,16 @@ export function parseArguments(overrides?: Record<string, string | boolean | und
   const queue = values.queue as DlqAction["queue"];
 
   if (!action || !["list", "count", "retry", "purge"].includes(action)) {
-    throw new Error("Invalid action. Use: list, count, retry, purge");
+    throw new ValidationError("dlq.invalid_action", "Invalid action. Use: list, count, retry, purge");
   }
   if (!queue || !["gateway", "jobs", "events"].includes(queue)) {
-    throw new Error("Invalid queue. Use: gateway, jobs, events");
+    throw new ValidationError("dlq.invalid_queue", "Invalid queue. Use: gateway, jobs, events");
   }
 
   const retryLimitRaw = values["retry-limit"];
   const retryLimit = retryLimitRaw == null ? undefined : Number.parseInt(String(retryLimitRaw), 10);
   if (retryLimitRaw != null && (retryLimit == null || !Number.isInteger(retryLimit) || retryLimit <= 0)) {
-    throw new Error("Invalid retry-limit. Use a positive integer.");
+    throw new ValidationError("dlq.invalid_retry_limit", "Invalid retry-limit. Use a positive integer.");
   }
 
   return {

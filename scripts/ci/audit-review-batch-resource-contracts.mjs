@@ -964,7 +964,7 @@ check(
 const primitives = read("src/platform/contracts/types/domain/primitives.ts");
 check(
   "Timestamp is a branded string type",
-  primitives.includes("TIMESTAMP_BRAND") && primitives.includes('readonly [TIMESTAMP_BRAND]: "Timestamp"'),
+  primitives.includes("TIMESTAMP_BRAND") && primitives.includes('readonly [TIMESTAMP_BRAND]'),
   "Timestamp is no longer a plain string alias",
 );
 

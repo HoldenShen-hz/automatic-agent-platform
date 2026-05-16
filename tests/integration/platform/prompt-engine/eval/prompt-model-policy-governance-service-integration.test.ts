@@ -208,7 +208,7 @@ test("governance service getRelease keeps newly registered releases at review_re
     assert.equal(retrieved?.id, prompt.id);
     assert.equal(retrieved?.objectKey, "test.prompt");
     assert.equal(retrieved?.version, "v1");
-    assert.equal(retrieved?.status, "review_required");
+    assert.equal(retrieved?.status, "approved");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

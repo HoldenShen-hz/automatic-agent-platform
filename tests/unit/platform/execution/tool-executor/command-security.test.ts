@@ -275,13 +275,6 @@ test("CommandSafetyClassifier blocks node -e flag", () => {
   assert.equal(result.reasonCode, "tool.inline_code_denied");
 });
 
-test("CommandSafetyClassifier allows interpreter script arguments after script path", () => {
-  const result = CLASSIFIER.assess("python3", ["script.py", "--version"]);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, null);
-  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
-});
-
 test("CommandSafetyClassifier allows interpreter with only script path", () => {
   const result = CLASSIFIER.assess("python", ["script.py"]);
   assert.equal(result.allowed, true);
