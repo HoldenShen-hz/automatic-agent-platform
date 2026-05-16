@@ -12,7 +12,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { join } from "node:path";
 
 import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
@@ -22,6 +22,23 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+
+async function flushScheduledEventBusDelivery(): Promise<void> {
+  for (let iteration = 0; iteration < 8; iteration++) {
+    mock.timers.tick(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Timer mocking is only enabled in async fan-out tests.
+  }
+});
 
 test("durable event bus: creates in-memory bus and initializes correctly", () => {
   const workspace = createTempWorkspace("aa-bus-init-");
@@ -141,6 +158,7 @@ test("durable event bus: publish with aggregate and sequence for ordering", () =
 });
 
 test("durable event bus: subscribe receives published events", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-subscribe-");
   try {
     const db = new SqliteDatabase(join(workspace, "subscribe-test.db"));
@@ -165,8 +183,7 @@ test("durable event bus: subscribe receives published events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for async delivery
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(receivedEvents.length, 1, "Consumer should receive exactly one event");
     assert.equal(receivedEvents[0], publishedEvent.id, "Consumer should receive the published event");
@@ -179,6 +196,7 @@ test("durable event bus: subscribe receives published events", async () => {
 });
 
 test("durable event bus: subscribe filters by event type", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-filter-");
   try {
     const db = new SqliteDatabase(join(workspace, "filter-test.db"));
@@ -207,8 +225,7 @@ test("durable event bus: subscribe filters by event type", async () => {
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    // Wait for delivery
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     // Consumer receives all events it can handle (no filter at bus level)
     assert.equal(receivedTypes.length, 3, "Consumer should receive all 3 events");
@@ -223,6 +240,7 @@ test("durable event bus: subscribe filters by event type", async () => {
 });
 
 test("durable event bus: multiple consumers receive same events independently", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-multi-consumer-");
   try {
     const db = new SqliteDatabase(join(workspace, "multi-consumer-test.db"));
@@ -251,7 +269,7 @@ test("durable event bus: multiple consumers receive same events independently", 
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(consumer1Events.length, 2, "Consumer 1 should receive 2 events");
     assert.equal(consumer2Events.length, 2, "Consumer 2 should receive 2 events");
@@ -265,6 +283,7 @@ test("durable event bus: multiple consumers receive same events independently", 
 });
 
 test("durable event bus: deliverPending delivers tier-1 events", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-deliver-pending-");
   try {
     const db = new SqliteDatabase(join(workspace, "deliver-pending-test.db"));
@@ -291,8 +310,7 @@ test("durable event bus: deliverPending delivers tier-1 events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for polling delivery to complete
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await flushScheduledEventBusDelivery();
 
     // After polling delivery, pending should be empty
     const pendingBefore = bus.pendingForConsumer("pending_consumer");
@@ -378,6 +396,7 @@ test("durable event bus: batch publish creates multiple events", () => {
 });
 
 test("durable event bus: tier-2 events dispatched immediately without ack", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-tier2-");
   try {
     const db = new SqliteDatabase(join(workspace, "tier2-test.db"));
@@ -404,8 +423,7 @@ test("durable event bus: tier-2 events dispatched immediately without ack", asyn
       payload: { ticketId: "ticket-123", queueId: "default" },
     });
 
-    // Tier-2 events dispatched immediately
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.ok(volatileHandlerCalled, "Tier-2 event should be dispatched immediately");
 
@@ -444,6 +462,7 @@ test("durable event bus: dispose prevents further operations", () => {
 });
 
 test("durable event bus: unsubscribe stops event delivery", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-unsub-");
   try {
     const db = new SqliteDatabase(join(workspace, "unsub-test.db"));
@@ -468,7 +487,7 @@ test("durable event bus: unsubscribe stops event delivery", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(receivedBeforeUnsub.length, 1, "Should receive 1 event before unsubscribe");
 
@@ -481,7 +500,7 @@ test("durable event bus: unsubscribe stops event delivery", async () => {
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(receivedBeforeUnsub.length, 1, "Should not receive new events after unsubscribe");
 
@@ -532,6 +551,7 @@ test("typed event bus: publish with type-safe payload", async () => {
 });
 
 test("typed event bus: subscribe to multiple event types", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-multi-type-");
   try {
     const db = new SqliteDatabase(join(workspace, "multi-type-test.db"));
@@ -559,7 +579,7 @@ test("typed event bus: subscribe to multiple event types", async () => {
       payload: { divisionId: "div-1", workflowId: "wf-1", occurredAt: new Date().toISOString() },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(receivedTypes.length, 2, "Should only receive subscribed event types");
     assert.ok(receivedTypes.includes("task:status_changed"));
@@ -621,6 +641,7 @@ test("typed event bus: delivers skill events with correct payload", async () => 
 });
 
 test("typed event bus: delivers domain lifecycle events", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-domain-events-");
   try {
     const db = new SqliteDatabase(join(workspace, "domain-events-test.db"));
@@ -647,7 +668,7 @@ test("typed event bus: delivers domain lifecycle events", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(received.length, 1);
     assert.equal(received[0].domainId, "test-domain");

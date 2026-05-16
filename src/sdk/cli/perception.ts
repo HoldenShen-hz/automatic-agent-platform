@@ -43,8 +43,46 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadPerceptionCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type { PerceptionSourceType } from "../../platform/contracts/types/domain.js";
+import { assertNonEmpty } from "../../platform/five-plane-control-plane/iam/secret-management-support.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
-import { PerceptionService } from "../../scale-ecosystem/intelligence/perception-service.js";
+import {
+  PerceptionService,
+  type IngestIntelCandidate,
+} from "../../scale-ecosystem/intelligence/perception-service.js";
+
+const PERCEPTION_SOURCE_TYPES = ["rss", "web", "github", "api", "custom"] as const satisfies readonly PerceptionSourceType[];
+
+function parsePerceptionSourceType(value: string): PerceptionSourceType {
+  if (PERCEPTION_SOURCE_TYPES.includes(value as PerceptionSourceType)) {
+    return value as PerceptionSourceType;
+  }
+  throw new ValidationError(`invalid_perception_source_type:${value}`, `invalid_perception_source_type:${value}`);
+}
+
+function normalizeIntelItems(items: Array<Record<string, unknown>>): IngestIntelCandidate[] {
+  return items.map((item, index) => {
+    const title = assertNonEmpty(typeof item.title === "string" ? item.title : "", `perception.invalid_intel_title:${index}`);
+    const summary = assertNonEmpty(typeof item.summary === "string" ? item.summary : "", `perception.invalid_intel_summary:${index}`);
+    const rawRef = assertNonEmpty(typeof item.rawRef === "string" ? item.rawRef : "", `perception.invalid_intel_raw_ref:${index}`);
+    const relevanceScore = typeof item.relevanceScore === "number" ? item.relevanceScore : Number.NaN;
+    const importance = typeof item.importance === "number" ? item.importance : Number.NaN;
+    if (!Number.isFinite(relevanceScore) || !Number.isFinite(importance)) {
+      throw new ValidationError(`invalid_intel_scores:${index}`, `invalid_intel_scores:${index}`);
+    }
+    return {
+      title,
+      summary,
+      rawRef,
+      relevanceScore,
+      importance,
+      ...(Array.isArray(item.tags) ? { tags: item.tags.filter((tag): tag is string => typeof tag === "string") } : {}),
+      ...(typeof item.dedupeKey === "string" ? { dedupeKey: item.dedupeKey } : {}),
+      ...(typeof item.capturedAt === "string" ? { capturedAt: item.capturedAt } : {}),
+      ...(typeof item.ttlHours === "number" || item.ttlHours === null ? { ttlHours: item.ttlHours } : {}),
+    };
+  });
+}
 
 /**
  * Main entry point for the perception CLI.
@@ -77,7 +115,7 @@ function main(): void {
       }
       return perception.registerSource({
         ...(envConfig.tenantId !== null ? { tenantId: envConfig.tenantId } : {}),
-        type: envConfig.sourceType as never,
+        type: parsePerceptionSourceType(envConfig.sourceType),
         name: envConfig.sourceName,
         enabled: envConfig.sourceEnabled,
         ...(envConfig.sourceId ? { sourceId: envConfig.sourceId } : {}),
@@ -97,7 +135,7 @@ function main(): void {
       return perception.ingestIntel({
         sourceId: envConfig.sourceId,
         ...(envConfig.tenantId !== null ? { tenantId: envConfig.tenantId } : {}),
-        items: envConfig.intelItems as never,
+        items: normalizeIntelItems(envConfig.intelItems),
         ...(envConfig.accountId !== null ? { accountId: envConfig.accountId } : {}),
       });
     case "brief": {

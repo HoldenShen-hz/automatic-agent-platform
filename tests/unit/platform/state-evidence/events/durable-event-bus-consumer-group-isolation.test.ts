@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
@@ -8,12 +8,30 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
+async function flushScheduledEventBusDelivery(): Promise<void> {
+  for (let iteration = 0; iteration < 8; iteration++) {
+    mock.timers.tick(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Timer mocking is only enabled in async fan-out tests.
+  }
+});
+
 /**
  * R12-02: Tests for consumer group isolation.
  * Each consumer group maintains independent offset and delivery state.
  * Group-level circuit breaker limits concurrent deliveries per group.
  */
 test("R12-02: different consumer groups have independent delivery state", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-");
 
   try {
@@ -46,7 +64,7 @@ test("R12-02: different consumer groups have independent delivery state", async 
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     // Both groups should receive the same event independently
     assert.ok(highPriorityEvents.includes(event.id), "high-priority consumer should receive event");
@@ -60,6 +78,7 @@ test("R12-02: different consumer groups have independent delivery state", async 
 });
 
 test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-concurrency-");
   const inFlight: string[] = [];
   const maxConcurrentSeen = { max: 0 };
@@ -79,8 +98,8 @@ test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async
     bus.subscribe("limited_consumer", async (event) => {
       inFlight.push(event.id);
       maxConcurrentSeen.max = Math.max(maxConcurrentSeen.max, inFlight.length);
-      // Simulate some async work
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await Promise.resolve();
+      await Promise.resolve();
       const idx = inFlight.indexOf(event.id);
       if (idx !== -1) inFlight.splice(idx, 1);
     }, new Set(), "limited");
@@ -95,7 +114,7 @@ test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async
       }));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushScheduledEventBusDelivery();
 
     // With maxConcurrency: 2, we should not have all 5 in flight simultaneously
     // (though due to async nature and timing, this is best-effort)
@@ -109,6 +128,7 @@ test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async
 });
 
 test("R12-02: each consumer maintains independent offset via own ack state", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-offset-");
 
   try {
@@ -140,7 +160,7 @@ test("R12-02: each consumer maintains independent offset via own ack state", asy
       }));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     // Consumer A and B should each receive all events independently
     assert.equal(consumerAEvents.length, 3, "consumer A should receive all 3 events");
@@ -162,6 +182,7 @@ test("R12-02: each consumer maintains independent offset via own ack state", asy
 });
 
 test("R12-02: group-level circuit breaker state is maintained independently", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-circuit-");
 
   try {
@@ -187,7 +208,7 @@ test("R12-02: group-level circuit breaker state is maintained independently", as
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     // Both groups should have their own independent state
     // The groups don't interfere with each other
@@ -200,6 +221,7 @@ test("R12-02: group-level circuit breaker state is maintained independently", as
 });
 
 test("R12-02: consumer group back-pressure is tracked per group", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-bp-");
 
   try {
@@ -213,8 +235,8 @@ test("R12-02: consumer group back-pressure is tracked per group", async () => {
     bus.registerConsumerGroup({ groupId: "bp-group", maxConcurrency: 2, backPressureThresholdBytes: 100 });
 
     bus.subscribe("bp_consumer", async (event) => {
-      // Simulate slow processing
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await Promise.resolve();
+      await Promise.resolve();
     }, new Set(), "bp-group");
 
     // Publish events until back-pressure would trigger
@@ -226,7 +248,7 @@ test("R12-02: consumer group back-pressure is tracked per group", async () => {
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushScheduledEventBusDelivery();
 
     // Back-pressure state should be tracked
     const bpState = bus.getBackPressureState("bp_consumer");
@@ -241,6 +263,7 @@ test("R12-02: consumer group back-pressure is tracked per group", async () => {
 });
 
 test("R12-02: consumer without group defaults to 'default' group", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-group-default-");
 
   try {
@@ -264,7 +287,7 @@ test("R12-02: consumer without group defaults to 'default' group", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     assert.ok(defaultGroupEvents.includes(event.id), "default group consumer should receive event");
 

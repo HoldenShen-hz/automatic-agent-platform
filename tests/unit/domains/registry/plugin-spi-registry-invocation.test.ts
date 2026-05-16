@@ -4,6 +4,16 @@ import test from "node:test";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
 import type { PluginSandboxPolicy, PluginLifecycleContext } from "../../../../src/domains/registry/plugin-spi.js";
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
     timeoutMs: 5000,
@@ -29,6 +39,8 @@ test("PluginSpiRegistry enforces maxConcurrentInvocations limit", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
   let activeCount = 0;
   let maxObserved = 0;
+  const reachedConcurrencyLimit = createDeferred<void>();
+  const releaseInvocations = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.concurrent",
@@ -37,7 +49,10 @@ test("PluginSpiRegistry enforces maxConcurrentInvocations limit", async () => {
     async retrieve() {
       activeCount++;
       maxObserved = Math.max(maxObserved, activeCount);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (activeCount === 2) {
+        reachedConcurrencyLimit.resolve();
+      }
+      await releaseInvocations.promise;
       activeCount--;
       return [];
     },
@@ -74,25 +89,24 @@ test("PluginSpiRegistry enforces maxConcurrentInvocations limit", async () => {
     }),
   );
 
+  await reachedConcurrencyLimit.promise;
+  releaseInvocations.resolve();
   await Promise.all(promises);
   assert.ok(maxObserved <= 2, `Expected max ${2} concurrent, observed ${maxObserved}`);
 });
 
 test("PluginSpiRegistry queues invocations up to maxQueuedInvocations", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
-  let processing = false;
+  const firstInvocationStarted = createDeferred<void>();
+  const releaseQueue = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.queue",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
-      while (processing) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-      }
-      processing = true;
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      processing = false;
+      firstInvocationStarted.resolve();
+      await releaseQueue.promise;
       return [];
     },
   }, {
@@ -131,6 +145,8 @@ test("PluginSpiRegistry queues invocations up to maxQueuedInvocations", async ()
     );
   }
 
+  await firstInvocationStarted.promise;
+  releaseQueue.resolve();
   const outcomes = await Promise.all(results);
   // Some may have failed due to queue overflow, but at least some should succeed
   const successes = outcomes.filter((r) => Array.isArray(r));
@@ -139,16 +155,14 @@ test("PluginSpiRegistry queues invocations up to maxQueuedInvocations", async ()
 
 test("PluginSpiRegistry throws when queue overflow exceeds limit", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
-  let block = true;
+  const releaseBlockedInvocation = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.overflow",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
-      while (block) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
+      await releaseBlockedInvocation.promise;
       return [];
     },
   }, {
@@ -207,7 +221,7 @@ test("PluginSpiRegistry throws when queue overflow exceeds limit", async () => {
     assert.ok(err instanceof Error);
     assert.ok(err.message.includes("queue_overflow") || err.message.includes("exceeded"));
   } finally {
-    block = false;
+    releaseBlockedInvocation.resolve();
     await first;
     await second.catch(() => "queued error");
   }
@@ -324,7 +338,9 @@ test("PluginSpiRegistry clears cooldown when invocations succeed", async () => {
     } catch {
       // Expected
     }
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    const record = registry.get("plugin.clear_cooldown");
+    assert.ok(record);
+    record.cooldownUntil = new Date(Date.now() - 1000).toISOString();
   }
 
   // Third succeeds after cooldown expiry and clears failure state.
@@ -754,14 +770,21 @@ test("PluginSpiRegistry resets failure metrics on success", async () => {
 
 test("PluginSpiRegistry releases queued invocations when slots become available", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
-  let blockProcessing = true;
   let processedCount = 0;
+  let invocationCount = 0;
+  const firstInvocationStarted = createDeferred<void>();
+  const releaseFirstInvocation = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.release_waiters",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
+      invocationCount++;
+      if (invocationCount === 1) {
+        firstInvocationStarted.resolve();
+        await releaseFirstInvocation.promise;
+      }
       processedCount++;
       return [];
     },
@@ -796,8 +819,7 @@ test("PluginSpiRegistry releases queued invocations when slots become available"
     },
   });
 
-  // Wait for first to start
-  await new Promise((resolve) => setTimeout(resolve, 5));
+  await firstInvocationStarted.promise;
 
   // Queue more invocations
   const queued = [
@@ -819,19 +841,22 @@ test("PluginSpiRegistry releases queued invocations when slots become available"
     }),
   ];
 
+  releaseFirstInvocation.resolve();
   const results = await Promise.all([first, ...queued]);
   assert.equal(results.length, 3);
+  assert.equal(processedCount, 3);
 });
 
 test("PluginSpiRegistry handles invocation timing metrics", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+  const releaseInvocation = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.timing",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await releaseInvocation.promise;
       return [];
     },
   }, {
@@ -851,7 +876,7 @@ test("PluginSpiRegistry handles invocation timing metrics", async () => {
 
   await registry.ensureActive("plugin.timing");
 
-  await registry.invokeRetriever("plugin.timing", {
+  const invocation = registry.invokeRetriever("plugin.timing", {
     query: {
       taskId: "task_timing",
       intent: "timing",
@@ -859,6 +884,8 @@ test("PluginSpiRegistry handles invocation timing metrics", async () => {
       tokenBudget: 1000,
     },
   });
+  releaseInvocation.resolve();
+  await invocation;
 
   const record = registry.get("plugin.timing");
   assert.ok(record);

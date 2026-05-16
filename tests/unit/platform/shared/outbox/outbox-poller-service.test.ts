@@ -3,7 +3,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { OutboxPollerService } from "../../../../../src/platform/shared/outbox/outbox-poller-service.js";
 import type { OutboxService } from "../../../../../src/platform/shared/outbox/outbox-service.js";
 import type { OutboxRecord } from "../../../../../src/platform/shared/outbox/outbox-types.js";
@@ -39,8 +39,37 @@ function createPendingEntry(overrides: Partial<OutboxRecord> = {}): OutboxRecord
   };
 }
 
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+async function flushOutboxTimers(iterations = 6): Promise<void> {
+  for (let iteration = 0; iteration < iterations; iteration++) {
+    mock.timers.tick(10);
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Timer mocking is only enabled in async poller timing tests.
+  }
+});
+
 test("OutboxPollerService poll returns early when disposed", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
   let pollCallCount = 0;
+  const publishDeferred = createDeferred<boolean>();
   const mockService = createMockOutboxService({
     getPendingEntries: () => {
       pollCallCount++;
@@ -48,23 +77,19 @@ test("OutboxPollerService poll returns early when disposed", async () => {
       return [createPendingEntry()];
     },
     getPendingCount: () => 1,
-    publishEntry: async () => {
-      await new Promise(resolve => setTimeout(resolve, 50));
-      return true;
-    },
+    publishEntry: async () => publishDeferred.promise,
   });
 
   const poller = new OutboxPollerService(mockService, { intervalMs: 5 });
   poller.start();
 
-  // Let first poll start
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await flushOutboxTimers(2);
 
   // Dispose during processing
   poller.dispose();
 
-  // Give time for any in-flight processing
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  publishDeferred.resolve(true);
+  await flushOutboxTimers();
 
   // Verify poll was attempted at least once before dispose
   assert.ok(pollCallCount >= 1);
@@ -199,17 +224,15 @@ test("OutboxPollerService poll with mixed success and failure counts correctly",
 });
 
 test("OutboxPollerService stop waits for poll to complete", async () => {
-  let pollInProgress = false;
+  mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
+  const publishDeferred = createDeferred<void>();
   const mockService = createMockOutboxService({
     getPendingEntries: () => {
-      pollInProgress = true;
       return [createPendingEntry()];
     },
     getPendingCount: () => 1,
     publishEntry: async () => {
-      pollInProgress = true;
-      await new Promise(resolve => setTimeout(resolve, 30));
-      pollInProgress = false;
+      await publishDeferred.promise;
       return true;
     },
   });
@@ -217,10 +240,11 @@ test("OutboxPollerService stop waits for poll to complete", async () => {
   const poller = new OutboxPollerService(mockService, { intervalMs: 100 });
   poller.start();
 
-  // Wait for poll to be in progress
-  await new Promise(resolve => setTimeout(resolve, 20));
+  await flushOutboxTimers(10);
 
   const stopPromise = poller.stop(200);
+  publishDeferred.resolve();
+  await flushOutboxTimers();
 
   // Stop should complete within timeout
   await stopPromise;
@@ -317,6 +341,7 @@ test("OutboxPollerService poll returns zeros when no pending entries", async () 
 });
 
 test("OutboxPollerService poll stops early when disposed mid-processing", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
   let processedCount = 0;
   const mockService = createMockOutboxService({
     getPendingEntries: () => [
@@ -338,8 +363,7 @@ test("OutboxPollerService poll stops early when disposed mid-processing", async 
   const poller = new OutboxPollerService(mockService, { intervalMs: 1000 });
   poller.start();
 
-  // Let first poll start and process at least one entry
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await flushOutboxTimers(100);
 
   // Dispose while poll is potentially running
   poller.dispose();
@@ -472,19 +496,16 @@ test("OutboxPollerService stop is idempotent when already stopped", async () => 
 });
 
 test("OutboxPollerService stop waits for in-flight poll to complete", async () => {
-  let pollStarted = false;
-  let pollResolve: () => void;
-  const pollPromise = new Promise<void>((resolve) => { pollResolve = resolve; });
+  mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
+  const pollDeferred = createDeferred<void>();
 
   const mockService = createMockOutboxService({
     getPendingEntries: () => {
-      pollStarted = true;
       return [createPendingEntry()];
     },
     getPendingCount: () => 1,
     publishEntry: async () => {
-      pollStarted = true;
-      await pollPromise;
+      await pollDeferred.promise;
       return true;
     },
   });
@@ -492,12 +513,12 @@ test("OutboxPollerService stop waits for in-flight poll to complete", async () =
   const poller = new OutboxPollerService(mockService, { intervalMs: 50 });
   poller.start();
 
-  // Wait for poll to start
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await flushOutboxTimers(5);
 
   // Stop should complete even though poll is in-flight
   const stopPromise = poller.stop(500);
-  pollResolve!();
+  pollDeferred.resolve();
+  await flushOutboxTimers();
   await stopPromise;
 
   const metrics = poller.getMetrics();
@@ -579,10 +600,12 @@ test("OutboxPollerService disposed cannot be restarted", () => {
 });
 
 test("OutboxPollerService dispose clears interval handle", () => {
+  mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
   const mockService = createMockOutboxService();
   const poller = new OutboxPollerService(mockService, { intervalMs: 10 });
 
   poller.start();
+  mock.timers.tick(10);
   poller.dispose();
 
   // Poller should not be running after dispose

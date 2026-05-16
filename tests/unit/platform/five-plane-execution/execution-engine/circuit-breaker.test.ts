@@ -2,9 +2,25 @@
  * Unit tests for CircuitBreaker state transitions.
  */
 
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert/strict";
 import { CircuitBreaker, CircuitBreakerOpenError } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/model-gateway/provider-registry/circuit-breaker.js";
+
+function enableCircuitBreakerTimers(): void {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+}
+
+function advanceCircuitBreakerTime(ms: number): void {
+  mock.timers.tick(ms);
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Timer mocking is only enabled in transition-sensitive tests.
+  }
+});
 
 test("circuit breaker starts in closed state", () => {
   const cb = new CircuitBreaker({ name: "test-circuit" });
@@ -57,6 +73,7 @@ test("circuit breaker opens after high failure rate", () => {
 });
 
 test("circuit breaker transitions to half_open after reset timeout", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 3,
@@ -69,14 +86,14 @@ test("circuit breaker transitions to half_open after reset timeout", async () =>
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait for timeout
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
 
   // Should transition to half_open on next getState call
   assert.equal(cb.getState(), "half_open");
 });
 
 test("circuit breaker closes after success threshold in half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 3,
@@ -90,8 +107,7 @@ test("circuit breaker closes after success threshold in half_open", async () => 
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait for timeout then trigger transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -103,6 +119,7 @@ test("circuit breaker closes after success threshold in half_open", async () => 
 });
 
 test("circuit breaker returns to open on failure in half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 3,
@@ -116,8 +133,7 @@ test("circuit breaker returns to open on failure in half_open", async () => {
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait for timeout then transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -152,6 +168,7 @@ test("circuit breaker execute allows requests when closed", async () => {
 });
 
 test("circuit breaker execute allows requests in half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -163,8 +180,7 @@ test("circuit breaker execute allows requests in half_open", async () => {
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait and transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -175,6 +191,7 @@ test("circuit breaker execute allows requests in half_open", async () => {
 });
 
 test("circuit breaker halfOpenInFlight limits concurrent probes in half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -186,8 +203,7 @@ test("circuit breaker halfOpenInFlight limits concurrent probes in half_open", a
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait and transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -209,6 +225,7 @@ test("circuit breaker success resets consecutive failures", () => {
 });
 
 test("circuit breaker failure resets consecutive successes in half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 3,
@@ -220,7 +237,7 @@ test("circuit breaker failure resets consecutive successes in half_open", async 
   cb.onFailure();
   cb.onFailure();
   cb.onFailure();
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState(); // half_open
 
   cb.onSuccess();
@@ -295,6 +312,7 @@ test("circuit breaker records failure and updates metrics", () => {
 });
 
 test("circuit breaker halfOpenInFlight allows one probe at a time", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -306,8 +324,7 @@ test("circuit breaker halfOpenInFlight allows one probe at a time", async () => 
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait and transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -353,6 +370,7 @@ test("circuit breaker accepts custom reset timeout", () => {
 });
 
 test("circuit breaker accepts custom halfOpenSuccessThreshold", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -363,8 +381,7 @@ test("circuit breaker accepts custom halfOpenSuccessThreshold", async () => {
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // Wait for timeout and transition to half_open
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
@@ -404,6 +421,7 @@ test("circuit breaker error preserves circuit name and retryAfterMs", () => {
 });
 
 test("circuit breaker getState checks timeout for open to half_open transition", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -417,14 +435,14 @@ test("circuit breaker getState checks timeout for open to half_open transition",
   cb.getState();
   assert.equal(cb.getState(), "open");
 
-  // Wait for timeout
-  await new Promise((resolve) => setTimeout(resolve, 120));
+  advanceCircuitBreakerTime(120);
 
   // Now getState should trigger transition
   assert.equal(cb.getState(), "half_open");
 });
 
 test("circuit breaker requires two successes to close from half_open", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -434,7 +452,7 @@ test("circuit breaker requires two successes to close from half_open", async () 
 
   // Open the circuit
   cb.onFailure();
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState(); // half_open
 
   // First success - still half_open
@@ -449,6 +467,7 @@ test("circuit breaker requires two successes to close from half_open", async () 
 });
 
 test("circuit breaker can be reopened after recovery", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 1,
@@ -458,7 +477,7 @@ test("circuit breaker can be reopened after recovery", async () => {
 
   // Open and recover
   cb.onFailure();
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
   cb.getState(); // half_open
   await cb.execute(async () => "success"); // closes
   assert.equal(cb.getState(), "closed");
@@ -490,6 +509,7 @@ test("circuit breaker execute propagates errors and records failure", async () =
 });
 
 test("circuit breaker transitions through complete lifecycle", async () => {
+  enableCircuitBreakerTimers();
   const cb = new CircuitBreaker({
     name: "test-circuit",
     failureThreshold: 2,
@@ -505,8 +525,7 @@ test("circuit breaker transitions through complete lifecycle", async () => {
   cb.onFailure();
   assert.equal(cb.getState(), "open");
 
-  // 3. Wait for timeout
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  advanceCircuitBreakerTime(60);
 
   // 4. getState triggers transition to half_open
   cb.getState();

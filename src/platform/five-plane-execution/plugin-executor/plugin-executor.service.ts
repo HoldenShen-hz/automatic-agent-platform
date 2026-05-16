@@ -279,7 +279,7 @@ export class PluginExecutorService {
       );
     }
 
-    if (!instance.manifest.spiTypes.includes(action as never)) {
+    if (!instance.manifest.spiTypes.some((spiType) => spiType === action)) {
       throw new ValidationError(
         "plugin_executor.action_not_allowed",
         `Action ${action} not defined in plugin manifest`,

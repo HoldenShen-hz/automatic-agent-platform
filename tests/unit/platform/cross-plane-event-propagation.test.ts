@@ -13,7 +13,7 @@
  * 3. Aggregate-based ordering for events within the same run/aggregate
  */
 
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -37,6 +37,30 @@ const PLANE_CONSUMERS = {
 } as const;
 
 type PlaneConsumer = (typeof PLANE_CONSUMERS)[keyof typeof PLANE_CONSUMERS];
+
+async function flushBusFanOut(): Promise<void> {
+  for (let iteration = 0; iteration < 8; iteration++) {
+    mock.timers.tick(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+async function deliverAcrossPlanes(env: { bus: DurableEventBus }, consumers: readonly PlaneConsumer[] = Object.values(PLANE_CONSUMERS)): Promise<void> {
+  await flushBusFanOut();
+  for (const consumerId of consumers) {
+    await env.bus.deliverPending(consumerId);
+  }
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Individual tests opt into timer mocking only when needed.
+  }
+});
 
 /**
  * Helper to create a fresh test environment with event bus and storage.
@@ -76,6 +100,7 @@ async function cleanupCrossPlaneTestEnvironment(env: {
 // ============================================================================
 
 test("P1→P2: task:status_changed propagates from Interface to ControlPlane", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -107,8 +132,7 @@ test("P1→P2: task:status_changed propagates from Interface to ControlPlane", a
       },
     });
 
-    // Wait for volatile delivery (P1 and P2 are both immediate consumers)
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env);
 
     // Both planes should receive the event
     assert.equal(p1Received.length, 1, "P1 Interface should receive the event");
@@ -123,6 +147,7 @@ test("P1→P2: task:status_changed propagates from Interface to ControlPlane", a
 });
 
 test("P1→P2: decision:requested propagates with approval context from Interface to ControlPlane", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -150,7 +175,7 @@ test("P1→P2: decision:requested propagates with approval context from Interfac
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env, [PLANE_CONSUMERS.P5_EVIDENCE]);
 
     assert.equal(p1Received.length, 1, "P1 should receive decision:requested");
     assert.equal(p2Received.length, 1, "P2 should receive decision:requested");
@@ -170,6 +195,7 @@ test("P1→P2: decision:requested propagates with approval context from Interfac
 // ============================================================================
 
 test("P2→P3: domain:activated propagates from ControlPlane to Orchestration", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -196,7 +222,11 @@ test("P2→P3: domain:activated propagates from ControlPlane to Orchestration", 
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env, [
+      PLANE_CONSUMERS.P3_ORCHESTRATION,
+      PLANE_CONSUMERS.P4_EXECUTION,
+      PLANE_CONSUMERS.P5_EVIDENCE,
+    ]);
 
     assert.equal(p2Received.length, 1, "P2 should receive domain:activated");
     assert.equal(p3Received.length, 1, "P3 should receive domain:activated");
@@ -211,6 +241,7 @@ test("P2→P3: domain:activated propagates from ControlPlane to Orchestration", 
 });
 
 test("P2→P3: oapeflir.phase.transition propagates from ControlPlane to Orchestration", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -236,7 +267,7 @@ test("P2→P3: oapeflir.phase.transition propagates from ControlPlane to Orchest
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env);
 
     assert.equal(p2Received.length, 1, "P2 should receive phase transition");
     assert.equal(p3Received.length, 1, "P3 should receive phase transition");
@@ -256,6 +287,7 @@ test("P2→P3: oapeflir.phase.transition propagates from ControlPlane to Orchest
 // ============================================================================
 
 test("P3→P4: workflow:step_completed propagates from Orchestration to Execution", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -284,7 +316,7 @@ test("P3→P4: workflow:step_completed propagates from Orchestration to Executio
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env, [PLANE_CONSUMERS.P5_EVIDENCE]);
 
     assert.equal(p3Received.length, 1, "P3 Orchestration should receive workflow:step_completed");
     assert.equal(p4Received.length, 1, "P4 Execution should receive workflow:step_completed");
@@ -300,6 +332,7 @@ test("P3→P4: workflow:step_completed propagates from Orchestration to Executio
 });
 
 test("P3→P4: dispatch:ticket_created propagates from Orchestration to Execution", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -327,7 +360,11 @@ test("P3→P4: dispatch:ticket_created propagates from Orchestration to Executio
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await deliverAcrossPlanes(env, [
+      PLANE_CONSUMERS.P3_ORCHESTRATION,
+      PLANE_CONSUMERS.P4_EXECUTION,
+      PLANE_CONSUMERS.P5_EVIDENCE,
+    ]);
 
     assert.equal(p3Received.length, 1, "P3 should receive dispatch:ticket_created");
     assert.equal(p4Received.length, 1, "P4 should receive dispatch:ticket_created");
@@ -347,6 +384,7 @@ test("P3→P4: dispatch:ticket_created propagates from Orchestration to Executio
 // ============================================================================
 
 test("P4→P5: task:status_changed propagates from Execution to StateEvidence", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -374,7 +412,7 @@ test("P4→P5: task:status_changed propagates from Execution to StateEvidence", 
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await flushBusFanOut();
 
     assert.equal(p4Received.length, 1, "P4 should receive task:status_changed");
     assert.equal(p5Received.length, 1, "P5 should receive task:status_changed");
@@ -389,6 +427,7 @@ test("P4→P5: task:status_changed propagates from Execution to StateEvidence", 
 });
 
 test("P4→P5: worker:claim_accepted propagates from Execution to StateEvidence", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -415,7 +454,7 @@ test("P4→P5: worker:claim_accepted propagates from Execution to StateEvidence"
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await flushBusFanOut();
 
     assert.equal(p4Received.length, 1, "P4 should receive worker:claim_accepted");
     assert.equal(p5Received.length, 1, "P5 should receive worker:claim_accepted");
@@ -434,6 +473,7 @@ test("P4→P5: worker:claim_accepted propagates from Execution to StateEvidence"
 // ============================================================================
 
 test("P1→P2→P3→P4→P5: Full chain event propagation with runId aggregate ordering", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -506,8 +546,7 @@ test("P1→P2→P3→P4→P5: Full chain event propagation with runId aggregate 
       },
     });
 
-    // Wait for all volatile deliveries
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushBusFanOut();
 
     // All planes should receive all events
     for (const consumerId of Object.values(PLANE_CONSUMERS)) {
@@ -529,6 +568,7 @@ test("P1→P2→P3→P4→P5: Full chain event propagation with runId aggregate 
 });
 
 test("P1→P2→P3→P4→P5: Events propagate to all planes without loss", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -562,7 +602,7 @@ test("P1→P2→P3→P4→P5: Events propagate to all planes without loss", asyn
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushBusFanOut();
 
     // Each plane should receive exactly 10 events
     for (const consumerId of Object.values(PLANE_CONSUMERS)) {
@@ -580,6 +620,7 @@ test("P1→P2→P3→P4→P5: Events propagate to all planes without loss", asyn
 // ============================================================================
 
 test("Events within same runId maintain sequence ordering across planes", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -612,7 +653,7 @@ test("Events within same runId maintain sequence ordering across planes", async 
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushBusFanOut();
 
     // P5 should receive events in sequence order
     assert.equal(p5Sequences.length, 5, "P5 should receive 5 events");
@@ -625,6 +666,7 @@ test("Events within same runId maintain sequence ordering across planes", async 
 });
 
 test("Events with different runIds maintain independent ordering per run", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -676,7 +718,7 @@ test("Events with different runIds maintain independent ordering per run", async
       payload: { streamId: "stream-b2", chunkIndex: 1, chunkType: "text", emittedAt: new Date().toISOString(), runMarker: "run-b-2" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushBusFanOut();
 
     // Each run's events should maintain their own ordering
     assert.deepEqual(runARecords, ["run-a-1", "run-a-2"], "Run A should maintain sequence");
@@ -749,6 +791,7 @@ test("Tier-1 events (task:status_changed) deliver reliably to all planes", async
 });
 
 test("Platform events (harness_run.lifecycle) propagate across planes", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const env = await createCrossPlaneTestEnvironment();
 
   try {
@@ -810,7 +853,7 @@ test("Platform events (harness_run.lifecycle) propagate across planes", async ()
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await flushBusFanOut();
 
     assert.equal(p3Received.length, 3, "P3 should receive 3 harness events");
     assert.equal(p4Received.length, 3, "P4 should receive 3 harness events");

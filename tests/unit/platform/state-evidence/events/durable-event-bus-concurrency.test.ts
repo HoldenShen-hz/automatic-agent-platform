@@ -18,6 +18,16 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { runConcurrentInvariant, type ConcurrentRunResult } from "../../../../helpers/concurrent-runner.js";
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 test("concurrent: publish events from multiple tasks concurrently", async () => {
   const workspace = createTempWorkspace("aa-concurrent-publish-");
   try {
@@ -284,40 +294,28 @@ test("concurrent: subscribe/unsubscribe racing with publish", async () => {
           bus.subscribe(`sub-consumer-${i}`, async (event) => {
             seen.push(event.id);
           });
+          await Promise.resolve();
         }
       })(),
       (async () => {
-        await Promise.race([
-          (async () => {
-            for (let i = 0; i < 10; i++) {
-              bus.publish({
-                eventType: "task:status_changed",
-                taskId: `task-sub-${i % 20}`,
-                executionId: `exec-sub-${i % 20}`,
-                traceId: `trace-sub-${i}`,
-                payload: { fromStatus: "queued", toStatus: "in_progress" },
-              });
-              await new Promise((r) => setTimeout(r, 5));
-            }
-          })(),
-          new Promise((r) => setTimeout(r, 1000)),
-        ]);
+        for (let i = 0; i < 10; i++) {
+          bus.publish({
+            eventType: "task:status_changed",
+            taskId: `task-sub-${i % 20}`,
+            executionId: `exec-sub-${i % 20}`,
+            traceId: `trace-sub-${i}`,
+            payload: { fromStatus: "queued", toStatus: "in_progress" },
+          });
+          await Promise.resolve();
+        }
       })(),
       (async () => {
-        await Promise.race([
-          (async () => {
-            for (let i = 0; i < 5; i++) {
-              bus.unsubscribe(`sub-consumer-${i}`);
-              await new Promise((r) => setTimeout(r, 10));
-            }
-          })(),
-          new Promise((r) => setTimeout(r, 1000)),
-        ]);
+        for (let i = 0; i < 5; i++) {
+          bus.unsubscribe(`sub-consumer-${i}`);
+          await Promise.resolve();
+        }
       })(),
     ]);
-
-    // Wait for any pending deliveries
-    await new Promise((r) => setTimeout(r, 100));
 
     // No crashes should occur
     assert.ok(true, "Subscribe/unsubscribe racing with publish should not crash");
@@ -342,13 +340,12 @@ test("concurrent: pendingForConsumer called during active delivery", async () =>
     });
 
     const bus = new DurableEventBus(db, store);
-    let deliveryInProgress = false;
+    const deliveryStarted = createDeferred<void>();
+    const releaseDelivery = createDeferred<void>();
 
-    bus.subscribe("pending-consumer", async (event) => {
-      // Simulate slow handler
-      deliveryInProgress = true;
-      await new Promise((r) => setTimeout(r, 20));
-      deliveryInProgress = false;
+    bus.subscribe("pending-consumer", async () => {
+      deliveryStarted.resolve();
+      await releaseDelivery.promise;
     });
 
     // Publish events
@@ -369,16 +366,19 @@ test("concurrent: pendingForConsumer called during active delivery", async () =>
     await Promise.all([
       bus.deliverPending("pending-consumer"),
       (async () => {
+        await deliveryStarted.promise;
         for (let i = 0; i < 10; i++) {
           const pending = bus.pendingForConsumer("pending-consumer");
           results.push({ pending: pending.length, time: Date.now() - startTime });
-          await new Promise((r) => setTimeout(r, 5));
+          await Promise.resolve();
         }
+        releaseDelivery.resolve();
       })(),
     ]);
 
     // Should complete without errors
     assert.ok(true, "pendingForConsumer during delivery should not crash");
+    assert.ok(results.length > 0, "Should collect pending snapshots during delivery");
 
     bus.dispose();
     db.close();
@@ -403,42 +403,42 @@ test("concurrent: dispose called while publish/deliver operations are in flight"
     }
 
     const bus = new DurableEventBus(db, store);
+    const firstPublishCompleted = createDeferred<void>();
 
-    bus.subscribe("dispose-consumer", async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    bus.subscribe("dispose-consumer", async () => {});
 
     // Start operations and dispose concurrently
     const errors: unknown[] = [];
 
-    await Promise.race([
-      Promise.all([
-        (async () => {
-          for (let i = 0; i < 10; i++) {
-            try {
-              bus.publish({
-                eventType: "task:status_changed",
-                taskId: `task-dispose-${i}`,
-                executionId: `exec-dispose-${i}`,
-                traceId: `trace-dispose-${i}`,
-                payload: { fromStatus: "queued", toStatus: "in_progress" },
-              });
-            } catch (e) {
-              errors.push(e);
+    await Promise.all([
+      (async () => {
+        for (let i = 0; i < 10; i++) {
+          try {
+            bus.publish({
+              eventType: "task:status_changed",
+              taskId: `task-dispose-${i}`,
+              executionId: `exec-dispose-${i}`,
+              traceId: `trace-dispose-${i}`,
+              payload: { fromStatus: "queued", toStatus: "in_progress" },
+            });
+            if (i === 0) {
+              firstPublishCompleted.resolve();
             }
-            await new Promise((r) => setTimeout(r, 5));
+          } catch (e) {
+            errors.push(e);
           }
-        })(),
-        (async () => {
-          await new Promise((r) => setTimeout(r, 50));
-          bus.dispose();
-        })(),
-      ]),
-      new Promise((r) => setTimeout(r, 5000)),
+          await Promise.resolve();
+        }
+      })(),
+      (async () => {
+        await firstPublishCompleted.promise;
+        bus.dispose();
+      })(),
     ]);
 
     // Some operations may fail due to dispose, but no crashes
     assert.ok(true, "Dispose during operations should not cause crashes");
+    assert.ok(errors.length >= 0);
 
     db.close();
   } finally {

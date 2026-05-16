@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
@@ -7,6 +7,23 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+
+async function flushScheduledEventBusDelivery(): Promise<void> {
+  for (let iteration = 0; iteration < 8; iteration++) {
+    mock.timers.tick(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Timer mocking is only enabled in async fan-out tests.
+  }
+});
 
 test("durable event bus publishes tier1 event and acks after delivery", async () => {
   const workspace = createTempWorkspace("aa-event-bus-");
@@ -62,6 +79,7 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
 });
 
 test("durable event bus publish auto-fans out to active subscribers", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-fanout-");
 
   try {
@@ -88,7 +106,7 @@ test("durable event bus publish auto-fans out to active subscribers", async () =
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushScheduledEventBusDelivery();
 
     assert.deepEqual(seen, [event.id]);
     assert.equal(bus.pendingForConsumer("task_projection").length, 0);
@@ -322,6 +340,7 @@ test("durable event bus rejects payload larger than 1MB", async () => {
 });
 
 test("durable event bus volatile subscriber error does not propagate", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-volatile-error-");
 
   try {
@@ -348,8 +367,7 @@ test("durable event bus volatile subscriber error does not propagate", async () 
       },
     });
 
-    // Give async handler time to execute
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushScheduledEventBusDelivery();
 
     // The publish should succeed (error doesn't propagate)
     assert.equal(event.eventType, "stream:chunk_emitted");
@@ -361,6 +379,7 @@ test("durable event bus volatile subscriber error does not propagate", async () 
 });
 
 test("durable event bus unsubscribe removes subscriber", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-unsubscribe-");
 
   try {
@@ -393,8 +412,7 @@ test("durable event bus unsubscribe removes subscriber", async () => {
     const pendingAfter = bus.pendingForConsumer("inspect_projection");
     assert.equal(pendingAfter.length, 1, "Should have 1 pending event after publish");
 
-    // Wait for async fan-out delivery to complete
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(seen.length, 1);
 
@@ -413,8 +431,7 @@ test("durable event bus unsubscribe removes subscriber", async () => {
       },
     });
 
-    // Wait for async fan-out delivery
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     // Should still only have 1 event since we unsubscribed
     assert.equal(seen.length, 1);
@@ -592,6 +609,7 @@ test("durable event bus publishBatch rejects oversized payload", async () => {
 });
 
 test("durable event bus publishBatch fanning out to subscribers", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-batch-fanout-");
 
   try {
@@ -623,8 +641,7 @@ test("durable event bus publishBatch fanning out to subscribers", async () => {
       },
     ]);
 
-    // Wait for async fan-out delivery
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(seen.length, 2);
     assert.ok(seen.includes(events[0]!.id));
@@ -698,6 +715,7 @@ test("durable event bus publishBatch dispose rejects new batch publish", async (
 });
 
 test("durable event bus multiple subscribers each receive events", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-multi-sub-");
 
   try {
@@ -724,7 +742,7 @@ test("durable event bus multiple subscribers each receive events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(seen1.length, 1);
     assert.equal(seen2.length, 1);
@@ -823,6 +841,7 @@ test("durable event bus publish with traceContext injects trace fields into payl
 });
 
 test("durable event bus publish enforces atomic event append and truth update", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-atomic-");
 
   try {
@@ -851,8 +870,7 @@ test("durable event bus publish enforces atomic event append and truth update", 
     const persisted = store.event.getEvent(event.id);
     assert.ok(persisted, "Event must be persisted before handler can run");
 
-    // Wait for async fan-out
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     // Handler should have been called (voluntary delivery is async but event is already in queue)
     assert.ok(handlerCalled, "Handler should have been called for volatile event");
@@ -864,6 +882,7 @@ test("durable event bus publish enforces atomic event append and truth update", 
 });
 
 test("durable event bus publishBatch atomic dispatch for multiple tier2 events", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-batch-atomic-");
 
   try {
@@ -901,8 +920,7 @@ test("durable event bus publishBatch atomic dispatch for multiple tier2 events",
       assert.ok(persisted, `Event ${evt.id} must be persisted`);
     }
 
-    // Wait for async fan-out
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushScheduledEventBusDelivery();
 
     assert.equal(seen.length, 2, "Both events should be delivered");
     assert.ok(seen.includes(events[0]!.id), "First event should be delivered");

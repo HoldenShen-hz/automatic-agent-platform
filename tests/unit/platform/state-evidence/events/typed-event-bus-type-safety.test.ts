@@ -46,7 +46,6 @@ test("TypedEventBus.TypedEventEnvelope has correct structure", async () => {
     });
 
     await bus.deliverPending("task_projection");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(receivedEnvelope !== null, "Envelope should be received");
     assert.equal(receivedEnvelope!.event.eventType, "task:status_changed");
@@ -97,7 +96,6 @@ test("TypedEventBus.subscribe filters by event type array", async () => {
     });
 
     await bus.deliverPending("multi_filter_consumer");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Should only receive subscribed types (task:status_changed, workflow:step_completed)
     // division:completed should be filtered out
@@ -131,7 +129,6 @@ test("TypedEventBus.publish validates typed payload", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
     bus.dispose();
     db.close();
   } finally {
@@ -220,7 +217,7 @@ test("TypedEventBus.unsubscribe removes consumer registration", async () => {
       payload: { fromStatus: "in_progress", toStatus: "running" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await bus.deliverPending("unsubscribe_consumer");
 
     // Should not receive second event after unsubscribe
     assert.ok(events.length <= 1, "Unsubscribed consumer should not receive new events");
@@ -283,7 +280,6 @@ test("TypedEventBus delivers skill events with correct payload structure", async
     });
 
     await bus.deliverPending("skill_consumer");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(receivedPayload !== null, "Should receive skill event payload");
     assert.equal(receivedPayload.skillId, "skill-coder-v2");
@@ -328,7 +324,6 @@ test("TypedEventBus delivers plugin events with correct payload structure", asyn
     });
 
     await bus.deliverPending("plugin_consumer");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(receivedPayload !== null, "Should receive plugin event payload");
     assert.equal(receivedPayload.pluginId, "plugin.retriever");

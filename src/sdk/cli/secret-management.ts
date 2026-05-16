@@ -5,7 +5,35 @@
 import { withCliStorageAsync } from "./authoritative-storage.js";
 import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type {
+  SecretCategory,
+  SecretProviderKind,
+  SecretRotationEventStatus,
+  SecretRotationMode,
+  SecretScopeType,
+} from "../../platform/contracts/types/domain.js";
 import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
+import { assertEnum } from "../../platform/five-plane-control-plane/iam/secret-management-support.js";
+
+const SECRET_CATEGORIES = [
+  "provider_api_key",
+  "tenant_credential",
+  "oauth_client_secret",
+  "signing_key",
+  "db_connection_secret",
+  "break_glass_secret",
+] as const satisfies readonly SecretCategory[];
+const SECRET_PROVIDER_KINDS = ["environment", "vault", "kms", "secret_manager"] as const satisfies readonly SecretProviderKind[];
+const SECRET_SCOPE_TYPES = ["system", "tenant", "workspace", "worker"] as const satisfies readonly SecretScopeType[];
+const SECRET_ROTATION_MODES = ["scheduled", "emergency"] as const satisfies readonly SecretRotationMode[];
+const SECRET_ROTATION_STATUSES = ["requested", "completed", "failed"] as const satisfies readonly SecretRotationEventStatus[];
+
+function buildSecretAuthorizationContext(envConfig: ReturnType<typeof loadSecretManagementCliEnv>) {
+  return {
+    callerScopeType: envConfig.callerScopeType ?? "system",
+    callerScopeRef: envConfig.callerScopeRef ?? "system",
+  };
+}
 
 (async () => {
   const envConfig = loadSecretManagementCliEnv();
@@ -19,9 +47,9 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
         result = service.registerSecret({
           secretRef: envConfig.secretRef ?? "",
           displayName: envConfig.displayName ?? "",
-          category: (envConfig.category ?? "") as never,
-          providerKind: (envConfig.providerKind ?? "") as never,
-          scopeType: (envConfig.scopeType ?? "") as never,
+          category: assertEnum(envConfig.category ?? "", SECRET_CATEGORIES, "secret.invalid_category"),
+          providerKind: assertEnum(envConfig.providerKind ?? "", SECRET_PROVIDER_KINDS, "secret.invalid_provider_kind"),
+          scopeType: assertEnum(envConfig.scopeType ?? "", SECRET_SCOPE_TYPES, "secret.invalid_scope_type"),
           scopeRef: envConfig.scopeRef ?? "",
           rotationPolicy: {
             cadenceDays: envConfig.rotationCadenceDays,
@@ -33,9 +61,6 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
         });
         break;
       case "resolve": {
-        const authContext = envConfig.callerScopeType && envConfig.callerScopeRef
-          ? { callerScopeType: envConfig.callerScopeType, callerScopeRef: envConfig.callerScopeRef }
-          : undefined;
         const resolved = await service.resolveSecret({
           secretRef: envConfig.secretRef ?? "",
           requestedBy: envConfig.requestedBy ?? "",
@@ -45,7 +70,7 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
           ...(envConfig.executionId ? { executionId: envConfig.executionId } : {}),
           ...(envConfig.expiresAt ? { expiresAt: envConfig.expiresAt } : {}),
           ...(envConfig.usageMetadata ? { metadata: envConfig.usageMetadata } : {}),
-        }, authContext);
+        }, buildSecretAuthorizationContext(envConfig));
         result = {
           metadata: resolved.metadata,
           registry: resolved.registry,
@@ -56,8 +81,8 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
       case "rotate":
         result = service.recordRotationEvent({
           secretRef: envConfig.secretRef ?? "",
-          rotationMode: (envConfig.rotationMode ?? "") as never,
-          status: (envConfig.rotationStatus ?? "") as never,
+          rotationMode: assertEnum(envConfig.rotationMode ?? "", SECRET_ROTATION_MODES, "secret.invalid_rotation_mode"),
+          status: assertEnum(envConfig.rotationStatus ?? "", SECRET_ROTATION_STATUSES, "secret.invalid_rotation_status"),
           reasonCode: envConfig.rotationReasonCode ?? "",
           requestedBy: envConfig.requestedBy ?? "",
           ...(envConfig.previousVersion ? { previousVersion: envConfig.previousVersion } : {}),
@@ -66,9 +91,6 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
         });
         break;
       case "issue": {
-        const authContext = envConfig.callerScopeType && envConfig.callerScopeRef
-          ? { callerScopeType: envConfig.callerScopeType, callerScopeRef: envConfig.callerScopeRef }
-          : undefined;
         const issued = await service.issueSecretLease({
           secretRef: envConfig.secretRef ?? "",
           requestedBy: envConfig.requestedBy ?? "",
@@ -79,7 +101,7 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
           ...(envConfig.taskId ? { taskId: envConfig.taskId } : {}),
           ...(envConfig.executionId ? { executionId: envConfig.executionId } : {}),
           ...(envConfig.usageMetadata ? { metadata: envConfig.usageMetadata } : {}),
-        }, authContext);
+        }, buildSecretAuthorizationContext(envConfig));
         result = {
           metadata: issued.metadata,
           registry: issued.registry,

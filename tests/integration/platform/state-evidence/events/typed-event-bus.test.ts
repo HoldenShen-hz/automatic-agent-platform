@@ -86,7 +86,7 @@ test("integration: TypedEventBus subscribe filters by event type", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("typed_sub_consumer");
 
     assert.equal(seen.length, 1, "Should receive only matching event");
     assert.equal(seen[0], "decision:requested:approval-typed-sub-1");
@@ -142,7 +142,7 @@ test("integration: TypedEventBus delivers skill execution events with typed payl
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("skill_consumer");
 
     assert.equal(seen.length, 2, "Should receive both skill events");
     assert.equal(seen[0].skillId, "coding-v3");
@@ -178,7 +178,7 @@ test("integration: TypedEventBus delivers platform.harness_run events", async ()
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("harness_consumer");
 
     assert.ok(received, "Should receive task status change event");
 
@@ -231,7 +231,8 @@ test("integration: TypedEventBus multiple consumers receive typed events indepen
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("multi-consumer-a");
+    await bus.deliverPending("multi-consumer-b");
 
     assert.equal(consumerA.length, 1, "Consumer A should receive status change");
     assert.equal(consumerA[0], "in_progress");
@@ -271,7 +272,7 @@ test("integration: TypedEventBus unsubscribe removes consumer", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("unsub-consumer");
     assert.equal(seen.length, 1, "Should receive first event");
 
     bus.unsubscribe("unsub-consumer");
@@ -284,7 +285,7 @@ test("integration: TypedEventBus unsubscribe removes consumer", async () => {
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("unsub-consumer");
     assert.equal(seen.length, 1, "Should not receive after unsubscribe");
 
         db.close();
@@ -354,7 +355,7 @@ test("integration: TypedEventBus delivers OAPEFLIR phase transition events", asy
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("skill-consumer");
 
     assert.equal(seen.length, 1);
     assert.equal(seen[0], "skill-oapeflir");

@@ -29,8 +29,18 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadGatewayTargetsCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type { GatewayTargetKind } from "../../platform/contracts/types/domain.js";
 import { GatewayTargetDirectoryService } from "../../platform/five-plane-interface/channel-gateway/gateway-target-directory-service.js";
 import { GatewayStorageAdapter } from "../../platform/five-plane-interface/channel-gateway/storage-adapter.js";
+
+const GATEWAY_TARGET_KINDS = ["session", "user", "group", "room"] as const satisfies readonly GatewayTargetKind[];
+
+function parseGatewayTargetKind(value: string): GatewayTargetKind {
+  if (GATEWAY_TARGET_KINDS.includes(value as GatewayTargetKind)) {
+    return value as GatewayTargetKind;
+  }
+  throw new ValidationError(`invalid_gateway_target_kind:${value}`, `invalid_gateway_target_kind:${value}`);
+}
 
 /**
  * Main entry point for the gateway targets CLI.
@@ -55,7 +65,7 @@ function main(): void {
         }
         return service.registerTarget({
           channel: envConfig.channel,
-          targetKind: envConfig.targetKind as never,
+          targetKind: parseGatewayTargetKind(envConfig.targetKind),
           externalTargetId: envConfig.externalTargetId,
           displayName: envConfig.displayName,
           ...(envConfig.aliases ? { aliases: envConfig.aliases } : {}),

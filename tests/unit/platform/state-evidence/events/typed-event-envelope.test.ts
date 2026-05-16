@@ -36,7 +36,6 @@ test("TypedEventBus.publish validates event schema before publishing", async () 
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
     bus.dispose();
     db.close();
   } finally {
@@ -68,7 +67,6 @@ test("TypedEventBus.subscribe receives typed payloads", async () => {
     });
 
     await bus.deliverPending("task_projection");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.equal(received.length, 1);
     assert.equal(received[0].toStatus, "in_progress");
@@ -105,7 +103,6 @@ test("TypedEventBus.deliverPending returns correct count", async () => {
     });
 
     const count = await bus.deliverPending("task_projection");
-    await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(count, 2);
 
     bus.dispose();
@@ -125,8 +122,6 @@ test("TypedEventBus.pendingForConsumer returns pending events for consumer", asy
       eventType: "task:status_changed",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     const pending = bus.pendingForConsumer("task_projection");
     assert.equal(pending.length, 1);
@@ -160,8 +155,6 @@ test("TypedEventBus.unsubscribe removes all subscriptions for consumer", async (
       eventType: "workflow:step_completed",
       payload: { workflowId: "wf-1", stepId: "step-1", status: "completed" },
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.equal(received.length, 0);
 
@@ -209,7 +202,7 @@ test("TypedEventBus publishes task:status_changed with correct payload", async (
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("task_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].toStatus, "in_progress");
@@ -249,7 +242,6 @@ test("TypedEventBus delivers multiple events in order", async () => {
     });
 
     await bus.deliverPending("task_projection");
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.deepEqual(received, ["in_progress", "completed"]);
 
@@ -280,7 +272,6 @@ test("TypedEventBus handles rapid publish and deliver", async () => {
     }
 
     const count = await bus.deliverPending("task_projection");
-    await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(count, 10);
     assert.equal(deliveryCount, 10);
 
