@@ -5,7 +5,7 @@
  * Part of §26 storage layer implementation.
  */
 
-import { newId, nowIso } from "../../../../contracts/types/ids.js";
+import { newId, nowIso } from "../sqlite-repository-contracts.js";
 
 export type PromptBundleStatus = "draft" | "active" | "deprecated";
 

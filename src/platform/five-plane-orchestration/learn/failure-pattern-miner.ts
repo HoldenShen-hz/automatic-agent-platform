@@ -77,6 +77,9 @@ export class FailurePatternMiner {
   }
 
   private genericFailure(signal: LearningSignal): LearningObject {
+    const evidenceRefs = signal.evidenceRefs.length > 0
+      ? signal.evidenceRefs
+      : [signal.sourceFeedbackId].filter(Boolean);
     return {
       learningObjectId: newId("learning"),
       objectId: newId("learning"),
@@ -87,12 +90,12 @@ export class FailurePatternMiner {
       content: {
         title: `Failure pattern: ${signal.valueSummary.slice(0, 40)}`,
         summary: signal.valueSummary,
-        evidenceRefs: signal.evidenceRefs,
+        evidenceRefs,
         sourceSignalIds: signal.sourceSignalIds,
         recommendation: "Prefer replanning with narrower scope and stronger validation.",
       },
       confidence: signal.confidence,
-      evidenceRefs: signal.evidenceRefs,
+      evidenceRefs,
       sourceSignalIds: signal.sourceSignalIds,
       recommendation: "Prefer replanning with narrower scope and stronger validation.",
       validatedBy: "none",

@@ -32,8 +32,7 @@
 
 import { join } from "node:path";
 
-import { getDefaultDivisionRegistry } from "../../../../domains/governance/division-loader.js";
-import { DEFAULT_DIVISIONS_ROOT } from "../../../../domains/governance/division-loader-support.js";
+import { DEFAULT_DIVISIONS_ROOT, getDefaultDivisionRegistry } from "../oapeflir-governance-support.js";
 
 export const GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH = join(
   DEFAULT_DIVISIONS_ROOT,

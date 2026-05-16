@@ -285,6 +285,8 @@ export class MemoryRetrievalService {
    * Removes a memory from the FTS index
    */
   public unindexMemory(memoryId: string): void {
+    // Ensure FTS table exists before attempting DELETE
+    this.initializeFts();
     this.store.withConnection((connection) => {
       connection.prepare("DELETE FROM memories_fts WHERE memory_id = ?").run(memoryId);
     });

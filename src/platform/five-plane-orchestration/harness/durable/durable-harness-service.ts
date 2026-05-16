@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../harness-platform-support.js";
 import type { HarnessRunRuntimeState, WorkflowSleepLease } from "../index.js";
 
 export interface DurableHarnessRecord {

@@ -3,7 +3,7 @@ import type {
   IntelBriefRecord,
   IntelItemRecord,
   PerceptionSourceRecord,
-} from "../../../../contracts/types/domain.js";
+} from "../sqlite-repository-contracts.js";
 import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

@@ -16,7 +16,7 @@ import type { DomainKnowledgeSchema } from "./knowledge-schema/index.js";
 import type { DomainOnboardingChecklist } from "./domain-descriptor-orchestration-service.js";
 import type { DomainPromptLibrary } from "./prompt-library/index.js";
 import type { DomainRecipe } from "./recipes/index.js";
-import type { DomainRiskLevel, DomainRiskProfile } from "./risk-profile/index.js";
+import type { DomainRiskLevel, DomainRiskProfile, EscalationLevel } from "./risk-profile/index.js";
 import type { DomainGovernancePolicy } from "./governance/domain-governance-policy.js";
 import { DomainRegistryService } from "./registry/domain-registry-service.js";
 import type { DomainDefinition } from "./registry/domain-model.js";
@@ -137,6 +137,9 @@ export interface VerticalDomainBootstrapResult {
   readonly activatedDomainIds: readonly string[];
 }
 
+type MetaModelRiskLevel = "medium" | "high" | "critical";
+type EscalationTarget = EscalationLevel["target"];
+
 const REPO_ROOT_CANDIDATES = [
   resolve(process.cwd()),
   resolve(fileURLToPath(new URL("../..", import.meta.url))),
@@ -219,6 +222,38 @@ function thresholdForMetric(metric: string, riskLevel: DomainRiskLevel): number 
   return riskLevel === "critical" ? 0.85 : 0.8;
 }
 
+function toEscalationTarget(team: string): EscalationTarget {
+  const normalized = team.trim().toLowerCase();
+  switch (team) {
+    case "domain_owner":
+    case "platform_sre":
+    case "security_team":
+    case "executive":
+      return team;
+  }
+  if (normalized.includes("security") || normalized.includes("compliance")) {
+    return "security_team";
+  }
+  if (normalized.includes("executive") || normalized.includes("exec")) {
+    return "executive";
+  }
+  if (normalized.includes("sre") || normalized.includes("platform") || normalized.includes("release")) {
+    return "platform_sre";
+  }
+  return "domain_owner";
+}
+
+function toMetaModelRiskLevel(riskLevel: DomainRiskLevel): MetaModelRiskLevel {
+  switch (riskLevel) {
+    case "medium":
+    case "high":
+    case "critical":
+      return riskLevel;
+    case "low":
+      return "medium";
+  }
+}
+
 function buildWorkflow(seed: DomainSeed) {
   return {
     workflowId: `${seed.domainId}.primary`,
@@ -279,8 +314,8 @@ function buildRiskProfile(seed: DomainSeed): DomainRiskProfile {
       },
     ],
     escalationChain: [
-      { level: 1, trigger: "quality_gate_failed", target: seed.ownershipProfile.ownerTeam as unknown as "domain_owner" | "platform_sre" | "security_team" | "executive", responseSla: "30m" },
-      { level: 2, trigger: "production_risk_high", target: seed.ownershipProfile.escalationTeam as unknown as "domain_owner" | "platform_sre" | "security_team" | "executive", responseSla: "15m" },
+      { level: 1, trigger: "quality_gate_failed", target: toEscalationTarget(seed.ownershipProfile.ownerTeam), responseSla: "30m" },
+      { level: 2, trigger: "production_risk_high", target: toEscalationTarget(seed.ownershipProfile.escalationTeam), responseSla: "15m" },
     ],
     mandatoryApprovals: [
       {
@@ -473,7 +508,7 @@ function buildDomainBaseline(seed: DomainSeed): DomainBaseline {
     ownerOrgNodeId: seed.ownerOrgNodeId,
     taskTypes: seed.taskTypes,
     tags: seed.tags,
-    riskLevel: seed.riskLevel as unknown as "high" | "medium" | "critical",
+    riskLevel: toMetaModelRiskLevel(seed.riskLevel),
   });
   const metaModelValidation = new MetaModelValidator().validate(metaModel);
 

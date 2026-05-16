@@ -21,7 +21,7 @@ import type {
   MessageRecord,
   GatewayTargetRecord,
   WorkerSnapshotRecord,
-} from "../../../../contracts/types/domain.js";
+} from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

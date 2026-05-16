@@ -1,4 +1,4 @@
-import type { AgentExecutionRecord, RemoteLogRecord } from "../../../../contracts/types/domain.js";
+import type { AgentExecutionRecord, RemoteLogRecord } from "../sqlite-repository-contracts.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";
 import { execute, queryAll, queryOne, type SqliteConnection } from "../query-helper.js";
 

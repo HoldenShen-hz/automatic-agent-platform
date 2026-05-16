@@ -2,7 +2,7 @@ import type {
   CoordinatorInstanceRecord,
   HeartbeatSnapshotRecord,
   WorkerSnapshotRecord,
-} from "../../../../contracts/types/domain.js";
+} from "../sqlite-repository-contracts.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";
 import { execute, queryAll, queryOne, type SqliteConnection } from "../query-helper.js";
 

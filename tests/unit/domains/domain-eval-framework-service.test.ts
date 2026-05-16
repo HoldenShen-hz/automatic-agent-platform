@@ -381,3 +381,34 @@ test("listBlockingEvaluators filters blocking evaluators", () => {
   assert.equal(blocking.length, 2);
   assert.ok(blocking.every((e) => e.blocking === true));
 });
+
+test("DomainEvalFrameworkService evicts oldest domain state when maxDomains is exceeded", () => {
+  const service = new DomainEvalFrameworkService({ maxDomains: 1 });
+  const firstFramework = createTestFramework("first_domain");
+  const secondFramework = createTestFramework("second_domain");
+
+  service.register(firstFramework);
+  service.registerQualityAxis("first_domain", {
+    axisId: "axis_first",
+    name: "accuracy",
+    description: "Accuracy",
+    weight: 1,
+    unit: "percentage",
+    targetValue: 0.9,
+  });
+  service.register(secondFramework);
+
+  assert.equal(service.getFramework("first_domain"), null);
+  assert.deepEqual(service.getQualityAxes("first_domain"), []);
+  assert.ok(service.getFramework("second_domain"));
+});
+
+test("DomainEvalFrameworkService evicts oldest regression dataset when maxRegressionDatasets is exceeded", () => {
+  const service = new DomainEvalFrameworkService({ maxRegressionDatasets: 1 });
+
+  const first = service.createRegressionDataset("domain_a", "dataset_a", []);
+  const second = service.createRegressionDataset("domain_b", "dataset_b", []);
+
+  assert.equal(service.getRegressionDataset(first.datasetId), null);
+  assert.ok(service.getRegressionDataset(second.datasetId));
+});

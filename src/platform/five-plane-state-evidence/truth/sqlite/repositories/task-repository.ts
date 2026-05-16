@@ -12,7 +12,7 @@
  * The query helper functions centralize `as unknown as T` type casts.
  */
 
-import type { TaskRecord } from "../../../../contracts/types/domain.js";
+import type { TaskRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne, execute } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

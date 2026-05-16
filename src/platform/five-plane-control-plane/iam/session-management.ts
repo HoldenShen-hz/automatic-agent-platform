@@ -18,6 +18,8 @@ import { ValidationError } from "../../contracts/errors.js";
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;        // 15 minutes
 const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const TOKEN_SIZE = 32;
+const MAX_SESSION_STORE_ENTRIES = 10_000;
+const MAX_TOKEN_INDEX_ENTRIES = 20_000;
 
 // ============================================================================
 // Session Types
@@ -94,6 +96,57 @@ function assertInMemorySessionStoreAllowed(): void {
   }
 }
 
+function touchSession(sessionId: string, entry: SessionEntry): void {
+  sessions.delete(sessionId);
+  sessions.set(sessionId, entry);
+}
+
+function deleteSessionEntry(sessionId: string, entry: SessionEntry): void {
+  sessions.delete(sessionId);
+  accessTokenIndex.delete(entry.session.accessToken.tokenId);
+  refreshTokenIndex.delete(entry.session.refreshToken.tokenId);
+  revokedAccessTokenIndex.delete(entry.session.accessToken.tokenId);
+  rotatedRefreshTokenIndex.delete(entry.session.refreshToken.tokenId);
+}
+
+function evictOldestEntries<K, V>(index: Map<K, V>, maxEntries: number): void {
+  while (index.size > maxEntries) {
+    const oldestKey = index.keys().next().value;
+    if (oldestKey === undefined) {
+      return;
+    }
+    index.delete(oldestKey);
+  }
+}
+
+function pruneSessionStore(now: number = Date.now()): void {
+  for (const [sessionId, entry] of sessions.entries()) {
+    const refreshExpired = entry.session.refreshToken.expiresAt <= now;
+    const revokedWindowExpired = entry.session.status === "revoked"
+      && entry.session.accessToken.expiresAt <= now
+      && entry.session.refreshToken.expiresAt <= now;
+    if (refreshExpired || revokedWindowExpired) {
+      deleteSessionEntry(sessionId, entry);
+    }
+  }
+
+  while (sessions.size > MAX_SESSION_STORE_ENTRIES) {
+    const oldestSessionId = sessions.keys().next().value;
+    if (oldestSessionId === undefined) {
+      return;
+    }
+    const oldestEntry = sessions.get(oldestSessionId);
+    if (!oldestEntry) {
+      sessions.delete(oldestSessionId);
+      continue;
+    }
+    deleteSessionEntry(oldestSessionId, oldestEntry);
+  }
+
+  evictOldestEntries(revokedAccessTokenIndex, MAX_TOKEN_INDEX_ENTRIES);
+  evictOldestEntries(rotatedRefreshTokenIndex, MAX_TOKEN_INDEX_ENTRIES);
+}
+
 // ============================================================================
 // Token Generation
 // ============================================================================
@@ -122,6 +175,7 @@ export function createSession(input: {
   metadata?: Record<string, unknown>;
 }): Session {
   assertInMemorySessionStoreAllowed();
+  pruneSessionStore();
   const sessionId = generateTokenId();
   const now = Date.now();
 
@@ -168,9 +222,10 @@ export function createSession(input: {
     refreshTokenSecretHash: hashToken(refreshTokenId),
   };
 
-  sessions.set(sessionId, entry);
+  touchSession(sessionId, entry);
   accessTokenIndex.set(accessTokenId, sessionId);
   refreshTokenIndex.set(refreshTokenId, sessionId);
+  pruneSessionStore(now);
 
   return session;
 }
@@ -180,6 +235,7 @@ export function createSession(input: {
  * §11.2: Token validation with expiry check.
  */
 export function validateAccessToken(accessTokenString: string): SessionValidationResult {
+  pruneSessionStore();
   const tokenId = accessTokenString; // In production, parse JWT or opaque token
   let sessionId = accessTokenIndex.get(tokenId);
 
@@ -212,6 +268,7 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
     return { valid: false, session, reason: "access_token_expired" };
   }
 
+  touchSession(sessionId, entry);
   return { valid: true, session, reason: null };
 }
 
@@ -220,6 +277,7 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
  * §11.2: refresh_token rotation with 24h TTL, old token invalidated.
  */
 export function refreshSession(refreshTokenString: string): Session {
+  pruneSessionStore();
   const tokenId = refreshTokenString;
   let sessionId = refreshTokenIndex.get(tokenId);
 
@@ -297,9 +355,10 @@ export function refreshSession(refreshTokenString: string): Session {
     refreshTokenSecretHash: hashToken(newRefreshTokenId),
   };
 
-  sessions.set(sessionId, newEntry);
+  touchSession(sessionId, newEntry);
   accessTokenIndex.set(newAccessTokenId, sessionId);
   refreshTokenIndex.set(newRefreshTokenId, sessionId);
+  pruneSessionStore(now);
 
   return newSession;
 }
@@ -309,6 +368,7 @@ export function refreshSession(refreshTokenString: string): Session {
  * §11.2: Immediate revocation with token invalidation.
  */
 export function revokeSession(sessionId: string): void {
+  pruneSessionStore();
   const entry = sessions.get(sessionId);
   if (!entry) {
     throw new ValidationError("session.not_found", "session.not_found");
@@ -327,7 +387,7 @@ export function revokeSession(sessionId: string): void {
     status: "revoked",
   };
 
-  sessions.set(sessionId, { ...entry, session: revokedSession });
+  touchSession(sessionId, { ...entry, session: revokedSession });
 }
 
 /**
@@ -335,6 +395,7 @@ export function revokeSession(sessionId: string): void {
  * §11.2: Bulk revocation for security events (e.g., password change, MFA disable).
  */
 export function revokeAllPrincipalSessions(principalId: string): number {
+  pruneSessionStore();
   let count = 0;
   const sessionIds = Array.from(sessions.keys());
   for (const sessionId of sessionIds) {
@@ -351,6 +412,7 @@ export function revokeAllPrincipalSessions(principalId: string): number {
  * Get session by ID.
  */
 export function getSession(sessionId: string): Session | null {
+  pruneSessionStore();
   return sessions.get(sessionId)?.session ?? null;
 }
 
@@ -358,6 +420,7 @@ export function getSession(sessionId: string): Session | null {
  * Get all active sessions for a principal.
  */
 export function getPrincipalSessions(principalId: string): readonly Session[] {
+  pruneSessionStore();
   const result: Session[] = [];
   const entries = Array.from(sessions.values());
   for (const entry of entries) {
@@ -392,6 +455,7 @@ export function getSessionStats(): {
   revokedSessions: number;
   expiredSessions: number;
 } {
+  pruneSessionStore();
   let active = 0;
   let revoked = 0;
   let expired = 0;
@@ -418,4 +482,33 @@ export function getSessionStats(): {
     revokedSessions: revoked,
     expiredSessions: expired,
   };
+}
+
+export function __dangerousResetSessionStoreForTests(): void {
+  sessions.clear();
+  accessTokenIndex.clear();
+  refreshTokenIndex.clear();
+  revokedAccessTokenIndex.clear();
+  rotatedRefreshTokenIndex.clear();
+}
+
+export function __dangerousExpireSessionForTests(sessionId: string): void {
+  const entry = sessions.get(sessionId);
+  if (!entry) {
+    return;
+  }
+  const now = Date.now();
+  const expiredSession: Session = {
+    ...entry.session,
+    status: "expired",
+    accessToken: {
+      ...entry.session.accessToken,
+      expiresAt: now - 1,
+    },
+    refreshToken: {
+      ...entry.session.refreshToken,
+      expiresAt: now - 1,
+    },
+  };
+  sessions.set(sessionId, { ...entry, session: expiredSession });
 }

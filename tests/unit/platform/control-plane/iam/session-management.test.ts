@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  __dangerousExpireSessionForTests,
+  __dangerousResetSessionStoreForTests,
   createSession,
   validateAccessToken,
   refreshSession,
@@ -20,11 +22,9 @@ import {
   type SessionValidationResult,
 } from "../../../../../src/platform/five-plane-control-plane/iam/session-management.js";
 
-// Helper to clear session store between tests
-function clearSessions(): void {
-  // Access the internal state through the module functions if available
-  // For testing purposes, we create new sessions and accept state leakage
-}
+test.beforeEach(() => {
+  __dangerousResetSessionStoreForTests();
+});
 
 // ============================================================================
 // Session Creation Tests
@@ -437,4 +437,19 @@ test("new access token has later expiry than original", () => {
 
   // New access token should be issued now, so expiry should be in the future relative to old one
   assert.ok(newSession.accessToken.expiresAt >= originalExpiry);
+});
+
+test("expired sessions are pruned from the in-memory session store", () => {
+  const session = createSession({ principalId: "user-expired", principalType: "user" });
+
+  __dangerousExpireSessionForTests(session.sessionId);
+
+  assert.equal(getSession(session.sessionId), null);
+  assert.deepEqual(getPrincipalSessions("user-expired"), []);
+  assert.deepEqual(getSessionStats(), {
+    totalSessions: 0,
+    activeSessions: 0,
+    revokedSessions: 0,
+    expiredSessions: 0,
+  });
 });

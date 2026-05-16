@@ -50,6 +50,39 @@ import {
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+function toRawDivisionRoleConfig(entry: Record<string, unknown>): RawDivisionRoleConfig {
+  return {
+    id: entry.id as string,
+    prompt: entry.prompt as string,
+    ...(typeof entry.name === "string" ? { name: entry.name } : {}),
+    ...(typeof entry.model === "string" ? { model: entry.model } : {}),
+    tools: entry.tools,
+    max_instances: entry.max_instances,
+  };
+}
+
+function toRawWorkflowConfig(entry: Record<string, unknown>): RawWorkflowConfig {
+  return {
+    id: entry.id as string,
+    division_id: entry.division_id as string,
+    steps: entry.steps,
+  };
+}
+
+function toRawWorkflowStepConfig(entry: Record<string, unknown>): RawWorkflowStepConfig {
+  return {
+    step_id: entry.step_id as string,
+    division_id: entry.division_id,
+    role_id: entry.role_id as string,
+    input_keys: entry.input_keys,
+    output_key: entry.output_key as string,
+    output_schema: entry.output_schema,
+    timeout_ms: entry.timeout_ms,
+    max_attempts: entry.max_attempts,
+    depends_on: entry.depends_on,
+  };
+}
+
 
 /**
  * Definition of a role within a division.
@@ -390,7 +423,7 @@ export class DivisionLoader {
     const seenIds = new Set<string>();
 
     return roles.map((entry) => {
-      const roleConfig = entry as unknown as RawDivisionRoleConfig;
+      const roleConfig = toRawDivisionRoleConfig(entry);
       // Validate that role has an ID
       const roleId = expectNonEmptyString(roleConfig.id, "division.role_missing_id");
 
@@ -536,12 +569,12 @@ export class DivisionLoader {
       throwDivisionValidationError("workflow.invalid_shape", { sourcePath });
     }
 
-    const config = parsed as unknown as RawWorkflowConfig;
+    const config = toRawWorkflowConfig(parsed);
     return {
       workflowId: expectNonEmptyString(config.id, `workflow.id_missing:${sourcePath}`),
       divisionId: expectNonEmptyString(config.division_id, `workflow.division_id_missing:${sourcePath}`),
       steps: toObjectArray(config.steps).map((entry, index) =>
-        this.toWorkflowStep(entry as unknown as RawWorkflowStepConfig, sourcePath, index, divisionRoot, policy),
+        this.toWorkflowStep(toRawWorkflowStepConfig(entry), sourcePath, index, divisionRoot, policy),
       ),
     };
   }

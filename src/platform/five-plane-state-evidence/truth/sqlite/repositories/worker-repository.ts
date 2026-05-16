@@ -14,8 +14,8 @@ import type {
   RemoteLogRecord,
   WorkerRegistrationChallengeRecord,
   WorkerSnapshotRecord,
-} from "../../../../contracts/types/domain.js";
-import type { ExecutionLeaseRecord } from "../../../../contracts/types/domain.js";
+  ExecutionLeaseRecord,
+} from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { AgentExecutionRepository } from "./agent-execution-repository.js";
 import { ExecutionTicketRepository } from "./execution-ticket-repository.js";

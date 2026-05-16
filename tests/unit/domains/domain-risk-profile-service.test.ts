@@ -399,3 +399,12 @@ test("DomainRiskProfileService handles wildcard action pattern matching", () => 
 
   assert.ok(assessment.applicableOverrides.length > 0);
 });
+
+test("DomainRiskProfileService evicts oldest profile when maxProfiles is exceeded", () => {
+  const service = new DomainRiskProfileService({ maxProfiles: 1 });
+  service.register(createTestProfile("first_domain"));
+  service.register(createTestProfile("second_domain"));
+
+  assert.equal(service.getProfile("first_domain"), null);
+  assert.ok(service.getProfile("second_domain"));
+});

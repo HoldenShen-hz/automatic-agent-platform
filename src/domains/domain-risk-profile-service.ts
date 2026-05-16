@@ -47,11 +47,22 @@ export interface RiskOverrideRequest {
   readonly requiresJustification?: boolean;
 }
 
+export interface DomainRiskProfileServiceOptions {
+  readonly maxProfiles?: number;
+}
+
 export class DomainRiskProfileService {
   private readonly profiles = new Map<string, DomainRiskProfile>();
+  private readonly maxProfiles: number;
+
+  public constructor(options: DomainRiskProfileServiceOptions = {}) {
+    this.maxProfiles = Math.max(1, Math.trunc(options.maxProfiles ?? 256));
+  }
 
   public register(profile: DomainRiskProfile): void {
+    this.profiles.delete(profile.domainId);
     this.profiles.set(profile.domainId, profile);
+    this.evictOldestProfileIfNeeded();
   }
 
   public getProfile(domainId: string): DomainRiskProfile | null {
@@ -92,7 +103,9 @@ export class DomainRiskProfileService {
       ...profile,
       riskOverrides: [...(profile.riskOverrides ?? []), newOverride],
     };
+    this.profiles.delete(domainId);
     this.profiles.set(domainId, updated);
+    this.evictOldestProfileIfNeeded();
     return newOverride;
   }
 
@@ -108,8 +121,19 @@ export class DomainRiskProfileService {
       ...profile,
       riskOverrides: [...overrides.slice(0, index), ...overrides.slice(index + 1)],
     };
+    this.profiles.delete(domainId);
     this.profiles.set(domainId, updated);
     return true;
+  }
+
+  private evictOldestProfileIfNeeded(): void {
+    while (this.profiles.size > this.maxProfiles) {
+      const oldestDomainId = this.profiles.keys().next().value;
+      if (oldestDomainId === undefined) {
+        return;
+      }
+      this.profiles.delete(oldestDomainId);
+    }
   }
 
   private computeScores(

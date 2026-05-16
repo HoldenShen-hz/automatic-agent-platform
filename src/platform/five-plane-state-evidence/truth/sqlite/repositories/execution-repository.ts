@@ -9,7 +9,7 @@
  * All SQL queries use proper column aliasing to match camelCase domain types.
  */
 
-import type { ExecutionRecord, ExecutionPrecheckRecord, DeadLetterRecord } from "../../../../contracts/types/domain.js";
+import type { DeadLetterRecord, ExecutionPrecheckRecord, ExecutionRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne, execute } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

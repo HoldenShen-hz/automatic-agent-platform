@@ -18,7 +18,7 @@
  * ```
  */
 
-import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../incident-platform-support.js";
 import type {
   ParsedRunbook,
   RunbookSection,
@@ -204,4 +204,3 @@ export function createEmptyStepResult(step: RunbookStep): RunbookStepResult {
     durationMs: 0,
   };
 }
-

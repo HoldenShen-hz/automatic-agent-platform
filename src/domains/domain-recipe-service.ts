@@ -63,9 +63,16 @@ export interface RecipeUpdateRequest {
   readonly defaultToolBundleIds?: readonly string[];
 }
 
+export interface DomainRecipeServiceOptions {
+  readonly maxRecipes?: number;
+  readonly maxVersionsPerRecipe?: number;
+}
+
 export class DomainRecipeService {
   private readonly recipes = new Map<string, DomainRecipe>();
   private readonly versions = new Map<string, RecipeVersion[]>();
+  private readonly maxRecipes: number;
+  private readonly maxVersionsPerRecipe: number;
 
   // §37.6 Prototype templates - 12 canonical recipe templates
   private readonly prototypeTemplates: readonly RecipeTemplate[] = [
@@ -191,9 +198,16 @@ export class DomainRecipeService {
     },
   ];
 
+  public constructor(options: DomainRecipeServiceOptions = {}) {
+    this.maxRecipes = Math.max(1, Math.trunc(options.maxRecipes ?? 512));
+    this.maxVersionsPerRecipe = Math.max(1, Math.trunc(options.maxVersionsPerRecipe ?? 32));
+  }
+
   public register(recipe: DomainRecipe): void {
+    this.recipes.delete(recipe.recipeId);
     this.recipes.set(recipe.recipeId, recipe);
     this.initializeVersionHistory(recipe.recipeId);
+    this.evictOldestRecipeIfNeeded();
   }
 
   public getRecipe(recipeId: string): DomainRecipe | null {
@@ -230,6 +244,7 @@ export class DomainRecipeService {
     this.recipes.set(recipe.recipeId, recipe);
     this.initializeVersionHistory(recipe.recipeId);
     this.recordVersion(recipe.recipeId, "1.0.0", "Initial creation");
+    this.evictOldestRecipeIfNeeded();
 
     return recipe;
   }
@@ -256,6 +271,7 @@ export class DomainRecipeService {
 
     this.recipes.set(request.recipeId, updated);
     this.recordVersion(request.recipeId, newVersion, `Updated: ${Object.keys(request).join(", ")}`);
+    this.evictOldestRecipeIfNeeded();
 
     return updated;
   }
@@ -344,7 +360,7 @@ export class DomainRecipeService {
       changelog,
       createdAt: nowIso(),
     });
-    this.versions.set(recipeId, versions);
+    this.versions.set(recipeId, versions.slice(-this.maxVersionsPerRecipe));
   }
 
   private getLatestVersion(recipeId: string): RecipeVersion | null {
@@ -361,5 +377,16 @@ export class DomainRecipeService {
     const major = Number.parseInt(parts[0] ?? "1", 10);
     const minor = Number.parseInt(parts[1] ?? "0", 10);
     return `${major}.${minor + 1}`;
+  }
+
+  private evictOldestRecipeIfNeeded(): void {
+    while (this.recipes.size > this.maxRecipes) {
+      const oldestRecipeId = this.recipes.keys().next().value;
+      if (oldestRecipeId === undefined) {
+        return;
+      }
+      this.recipes.delete(oldestRecipeId);
+      this.versions.delete(oldestRecipeId);
+    }
   }
 }

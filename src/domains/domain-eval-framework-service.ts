@@ -87,15 +87,40 @@ export interface QualityAssessment {
   readonly evaluatedAt: string;
 }
 
+export interface DomainEvalFrameworkServiceOptions {
+  readonly maxDomains?: number;
+  readonly maxRegressionDatasets?: number;
+  readonly maxAxesPerDomain?: number;
+  readonly maxChecksPerDomain?: number;
+  readonly maxRubricsPerDomain?: number;
+}
+
 export class DomainEvalFrameworkService {
   private readonly frameworks = new Map<string, DomainEvalFramework>();
   private readonly qualityAxes = new Map<string, QualityAxis[]>();
   private readonly automatedChecks = new Map<string, AutomatedCheck[]>();
   private readonly rubrics = new Map<string, HumanEvalRubric[]>();
   private readonly regressionDatasets = new Map<string, RegressionDataset>();
+  private readonly domainAccessOrder = new Map<string, number>();
+  private readonly maxDomains: number;
+  private readonly maxRegressionDatasets: number;
+  private readonly maxAxesPerDomain: number;
+  private readonly maxChecksPerDomain: number;
+  private readonly maxRubricsPerDomain: number;
+
+  public constructor(options: DomainEvalFrameworkServiceOptions = {}) {
+    this.maxDomains = Math.max(1, Math.trunc(options.maxDomains ?? 256));
+    this.maxRegressionDatasets = Math.max(1, Math.trunc(options.maxRegressionDatasets ?? 512));
+    this.maxAxesPerDomain = Math.max(1, Math.trunc(options.maxAxesPerDomain ?? 64));
+    this.maxChecksPerDomain = Math.max(1, Math.trunc(options.maxChecksPerDomain ?? 64));
+    this.maxRubricsPerDomain = Math.max(1, Math.trunc(options.maxRubricsPerDomain ?? 32));
+  }
 
   public register(framework: DomainEvalFramework): void {
+    this.frameworks.delete(framework.domainId);
     this.frameworks.set(framework.domainId, framework);
+    this.touchDomain(framework.domainId);
+    this.evictOldestDomainIfNeeded();
   }
 
   public getFramework(domainId: string): DomainEvalFramework | null {
@@ -112,7 +137,9 @@ export class DomainEvalFrameworkService {
       axes.push(axis);
     }
 
-    this.qualityAxes.set(domainId, axes);
+    this.qualityAxes.set(domainId, axes.slice(-this.maxAxesPerDomain));
+    this.touchDomain(domainId);
+    this.evictOldestDomainIfNeeded();
   }
 
   public getQualityAxes(domainId: string): readonly QualityAxis[] {
@@ -129,7 +156,9 @@ export class DomainEvalFrameworkService {
       checks.push(check);
     }
 
-    this.automatedChecks.set(domainId, checks);
+    this.automatedChecks.set(domainId, checks.slice(-this.maxChecksPerDomain));
+    this.touchDomain(domainId);
+    this.evictOldestDomainIfNeeded();
   }
 
   public getAutomatedChecks(domainId: string): readonly AutomatedCheck[] {
@@ -139,7 +168,9 @@ export class DomainEvalFrameworkService {
   public registerRubric(domainId: string, rubric: HumanEvalRubric): void {
     const rubrics = this.rubrics.get(domainId) ?? [];
     rubrics.push(rubric);
-    this.rubrics.set(domainId, rubrics);
+    this.rubrics.set(domainId, rubrics.slice(-this.maxRubricsPerDomain));
+    this.touchDomain(domainId);
+    this.evictOldestDomainIfNeeded();
   }
 
   public getRubrics(domainId: string): readonly HumanEvalRubric[] {
@@ -155,7 +186,11 @@ export class DomainEvalFrameworkService {
   }
 
   public registerRegressionDataset(dataset: RegressionDataset): void {
+    this.regressionDatasets.delete(dataset.datasetId);
     this.regressionDatasets.set(dataset.datasetId, dataset);
+    this.touchDomain(dataset.domainId);
+    this.evictOldestRegressionDatasetIfNeeded();
+    this.evictOldestDomainIfNeeded();
   }
 
   public getRegressionDataset(datasetId: string): RegressionDataset | null {
@@ -262,6 +297,9 @@ export class DomainEvalFrameworkService {
     };
 
     this.regressionDatasets.set(datasetId, dataset);
+    this.touchDomain(domainId);
+    this.evictOldestRegressionDatasetIfNeeded();
+    this.evictOldestDomainIfNeeded();
     return dataset;
   }
 
@@ -277,6 +315,7 @@ export class DomainEvalFrameworkService {
       updatedAt: nowIso(),
     };
     this.regressionDatasets.set(datasetId, updated);
+    this.touchDomain(dataset.domainId);
     return true;
   }
 
@@ -297,7 +336,42 @@ export class DomainEvalFrameworkService {
       updatedAt: nowIso(),
     };
     this.regressionDatasets.set(datasetId, updated);
+    this.touchDomain(dataset.domainId);
     return true;
+  }
+
+  private touchDomain(domainId: string): void {
+    this.domainAccessOrder.delete(domainId);
+    this.domainAccessOrder.set(domainId, Date.now());
+  }
+
+  private evictOldestDomainIfNeeded(): void {
+    while (this.domainAccessOrder.size > this.maxDomains) {
+      const oldestDomainId = this.domainAccessOrder.keys().next().value;
+      if (oldestDomainId === undefined) {
+        return;
+      }
+      this.domainAccessOrder.delete(oldestDomainId);
+      this.frameworks.delete(oldestDomainId);
+      this.qualityAxes.delete(oldestDomainId);
+      this.automatedChecks.delete(oldestDomainId);
+      this.rubrics.delete(oldestDomainId);
+      for (const [datasetId, dataset] of this.regressionDatasets.entries()) {
+        if (dataset.domainId === oldestDomainId) {
+          this.regressionDatasets.delete(datasetId);
+        }
+      }
+    }
+  }
+
+  private evictOldestRegressionDatasetIfNeeded(): void {
+    while (this.regressionDatasets.size > this.maxRegressionDatasets) {
+      const oldestDatasetId = this.regressionDatasets.keys().next().value;
+      if (oldestDatasetId === undefined) {
+        return;
+      }
+      this.regressionDatasets.delete(oldestDatasetId);
+    }
   }
 
   private evaluateAxis(axis: QualityAxis, observedValue: number): boolean {

@@ -3,7 +3,7 @@ import type {
   ExecutionTicketRecord,
   LeaseAuditRecord,
   WorkerRegistrationChallengeRecord,
-} from "../../../../contracts/types/domain.js";
+} from "../sqlite-repository-contracts.js";
 import { execute, queryAll, queryOne, type SqliteConnection } from "../query-helper.js";
 
 const EXECUTION_TICKET_SELECT = `SELECT

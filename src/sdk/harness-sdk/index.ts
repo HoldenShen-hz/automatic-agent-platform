@@ -23,11 +23,13 @@ import {
 import {
   HarnessRuntimeService,
   type ConstraintPack,
+  type ConstraintToolPolicy,
   type HarnessDecision,
   type HarnessRole,
   type HarnessRun,
   type HarnessRunRuntimeState,
   type HarnessTimelineEvent,
+  toCanonicalHarnessRun,
 } from "../../platform/five-plane-orchestration/harness/index.js";
 
 export class HarnessSdkError extends Error {
@@ -180,35 +182,33 @@ function isIso8601Timestamp(value: string): boolean {
 }
 
 function normalizePlanNode(node: PlanNode, index: number): PlanNode {
-  const candidate = node as unknown as Record<string, unknown>;
   return {
-    nodeId: String(candidate.nodeId ?? `node-${index + 1}`),
-    nodeType: normalizePlanNodeType(candidate.nodeType),
-    inputRefs: Array.isArray(candidate.inputRefs) ? candidate.inputRefs as string[] : [],
-    outputSchemaRef: typeof candidate.outputSchemaRef === "string" ? candidate.outputSchemaRef : "schema:default",
-    riskClass: (candidate.riskClass as PlanNode["riskClass"] | undefined) ?? "medium",
-    budgetIntent: (candidate.budgetIntent as PlanNode["budgetIntent"] | undefined) ?? {
+    nodeId: String(node.nodeId ?? `node-${index + 1}`),
+    nodeType: normalizePlanNodeType(node.nodeType),
+    inputRefs: Array.isArray(node.inputRefs) ? node.inputRefs : [],
+    outputSchemaRef: typeof node.outputSchemaRef === "string" ? node.outputSchemaRef : "schema:default",
+    riskClass: node.riskClass ?? "medium",
+    budgetIntent: node.budgetIntent ?? {
       amount: 1,
       currency: "USD",
       resourceKinds: ["compute"],
     },
-    sideEffectProfile: (candidate.sideEffectProfile as PlanNode["sideEffectProfile"] | undefined) ?? {
+    sideEffectProfile: node.sideEffectProfile ?? {
       mayCommitExternalEffect: false,
       reversible: true,
     },
-    retryPolicyRef: typeof candidate.retryPolicyRef === "string" ? candidate.retryPolicyRef : "retry:default",
-    timeoutMs: typeof candidate.timeoutMs === "number" ? candidate.timeoutMs : 60000,
+    retryPolicyRef: typeof node.retryPolicyRef === "string" ? node.retryPolicyRef : "retry:default",
+    timeoutMs: typeof node.timeoutMs === "number" ? node.timeoutMs : 60000,
   };
 }
 
 function normalizePlanEdge(edge: PlanEdge): PlanEdge {
-  const candidate = edge as unknown as Record<string, unknown>;
   return {
-    edgeId: String(candidate.edgeId ?? newId("plan_edge")),
-    fromNodeId: String(candidate.fromNodeId ?? ""),
-    toNodeId: String(candidate.toNodeId ?? ""),
-    condition: (candidate.condition ?? null) as JsonValue,
-    dependencyType: normalizeDependencyType(candidate.dependencyType ?? candidate.edgeType),
+    edgeId: String(edge.edgeId ?? newId("plan_edge")),
+    fromNodeId: String(edge.fromNodeId ?? ""),
+    toNodeId: String(edge.toNodeId ?? ""),
+    condition: edge.condition ?? null,
+    dependencyType: normalizeDependencyType(edge.dependencyType),
   };
 }
 
@@ -349,8 +349,19 @@ function isHarnessLikeRun(candidate: HarnessRun | HarnessRunRuntimeState): candi
 }
 
 function usesLegacyFacadeCompatibility(constraintPack: ConstraintPack): boolean {
-  const candidate = constraintPack as unknown as Record<string, unknown>;
+  const candidate = constraintPack as ConstraintPack & { toolPolicy?: ConstraintToolPolicy };
   return candidate.toolPolicy != null;
+}
+
+function readRuntimeStateSnapshot(run: HarnessRun): Partial<HarnessRunRuntimeState> {
+  return run as Partial<HarnessRunRuntimeState>;
+}
+
+function toHarnessRunFacade(state: HarnessRunRuntimeState): HarnessRun {
+  return {
+    ...state,
+    ...toCanonicalHarnessRun(state),
+  } as HarnessRun;
 }
 
 export class HarnessSdk {
@@ -412,12 +423,13 @@ export class HarnessSdk {
         domainId: input.domainId,
         constraintPack: input.constraintPack,
         ...(input.planGraphBundle != null ? { planGraphBundle: input.planGraphBundle } : {}),
-      }) as unknown as HarnessRun;
+      });
+      const publicRun = toHarnessRunFacade(run);
 
       // Issue 2009: Call afterRun lifecycle hook on success
-      this.lifecycleHooks?.afterRun?.(run);
+      this.lifecycleHooks?.afterRun?.(publicRun);
 
-      return run;
+      return publicRun;
     } catch (error) {
       // Issue 2009: Call onError lifecycle hook on failure
       this.lifecycleHooks?.onError?.(error as Error);
@@ -459,7 +471,7 @@ export class HarnessSdk {
         ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
       });
       this.runtime.persistRun(updated);
-      updatedRun = updated as unknown as HarnessRun;
+      updatedRun = toHarnessRunFacade(updated);
     } else {
       const timelineEntry: HarnessTimelineEvent = {
         eventId: newId("timeline"),
@@ -475,12 +487,13 @@ export class HarnessSdk {
 
       // Cast through HarnessRunRuntimeState to access timeline and currentSeq
       const timeline = [
-        ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
+        ...((readRuntimeStateSnapshot(run).timeline ?? []) as HarnessTimelineEvent[]),
         timelineEntry,
       ];
+      const runtimeSnapshot = readRuntimeStateSnapshot(run);
       updatedRun = {
         ...run,
-        currentSeq: ((run as unknown as Partial<HarnessRunRuntimeState>).currentSeq ?? 0) + 1,
+        currentSeq: (runtimeSnapshot.currentSeq ?? 0) + 1,
         timeline,
       } as HarnessRun;
     }
@@ -546,11 +559,13 @@ export class HarnessSdk {
   }
 
   public restore(runId: string): HarnessRun | null {
-    return (this.runtime.restoreRun(runId) as unknown as HarnessRun) ?? null;
+    const restored = this.runtime.restoreRun(runId);
+    return restored == null ? null : toHarnessRunFacade(restored);
   }
 
   public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
-    return (this.runtime.restoreFromCheckpoint(checkpointRef) as unknown as HarnessRun) ?? null;
+    const restored = this.runtime.restoreFromCheckpoint(checkpointRef);
+    return restored == null ? null : toHarnessRunFacade(restored);
   }
 
   public assertInvariants(run: HarnessRun) {
@@ -585,7 +600,7 @@ export class HarnessSdk {
     if (typeof runOrId === "string") {
       this.runtime.persistRun(sleeping);
     }
-    return sleeping as unknown as HarnessRun;
+    return toHarnessRunFacade(sleeping);
   }
 
   public resume(runOrId: HarnessRun | string): HarnessRun {
@@ -605,7 +620,7 @@ export class HarnessSdk {
     if (typeof runOrId === "string") {
       this.runtime.persistRun(resumed);
     }
-    return resumed as unknown as HarnessRun;
+    return toHarnessRunFacade(resumed);
   }
 
   public requestHumanReview(
@@ -628,7 +643,7 @@ export class HarnessSdk {
     if (typeof runOrId === "string") {
       this.runtime.persistRun(reviewRequested);
     }
-    return reviewRequested as unknown as HarnessRun;
+    return toHarnessRunFacade(reviewRequested);
   }
 
   public resolveReview(
@@ -654,9 +669,10 @@ export class HarnessSdk {
     if (typeof runOrId === "string") {
       this.runtime.persistRun(resolved);
     }
+    const publicRun = toHarnessRunFacade(resolved);
     return {
-      ...(resolved as unknown as HarnessRun),
-      status: resolution === "rejected" ? "cancelled" : (resolved as unknown as HarnessRun).status,
+      ...publicRun,
+      status: resolution === "rejected" ? "cancelled" : publicRun.status,
     } as HarnessRun;
   }
 
@@ -665,7 +681,7 @@ export class HarnessSdk {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
         // Cast through HarnessRunRuntimeState to access timeline
-        return ((runOrId as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[];
+        return (readRuntimeStateSnapshot(runOrId).timeline ?? []) as HarnessTimelineEvent[];
       }
     }
     return this.runtime.listTimeline(this.requireRun(runOrId));
@@ -679,13 +695,14 @@ export class HarnessSdk {
     // Sort trace events deterministically by eventId before replay restoration hooks run.
     const _sortedTraceEvents = [..._traceEvents].sort((a, b) => a.eventId.localeCompare(b.eventId));
     void _sortedTraceEvents;
-    return (this.runtime.restoreRun(runOrId) as unknown as HarnessRun) ?? null;
+    const restored = this.runtime.restoreRun(runOrId);
+    return restored == null ? null : toHarnessRunFacade(restored);
   }
 
   public sideEffectReconciliation(runOrId: HarnessRun | string): HarnessRun {
     const run = this.requireRun(runOrId);
     this.runtime.persistRun(run);
-    return run as unknown as HarnessRun;
+    return toHarnessRunFacade(run);
   }
 
   /**
@@ -713,7 +730,10 @@ export class HarnessSdk {
         // Call onTimeout hook
         try {
           const run = this.runtime.restoreRun(input.taskId);
-          this.lifecycleHooks?.onTimeout?.(timeoutMs, run as unknown as HarnessRun | undefined);
+          this.lifecycleHooks?.onTimeout?.(
+            timeoutMs,
+            run == null ? undefined : toHarnessRunFacade(run),
+          );
         } catch {
           this.lifecycleHooks?.onTimeout?.(timeoutMs);
         }

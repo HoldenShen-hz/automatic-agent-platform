@@ -7,17 +7,16 @@ import type {
   EventConsumerAckRecord,
   EventDeadLetterRecord,
   EventRecord,
-} from "../../../../contracts/types/domain.js";
+} from "../sqlite-repository-contracts.js";
 import {
   computeTier1AuditChainHash,
   computeTier1AuditEventChecksum,
   type Tier1AuditIntegrityReport,
   verifyTier1AuditIntegrity,
-} from "../../../../five-plane-control-plane/iam/audit-event-integrity.js";
+} from "../sqlite-repository-support.js";
 import { materializeEventRecord, type EventRecordDraft } from "../../../events/event-record-support.js";
 import { getRequiredConsumers } from "../../../events/event-types.js";
-import { newId, nowIso } from "../../../../contracts/types/ids.js";
-import { ValidationError } from "../../../../contracts/errors.js";
+import { ValidationError, newId, nowIso } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 import {

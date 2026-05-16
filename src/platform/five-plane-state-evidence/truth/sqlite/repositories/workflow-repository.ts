@@ -7,7 +7,7 @@
  * All SQL queries use proper column aliasing to match the camelCase domain types.
  */
 
-import type { StepOutputRecord, WorkflowStateRecord } from "../../../../contracts/types/domain.js";
+import type { StepOutputRecord, WorkflowStateRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryOne, queryAll } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

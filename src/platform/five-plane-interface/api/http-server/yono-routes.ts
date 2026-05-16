@@ -9,7 +9,7 @@ import {
   YonoRepository,
   YonoResolutionAssistAgent,
   YonoTradingService,
-} from "../../../../domains/yono/index.js";
+} from "../api-external-support.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { RouteDefinition } from "./types.js";
 import { buildJsonResponse, readJsonBody, readQueryParam, requirePrincipal } from "./utils.js";

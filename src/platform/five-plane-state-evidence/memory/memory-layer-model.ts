@@ -376,7 +376,46 @@ export function getEvictionPriority(memory: MemoryRecord): number {
  * Result of context truncation when evicting memories from working layer.
  * Per §29.2, facts must not be silently discarded - compression requires loss report.
  */
+/**
+ * Creates a context truncation report when evicting memories from working layer.
+ * Per §29.2, facts must not be silently discarded - compression requires loss report.
+ */
+export function createContextTruncationReport(
+  layer: HierarchicalMemoryLayer,
+  evictedMemories: MemoryRecord[],
+  reason: "lru_eviction" | "stale_expired" | "size_limit_exceeded" | "manual_truncation",
+): ContextTruncationReport {
+  // Estimate size: each memory record is roughly 1-2KB for content + metadata
+  const estimatedBytesPerMemory = 1500;
+  const evictedSizeBytes = evictedMemories.length * estimatedBytesPerMemory;
+
+  return {
+    layer,
+    reason,
+    evictedRecords: evictedMemories.map((m) => ({
+      memoryId: m.id,
+      scope: m.scope as HierarchicalMemoryLayer,
+      reason,
+      qualityScore: m.qualityScore,
+      importanceScore: m.importanceScore,
+    })),
+    evictedMemories: evictedMemories.map((m) => ({
+      memoryId: m.id,
+      scope: m.scope as HierarchicalMemoryLayer,
+      reason,
+      qualityScore: m.qualityScore,
+      importanceScore: m.importanceScore,
+    })),
+    evictedSizeBytes,
+    retainedMemories: 0, // Not tracked in this simplified version
+    totalEvicted: evictedMemories.length,
+    truncationTimestamp: new Date().toISOString(),
+  };
+}
+
 export interface ContextTruncationReport {
+  layer: HierarchicalMemoryLayer;
+  reason: string;
   evictedMemories: readonly {
     memoryId: string;
     scope: HierarchicalMemoryLayer;
@@ -384,6 +423,14 @@ export interface ContextTruncationReport {
     qualityScore: number | null;
     importanceScore: number | null;
   }[];
+  evictedRecords: Array<{
+    memoryId: string;
+    scope: HierarchicalMemoryLayer;
+    reason: string;
+    qualityScore: number | null;
+    importanceScore: number | null;
+  }>;
+  evictedSizeBytes: number;
   retainedMemories: number;
   totalEvicted: number;
   truncationTimestamp: string;

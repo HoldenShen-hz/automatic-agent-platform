@@ -7,7 +7,7 @@
  * All SQL queries use proper column aliasing to match the camelCase domain types.
  */
 
-import type { MemoryRecord } from "../../../../contracts/types/domain.js";
+import type { MemoryRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne, execute } from "../query-helper.js";
 import {
@@ -16,7 +16,7 @@ import {
   type MemoryQualityReport,
   type MemoryRecallQuery,
 } from "../../../memory/memory-quality.js";
-import { nowIso } from "../../../../contracts/types/ids.js";
+import { nowIso } from "../sqlite-repository-contracts.js";
 
 export class MemoryRepository {
   public constructor(private readonly conn: SqliteConnection) {}

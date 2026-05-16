@@ -6,9 +6,8 @@ import type {
   ReplayDatasetRecord,
   SessionRecord,
   StepOutputRecord,
-} from "../../../../contracts/types/domain.js";
-import { nowIso } from "../../../../contracts/types/ids.js";
-import { StorageError } from "../../../../contracts/errors.js";
+} from "../sqlite-repository-contracts.js";
+import { StorageError, nowIso } from "../sqlite-repository-contracts.js";
 import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import {
   mapRuntimeRecoveryRecord,

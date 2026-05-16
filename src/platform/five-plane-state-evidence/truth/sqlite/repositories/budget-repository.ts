@@ -9,7 +9,7 @@
  * when multiple concurrent operations try to settle/release the same ledger.
  */
 
-import type { BudgetLedger, BudgetSettlement, BudgetReservation } from "../../../../contracts/executable-contracts/index.js";
+import type { BudgetLedger, BudgetReservation, BudgetSettlement } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryOne } from "../query-helper.js";
 

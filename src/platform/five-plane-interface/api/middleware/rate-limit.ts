@@ -5,7 +5,7 @@
  * Uses token bucket algorithm for fair request throttling.
  */
 
-import { nowIso } from "../../../../platform/contracts/types/ids.js";
+import { nowIso } from "../api-platform-support.js";
 
 /**
  * Rate limiting configuration.

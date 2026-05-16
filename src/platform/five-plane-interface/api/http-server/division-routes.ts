@@ -11,7 +11,7 @@
 import type { RouteDefinition } from "./types.js";
 import { buildJsonResponse } from "./utils.js";
 import type { MissionControlService } from "../mission-control-service.js";
-import type { DivisionRegistry } from "../../../../domains/governance/division-loader.js";
+import type { DivisionRegistry } from "../api-external-support.js";
 
 export interface DivisionRouteDeps {
   divisionRegistry: DivisionRegistry | null;

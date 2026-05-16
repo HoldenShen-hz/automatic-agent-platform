@@ -16,7 +16,7 @@
  * 3. Return execution result
  */
 
-import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../incident-platform-support.js";
 import type {
   ParsedRunbook,
   RunbookExecutionResult,

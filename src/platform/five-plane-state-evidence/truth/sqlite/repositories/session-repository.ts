@@ -16,8 +16,8 @@ import type {
   SessionEventRecord,
   SessionRecord,
   SessionSummaryRecord,
-} from "../../../../contracts/types/domain.js";
-import { StructuredLogger } from "../../../../shared/observability/structured-logger.js";
+} from "../sqlite-repository-contracts.js";
+import { StructuredLogger } from "../sqlite-repository-support.js";
 import { SessionDualStorageService } from "../../session-dual-storage.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne, execute } from "../query-helper.js";

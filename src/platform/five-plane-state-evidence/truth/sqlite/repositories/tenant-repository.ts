@@ -5,9 +5,14 @@
  * Part of §26 storage layer implementation.
  */
 
-import { newId, nowIso } from "../../../../contracts/types/ids.js";
-import type { SlaTier, TenantQuotas, TenantRecord } from "../../../../contracts/types/domain/workspace-types.js";
-import type { DeploymentMode, TenantIsolationMode } from "../../../../contracts/types/domain/primitives.js";
+import { newId, nowIso } from "../sqlite-repository-contracts.js";
+import type {
+  DeploymentMode,
+  SlaTier,
+  TenantIsolationMode,
+  TenantQuotas,
+  TenantRecord,
+} from "../sqlite-repository-contracts.js";
 
 type TenantStatus = NonNullable<TenantRecord["status"]>;
 

@@ -12,10 +12,10 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseBillingReconcilePayload } from "./schemas.js";
 import { buildJsonResponse } from "./utils.js";
-import type { BillingService } from "../../../../scale-ecosystem/billing/billing-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import { authenticateOptionalPrincipal } from "./request-helpers.js";
+import type { BillingService } from "../api-external-support.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {

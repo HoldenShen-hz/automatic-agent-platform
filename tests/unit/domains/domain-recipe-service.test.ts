@@ -99,6 +99,16 @@ test("DomainRecipeService.matchRecipe returns null for unknown domain", () => {
   assert.equal(matched, null);
 });
 
+test("DomainRecipeService evicts oldest recipe when maxRecipes is exceeded", () => {
+  const service = new DomainRecipeService({ maxRecipes: 1 });
+  service.register(createTestRecipe({ recipeId: "recipe_old" }));
+  service.register(createTestRecipe({ recipeId: "recipe_new" }));
+
+  assert.equal(service.getRecipe("recipe_old"), null);
+  assert.deepEqual(service.getVersionHistory("recipe_old"), []);
+  assert.ok(service.getRecipe("recipe_new"));
+});
+
 test("DomainRecipeService.create generates new recipe with id", () => {
   const service = new DomainRecipeService();
 

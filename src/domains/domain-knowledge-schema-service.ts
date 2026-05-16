@@ -69,14 +69,25 @@ export interface FreshnessCheckResult {
   readonly lastRefreshAt: string | null;
 }
 
+export interface DomainKnowledgeSchemaServiceOptions {
+  readonly maxSchemas?: number;
+}
+
 export class DomainKnowledgeSchemaService {
   private readonly schemas = new Map<string, DomainKnowledgeSchema>();
   private readonly sourceContent = new Map<string, Map<string, string>>();
   private readonly sourceTimestamps = new Map<string, Map<string, string>>();
+  private readonly maxSchemas: number;
+
+  public constructor(options: DomainKnowledgeSchemaServiceOptions = {}) {
+    this.maxSchemas = Math.max(1, Math.trunc(options.maxSchemas ?? 256));
+  }
 
   public register(schema: DomainKnowledgeSchema): void {
+    this.schemas.delete(schema.domainId);
     this.schemas.set(schema.domainId, schema);
     this.initializeSources(schema);
+    this.evictOldestSchemaIfNeeded();
   }
 
   public getSchema(domainId: string): DomainKnowledgeSchema | null {
@@ -215,7 +226,9 @@ export class DomainKnowledgeSchemaService {
       ...schema,
       knowledgeSources: [...schema.knowledgeSources, source],
     };
+    this.schemas.delete(domainId);
     this.schemas.set(domainId, updated);
+    this.initializeSources(updated);
     return source;
   }
 
@@ -233,6 +246,9 @@ export class DomainKnowledgeSchemaService {
         ...schema.knowledgeSources.slice(index + 1),
       ],
     };
+    this.sourceContent.delete(sourceId);
+    this.sourceTimestamps.delete(sourceId);
+    this.schemas.delete(domainId);
     this.schemas.set(domainId, updated);
     return true;
   }
@@ -362,6 +378,21 @@ export class DomainKnowledgeSchemaService {
       this.sourceTimestamps.set(sourceId, sourceMap);
     }
     sourceMap.set("lastUpdate", nowIso());
+  }
+
+  private evictOldestSchemaIfNeeded(): void {
+    while (this.schemas.size > this.maxSchemas) {
+      const oldestDomainId = this.schemas.keys().next().value;
+      if (oldestDomainId === undefined) {
+        return;
+      }
+      const evictedSchema = this.schemas.get(oldestDomainId);
+      this.schemas.delete(oldestDomainId);
+      for (const source of evictedSchema?.knowledgeSources ?? []) {
+        this.sourceContent.delete(source.sourceId);
+        this.sourceTimestamps.delete(source.sourceId);
+      }
+    }
   }
 
   private defaultStrategy(): RetrievalStrategy {

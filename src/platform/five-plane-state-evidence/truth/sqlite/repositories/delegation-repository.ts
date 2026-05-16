@@ -5,7 +5,7 @@
  * Part of §26 storage layer implementation.
  */
 
-import { newId, nowIso } from "../../../../contracts/types/ids.js";
+import { newId, nowIso } from "../sqlite-repository-contracts.js";
 
 export type DelegationStatus = "pending" | "pending_approval" | "discovery" | "bid" | "awarded" | "active" | "completed" | "failed" | "cancelled" | "expired" | "timed_out";
 

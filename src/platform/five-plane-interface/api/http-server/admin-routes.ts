@@ -21,7 +21,6 @@
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
 
-import type { ResumePlan } from "../../../../ops-maturity/emergency/resume-protocol/index.js";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
@@ -42,6 +41,7 @@ import { SchemaInventoryService } from "../../../five-plane-state-evidence/truth
 import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
 import { ComplianceProgramTemplateService } from "../../../compliance/compliance-program-template-service.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { ResumePlan } from "../api-external-support.js";
 import { z } from "zod";
 
 class ApiError extends AppError {

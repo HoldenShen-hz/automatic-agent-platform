@@ -24,7 +24,7 @@
  * - Activation timestamp
  */
 
-import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../approval-platform-support.js";
 import type {
   ApprovalPolicyBundle,
   VersionedPolicyBundle,

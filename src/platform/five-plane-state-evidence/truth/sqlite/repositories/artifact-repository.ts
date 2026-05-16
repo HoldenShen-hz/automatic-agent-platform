@@ -7,7 +7,7 @@
  * All SQL queries use proper column aliasing to match the camelCase domain types.
  */
 
-import type { ArtifactRecord } from "../../../../contracts/types/domain.js";
+import type { ArtifactRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";

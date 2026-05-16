@@ -1,8 +1,7 @@
 import type { ArtifactPlaneService } from "../../../five-plane-state-evidence/artifacts/artifact-plane-service.js";
-import type { DomainRegistryService } from "../../../../domains/registry/domain-registry-service.js";
-import type { PluginSpiRegistry } from "../../../../domains/registry/plugin-spi-registry.js";
 import type { KnowledgePlaneService } from "../../../five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
+import type { DomainRegistryService, PluginSpiRegistry } from "../api-external-support.js";
 import {
   parseArtifactBundlePreviewPayload,
   parseArtifactBundlePublishPayload,

@@ -7,7 +7,7 @@
  * All SQL queries use proper column aliasing to match the camelCase domain types.
  */
 
-import type { DataMovementJobRecord } from "../../../../contracts/types/domain.js";
+import type { DataMovementJobRecord } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { queryAll } from "../query-helper.js";
 

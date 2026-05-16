@@ -303,3 +303,20 @@ test("DomainKnowledgeSchemaService checkFreshness reports refresh recommendation
   assert.equal(typeof result.refreshRecommended, "boolean");
   assert.equal(typeof result.isFresh, "boolean");
 });
+
+test("DomainKnowledgeSchemaService evicts oldest schema when maxSchemas is exceeded", () => {
+  const service = new DomainKnowledgeSchemaService({ maxSchemas: 1 });
+  const firstSchema = createTestSchema("first_domain");
+  const secondSchema = createTestSchema("second_domain");
+
+  service.register(firstSchema);
+  service.refreshSource("first_domain", "src_doc_1", "first domain content");
+  service.register(secondSchema);
+
+  assert.equal(service.getSchema("first_domain"), null);
+  assert.throws(
+    () => service.checkFreshness("first_domain"),
+    /domain_knowledge\.schema_not_found/,
+  );
+  assert.ok(service.getSchema("second_domain"));
+});
