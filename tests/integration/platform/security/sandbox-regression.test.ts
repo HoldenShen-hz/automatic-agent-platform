@@ -208,9 +208,10 @@ test("sandbox rejects double-encoded path traversal (%2e%2e%2f)", async () => {
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
-      `Expected sandbox.command_arg_path_denied or tool.path_scope_command_arg_denied but got ${result.error?.code}`,
+      `Expected tool.command_meta_syntax_denied, sandbox.command_arg_path_denied or tool.path_scope_command_arg_denied but got ${result.error?.code}`,
     );
   } finally {
     cleanupPath(workspace);
@@ -246,9 +247,10 @@ test("sandbox rejects null-byte injection in path", async () => {
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
-      `Expected sandbox.command_arg_path_denied or tool.path_scope_command_arg_denied but got ${result.error?.code}`,
+      `Expected tool.command_meta_syntax_denied, sandbox.command_arg_path_denied or tool.path_scope_command_arg_denied but got ${result.error?.code}`,
     );
   } finally {
     cleanupPath(workspace);

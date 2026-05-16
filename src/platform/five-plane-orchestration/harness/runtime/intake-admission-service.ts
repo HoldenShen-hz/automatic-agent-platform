@@ -245,9 +245,14 @@ function evaluatePolicyGuard(input: {
     if (input.constraintPackRef.includes("pre_approved")) {
       return { allowed: true, reasonCode: "policy.pre_approved_critical", proofRef: input.constraintPackRef };
     }
-    // Check principal authorization level for critical operations - only admin gets bypass
+    // Admin can bypass mandatory confirmation for critical operations.
     if (authorizationLevel === "admin") {
       return { allowed: true, reasonCode: "policy.admin_authorized", proofRef: input.constraintPackRef };
+    }
+    // Operators may proceed only when the caller also supplies confirmationReceipt.
+    // Admission enforces that requirement separately so policy evaluation should not deny first.
+    if (authorizationLevel === "operator") {
+      return { allowed: true, reasonCode: "policy.approved.critical_risk_validated", proofRef: input.constraintPackRef };
     }
     return { allowed: false, reasonCode: "policy.denied.critical_requires_approval", proofRef: null };
   }

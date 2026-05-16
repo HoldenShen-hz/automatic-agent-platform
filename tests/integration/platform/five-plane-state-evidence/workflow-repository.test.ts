@@ -272,7 +272,7 @@ test("integration: WorkflowRepository.updateWorkflowState sets resumableFromStep
     assert.notEqual(retrieved, null);
     assert.equal(retrieved!.status, "failed");
     assert.equal(retrieved!.currentStepIndex, 2);
-    assert.equal(retrieved!.resumableFromStep, 1);
+    assert.equal(retrieved!.resumableFromStep, "1");
   } finally {
     ctx.cleanup();
   }

@@ -57,11 +57,11 @@ function normalizeAdminSdkPrincipal(config: AdminSdkConfig): NonNullable<ApiClie
   const explicitRoles = config.principal?.roles;
   const roles = explicitRoles?.length
     ? [...explicitRoles]
-    : (config.requiredRole ? [config.requiredRole] : ["admin"]);
+    : (config.requiredRole ? [config.requiredRole] : []);
   const tenantId = config.principal?.tenantId ?? config.tenantId;
   return {
     subject: config.principal?.principalId ?? config.principal?.subject ?? "admin-sdk",
-    roles,
+    ...(roles.length > 0 ? { roles } : {}),
     ...(tenantId != null ? { tenantId } : {}),
   };
 }
@@ -117,15 +117,16 @@ export class AdminSdk {
   private readonly config: AdminSdkConfig;
 
   public constructor(config: AdminSdkConfig) {
+    const clientPrincipal = normalizeAdminSdkPrincipal(config);
     const normalizedConfig: AdminSdkConfig = {
       ...config,
       platformVersion: config.platformVersion ?? "v4.3",
       sdkVersion: config.sdkVersion ?? "1.0.0",
-      principal: config.principal ?? normalizeAdminSdkPrincipal(config),
+      ...(config.principal != null ? { principal: config.principal } : {}),
     };
     this.client = createApiClient({
       ...normalizedConfig,
-      principal: normalizeAdminSdkPrincipal(normalizedConfig),
+      principal: clientPrincipal,
     });
     this.config = normalizedConfig;
   }

@@ -287,7 +287,7 @@ test("Planner TaskDecompositionService preserves step dependencies", () => {
   }
 });
 
-test("Planner TaskDecompositionService assigns read tool per step", () => {
+test("Planner TaskDecompositionService omits read tool for dependency-free steps", () => {
   const ctx = createPlannerContext("aa-planner-tools-");
   try {
     const planner = new WorkflowPlanner();
@@ -300,7 +300,7 @@ test("Planner TaskDecompositionService assigns read tool per step", () => {
     const decompositions = decompositionService.decompose(planned);
 
     for (const decomposition of decompositions) {
-      assert.ok(decomposition.toolNames.includes("read"), "Should include read tool");
+      assert.ok(!decomposition.toolNames.includes("read"), "Dependency-free step should not include read tool");
     }
   } finally {
     ctx.db.close();

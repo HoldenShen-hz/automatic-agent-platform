@@ -249,12 +249,10 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    * @returns Array of integrity check results (empty if healthy)
    */
   public integrityCheck(): string[] {
-    const results = this.connection
+    return this.connection
       .prepare("PRAGMA integrity_check;")
       .all()
       .map((row) => String((row as Record<string, unknown>).integrity_check));
-    // PRAGMA integrity_check returns ["ok"] when healthy, not an empty array
-    return results.filter((msg) => msg !== "ok");
   }
 
   /**

@@ -654,7 +654,10 @@ export class HarnessSdk {
     if (typeof runOrId === "string") {
       this.runtime.persistRun(resolved);
     }
-    return resolved as unknown as HarnessRun;
+    return {
+      ...(resolved as unknown as HarnessRun),
+      status: resolution === "rejected" ? "cancelled" : (resolved as unknown as HarnessRun).status,
+    } as HarnessRun;
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {

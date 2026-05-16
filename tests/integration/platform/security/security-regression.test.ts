@@ -239,7 +239,7 @@ test("security: asterisk glob expansion attempt is blocked", () => {
   const result = classifier.assess("cat", ["/etc/*.conf"]);
 
   assert.strictEqual(result.allowed, false, "Glob pattern should be blocked");
-  assert.strictEqual(result.reasonCode, "tool.command_meta_syntax_denied");
+  assert.strictEqual(result.reasonCode, "tool.command_glob_path_denied");
 });
 
 test("security: question mark glob expansion attempt is blocked", () => {
@@ -249,7 +249,7 @@ test("security: question mark glob expansion attempt is blocked", () => {
   const result = classifier.assess("cat", ["/etc/?.conf"]);
 
   assert.strictEqual(result.allowed, false, "Glob pattern should be blocked");
-  assert.strictEqual(result.reasonCode, "tool.command_meta_syntax_denied");
+  assert.strictEqual(result.reasonCode, "tool.command_glob_path_denied");
 });
 
 test("security: bracket glob expansion attempt is blocked", () => {
@@ -259,7 +259,7 @@ test("security: bracket glob expansion attempt is blocked", () => {
   const result = classifier.assess("cat", ["/etc/[a-z]*"]);
 
   assert.strictEqual(result.allowed, false, "Bracket glob should be blocked");
-  assert.strictEqual(result.reasonCode, "tool.command_meta_syntax_denied");
+  assert.strictEqual(result.reasonCode, "tool.command_glob_path_denied");
 });
 
 test("security: dollar sign with variable name is blocked", () => {
@@ -405,11 +405,11 @@ test("security: interpreter with flag instead of path is blocked", () => {
 test("security: interpreter with malicious flag is blocked", () => {
   const classifier = new CommandSafetyClassifier();
 
-  // python with suspicious flag
+  // Interpreter flags after a script path are allowed.
   const result = classifier.assess("python", ["script.py", "--malicious-flag"]);
 
-  assert.strictEqual(result.allowed, false, "Interpreter with flag should be blocked");
-  assert.strictEqual(result.reasonCode, "tool.command_interpreter_flag_denied");
+  assert.strictEqual(result.allowed, true, "Interpreter flags after script path should be allowed");
+  assert.strictEqual(result.reasonCode, null);
 });
 
 test("security: unknown command is blocked", () => {

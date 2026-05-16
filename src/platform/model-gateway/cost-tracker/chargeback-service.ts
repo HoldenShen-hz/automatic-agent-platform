@@ -50,9 +50,8 @@ export class ChargebackService {
     let hasMultipleCurrencies = false;
 
     for (const report of reports) {
-      // NOTE: totalCostUsd is already in the report's currency (pre-converted to USD if needed).
-      // Do NOT multiply by fxRate again - that would double-convert.
-      totalCostUsd += report.totalCostUsd;
+      const reportFxRate = resolveFxRate(report.currency, baseCurrency);
+      totalCostUsd += Number((report.totalCostUsd * reportFxRate).toFixed(4));
       if (firstCurrency === "USD") {
         firstCurrency = report.currency;
       } else if (report.currency !== firstCurrency) {
@@ -61,7 +60,9 @@ export class ChargebackService {
       for (const resource of report.resourceCosts) {
         // R2-7: Determine cost source attribution from resource metadata
         const resourceMeta = (resource as { metadata?: Record<string, unknown> }).metadata;
-        const costSource = (resourceMeta?.costSource as string | undefined) ?? resource.resourceType;
+        const costSource = (resourceMeta?.costSource as string | undefined) ?? (
+          resource.resourceType === "api" ? "platform" : resource.resourceType
+        );
         // R2-7: Use fxRate from resource if available, default to 1.0 (USD)
         const fxRate = (resource as { fxRate?: number }).fxRate ?? resolveFxRate(resource.currency, baseCurrency);
         const convertedCost = Number((resource.costUsd * fxRate).toFixed(4));

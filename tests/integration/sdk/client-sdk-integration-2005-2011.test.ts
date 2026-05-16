@@ -16,7 +16,7 @@ import {
   buildApiUrl,
   buildAuthHeaders,
 } from "../../../src/sdk/client-sdk/api-client.js";
-import { NetworkError, AuthError, BusinessError } from "../../../src/platform/contracts/errors.js";
+import { NetworkError, AuthError, BusinessError, ValidationError } from "../../../src/platform/contracts/errors.js";
 
 // ============================================================================
 // Tests for 2005: Client SDK API client operations
@@ -327,7 +327,7 @@ test("2011: API Client throws BusinessError on 400", async () => {
     await assert.rejects(
       async () => client.post("/test", { invalid: true }),
       (error: unknown) => {
-        return error instanceof BusinessError;
+        return error instanceof ValidationError && error.message.includes("status 400");
       }
     );
   } finally {
@@ -428,6 +428,7 @@ test("buildApiUrl constructs correct versioned URL", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
+    principal: { subject: "sdk-test" },
   });
 
   const url = buildApiUrl((client as any).config, {
@@ -436,7 +437,7 @@ test("buildApiUrl constructs correct versioned URL", () => {
   });
 
   assert.ok(url.includes("api.example.com"));
-  assert.ok(url.includes("/v1/"));
+  assert.ok(url.includes("/api/v1/"));
   assert.ok(url.includes("harness-runs"));
 });
 
@@ -446,6 +447,7 @@ test("buildApiUrl adds tenant query parameter when tenantId is set", () => {
     apiVersion: "v1",
     bearerToken: "test-token",
     tenantId: "tenant-abc",
+    principal: { subject: "sdk-test" },
   });
 
   const url = buildApiUrl((client as any).config, {

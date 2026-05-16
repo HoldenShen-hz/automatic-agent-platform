@@ -102,6 +102,7 @@ test("configured api auth blocks x-aa-actor-id bypasses and enforces RBAC on pri
         url: "/v1/auth/token",
         headers: {
           "x-api-key": "viewer-key",
+          "idempotency-key": "viewer-token-1",
         },
       }),
     ).data.accessToken;
@@ -112,6 +113,7 @@ test("configured api auth blocks x-aa-actor-id bypasses and enforces RBAC on pri
       headers: {
         authorization: `Bearer ${viewerToken}`,
         "content-type": "application/json",
+        "idempotency-key": "viewer-gateway-send-1",
       },
       body: JSON.stringify({
         channel: "telegram",
@@ -150,6 +152,7 @@ test("configured api auth blocks x-aa-actor-id bypasses and enforces RBAC on pri
         url: "/v1/auth/token",
         headers: {
           "x-api-key": "operator-key",
+          "idempotency-key": "operator-token-1",
         },
       }),
     ).data.accessToken;
@@ -180,6 +183,7 @@ test("configured api auth blocks x-aa-actor-id bypasses and enforces RBAC on pri
         url: "/v1/auth/token",
         headers: {
           "x-api-key": "admin-key",
+          "idempotency-key": "admin-token-1",
         },
       }),
     ).data.accessToken;
@@ -247,6 +251,7 @@ test("tenant-scoped api auth only exposes matching tenant resources and blocks g
         url: "/v1/auth/token",
         headers: {
           "x-api-key": "tenant-viewer-key",
+          "idempotency-key": "tenant-viewer-token-1",
         },
       }),
     ).data.accessToken;
@@ -313,6 +318,7 @@ test("tenant-scoped api auth only exposes matching tenant resources and blocks g
         url: "/v1/auth/token",
         headers: {
           "x-api-key": "tenant-admin-key",
+          "idempotency-key": "tenant-admin-token-1",
         },
       }),
     ).data.accessToken;

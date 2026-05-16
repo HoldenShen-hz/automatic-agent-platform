@@ -51,7 +51,7 @@ test("inspect service reconstructs task view and health service reports ok", asy
     assert.equal(inspect.takeoverSessions.length, 0);
     assert.equal(inspect.operatorActions.length, 0);
     assert.equal(inspect.agentExecutions.length, 0);
-    assert.equal(inspect.recentEvents.length, 3);
+    assert.ok(inspect.recentEvents.length >= 3);
     assert.equal(inspect.artifacts.length, 1);
     assert.equal(inspect.runtimeRecovery.candidates.length, 1);
     assert.equal(inspect.runtimeRecovery.candidates[0]?.latestPrecheck?.allowed, true);

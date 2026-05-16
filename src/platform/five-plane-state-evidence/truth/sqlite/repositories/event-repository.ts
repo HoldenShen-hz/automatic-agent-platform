@@ -17,6 +17,7 @@ import {
 import { materializeEventRecord, type EventRecordDraft } from "../../../events/event-record-support.js";
 import { getRequiredConsumers } from "../../../events/event-types.js";
 import { newId, nowIso } from "../../../../contracts/types/ids.js";
+import { ValidationError } from "../../../../contracts/errors.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 import {
@@ -102,30 +103,31 @@ export class EventRepository {
   ): EventRecord {
     const record = materializeEventRecord(event);
 
-    // Validate FK references: if taskId/executionId are provided, they must exist
-    // in their respective tables, otherwise use NULL to avoid FK constraint failures
-    let safeTaskId = record.taskId;
-    let safeExecutionId = record.executionId;
-
-    if (safeTaskId != null) {
+    if (record.taskId != null) {
       const taskExists = queryOne<{ id: string }>(
         this.conn,
         `SELECT id FROM tasks WHERE id = ?`,
-        safeTaskId,
+        record.taskId,
       );
       if (!taskExists) {
-        safeTaskId = null;
+        throw new ValidationError(
+          "event_repository.foreign_key_constraint",
+          "FOREIGN KEY constraint failed: task_id",
+        );
       }
     }
 
-    if (safeExecutionId != null) {
+    if (record.executionId != null) {
       const executionExists = queryOne<{ id: string }>(
         this.conn,
         `SELECT id FROM executions WHERE id = ?`,
-        safeExecutionId,
+        record.executionId,
       );
       if (!executionExists) {
-        safeExecutionId = null;
+        throw new ValidationError(
+          "event_repository.foreign_key_constraint",
+          "FOREIGN KEY constraint failed: execution_id",
+        );
       }
     }
 
@@ -138,9 +140,9 @@ export class EventRepository {
       )
       .run(
         record.id,
-        safeTaskId,
+        record.taskId,
         record.sessionId,
-        safeExecutionId,
+        record.executionId,
         record.eventType,
         record.eventTier,
         record.payloadJson,

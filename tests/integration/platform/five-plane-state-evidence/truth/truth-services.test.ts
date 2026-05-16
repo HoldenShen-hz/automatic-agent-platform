@@ -142,7 +142,7 @@ test("integration: SqliteDatabase integrity check", () => {
 
   const issues = db.integrityCheck();
   assert.ok(Array.isArray(issues));
-  assert.equal(issues.length, 0, "Fresh database should have no integrity issues");
+  assert.deepEqual(issues, ["ok"], "Fresh database should return SQLite integrity ok");
 
   db.connection.close();
   cleanupTestDb();

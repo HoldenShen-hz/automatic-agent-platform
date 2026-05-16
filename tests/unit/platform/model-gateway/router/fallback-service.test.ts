@@ -96,7 +96,7 @@ test("ModelGatewayFallbackService.selectFallback handles empty candidates", () =
 
   assert.equal(result.selectedProfileName, null);
   assert.equal(result.reasonCode, "fallback.no_candidate_available");
-  assert.deepEqual(result.attemptedProfiles, ["primary"]);
+  assert.deepEqual(result.attemptedProfiles, []);
 });
 
 test("ModelGatewayFallbackService.selectFallback includes all candidates in attemptedProfiles", () => {
@@ -108,8 +108,7 @@ test("ModelGatewayFallbackService.selectFallback includes all candidates in atte
 
   const result = service.selectFallback({ primaryProfileName: "primary", candidates });
 
-  assert.equal(result.attemptedProfiles.length, 3);
-  assert.ok(result.attemptedProfiles.includes("primary"));
+  assert.equal(result.attemptedProfiles.length, 2);
   assert.ok(result.attemptedProfiles.includes("first"));
   assert.ok(result.attemptedProfiles.includes("second"));
 });

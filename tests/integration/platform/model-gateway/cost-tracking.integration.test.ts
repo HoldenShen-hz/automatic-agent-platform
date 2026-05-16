@@ -468,7 +468,7 @@ test("Cost tracking: Currency conversion in chargeback for global tracking", () 
       tenantId: "tenant-1",
       periodStart: "2026-04-01T00:00:00.000Z",
       periodEnd: "2026-04-01T23:59:59.000Z",
-      totalCostUsd: 54, // 50 EUR * 1.08
+      totalCostUsd: 50,
       currency: "EUR",
       resourceCosts: [
         { resourceId: "api:eu", resourceType: "api", costUsd: 50, currency: "EUR" },
@@ -483,7 +483,7 @@ test("Cost tracking: Currency conversion in chargeback for global tracking", () 
       tenantId: "tenant-1",
       periodStart: "2026-04-02T00:00:00.000Z",
       periodEnd: "2026-04-02T23:59:59.000Z",
-      totalCostUsd: 127, // 100 GBP * 1.27
+      totalCostUsd: 100,
       currency: "GBP",
       resourceCosts: [
         { resourceId: "api:uk", resourceType: "api", costUsd: 100, currency: "GBP" },

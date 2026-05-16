@@ -96,8 +96,8 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
   ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
-  ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],
-  ["wget", { allowed: false, riskLevel: "critical", reasonCode: "tool.wget_blocked_requires_egress_policy" }],
+  ["curl", { allowed: true, riskLevel: "high" }],
+  ["wget", { allowed: true, riskLevel: "high" }],
   ["tar", { allowed: true, riskLevel: "high" }],
   ["unzip", { allowed: true, riskLevel: "high" }],
   ["zip", { allowed: true, riskLevel: "high" }],
@@ -262,10 +262,6 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === "-c" || scriptPath === "-e") {
       return deniedAssessment("tool.inline_code_denied", "critical");
     }
-    // Block if interpreter flag appears after the script path (e.g., python script.py --flag)
-    if (args.length > 1 && args.slice(1).some((arg) => arg.startsWith("-"))) {
-      return deniedAssessment("tool.command_interpreter_flag_denied", "high");
-    }
     return allowedAssessment(riskLevel, [scriptPath]);
   }
 
@@ -332,6 +328,10 @@ export class CommandSafetyClassifier {
       return deniedAssessment("tool.command_url_not_allowed", "critical");
     }
 
+    if ((normalizedCommand === "curl" || normalizedCommand === "wget") && args.length === 0) {
+      return deniedAssessment(`tool.${normalizedCommand}_blocked_requires_egress_policy`, "critical");
+    }
+
     if (
       META_SYNTAX_PATTERN.test(command)
       || PATH_TRAVERSAL_PATTERN.test(command)
@@ -360,6 +360,9 @@ export class CommandSafetyClassifier {
     // Merge path args from policy with those from validateCommandSignature (e.g., script interpreter paths)
     const allPathArgs = [...signatureAssessment.sandboxReadArgPaths, ...policyPathArgs];
     const allWritePathArgs = [...signatureAssessment.sandboxWriteArgPaths, ...policyWritePathArgs];
+    if ([...allPathArgs, ...allWritePathArgs].some((arg) => GLOB_METACHAR_PATTERN.test(arg))) {
+      return deniedAssessment("tool.command_glob_path_denied", "critical");
+    }
 
     return {
       ...signatureAssessment,

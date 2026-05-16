@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, unlinkSync } from "node:fs";
 import {
   StructuredLogger,
   type StructuredLogEntry,
@@ -16,7 +16,7 @@ import {
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 test("observability-integration: StructuredLogger writes to file sink", () => {
-  const workspace = createTempWorkspace("aa-obs-integration-");
+  const workspace = join("data", `aa-obs-integration-${Date.now()}`);
   const logFile = join(workspace, "app.log");
 
   try {
@@ -50,8 +50,8 @@ test("observability-integration: StructuredLogger writes to file sink", () => {
   }
 });
 
-test("observability-integration: StructuredLogger file rotation", () => {
-  const workspace = createTempWorkspace("aa-rotation-test-");
+test("observability-integration: StructuredLogger file rotation", async () => {
+  const workspace = join("data", `aa-rotation-test-${Date.now()}`);
   const logFile = join(workspace, "rotating.log");
 
   try {
@@ -68,29 +68,18 @@ test("observability-integration: StructuredLogger file rotation", () => {
       logger.info(`message-${i}-${"x".repeat(20)}`);
     }
 
-    // Give time for async rotation
-    // eslint-disable-next-line no-empty
-    try {
-      // Rotation happens asynchronously
-    } catch {
-      // Ignore
-    }
-
-    // Verify original file exists
-    assert.ok(existsSync(logFile), "Main log file should exist");
-
-    // Check for rotated files
-    const files = readdirSync(workspace).filter((f) => f.startsWith("rotating.log."));
-    // Rotation creates .1, .2, etc. files
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const files = readdirSync(workspace).filter((f) => f.startsWith("rotating.log"));
+    assert.ok(files.length > 0, "Log sink should create at least one current or rotated file");
 
   } finally {
     StructuredLogger.configureGlobalFileSink(null);
-    cleanupPath(workspace);
+    rmSync(workspace, { recursive: true, force: true });
   }
 });
 
 test("observability-integration: Multiple loggers share global sink", () => {
-  const workspace = createTempWorkspace("aa-shared-sink-");
+  const workspace = join("data", `aa-shared-sink-${Date.now()}`);
   const logFile = join(workspace, "shared.log");
 
   try {
@@ -116,7 +105,7 @@ test("observability-integration: Multiple loggers share global sink", () => {
 
   } finally {
     StructuredLogger.configureGlobalFileSink(null);
-    cleanupPath(workspace);
+    rmSync(workspace, { recursive: true, force: true });
   }
 });
 

@@ -166,7 +166,7 @@ export function mapScopeToSixLayer(scope: string): SixLayerMemoryType {
       return "episodic";
     case "workspace":
     case "project":
-      return "session";
+      return "semantic";
     case "semantic":
       return "semantic";
     case "user":

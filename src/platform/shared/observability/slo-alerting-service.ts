@@ -253,9 +253,9 @@ export class SloAlertingService {
       default: met = false;
     }
 
-    // At-risk if within 5% of threshold (for met SLOs)
+    // At-risk if within 10% of threshold (for met SLOs)
     // Only mark at_risk when close to breach to avoid noise
-    const margin = Math.abs(slo.targetValue) * 0.05;
+    const margin = Math.abs(slo.targetValue) * 0.1;
     let status: SloStatus;
     if (met) {
       const distance = Math.abs(avg - slo.targetValue);

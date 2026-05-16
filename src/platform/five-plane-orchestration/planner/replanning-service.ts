@@ -37,11 +37,13 @@ export class ReplanningService {
     trigger?: ReplanningTrigger | null,
     suppressCorrection?: boolean,
   ): ReplanningDecision {
+    const outcome = feedback.outcome as string;
     // After a replan (suppressCorrection=true), correction signals should NOT trigger another replan.
     // The plan was just rebuilt to address the correction — re-applying the same correction would cause
     // an infinite loop: plan→execute→feedback→plan→execute→feedback→...
     // We only allow replan for new problems (failed/escalated outcomes).
-    const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
+    const failed = outcome === "failed" || outcome === "escalated";
+    const correctionRequested = (!suppressCorrection) && feedback.signals.some((signal) => signal.category === "correction");
 
     // R5-5: Handle downgrade_mode branch - correction signals trigger replan to reduce scope/complexity.
     // After a replan (suppressCorrection=true), do NOT re-trigger downgrade_mode — the plan already
@@ -50,8 +52,8 @@ export class ReplanningService {
       (signal.payload as Record<string, unknown>)?.reasonCode === "scope_too_broad" ||
       (signal.payload as Record<string, unknown>)?.reasonCode === "complexity_exceeded"
     );
-    const repairable = (!suppressCorrection) && feedback.outcome === "repairable";
-    const shouldReplan = failed || repairable || downgradeMode;
+    const repairable = (!suppressCorrection) && outcome === "repairable";
+    const shouldReplan = failed || repairable || downgradeMode || correctionRequested;
 
     let strategy: Plan["strategy"] | null = shouldReplan ? "replanned" : null;
     let reasonCode = trigger?.reasonCode ?? (shouldReplan ? "planning.execution_deviation" : "planning.no_replan_required");
@@ -59,6 +61,9 @@ export class ReplanningService {
     if (downgradeMode) {
       strategy = "replanned";
       reasonCode = "planning.downgrade_mode";
+    } else if (correctionRequested) {
+      strategy = "replanned";
+      reasonCode = trigger?.reasonCode ?? "planning.downgrade_mode";
     }
 
     const taskId = "taskId" in plan ? plan.taskId : plan.harnessRunId ?? "unknown_task";

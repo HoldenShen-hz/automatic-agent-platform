@@ -90,7 +90,7 @@ test("DelegationManager creates nested delegation with incremented depth", async
 
     // First delegation
     const parent1 = createTestAgentContext({ agentId: "root_agent" });
-    const spec1 = createDelegationSpec({ targetAgentId: "level1_agent" });
+    const spec1 = createDelegationSpec({ targetAgentId: "level1_agent", targetPackId: "pack_level1" });
     const handle1 = await service.delegate(parent1, spec1);
 
     // Second delegation from child
@@ -99,7 +99,7 @@ test("DelegationManager creates nested delegation with incremented depth", async
       delegationDepth: 1,
       activeDelegations: [handle1.delegationId],
     });
-    const spec2 = createDelegationSpec({ targetAgentId: "level2_agent" });
+    const spec2 = createDelegationSpec({ targetAgentId: "level2_agent", targetPackId: "pack_level2" });
     const handle2 = await service.delegate(parent2, spec2);
 
     assert.equal(handle1.depth, 1);

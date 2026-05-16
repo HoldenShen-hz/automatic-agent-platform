@@ -81,7 +81,7 @@ test("task decomposition: decomposes complex workflow into executable tasks", ()
   );
 });
 
-test("task decomposition: handles simple single-step workflow", () => {
+test("task decomposition: handles simple single-step workflow without implicit read tool", () => {
   const service = new TaskDecompositionService();
   const workflow = createMockWorkflow({
     executionSteps: [
@@ -100,7 +100,7 @@ test("task decomposition: handles simple single-step workflow", () => {
     title: "step_only:done",
     dependsOn: [],
     ownerRoleId: "operator",
-    toolNames: ["read"],
+    toolNames: [],
   });
 });
 
@@ -143,7 +143,7 @@ test("task decomposition: exposes tool hints for compensating and schema-validat
 
   const result = service.decompose(workflow);
 
-  assert.deepEqual(result[0]?.toolNames, ["read", "apply_patch", "validate_output"]);
+  assert.deepEqual(result[0]?.toolNames, ["apply_patch", "validate_output"]);
 });
 
 // Tests using the actual TaskDecompositionService API (PlannedWorkflow-based)
@@ -237,12 +237,28 @@ test("task decomposition: decompose sets ownerRoleId from step.roleId", () => {
   assert.equal(result[1]?.ownerRoleId, "reviewer");
 });
 
-test("task decomposition: decompose always includes read tool", () => {
+test("task decomposition: decompose only includes read tool when dependencies exist", () => {
   const service = new TaskDecompositionService();
   const workflow = createMockWorkflow({
     executionSteps: [
       createMockExecutionStep({
         stepId: "step_a",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(!result[0]?.toolNames.includes("read"));
+});
+
+test("task decomposition: decompose includes read tool when dependencies exist", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        dependsOnStepIds: ["step_seed"],
       }),
     ],
   });
@@ -323,6 +339,7 @@ test("task decomposition: decompose handles both compensationModel and outputSch
         stepId: "step_a",
         compensationModel: "idempotent_replay",
         outputSchemaPath: "/schemas/step-output.json",
+        dependsOnStepIds: ["step_seed"],
       }),
     ],
   });

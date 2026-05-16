@@ -7,8 +7,9 @@
  * - Dispatch blocks claims without dropping pending ticket in read-only mode
  */
 
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 import {
@@ -17,7 +18,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-db-writability-rehearsal.js";
 
 function createTempDir(): string {
-  return join("/tmp", `db-writability-test-${Date.now()}`);
+  return mkdtempSync(join(tmpdir(), "db-writability-test-"));
 }
 
 test("runStableDbWritabilityRehearsal executes all three scenarios successfully", async () => {

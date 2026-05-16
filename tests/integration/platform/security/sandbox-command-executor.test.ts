@@ -386,6 +386,7 @@ test("command executor blocks double-encoded path traversal (..%2f..%2f)", async
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
     );
@@ -420,6 +421,7 @@ test("command executor blocks null-byte injection in path argument", async () =>
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
     );

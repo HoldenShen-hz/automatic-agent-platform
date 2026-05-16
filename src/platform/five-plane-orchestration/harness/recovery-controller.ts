@@ -166,7 +166,7 @@ export class RecoveryController {
           });
           // Retry budget exhausted → escalate to human review per §9.3
           const escalated = this.runtime.openHitlReview(
-            run,
+            recovering,
             "llm_provider_retry_exhausted",
             [],
           );
@@ -185,7 +185,9 @@ export class RecoveryController {
         const delayMs = computeBackoffDelayMs(currentAttempt + 1);
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
         // R13-16 fix: use node scope for llm_provider_unavailable (retry_same_plan semantics)
-        return this.runtime.sleep(run, `llm_provider_unavailable_retry`, resumeAt, currentAttempt + 1);
+        const sleeping = this.runtime.sleep(recovering, `llm_provider_unavailable_retry`, resumeAt, currentAttempt + 1);
+        this.durableService.persist(sleeping);
+        return sleeping;
       }
 
       case "tool_timeout": {
@@ -205,7 +207,7 @@ export class RecoveryController {
           });
           // Guard violation or no remaining iterations → escalate to human review
           const escalated = this.runtime.openHitlReview(
-            run,
+            recovering,
             "tool_timeout_loop_guard_violation",
             [reasonCode],
           );
@@ -226,7 +228,9 @@ export class RecoveryController {
         const resumeAt = new Date(Date.now() + backoffMs).toISOString();
         loop.recordIteration(0); // Record retry attempt in LoopController
         // Use LoopController's retryAttempt as the authoritative count
-        return this.runtime.sleep(run, `tool_timeout_retry`, resumeAt, loop.getState().retryAttempt);
+        const sleeping = this.runtime.sleep(recovering, `tool_timeout_retry`, resumeAt, loop.getState().retryAttempt);
+        this.durableService.persist(sleeping);
+        return sleeping;
       }
 
       case "budget_exhausted":
@@ -236,7 +240,7 @@ export class RecoveryController {
           action: "escalate_hitl",
         });
         // Budget exhausted: transition to paused, requires human review
-        return this.runtime.openHitlReview(run, "budget_exhausted", []);
+        return this.runtime.openHitlReview(recovering, "budget_exhausted", []);
 
       case "platform_panic": {
         if (!this.shouldUseBackoffRecovery(run)) {
@@ -251,7 +255,7 @@ export class RecoveryController {
             maxAttempts: RETRY_MAX_ATTEMPTS,
           });
           const escalated = this.runtime.openHitlReview(
-            run,
+            recovering,
             "platform_panic_retry_exhausted",
             [],
           );
@@ -269,7 +273,9 @@ export class RecoveryController {
         });
         // Platform panic: graph-scope retry with exponential backoff.
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
-        return this.runtime.sleep(run, "platform_panic_retry", resumeAt, currentAttempt + 1);
+        const sleeping = this.runtime.sleep(recovering, "platform_panic_retry", resumeAt, currentAttempt + 1);
+        this.durableService.persist(sleeping);
+        return sleeping;
       }
 
       case "worker_crash":
@@ -289,7 +295,7 @@ export class RecoveryController {
             maxAttempts: RETRY_MAX_ATTEMPTS,
           });
           const escalated = this.runtime.openHitlReview(
-            run,
+            recovering,
             "worker_crash_retry_exhausted",
             [],
           );
@@ -307,7 +313,9 @@ export class RecoveryController {
         });
 
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
-        return this.runtime.sleep(run, "worker_crash_retry", resumeAt, currentAttempt + 1);
+        const sleeping = this.runtime.sleep(recovering, "worker_crash_retry", resumeAt, currentAttempt + 1);
+        this.durableService.persist(sleeping);
+        return sleeping;
       }
     }
   }

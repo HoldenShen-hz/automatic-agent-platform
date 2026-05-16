@@ -152,10 +152,10 @@ test("Context assembly and snapshotting across run lifecycle", () => {
     const context = service.assembleContext(sources, 4096);
 
     assert.equal(context.tokenBudget, 4096);
-    assert.equal(context.conversation.threadId, "thread-123");
+    assert.equal(context.task.threadId, "thread-123");
     assert.equal(context.task.objective, "implement feature X");
-    assert.equal(context.memory.lastPlan, "plan-abc");
-    assert.equal(context.knowledge.language, "typescript");
+    assert.equal(context.task.lastPlan, "plan-abc");
+    assert.equal(context.task.language, "typescript");
     assert.ok(context.contextId.startsWith("harness_context"));
     assert.ok(context.assembledAt);
 
@@ -269,11 +269,12 @@ test("Recovery flow: handleFailure with worker_crash", () => {
     const recovered = service.handleFailure(run, "worker_crash");
 
     assert.equal(recovered.status, "paused");
-    assert.equal(recovered.pauseReason, "recovery");
+    assert.equal(recovered.pauseReason, "sleep");
     assert.ok(recovered.recoveryCheckpoint);
     assert.equal(recovered.recoveryCheckpoint?.runId, run.runId);
     assert.equal(recovered.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
     assert.equal(recovered.recoveryCheckpoint?.statusBeforeRecovery, "completed");
+    assert.ok(recovered.sleepLease != null);
   } finally {
     ctx.cleanup();
   }
@@ -302,8 +303,10 @@ test("Recovery flow: handleFailure with tool_timeout (auto-resume)", () => {
     // Handle tool_timeout - should auto-resume
     const recovered = service.handleFailure(run, "tool_timeout");
 
-    assert.equal(recovered.status, "running"); // tool_timeout auto-resumes
-    assert.equal(recovered.recoveryCheckpoint, null); // Auto-resume clears checkpoint
+    assert.equal(recovered.status, "paused"); // tool_timeout now pauses with retry lease
+    assert.equal(recovered.pauseReason, "sleep");
+    assert.ok(recovered.recoveryCheckpoint != null);
+    assert.ok(recovered.sleepLease != null);
   } finally {
     ctx.cleanup();
   }
@@ -330,7 +333,7 @@ test("Recovery flow: handleFailure with operator_abort (immediate abort)", () =>
 
     assert.equal(aborted.status, "aborted");
     assert.ok(aborted.completedAt);
-    assert.equal(aborted.recoveryCheckpoint, null);
+    assert.ok(aborted.recoveryCheckpoint != null);
   } finally {
     ctx.cleanup();
   }

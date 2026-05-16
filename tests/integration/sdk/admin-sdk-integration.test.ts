@@ -17,6 +17,21 @@ import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 // Test Fixtures and Helpers
 // ============================================================================
 
+const ADMIN_PRINCIPAL = {
+  principalId: "p_admin",
+  tenantId: "t_tenant",
+  roles: ["admin"],
+};
+
+function createAdminSdk() {
+  return new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: ADMIN_PRINCIPAL,
+  });
+}
+
 function createMockFetchForSeededContext(_ctx: SeededApiContext) {
   const originalFetch = globalThis.fetch;
 
@@ -41,19 +56,22 @@ function createMockFetchForSeededContext(_ctx: SeededApiContext) {
         { domainId: "domain-seeded", name: "Seeded Domain" },
       ]);
     }
-    if (urlStr.match(/\/domains\/([^/]+)\/lifecycle\/activate$/) && init?.method === "POST") {
+    if (urlStr.endsWith("/domains") && init?.method === "POST") {
+      return createResponse({ domainId: "new-domain", displayName: "New Domain" });
+    }
+    if (urlStr.match(/\/domains\/([^/]+)\/activate$/) && init?.method === "POST") {
       return createResponse({ domainId: "domain-1", status: "active" });
     }
-    if (urlStr.match(/\/domains\/([^/]+)\/lifecycle\/deactivate$/) && init?.method === "POST") {
+    if (urlStr.match(/\/domains\/([^/]+)\/deactivate$/) && init?.method === "POST") {
       return createResponse({ domainId: "domain-1", status: "inactive" });
     }
-    if (urlStr.match(/\/domains\/([^/]+)\/lifecycle\/suspend$/) && init?.method === "POST") {
+    if (urlStr.match(/\/domains\/([^/]+)\/suspend$/) && init?.method === "POST") {
       return createResponse({ domainId: "domain-1", status: "suspended" });
     }
-    if (urlStr.match(/\/domains\/([^/]+)\/lifecycle\/resume$/) && init?.method === "POST") {
+    if (urlStr.match(/\/domains\/([^/]+)\/resume$/) && init?.method === "POST") {
       return createResponse({ domainId: "domain-1", status: "active" });
     }
-    if (urlStr.match(/\/domains\/([^/]+)\/lifecycle\/status$/)) {
+    if (urlStr.match(/\/domains\/([^/]+)\/status$/)) {
       return createResponse({ domainId: "domain-1", status: "active", lastUpdated: new Date().toISOString() });
     }
 
@@ -110,11 +128,7 @@ test("AdminSdk with seeded context: listDomains returns domain data", async () =
     const restore = createMockFetchForSeededContext(ctx);
 
     try {
-      const sdk = new AdminSdk({
-        baseUrl: "https://api.example.com",
-        apiVersion: "v1",
-        bearerToken: "test-token",
-      });
+      const sdk = createAdminSdk();
 
       const result = await sdk.listDomains<{ domainId: string; name: string }>();
       assert.ok(result.data.length > 0);
@@ -139,11 +153,7 @@ test("AdminSdk with seeded context: registerDomain validates input", async () =>
     const restore = createMockFetchForSeededContext(ctx);
 
     try {
-      const sdk = new AdminSdk({
-        baseUrl: "https://api.example.com",
-        apiVersion: "v1",
-        bearerToken: "test-token",
-      });
+      const sdk = createAdminSdk();
 
       // Valid registration
       const result = await sdk.registerDomain<{ domainId: string; displayName: string }>({
@@ -168,13 +178,17 @@ test("AdminSdk with seeded context: pauseHarnessRun creates pause directive", ()
 
   try {
     ctx = createSeededApiContext(workspace);
-    const sdk = new AdminSdk({
-      baseUrl: "https://api.example.com",
-      apiVersion: "v1",
-      bearerToken: "test-token",
-    });
+    const sdk = createAdminSdk();
 
-    const directive = sdk.pauseHarnessRun<unknown>("harness-run-123", "Maintenance window");
+    const directive = sdk.pauseHarnessRun({
+      harnessRunId: "harness-run-123",
+      reason: "Maintenance window",
+      issuedBy: {
+        principalId: "p_admin",
+        tenantId: "t_tenant",
+        roles: ["admin"],
+      },
+    });
 
     assert.equal((directive as unknown as { type: string }).type, "pause");
     assert.equal((directive as unknown as { scope: { harnessRunId: string } }).scope?.harnessRunId, "harness-run-123");
@@ -195,13 +209,17 @@ test("AdminSdk with seeded context: abortHarnessRun creates kill directive", () 
 
   try {
     ctx = createSeededApiContext(workspace);
-    const sdk = new AdminSdk({
-      baseUrl: "https://api.example.com",
-      apiVersion: "v1",
-      bearerToken: "test-token",
-    });
+    const sdk = createAdminSdk();
 
-    const directive = sdk.abortHarnessRun<unknown>("harness-run-456", "User requested cancellation");
+    const directive = sdk.abortHarnessRun({
+      harnessRunId: "harness-run-456",
+      reason: "User requested cancellation",
+      issuedBy: {
+        principalId: "p_operator",
+        tenantId: "t_tenant",
+        roles: ["operator"],
+      },
+    });
 
     assert.equal((directive as unknown as { type: string }).type, "kill");
     assert.equal((directive as unknown as { scope: { harnessRunId: string } }).scope?.harnessRunId, "harness-run-456");
@@ -220,11 +238,7 @@ test("AdminSdk with seeded context: issueDecisionDirective creates approve direc
 
   try {
     ctx = createSeededApiContext(workspace);
-    const sdk = new AdminSdk({
-      baseUrl: "https://api.example.com",
-      apiVersion: "v1",
-      bearerToken: "test-token",
-    });
+    const sdk = createAdminSdk();
 
     const directive = sdk.issueDecisionDirective({
       type: "approve",
@@ -260,11 +274,7 @@ test("AdminSdk with seeded context: issueOperationalDirective with custom params
 
   try {
     ctx = createSeededApiContext(workspace);
-    const sdk = new AdminSdk({
-      baseUrl: "https://api.example.com",
-      apiVersion: "v1",
-      bearerToken: "test-token",
-    });
+    const sdk = createAdminSdk();
 
     const directive = sdk.issueOperationalDirective({
       type: "quota_adjust",
@@ -299,11 +309,7 @@ test("AdminSdk with seeded context: triggerPanic and resumePanic work", async ()
     const restore = createMockFetchForSeededContext(ctx);
 
     try {
-      const sdk = new AdminSdk({
-        baseUrl: "https://api.example.com",
-        apiVersion: "v1",
-        bearerToken: "test-token",
-      });
+      const sdk = createAdminSdk();
 
       // Test triggerPanic
       const panicResult = await sdk.triggerPanic<{ triggered: boolean }>({ scope: "platform" });
@@ -332,11 +338,7 @@ test("AdminSdk with seeded context: manageAgentLifecycle works", async () => {
     const restore = createMockFetchForSeededContext(ctx);
 
     try {
-      const sdk = new AdminSdk({
-        baseUrl: "https://api.example.com",
-        apiVersion: "v1",
-        bearerToken: "test-token",
-      });
+      const sdk = createAdminSdk();
 
       // Test manageAgentLifecycle
       const agentResult = await sdk.manageAgentLifecycle<{ agentId: string; action: string }>("agent-1", "start");
@@ -361,11 +363,7 @@ test("AdminSdk with seeded context: rotateSecrets works", async () => {
     const restore = createMockFetchForSeededContext(ctx);
 
     try {
-      const sdk = new AdminSdk({
-        baseUrl: "https://api.example.com",
-        apiVersion: "v1",
-        bearerToken: "test-token",
-      });
+      const sdk = createAdminSdk();
 
       // Test rotateSecrets
       const secretsResult = await sdk.rotateSecrets<{ rotated: boolean }>({ secretName: "api_key" });

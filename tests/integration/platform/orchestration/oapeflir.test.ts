@@ -67,8 +67,8 @@ test("OAPEFLIR loop runs full observe->assess->plan->execute->feedback->learn->i
     const stages = result.timeline.map((entry) => entry.stage);
     assert.deepEqual(
       stages,
-      ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"],
-      "Should complete all OAPEFLIR stages in order",
+      ["observe", "assess", "plan", "execute", "feedback", "plan", "execute", "feedback", "learn", "improve", "release"],
+      "Should complete the repair-aware OAPEFLIR stages in order",
     );
   } finally {
     ctx.db.close();

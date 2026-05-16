@@ -24,10 +24,13 @@ import { DomainRegistryService } from "../../../domains/registry/domain-registry
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import type { KnowledgePlaneService } from "../../five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import type { ArtifactPlaneService } from "../../five-plane-state-evidence/artifacts/artifact-plane-service.js";
+import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
 import type { MissionRepository } from "../../five-plane-state-evidence/truth/mission-repository.js";
+import type { IntakeAdmissionService } from "../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import { WorkerRegistryService } from "../../five-plane-execution/worker-pool/worker-registry-service.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,
@@ -116,6 +119,8 @@ export interface HttpApiServerOptions {
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
+  taskStore?: AuthoritativeTaskStore | null;
+  intakeAdmissionService?: IntakeAdmissionService | null;
   /** Distributed rate limiter for API endpoint protection */
   rateLimiter?: DistributedRateLimiter | null;
   /** Enable WebSocket support for real-time task updates */
@@ -126,6 +131,10 @@ export interface HttpApiServerOptions {
   apiDefaultTimeoutMs?: number;
   /** Maximum allowed synchronous API timeout in milliseconds */
   apiMaxTimeoutMs?: number;
+  /** Background stale worker sweep interval in milliseconds */
+  workerHeartbeatSweepIntervalMs?: number;
+  /** Worker heartbeat TTL in milliseconds */
+  workerHeartbeatTtlMs?: number;
 }
 
 export interface StartServerOptions {
@@ -173,6 +182,8 @@ export class HttpApiServer {
   private readonly apiMaxTimeoutMs: number;
   private readonly requestDeduplication = createDeduplicationMiddleware();
   private readonly idempotencyMiddleware = createIdempotencyKeyMiddleware();
+  private workerHeartbeatSweepTimer: NodeJS.Timeout | null = null;
+  private readonly staleWorkerIncidentIds = new Set<string>();
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -239,6 +250,7 @@ export class HttpApiServer {
       );
       logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
     }
+    this.startWorkerHeartbeatSweep();
 
     const address = this.server.address();
     if (address == null || typeof address === "string") {
@@ -256,6 +268,10 @@ export class HttpApiServer {
   }
 
   public async stop(): Promise<void> {
+    if (this.workerHeartbeatSweepTimer != null) {
+      clearInterval(this.workerHeartbeatSweepTimer);
+      this.workerHeartbeatSweepTimer = null;
+    }
     if (!this.server.listening) {
       return;
     }
@@ -293,19 +309,64 @@ export class HttpApiServer {
       headers["content-type"] = "application/json";
     }
     const method = options.method ?? "GET";
+    const requestId = readRequestId({
+      method,
+      url: options.url,
+      headers,
+      body: options.body ?? null,
+    });
+    const versionDecision = globalVersionRoutingMiddleware.selectVersion(
+      globalVersionRoutingMiddleware.parseAcceptVersion(headers["accept-version"] ?? null),
+    );
+    let payload: ApiResponsePayload;
+    if (!versionDecision.acceptable) {
+      payload = this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
+        code: versionDecision.reasonCode,
+        message: "Requested API version is not supported.",
+        details: {
+          warnings: versionDecision.warnings,
+        },
+      });
+      payload.headers["x-api-version"] = versionDecision.version;
+    } else if (method === "OPTIONS") {
+      payload = {
+        statusCode: 204,
+        headers: buildPreflightHeaders(headers.origin, this.corsConfig),
+        body: "",
+      };
+    } else if (this.rateLimiter != null) {
+      const endpoint = this.extractEndpointKey(options.url);
+      const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`inject:${endpoint}`);
+      payload = !result.allowed
+        ? this.attachRateLimitHeaders(this.buildJsonErrorResponse(requestId, 429, {
+          code: "api.rate_limit_exceeded",
+          message: "Too many requests. Please retry later.",
+        }), result)
+        : this.attachRateLimitHeaders(await this.dispatchRequest({
+          method,
+          url: options.url,
+          headers,
+          body: options.body ?? null,
+        }), result);
+    } else {
+      payload = await this.dispatchRequest({
+        method,
+        url: options.url,
+        headers,
+        body: options.body ?? null,
+      });
+    }
+    payload.headers["x-api-version"] ??= versionDecision.version;
+    if (versionDecision.warnings.length > 0) {
+      payload.headers["warning"] = versionDecision.warnings.join(", ");
+    }
     const response = this.decoratePayload(
-      method === "OPTIONS"
-        ? {
-            statusCode: 204,
-            headers: buildPreflightHeaders(headers.origin, this.corsConfig),
-            body: "",
-          }
-        : await this.dispatchRequest({
-            method,
-            url: options.url,
-            headers,
-            body: options.body ?? null,
-          }),
+      this.attachResponseTracing(payload, requestId, {
+        method,
+        url: options.url,
+        headers,
+        body: options.body ?? null,
+      }),
       headers.origin,
     );
     this.recordPrometheusHttpMetric(method, options.url, response.statusCode, Date.now() - startedAt);
@@ -722,7 +783,9 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
+        ...(this.options.taskStore != null ? { taskStore: this.options.taskStore } : {}),
         missionRepository: this.options.missionRepository ?? null,
+        ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({
@@ -821,6 +884,51 @@ export class HttpApiServer {
         },
       }, null, 2),
     };
+  }
+
+  private startWorkerHeartbeatSweep(): void {
+    if (this.workerHeartbeatSweepTimer != null) {
+      return;
+    }
+    if (this.options.taskStore == null) {
+      return;
+    }
+    const intervalMs = Math.max(1, Math.trunc(this.options.workerHeartbeatSweepIntervalMs ?? 0));
+    if (intervalMs <= 0) {
+      return;
+    }
+    this.workerHeartbeatSweepTimer = setInterval(() => {
+      this.sweepStaleWorkerHeartbeats();
+    }, intervalMs);
+    this.workerHeartbeatSweepTimer.unref?.();
+  }
+
+  private sweepStaleWorkerHeartbeats(): void {
+    if (this.options.taskStore == null) {
+      return;
+    }
+    const now = new Date().toISOString();
+    const ttlMs = Math.max(1, Math.trunc(this.options.workerHeartbeatTtlMs ?? 5 * 60 * 1000));
+    const registry = new WorkerRegistryService(this.options.taskStore);
+    for (const worker of registry.listStaleWorkers(now, ttlMs)) {
+      const existing = this.options.taskStore.worker.getWorkerSnapshot(worker.workerId);
+      if (existing == null || existing.status === "offline") {
+        continue;
+      }
+      this.options.taskStore.worker.upsertWorkerSnapshot({
+        ...existing,
+        status: "offline",
+        updatedAt: now,
+      });
+      if (!this.staleWorkerIncidentIds.has(worker.workerId)) {
+        this.incidentService.openIncident({
+          severity: "high",
+          title: `Worker ${worker.workerId} heartbeat became stale and was marked offline`,
+          linkedEvidenceRefs: [worker.workerId],
+        });
+        this.staleWorkerIncidentIds.add(worker.workerId);
+      }
+    }
   }
 
   private attachRateLimitHeaders(payload: ApiResponsePayload, result: RateLimitCheckResult): ApiResponsePayload {

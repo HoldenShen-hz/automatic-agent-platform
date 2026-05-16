@@ -214,14 +214,8 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       const transactionMarker = `TXN_${Date.now()}_${this.state.auditRefs.length + 1}`;
       this.state.auditRefs.push(`BEGIN_${transactionMarker}`);
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
-      // R5-44 fix: Generate synthetic auditRef for internal transitions that don't have one.
-      // This ensures audited transitions (HarnessRun, SideEffectRecord, succeeded/failed)
-      // always have an audit trail even when callers don't provide one.
-      const effectiveCommand = command.auditRef != null
-        ? command
-        : { ...command, auditRef: `audit://synthetic/${command.aggregateType}/${getAggregateId(command.aggregateType, command.aggregate)}/${Date.now()}` };
       const result = this.stateMachine.transition({
-        ...effectiveCommand,
+        ...command,
         aggregate: stored as TAggregate,
       });
       this.storeAggregate(command.aggregateType, result.aggregate);

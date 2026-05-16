@@ -122,7 +122,7 @@ export class VersionRoutingMiddleware {
     if (this.compareVersions(firstVersion, this.config.minimumVersion) < 0) {
       return {
         acceptable: false,
-        version: "",
+        version: this.config.defaultVersion,
         statusCode: 400,
         reasonCode: "version.below_minimum",
         warnings,

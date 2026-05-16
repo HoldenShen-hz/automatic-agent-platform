@@ -753,7 +753,7 @@ test("Harness resolveHitlReview rejects and aborts run", () => {
 
     run = service.resolveHitlReview(run, "rejected", "operator_deny_001");
 
-    assert.equal(run.status, "aborted");
+    assert.equal(run.status, "cancelled");
     assert.ok(run.completedAt !== null, "Should have completed timestamp on rejection");
   } finally {
     ctx.db.close();

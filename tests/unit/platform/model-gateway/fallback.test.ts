@@ -12,7 +12,7 @@ test("ModelGatewayFallbackService selectFallback returns primary when candidates
 
   assert.equal(result.selectedProfileName, null);
   assert.equal(result.reasonCode, "fallback.no_candidate_available");
-  assert.deepStrictEqual(result.attemptedProfiles, ["primary-model"]);
+  assert.deepStrictEqual(result.attemptedProfiles, []);
   assert.deepStrictEqual(result.fallbackChain, ["primary-model"]);
 });
 
@@ -148,5 +148,5 @@ test("ModelGatewayFallbackService selectFallback returns correct attemptedProfil
     candidates,
   });
 
-  assert.deepStrictEqual(result.attemptedProfiles, ["primary", "secondary", "tertiary"]);
+  assert.deepStrictEqual(result.attemptedProfiles, ["secondary", "tertiary"]);
 });

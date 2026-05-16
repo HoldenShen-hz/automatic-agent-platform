@@ -236,9 +236,7 @@ test("ToolAccess integration: blocked tools prevent invariant violations", () =>
       });
     });
 
-    assert.throws(
-      () =>
-        service.runLoop({
+    const run = service.runLoop({
           taskId: "task_toolaccess_005",
           domainId: "coding",
           constraintPack,
@@ -247,9 +245,11 @@ test("ToolAccess integration: blocked tools prevent invariant violations", () =>
           evaluatorOutput: { score: 0.9, verdict: "accept" },
           evaluatorScore: 0.9,
           requestedTools: ["bash", "write", "exec"],
-        }),
-      /harness\.invariant\.blocked_tool_requested/,
-    );
+        });
+
+    assert.equal(run.status, "aborted");
+    assert.equal(run.decision?.action, "abort");
+    assert.ok(service.assertInvariants(run).violations.some((violation) => violation.includes("blocked_tool_requested")));
   } finally {
     ctx.cleanup();
   }

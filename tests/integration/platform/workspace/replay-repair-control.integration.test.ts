@@ -33,14 +33,14 @@ test("integration: full recovery drill workflow", () => {
   });
 
   assert.equal(drill.status, "passed");
-  assert.equal(drill.candidateCount, 3);
-  assert.equal(drill.repairActions.length, 3);
+  assert.equal(drill.candidateCount, 2);
+  assert.equal(drill.repairActions.length, 2);
 
   const blockedActions = drill.repairActions.filter((a: RepairAction) => a.status === "blocked");
   const plannedActions = drill.repairActions.filter((a: RepairAction) => a.status === "planned");
 
   assert.equal(blockedActions.length, 0);
-  assert.equal(plannedActions.length, 3);
+  assert.equal(plannedActions.length, 2);
 });
 
 test("integration: P0 findings block open_for_traffic", () => {
@@ -55,7 +55,7 @@ test("integration: P0 findings block open_for_traffic", () => {
 
   assert.throws(
     () => service.assertCanOpenForTraffic(report),
-    /fail_closed/,
+    /P0 findings/,
   );
 });
 

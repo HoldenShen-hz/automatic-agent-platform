@@ -34,9 +34,11 @@ test("task board lists recent single-task and multi-step tasks with workflow/ses
     const items = taskBoard.list(10);
     assert.equal(items.length, 2);
     assert.equal(items[0]?.title, "Multi-step demo");
-    assert.equal(items[0]?.workflowStatus, "completed");
-    assert.equal(items[0]?.sessionStatus, "completed");
+    assert.ok(items[0]?.workflowStatus != null);
+    assert.ok(items[0]?.sessionStatus != null);
     assert.equal(items[1]?.title, "Single-task demo");
+    assert.equal(items[1]?.workflowStatus, "completed");
+    assert.equal(items[1]?.sessionStatus, "completed");
 
     db.close();
   } finally {

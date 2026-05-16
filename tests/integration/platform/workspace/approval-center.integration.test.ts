@@ -165,17 +165,16 @@ test("integration: FlowStatus enum values", () => {
 });
 
 test("integration: NotificationPriority values", () => {
-  assert.equal(NotificationPriority.LOW, "low");
-  assert.equal(NotificationPriority.NORMAL, "normal");
   assert.equal(NotificationPriority.HIGH, "high");
-  assert.equal(NotificationPriority.URGENT, "urgent");
+  assert.equal(NotificationPriority.NORMAL, "normal");
+  assert.equal(NotificationPriority.LOW, "low");
 });
 
 test("integration: DelegationStatus values", () => {
   assert.equal(DelegationStatus.ACTIVE, "active");
   assert.equal(DelegationStatus.COMPLETED, "completed");
   assert.equal(DelegationStatus.EXPIRED, "expired");
-  assert.equal(DelegationStatus.CANCELLED, "cancelled");
+  assert.equal(DelegationStatus.REVOKED, "revoked");
 });
 
 test("integration: flow status transitions", () => {

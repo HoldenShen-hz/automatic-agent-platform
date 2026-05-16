@@ -698,12 +698,15 @@ export class DelegationManagerService {
     const rootAgentId = this.resolveRootAgentId(parent);
     const packEdges = await this.collectPackTopologyEdges(rootAgentId);
     const agentEdges = await this.collectAgentTopologyEdges(rootAgentId);
+    const chain = this.chainStore.get(rootAgentId);
     const chainPackIds = [
       parent.packId,
+      ...(chain?.nodes.map((node) => node.packId) ?? []),
       ...packEdges.flatMap((edge) => [edge.fromId, edge.toId]),
     ].filter((packId, index, items): packId is string => typeof packId === "string" && items.indexOf(packId) === index);
     const chainAgentIds = [
       parent.agentId,
+      ...(chain?.nodes.map((node) => node.agentId) ?? []),
       ...agentEdges.flatMap((edge) => [edge.fromId, edge.toId]),
     ].filter((agentId, index, items): agentId is string => typeof agentId === "string" && items.indexOf(agentId) === index);
 

@@ -113,8 +113,7 @@ export interface SqliteRestoreReport {
  * @returns True if all results are "ok" and the array is non-empty
  */
 function isIntegrityOk(results: readonly string[]): boolean {
-  // Empty array means no issues (healthy); non-empty requires all items to be "ok"
-  return results.length === 0 || results.every((item) => item.toLowerCase() === "ok");
+  return results.length > 0 && results.every((item) => item.toLowerCase() === "ok");
 }
 
 /**

@@ -25,7 +25,7 @@ function authHeaders() {
 }
 
 async function invokeRoute(routes: RouteDefinition[], body: Record<string, unknown>) {
-  const route = routes.find((candidate) => candidate.method === "POST" && candidate.pathname === "/v1/tasks");
+  const route = routes.find((candidate) => candidate.method === "POST" && candidate.segments === true);
   assert.ok(route);
   return route.handler({
     requestId: "req_task_mission",

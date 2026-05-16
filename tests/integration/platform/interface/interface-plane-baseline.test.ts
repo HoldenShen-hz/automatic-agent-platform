@@ -76,7 +76,7 @@ test("interface-plane-baseline: each baseline has required fields", () => {
     assert.ok(typeof baseline.capabilityId === "string");
     assert.ok(baseline.capabilityId.length > 0);
     assert.ok(typeof baseline.entryModule === "string");
-    assert.ok(baseline.entryModule.startsWith("src/platform/interface"));
+    assert.ok(baseline.entryModule.startsWith("src/platform/five-plane-interface"));
     assert.ok(typeof baseline.description === "string");
     assert.ok(baseline.description.length > 10);
     assert.ok(Array.isArray(baseline.baselineServices));

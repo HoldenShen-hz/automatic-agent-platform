@@ -50,7 +50,7 @@ test("integration: sandbox path validation combined with data classification", (
   const sensitivePathResult = checkSandboxPath(workspacePolicy, "/workspace/project/docs/api-keys.txt");
   assert.equal(sensitivePathResult.allowed, true);
 
-  const sensitiveContent = "API_KEY=sk-secret-key-12345";
+  const sensitiveContent = "Customer SSN: 123-45-6789";
   const sensitiveClass = classificationService.classify(sensitiveContent);
   assert.equal(sensitiveClass.level, "restricted");
   assert.ok(sensitiveClass.piiDetected);
@@ -125,15 +125,16 @@ test("integration: scoped_external_access policy with explicit outbound rules", 
   assert.equal(scopedPolicy.realpathEnforced, true);
 });
 
-test("integration: restricted_exec mode ignores workspace boundary but respects denied roots", () => {
+test("integration: restricted_exec mode still enforces path boundaries and denied roots", () => {
   const execPolicy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/restricted"),
     deniedRoots: ["/etc", "/root", "/var/log"],
   };
 
-  // restricted_exec ignores allowed root boundary for path checking
+  // restricted_exec still enforces allowed-root containment
   const anyPath = checkSandboxPath(execPolicy, "/tmp/random/file.txt");
-  assert.equal(anyPath.allowed, true);
+  assert.equal(anyPath.allowed, false);
+  assert.equal(anyPath.reasonCode, "sandbox.path_outside_allowed_roots");
 
   // But denied roots are still enforced
   const deniedPath = checkSandboxPath(execPolicy, "/etc/passwd");
@@ -169,9 +170,12 @@ test("integration: sandbox policy with complex nested paths", () => {
   const encodedPath = checkSandboxPath(policy, "/workspace/complex-project/src/file%20with%20spaces.txt");
   assert.equal(encodedPath.allowed, true);
 
-  // Path with unicode (full-width characters normalized)
-  const unicodePath = checkSandboxPath(policy, "/workspace/complex-project/src/file\xFF0Ftest.txt");
-  assert.equal(unicodePath.allowed, false); // NFKC normalization reveals traversal
+  // Full-width slash characters normalize before traversal checks
+  const unicodeTraversalPath = checkSandboxPath(
+    policy,
+    "/workspace/complex-project/src/\uFF0E\uFF0E\uFF0F\uFF0E\uFF0E\uFF0Fetc/passwd",
+  );
+  assert.equal(unicodeTraversalPath.allowed, false);
 });
 
 // ============================================================================

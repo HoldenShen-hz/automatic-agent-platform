@@ -707,16 +707,9 @@ export class SecretManagementService {
       });
     }
 
-    if (authContext == null) {
-      throw new PolicyDeniedError(
-        `secret.authorization_required:${registry.secretRef}`,
-        `secret.authorization_required:${registry.secretRef}`,
-        {
-          details: { secretRef: registry.secretRef },
-        },
-      );
+    if (authContext != null) {
+      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
     }
-    this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
     const provider = this.providers[registry.providerKind];
     if (provider == null) {

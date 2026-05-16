@@ -1,11 +1,12 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { preserveLearningType, type LearningObject } from "./learning-object-model.js";
+import { normalizeLearningType, type LearningObject } from "./learning-object-model.js";
 
 export class ExperienceDistillationService {
   public distill(signals: readonly LearningSignal[]): LearningObject[] {
     return signals.map((signal) => {
-      const learningType = preserveLearningType(signal.learningType);
+      const learningType = normalizeLearningType(signal.learningType);
+      const recommendation = this.buildRecommendation(signal.learningType);
       return {
         learningObjectId: newId("learning"),
         objectId: newId("learning"),
@@ -18,21 +19,21 @@ export class ExperienceDistillationService {
           summary: signal.valueSummary,
           evidenceRefs: signal.evidenceRefs,
           sourceSignalIds: signal.sourceSignalIds,
-          recommendation: this.buildRecommendation(signal.learningType),
+          recommendation,
         },
         confidence: signal.confidence,
         evidenceRefs: signal.evidenceRefs,
         sourceSignalIds: signal.sourceSignalIds,
-        recommendation: this.buildRecommendation(signal.learningType),
+        recommendation,
         validatedBy: "none",
-        promotionStatus: "draft",
+        promotionStatus: "quarantine",
         status: "created",
         createdAt: String(signal.generatedAt),
       };
     });
   }
 
-  private buildRecommendation(learningType: LearningSignal["learningType"]): string {
+  private buildRecommendation(learningType: LearningSignal["learningType"] | LearningObject["learningType"]): string {
     switch (learningType) {
       case "failure_pattern":
         return "Capture preventive measures and convert the signal into reusable planning guidance.";

@@ -116,7 +116,7 @@ export class TaskTransitionService {
     }
     this.repository.createTier1StatusEvent({
       taskId: command.entityId,
-      executionId: resolveExistingExecutionId(this.db, command.executionId),
+      executionId: resolveExistingExecutionRef(this.db, command.executionId),
       eventType: "task:status_changed",
       traceId: command.traceId,
       payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
@@ -348,7 +348,7 @@ export class ExecutionTransitionService {
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    const executionTaskId = resolveExistingExecutionId(this.db, command.entityId);
+    const executionTaskId = resolveTaskIdForExecution(this.db, command.entityId);
     this.repository.createTier1StatusEvent({
       taskId: executionTaskId,
       executionId: command.entityId,
@@ -774,23 +774,38 @@ function buildEventTraceContext(context: TransitionAuditContext, taskId: string)
   };
 }
 
-function resolveExistingExecutionId(db: AuthoritativeSqlDatabase | null, executionId: string | null): string | null {
+function resolveExistingExecutionRef(
+  db: AuthoritativeSqlDatabase | null,
+  executionId: string | null,
+): string | null {
   if (executionId == null) {
     return null;
   }
-  if (db == null) {
-    return null; // No database, can't resolve taskId
+  if (db == null || typeof db.connection?.prepare !== "function") {
+    return executionId;
   }
-  if (typeof db.connection?.prepare !== "function") {
+  const executionExists = db.connection
+    .prepare("SELECT 1 FROM executions WHERE id = ? LIMIT 1")
+    .get(executionId);
+  return executionExists != null ? executionId : null;
+}
+
+function resolveTaskIdForExecution(
+  db: AuthoritativeSqlDatabase | null,
+  executionId: string | null,
+): string | null {
+  if (executionId == null) {
+    return null;
+  }
+  if (db == null || typeof db.connection?.prepare !== "function") {
     return null;
   }
   const row = db.connection.prepare("SELECT task_id FROM executions WHERE id = ? LIMIT 1").get(executionId) as
     | { task_id: string }
     | undefined;
   if (row == null) {
-    return null; // Execution doesn't exist
+    return null;
   }
-  // Verify the task actually exists
   const taskExists = db.connection.prepare("SELECT 1 FROM tasks WHERE id = ? LIMIT 1").get(row.task_id);
   return taskExists != null ? row.task_id : null;
 }

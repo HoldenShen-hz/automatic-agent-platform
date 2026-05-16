@@ -95,8 +95,9 @@ test("Integration: LongRunningWorkflowService suspends and resumes workflow", ()
     assert.equal(suspension.taskId, taskId);
     assert.equal(suspension.executionId, executionId);
 
-    const resumed = service.resume({ taskId, executionId });
+    const resumed = service.resume(suspension.suspensionId);
     assert.equal(resumed.taskId, taskId);
+    assert.equal(resumed.allowed, true);
   } finally {
     ctx.cleanup();
   }

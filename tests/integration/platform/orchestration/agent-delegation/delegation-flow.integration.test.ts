@@ -93,7 +93,7 @@ test("DelegationManager delegation chain tracking", async () => {
 
     // Create first-level delegation
     const parent1 = createTestContext({ agentId: "root" });
-    const spec1 = createTestSpec({ targetAgentId: "level1" });
+    const spec1 = createTestSpec({ targetAgentId: "level1", targetPackId: "pack_level1" });
     const handle1 = await service.delegate(parent1, spec1);
 
     // Create second-level delegation
@@ -102,7 +102,7 @@ test("DelegationManager delegation chain tracking", async () => {
       delegationDepth: 1,
       activeDelegations: [handle1.delegationId],
     });
-    const spec2 = createTestSpec({ targetAgentId: "level2" });
+    const spec2 = createTestSpec({ targetAgentId: "level2", targetPackId: "pack_level2" });
     const handle2 = await service.delegate(parent2, spec2);
 
     // Verify chain for root
@@ -177,8 +177,8 @@ test("DelegationManager active delegations filtering", async () => {
     const parent = createTestContext({ agentId: "parent_active" });
 
     // Create multiple delegations
-    await service.delegate(parent, createTestSpec({ targetAgentId: "child1" }));
-    await service.delegate(parent, createTestSpec({ targetAgentId: "child2" }));
+    await service.delegate(parent, createTestSpec({ targetAgentId: "child1", targetPackId: "pack_child1" }));
+    await service.delegate(parent, createTestSpec({ targetAgentId: "child2", targetPackId: "pack_child2" }));
 
     const active = await service.getActiveDelegations("parent_active");
     assert.equal(active.length, 2);

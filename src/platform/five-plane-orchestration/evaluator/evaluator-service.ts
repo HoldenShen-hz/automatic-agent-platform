@@ -159,12 +159,14 @@ export class EvaluatorService {
     // Evaluate goal deviation - always emit finding for completed outcomes
     // to confirm the goal was achieved (even if with transient issues)
     const deviationResult = this.evaluateGoalDeviation(planGraphBundle, nodeFilteredFeedback);
-    findings.push({
-      findingId: newId("eval_find"),
-      category: "deviation",
-      severity: deviationResult.severity,
-      message: deviationResult.message,
-    });
+    if (deviationResult.hasDeviation) {
+      findings.push({
+        findingId: newId("eval_find"),
+        category: "deviation",
+        severity: deviationResult.severity,
+        message: deviationResult.message,
+      });
+    }
 
     // Evaluate risk boundary
     const riskResult = this.evaluateRiskBoundary(planGraphBundle, nodeFilteredFeedback);
@@ -177,21 +179,25 @@ export class EvaluatorService {
 
     // Evaluate budget adherence
     const budgetResult = this.evaluateBudgetAdherence(planGraphBundle, actualCost);
-    findings.push({
-      findingId: newId("eval_find"),
-      category: "budget",
-      severity: budgetResult.severity,
-      message: budgetResult.message,
-    });
+    if (!budgetResult.adherent) {
+      findings.push({
+        findingId: newId("eval_find"),
+        category: "budget",
+        severity: budgetResult.severity,
+        message: budgetResult.message,
+      });
+    }
 
     // Evaluate timing SLO
     const timingResult = this.evaluateTimingSLO(planGraphBundle, actualDurationMs);
-    findings.push({
-      findingId: newId("eval_find"),
-      category: "timing",
-      severity: timingResult.severity,
-      message: timingResult.message,
-    });
+    if (!timingResult.withinSlo) {
+      findings.push({
+        findingId: newId("eval_find"),
+        category: "timing",
+        severity: timingResult.severity,
+        message: timingResult.message,
+      });
+    }
 
     // Determine overall decision
     const decision = this.determineDecision(findings, nodeFilteredFeedback);

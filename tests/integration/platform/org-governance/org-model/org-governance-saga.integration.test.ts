@@ -64,17 +64,17 @@ test("OrgGovernanceSaga respects ordering", () => {
   });
 
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-budget", targetOrgNodeId: "org-1", action: "prepare" },
-    { stepId: "step-identity", targetOrgNodeId: "org-1", action: "prepare" },
-    { stepId: "step-approval", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-budget", targetOrgNodeId: "org-1", action: "prepare", phase: "budget" },
+    { stepId: "step-identity", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
+    { stepId: "step-approval", targetOrgNodeId: "org-1", action: "prepare", phase: "approval" },
   ];
 
   testSaga.execute("saga-phase-order", steps);
 
   // Verify steps are executed in order
   const stepIds = actions.map(a => a.stepId);
-  assert.ok(stepIds.indexOf("step-budget") < stepIds.indexOf("step-identity"), "step-budget should execute before step-identity");
-  assert.ok(stepIds.indexOf("step-identity") < stepIds.indexOf("step-approval"), "step-identity should execute before step-approval");
+  assert.ok(stepIds.indexOf("step-identity") < stepIds.indexOf("step-approval"), "identity phase should execute before approval");
+  assert.ok(stepIds.indexOf("step-approval") < stepIds.indexOf("step-budget"), "approval phase should execute before budget");
 });
 
 test("OrgGovernanceSaga compensates on prepare failure", () => {
@@ -91,9 +91,9 @@ test("OrgGovernanceSaga compensates on prepare failure", () => {
   });
 
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-ok", targetOrgNodeId: "org-1", action: "prepare" },
-    { stepId: "step-fail", targetOrgNodeId: "org-2", action: "prepare" },
-    { stepId: "step-never", targetOrgNodeId: "org-3", action: "commit" },
+    { stepId: "step-ok", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
+    { stepId: "step-fail", targetOrgNodeId: "org-2", action: "prepare", phase: "approval" },
+    { stepId: "step-never", targetOrgNodeId: "org-3", action: "commit", phase: "approval" },
   ];
 
   const result = saga.execute("saga-compensate", steps);

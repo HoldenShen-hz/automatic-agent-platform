@@ -214,6 +214,10 @@ export class OrgGovernanceSaga {
         if (phaseDelta !== 0) {
           return phaseDelta;
         }
+        const stepIdDelta = left.step.stepId.localeCompare(right.step.stepId);
+        if (stepIdDelta !== 0) {
+          return stepIdDelta;
+        }
         return left.index - right.index;
       })
       .map(({ step }) => step);

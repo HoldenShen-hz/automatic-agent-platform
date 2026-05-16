@@ -213,7 +213,7 @@ test("HttpApiServer replays idempotent task creation and persists the RSM fact e
   const afterCount = harness.store.listTasks(500).filter((task) => task.title === "Architecture review task").length;
   assert.equal(afterCount, beforeCount + 1);
 
-  const events = harness.store.listEventsForTask(taskId).events;
+  const events = harness.store.listEventsForTask(taskId);
   const factEvent = events.find((event) => event.eventType === "platform.harness_run.status_changed");
   assert.ok(factEvent, "expected task creation to persist the emitted harness platform fact event");
   assert.equal(factEvent?.traceId, "corr-task-create");
@@ -244,6 +244,6 @@ test("HttpApiServer sweeps stale worker heartbeats, marks workers offline, and o
 
   const snapshot = harness.store.worker.getWorkerSnapshot("worker-stale-1");
   assert.equal(snapshot?.status, "offline");
-  assert.equal(harness.incidentService.countIncidents(undefined), 1);
-  assert.match(harness.incidentService.listIncidents(undefined, 10)[0]?.title ?? "", /worker-stale-1/);
+  assert.equal(harness.incidentService.listIncidents(10).length, 1);
+  assert.match(harness.incidentService.listIncidents(10)[0]?.title ?? "", /worker-stale-1/);
 });

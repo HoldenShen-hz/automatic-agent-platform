@@ -427,7 +427,7 @@ test("buildOapeflirPlannedWorkflow creates correct planReason", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow sets outputSchemaPath to null", async () => {
+test("buildOapeflirPlannedWorkflow sets a default outputSchemaPath", async () => {
   const dbPath = createTestDbPath("output-schema-path");
   cleanupDb(dbPath);
 
@@ -444,7 +444,7 @@ test("buildOapeflirPlannedWorkflow sets outputSchemaPath to null", async () => {
   try {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
-    assert.equal(result.plannedWorkflow.executionSteps[0]!.outputSchemaPath, null, "outputSchemaPath should be null");
+    assert.ok(result.plannedWorkflow.executionSteps[0]!.outputSchemaPath?.endsWith("/divisions/general_ops/schemas/minimal-output.json"));
   } finally {
     cleanupDb(dbPath);
   }

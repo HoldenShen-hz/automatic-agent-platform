@@ -8,16 +8,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TrafficRoutingService } from "../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
+import {
+  TrafficRoutingService,
+  TRAFFIC_ROUTING_DDL,
+} from "../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
 
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
 function createInMemoryDb() {
-  // Simple in-memory SQLite for testing
-  const Database = require("better-sqlite3");
-  return new Database(":memory:");
+  const db = new SqliteDatabase(":memory:");
+  db.migrate();
+  db.connection.exec(TRAFFIC_ROUTING_DDL);
+  return db;
 }
 
 // ============================================================================

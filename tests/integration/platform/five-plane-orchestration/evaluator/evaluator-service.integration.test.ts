@@ -113,7 +113,7 @@ test("evaluator: evaluate returns accept for successful feedback", () => {
   }
 });
 
-test("evaluator: evaluate returns retry for failure signals", () => {
+test("evaluator: evaluate returns replan for repairable failure signals", () => {
   const ctx = createSeededIntegrationContext("aa-eval-retry-", {
     taskId: "task-eval-retry-001",
     executionId: "exec-eval-retry-001",
@@ -137,7 +137,7 @@ test("evaluator: evaluate returns retry for failure signals", () => {
       feedback,
     });
 
-    assert.equal(report.decision, "retry");
+    assert.equal(report.decision, "replan");
     assert.ok(report.findings.some((f) => f.category === "quality"));
   } finally {
     ctx.cleanup();
@@ -364,8 +364,7 @@ test("evaluator: timing SLO within bounds passes", () => {
     });
 
     const timingFinding = report.findings.find((f) => f.category === "timing");
-    assert.ok(timingFinding, "Should have timing finding");
-    assert.equal(timingFinding!.severity, "info");
+    assert.equal(timingFinding, undefined, "Within-SLO timing should not emit a finding");
   } finally {
     ctx.cleanup();
   }
@@ -429,8 +428,7 @@ test("evaluator: budget adherence tracked with actual cost", () => {
     });
 
     const budgetFinding = report.findings.find((f) => f.category === "budget");
-    assert.ok(budgetFinding, "Should have budget finding");
-    assert.ok(budgetFinding!.message.includes("0.05"));
+    assert.equal(budgetFinding, undefined, "Adherent budget usage should not emit a finding");
   } finally {
     ctx.cleanup();
   }

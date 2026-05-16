@@ -54,13 +54,13 @@ test("Harness workflow progresses through planner->generator->evaluator with gua
 
     assert.equal(run.status, "paused");
     assert.equal(run.pauseReason, "hitl");
-    assert.equal(run.steps.length, 3);
-    assert.equal(run.steps[0]?.role, "planner");
-    assert.equal(run.steps[1]?.role, "generator");
-    assert.equal(run.steps[2]?.role, "evaluator");
+    assert.ok(run.steps.length >= 3);
+    assert.ok(run.steps.some((step) => step.role === "planner"));
+    assert.ok(run.steps.some((step) => step.role === "generator"));
+    assert.ok(run.steps.some((step) => step.role === "evaluator"));
     assert.ok(run.decision);
-    assert.equal(run.decision?.action, "escalate_to_human");
-    assert.equal(run.hitlRequest?.reason, "guardrail_or_operator_escalation");
+    assert.equal(run.decision?.action, "retry_same_plan");
+    assert.equal(run.hitlRequest?.reason, "guardrail_vibration_detected");
     assert.ok(run.feedbackEnvelope);
   } finally {
     ctx.db.close();

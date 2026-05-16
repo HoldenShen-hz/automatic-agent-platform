@@ -48,8 +48,6 @@ export class ModelGatewayFallbackService {
     );
     // Respect explicit fallback priority first, then primary-tier affinity, then cost.
     const tierOrder: Record<string, number> = { reasoning: 0, balanced: 1, coding: 2, fast: 3 };
-    // R16-24 fix: Check hasFullTierLadder only among ELIGIBLE candidates (healthy, not excluded, not primary)
-    const hasFullTierLadder = eligible.some((candidate) => candidate.tier === "coding");
     const costs = eligible.map((candidate) => candidate.inputCostPer1kUsd).filter((cost) => cost > 0);
     // R16-24 fix: When cost ratio >= 3, cost takes priority over affinity (value optimization)
     // When cost ratio < 3, affinity takes priority (tier preservation)
@@ -89,14 +87,8 @@ export class ModelGatewayFallbackService {
       return left.inputCostPer1kUsd - right.inputCostPer1kUsd;
     });
     const selected = sorted[0] ?? null;
-    // attemptedProfiles: primary + all other candidates in original order (includes excluded/unhealthy, for traceability)
-    const attemptedProfiles = [
-      input.primaryProfileName,
-      ...input.candidates
-        .filter((c) => c.profileName !== input.primaryProfileName)
-        .map((c) => c.profileName),
-    ];
-    const fallbackChain = [input.primaryProfileName, ...sorted.map((c) => c.profileName)];
+    const attemptedProfiles = sorted.map((candidate) => candidate.profileName);
+    const fallbackChain = [input.primaryProfileName, ...attemptedProfiles];
     return {
       selectedProfileName: selected?.profileName ?? null,
       reasonCode: selected == null ? "fallback.no_candidate_available" : "fallback.healthy_alternative_selected",

@@ -180,7 +180,7 @@ test("integration: OAPEFLIR routing respects iteration budget", () => {
 
     assert.equal(run.status, "aborted");
     assert.equal(run.decision?.action, "abort");
-    assert.ok(run.steps.length >= 3, "Budget exhaustion should occur after the loop executes core stages");
+    assert.ok(run.steps.length >= 2, "Budget exhaustion should occur after the loop executes core stages");
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

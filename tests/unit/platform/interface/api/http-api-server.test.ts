@@ -1581,7 +1581,7 @@ test("inject responses include API version headers", async () => {
       url: "/healthz",
     });
 
-    assert.equal(response.headers["x-api-version"], "v1");
+    assert.equal(response.headers["x-api-version"], "2026-04-01");
     assert.equal(response.headers["x-app-version"], "0.1.0");
     assert.ok(typeof response.headers["content-length"] === "string");
   } finally {
@@ -1603,7 +1603,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers["content-encoding"], "gzip");
-    assert.equal(response.headers["x-api-version"], "v1");
+    assert.equal(response.headers["x-api-version"], "2026-04-01");
     assert.ok(String(response.headers["content-type"]).startsWith("application/json"));
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);

@@ -33,7 +33,7 @@ test("client SDK: buildApiUrl constructs versioned API URL with query parameters
   };
 
   const url = buildApiUrl(config, request);
-  assert.equal(url, "https://api.example.com/v1/tasks?status=pending&limit=10&tenantId=tenant-123");
+  assert.equal(url, "https://api.example.com/api/v1/tasks?status=pending&limit=10&tenantId=tenant-123");
 });
 
 test("client SDK: buildApiUrl strips trailing slashes from baseUrl and apiVersion", () => {
@@ -44,7 +44,7 @@ test("client SDK: buildApiUrl strips trailing slashes from baseUrl and apiVersio
   };
 
   const url = buildApiUrl(config, { path: "/tasks" });
-  assert.equal(url, "https://api.example.com/v1/tasks?tenantId=tenant-abc");
+  assert.equal(url, "https://api.example.com/api/v1/tasks?tenantId=tenant-abc");
 });
 
 test("client SDK: buildApiUrl omits tenantId when not provided", () => {
@@ -54,7 +54,7 @@ test("client SDK: buildApiUrl omits tenantId when not provided", () => {
   };
 
   const url = buildApiUrl(config, { path: "/tasks" });
-  assert.equal(url, "https://api.example.com/v1/tasks");
+  assert.equal(url, "https://api.example.com/api/v1/tasks");
   assert.ok(!url.includes("tenantId"));
 });
 
@@ -113,6 +113,7 @@ test("client SDK: createApiClient creates a client instance", () => {
     bearerToken: "test-token",
     timeoutMs: 5000,
     maxRetries: 3,
+    principal: { subject: "sdk-test" },
   });
 
   assert.ok(client instanceof RetryableApiClient);

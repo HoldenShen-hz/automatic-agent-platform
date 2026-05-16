@@ -100,6 +100,10 @@ export class ChannelGatewayDeliveryService {
     if (this._deliverySchemaInitialized) {
       return;
     }
+    if (typeof this.db.connection.exec !== "function") {
+      this._deliverySchemaInitialized = true;
+      return;
+    }
     this.db.connection.exec(CHANNEL_DELIVERY_DDL);
     this._deliverySchemaInitialized = true;
   }

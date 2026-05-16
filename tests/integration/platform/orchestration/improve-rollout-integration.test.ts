@@ -108,7 +108,7 @@ test("PolicyRolloutService.promote progresses through canary stages with good me
     // Start at suggest
     let record = service.start(candidate, sv);
     assert.ok(record);
-    assert.equal(record.status, "pending_approval");
+    assert.equal(record.status, "evaluation_enabled");
 
     // Shadow requires no metrics
     record = service.promote(candidate, record, "shadow", undefined, "admin");
@@ -468,7 +468,7 @@ test("Full rollout lifecycle: propose to stable", () => {
 
     // Start
     let record = service.start(candidate, sv);
-    assert.equal(record?.status, "pending_approval");
+    assert.equal(record?.status, "evaluation_enabled");
 
     // Progress through all stages with good metrics
     record = service.promote(candidate, record, "shadow", undefined, "admin");

@@ -71,8 +71,8 @@ test("OAPEFLIR loop runs full observe->assess->plan->execute pipeline with all s
     const stages = result.timeline.map((entry) => entry.stage);
     assert.deepEqual(
       stages,
-      ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"],
-      "Should complete all OAPEFLIR stages in order",
+      ["observe", "assess", "plan", "execute", "feedback", "plan", "execute", "feedback", "learn", "improve", "release"],
+      "Should complete the repair-aware OAPEFLIR stages in order",
     );
 
     // Observation should contain task and system situations
@@ -135,7 +135,7 @@ test("OAPEFLIR loop closes shadow loop for repairable execution", async () => {
     assert.equal(result.qualityGate.releaseStage, "repair");
     assert.equal(result.replanDecision.shouldReplan, true);
     assert.equal(result.learningSignals.length >= 1, true);
-    assert.equal(result.rolloutRecord?.level, "shadow");
+    assert.equal(result.rolloutRecord, null);
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

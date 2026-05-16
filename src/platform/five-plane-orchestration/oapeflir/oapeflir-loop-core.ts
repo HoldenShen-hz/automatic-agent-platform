@@ -483,8 +483,13 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         // such as approval/block must return to the caller instead of spinning back
         // into a fresh plan cycle with the same feedback.
         if (!loopReplanDecision.shouldReplan) {
-          loopReplanDecisionFinal = loopReplanDecisionFinal ?? loopReplanDecision;
-          loopQualityGateFinal = loopQualityGateFinal ?? loopQualityGate;
+          const preserveRepairDecision =
+            loopQualityGate.releaseStage === "repair"
+            && loopReplanDecisionFinal?.shouldReplan === true;
+          if (!preserveRepairDecision) {
+            loopReplanDecisionFinal = loopReplanDecision;
+          }
+          loopQualityGateFinal = loopQualityGate;
           break;
         }
         loopReplanDecisionFinal = loopReplanDecision;
@@ -828,6 +833,14 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         this.emitStageEvent("harness_decide", input.taskId, { status: "completed", action: harnessDecision.action });
       }
 
+      const finalQualityGate = loopQualityGateFinal ?? loopQualityGate;
+      const latestReplanDecision = loopReplanDecisionFinal ?? loopReplanDecision;
+      const finalReplanDecision = finalQualityGate.releaseStage === "repair"
+        && loopReplanDecisionFinal?.shouldReplan === true
+        && latestReplanDecision.shouldReplan === false
+        ? loopReplanDecisionFinal
+        : latestReplanDecision;
+
       return {
         observation: taskObservation,
         assessment: validatedAssessment,
@@ -845,8 +858,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           confidence: loopEvaluationReport.confidence ?? 0.5,
         },
         evaluationReport: loopEvaluationReport,
-        qualityGate: loopQualityGateFinal ?? loopQualityGate,
-        replanDecision: loopReplanDecisionFinal ?? loopReplanDecision,
+        qualityGate: finalQualityGate,
+        replanDecision: finalReplanDecision,
         graphPatch: loopGraphPatch,
         harnessDecision,
       };

@@ -93,11 +93,11 @@ test("ExperienceDistillationService.distill sets validatedBy to none", () => {
   assert.equal(results[0].validatedBy, "none");
 });
 
-test("ExperienceDistillationService.distill sets promotionStatus to draft", () => {
+test("ExperienceDistillationService.distill sets promotionStatus to quarantine", () => {
   const service = new ExperienceDistillationService();
   const results = service.distill([makeSignal()]);
 
-  assert.equal(results[0].promotionStatus, "draft");
+  assert.equal(results[0].promotionStatus, "quarantine");
 });
 
 test("ExperienceDistillationService.distill uses generatedAt for createdAt", () => {

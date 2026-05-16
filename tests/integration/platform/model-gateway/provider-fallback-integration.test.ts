@@ -44,7 +44,7 @@ test("ProviderFallback: selects cheapest healthy candidate", () => {
 
   assert.equal(decision.selectedProfileName, "cheap-model");
   assert.equal(decision.reasonCode, "fallback.healthy_alternative_selected");
-  assert.deepEqual(decision.attemptedProfiles, ["premium-model", "mid-model", "cheap-model"]);
+  assert.deepEqual(decision.attemptedProfiles, ["cheap-model", "mid-model"]);
   assert.equal(decision.degradedFromProfileName, "premium-model");
 });
 
@@ -157,8 +157,7 @@ test("ProviderFallback: excluded profiles are not selected", () => {
   // model-c is excluded, so model-b is selected (cheapest remaining after excluding primary and model-c)
   // model-a is primary so excluded, leaving model-b as only eligible candidate
   assert.equal(decision.selectedProfileName, "model-b");
-  // attemptedProfiles includes all candidates (exclusions are for selection, not reporting)
-  assert.ok(decision.attemptedProfiles.includes("model-c"));
+  assert.deepEqual(decision.attemptedProfiles, ["model-b"]);
 });
 
 test("ProviderFallback: prefers cheaper candidate even if slower tier", () => {
@@ -220,7 +219,7 @@ test("ProviderFallback: attemptedProfiles includes all candidates", () => {
     candidates,
   });
 
-  assert.deepEqual(decision.attemptedProfiles, ["model-1", "model-2", "model-3"]);
+  assert.deepEqual(decision.attemptedProfiles, ["model-2", "model-3"]);
 });
 
 test("ProviderFallback: all profiles unhealthy returns no candidate", () => {

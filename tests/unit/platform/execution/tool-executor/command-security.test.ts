@@ -288,10 +288,10 @@ test("CommandSafetyClassifier allows interpreter with only script path", () => {
   assert.equal(result.riskLevel, "high");
 });
 
-test("CommandSafetyClassifier allows shell-safe glob arguments", () => {
+test("CommandSafetyClassifier blocks glob arguments that could expand to arbitrary paths", () => {
   const result = CLASSIFIER.assess("ls", ["*.ts"]);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, null);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "tool.command_glob_path_denied");
 });
 
 test("createDefaultCommandPolicies includes a single write-aware touch and mkdir policy", () => {

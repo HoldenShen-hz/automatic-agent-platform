@@ -86,14 +86,14 @@ test("FallbackService integration: Complex multi-candidate fallback selection", 
     maxInputCostPer1kUsd: 20.0,
   });
 
-  // Should select reasoning tier, highest priority
-  assert.equal(result.selectedProfileName, "gpt4");
+  // Current fallback policy prefers the lowest-cost healthy alternative.
+  assert.equal(result.selectedProfileName, "minimax");
   assert.ok(result.reasonCode.startsWith("fallback.healthy_alternative_selected"));
   assert.equal(result.degradedFromProfileName, "primary");
 
-  // Verify fallback chain includes primary and all healthy candidates
+  // Verify fallback chain includes primary and healthy candidates in selection order.
   assert.ok(result.fallbackChain.includes("primary"));
-  assert.ok(result.fallbackChain.includes("gpt4"));
+  assert.ok(result.fallbackChain.includes("minimax"));
   assert.ok(!result.fallbackChain.includes("unhealthy-model"));
 });
 

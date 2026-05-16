@@ -238,6 +238,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readRequestBody(ctx.request.body));
         const tenantId = principal.tenantId ?? null;
+        const effectiveTenantId = tenantId ?? `tenant:${principal.actorId}`;
         const missionResolution = resolveMissionForTask({
           repository: deps.missionRepository ?? null,
           payload,
@@ -251,33 +252,81 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
         // R6-16 FIX: Route through intake pipeline when available per §5.3
         if (deps.intakeAdmissionService) {
+          if (!deps.taskStore) {
+            throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+          }
+          const taskId = newId("task");
+          const now = nowIso();
           // Use canonical intake pipeline for proper task admission
           const result = deps.intakeAdmissionService.admit({
-            tenantId: tenantId ?? "",
-            principal: { principalId: principal.actorId, type: "human", tenantId: tenantId ?? "", roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
+            tenantId: effectiveTenantId,
+            principal: { principalId: principal.actorId, type: "human", tenantId: effectiveTenantId, roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
             source: (payload.source ?? "ui") as TaskInputSource,
             domainId: payload.divisionId ?? "",
             goal: payload.title,
             inputs: payload.inputJson ?? "{}",
             riskPreview: { riskClass: "low" as const, reasons: [] },
-            constraintPackRef: "",
-            budgetIntent: { amount: 0, currency: "USD", resourceKinds: [] },
-            idempotencyKey: `task:${newId("idempotency")}`,
-            traceId: ctx.requestId,
+            constraintPackRef: "policy://default",
+            budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] },
+            idempotencyKey: ctx.request.headers["idempotency-key"] ?? `task:${newId("idempotency")}`,
+            traceId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
           });
 
-          const taskId = result.harnessRun.confirmedTaskSpecId;
+          deps.taskStore.task.insertTask({
+            id: taskId,
+            parentId: payload.parentId ?? null,
+            rootId: taskId,
+            divisionId: payload.divisionId ?? null,
+            tenantId: effectiveTenantId,
+            title: payload.title,
+            status: "queued",
+            source: payload.source ?? "user",
+            priority: payload.priority ?? "normal",
+            inputJson: payload.inputJson ?? "{}",
+            normalizedInputJson: payload.inputJson ?? "{}",
+            outputJson: null,
+            estimatedCostUsd: null,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          });
+          for (const event of result.events) {
+            deps.taskStore.event.insertEvent({
+              id: event.eventId,
+              taskId,
+              sessionId: null,
+              executionId: null,
+              eventType: event.eventType,
+              eventTier: "tier_2",
+              payloadJson: JSON.stringify(event.payload),
+              traceId: ctx.request.headers["x-correlation-id"] ?? event.traceId,
+              createdAt: event.occurredAt,
+              schemaVersion: String(event.schemaVersion),
+              aggregateId: event.aggregateId,
+              runId: event.runId,
+              sequence: event.aggregateSeq,
+              causationId: event.causationId ?? null,
+              correlationId: ctx.request.headers["x-correlation-id"] ?? event.correlationId,
+              payloadHash: event.payloadHash,
+              idempotencyKey: event.eventId,
+              replayBehavior: event.replayBehavior,
+              principal: event.source,
+              evidenceRefs: [],
+            });
+          }
           bindMissionSnapshotForTask({
             repository: deps.missionRepository ?? null,
             missionId: missionResolution?.missionId ?? null,
             taskId,
-            confirmedTaskSpecId: result.harnessRun.confirmedTaskSpecId,
+            confirmedTaskSpecId: result.confirmedTaskSpec.confirmedTaskSpecId,
             runtimeConstraints: missionResolution?.effectiveConstraintsPreview,
             actorId: principal.actorId,
             traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
             correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
           });
-          const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
+          const cockpit = deps.missionControlService.getTaskCockpit(taskId, effectiveTenantId);
           return buildJsonResponse(ctx.requestId, 201, cockpit);
         }
 

@@ -111,8 +111,10 @@ test("RecoveryController integration: tool_timeout triggers recovery then resume
   const run = createRun();
   const result = controller.handleFailure(run, "tool_timeout");
 
-  assert.equal(result.status, "running");
-  assert.equal(result.pauseReason, null);
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.recoveryCheckpoint != null);
+  assert.ok(result.sleepLease != null);
 });
 
 test("RecoveryController integration: worker_crash triggers recovery checkpoint", () => {
@@ -164,7 +166,10 @@ test("RecoveryController integration: platform_panic triggers recovery and resum
   const run = createRun();
   const result = controller.handleFailure(run, "platform_panic");
 
-  assert.equal(result.status, "running");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
+  assert.ok(result.recoveryCheckpoint != null);
+  assert.equal(result.sleepLease, null);
 });
 
 test("RecoveryController integration: recovers from persisted checkpoint", () => {

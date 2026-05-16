@@ -157,7 +157,7 @@ test("ModelGateway: Fallback service selects cheapest healthy candidate", () => 
 
   assert.equal(decision.selectedProfileName, "fast-model");
   assert.equal(decision.reasonCode, "fallback.healthy_alternative_selected");
-  assert.ok(decision.attemptedProfiles.includes("premium-model"));
+  assert.deepEqual(decision.attemptedProfiles, ["fast-model", "balanced-model"]);
 });
 
 test("ModelGateway: Fallback service returns no candidate when none healthy", () => {

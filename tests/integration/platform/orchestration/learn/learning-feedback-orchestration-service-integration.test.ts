@@ -228,12 +228,12 @@ test("LearningFeedbackOrchestrationService.process handles various learning type
 
     const result = service.process(input);
 
-    assert.ok(result.learningObjects.length >= 5);
-    assert.ok(result.learningTypeCounts["failure_pattern"] >= 1);
+    assert.ok(result.learningObjects.length >= 4);
+    assert.ok(result.learningTypeCounts["failure_pattern"] >= 2);
     assert.ok(result.learningTypeCounts["user_correction"] >= 1);
     assert.ok(result.learningTypeCounts["recovery_playbook"] >= 1);
-    assert.ok(result.learningTypeCounts["model_retraining"] >= 1);
-    assert.ok(result.learningTypeCounts["dataset_gap"] >= 1);
+    assert.equal(result.learningTypeCounts["model_retraining"], 0);
+    assert.equal(result.learningTypeCounts["dataset_gap"], 0);
   } finally {
     ctx.cleanup();
   }

@@ -484,7 +484,7 @@ test("Provider switching: Successful execution resets failure counters", async (
     await breaker.execute(async () => "success");
     metrics = breaker.getMetrics();
     assert.equal(metrics.consecutiveFailures, 0);
-    assert.ok(metrics.consecutiveSuccesses >= 1);
+    assert.ok(metrics.successes >= 1);
   } finally {
     mock.timers.reset();
   }

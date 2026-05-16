@@ -103,84 +103,82 @@ export class StageTransitionFSM {
   public canTransitionTo(targetStage: OapeflirStage): StageTransitionResult {
     const targetIndex = STAGE_ORDER.indexOf(targetStage);
     if (targetIndex < 0) {
-      return {
-        allowed: false,
-        targetStage,
-        reasonCode: "fsm.invalid_stage",
-        reasonCodes: [`fsm.invalid_stage: ${targetStage}`],
-      };
+      return this.buildResult(false, targetStage, "fsm.invalid_stage", [`fsm.invalid_stage: ${targetStage}`]);
     }
 
-    const validPredecessors = VALID_PREDECESSORS.get(targetStage) ?? [];
     const currentStage = this.getCurrentStage();
     const currentIndex = STAGE_ORDER.indexOf(currentStage);
+    const validPredecessors = VALID_PREDECESSORS.get(targetStage) ?? [];
+
+    if (this.isComplete()) {
+      if (targetStage === STAGE_ORDER[STAGE_ORDER.length - 1]) {
+        return this.buildResult(true, targetStage, "fsm.same_stage", [
+          "fsm.same_stage",
+          `fsm.same_stage: ${targetStage}`,
+        ]);
+      }
+      return this.buildResult(false, targetStage, "fsm.complete", [
+        `fsm.complete: pipeline completed at ${currentStage}`,
+      ]);
+    }
 
     if (targetIndex > currentIndex + 1) {
-      return {
-        allowed: false,
-        targetStage,
-        reasonCode: "fsm.skip_not_allowed",
-        reasonCodes: [`fsm.skip_not_allowed: cannot skip from ${currentStage} to ${targetStage}`],
-      };
+      return this.buildResult(false, targetStage, "fsm.skip_not_allowed", [
+        `fsm.skip_not_allowed: cannot skip from ${currentStage} to ${targetStage}`,
+      ]);
     }
 
     if (targetIndex < currentIndex) {
       const feedbackCompleted = this.stageStatuses.get("feedback") === "completed";
       if (feedbackCompleted && FEEDBACK_REENTRY_TARGETS.includes(targetStage)) {
-        return {
-          allowed: true,
-          targetStage,
-          reasonCode: "fsm.feedback_driven_replan",
-          reasonCodes: [`fsm.feedback_driven_replan: ${currentStage} → ${targetStage}`],
-        };
+        return this.buildResult(true, targetStage, "fsm.feedback_driven_replan", [
+          `fsm.feedback_driven_replan: ${currentStage} → ${targetStage}`,
+        ]);
       }
-      return {
-        allowed: false,
-        targetStage,
-        reasonCode: "fsm.backward_not_allowed",
-        reasonCodes: [`fsm.backward_not_allowed: cannot go back from ${currentStage} to ${targetStage}`],
-      };
+      return this.buildResult(false, targetStage, "fsm.backward_not_allowed", [
+        `fsm.backward_not_allowed: cannot go back from ${currentStage} to ${targetStage}`,
+      ]);
     }
 
     if (targetIndex === currentIndex) {
-      return {
-        allowed: true,
-        targetStage,
-        reasonCode: "fsm.same_stage",
-        reasonCodes: ["fsm.same_stage"],
-      };
+      const currentStatus = this.stageStatuses.get(targetStage) ?? "pending";
+      if (targetStage === "observe" && currentStatus === "pending" && this.stageTimestamps.size === 0) {
+        return this.buildResult(true, targetStage, "fsm.same_stage", [
+          "fsm.same_stage",
+          `fsm.same_stage: ${targetStage}`,
+        ]);
+      }
+      if (currentStatus === "completed" || currentStatus === "skipped") {
+        return this.buildResult(true, targetStage, "fsm.same_stage", [
+          "fsm.same_stage",
+          `fsm.same_stage: ${targetStage}`,
+        ]);
+      }
+      const prerequisiteFailure = this.getPrerequisiteFailure(targetStage, validPredecessors);
+      if (prerequisiteFailure != null) {
+        return prerequisiteFailure;
+      }
+      return this.buildResult(true, targetStage, "fsm.transition_allowed", [
+        `fsm.transition_allowed: ${currentStage} → ${targetStage}`,
+        `fsm.stage_ready: ${targetStage}`,
+      ]);
     }
 
     if (validPredecessors.length > 0 && !validPredecessors.includes(currentStage)) {
-      return {
-        allowed: false,
-        targetStage,
-        reasonCode: "fsm.invalid_predecessor",
-        reasonCodes: [`fsm.invalid_predecessor: ${currentStage} is not a valid predecessor for ${targetStage}`],
-      };
+      return this.buildResult(false, targetStage, "fsm.invalid_predecessor", [
+        `fsm.invalid_predecessor: ${currentStage} is not a valid predecessor for ${targetStage}`,
+      ]);
     }
 
-    const entryCondition = STAGE_ENTRY_CONDITIONS.get(targetStage);
-    if (entryCondition?.validationRequired) {
-      for (const pred of validPredecessors) {
-        const predStatus = this.stageStatuses.get(pred);
-        if (predStatus && !entryCondition.requiredStatus.includes(predStatus)) {
-          return {
-            allowed: false,
-            targetStage,
-            reasonCode: "fsm.prerequisite_not_met",
-            reasonCodes: [`fsm.prerequisite_not_met: ${pred} must be ${entryCondition.requiredStatus.join(" or ")} but was ${predStatus}`],
-          };
-        }
-      }
+    const prerequisiteFailure = this.getPrerequisiteFailure(targetStage, validPredecessors);
+    if (prerequisiteFailure != null) {
+      return prerequisiteFailure;
     }
 
-    return {
-      allowed: true,
-      targetStage,
-      reasonCode: "fsm.transition_allowed",
-      reasonCodes: [`fsm.transition_allowed: ${currentStage} → ${targetStage}`],
-    };
+    return this.buildResult(true, targetStage, "fsm.transition_allowed", [
+      `fsm.transition_allowed: ${currentStage} → ${targetStage}`,
+      `fsm.stage_ready: ${targetStage}`,
+    ]);
   }
 
   public recordStageEntry(stage: OapeflirStage, status: StageStatus = "pending"): void {
@@ -273,6 +271,39 @@ export class StageTransitionFSM {
         this.skippedReasonCodes.delete(s);
       }
     }
+  }
+
+  private getPrerequisiteFailure(
+    targetStage: OapeflirStage,
+    validPredecessors: readonly OapeflirStage[],
+  ): StageTransitionResult | null {
+    const entryCondition = STAGE_ENTRY_CONDITIONS.get(targetStage);
+    if (!entryCondition?.validationRequired) {
+      return null;
+    }
+    for (const pred of validPredecessors) {
+      const predStatus = this.stageStatuses.get(pred) ?? "pending";
+      if (!entryCondition.requiredStatus.includes(predStatus)) {
+        return this.buildResult(false, targetStage, "fsm.prerequisite_not_met", [
+          `fsm.prerequisite_not_met: ${pred} must be ${entryCondition.requiredStatus.join(" or ")} but was ${predStatus}`,
+        ]);
+      }
+    }
+    return null;
+  }
+
+  private buildResult(
+    allowed: boolean,
+    targetStage: OapeflirStage,
+    reasonCode: string,
+    detailCodes: string[],
+  ): StageTransitionResult {
+    return {
+      allowed,
+      targetStage,
+      reasonCode,
+      reasonCodes: [reasonCode, ...detailCodes],
+    };
   }
 }
 

@@ -468,21 +468,22 @@ test("parseUpdateTaskPayload accepts minimal payload with only title", () => {
 test("parseUpdateTaskPayload accepts full valid payload", () => {
   const payload = parseUpdateTaskPayload({
     title: "Updated Task",
-    status: "running",
+    status: "executing",
     priority: "urgent",
     outputJson: '{"result": "done"}',
   });
   assert.equal(payload.title, "Updated Task");
-  assert.equal(payload.status, "running");
+  assert.equal(payload.status, "executing");
   assert.equal(payload.priority, "urgent");
   assert.equal(payload.outputJson, '{"result": "done"}');
 });
 
 test("parseUpdateTaskPayload accepts all valid status values", () => {
   const statuses = [
-    "created", "admitted", "planning", "ready", "running",
-    "pausing", "paused", "resuming", "replanning", "compensating",
-    "completed", "failed", "aborted"
+    "queued", "pending", "in_progress", "awaiting_decision", "done",
+    "failed", "cancelled", "prechecking", "ready", "dispatching",
+    "executing", "blocked", "paused", "resuming", "recovering",
+    "timed_out", "superseded",
   ] as const;
   for (const status of statuses) {
     const payload = parseUpdateTaskPayload({ status });

@@ -137,7 +137,7 @@ test("resolveHitlReview with rejected aborts the run", () => {
     assert.equal(run.pauseReason, "hitl");
     const rejected = service.resolveHitlReview(run, "rejected", "security_admin");
 
-    assert.equal(rejected.status, "aborted");
+    assert.equal(rejected.status, "cancelled");
     assert.equal(rejected.hitlRequest?.status, "rejected");
     assert.equal(rejected.hitlRequest?.resolvedBy, "security_admin");
     assert.ok(rejected.hitlRequest?.resolvedAt);
@@ -300,8 +300,7 @@ test("HITL with blocked tools returns abort instead of paused hitl", () => {
   try {
     const service = new HarnessRuntimeService();
 
-    assert.throws(
-      () => service.runLoop({
+    const run = service.runLoop({
         taskId: "task-hitl-blocked-001",
         domainId: "security",
         constraintPack: createConstraintPack({
@@ -316,9 +315,12 @@ test("HITL with blocked tools returns abort instead of paused hitl", () => {
         requiresHuman: true,
         requestedTools: ["delete"],
         producedEvidenceRefs: ["security_scan", "code_review"],
-      }),
-      /harness\.invariant_violation:harness\.invariant\.blocked_tool_requested/,
-    );
+      });
+
+    assert.equal(run.status, "aborted");
+    assert.equal(run.pauseReason, null);
+    assert.equal(run.decision?.action, "abort");
+    assert.ok(service.assertInvariants(run).violations.some((violation) => violation.includes("blocked_tool_requested")));
   } finally {
     ctx.cleanup();
   }

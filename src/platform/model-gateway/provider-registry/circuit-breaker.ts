@@ -151,15 +151,17 @@ export class CircuitBreaker {
     this.pruneSuccessTimestamps(now);
     this.successes++;
     this.consecutiveFailures = 0;
-    this.consecutiveSuccesses++;
 
     if (this.state === "half_open") {
+      this.consecutiveSuccesses++;
       if (this.halfOpenInFlight > 0) {
         this.halfOpenInFlight--;
       }
       if (this.consecutiveSuccesses >= this.halfOpenSuccessThreshold) {
         this.transitionTo("closed");
       }
+    } else {
+      this.consecutiveSuccesses = 0;
     }
 
     logger.log({

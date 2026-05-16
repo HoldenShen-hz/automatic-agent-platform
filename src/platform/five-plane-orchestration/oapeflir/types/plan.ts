@@ -20,6 +20,7 @@ export const PlanStepSchema = z.object({
   title: z.string().optional(),
   inputs: z.record(z.string(), z.unknown()).default({}),
   outputs: z.array(z.string()).optional(),
+  outputSchemaPath: z.string().min(1).nullable().optional(),
   dependencies: z.array(z.string()).default([]),
   status: PlanStepStatusSchema.default("pending"),
   timeout: z.number().int().positive(),

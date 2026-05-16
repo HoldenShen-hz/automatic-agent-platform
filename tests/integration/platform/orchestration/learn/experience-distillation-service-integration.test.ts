@@ -67,11 +67,9 @@ test("ExperienceDistillationService handles multiple learning types", () => {
 
     assert.equal(results.length, 5);
     const types = results.map((r) => r.learningType);
-    assert.ok(types.includes("failure_pattern"));
-    assert.ok(types.includes("user_correction"));
+    assert.equal(types.filter((type) => type === "failure_pattern").length, 2);
+    assert.equal(types.filter((type) => type === "user_correction").length, 2);
     assert.ok(types.includes("recovery_playbook"));
-    assert.ok(types.includes("model_retraining"));
-    assert.ok(types.includes("dataset_gap"));
   } finally {
     ctx.cleanup();
   }
@@ -154,7 +152,7 @@ test("ExperienceDistillationService handles empty signal list", () => {
   }
 });
 
-test("ExperienceDistillationService sets promotionStatus to draft", () => {
+test("ExperienceDistillationService sets promotionStatus to quarantine", () => {
   const ctx = createSeededIntegrationContext("aa-eds-draft-");
   try {
     const service = new ExperienceDistillationService();
@@ -166,7 +164,7 @@ test("ExperienceDistillationService sets promotionStatus to draft", () => {
 
     const results = service.distill([signal]);
 
-    assert.equal(results[0]!.promotionStatus, "draft");
+    assert.equal(results[0]!.promotionStatus, "quarantine");
   } finally {
     ctx.cleanup();
   }

@@ -95,10 +95,9 @@ test("IntakeAdmissionService integration: critical risk requires confirmationRec
     idempotencyKey: "intake-critical-risk-int-001",
   });
 
-  // Policy denies critical risk without admin/pre_approved, so throws policy_denied
   assert.throws(
     () => service.admit(input),
-    /admission.policy_denied/,
+    /admission.confirmation_required/,
   );
 });
 

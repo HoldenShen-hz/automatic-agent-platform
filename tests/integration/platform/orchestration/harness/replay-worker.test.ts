@@ -71,18 +71,16 @@ test("ReplayWorker integration: async listTaskIds support", async () => {
 });
 
 test("ReplayWorker integration: trace_only mode blocks real side effects", async () => {
-  const worker = new ReplayWorker({
-    replayService: createMockReplayService({}),
-    listTaskIds: () => ["task-real-effect"],
-    cadence: { intervalMs: 300_000 },
-    replayPolicy: { mode: "trace_only", allowRealSideEffects: true }, // Should block
-  });
-
-  const report = await worker.runRecoveryCycle();
-
-  assert.equal(report.itemsProcessed, 0);
-  assert.ok(report.errors.length > 0);
-  assert.ok(report.metadata?.boundaryBlocked === true);
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService({}),
+        listTaskIds: () => ["task-real-effect"],
+        cadence: { intervalMs: 300_000 },
+        replayPolicy: { mode: "trace_only", allowRealSideEffects: true },
+      }),
+    /allow real side effects/i,
+  );
 });
 
 test("ReplayWorker integration: isolated_sandbox mode with valid sandboxId", async () => {
@@ -101,18 +99,16 @@ test("ReplayWorker integration: isolated_sandbox mode with valid sandboxId", asy
 });
 
 test("ReplayWorker integration: isolated_sandbox without sandboxId fails", async () => {
-  const worker = new ReplayWorker({
-    replayService: createMockReplayService({}),
-    listTaskIds: () => ["task-sandbox"],
-    cadence: { intervalMs: 300_000 },
-    replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
-  });
-
-  const report = await worker.runRecoveryCycle();
-
-  assert.equal(report.itemsProcessed, 0);
-  assert.ok(report.errors.length > 0);
-  assert.ok(report.errors[0].message.includes("sandboxId"));
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService({}),
+        listTaskIds: () => ["task-sandbox"],
+        cadence: { intervalMs: 300_000 },
+        replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
+      }),
+    /sandboxId/i,
+  );
 });
 
 test("ReplayWorker integration: replay service error handling", async () => {

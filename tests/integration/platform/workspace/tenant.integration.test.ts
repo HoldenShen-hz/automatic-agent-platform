@@ -421,7 +421,7 @@ test("integration: cross-tenant access assertion throws", () => {
         sourceTenantId: "tenant_x",
         targetTenantId: "tenant_y",
       }),
-    /cross_tenant_denied/,
+    /Cross-tenant access is denied by default\./,
   );
 
   assert.doesNotThrow(() =>

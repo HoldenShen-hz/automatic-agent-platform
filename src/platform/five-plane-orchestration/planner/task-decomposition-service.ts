@@ -14,7 +14,7 @@ export class TaskDecompositionService {
       dependsOn: [...step.dependsOnStepIds],
       ownerRoleId: step.roleId,
       toolNames: [
-        "read",
+        ...(step.dependsOnStepIds.length > 0 ? ["read"] : []),
         ...(step.compensationModel != null ? ["apply_patch"] : []),
         ...(step.outputSchemaPath != null ? ["validate_output"] : []),
       ],

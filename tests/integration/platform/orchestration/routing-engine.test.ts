@@ -209,7 +209,7 @@ test("RoutingEngine AgentTeamService builds team plan from workflow", () => {
     assert.equal(teamPlan.workflowId, "single_division_multi_step_orchestration");
     assert.equal(teamPlan.riskLevel, "medium");
     assert.ok(teamPlan.lanes.length > 0, "Should have lanes");
-    assert.deepEqual(teamPlan.executionLoop, ["plan", "build", "review", "validate", "repair", "validate", "release"]);
+    assert.deepEqual(teamPlan.executionLoop, ["plan", "build", "review", "validate", "release"]);
   } finally {
     ctx.cleanup();
   }

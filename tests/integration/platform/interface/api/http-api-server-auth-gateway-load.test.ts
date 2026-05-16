@@ -147,6 +147,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       url: "/v1/auth/token",
       headers: {
         "x-api-key": "operator-key",
+        "idempotency-key": "auth-token-operator-1",
       },
     });
     assert.equal(operatorToken.statusCode, 200);
@@ -169,6 +170,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       headers: {
         authorization: `Bearer ${operatorBearer}`,
         "content-type": "application/json",
+        "idempotency-key": "gateway-delivery-1",
       },
       body: JSON.stringify({
         targetId: gatewayTarget.targetId,
@@ -201,6 +203,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       headers: {
         authorization: `Bearer ${operatorBearer}`,
         "content-type": "application/json",
+        "idempotency-key": "gateway-delivery-2",
       },
       body: JSON.stringify({
         targetId: gatewayTarget.targetId,
@@ -217,6 +220,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       url: "/v1/auth/token",
       headers: {
         "x-api-key": "global-admin-key",
+        "idempotency-key": "auth-token-global-admin-1",
       },
     });
     assert.equal(globalAdminToken.statusCode, 200);
@@ -239,6 +243,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       url: "/v1/auth/token",
       headers: {
         "x-api-key": "tenant-admin-key",
+        "idempotency-key": "auth-token-tenant-admin-1",
       },
     });
     assert.equal(tenantAdminToken.statusCode, 200);
@@ -251,6 +256,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       headers: {
         authorization: `Bearer ${tenantAdminBearer}`,
         "content-type": "application/json",
+        "idempotency-key": "lb-select-1",
       },
       body: JSON.stringify({
         queueName: "default",
@@ -269,6 +275,7 @@ test("http api server supports api-key token exchange, gateway delivery, and con
       headers: {
         authorization: `Bearer ${tenantAdminBearer}`,
         "content-type": "application/json",
+        "idempotency-key": "lb-select-2",
       },
       body: JSON.stringify({
         queueName: "default",

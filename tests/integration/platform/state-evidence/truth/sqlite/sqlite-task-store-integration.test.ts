@@ -366,7 +366,7 @@ test("AuthoritativeTaskStore - Task CRUD: count queued tasks", () => {
       store.insertTask(createTaskRecord({ id: "task-q-1", tenantId, status: "queued" }));
       store.insertTask(createTaskRecord({ id: "task-q-2", tenantId, status: "queued" }));
       store.insertTask(createTaskRecord({ id: "task-q-3", tenantId, status: "queued" }));
-      // Insert 2 in_progress tasks (which is an active status like pending)
+      // Insert 2 in_progress tasks (active but not counted as queued/pending)
       store.insertTask(createTaskRecord({ id: "task-p-1", tenantId, status: "in_progress" }));
       store.insertTask(createTaskRecord({ id: "task-p-2", tenantId, status: "in_progress" }));
       // Insert 1 done task (should not be counted)
@@ -374,7 +374,7 @@ test("AuthoritativeTaskStore - Task CRUD: count queued tasks", () => {
     });
 
     const count = store.countQueuedTasks(tenantId);
-    assert.equal(count, 5, "Should count 5 queued/pending tasks for tenant");
+    assert.equal(count, 3, "Should count only queued/pending tasks for tenant");
   } finally {
     db.close();
   }
@@ -401,7 +401,7 @@ test("AuthoritativeTaskStore - Execution: insert and retrieve execution", () => 
     assert.ok(execution, "Execution should be retrieved");
     assert.equal(execution!.id, executionId);
     assert.equal(execution!.taskId, taskId);
-    assert.equal(execution!.status, "pending");
+    assert.equal(execution!.status, "created");
   } finally {
     db.close();
   }
@@ -505,7 +505,7 @@ test("AuthoritativeTaskStore - Execution: CAS updateExecutionStatusCas only upda
 
     // Correct expected status - should succeed
     let affected = db.transaction(() => {
-      return store.updateExecutionStatusCas(executionId, "pending", "executing", updateTime, updateTime);
+      return store.updateExecutionStatusCas(executionId, "created", "executing", updateTime, updateTime);
     });
     assert.equal(affected, 1);
 

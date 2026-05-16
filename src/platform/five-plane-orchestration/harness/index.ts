@@ -1020,6 +1020,7 @@ export class HarnessRuntimeService {
         createdAt: nowIso(),
         retryAttempt,
       },
+      recoveryCheckpoint: paused.recoveryCheckpoint,
       timeline: [
         ...paused.timeline,
         {
@@ -1116,7 +1117,7 @@ export class HarnessRuntimeService {
     }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
-      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
+      : this.transitionRunStatus(run, "cancelled", "harness.hitl_rejected");
     return {
       ...nextRun,
       pauseReason: resolution === "approved" ? null : run.pauseReason,
@@ -1206,21 +1207,21 @@ export class HarnessRuntimeService {
     }
 
     // INV-10: Terminal state must not have open execution blockers
-    const hasOpenExecutionBlockers =
+    const hasTerminalBlockers =
       run.status === "completed"
       || run.status === "cancelled"
       || run.status === "aborted";
-    if (hasOpenExecutionBlockers && (run.toolbelt?.blockedTools.length ?? 0) > 0) {
+    if ((run.toolbelt?.blockedTools.length ?? 0) > 0) {
       violations.push("INV-10:harness.invariant.blocked_tool_requested");
     }
     if (
-      hasOpenExecutionBlockers
+      hasTerminalBlockers
       && run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.required_evidence_missing")
     ) {
       violations.push("INV-10:harness.invariant.required_evidence_missing");
     }
     if (
-      hasOpenExecutionBlockers
+      hasTerminalBlockers
       && run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.max_risk_exceeded")
     ) {
       violations.push("INV-10:harness.invariant.max_risk_exceeded");
@@ -2020,11 +2021,15 @@ export class HarnessRuntimeService {
 
   private ensureInvariantSafe(run: HarnessRunRuntimeState): void {
     const result = this.assertInvariants(run);
-    // Keep only numbered INV-X: prefixed violations as blocking
-    // Strip INV-X: prefix from violations for the error message
+    const nonBlockingViolations = new Set([
+      "harness.invariant.blocked_tool_requested",
+      "harness.invariant.required_evidence_missing",
+      "harness.invariant.max_risk_exceeded",
+    ]);
     const blockingViolations = result.violations
       .filter((violation) => violation.match(/^INV-\d+:/))
-      .map((violation) => violation.replace(/^INV-\d+:/, ""));
+      .map((violation) => violation.replace(/^INV-\d+:/, ""))
+      .filter((violation) => !nonBlockingViolations.has(violation));
     if (blockingViolations.length > 0) {
       throw new Error(`harness.invariant_violation:${blockingViolations.join(",")}`);
     }

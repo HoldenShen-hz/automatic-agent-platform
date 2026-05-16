@@ -119,7 +119,7 @@ test("FailurePatternMiner produces valid LearningObjects", () => {
     assert.ok(Array.isArray(obj.sourceSignalIds));
     assert.ok(obj.recommendation.length > 0);
     assert.ok(["none", "evidence", "human_review"].includes(obj.validatedBy));
-    assert.ok(["draft", "validated", "promoted"].includes(obj.promotionStatus));
+    assert.ok(["quarantine", "validated", "promoted"].includes(obj.promotionStatus));
     assert.ok(obj.createdAt > 0);
   } finally {
     ctx.cleanup();

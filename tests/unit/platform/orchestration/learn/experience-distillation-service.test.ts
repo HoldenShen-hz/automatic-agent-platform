@@ -79,13 +79,13 @@ test("ExperienceDistillationService.distill sets validatedBy to none", () => {
   assert.equal(objects[0]!.validatedBy, "none");
 });
 
-test("ExperienceDistillationService.distill sets promotionStatus to draft", () => {
+test("ExperienceDistillationService.distill sets promotionStatus to quarantine", () => {
   const service = new ExperienceDistillationService();
   const signal = makeSignal();
 
   const objects = service.distill([signal]);
 
-  assert.equal(objects[0]!.promotionStatus, "draft");
+  assert.equal(objects[0]!.promotionStatus, "quarantine");
 });
 
 test("ExperienceDistillationService.distill uses current Date.now() for createdAt", () => {

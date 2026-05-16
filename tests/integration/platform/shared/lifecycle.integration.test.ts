@@ -85,26 +85,22 @@ test("lifecycle-integration: GracefulShutdown coordinates with ServiceRegistry",
   let cacheConnected = false;
 
   registry.register("db", {
-    init: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
+    init: () => {
       dbConnected = true;
       return { connected: true };
     },
-    teardown: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
+    teardown: () => {
       dbConnected = false;
     },
   });
 
   registry.register("cache", {
-    init: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
+    init: () => {
       cacheConnected = true;
       return { connected: true };
     },
     dependsOn: ["db"],
-    teardown: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
+    teardown: () => {
       cacheConnected = false;
     },
   });
@@ -266,9 +262,9 @@ test("lifecycle-integration: ServiceRegistry handles many services", async () =>
   // Teardown all
   await registry.teardownAll();
 
-  // Verify all still considered initialized (teardown doesn't clear state)
+  // teardownAll clears initialized instance state while keeping registrations
   for (let i = 0; i < count; i++) {
-    assert.ok(registry.isInitialized(`service-${i}`));
+    assert.ok(!registry.isInitialized(`service-${i}`));
   }
 
   await registry.reset();
