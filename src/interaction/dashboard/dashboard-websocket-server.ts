@@ -429,12 +429,14 @@ export class DashboardWebSocketServer {
 
     const matchedIndex = visible.findIndex((delta) => delta.deltaId === lastEventId);
     if (matchedIndex === -1) {
+      const oldestVisible = visible[0];
+      const newestVisible = visible.at(-1);
       return {
         missedEvents: [],
         gapMessage: this.createMessage("stream_gap", connection.clientId, {
           lastEventId,
-          expectedOldestEventId: visible[0]!.deltaId,
-          latestEventId: visible[visible.length - 1]!.deltaId,
+          expectedOldestEventId: oldestVisible?.deltaId ?? null,
+          latestEventId: newestVisible?.deltaId ?? null,
           reasonCode: "stream.last_event_id_not_replayable",
           recoveryAction: "resync_from_snapshot",
         }),

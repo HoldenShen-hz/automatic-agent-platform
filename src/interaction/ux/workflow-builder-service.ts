@@ -439,7 +439,17 @@ function analyzeWorstPath(
     }
   }
 
-  const terminalNode = [...scores.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? planNodes[0]!.nodeId;
+  const firstPlanNode = planNodes[0];
+  const terminalNode = [...scores.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? firstPlanNode?.nodeId ?? null;
+  if (terminalNode == null) {
+    return {
+      nodeIds: [],
+      score: 0,
+      riskClass: "low",
+      estimatedBudgetAmount: 0,
+      timeoutMs: 0,
+    };
+  }
   const nodeIds: string[] = [];
   let currentNodeId: string | null = terminalNode;
   while (currentNodeId != null) {

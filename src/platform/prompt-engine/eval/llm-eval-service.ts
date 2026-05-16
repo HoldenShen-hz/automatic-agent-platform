@@ -568,15 +568,17 @@ export class LlmEvalService {
       .prepare(`SELECT * FROM eval_runs WHERE suite_id = ? AND model_id = ? AND prompt_version = ? AND status IN ('passed', 'degraded', 'failed') ORDER BY completed_at DESC LIMIT 1`)
       .all(suiteId, modelId, previousVersion) as RawRow[];
 
-    const currentScore = currentRuns.length > 0 ? Number(currentRuns[0]!.average_score ?? 0) : 0;
-    const previousScore = previousRuns.length > 0 ? Number(previousRuns[0]!.average_score ?? 0) : 0;
+    const currentRun = currentRuns[0];
+    const previousRun = previousRuns[0];
+    const currentScore = currentRun ? Number(currentRun.average_score ?? 0) : 0;
+    const previousScore = previousRun ? Number(previousRun.average_score ?? 0) : 0;
     const delta = currentScore - previousScore;
 
     const regressedCases: string[] = [];
-    if (currentRuns.length > 0) {
+    if (currentRun) {
       const failedCases = this.db.connection
         .prepare(`SELECT case_id FROM eval_case_results WHERE run_id = ? AND passed = 0`)
-        .all(String(currentRuns[0]!.id)) as RawRow[];
+        .all(String(currentRun.id)) as RawRow[];
       for (const c of failedCases) regressedCases.push(String(c.case_id));
     }
 

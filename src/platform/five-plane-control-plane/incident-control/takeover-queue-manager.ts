@@ -202,14 +202,18 @@ export class TakeoverQueueManager {
     // If still over capacity, remove oldest entries
     if (this.pendingQueue.length > this.MAX_SESSION_ENTRIES) {
       const sortedEntries = [...this.pendingQueue.entries()].sort((a, b) => {
-        const aTime = new Date(a[1]!.enqueuedAt).getTime();
-        const bTime = new Date(b[1]!.enqueuedAt).getTime();
+        const aTime = new Date(a[1].enqueuedAt).getTime();
+        const bTime = new Date(b[1].enqueuedAt).getTime();
         return aTime - bTime;
       });
 
       const toRemove = this.pendingQueue.length - this.MAX_SESSION_ENTRIES;
       for (let i = 0; i < toRemove; i++) {
-        this.removeEntry(sortedEntries[i]![1]!.requestId);
+        const entry = sortedEntries[i];
+        if (entry == null) {
+          continue;
+        }
+        this.removeEntry(entry[1].requestId);
       }
     }
   }

@@ -680,8 +680,8 @@ export class ConfigAuditService {
       pendingApprovalCount: entries.filter(
         (e) => e.approvalRequired && e.approvalStatus === "pending",
       ).length,
-      firstEntryAt: entries.length > 0 ? entries[entries.length - 1]!.timestamp : null,
-      lastEntryAt: entries.length > 0 ? entries[0]!.timestamp : null,
+      firstEntryAt: entries.at(-1)?.timestamp ?? null,
+      lastEntryAt: entries[0]?.timestamp ?? null,
     };
   }
 

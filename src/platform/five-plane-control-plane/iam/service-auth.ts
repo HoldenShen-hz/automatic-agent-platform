@@ -116,7 +116,11 @@ function generateCertId(): string {
 }
 
 function generateSerialNumber(): string {
-  return randomBytes(16).toString("hex").toUpperCase().match(/.{2}/g)!.join(":");
+  const pairs = randomBytes(16).toString("hex").toUpperCase().match(/.{2}/g);
+  if (!pairs) {
+    throw new Error("iam.service_auth.serial_generation_failed");
+  }
+  return pairs.join(":");
 }
 
 /**

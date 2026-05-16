@@ -243,7 +243,7 @@ export class PromptVersionManager {
       this.bundleVersions.set(bundle.name, new Map());
     }
 
-    this.bundleVersions.get(bundle.name)!.set(String(bundle.version), {
+    this.bundleVersions.get(bundle.name)?.set(String(bundle.version), {
       bundle,
       createdAt: nowIso(),
     });
@@ -253,7 +253,7 @@ export class PromptVersionManager {
     while (versions.length > this.config.maxVersionsPerBundle) {
       const oldest = versions.shift();
       if (oldest) {
-        this.bundleVersions.get(bundle.name)!.delete(String(oldest));
+        this.bundleVersions.get(bundle.name)?.delete(String(oldest));
       }
     }
   }

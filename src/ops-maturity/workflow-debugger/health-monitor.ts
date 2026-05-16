@@ -158,9 +158,25 @@ export class WorkflowDebuggerHealthMonitor {
     const healthScore = this.calculateHealthScore(healthyCount, degradedCount, failedCount, windowProbes.length);
 
     // Find oldest probe in window
+    const firstWindowProbe = windowProbes[0];
+    if (!firstWindowProbe) {
+      return {
+        componentId,
+        status,
+        totalProbes: windowProbes.length,
+        healthyCount,
+        degradedCount,
+        failedCount,
+        recentFailureCount,
+        healthScore,
+        windowStart,
+        windowEnd,
+        oldestProbeInWindow: null,
+      };
+    }
     const oldestProbeInWindow = windowProbes.reduce<string>(
       (oldest, p) => (p.timestamp < oldest ? p.timestamp : oldest),
-      windowProbes[0]!.timestamp,
+      firstWindowProbe.timestamp,
     );
 
     return {

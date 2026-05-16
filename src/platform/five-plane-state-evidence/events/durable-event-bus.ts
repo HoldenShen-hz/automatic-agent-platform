@@ -143,7 +143,7 @@ export class DurableEventBus {
         if (!this.partitionSubscribers.has(partition)) {
           this.partitionSubscribers.set(partition, new Set());
         }
-        this.partitionSubscribers.get(partition)!.add(consumerId);
+        this.partitionSubscribers.get(partition)?.add(consumerId);
       }
     }
     this.ensurePolling(consumerId);

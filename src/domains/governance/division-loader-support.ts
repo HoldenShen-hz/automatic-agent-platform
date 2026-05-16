@@ -101,11 +101,16 @@ export function tokenizeYaml(raw: string): ParsedLine[] {
 export function parseLimitedYaml(raw: string, sourcePath: string): unknown {
   const lines = tokenizeYaml(raw);
   if (lines.length === 0) return {};
-  const [value, nextIndex] = parseBlock(lines, 0, lines[0]!.indent, sourcePath);
+  const firstLine = lines[0];
+  if (!firstLine) {
+    return {};
+  }
+  const [value, nextIndex] = parseBlock(lines, 0, firstLine.indent, sourcePath);
   if (nextIndex !== lines.length) {
+    const trailingLine = lines[nextIndex];
     throwDivisionValidationError("yaml.trailing_content", {
       sourcePath,
-      lineNumber: lines[nextIndex]!.lineNumber,
+      lineNumber: trailingLine?.lineNumber ?? firstLine.lineNumber,
     });
   }
   return value;

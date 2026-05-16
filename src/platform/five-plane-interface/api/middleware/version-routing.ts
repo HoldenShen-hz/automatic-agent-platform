@@ -118,7 +118,7 @@ export class VersionRoutingMiddleware {
     }
 
     // Check if any requested version is below minimum
-    const firstVersion = acceptVersions[0]!.split(";")[0]!.trim();
+    const firstVersion = acceptVersions[0]?.split(";")[0]?.trim() ?? this.config.defaultVersion;
     if (this.compareVersions(firstVersion, this.config.minimumVersion) < 0) {
       return {
         acceptable: false,

@@ -83,7 +83,11 @@ export function buildDecisionTree(
   for (const link of causalLinks) {
     const sourceId = `causal-${link.source}`;
     const targetId = `causal-${link.target}`;
-    nodeDefs.get(sourceId)!.children.push(nodeDefs.get(targetId)!.node);
+    const sourceNode = nodeDefs.get(sourceId);
+    const targetNode = nodeDefs.get(targetId);
+    if (sourceNode && targetNode) {
+      sourceNode.children.push(targetNode.node);
+    }
   }
 
   // Add evidence nodes as children of root

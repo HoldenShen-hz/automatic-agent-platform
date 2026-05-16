@@ -82,10 +82,13 @@ export class SemverValidator {
       };
     }
 
-    const mainAndPrerelease = version.split("+")[0]!;
-    const mainParts = mainAndPrerelease.split("-")[0]!.split(".");
-    const prerelease = mainAndPrerelease.includes("-") ? mainAndPrerelease.split("-")[1]!.split(".").filter(Boolean) ?? [] : [];
-    const buildMetadata = version.includes("+") ? version.split("+")[1]!.split(".").filter(Boolean) ?? [] : [];
+    const [mainAndPrerelease = ""] = version.split("+");
+    const [mainVersion = ""] = mainAndPrerelease.split("-");
+    const mainParts = mainVersion.split(".");
+    const prereleaseSegment = mainAndPrerelease.includes("-") ? mainAndPrerelease.split("-")[1] : undefined;
+    const buildMetadataSegment = version.includes("+") ? version.split("+")[1] : undefined;
+    const prerelease = prereleaseSegment?.split(".").filter(Boolean) ?? [];
+    const buildMetadata = buildMetadataSegment?.split(".").filter(Boolean) ?? [];
 
     return {
       version: {

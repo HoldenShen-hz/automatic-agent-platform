@@ -304,7 +304,7 @@ export class PriorityScheduler {
       totalQueued: this.queue.length,
       totalRunning: this.runningTasks.size,
       byPriority: this.getQueueDepthByPriority(),
-      oldestTaskWaitMs: this.queue.length > 0 ? Date.now() - this.queue[0]!.enqueuedAt : 0,
+      oldestTaskWaitMs: this.queue[0] ? Date.now() - this.queue[0].enqueuedAt : 0,
     };
   }
 }

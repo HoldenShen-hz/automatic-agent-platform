@@ -706,7 +706,8 @@ export class StreamBridge {
       // Find index of first droppable (non-critical) frame from oldest (index 0)
       let indexToDrop = -1;
       for (let i = 0; i < next.length; i++) {
-        if (!criticalEventTypes.has(next[i]!.eventType)) {
+        const candidateFrame = next[i];
+        if (candidateFrame && !criticalEventTypes.has(candidateFrame.eventType)) {
           indexToDrop = i;
           break;
         }

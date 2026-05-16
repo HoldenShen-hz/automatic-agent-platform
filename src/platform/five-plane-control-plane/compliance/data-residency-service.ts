@@ -478,7 +478,7 @@ export class DataResidencyService {
 
     // Find the most recent placement
     const sorted = [...placements].sort((a: DataPlacement, b: DataPlacement) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt));
-    return sorted[0]!.currentRegion;
+    return sorted[0]?.currentRegion ?? null;
   }
 
   /**
@@ -495,7 +495,7 @@ export class DataResidencyService {
 
     // Find the most recent placement
     const sorted = [...placements].sort((a: DataPlacement, b: DataPlacement) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt));
-    return sorted[0]!.currentJurisdiction;
+    return sorted[0]?.currentJurisdiction ?? null;
   }
 
   /**

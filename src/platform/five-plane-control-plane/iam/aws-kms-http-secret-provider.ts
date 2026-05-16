@@ -81,7 +81,7 @@ function sha256(data: string): Buffer {
 function buildCanonicalHeaders(headers: Record<string, string>): string {
   return Object.keys(headers)
     .sort()
-    .map((k) => `${k.toLowerCase()}:${headers[k]!.trim()}\n`)
+    .map((k) => `${k.toLowerCase()}:${(headers[k] ?? "").trim()}\n`)
     .join("");
 }
 
@@ -191,10 +191,12 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
   }
 
   public isConfigured(): boolean {
-    return typeof this.env["AA_AWS_ACCESS_KEY_ID"] === "string"
-      && this.env["AA_AWS_ACCESS_KEY_ID"]!.trim().length > 0
-      && typeof this.env["AA_AWS_SECRET_ACCESS_KEY"] === "string"
-      && this.env["AA_AWS_SECRET_ACCESS_KEY"]!.trim().length > 0;
+    const accessKeyId = this.env["AA_AWS_ACCESS_KEY_ID"];
+    const secretAccessKey = this.env["AA_AWS_SECRET_ACCESS_KEY"];
+    return typeof accessKeyId === "string"
+      && accessKeyId.trim().length > 0
+      && typeof secretAccessKey === "string"
+      && secretAccessKey.trim().length > 0;
   }
 
   public async refreshSecret(secretRef: string): Promise<SecretProviderMetadata> {

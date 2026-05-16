@@ -92,11 +92,12 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const segments = ctx.route.segments;
-        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || segments[2]!.includes(":")) {
+        const missionSegment = segments[2];
+        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || missionSegment == null || missionSegment.includes(":")) {
           return null;
         }
         requirePrincipal(ctx.request, deps.authService, "viewer");
-        const mission = repository.getMission(segments[2]!);
+        const mission = repository.getMission(missionSegment);
         if (mission == null) {
           return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
@@ -109,11 +110,12 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const segments = ctx.route.segments;
-        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || segments[2]!.includes(":")) {
+        const missionSegment = segments[2];
+        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || missionSegment == null || missionSegment.includes(":")) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const current = repository.getMission(segments[2]!);
+        const current = repository.getMission(missionSegment);
         if (current == null) {
           return buildJsonErrorResponse(ctx.requestId, 404, { code: "MISSION_NOT_FOUND", message: "Mission not found." });
         }
@@ -253,11 +255,12 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const segments = ctx.route.segments;
-        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || !segments[2]!.includes(":")) {
+        const actionSegment = segments[2];
+        if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || actionSegment == null || !actionSegment.includes(":")) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const [missionId, action] = segments[2]!.split(":");
+        const [missionId, action] = actionSegment.split(":");
         const targetStatus = actionToStatus(action);
         if (targetStatus == null || missionId == null || missionId.length === 0) {
           return null;

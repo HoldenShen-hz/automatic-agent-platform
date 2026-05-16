@@ -389,16 +389,24 @@ export class IntakeRouter {
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
   ): LoadedDivisionDefinition {
+    const firstCandidate = candidates[0];
+    if (firstCandidate == null) {
+      throw new Error("intake_router.round_robin_requires_candidate");
+    }
     // Group candidates by their primary skill category for round-robin tracking
-    const skillCategory = this.categorizeForLoadBalancing(candidates[0]!.division);
+    const skillCategory = this.categorizeForLoadBalancing(firstCandidate.division);
     const counterKey = `rr_${skillCategory}`;
     const currentCount = this.roundRobinCounters.get(counterKey) ?? 0;
     const selectedIndex = currentCount % candidates.length;
+    const selectedCandidate = candidates[selectedIndex];
+    if (selectedCandidate == null) {
+      throw new Error("intake_router.round_robin_selection_missing");
+    }
 
     this.roundRobinCounters.set(counterKey, currentCount + 1);
     routeTrace.push(`lb_round_robin:index=${selectedIndex}/${candidates.length}`);
 
-    return candidates[selectedIndex]!.division;
+    return selectedCandidate.division;
   }
 
   /**
@@ -412,8 +420,12 @@ export class IntakeRouter {
   ): LoadedDivisionDefinition {
     // Sort by priority (descending) - higher priority = lower load assumed
     const sorted = [...candidates].sort((a, b) => b.division.priority - a.division.priority);
-    routeTrace.push(`lb_least_load:selected=${sorted[0]!.division.id}`);
-    return sorted[0]!.division;
+    const selected = sorted[0];
+    if (selected == null) {
+      throw new Error("intake_router.least_load_requires_candidate");
+    }
+    routeTrace.push(`lb_least_load:selected=${selected.division.id}`);
+    return selected.division;
   }
 
   /**
@@ -429,8 +441,12 @@ export class IntakeRouter {
     if (totalWeight === 0) {
       // Equal weights if all priorities are zero
       const index = Math.floor(Math.random() * candidates.length);
+      const selected = candidates[index];
+      if (selected == null) {
+        throw new Error("intake_router.weighted_random_selection_missing");
+      }
       routeTrace.push(`lb_weighted:random_index=${index}`);
-      return candidates[index]!.division;
+      return selected.division;
     }
 
     // Weighted random selection
@@ -444,8 +460,12 @@ export class IntakeRouter {
     }
 
     // Fallback to first
-    routeTrace.push(`lb_weighted:fallback=${candidates[0]!.division.id}`);
-    return candidates[0]!.division;
+    const firstCandidate = candidates[0];
+    if (firstCandidate == null) {
+      throw new Error("intake_router.weighted_requires_candidate");
+    }
+    routeTrace.push(`lb_weighted:fallback=${firstCandidate.division.id}`);
+    return firstCandidate.division;
   }
 
   /**
@@ -456,8 +476,12 @@ export class IntakeRouter {
     routeTrace: string[],
   ): LoadedDivisionDefinition {
     const index = Math.floor(Math.random() * candidates.length);
+    const selected = candidates[index];
+    if (selected == null) {
+      throw new Error("intake_router.random_selection_missing");
+    }
     routeTrace.push(`lb_random:index=${index}`);
-    return candidates[index]!.division;
+    return selected.division;
   }
 
   /**
@@ -487,23 +511,36 @@ export class IntakeRouter {
     if (totalCapacity === 0) {
       // All capacities are zero or null - fall back to priority-based selection
       const sorted = [...candidates].sort((a, b) => b.division.priority - a.division.priority);
-      routeTrace.push(`lb_capacity_aware:fallback_priority=${sorted[0]!.division.id}`);
-      return sorted[0]!.division;
+      const selected = sorted[0];
+      if (selected == null) {
+        throw new Error("intake_router.capacity_fallback_requires_candidate");
+      }
+      routeTrace.push(`lb_capacity_aware:fallback_priority=${selected.division.id}`);
+      return selected.division;
     }
 
     // Weighted random selection based on capacity
     let random = Math.random() * totalCapacity;
     for (let i = 0; i < candidates.length; i++) {
-      random -= capacities[i]!;
+      const capacity = capacities[i] ?? 0;
+      random -= capacity;
       if (random <= 0) {
-        routeTrace.push(`lb_capacity_aware:selected=${candidates[i]!.division.id}:capacity=${capacities[i]}`);
-        return candidates[i]!.division;
+        const selected = candidates[i];
+        if (selected == null) {
+          throw new Error("intake_router.capacity_selection_missing");
+        }
+        routeTrace.push(`lb_capacity_aware:selected=${selected.division.id}:capacity=${capacity}`);
+        return selected.division;
       }
     }
 
     // Fallback to first candidate
-    routeTrace.push(`lb_capacity_aware:fallback=${candidates[0]!.division.id}`);
-    return candidates[0]!.division;
+    const firstCandidate = candidates[0];
+    if (firstCandidate == null) {
+      throw new Error("intake_router.capacity_requires_candidate");
+    }
+    routeTrace.push(`lb_capacity_aware:fallback=${firstCandidate.division.id}`);
+    return firstCandidate.division;
   }
 
   /**
@@ -511,8 +548,9 @@ export class IntakeRouter {
    */
   private categorizeForLoadBalancing(division: LoadedDivisionDefinition): string {
     // Use the division's first role tool as a category hint if available
-    if (division.roles.length > 0 && division.roles[0]!.tools.length > 0) {
-      return `skill_${division.roles[0]!.tools[0]}`;
+    const firstRole = division.roles[0];
+    if (firstRole && firstRole.tools.length > 0) {
+      return `skill_${firstRole.tools[0]}`;
     }
     return `division_${division.id}`;
   }

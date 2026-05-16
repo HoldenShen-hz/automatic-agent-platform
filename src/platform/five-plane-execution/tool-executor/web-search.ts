@@ -111,13 +111,18 @@ export function extractSearchResults(html: string, limit: number): WebSearchResu
   // Reset lastIndex before iterating
   resultLinkPattern.lastIndex = 0;
   while ((linkMatch = resultLinkPattern.exec(html)) !== null && links.length < limit * 2) {
+    const encodedUrl = linkMatch[1];
+    const rawTitle = linkMatch[2];
+    if (encodedUrl == null || rawTitle == null) {
+      continue;
+    }
     let url: string;
     try {
-      url = decodeURIComponent(linkMatch[1]!);
+      url = decodeURIComponent(encodedUrl);
     } catch {
       continue;
     }
-    const title = decodeHTMLEntities(linkMatch[2]!.trim());
+    const title = decodeHTMLEntities(rawTitle.trim());
     if (!url.startsWith("http")) continue;
     let hostname: string;
     try {
@@ -134,15 +139,23 @@ export function extractSearchResults(html: string, limit: number): WebSearchResu
   let snippetMatch: RegExpExecArray | null;
   snippetPattern.lastIndex = 0;
   while ((snippetMatch = snippetPattern.exec(html)) !== null) {
-    const snippet = decodeHTMLEntities(snippetMatch[1]!.trim().replace(/<[^>]+>/g, ""));
+    const rawSnippet = snippetMatch[1];
+    if (rawSnippet == null) {
+      continue;
+    }
+    const snippet = decodeHTMLEntities(rawSnippet.trim().replace(/<[^>]+>/g, ""));
     snippets.push(snippet);
   }
 
   // Combine links with snippets (may not align perfectly, so be defensive)
   for (let i = 0; i < Math.min(links.length, limit); i++) {
+    const link = links[i];
+    if (link == null) {
+      continue;
+    }
     results.push({
-      title: links[i]!.title,
-      url: links[i]!.url,
+      title: link.title,
+      url: link.url,
       snippet: snippets[i] ?? "",
     });
   }

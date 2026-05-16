@@ -240,7 +240,7 @@ export function completeMfaEnrollment(input: {
   if (!principalCredentials.has(session.principalId)) {
     principalCredentials.set(session.principalId, []);
   }
-  principalCredentials.get(session.principalId)!.push({ credential, verificationFailures: 0, lockedUntil: null });
+  principalCredentials.get(session.principalId)?.push({ credential, verificationFailures: 0, lockedUntil: null });
 
   // Update enrollment session
   const completedSession: MfaEnrollmentSession = { ...session, status: "completed" };

@@ -534,14 +534,16 @@ export class DataEncryptionKeyService {
     }
 
     const sortedKeys = [...keys].sort((a: DataEncryptionKey, b: DataEncryptionKey) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    const oldestKey = sortedKeys[0];
+    const newestKey = sortedKeys.at(-1);
 
     return {
       tenantId,
       activeKey: active,
       totalVersions: keys.length,
       destroyedKeys: destroyedKeys.length,
-      oldestKeyAt: sortedKeys[0]!.createdAt,
-      newestKeyAt: sortedKeys[sortedKeys.length - 1]!.createdAt,
+      oldestKeyAt: oldestKey?.createdAt ?? null,
+      newestKeyAt: newestKey?.createdAt ?? null,
     };
   }
 

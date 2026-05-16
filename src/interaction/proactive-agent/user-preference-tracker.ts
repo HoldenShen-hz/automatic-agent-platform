@@ -293,7 +293,7 @@ export class UserPreferenceTracker {
       dismissalRate: totalSuggestions > 0 ? dismissedCount / totalSuggestions : 0,
       avgResponseLatencyMs,
       lastUpdatedAt: records.length > 0
-        ? records.sort((a, b) => b.respondedAt.localeCompare(a.respondedAt))[0]!.respondedAt
+        ? records.sort((a, b) => b.respondedAt.localeCompare(a.respondedAt))[0]?.respondedAt ?? nowIso()
         : nowIso(),
     };
   }

@@ -599,18 +599,30 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     // Build template-based dependencies
     if (tasks.length >= 2) {
-      if (template === "marketing_campaign") {
+      if (template === "marketing_campaign" && tasks.length >= 4) {
+        const planningTask = tasks[0];
+        const creativeTask = tasks[1];
+        const launchTask = tasks[2];
+        const analyticsTask = tasks[3];
+        if (!planningTask || !creativeTask || !launchTask || !analyticsTask) {
+          return dependencies;
+        }
         dependencies.push(
-          { fromTask: tasks[0]!.taskId, toTask: tasks[1]!.taskId, type: "blocks", dataContract: "creative_review" },
-          { fromTask: tasks[1]!.taskId, toTask: tasks[2]!.taskId, type: "blocks", dataContract: "approved_creatives" },
-          { fromTask: tasks[2]!.taskId, toTask: tasks[3]!.taskId, type: "provides_input", dataContract: "campaign_tracking" },
+          { fromTask: planningTask.taskId, toTask: creativeTask.taskId, type: "blocks", dataContract: "creative_review" },
+          { fromTask: creativeTask.taskId, toTask: launchTask.taskId, type: "blocks", dataContract: "approved_creatives" },
+          { fromTask: launchTask.taskId, toTask: analyticsTask.taskId, type: "provides_input", dataContract: "campaign_tracking" },
         );
       } else {
         // Default sequential dependencies
         for (let i = 1; i < tasks.length; i++) {
+          const previousTask = tasks[i - 1];
+          const currentTask = tasks[i];
+          if (previousTask == null || currentTask == null) {
+            continue;
+          }
           dependencies.push({
-            fromTask: tasks[i - 1]!.taskId,
-            toTask: tasks[i]!.taskId,
+            fromTask: previousTask.taskId,
+            toTask: currentTask.taskId,
             type: i === tasks.length - 1 ? "provides_input" : "blocks",
           });
         }

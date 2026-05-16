@@ -380,7 +380,7 @@ export class OidcIdentityService {
     if (!this.userSessions.has(userInfo.sub)) {
       this.userSessions.set(userInfo.sub, new Set());
     }
-    this.userSessions.get(userInfo.sub)!.add(sessionId);
+    this.userSessions.get(userInfo.sub)?.add(sessionId);
 
     return toOidcSession(record);
   }

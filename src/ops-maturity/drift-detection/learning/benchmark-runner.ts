@@ -326,5 +326,5 @@ function weightedPercentile(samples: readonly { value: number; weight: number }[
       return sample.value;
     }
   }
-  return ordered[ordered.length - 1]!.value;
+  return ordered.at(-1)?.value ?? 0;
 }

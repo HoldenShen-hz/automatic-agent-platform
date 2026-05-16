@@ -183,8 +183,8 @@ export class EvidenceService {
     this.records.set(record.id, record);
 
     // Update indexes
-    this.CATEGORY_INDEX.get(category)!.add(record.id);
-    this.STATUS_INDEX.get("recorded")!.add(record.id);
+    this.requireIndex(this.CATEGORY_INDEX, category).add(record.id);
+    this.requireIndex(this.STATUS_INDEX, "recorded").add(record.id);
 
     if (sourceRef) {
       const sourceSet = this.SOURCE_REF_INDEX.get(sourceRef) ?? new Set();
@@ -313,8 +313,8 @@ export class EvidenceService {
         // Update record status
         record.status = "integrated";
         record.integratedAt = nowIso();
-        this.STATUS_INDEX.get("recorded")!.delete(id);
-        this.STATUS_INDEX.get("integrated")!.add(id);
+        this.requireIndex(this.STATUS_INDEX, "recorded").delete(id);
+        this.requireIndex(this.STATUS_INDEX, "integrated").add(id);
       } catch (err) {
         errors.push(`Failed to integrate ${id}: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -376,8 +376,16 @@ export class EvidenceService {
     record.status = "processed";
     record.processedAt = nowIso();
 
-    this.STATUS_INDEX.get("recorded")!.delete(id);
-    this.STATUS_INDEX.get("processed")!.add(id);
+    this.requireIndex(this.STATUS_INDEX, "recorded").delete(id);
+    this.requireIndex(this.STATUS_INDEX, "processed").add(id);
+  }
+
+  private requireIndex<K>(index: Map<K, Set<string>>, key: K): Set<string> {
+    const values = index.get(key);
+    if (values == null) {
+      throw new Error(`evidence_service.index_missing:${String(key)}`);
+    }
+    return values;
   }
 
   /**

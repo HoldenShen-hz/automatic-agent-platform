@@ -700,7 +700,7 @@ export class HumanTakeoverServiceAsync {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    this.eventHandlers.get(event)!.add(handler as TakeoverEventHandler<TakeoverLifecycleEvent>);
+    this.eventHandlers.get(event)?.add(handler as TakeoverEventHandler<TakeoverLifecycleEvent>);
 
     return () => {
       this.eventHandlers.get(event)?.delete(handler as TakeoverEventHandler<TakeoverLifecycleEvent>);

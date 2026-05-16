@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ValidationError } from "../errors.js";
-import type { CanonicalContractName } from "./index.js";
+import type { CanonicalContractName } from "./contract-models.js";
 import { MissionBindingSchema, MissionRefSchema } from "../mission/index.js";
 
 export const EXECUTABLE_CONTRACT_NAMES = [

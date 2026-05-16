@@ -83,7 +83,7 @@ function validateDependencyGraph(taskIds: readonly string[], dependencyGraph: re
     if (edge.fromTask === edge.toTask) {
       throw new Error("goal_decomposer.invalid_llm_plan_self_cycle");
     }
-    adjacency.get(edge.fromTask)!.push(edge.toTask);
+    adjacency.get(edge.fromTask)?.push(edge.toTask);
     indegree.set(edge.toTask, (indegree.get(edge.toTask) ?? 0) + 1);
   }
 

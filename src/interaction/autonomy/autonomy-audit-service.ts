@@ -84,7 +84,7 @@ export class AutonomyAuditService {
       promotions: agentRecords.filter((r) => r.eventType === "agent.autonomy.promoted").length,
       demotions: agentRecords.filter((r) => r.eventType === "agent.autonomy.demoted").length,
       freezes: agentRecords.filter((r) => r.eventType === "agent.autonomy.frozen").length,
-      lastChangeAt: agentRecords.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]!.createdAt,
+      lastChangeAt: agentRecords.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.createdAt ?? null,
     };
   }
 

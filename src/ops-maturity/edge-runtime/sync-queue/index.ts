@@ -61,7 +61,7 @@ export function validateSyncQueueChain(items: readonly EdgeSyncEnvelope[]): Sync
         errors.push(`missing_dependency:${item.envelopeId}:${dependency}`);
         continue;
       }
-      dependencyGraph.get(dependency)!.push(item.envelopeId);
+      dependencyGraph.get(dependency)?.push(item.envelopeId);
       indegree.set(item.envelopeId, (indegree.get(item.envelopeId) ?? 0) + 1);
     }
   }

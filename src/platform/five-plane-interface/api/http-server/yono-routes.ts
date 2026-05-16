@@ -131,10 +131,15 @@ export function createYonoRoutes(deps: YonoRouteDeps): RouteDefinition[] {
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const body = readJsonBody(ctx.request.body) as Record<string, unknown>;
+        const market = markets.requireMarket(marketId);
+        const defaultOutcomeId = market.outcomes[0]?.outcomeId;
+        if (defaultOutcomeId == null) {
+          throw new Error("yono.market.outcomes_missing");
+        }
         const forecastInput = {
           marketId,
           userId: stringBody(body, "userId", principal.actorId),
-          outcomeId: stringBody(body, "outcomeId", markets.requireMarket(marketId).outcomes[0]!.outcomeId),
+          outcomeId: stringBody(body, "outcomeId", defaultOutcomeId),
           probability: numberBody(body, "probability", 0.5),
         };
         const forecast = forecasts.submitForecast(typeof body["rationale"] === "string"

@@ -81,7 +81,11 @@ export class DelegationTracker {
     // Find expired rootToChain entries
     for (const [key, chain] of this.rootToChain) {
       if (chain.nodes.length > 0) {
-        const lastNodeTime = new Date(chain.nodes[chain.nodes.length - 1]!.createdAt).getTime();
+        const lastNode = chain.nodes[chain.nodes.length - 1];
+        if (lastNode == null) {
+          continue;
+        }
+        const lastNodeTime = new Date(lastNode.createdAt).getTime();
         if (lastNodeTime < expiryThreshold) {
           entriesToDelete.push(key);
         }
@@ -105,18 +109,20 @@ export class DelegationTracker {
     // If still over capacity, remove oldest entries
     if (this.rootToChain.size > this.MAX_ENTRIES) {
       const sortedEntries = [...this.rootToChain.entries()].sort((a, b) => {
-        const aTime = a[1].nodes.length > 0
-          ? new Date(a[1].nodes[a[1].nodes.length - 1]!.createdAt).getTime()
-          : 0;
-        const bTime = b[1].nodes.length > 0
-          ? new Date(b[1].nodes[b[1].nodes.length - 1]!.createdAt).getTime()
-          : 0;
+        const aLastNode = a[1].nodes[a[1].nodes.length - 1];
+        const bLastNode = b[1].nodes[b[1].nodes.length - 1];
+        const aTime = aLastNode ? new Date(aLastNode.createdAt).getTime() : 0;
+        const bTime = bLastNode ? new Date(bLastNode.createdAt).getTime() : 0;
         return aTime - bTime;
       });
 
       const toRemove = this.rootToChain.size - this.MAX_ENTRIES;
       for (let i = 0; i < toRemove; i++) {
-        const key = sortedEntries[i]![0];
+        const entry = sortedEntries[i];
+        if (entry == null) {
+          continue;
+        }
+        const key = entry[0];
         const chain = this.rootToChain.get(key);
         if (chain) {
           for (const node of chain.nodes) {

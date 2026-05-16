@@ -95,11 +95,14 @@ export class VersionCompatibilityMatrix {
     if (!this.indexBySource.has(entry.sourcePackId)) {
       this.indexBySource.set(entry.sourcePackId, new Map());
     }
-    const sourceIndex = this.indexBySource.get(entry.sourcePackId)!;
+    const sourceIndex = this.indexBySource.get(entry.sourcePackId);
+    if (!sourceIndex) {
+      throw new Error("version_compatibility.source_index_missing");
+    }
     if (!sourceIndex.has(entry.sourceVersion)) {
       sourceIndex.set(entry.sourceVersion, []);
     }
-    sourceIndex.get(entry.sourceVersion)!.push(fullEntry);
+    sourceIndex.get(entry.sourceVersion)?.push(fullEntry);
 
     return fullEntry;
   }

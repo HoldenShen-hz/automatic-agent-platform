@@ -164,15 +164,17 @@ export class DisambiguationHandler {
       const topIntents = [...allIntents]
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 3);
+      const leadingIntent = topIntents[0];
+      const secondIntent = topIntents[1];
 
-      if (topIntents.length > 1 && topIntents[0]!.confidence - topIntents[1]!.confidence < 0.15) {
+      if (leadingIntent && secondIntent && leadingIntent.confidence - secondIntent.confidence < 0.15) {
         return {
           requiresClarification: true,
           questions: [
             {
               question: "我需要确认您的意图：",
               options: topIntents.map((i) => this.formatIntentOption(i.intentType)),
-              intentHint: topIntents[0]!.intentType,
+              intentHint: leadingIntent.intentType,
             },
           ],
           suggestedIntents: topIntents.map((i) => i.intentType),

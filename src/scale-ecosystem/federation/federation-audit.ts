@@ -113,48 +113,40 @@ export class FederationAudit {
 
   private indexRecord(record: FederationAuditRecord): void {
     // Index by organization
-    if (!this.indexByOrg.has(record.orgId)) {
-      this.indexByOrg.set(record.orgId, new Set());
-    }
-    this.indexByOrg.get(record.orgId)!.add(record.id);
+    this.getOrCreateIndexSet(this.indexByOrg, record.orgId).add(record.id);
 
     if (record.targetOrgId) {
-      if (!this.indexByOrg.has(record.targetOrgId)) {
-        this.indexByOrg.set(record.targetOrgId, new Set());
-      }
-      this.indexByOrg.get(record.targetOrgId)!.add(record.id);
+      this.getOrCreateIndexSet(this.indexByOrg, record.targetOrgId).add(record.id);
     }
 
     // Index by actor
     if (record.actor) {
-      if (!this.indexByActor.has(record.actor)) {
-        this.indexByActor.set(record.actor, new Set());
-      }
-      this.indexByActor.get(record.actor)!.add(record.id);
+      this.getOrCreateIndexSet(this.indexByActor, record.actor).add(record.id);
     }
 
     // Index by action
-    if (!this.indexByAction.has(record.action)) {
-      this.indexByAction.set(record.action, new Set());
-    }
-    this.indexByAction.get(record.action)!.add(record.id);
+    this.getOrCreateIndexSet(this.indexByAction, record.action).add(record.id);
 
     // Index by resource
     if (record.resourceId) {
       const resourceKey = `${record.resourceType}:${record.resourceId}`;
-      if (!this.indexByResource.has(resourceKey)) {
-        this.indexByResource.set(resourceKey, new Set());
-      }
-      this.indexByResource.get(resourceKey)!.add(record.id);
+      this.getOrCreateIndexSet(this.indexByResource, resourceKey).add(record.id);
     }
 
     // Index by correlation ID
     if (record.correlationId) {
-      if (!this.indexByCorrelation.has(record.correlationId)) {
-        this.indexByCorrelation.set(record.correlationId, new Set());
-      }
-      this.indexByCorrelation.get(record.correlationId)!.add(record.id);
+      this.getOrCreateIndexSet(this.indexByCorrelation, record.correlationId).add(record.id);
     }
+  }
+
+  private getOrCreateIndexSet(index: Map<string, Set<string>>, key: string): Set<string> {
+    const existing = index.get(key);
+    if (existing) {
+      return existing;
+    }
+    const created = new Set<string>();
+    index.set(key, created);
+    return created;
   }
 
   // Query Operations

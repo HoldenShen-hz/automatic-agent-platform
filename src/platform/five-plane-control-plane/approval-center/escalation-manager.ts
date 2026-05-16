@@ -186,7 +186,11 @@ export class EscalationManager {
     // Find expired escalationHistory entries
     for (const [approvalId, history] of this.escalationHistory) {
       if (history.length > 0) {
-        const lastEscalationTime = new Date(history[history.length - 1]!.escalatedAt).getTime();
+        const lastEscalation = history[history.length - 1];
+        if (lastEscalation == null) {
+          continue;
+        }
+        const lastEscalationTime = new Date(lastEscalation.escalatedAt).getTime();
         if (lastEscalationTime < expiryThreshold) {
           entriesToDelete.push(approvalId);
         }
@@ -201,8 +205,10 @@ export class EscalationManager {
     // If still over capacity, remove oldest entries
     if (this.escalationHistory.size > this.MAX_ENTRIES) {
       const sortedEntries = [...this.escalationHistory.entries()].sort((a, b) => {
-        const aTime = a[1].length > 0 ? new Date(a[1][a[1].length - 1]!.escalatedAt).getTime() : 0;
-        const bTime = b[1].length > 0 ? new Date(b[1][b[1].length - 1]!.escalatedAt).getTime() : 0;
+        const aLastEscalation = a[1][a[1].length - 1];
+        const bLastEscalation = b[1][b[1].length - 1];
+        const aTime = aLastEscalation ? new Date(aLastEscalation.escalatedAt).getTime() : 0;
+        const bTime = bLastEscalation ? new Date(bLastEscalation.escalatedAt).getTime() : 0;
         return aTime - bTime;
       });
 

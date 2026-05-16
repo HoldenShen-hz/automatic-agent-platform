@@ -100,7 +100,8 @@ export function advanceWizardToNextVisibleStep(session: WizardSession): WizardSe
   if (currentIndex < 0 || currentIndex >= visibleSteps.length - 1) {
     return null;
   }
-  return advanceWizard(normalized, visibleSteps[currentIndex + 1]!.stepId);
+  const nextVisibleStep = visibleSteps[currentIndex + 1];
+  return nextVisibleStep ? advanceWizard(normalized, nextVisibleStep.stepId) : null;
 }
 
 export function recordWizardAnswer(

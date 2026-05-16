@@ -84,10 +84,18 @@ export class CapacityPlanningService {
       throw new Error(`capacity_planning.empty_window:${resourceType}`);
     }
     const trend = this.analyzer.analyze(window.map((item) => item.usage));
-    const latestUsage = window.at(-1)!.usage;
+    const latestSignal = window.at(-1);
+    if (latestSignal == null) {
+      throw new Error(`capacity_planning.latest_signal_missing:${resourceType}`);
+    }
+    const latestUsage = latestSignal.usage;
     const growthRatePercent = this.estimateGrowthRate(window);
     const projectedUsage = this.forecaster.forecast(latestUsage, growthRatePercent, periods).projectedUsage;
-    const band = Math.max(1, Number((projectedUsage.at(-1)! * 0.1).toFixed(2)));
+    const latestProjection = projectedUsage.at(-1);
+    if (latestProjection == null) {
+      throw new Error(`capacity_planning.latest_projection_missing:${resourceType}`);
+    }
+    const band = Math.max(1, Number((latestProjection * 0.1).toFixed(2)));
 
     return {
       resourceType,
@@ -99,8 +107,8 @@ export class CapacityPlanningService {
       },
       projectedUsage,
       confidenceInterval: {
-        low: Number((projectedUsage.at(-1)! - band).toFixed(2)),
-        high: Number((projectedUsage.at(-1)! + band).toFixed(2)),
+        low: Number((latestProjection - band).toFixed(2)),
+        high: Number((latestProjection + band).toFixed(2)),
       },
       trend: trend.direction,
       generatedAt: options.generatedAt ?? nowIso(),
@@ -190,8 +198,13 @@ export class CapacityPlanningService {
     if (signals.length < 2) {
       return 5;
     }
-    const first = signals[0]!.usage;
-    const last = signals.at(-1)!.usage;
+    const firstSignal = signals[0];
+    const lastSignal = signals.at(-1);
+    if (firstSignal == null || lastSignal == null) {
+      return 5;
+    }
+    const first = firstSignal.usage;
+    const last = lastSignal.usage;
     if (first === 0) {
       return 5;
     }

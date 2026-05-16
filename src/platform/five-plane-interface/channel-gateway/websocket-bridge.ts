@@ -307,7 +307,7 @@ export class WebSocketBridge {
     if (!this.taskSubscribers.has(taskId)) {
       this.taskSubscribers.set(taskId, new Set());
     }
-    this.taskSubscribers.get(taskId)!.add(ws);
+    this.taskSubscribers.get(taskId)?.add(ws);
     this.replayMissedEvents(ws, client, taskId, lastEventId);
     return "subscribed";
   }
@@ -512,13 +512,14 @@ export class WebSocketBridge {
     // Find the position of lastEventId in history
     const lastSeenIndex = history.findIndex((item) => item.eventId === lastEventId);
     if (lastSeenIndex < 0) {
+      const newestHistoryEvent = history.at(-1);
       // lastEventId not found in history - could be a gap or invalid ID
       // Try to find the closest event by sequence comparison
       ws.send(JSON.stringify({
         type: "stream_gap",
         taskId,
         fromEventId: lastEventId,
-        toEventId: history[history.length - 1]!.eventId,
+        toEventId: newestHistoryEvent?.eventId ?? null,
         reason: "missed_events",
       } satisfies WebSocketMessageType));
       return;

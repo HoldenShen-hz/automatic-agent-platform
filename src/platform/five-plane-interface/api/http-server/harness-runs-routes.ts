@@ -90,9 +90,10 @@ class InMemoryHarnessRunStore {
 
     const pageRuns = allRuns.slice(startIndex, startIndex + limit);
     const hasMore = startIndex + limit < allRuns.length;
+    const lastPageRun = pageRuns.at(-1);
     const nextCursor =
-      hasMore && pageRuns.length > 0
-        ? Buffer.from(JSON.stringify({ updatedAt: pageRuns.at(-1)!.updatedAt, harnessRunId: pageRuns.at(-1)!.harnessRunId })).toString("base64")
+      hasMore && lastPageRun
+        ? Buffer.from(JSON.stringify({ updatedAt: lastPageRun.updatedAt, harnessRunId: lastPageRun.harnessRunId })).toString("base64")
         : null;
 
     return { runs: pageRuns, total: allRuns.length, nextCursor, hasMore };

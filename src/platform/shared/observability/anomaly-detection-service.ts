@@ -797,7 +797,7 @@ export class AnomalyDetectionService {
     baseline: number,
     history: TimeSeriesPoint[],
   ): AnomalyCategory {
-    const prevValue = history.length >= 2 ? history[history.length - 2]!.value : 0;
+    const prevValue = history.at(-2)?.value ?? 0;
     const changeRatio = history.length >= 2
       ? Math.abs(value - prevValue) / Math.max(1, Math.abs(prevValue))
       : 0;

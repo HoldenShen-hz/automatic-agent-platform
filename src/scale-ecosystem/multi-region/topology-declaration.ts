@@ -245,9 +245,14 @@ export function buildActiveActiveTopology(
   const defaultPairs: RegionPairConfig[] = [];
   for (let i = 0; i < writableRegions.length; i++) {
     for (let j = i + 1; j < writableRegions.length; j++) {
+      const sourceRegion = writableRegions[i];
+      const targetRegion = writableRegions[j];
+      if (!sourceRegion || !targetRegion) {
+        continue;
+      }
       defaultPairs.push({
-        sourceRegionId: writableRegions[i]!.regionId,
-        targetRegionId: writableRegions[j]!.regionId,
+        sourceRegionId: sourceRegion.regionId,
+        targetRegionId: targetRegion.regionId,
         replicationMode: options?.defaultReplicationMode ?? "asynchronous",
         ...(options?.conflictResolutionStrategy !== undefined ? { conflictResolution: options.conflictResolutionStrategy } : {}),
         replicationEnabled: true,

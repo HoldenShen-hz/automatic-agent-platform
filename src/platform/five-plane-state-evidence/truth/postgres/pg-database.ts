@@ -612,7 +612,7 @@ export class PgDatabase implements AsyncSqlDatabase {
         appliedMap.set(row.version, { checksum: row.checksum, name: row.name });
       }
 
-      const currentVersion = applied.length > 0 ? Number(applied[0]!.version) : 0;
+      const currentVersion = applied[0] ? Number(applied[0].version) : 0;
 
       const pendingVersions: number[] = [];
       const checksumMismatches: PgSchemaStatus["checksumMismatches"] = [];

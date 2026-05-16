@@ -754,7 +754,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
     template.map((value) => renderContainerizedToken(value, options)),
     options.childModulePath,
   );
-  if (rendered.length === 0 || rendered[0]!.trim().length === 0) {
+  if (rendered.length === 0 || (rendered[0]?.trim().length ?? 0) === 0) {
     throw new ValidationError(
       "plugin_spi.container_launcher_empty_command",
       "plugin_spi.container_launcher_empty_command",

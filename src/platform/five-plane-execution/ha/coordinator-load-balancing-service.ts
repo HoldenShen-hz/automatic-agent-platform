@@ -285,11 +285,12 @@ export class CoordinatorLoadBalancingService {
       }
       return left.record.coordinatorId.localeCompare(right.record.coordinatorId);
     });
+    const selectedCoordinatorId = eligible[0]?.record.coordinatorId ?? null;
 
     return {
-      outcome: "selected",
-      selectedCoordinatorId: eligible[0]!.record.coordinatorId,
-      reasonCode: null,
+      outcome: selectedCoordinatorId == null ? "no_candidate" : "selected",
+      selectedCoordinatorId,
+      reasonCode: selectedCoordinatorId == null ? "no_active_coordinator" : null,
       evaluations,
     };
   }

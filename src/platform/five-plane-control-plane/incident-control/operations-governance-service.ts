@@ -312,7 +312,8 @@ function percentile(values: number[], percentileValue: number): number | null {
   }
   const sorted = [...values].sort((left, right) => left - right);
   const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((percentileValue / 100) * sorted.length) - 1));
-  return Number(sorted[index]!.toFixed(2));
+  const percentileResult = sorted[index];
+  return percentileResult == null ? null : Number(percentileResult.toFixed(2));
 }
 
 /**

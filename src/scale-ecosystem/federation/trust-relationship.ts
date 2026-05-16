@@ -524,7 +524,7 @@ export class TrustRelationshipManager {
       if (!this.indexByOrg.has(orgId)) {
         this.indexByOrg.set(orgId, new Set());
       }
-      this.indexByOrg.get(orgId)!.add(trust.id);
+      this.indexByOrg.get(orgId)?.add(trust.id);
     }
   }
 

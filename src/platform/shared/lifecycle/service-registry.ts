@@ -296,7 +296,7 @@ export class ServiceRegistry {
       for (const dep of deps) {
         if (this.services.has(dep)) {
           // dep → name (name depends on dep)
-          adjacency.get(dep)!.push(name);
+          adjacency.get(dep)?.push(name);
           inDegree.set(name, (inDegree.get(name) ?? 0) + 1);
         }
       }

@@ -142,9 +142,14 @@ function parseStep(line: string, fallbackNumber: number): RunbookStep | null {
   // Match numbered steps: "1. Step text" or "1) Step text"
   const numberedMatch = trimmed.match(/^(\d+)[.)\s]+(.+)/);
   if (numberedMatch) {
+    const stepNumber = numberedMatch[1];
+    const command = numberedMatch[2];
+    if (stepNumber == null || command == null) {
+      return null;
+    }
     return {
-      stepNumber: parseInt(numberedMatch[1]!, 10),
-      command: numberedMatch[2]!.trim(),
+      stepNumber: parseInt(stepNumber, 10),
+      command: command.trim(),
       requiresConfirmation: false,
     };
   }
@@ -152,9 +157,13 @@ function parseStep(line: string, fallbackNumber: number): RunbookStep | null {
   // Match bullet points: "- Step text" or "* Step text"
   const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
   if (bulletMatch) {
+    const command = bulletMatch[1];
+    if (command == null) {
+      return null;
+    }
     return {
       stepNumber: fallbackNumber,
-      command: bulletMatch[1]!.trim(),
+      command: command.trim(),
       requiresConfirmation: false,
     };
   }
@@ -162,9 +171,13 @@ function parseStep(line: string, fallbackNumber: number): RunbookStep | null {
   // Match checkboxes: "[ ] Step text" or "[x] Step text"
   const checkboxMatch = trimmed.match(/^\[[ x]\]\s*(.+)/i);
   if (checkboxMatch) {
+    const command = checkboxMatch[1];
+    if (command == null) {
+      return null;
+    }
     return {
       stepNumber: fallbackNumber,
-      command: checkboxMatch[1]!.trim(),
+      command: command.trim(),
       requiresConfirmation: false,
     };
   }

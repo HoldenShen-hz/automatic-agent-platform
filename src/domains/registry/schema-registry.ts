@@ -78,7 +78,7 @@ export class SchemaRegistry {
     if (!this.schemaVersions.has(key)) {
       this.schemaVersions.set(key, new Map());
     }
-    this.schemaVersions.get(key)!.set(entry.version, entry);
+    this.schemaVersions.get(key)?.set(entry.version, entry);
 
     return entry;
   }

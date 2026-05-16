@@ -195,7 +195,7 @@ export class CrossRegionEventReplicationService {
     let overallStatus: ReplicationStatus;
 
     if (statuses.size === 1) {
-      overallStatus = events[0]!.status;
+      overallStatus = events[0]?.status ?? "replicating";
     } else if (statuses.has("failed")) {
       overallStatus = "partial";
     } else if (statuses.has("completed")) {

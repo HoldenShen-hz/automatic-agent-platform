@@ -332,7 +332,8 @@ export class YonoSocialForecastAgent {
     const total = Math.max(1, yesSignals.length + noSignals.length);
     const weightedYesSignal = yesSignals.length / total;
     const weightedNoSignal = noSignals.length / total;
-    const manipulationRisk = signals.length > 0 && signals.every((signal) => signal.stance === signals[0]!.stance) && signals.length >= 5
+    const firstSignalStance = signals[0]?.stance;
+    const manipulationRisk = firstSignalStance != null && signals.length >= 5 && signals.every((signal) => signal.stance === firstSignalStance)
       ? "high"
       : "low";
     return {

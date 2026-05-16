@@ -504,11 +504,13 @@ export class PanicPropagationService {
 
     const idx = events.findIndex((e) => e.plane === plane);
     if (idx < 0) return;
+    const existingEvent = events[idx];
+    if (!existingEvent) return;
 
     const updated: CascadeHaltingEvent = {
-      ...events[idx]!,
+      ...existingEvent,
       localState: state,
-      haltedAt: timestamp ?? events[idx]!.haltedAt,
+      haltedAt: timestamp ?? existingEvent.haltedAt,
       ...(state === "acknowledged" && timestamp ? { acknowledgedAt: timestamp } : {}),
     };
 

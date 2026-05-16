@@ -699,22 +699,23 @@ export class CapabilityDelegation {
 
   private indexGrant(grant: CapabilityGrant): void {
     // Index by delegating org
-    if (!this.indexByOrg.has(grant.delegatingOrgId)) {
-      this.indexByOrg.set(grant.delegatingOrgId, new Set());
-    }
-    this.indexByOrg.get(grant.delegatingOrgId)!.add(grant.id);
+    this.getOrCreateGrantIndex(this.indexByOrg, grant.delegatingOrgId).add(grant.id);
 
     // Index by delegated org
-    if (!this.indexByOrg.has(grant.delegatedOrgId)) {
-      this.indexByOrg.set(grant.delegatedOrgId, new Set());
-    }
-    this.indexByOrg.get(grant.delegatedOrgId)!.add(grant.id);
+    this.getOrCreateGrantIndex(this.indexByOrg, grant.delegatedOrgId).add(grant.id);
 
     // Index by capability
-    if (!this.indexByCapability.has(grant.capabilityId)) {
-      this.indexByCapability.set(grant.capabilityId, new Set());
+    this.getOrCreateGrantIndex(this.indexByCapability, grant.capabilityId).add(grant.id);
+  }
+
+  private getOrCreateGrantIndex(index: Map<string, Set<string>>, key: string): Set<string> {
+    const existing = index.get(key);
+    if (existing) {
+      return existing;
     }
-    this.indexByCapability.get(grant.capabilityId)!.add(grant.id);
+    const created = new Set<string>();
+    index.set(key, created);
+    return created;
   }
 }
 

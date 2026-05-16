@@ -136,7 +136,8 @@ export class ContextCompactionService {
       let fixedPrefixEndIndex = 0;
       if (kvCacheEnabled) {
         for (let i = 0; i < sessionMessages.length; i++) {
-          if (sessionMessages[i]!.direction === "system") {
+          const sessionMessage = sessionMessages[i];
+          if (sessionMessage?.direction === "system") {
             fixedPrefixEndIndex = i + 1;
           } else {
             break;

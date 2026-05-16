@@ -92,7 +92,8 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   }
 
   public isConfigured(): boolean {
-    return typeof this.env["AA_VAULT_ADDR"] === "string" && this.env["AA_VAULT_ADDR"]!.trim().length > 0;
+    const vaultAddress = this.env["AA_VAULT_ADDR"];
+    return typeof vaultAddress === "string" && vaultAddress.trim().length > 0;
   }
 
   /**

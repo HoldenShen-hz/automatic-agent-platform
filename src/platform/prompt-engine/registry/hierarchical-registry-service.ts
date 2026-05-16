@@ -391,23 +391,15 @@ export class HierarchicalPromptRegistryService {
       case "domain":
       case "pack":
         if (!domain) throw new ValidationError("prompt_bundle.missing_domain", "Domain required for domain-level registration");
-        if (!this.domainBundles.has(domain)) {
-          this.domainBundles.set(domain, new Map());
-        }
-        this.domainBundles.get(domain)!.set(bundle.name, bundle);
+        this.getOrCreateMap(this.domainBundles, domain).set(bundle.name, bundle);
         break;
       case "task-type":
         // R23-48 fix: task-type uses domain as the pack/context identifier
         if (!domain) {
           throw new ValidationError("prompt_bundle.missing_context", "Domain required for task-type level registration");
         }
-        if (!this.taskTypeBundles.has(domain)) {
-          this.taskTypeBundles.set(domain, new Map());
-        }
-        if (!this.taskTypeBundles.get(domain)!.has(bundle.taskType)) {
-          this.taskTypeBundles.get(domain)!.set(bundle.taskType, new Map());
-        }
-        this.taskTypeBundles.get(domain)!.get(bundle.taskType)!.set(bundle.name, bundle);
+        const taskTypeBuckets = this.getOrCreateMap(this.taskTypeBundles, domain);
+        this.getOrCreateMap(taskTypeBuckets, bundle.taskType).set(bundle.name, bundle);
         break;
     }
   }
@@ -416,13 +408,13 @@ export class HierarchicalPromptRegistryService {
     if (!this.versionsByName.has(bundle.name)) {
       this.versionsByName.set(bundle.name, new Map());
     }
-    this.versionsByName.get(bundle.name)!.set(bundle.bundleId, bundle);
+    this.requireMap(this.versionsByName, bundle.name).set(bundle.bundleId, bundle);
 
     const scopeKey = this.buildScopeKey(bundle.name, level, bundle.taskType, domain ?? bundle.domain, packId ?? bundle.packId);
     if (!this.versionsByScope.has(scopeKey)) {
       this.versionsByScope.set(scopeKey, new Map());
     }
-    this.versionsByScope.get(scopeKey)!.set(this.normalizeVersionKey(bundle.version), bundle);
+    this.requireMap(this.versionsByScope, scopeKey).set(this.normalizeVersionKey(bundle.version), bundle);
   }
 
   private findBundle(
@@ -838,5 +830,23 @@ export class HierarchicalPromptRegistryService {
     );
 
     return hasTool && hasEvaluator && hasDomain && hasModel;
+  }
+
+  private getOrCreateMap<K, V>(index: Map<K, V>, key: K, factory?: () => V): V {
+    const existing = index.get(key);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const created = (factory ?? (() => new Map() as unknown as V))();
+    index.set(key, created);
+    return created;
+  }
+
+  private requireMap<K, V>(index: Map<K, V>, key: K): V {
+    const value = index.get(key);
+    if (value === undefined) {
+      throw new ValidationError("prompt_bundle.map_missing", `Missing registry bucket for ${String(key)}`);
+    }
+    return value;
   }
 }

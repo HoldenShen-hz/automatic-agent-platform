@@ -367,7 +367,7 @@ export class ConfigVersioningService {
     const versions = this.getSnapshots(key);
 
     // Get parent version ID
-    const parentVersionId = versions.length > 0 ? versions[versions.length - 1]!.versionId : null;
+    const parentVersionId = versions.at(-1)?.versionId ?? null;
 
     // Create new snapshot
     const snapshot: ConfigVersionSnapshot = {

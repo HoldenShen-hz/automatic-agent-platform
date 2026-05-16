@@ -1,35 +1,35 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { MS_PER_HOUR } from "../../../platform/contracts/constants/time.js";
 import {
   createBudgetLedger,
-  createDecisionInputBundle as createCanonicalDecisionInputBundle,
-  createHarnessDecision as createCanonicalHarnessDecision,
-  type ArtifactRef,
-  type DecisionInputBundle as CanonicalDecisionInputBundle,
   type HarnessAuditTrail,
   type HarnessBudgetEnvelope,
-  type HarnessDecision as CanonicalHarnessDecision,
   type HarnessRun as CanonicalHarnessRun,
   type HarnessRunStatus as CanonicalHarnessRunStatus,
   type PlanGraphBundle,
-  type PolicyFinding,
-  type RiskClass,
   type RiskPreview,
 } from "../../../platform/contracts/executable-contracts/index.js";
-import type { EvidenceRecord } from "../../../platform/contracts/types/platform-contracts.js";
-import { createEvidenceRecord, createPlatformPrincipal } from "../../../platform/contracts/types/platform-contracts.js";
-import { MS_PER_HOUR } from "../../../platform/contracts/constants/time.js";
 import type { RuntimeRepository } from "../../../platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { RuntimeStateMachine, RuntimeTransitionCommand } from "../../../platform/five-plane-execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
-import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrail-engine.js";
+import { GuardrailEngine } from "./guardrails/guardrail-engine.js";
 import {
   GuardrailVibrationBreaker,
   type GuardrailActionSignal,
   type GuardrailVibrationState,
   type GuardrailVibrationDecision,
 } from "./guardrails/guardrail-vibration-breaker.js";
+import { HarnessDecisionManager, type HarnessDecisionEvaluationInput } from "./harness-decision-manager.js";
+import {
+  createDefaultEvaluatorOutput,
+  createDefaultGeneratorOutput,
+  createDefaultPlannerOutput,
+  estimateIterationCost,
+  getPreviousPlannerOutput,
+} from "./harness-loop-support.js";
+import { createInitialPlanGraphBundle } from "./harness-plan-graph.js";
 import { HitlRuntime, type HitlRequest, type HitlPersistenceStore, type InMemoryHitlStore } from "./hitl-runtime.js";
 import { EvalRunService } from "./evaluation/eval-run-service.js";
 import { HarnessStateManager } from "./harness-state-manager.js";
@@ -50,7 +50,6 @@ import {
   ensureIsoAfter,
   type ContextSnapshot,
   type HarnessDecision,
-  type HarnessDecisionAction,
   type HarnessLoopInput,
   type HarnessRole,
   type HarnessRunRuntimeState,
@@ -65,6 +64,7 @@ export * from "./harness-state-manager.js";
 
 export class HarnessRuntimeService {
   private readonly toolbeltAssembler: ToolbeltAssembler;
+  private readonly decisionManager: HarnessDecisionManager;
   private readonly guardrailEngine: GuardrailEngine;
   private readonly vibrationBreaker: GuardrailVibrationBreaker;
   private readonly hitlRuntime: HitlRuntime;
@@ -112,6 +112,7 @@ export class HarnessRuntimeService {
     this.stateMachine = new RuntimeStateMachine({ persistEvent: () => undefined });
     this.stateManager = new HarnessStateManager(this.stateMachine);
     this.runtimeTruthRepository = options.runtimeTruthRepository;
+    this.decisionManager = new HarnessDecisionManager(this.runtimeTruthRepository);
     this.directiveSink = options.directiveSink ?? null;
     this.recoveryController = new RecoveryController(this.durableService, this);
   }
@@ -497,194 +498,8 @@ export class HarnessRuntimeService {
     };
   }
 
-  public decide(input: {
-    evaluatorScore?: number;
-    requiresHuman?: boolean;
-    maxIterationsReached?: boolean;
-    riskScore?: number;
-    guardrailSuggestedAction?: GuardrailAssessment["suggestedAction"];
-    /** Deterministic: sideEffect mayCommit=false must abort regardless of evaluatorScore (§45.25) */
-    sideEffectMayCommit?: boolean;
-    /** Deterministic: HITL pending must escalate regardless of evaluatorScore (§45.25) */
-    hitlPending?: boolean;
-    /** Deterministic: budget exhausted must abort regardless of evaluatorScore (§45.25) */
-    budgetExhausted?: boolean;
-    /** Deterministic: guardrail abort signal must override evaluatorScore (§45.25) */
-    guardrailAbort?: boolean;
-    harnessRunId?: string;
-    nodeRunId?: string;
-    evidenceRefs?: readonly string[];
-    sideEffectRefs?: readonly string[];
-    deciderRef?: string;
-    /** §45.25: Frozen evaluator state captured at decision time */
-    frozenEvaluator?: Readonly<{ score: number; reasoning: string }>;
-    /** §45.25: Frozen risk state captured at decision time */
-    frozenRisk?: Readonly<{ currentScore: number; maxScore: number; escalationThreshold: number }>;
-    /** §45.25: Frozen hitl state captured at decision time */
-    frozenHitl?: Readonly<{ pending: boolean; requestId: string | null }>;
-    /** §45.25: Frozen node state captured at decision time */
-    frozenNode?: Readonly<{ nodeId: string; nodeType: string; status: string }>;
-    /** §45.25: Frozen sideEffect state captured at decision time */
-    frozenSideEffect?: Readonly<{ mayCommit: boolean; reversible: boolean }>;
-    /** §45.25: Frozen budget state captured at decision time */
-    frozenBudget?: Readonly<{ remainingSteps: number; remainingCost: number; remainingDurationMs: number }>;
-    /** §45.25: Frozen policy state captured at decision time */
-    frozenPolicy?: Readonly<{ policyIds: readonly string[]; constraintPackRef: string }>;
-    /** §45.25: Frozen guardrail assessment captured at decision time */
-    frozenGuardrail?: Readonly<{
-      passed: boolean;
-      requiresHuman: boolean;
-      suggestedAction: string;
-      findings: readonly { code: string; message: string }[];
-    }> | null;
-  }): HarnessDecision {
-    const evaluatorScore = input.evaluatorScore ?? 0.5;
-    let action: HarnessDecisionAction = "accept";
-    const reasonCodes: string[] = [];
-
-    // §45.25 "LLM-as-Judge cannot override deterministic failure" - check all deterministic signals first
-    if (input.maxIterationsReached) {
-      action = "abort";
-      reasonCodes.push("harness.max_iterations_reached");
-    } else if (input.guardrailAbort) {
-      action = "abort";
-      reasonCodes.push("harness.guardrail_deterministic_abort");
-    } else if (input.sideEffectMayCommit === false) {
-      action = "abort";
-      reasonCodes.push("harness.side_effect_cannot_commit");
-    } else if (input.budgetExhausted) {
-      action = "abort";
-      reasonCodes.push("harness.budget_exhausted");
-    } else if (input.hitlPending) {
-      action = "escalate_to_human";
-      reasonCodes.push("harness.hitl_pending");
-    } else if (input.requiresHuman) {
-      action = "escalate_to_human";
-      reasonCodes.push("harness.human_required");
-    } else if (input.riskScore !== undefined && input.riskScore > 0.8) {
-      action = "downgrade_mode";
-      reasonCodes.push("harness.risk_high_downgrade");
-    } else if (input.guardrailSuggestedAction === "retry_same_plan") {
-      action = "retry_same_plan";
-      reasonCodes.push("harness.guardrail_retry_same_plan");
-    } else if ((input.evaluatorScore ?? 0.5) < 0.5) {
-      action = "replan";
-      reasonCodes.push("harness.eval_below_replan_threshold");
-    } else if ((input.evaluatorScore ?? 0.5) < 0.75) {
-      action = "retry_same_plan";
-      reasonCodes.push("harness.eval_below_accept_threshold");
-    } else {
-      reasonCodes.push("harness.accepted");
-    }
-
-    const decisionKind = this.mapDecisionKind(action);
-    // §45.25: Freeze all decision state at decision time before LLM-as-Judge evaluation
-    const decisionInputBundle = createCanonicalDecisionInputBundle({
-      harnessRunId: input.harnessRunId ?? "harness_run:compat",
-      ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
-      decisionKind,
-      riskClass: this.resolveRiskClass(input.riskScore),
-      evidenceRefs: this.asArtifactRefs(input.evidenceRefs ?? []),
-      sideEffectRefs: input.sideEffectRefs ?? [],
-      // §45.25: Pass frozen state fields
-      ...(input.frozenEvaluator != null ? { evaluator: input.frozenEvaluator } : {}),
-      ...(input.frozenRisk != null ? { risk: input.frozenRisk } : {}),
-      ...(input.frozenHitl != null ? { hitl: input.frozenHitl } : {}),
-      ...(input.frozenNode != null ? { node: input.frozenNode } : {}),
-      ...(input.frozenSideEffect != null ? { sideEffect: input.frozenSideEffect } : {}),
-      ...(input.frozenBudget != null ? { budget: input.frozenBudget } : {}),
-      ...(input.frozenPolicy != null ? { policy: input.frozenPolicy } : {}),
-      ...(input.frozenGuardrail != null ? { guardrail: input.frozenGuardrail } : {}),
-    });
-    const harnessDecisionId = newId("harness_decision");
-    const canonicalDecision = createCanonicalHarnessDecision({
-      decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
-      decisionKind,
-      decision: this.mapDecisionOutcome(action),
-      deciderType: this.resolveDeciderType(action, input.requiresHuman === true, input.maxIterationsReached === true),
-      deciderRef: input.deciderRef ?? "harness.runtime_service",
-      reasonCode: reasonCodes[0] ?? "harness.accepted",
-      harnessDecisionId,
-    });
-
-    // R4-35: Persist decision as immutable EvidenceRecord after creating canonicalDecision
-    this.persistDecisionEvidence(canonicalDecision, decisionInputBundle, input);
-
-    return {
-      decisionId: canonicalDecision.harnessDecisionId,
-      harnessDecisionId: canonicalDecision.harnessDecisionId,
-      decisionInputBundleId: canonicalDecision.decisionInputBundleId,
-      decisionKind: canonicalDecision.decisionKind,
-      decision: canonicalDecision.decision,
-      deciderType: canonicalDecision.deciderType,
-      deciderRef: canonicalDecision.deciderRef,
-      reasonCode: canonicalDecision.reasonCode,
-      action,
-      reasonCodes,
-      confidence: Number(evaluatorScore.toFixed(4)),
-      createdAt: canonicalDecision.createdAt,
-    };
-  }
-
-  /**
-   * R4-35: Persist a harness decision as an immutable EvidenceRecord.
-   * This ensures decisions are auditable and can be replayed for debugging/certification.
-   */
-  private persistDecisionEvidence(
-    decision: ReturnType<typeof createCanonicalHarnessDecision>,
-    inputBundle: ReturnType<typeof createCanonicalDecisionInputBundle>,
-    input: Parameters<typeof this.decide>[0],
-  ): void {
-    if (this.runtimeTruthRepository == null) {
-      return; // Evidence persistence is optional - runtime functions without RTR
-    }
-
-    const principal = createPlatformPrincipal({
-      actorId: decision.deciderRef,
-      tenantId: input.harnessRunId != null && input.harnessRunId !== "harness_run:compat"
-        ? `tenant:${input.harnessRunId.split(":")[0] ?? "local"}`
-        : "tenant:local",
-      roles: ["harness", "decider"],
-    });
-
-    const evidenceRecord = createEvidenceRecord({
-      traceId: `trace:${input.harnessRunId ?? "harness_run:compat"}`,
-      principal,
-      category: "decision",
-      targetRef: `harness_decision:${decision.harnessDecisionId}`,
-      content: {
-        decisionId: decision.harnessDecisionId,
-        decisionInputBundleId: decision.decisionInputBundleId,
-        decisionKind: decision.decisionKind,
-        decision: decision.decision,
-        deciderType: decision.deciderType,
-        deciderRef: decision.deciderRef,
-        reasonCode: decision.reasonCode,
-        action: input.riskScore,
-        evaluatorScore: input.evaluatorScore,
-        riskScore: input.riskScore,
-        requiresHuman: input.requiresHuman ?? false,
-        maxIterationsReached: input.maxIterationsReached ?? false,
-        hitlPending: input.hitlPending ?? false,
-        guardrailAbort: input.guardrailAbort ?? false,
-        sideEffectMayCommit: input.sideEffectMayCommit,
-        budgetExhausted: input.budgetExhausted ?? false,
-        guardrailSuggestedAction: input.guardrailSuggestedAction,
-        reasonCodes: input.sideEffectRefs,
-        evidenceRefs: input.evidenceRefs,
-        sideEffectRefs: input.sideEffectRefs,
-        nodeRunId: input.nodeRunId,
-        createdAt: decision.createdAt,
-      },
-      metadata: {
-        deciderType: decision.deciderType,
-        decisionKind: decision.decisionKind,
-        action: decision.decision,
-      },
-    });
-
-    // @ts-expect-error - appendEvidenceRecord is available on repository implementations used here
-    this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
+  public decide(input: HarnessDecisionEvaluationInput): HarnessDecision {
+    return this.decisionManager.decide(input);
   }
 
   public runLoop(input: HarnessLoopInput): HarnessRunRuntimeState {
@@ -980,7 +795,7 @@ export class HarnessRuntimeService {
         );
       }
 
-      loop.recordIteration(this.estimateIterationCost(plannerOutput, generatorOutput, evaluatorOutput));
+      loop.recordIteration(estimateIterationCost(plannerOutput, generatorOutput, evaluatorOutput));
       if (decision.action === "replan") {
         loop.recordReplan();
       }
@@ -1091,13 +906,13 @@ export class HarnessRuntimeService {
         domainId: input.domainId,
         constraintPack: input.constraintPack,
         iteration,
-        previousPlannerOutput: this.getPreviousPlannerOutput(run),
+        previousPlannerOutput: getPreviousPlannerOutput(run),
       });
     }
     if (input.plannerOutput) {
       return input.plannerOutput;
     }
-    return this.createDefaultPlannerOutput(input, iteration);
+    return createDefaultPlannerOutput(input, iteration);
   }
 
   private resolveGeneratorOutput(
@@ -1117,7 +932,7 @@ export class HarnessRuntimeService {
     if (input.generatorOutput) {
       return input.generatorOutput;
     }
-    return this.createDefaultGeneratorOutput(input, iteration, plannerOutput);
+    return createDefaultGeneratorOutput(input, iteration, plannerOutput);
   }
 
   private resolveEvaluatorOutput(
@@ -1137,7 +952,7 @@ export class HarnessRuntimeService {
     if (input.evaluatorOutput) {
       return input.evaluatorOutput;
     }
-    return this.createDefaultEvaluatorOutput(input, iteration, generatorOutput);
+    return createDefaultEvaluatorOutput(input, iteration, generatorOutput);
   }
 
   private resolveEvaluatorScore(
@@ -1149,158 +964,6 @@ export class HarnessRuntimeService {
     }
     const score = evaluatorOutput.score;
     return typeof score === "number" && Number.isFinite(score) ? score : 0.5;
-  }
-
-  private getPreviousPlannerOutput(run: HarnessRunRuntimeState): Readonly<Record<string, unknown>> | null {
-    const previousPlannerStep = [...run.steps].reverse().find((step) => step.role === "planner");
-    if (previousPlannerStep?.outputs && typeof previousPlannerStep.outputs === "object" && !Array.isArray(previousPlannerStep.outputs)) {
-      return previousPlannerStep.outputs as Readonly<Record<string, unknown>>;
-    }
-    return null;
-  }
-
-  private createDefaultPlannerOutput(
-    input: HarnessLoopInput,
-    iteration: number,
-  ): Readonly<Record<string, unknown>> {
-    return {
-      planId: `plan-${input.taskId}-${iteration}`,
-      summary: `Plan ${iteration} for ${input.taskId}`,
-      costUsd: Number((0.05 * iteration).toFixed(3)),
-      output: `Plan ${iteration} for ${input.domainId}`,
-      checkpoints: [`checkpoint-${iteration}-1`, `checkpoint-${iteration}-2`],
-    };
-  }
-
-  private createDefaultGeneratorOutput(
-    input: HarnessLoopInput,
-    iteration: number,
-    plannerOutput: Readonly<Record<string, unknown>>,
-  ): Readonly<Record<string, unknown>> {
-    return {
-      artifact: `artifact-${input.taskId}-${iteration}`,
-      summary: `Generated artifact for ${(plannerOutput.planId as string | undefined) ?? input.taskId}`,
-      costUsd: Number((0.1 * iteration).toFixed(3)),
-      input: `Task ${input.taskId} iteration ${iteration}`,
-      output: `Generated artifact ${iteration} for ${input.domainId}`,
-    };
-  }
-
-  private createDefaultEvaluatorOutput(
-    input: HarnessLoopInput,
-    iteration: number,
-    generatorOutput: Readonly<Record<string, unknown>>,
-  ): Readonly<Record<string, unknown>> {
-    return {
-      verdict: "pass",
-      score: 0.86,
-      costUsd: Number((0.02 * iteration).toFixed(3)),
-      reasoning: `Artifact ${(generatorOutput.artifact as string | undefined) ?? input.taskId} passed evaluation`,
-    };
-  }
-
-  private estimateIterationCost(
-    plannerOutput: Readonly<Record<string, unknown>>,
-    generatorOutput: Readonly<Record<string, unknown>>,
-    evaluatorOutput: Readonly<Record<string, unknown>>,
-  ): number {
-    const extract = (value: unknown): number => {
-      if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-      }
-      if (value && typeof value === "object") {
-        const record = value as Record<string, unknown>;
-        return extract(record["costUsd"] ?? record["estimatedCostUsd"] ?? record["totalCostUsd"] ?? record["usage"]);
-      }
-      return 0;
-    };
-
-    return Number((extract(plannerOutput) + extract(generatorOutput) + extract(evaluatorOutput)).toFixed(6));
-  }
-
-  private mapDecisionKind(action: HarnessDecisionAction): CanonicalDecisionInputBundle["decisionKind"] {
-    switch (action) {
-      case "accept":
-        return "approve";
-      case "retry_same_plan":
-        return "retry";
-      case "replan":
-        return "replan";
-      case "escalate_to_human":
-        return "takeover";
-      case "abort":
-      case "quarantine":
-      case "revoke_approval":
-        return "abort";
-      case "pause_for_external":
-        return "resume";
-      case "downgrade_mode":
-      case "require_revalidation":
-      default:
-        return "patch";
-    }
-  }
-
-  private mapDecisionOutcome(action: HarnessDecisionAction): CanonicalHarnessDecision["decision"] {
-    switch (action) {
-      case "accept":
-        return "accept";
-      case "retry_same_plan":
-        return "retry";
-      case "replan":
-        return "replan";
-      case "escalate_to_human":
-        return "escalate";
-      case "abort":
-        return "abort";
-      case "quarantine":
-      case "revoke_approval":
-        return "reject";
-      case "pause_for_external":
-        return "takeover";
-      case "downgrade_mode":
-      case "require_revalidation":
-      default:
-        return "patch";
-    }
-  }
-
-  private resolveDeciderType(
-    action: HarnessDecisionAction,
-    requiresHuman: boolean,
-    maxIterationsReached: boolean,
-  ): CanonicalHarnessDecision["deciderType"] {
-    if (action === "escalate_to_human") {
-      return "policy";
-    }
-    if (requiresHuman || maxIterationsReached || action === "abort") {
-      return "system";
-    }
-    return "evaluator";
-  }
-
-  private resolveRiskClass(riskScore: number | undefined): RiskClass {
-    if (riskScore == null) {
-      return "medium";
-    }
-    const normalized = riskScore <= 1 ? riskScore * 100 : riskScore;
-    if (normalized >= 85) {
-      return "critical";
-    }
-    if (normalized >= 60) {
-      return "high";
-    }
-    if (normalized >= 30) {
-      return "medium";
-    }
-    return "low";
-  }
-
-  private asArtifactRefs(refs: readonly string[]): ArtifactRef[] {
-    return refs.map((ref) => ({
-      artifactId: ref,
-      uri: `memory://${ref}`,
-    }));
   }
 
   /**
@@ -1331,130 +994,4 @@ export class HarnessRuntimeService {
       }),
     );
   }
-}
-
-function createInitialPlanGraphBundle(input: {
-  readonly runId: string;
-  readonly taskId: string;
-  readonly domainId: string;
-  readonly constraintPack: ConstraintPack;
-}): PlanGraphBundle {
-  const createdAt = nowIso();
-  const plannerNodeId = newId("plan_node");
-  const generatorNodeId = newId("plan_node");
-  const evaluatorNodeId = newId("plan_node");
-  const graphId = newId("graph");
-  const graphHash = [
-    input.taskId,
-    input.domainId,
-    plannerNodeId,
-    generatorNodeId,
-    evaluatorNodeId,
-  ].join(":");
-  const budgetEnvelope = input.constraintPack.budgetEnvelope ?? input.constraintPack.budget ?? {
-    maxSteps: 100,
-    maxCost: 100000,
-    maxDurationMs: MS_PER_HOUR,
-  };
-
-  return {
-    planGraphBundleId: newId("plan_graph_bundle"),
-    harnessRunId: input.runId,
-    graphVersion: 1,
-    graph: {
-      graphId,
-      nodes: [
-        {
-          nodeId: plannerNodeId,
-          nodeType: "llm",
-          inputRefs: [`task:${input.taskId}`],
-          outputSchemaRef: "schema:harness.plan",
-          riskClass: "medium",
-          budgetIntent: {
-            amount: Math.max(1, budgetEnvelope.maxCost / 3),
-            currency: "USD",
-            resourceKinds: ["compute"],
-          },
-          sideEffectProfile: {
-            mayCommitExternalEffect: false,
-            reversible: true,
-          },
-          retryPolicyRef: "retry:harness.default",
-          timeoutMs: budgetEnvelope.maxDurationMs,
-        },
-        {
-          nodeId: generatorNodeId,
-          nodeType: "tool",
-          inputRefs: [plannerNodeId],
-          outputSchemaRef: "schema:harness.work_product",
-          riskClass: "medium",
-          budgetIntent: {
-            amount: Math.max(1, budgetEnvelope.maxCost / 3),
-            currency: "USD",
-            resourceKinds: ["compute"],
-          },
-          sideEffectProfile: {
-            mayCommitExternalEffect: input.constraintPack.tool_policy.allowedTools.length > 0,
-            reversible: true,
-          },
-          retryPolicyRef: "retry:harness.default",
-          timeoutMs: budgetEnvelope.maxDurationMs,
-        },
-        {
-          nodeId: evaluatorNodeId,
-          nodeType: "evaluator",
-          inputRefs: [generatorNodeId],
-          outputSchemaRef: "schema:harness.evaluation",
-          riskClass: "medium",
-          budgetIntent: {
-            amount: Math.max(1, budgetEnvelope.maxCost / 3),
-            currency: "USD",
-            resourceKinds: ["compute"],
-          },
-          sideEffectProfile: {
-            mayCommitExternalEffect: false,
-            reversible: true,
-          },
-          retryPolicyRef: "retry:harness.default",
-          timeoutMs: budgetEnvelope.maxDurationMs,
-        },
-      ],
-      edges: [
-        {
-          edgeId: newId("plan_edge"),
-          fromNodeId: plannerNodeId,
-          toNodeId: generatorNodeId,
-          condition: { type: "always" },
-          dependencyType: "hard",
-        },
-        {
-          edgeId: newId("plan_edge"),
-          fromNodeId: generatorNodeId,
-          toNodeId: evaluatorNodeId,
-          condition: { type: "always" },
-          dependencyType: "hard",
-        },
-      ],
-      entryNodeIds: [plannerNodeId],
-      terminalNodeIds: [evaluatorNodeId],
-      joinStrategy: "all",
-      graphHash,
-    },
-    schedulerPolicy: {
-      policyId: "scheduler:harness.deterministic_fifo",
-      strategy: "deterministic_fifo",
-    },
-    budgetPlanRef: "budget:harness.initial",
-    riskProfile: {
-      riskClass: "medium",
-      reasons: ["harness.initial_plan_graph_bundle"],
-    },
-    validationReport: {
-      valid: true,
-      findings: [],
-      normalizedNodeIds: [plannerNodeId, generatorNodeId, evaluatorNodeId],
-    },
-    artifactRefs: [],
-    createdAt,
-  };
 }

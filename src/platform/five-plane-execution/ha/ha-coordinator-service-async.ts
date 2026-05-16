@@ -442,8 +442,13 @@ export class HaCoordinatorServiceAsync {
       const candidates = (await this.listNodes("active")).filter((n) => n.nodeId !== currentLeader?.nodeId);
       if (candidates.length > 0) {
         candidates.sort((a, b) => a.nodeId.localeCompare(b.nodeId));
-        newLeaderNodeId = candidates[0]!.nodeId;
-        outcome = "leader_changed";
+        const nextLeader = candidates[0];
+        if (nextLeader) {
+          newLeaderNodeId = nextLeader.nodeId;
+          outcome = "leader_changed";
+        } else {
+          outcome = "no_candidate";
+        }
       } else {
         outcome = "no_candidate";
       }
