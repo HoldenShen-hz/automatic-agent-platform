@@ -324,8 +324,11 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
 
   /**
    * Closes the database connection.
+   * Checkpoints the WAL before closing to ensure all pending writes are flushed
+   * to the main database file and prevent FOREIGN KEY constraint failures.
    */
   public close(): void {
+    this.checkpointWal();
     this.connection.close();
   }
 

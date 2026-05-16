@@ -61,6 +61,15 @@ import type {
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
+ * Authorization context for secret operations.
+ * Carries the caller's scope type and scope ref for R12-22 authorization checks.
+ */
+export interface SecretAuthorizationContext {
+  readonly callerScopeType: string;
+  readonly callerScopeRef: string;
+}
+
+/**
  * Rotation policy for a registered secret.
  */
 export interface SecretRotationPolicy {

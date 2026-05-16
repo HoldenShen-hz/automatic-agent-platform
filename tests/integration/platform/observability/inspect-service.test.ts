@@ -136,9 +136,9 @@ test("InspectService queryTaskInspectSummaries returns filtered task summaries",
     const inProgressTasks = inspectService.queryTaskInspectSummaries({ taskStatus: "in_progress" });
     assert.ok(inProgressTasks.length >= 1, "Should find in_progress tasks");
 
-    // Query by nonexistent status returns empty
-    const noTasks = inspectService.queryTaskInspectSummaries({});
-    assert.equal(noTasks.length, 0, "Should return empty for nonexistent status");
+    // Query with empty filters returns all task summaries
+    const allSummariesEmptyQuery = inspectService.queryTaskInspectSummaries({});
+    assert.ok(allSummariesEmptyQuery.length >= 1, "Should return all tasks for empty query");
   } finally {
     ctx.cleanup();
   }

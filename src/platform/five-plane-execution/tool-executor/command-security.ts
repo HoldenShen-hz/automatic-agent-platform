@@ -331,7 +331,7 @@ export class CommandSafetyClassifier {
     if (
       META_SYNTAX_PATTERN.test(command)
       || PATH_TRAVERSAL_PATTERN.test(command)
-      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg) || GLOB_METACHAR_PATTERN.test(arg))
+      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg))
     ) {
       return deniedAssessment("tool.command_meta_syntax_denied", "critical");
     }

@@ -174,13 +174,15 @@ test("isQuotaExceeded delegates to evaluateQuota", () => {
 
 test("MultiResourceQuotaVectorSchema parses valid vector", () => {
   const result = MultiResourceQuotaVectorSchema.parse({
+    scope: "tenant",
+    scopeId: "tenant-1",
     worker_concurrency: 5,
     tool_qps: 10,
   });
   assert.strictEqual(result.worker_concurrency, 5);
   assert.strictEqual(result.tool_qps, 10);
-  // Defaults applied
-  assert.strictEqual(result.model_tpm, 0);
+  // Omitted optional fields remain undefined
+  assert.strictEqual(result.model_tpm, undefined);
 });
 
 test("QuotaPolicySchema accepts valid policy", () => {

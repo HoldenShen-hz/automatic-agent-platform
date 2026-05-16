@@ -88,14 +88,16 @@ test("IntakeAdmissionService integration: high risk requires confirmationReceipt
 
 test("IntakeAdmissionService integration: critical risk requires confirmationReceipt", () => {
   const service = new IntakeAdmissionService();
+  // Non-admin, non-pre_approved critical risk should be denied by policy
   const input = createMediumRiskInput({
     riskPreview: { riskClass: "critical", reasons: [] },
     idempotencyKey: "intake-critical-risk-int-001",
   });
 
+  // Policy denies critical risk without admin/pre_approved, so throws policy_denied
   assert.throws(
     () => service.admit(input),
-    /admission.confirmation_required/,
+    /admission.policy_denied/,
   );
 });
 
@@ -178,6 +180,7 @@ test("IntakeAdmissionService integration: medium risk without confirmation creat
   const service = new IntakeAdmissionService();
   const input = createMediumRiskInput({
     riskPreview: { riskClass: "medium", reasons: [] },
+    goal: "Execute test task about some things",  // Contains vague language to trigger clarification
     idempotencyKey: "intake-clarify-int-001",
   });
 
@@ -250,7 +253,7 @@ test("IntakeAdmissionService integration: budget ledger created with correct har
   const result = service.admit(input);
 
   // Budget ledger ID should be created and linked
-  assert.ok(result.harnessRun.budgetLedgerId.startsWith("budget_ledger_"));
+  assert.ok(result.harnessRun.budgetLedgerId.startsWith("bledger_"));
 });
 
 test("IntakeAdmissionService integration: harnessRun has correct tenant", () => {

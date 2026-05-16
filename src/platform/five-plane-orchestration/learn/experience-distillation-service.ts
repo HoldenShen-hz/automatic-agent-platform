@@ -1,11 +1,11 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { normalizeLearningType, type LearningObject } from "./learning-object-model.js";
+import { preserveLearningType, type LearningObject } from "./learning-object-model.js";
 
 export class ExperienceDistillationService {
   public distill(signals: readonly LearningSignal[]): LearningObject[] {
     return signals.map((signal) => {
-      const learningType = normalizeLearningType(signal.learningType);
+      const learningType = preserveLearningType(signal.learningType);
       return {
         learningObjectId: newId("learning"),
         objectId: newId("learning"),
@@ -25,8 +25,8 @@ export class ExperienceDistillationService {
         sourceSignalIds: signal.sourceSignalIds,
         recommendation: this.buildRecommendation(signal.learningType),
         validatedBy: "none",
-        promotionStatus: "quarantine",
-        status: "rejected",
+        promotionStatus: "draft",
+        status: "created",
         createdAt: String(signal.generatedAt),
       };
     });

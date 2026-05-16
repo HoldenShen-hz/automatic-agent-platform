@@ -276,6 +276,10 @@ export interface SecretManagementCliEnvConfig {
   revocationReasonCode: string | null;
   revokedAt: string | null;
   asOf: string | null;
+  /** Caller scope type for authorization (required for resolve/issue operations) */
+  callerScopeType: string | null;
+  /** Caller scope ref for authorization (required for resolve/issue operations) */
+  callerScopeRef: string | null;
 }
 
 /**

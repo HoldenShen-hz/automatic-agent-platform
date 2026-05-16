@@ -140,7 +140,8 @@ export class AlertDispatcher {
     // Attempt delivery through the configured channel
     const channel = this.channels.get(resolvedChannelKind);
     if (channel) {
-      const config = rule ? JSON.parse(String(rule.channel_config ?? "{}")) : {};
+      const configText = rule ? String(rule.channel_config ?? "{}") : "{}";
+      const config = configText ? JSON.parse(configText) : {};
       const result = channel.deliver(event, config);
       if (result.delivered) {
         const deliveredAt = nowIso();

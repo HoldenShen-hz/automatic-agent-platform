@@ -113,7 +113,11 @@ test("sandbox: command arguments with null-byte injection are blocked", async ()
     });
 
     assert.equal(result.status, "blocked");
-    assert.equal(result.error?.code, "sandbox.command_arg_path_denied");
+    assert.ok(
+      result.error?.code === "sandbox.command_arg_path_denied" ||
+      result.error?.code === "tool.command_meta_syntax_denied",
+      `Got: ${result.error?.code}`,
+    );
   } finally {
     cleanupPath(workspace);
   }

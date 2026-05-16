@@ -280,7 +280,13 @@ export class ExecutionTransitionService {
 
   /** Transitions execution status. */
   public transition(command: ExecutionStatusTransitionCommand): void {
-    this.apply(command);
+    if (this.db) {
+      this.db.transaction(() => {
+        this.apply(command);
+      });
+    } else {
+      this.apply(command);
+    }
   }
 
   /**
@@ -288,6 +294,7 @@ export class ExecutionTransitionService {
    *
    * Updates execution status and records timing metadata: startedAt is set when
    * execution begins (prechecking or executing), finishedAt when execution ends.
+   * Event emission is wrapped in the same transaction to ensure atomicity.
    */
   public apply(command: ExecutionStatusTransitionCommand): void {
     executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
@@ -301,6 +308,29 @@ export class ExecutionTransitionService {
         : null;
     const lastErrorCode = command.toStatus === "failed" ? command.reasonCode ?? null : null;
 
+    // FIX: Wrap status update and event emission in a transaction to ensure
+    // atomicity. Previously, if event creation failed (e.g., FK violation when
+    // execution was not yet committed), the status update would already be
+    // committed, leaving the system in an inconsistent state.
+    if (this.db) {
+      this.db.transaction(() => {
+        this.applyInner(command, startedAt, finishedAt, lastErrorCode);
+      });
+    } else {
+      this.applyInner(command, startedAt, finishedAt, lastErrorCode);
+    }
+  }
+
+  /**
+   * Inner apply logic without transaction management.
+   * Extracted to allow the outer apply() to control transaction boundaries.
+   */
+  private applyInner(
+    command: ExecutionStatusTransitionCommand,
+    startedAt: string | null,
+    finishedAt: string | null,
+    lastErrorCode: string | null,
+  ): void {
     // RT-01: CAS on status. If another transaction already moved the execution
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
     // complete the transition.
@@ -749,15 +779,20 @@ function resolveExistingExecutionId(db: AuthoritativeSqlDatabase | null, executi
     return null;
   }
   if (db == null) {
-    return executionId;
+    return null; // No database, can't resolve taskId
   }
-  if (typeof db.connection.prepare !== "function") {
-    return executionId;
+  if (typeof db.connection?.prepare !== "function") {
+    return null;
   }
-  const row = db.connection.prepare("SELECT 1 FROM executions WHERE id = ? LIMIT 1").get(executionId) as
-    | Record<string, unknown>
+  const row = db.connection.prepare("SELECT task_id FROM executions WHERE id = ? LIMIT 1").get(executionId) as
+    | { task_id: string }
     | undefined;
-  return row == null ? null : executionId;
+  if (row == null) {
+    return null; // Execution doesn't exist
+  }
+  // Verify the task actually exists
+  const taskExists = db.connection.prepare("SELECT 1 FROM tasks WHERE id = ? LIMIT 1").get(row.task_id);
+  return taskExists != null ? row.task_id : null;
 }
 
 /**

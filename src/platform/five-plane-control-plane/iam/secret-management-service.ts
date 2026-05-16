@@ -40,6 +40,7 @@ import {
   type ResolveManagedSecretInput,
   type RevokeSecretLeaseInput,
   type SecretAuditSummary,
+  type SecretAuthorizationContext,
   type SecretManagementServiceOptions,
   type SecretRegistryInput,
   type SecretRotationPolicy,
@@ -78,11 +79,6 @@ class SecretResolutionRateLimiter {
     this.requests.set(callerId, validTimestamps);
     return true;
   }
-}
-
-export interface SecretAuthorizationContext {
-  readonly callerScopeType: string;
-  readonly callerScopeRef: string;
 }
 
 export class SecretManagementService {
@@ -700,13 +696,28 @@ export class SecretManagementService {
   /**
    * Issues a time-limited lease for a secret.
    */
-  public async issueSecretLease(input: IssueSecretLeaseInput): Promise<ManagedSecretLease> {
+  public async issueSecretLease(
+    input: IssueSecretLeaseInput,
+    authContext?: SecretAuthorizationContext | null,
+  ): Promise<ManagedSecretLease> {
     const registry = this.requireRegistryRecord(input.secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
         details: { secretRef: registry.secretRef, status: registry.status },
       });
     }
+
+    if (authContext == null) {
+      throw new PolicyDeniedError(
+        `secret.authorization_required:${registry.secretRef}`,
+        `secret.authorization_required:${registry.secretRef}`,
+        {
+          details: { secretRef: registry.secretRef },
+        },
+      );
+    }
+    this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
+
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {

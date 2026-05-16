@@ -245,9 +245,9 @@ function evaluatePolicyGuard(input: {
     if (input.constraintPackRef.includes("pre_approved")) {
       return { allowed: true, reasonCode: "policy.pre_approved_critical", proofRef: input.constraintPackRef };
     }
-    // Check principal authorization level for critical operations
-    if (authorizationLevel === "admin" || authorizationLevel === "operator") {
-      return { allowed: true, reasonCode: "policy.authorized_principal", proofRef: input.constraintPackRef };
+    // Check principal authorization level for critical operations - only admin gets bypass
+    if (authorizationLevel === "admin") {
+      return { allowed: true, reasonCode: "policy.admin_authorized", proofRef: input.constraintPackRef };
     }
     return { allowed: false, reasonCode: "policy.denied.critical_requires_approval", proofRef: null };
   }

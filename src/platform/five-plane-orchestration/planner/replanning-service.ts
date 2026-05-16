@@ -31,13 +31,23 @@ export class ReplanningService {
     };
   }
 
-  public decide(plan: Plan | { readonly harnessRunId?: string; readonly graphVersion?: number }, feedback: FeedbackBatch, trigger?: ReplanningTrigger | null): ReplanningDecision {
-    const repairable = feedback.outcome === "repairable" || feedback.signals.some((signal) => signal.category === "correction");
+  public decide(
+    plan: Plan | { readonly harnessRunId?: string; readonly graphVersion?: number },
+    feedback: FeedbackBatch,
+    trigger?: ReplanningTrigger | null,
+    suppressCorrection?: boolean,
+  ): ReplanningDecision {
+    // After a replan (suppressCorrection=true), correction signals should NOT trigger another replan.
+    // The plan was just rebuilt to address the correction — re-applying the same correction would cause
+    // an infinite loop: plan→execute→feedback→plan→execute→feedback→...
+    // We only allow replan for new problems (failed/escalated outcomes).
     const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
-    const shouldReplan = repairable || failed;
+    const shouldReplan = failed;
 
-    // R5-5: Handle downgrade_mode branch - if feedback indicates a need to reduce scope or complexity
-    const downgradeMode = feedback.signals.some((signal) =>
+    // R5-5: Handle downgrade_mode branch - correction signals trigger replan to reduce scope/complexity.
+    // After a replan (suppressCorrection=true), do NOT re-trigger downgrade_mode — the plan already
+    // incorporates the necessary adjustments. Re-triggering it would cause spurious re-loops.
+    const downgradeMode = (!suppressCorrection) && feedback.signals.some((signal) =>
       signal.category === "correction" ||
       (signal.payload as Record<string, unknown>)?.reasonCode === "scope_too_broad" ||
       (signal.payload as Record<string, unknown>)?.reasonCode === "complexity_exceeded"

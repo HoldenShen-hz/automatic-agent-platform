@@ -13,20 +13,20 @@ import {
 } from "../../../../src/platform/prompt-engine/rollout/index.js";
 import type { PromptTemplateRecord } from "../../../../src/platform/prompt-engine/registry/index.js";
 
-test("PromptRolloutService.createRollout creates a ready rollout when regression passes", () => {
+test("PromptRolloutService.createRollout creates a canary_5 rollout when regression passes", () => {
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_1", "v1.0");
   const record = service.createRollout({
     template,
-    mode: "L0_off",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_123",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
-  assert.equal(record.status, "ready");
+  assert.equal(record.status, "canary_5");
   assert.equal(record.templateKey, "tpl_test_1");
   assert.equal(record.version, "v1.0");
   assert.ok(record.rolloutId.startsWith("prompt_rollout_"));
@@ -66,7 +66,7 @@ test("PromptRolloutService.createRollout blocks when domain block incompatible",
   assert.ok(record.guardrailSummary.includes("domain_block_incompatible"));
 });
 
-test("PromptRolloutService.activateRollout transitions ready to active", () => {
+test("PromptRolloutService.activateRollout transitions canary_5 to canary_20", () => {
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_4", "v1.0");
@@ -79,13 +79,13 @@ test("PromptRolloutService.activateRollout transitions ready to active", () => {
     domainBlockCompatible: true,
   });
 
-  assert.equal(created.status, "ready");
+  assert.equal(created.status, "canary_5");
 
   const activated = service.activateRollout(created.rolloutId);
-  assert.equal(activated.status, "active");
+  assert.equal(activated.status, "canary_20");
 });
 
-test("PromptRolloutService.activateRollout throws for non-ready rollout", () => {
+test("PromptRolloutService.activateRollout transitions canary_20 to stable", () => {
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_5", "v1.0");
@@ -98,14 +98,13 @@ test("PromptRolloutService.activateRollout throws for non-ready rollout", () => 
     domainBlockCompatible: true,
   });
 
-  // Already ready, activate first
-  service.activateRollout(created.rolloutId);
+  // Activate from canary_5 to canary_20
+  const canary20 = service.activateRollout(created.rolloutId);
+  assert.equal(canary20.status, "canary_20");
 
-  // Try to activate again - should throw
-  assert.throws(
-    () => service.activateRollout(created.rolloutId),
-    /cannot transition to active/,
-  );
+  // Activate again from canary_20 -> stable
+  const stable = service.activateRollout(created.rolloutId);
+  assert.equal(stable.status, "stable");
 });
 
 test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
@@ -127,20 +126,21 @@ test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
   assert.equal(rolledBack.guardrailSummary, "Test rollback reason");
 });
 
-test("PromptRolloutService.rollbackRollout works on any status", () => {
+test("PromptRolloutService.rollbackRollout works on canary_5 status", () => {
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_7", "v1.0");
   const created = service.createRollout({
     template,
-    mode: "L0_off",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_jkl",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
-  // Rollback directly from ready status
+  // Rollback directly from canary_5 status
+  assert.equal(created.status, "canary_5");
   const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");
 
   assert.equal(rolledBack.status, "rolled_back");
@@ -213,7 +213,7 @@ test("PromptRolloutService.evaluateGuardrail allows shadow mode with passing reg
   });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.nextStatus, "ready");
+  assert.equal(decision.nextStatus, "canary_5");
   assert.ok(decision.reason.includes("shadow"));
 });
 

@@ -284,6 +284,8 @@ export function loadSecretManagementCliEnv(env: NodeJS.ProcessEnv = process.env)
     revocationReasonCode: optionalEnv(env, "AA_SECRET_REVOCATION_REASON_CODE"),
     revokedAt: optionalEnv(env, "AA_SECRET_REVOKED_AT"),
     asOf: optionalEnv(env, "AA_SECRET_AS_OF"),
+    callerScopeType: optionalEnv(env, "AA_SECRET_CALLER_SCOPE_TYPE"),
+    callerScopeRef: optionalEnv(env, "AA_SECRET_CALLER_SCOPE_REF"),
   };
 }
 

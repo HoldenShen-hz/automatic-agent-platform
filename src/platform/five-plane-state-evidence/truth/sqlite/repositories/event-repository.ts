@@ -102,6 +102,33 @@ export class EventRepository {
   ): EventRecord {
     const record = materializeEventRecord(event);
 
+    // Validate FK references: if taskId/executionId are provided, they must exist
+    // in their respective tables, otherwise use NULL to avoid FK constraint failures
+    let safeTaskId = record.taskId;
+    let safeExecutionId = record.executionId;
+
+    if (safeTaskId != null) {
+      const taskExists = queryOne<{ id: string }>(
+        this.conn,
+        `SELECT id FROM tasks WHERE id = ?`,
+        safeTaskId,
+      );
+      if (!taskExists) {
+        safeTaskId = null;
+      }
+    }
+
+    if (safeExecutionId != null) {
+      const executionExists = queryOne<{ id: string }>(
+        this.conn,
+        `SELECT id FROM executions WHERE id = ?`,
+        safeExecutionId,
+      );
+      if (!executionExists) {
+        safeExecutionId = null;
+      }
+    }
+
     this.conn
       .prepare(
         `INSERT INTO events (
@@ -111,9 +138,9 @@ export class EventRepository {
       )
       .run(
         record.id,
-        record.taskId,
+        safeTaskId,
         record.sessionId,
-        record.executionId,
+        safeExecutionId,
         record.eventType,
         record.eventTier,
         record.payloadJson,

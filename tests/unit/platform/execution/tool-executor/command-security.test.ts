@@ -238,18 +238,19 @@ test("CommandSafetyClassifier handles null byte in argument", () => {
 
 test("CommandSafetyClassifier handles null byte in command name position", () => {
   // When null byte appears in command name, normalizeCommandName uses basename
-  // but basename does NOT strip null bytes in Node.js
+  // but null byte is now detected as metacharacter by META_SYNTAX_PATTERN
   const result = CLASSIFIER.assess("echo\0extra", []);
-  // "echo\0extra" is not a known command, so it should be denied
+  // "echo\0extra" is not a known command, but null byte triggers meta syntax denial
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "tool.command_unknown_denied");
+  assert.equal(result.reasonCode, "tool.command_meta_syntax_denied");
 });
 
 test("CommandSafetyClassifier handles null byte in path argument", () => {
-  // Note: Null byte is not currently detected as metacharacter
-  // This is a known gap - null bytes in path args are passed through
+  // Note: Null byte is now detected as metacharacter by META_SYNTAX_PATTERN
+  // Null bytes in path args are blocked as a security fix
   const result = CLASSIFIER.assess("cat", ["/path/to/file\0malicious"]);
-  assert.equal(result.allowed, true); // cat with path is allowed
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "tool.command_meta_syntax_denied");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

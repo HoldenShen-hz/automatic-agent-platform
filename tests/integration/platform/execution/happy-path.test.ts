@@ -25,7 +25,7 @@ test("single-task execution persists task, workflow, execution, session, and tie
     assert.equal(snapshot.stepOutputs.length, 1);
     assert.deepEqual(
       snapshot.events.map((event) => event.eventType),
-      ["task:status_changed", "workflow:step_completed", "platform.workflow.step_completed", "task:status_changed"],
+      ["task:status_changed", "execution:status_changed", "execution:status_changed", "workflow:step_completed", "platform.workflow.step_completed", "task:status_changed"],
     );
 
     // Verify cost events were recorded during execution

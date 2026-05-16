@@ -33,6 +33,9 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
         });
         break;
       case "resolve": {
+        const authContext = envConfig.callerScopeType && envConfig.callerScopeRef
+          ? { callerScopeType: envConfig.callerScopeType, callerScopeRef: envConfig.callerScopeRef }
+          : undefined;
         const resolved = await service.resolveSecret({
           secretRef: envConfig.secretRef ?? "",
           requestedBy: envConfig.requestedBy ?? "",
@@ -42,7 +45,7 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
           ...(envConfig.executionId ? { executionId: envConfig.executionId } : {}),
           ...(envConfig.expiresAt ? { expiresAt: envConfig.expiresAt } : {}),
           ...(envConfig.usageMetadata ? { metadata: envConfig.usageMetadata } : {}),
-        });
+        }, authContext);
         result = {
           metadata: resolved.metadata,
           registry: resolved.registry,
@@ -63,6 +66,9 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
         });
         break;
       case "issue": {
+        const authContext = envConfig.callerScopeType && envConfig.callerScopeRef
+          ? { callerScopeType: envConfig.callerScopeType, callerScopeRef: envConfig.callerScopeRef }
+          : undefined;
         const issued = await service.issueSecretLease({
           secretRef: envConfig.secretRef ?? "",
           requestedBy: envConfig.requestedBy ?? "",
@@ -73,7 +79,7 @@ import { SecretManagementService } from "../../platform/five-plane-control-plane
           ...(envConfig.taskId ? { taskId: envConfig.taskId } : {}),
           ...(envConfig.executionId ? { executionId: envConfig.executionId } : {}),
           ...(envConfig.usageMetadata ? { metadata: envConfig.usageMetadata } : {}),
-        });
+        }, authContext);
         result = {
           metadata: issued.metadata,
           registry: issued.registry,

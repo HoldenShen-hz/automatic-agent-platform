@@ -331,6 +331,10 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
       let loopReplanDecision: ReplanningDecision;
       let loopGraphPatch: GraphPatch | null = null;
       let loopEvaluationReport: EvaluationReport;
+      // R5-2: Track whether we've already replanned to avoid re-looping on same correction
+      let hasReplanned = false;
+      // R5-2: Track fresh feedback signals built from current step outputs (not reused from input)
+      let loopFeedbackSignals: FeedbackSignal[] = [];
       const constraintPack = input.constraintPack ?? {
         policyIds: [],
         approvalMode: "none" as const,
@@ -413,8 +417,11 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           return [];
         })();
 
+        // R5-2: On first iteration, build fresh signals from step outputs; on subsequent iterations
+        // after replan, use previously built signals (do not reuse stale input.feedbackSignals)
+        loopFeedbackSignals = this.buildFeedbackSignals(input.taskId, validatedStepOutputs);
         const feedbackSignals: FeedbackSignal[] = (() => {
-          const result = validateFeedbackSignals(input.feedbackSignals ?? this.buildFeedbackSignals(input.taskId, validatedStepOutputs));
+          const result = validateFeedbackSignals(loopFeedbackSignals);
           if (result.ok) return result.value;
           this.boundaryLogger.warn("[boundary:E→F] feedbackSignals validation failed — skipping feedback stage", {
             data: { taskId: input.taskId, boundary: "E→F" },
@@ -459,7 +466,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           "feedback",
           loopQualityGate.reasonCodes.join(","),
         );
-        loopReplanDecision = this.replanning.decide(loopPlan, loopFeedback, loopReplanTrigger);
+        loopReplanDecision = this.replanning.decide(loopPlan, loopFeedback, loopReplanTrigger, hasReplanned);
         const iterationCost = loopStepOutputs.reduce((sum, output) => sum + output.systemTelemetry.tokensUsed, 0);
         loopController.recordIteration(iterationCost);
 
@@ -472,6 +479,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         if (!loopReplanDecision.shouldReplan) {
           break;
         }
+        hasReplanned = true;
         loopController.recordReplan();
         if (loopController.getGuardViolation() !== null) {
           break;
