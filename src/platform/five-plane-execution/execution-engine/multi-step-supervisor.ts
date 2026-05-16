@@ -357,10 +357,12 @@ export async function executeStepLoop(
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
       });
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
+      const stepDataRecord: Record<string, unknown> = {};
+      Object.assign(stepDataRecord, stepData);
 
       let validation: ReturnType<typeof validateWorkflowStepOutput>;
       try {
-        validation = validateWorkflowStepOutput(step, stepData as unknown as Record<string, unknown>);
+        validation = validateWorkflowStepOutput(step, stepDataRecord);
       } catch (error) {
         const errorCode = normalizeStepErrorCode(error);
         const decision = decideWorkflowStepRetry({ errorCode, attempt, maxAttempts: step.maxAttempts });
@@ -501,7 +503,7 @@ export async function executeStepLoop(
           outputKey: step.outputKey,
           status: "succeeded",
           producedAt: stepProducedAt,
-          output: stepData as unknown as Record<string, unknown>,
+          output: stepDataRecord,
           decisionContext: {
             source: "multi_step_orchestration",
             request: input.request,

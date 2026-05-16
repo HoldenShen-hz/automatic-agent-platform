@@ -23,7 +23,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Worker claim state
  * - Decision recording
  */
-export interface DispatchTicketState {
+export interface DispatchTicketState extends Record<string, unknown> {
   /** Ticket ID */
   ticketId: string | null;
   /** Execution ID */
@@ -196,7 +196,7 @@ export const dispatchProjectionHandler: ProjectionHandler = (
 
   // Idempotency check - skip already processed events using O(1) Set lookup
   if (isEventProcessed(baseState, event.eventId)) {
-    return baseState as unknown as Record<string, unknown>;
+    return baseState;
   }
 
   const occurredAt = event.createdAt;
@@ -291,6 +291,6 @@ export const dispatchProjectionHandler: ProjectionHandler = (
     }
 
     default:
-      return newState as unknown as Record<string, unknown>;
+      return newState;
   }
 };

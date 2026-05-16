@@ -17,6 +17,52 @@ const LEASE_AUDIT_COLS = `
   id, execution_id, lease_id, worker_id, fencing_token, event_type, reason_code, recorded_at
 `;
 
+function readExecutionLeaseRecord(row: object | undefined): ExecutionLeaseRecord | undefined {
+  if (!row) {
+    return undefined;
+  }
+  const rowRecord = row as Partial<Record<string, unknown>> & Partial<ExecutionLeaseRecord>;
+  return {
+    id: String(rowRecord.id ?? ""),
+    executionId: String(rowRecord.executionId ?? rowRecord.execution_id ?? ""),
+    workerId: String(rowRecord.workerId ?? rowRecord.worker_id ?? ""),
+    attempt: Number(rowRecord.attempt ?? 0),
+    fencingToken: Number(rowRecord.fencingToken ?? rowRecord.fencing_token ?? 0),
+    queueName: typeof (rowRecord.queueName ?? rowRecord.queue_name) === "string" ? String(rowRecord.queueName ?? rowRecord.queue_name) : null,
+    status: String(rowRecord.status ?? "active") as ExecutionLeaseRecord["status"],
+    leasedAt: String(rowRecord.leasedAt ?? rowRecord.leased_at ?? ""),
+    expiresAt: String(rowRecord.expiresAt ?? rowRecord.expires_at ?? ""),
+    lastHeartbeatAt: typeof (rowRecord.lastHeartbeatAt ?? rowRecord.last_heartbeat_at) === "string"
+      ? String(rowRecord.lastHeartbeatAt ?? rowRecord.last_heartbeat_at)
+      : null,
+    releasedAt: typeof (rowRecord.releasedAt ?? rowRecord.released_at) === "string"
+      ? String(rowRecord.releasedAt ?? rowRecord.released_at)
+      : null,
+    reasonCode: typeof (rowRecord.reasonCode ?? rowRecord.reason_code) === "string"
+      ? String(rowRecord.reasonCode ?? rowRecord.reason_code)
+      : null,
+  };
+}
+
+function readExecutionLeaseRecords(rows: readonly Record<string, unknown>[]): ExecutionLeaseRecord[] {
+  return rows.map((row) => readExecutionLeaseRecord(row)).filter((row): row is ExecutionLeaseRecord => row !== undefined);
+}
+
+function readLeaseAuditRecords(rows: readonly Record<string, unknown>[]): LeaseAuditRecord[] {
+  return rows.map((row) => ({
+    id: String(row.id ?? ""),
+    executionId: String(row.executionId ?? row.execution_id ?? ""),
+    leaseId: String(row.leaseId ?? row.lease_id ?? ""),
+    workerId: String(row.workerId ?? row.worker_id ?? ""),
+    fencingToken: Number(row.fencingToken ?? row.fencing_token ?? 0),
+    eventType: String(row.eventType ?? row.event_type ?? "") as LeaseAuditRecord["eventType"],
+    reasonCode: typeof (row.reasonCode ?? row.reason_code) === "string"
+      ? String(row.reasonCode ?? row.reason_code)
+      : null,
+    recordedAt: String(row.recordedAt ?? row.recorded_at ?? ""),
+  }));
+}
+
 export class SqliteLeaseRepository implements LeaseRepository {
   constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
@@ -45,24 +91,26 @@ export class SqliteLeaseRepository implements LeaseRepository {
   }
 
   async getLease(leaseId: string): Promise<ExecutionLeaseRecord | undefined> {
-    return this.db.connection
+    const row = this.db.connection
       .prepare(
         `SELECT ${EXECUTION_LEASE_COLS}
          FROM execution_leases
          WHERE id = ?`,
       )
-      .get(leaseId) as unknown as ExecutionLeaseRecord | undefined;
+      .get(leaseId) as object | undefined;
+    return readExecutionLeaseRecord(row);
   }
 
   async getActiveLeaseForExecution(executionId: string): Promise<ExecutionLeaseRecord | undefined> {
-    return this.db.connection
+    const row = this.db.connection
       .prepare(
         `SELECT ${EXECUTION_LEASE_COLS}
          FROM execution_leases
          WHERE execution_id = ?
            AND status = 'active'`,
       )
-      .get(executionId) as unknown as ExecutionLeaseRecord | undefined;
+      .get(executionId) as object | undefined;
+    return readExecutionLeaseRecord(row);
   }
 
   async getLatestFencingToken(executionId: string): Promise<number> {
@@ -77,14 +125,15 @@ export class SqliteLeaseRepository implements LeaseRepository {
   }
 
   async listExecutionLeases(executionId: string): Promise<ExecutionLeaseRecord[]> {
-    return this.db.connection
+    const rows = this.db.connection
       .prepare(
         `SELECT ${EXECUTION_LEASE_COLS}
          FROM execution_leases
          WHERE execution_id = ?
          ORDER BY fencing_token ASC`,
       )
-      .all(executionId) as unknown as ExecutionLeaseRecord[];
+      .all(executionId) as Record<string, unknown>[];
+    return readExecutionLeaseRecords(rows);
   }
 
   async updateLeaseStatus(leaseId: string, status: ExecutionLeaseRecord["status"]): Promise<void> {
@@ -126,7 +175,7 @@ export class SqliteLeaseRepository implements LeaseRepository {
     this.db.connection
       .prepare(`UPDATE execution_leases SET last_heartbeat_at = ?, expires_at = ? WHERE id = ?`)
       .run(lastHeartbeatAt, newExpiresAt, leaseId);
-    const testState = (this.db as unknown as { _state?: { leases?: Map<string, ExecutionLeaseRecord> } })._state;
+    const testState = (this.db as AuthoritativeSqlDatabase & { _state?: { leases?: Map<string, ExecutionLeaseRecord> } })._state;
     const testLease = testState?.leases?.get(leaseId);
     if (testLease) {
       testState?.leases?.set(leaseId, { ...testLease, lastHeartbeatAt, expiresAt: newExpiresAt });
@@ -172,13 +221,14 @@ export class SqliteLeaseRepository implements LeaseRepository {
   }
 
   async listLeaseAudits(executionId: string): Promise<LeaseAuditRecord[]> {
-    return this.db.connection
+    const rows = this.db.connection
       .prepare(
         `SELECT ${LEASE_AUDIT_COLS}
          FROM lease_audits
          WHERE execution_id = ?
          ORDER BY recorded_at ASC`,
       )
-      .all(executionId) as unknown as LeaseAuditRecord[];
+      .all(executionId) as Record<string, unknown>[];
+    return readLeaseAuditRecords(rows);
   }
 }

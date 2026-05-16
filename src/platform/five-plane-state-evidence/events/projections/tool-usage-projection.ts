@@ -25,7 +25,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Cache hit/miss rates
  * - Retry patterns
  */
-export interface ToolUsageState {
+export interface ToolUsageState extends Record<string, unknown> {
   /** Tool/plugin ID */
   toolId: string | null;
   /** Tool name (from skill: events) */
@@ -186,12 +186,12 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as ToolUsageState | null;
+  const currentState = state as ToolUsageState | null;
   const newState = currentState ? { ...currentState } : createEmptyToolUsageState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -312,7 +312,7 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

@@ -29,7 +29,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Outcome verification
  * - Policy matches
  */
-export interface RiskActionState {
+export interface RiskActionState extends Record<string, unknown> {
   /** Risk decision/evaluation ID */
   riskDecisionId: string | null;
   /** Associated task ID */
@@ -199,12 +199,12 @@ export const riskActionProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as RiskActionState | null;
+  const currentState = state as RiskActionState | null;
   const newState = currentState ? { ...currentState } : createEmptyRiskActionState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -343,7 +343,7 @@ export const riskActionProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

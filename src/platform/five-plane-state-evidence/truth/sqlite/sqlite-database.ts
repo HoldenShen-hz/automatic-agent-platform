@@ -8,6 +8,7 @@ import {
   SQLITE_MIGRATION_LEDGER_SQL,
   type SqliteMigrationDefinition,
 } from "./sqlite-migration-plan.js";
+import { queryAll } from "./query-helper.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
 
 const sqliteDbLogger = new StructuredLogger({ retentionLimit: 50 });
@@ -40,6 +41,8 @@ export interface AuthoritativeSqlDatabase {
   integrityCheck(): string[];
   /** Checks database writability */
   healthCheck(): Promise<boolean>;
+  /** Closes the underlying database connection */
+  close(): void;
   /** Executes work within a write transaction */
   transaction<T>(work: () => T): T;
   /** Executes work within a read transaction */
@@ -168,17 +171,16 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
   public listAppliedMigrations(): AppliedSqliteMigrationRecord[] {
     this.ensureMigrationLedgerTable();
 
-    return this.connection
-      .prepare(
-        `SELECT
-          version,
-          name,
-          checksum,
-          applied_at AS appliedAt
-         FROM schema_migrations
-         ORDER BY version ASC`,
-      )
-      .all() as unknown as AppliedSqliteMigrationRecord[];
+    return queryAll<AppliedSqliteMigrationRecord>(
+      this.connection,
+      `SELECT
+        version,
+        name,
+        checksum,
+        applied_at AS appliedAt
+       FROM schema_migrations
+       ORDER BY version ASC`,
+    );
   }
 
   /**

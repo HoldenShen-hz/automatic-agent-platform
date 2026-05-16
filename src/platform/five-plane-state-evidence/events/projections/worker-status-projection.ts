@@ -25,7 +25,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Writeback status
  * - Lease release
  */
-export interface WorkerStatusState {
+export interface WorkerStatusState extends Record<string, unknown> {
   /** Worker ID (from event) */
   workerId: string | null;
   /** Current status of the worker */
@@ -188,12 +188,12 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as WorkerStatusState | null;
+  const currentState = state as WorkerStatusState | null;
   const newState = currentState ? { ...currentState } : createEmptyWorkerStatusState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -301,7 +301,7 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

@@ -25,7 +25,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Step completion tracking
  * - Error and failure information
  */
-export interface WorkflowRunState {
+export interface WorkflowRunState extends Record<string, unknown> {
   /** Unique identifier for this workflow run */
   workflowId: string | null;
   /** Associated task ID */
@@ -160,12 +160,12 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as WorkflowRunState | null;
+  const currentState = state as WorkflowRunState | null;
   const newState = currentState ? { ...currentState } : createEmptyWorkflowRunState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -254,7 +254,7 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 function handleWorkflowRunCreated(

@@ -1,10 +1,10 @@
 /**
  * Type-safe query helpers for SQLite data access.
  *
- * This module centralizes all `as unknown as T` type casts that arise because
+ * This module centralizes the remaining SQLite row type assertions that arise because
  * better-sqlite3's query methods return `unknown`.  By funneling all casts through
  * these helpers we:
- *   1. Reduce the 100+ `as unknown as` occurrences in AuthoritativeTaskStore to a handful.
+ *   1. Reduce ad-hoc row assertions in AuthoritativeTaskStore to a handful.
  *   2. Provide a single place to add Zod runtime validation if desired later.
  *   3. Make type-safety auditable via a single grep.
  */
@@ -18,14 +18,14 @@ export type SqliteConnection = Pick<DatabaseSync, "exec" | "prepare">;
 
 /**
  * Execute a statement and return all rows as the target type.
- * Casts `unknown[]` (better-sqlite3 row arrays) through `unknown` to T.
+ * Casts SQLite row arrays to the requested result type.
  */
 export function queryAll<T>(
   conn: SqliteConnection,
   sql: string,
   ...params: SQLInputValue[]
 ): T[] {
-  return conn.prepare(sql).all(...params) as unknown as T[];
+  return conn.prepare(sql).all(...params) as T[];
 }
 
 /**
@@ -38,7 +38,7 @@ export function queryAllOrEmpty<T>(
   ...params: SQLInputValue[]
 ): T[] {
   const result = conn.prepare(sql).all(...params);
-  return (result ?? []) as unknown as T[];
+  return (result ?? []) as T[];
 }
 
 /**
@@ -50,7 +50,7 @@ export function queryOne<T>(
   sql: string,
   ...params: SQLInputValue[]
 ): T | undefined {
-  return conn.prepare(sql).get(...params) as unknown as T | undefined;
+  return conn.prepare(sql).get(...params) as T | undefined;
 }
 
 /**
@@ -76,7 +76,7 @@ export function queryOneOrThrow<T>(
       },
     );
   }
-  return result as unknown as T;
+  return result as T;
 }
 
 /**

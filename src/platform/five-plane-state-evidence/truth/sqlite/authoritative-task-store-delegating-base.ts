@@ -151,8 +151,8 @@ export abstract class AuthoritativeTaskStoreDelegatingBase extends Authoritative
     methodName: MethodKey,
     ...args: RepositoryMethod<RepoKey, MethodKey>["args"]
   ): RepositoryMethod<RepoKey, MethodKey>["result"] {
-    const repository = this.repositorySet[repoName] as unknown as Record<string, (...methodArgs: unknown[]) => unknown>;
-    const method = repository[methodName as string];
+    const repository = this.repositorySet[repoName];
+    const method = Reflect.get(repository, methodName as string);
     if (typeof method !== "function") {
       throw new TypeError(`Repository method ${String(repoName)}.${String(methodName)} is not callable.`);
     }
@@ -172,7 +172,7 @@ export abstract class AuthoritativeTaskStoreDelegatingBase extends Authoritative
     return this.callRepo(
       repoName,
       methodName,
-      ...args as unknown as RepositoryMethod<RepoKey, MethodKey>["args"],
+      ...args as RepositoryMethod<RepoKey, MethodKey>["args"],
     ) as LegacyMethod<LegacyKey>["result"];
   }
 
@@ -189,7 +189,7 @@ export abstract class AuthoritativeTaskStoreDelegatingBase extends Authoritative
     const result = this.callRepo(
       repoName,
       methodName,
-      ...args as unknown as RepositoryMethod<RepoKey, MethodKey>["args"],
+      ...args as RepositoryMethod<RepoKey, MethodKey>["args"],
     );
     return (result ?? null) as LegacyMethod<LegacyKey>["result"];
   }
@@ -207,7 +207,7 @@ export abstract class AuthoritativeTaskStoreDelegatingBase extends Authoritative
     const result = this.callRepo(
       repoName,
       methodName,
-      ...args as unknown as RepositoryMethod<RepoKey, MethodKey>["args"],
+      ...args as RepositoryMethod<RepoKey, MethodKey>["args"],
     );
     return (result ?? undefined) as LegacyMethod<LegacyKey>["result"];
   }

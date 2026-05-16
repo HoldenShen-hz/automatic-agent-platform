@@ -362,7 +362,7 @@ export class ModelCallProviderService {
 
           // Return the result as a properly typed response
           // The actual typing is handled by the next() function's return type
-          return result as unknown as T;
+          return result as T;
         } catch (error) {
           // If the model call fails, log and re-throw
           logger.log({ level: "error", message: `LLM call failed`, data: { error: error instanceof Error ? error.message : String(error) } });

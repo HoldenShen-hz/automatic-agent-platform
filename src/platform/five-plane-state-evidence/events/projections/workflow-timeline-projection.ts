@@ -30,7 +30,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Decision points
  * - Subtask outcomes
  */
-export interface WorkflowTimelineState {
+export interface WorkflowTimelineState extends Record<string, unknown> {
   /** Canonical plan graph / compatibility workflow identifier */
   planGraphBundleId: string | null;
   /** Canonical harness run identifier */
@@ -276,12 +276,12 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as WorkflowTimelineState | null;
+  const currentState = state as WorkflowTimelineState | null;
   const newState = currentState ? { ...currentState } : createEmptyWorkflowTimelineState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -560,7 +560,7 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

@@ -141,6 +141,10 @@ export type ExecutionWorkerWritebackServiceAsyncEvent =
   | { type: "queue_overflow"; queueSize: number }
   | { type: "batch_flush"; batchSize: number; durationMs: number };
 
+function isWorkerWritebackDecision(value: unknown): value is WorkerWritebackDecision {
+  return typeof value === "object" && value !== null && "accepted" in value;
+}
+
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
@@ -501,9 +505,9 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
           const durationMs = Date.now() - startedAt;
 
           // Track acceptance
-          if (typeof result === "object" && result !== null && "accepted" in result) {
-            const decision = result as unknown as WorkerWritebackDecision;
-            if (decision.accepted) {
+          const accepted = isWorkerWritebackDecision(result) ? result.accepted : false;
+          if (isWorkerWritebackDecision(result)) {
+            if (accepted) {
               this.metrics.acceptedWritebacks++;
             } else {
               this.metrics.rejectedWritebacks++;
@@ -516,7 +520,7 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
             writebackId: operationId,
             executionId,
             durationMs,
-            accepted: (result as WorkerWritebackDecision).accepted ?? false,
+            accepted,
           });
 
           return result;

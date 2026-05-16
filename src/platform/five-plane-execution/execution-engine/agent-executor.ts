@@ -128,15 +128,18 @@ export function initializeAgentExecutor(options: AgentExecutorOptions = {}): Ini
     }
 
     if (logger) {
-      const chainAny = chain as unknown as { options: { logger?: (code: string, msg: string, ctx: MiddlewareContext) => void; failOpen?: boolean } };
-      const originalLogger = chainAny.options?.logger;
-      chainAny.options = {
+      const currentOptions = Reflect.get(chain, "options") as {
+        logger?: (code: string, msg: string, ctx: MiddlewareContext) => void;
+        failOpen?: boolean;
+      } | undefined;
+      const originalLogger = currentOptions?.logger;
+      Reflect.set(chain, "options", {
         failOpen,
         logger: (code: string, msg: string, ctx: MiddlewareContext) => {
           logger(code, msg, ctx);
           originalLogger?.(code, msg, ctx);
         },
-      };
+      });
     }
 
     let loopState: LoopDetectionState | null = null;

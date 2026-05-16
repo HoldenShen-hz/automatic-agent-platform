@@ -30,7 +30,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Approval flow state changes
  * - Delegation changes
  */
-export interface GovernanceState {
+export interface GovernanceState extends Record<string, unknown> {
   /** Entity ID this governance event applies to */
   entityId: string | null;
   /** Entity kind (policy, approval, delegation, compliance, etc.) */
@@ -261,12 +261,12 @@ export const governanceProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as GovernanceState | null;
+  const currentState = state as GovernanceState | null;
   const newState = currentState ? { ...currentState } : createEmptyGovernanceState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -448,7 +448,7 @@ export const governanceProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

@@ -97,6 +97,17 @@ export type TakeoverOperationType =
   | "skipCurrentStep"
   | "completeTask";
 
+type TakeoverOperationInputMap = {
+  openSession: Parameters<HumanTakeoverService["openSession"]>[0];
+  modifyInput: Parameters<HumanTakeoverService["modifyInput"]>[0];
+  switchWorker: Parameters<HumanTakeoverService["switchWorker"]>[0];
+  retryExecution: Parameters<HumanTakeoverService["retryExecution"]>[0];
+  setCurrentStep: Parameters<HumanTakeoverService["setCurrentStep"]>[0];
+  writeStepOutput: Parameters<HumanTakeoverService["writeStepOutput"]>[0];
+  skipCurrentStep: Parameters<HumanTakeoverService["skipCurrentStep"]>[0];
+  completeTask: Parameters<HumanTakeoverService["completeTask"]>[0];
+};
+
 /**
  * Operation metrics
  */
@@ -428,11 +439,11 @@ export class HumanTakeoverServiceAsync extends LocalTypedEventEmitter<Record<str
    * @param options - Optional timeout and abort signal
    * @returns Promise resolving to the action result
    */
-  public enqueueOperation<T extends TakeoverActionResult>(
-    operationType: TakeoverOperationType,
-    input: Record<string, unknown>,
+  public enqueueOperation<K extends TakeoverOperationType>(
+    operationType: K,
+    input: TakeoverOperationInputMap[K],
     options?: { timeoutMs?: number; signal?: AbortSignal; priority?: number },
-  ): Promise<T> {
+  ): Promise<TakeoverActionResult> {
     if (this.disposed) {
       return Promise.reject(new Error("Service has been disposed"));
     }
@@ -442,33 +453,12 @@ export class HumanTakeoverServiceAsync extends LocalTypedEventEmitter<Record<str
       return Promise.reject(new Error("Operation queue is full"));
     }
 
-    return new Promise<T>((resolve, reject) => {
+    return new Promise<TakeoverActionResult>((resolve, reject) => {
       const abortController = new AbortController();
 
-      const operationFn = () => {
-        switch (operationType) {
-          case "openSession":
-            return this.sync.openSession(input as Parameters<typeof this.sync.openSession>[0]) as unknown as T;
-          case "modifyInput":
-            return this.sync.modifyInput(input as Parameters<typeof this.sync.modifyInput>[0]) as unknown as T;
-          case "switchWorker":
-            return this.sync.switchWorker(input as Parameters<typeof this.sync.switchWorker>[0]) as unknown as T;
-          case "retryExecution":
-            return this.sync.retryExecution(input as Parameters<typeof this.sync.retryExecution>[0]) as unknown as T;
-          case "setCurrentStep":
-            return this.sync.setCurrentStep(input as Parameters<typeof this.sync.setCurrentStep>[0]) as unknown as T;
-          case "writeStepOutput":
-            return this.sync.writeStepOutput(input as Parameters<typeof this.sync.writeStepOutput>[0]) as unknown as T;
-          case "skipCurrentStep":
-            return this.sync.skipCurrentStep(input as Parameters<typeof this.sync.skipCurrentStep>[0]) as unknown as T;
-          case "completeTask":
-            return this.sync.completeTask(input as Parameters<typeof this.sync.completeTask>[0]) as unknown as T;
-          default:
-            throw new Error(`Unknown operation type: ${operationType}`);
-        }
-      };
+      const operationFn = () => this.dispatchQueuedOperation(operationType, input);
 
-      const pendingOp: PendingOperation<T> = {
+      const pendingOp: PendingOperation<TakeoverActionResult> = {
         id: this.generateOperationId(),
         operationName: operationType,
         operation: async () => {
@@ -489,6 +479,30 @@ export class HumanTakeoverServiceAsync extends LocalTypedEventEmitter<Record<str
       this.operationQueue.sort((a, b) => b.priority - a.priority);
       this.processQueue();
     });
+  }
+
+  private dispatchQueuedOperation<K extends TakeoverOperationType>(
+    operationType: K,
+    input: TakeoverOperationInputMap[K],
+  ): TakeoverActionResult {
+    switch (operationType) {
+      case "openSession":
+        return this.sync.openSession(input as TakeoverOperationInputMap["openSession"]);
+      case "modifyInput":
+        return this.sync.modifyInput(input as TakeoverOperationInputMap["modifyInput"]);
+      case "switchWorker":
+        return this.sync.switchWorker(input as TakeoverOperationInputMap["switchWorker"]);
+      case "retryExecution":
+        return this.sync.retryExecution(input as TakeoverOperationInputMap["retryExecution"]);
+      case "setCurrentStep":
+        return this.sync.setCurrentStep(input as TakeoverOperationInputMap["setCurrentStep"]);
+      case "writeStepOutput":
+        return this.sync.writeStepOutput(input as TakeoverOperationInputMap["writeStepOutput"]);
+      case "skipCurrentStep":
+        return this.sync.skipCurrentStep(input as TakeoverOperationInputMap["skipCurrentStep"]);
+      case "completeTask":
+        return this.sync.completeTask(input as TakeoverOperationInputMap["completeTask"]);
+    }
   }
 
   /**

@@ -11,7 +11,7 @@
 
 import type { BudgetLedger, BudgetReservation, BudgetSettlement } from "../sqlite-repository-contracts.js";
 import type { SqliteConnection } from "../query-helper.js";
-import { queryOne } from "../query-helper.js";
+import { queryAll, queryOne } from "../query-helper.js";
 
 export interface BudgetLedgerRow {
   budgetLedgerId: string;
@@ -326,7 +326,8 @@ export class BudgetRepository {
    * List all settlements for a reservation.
    */
   public listSettlementsByReservation(budgetReservationId: string): BudgetSettlementRow[] {
-    const rows = this.conn.prepare(
+    return queryAll<BudgetSettlementRow>(
+      this.conn,
       `SELECT
         budget_settlement_id AS budgetSettlementId,
         budget_reservation_id AS budgetReservationId,
@@ -336,7 +337,7 @@ export class BudgetRepository {
        FROM budget_settlements
        WHERE budget_reservation_id = ?
        ORDER BY created_at ASC`,
-    ).all(budgetReservationId) as unknown as BudgetSettlementRow[];
-    return rows;
+      budgetReservationId,
+    );
   }
 }

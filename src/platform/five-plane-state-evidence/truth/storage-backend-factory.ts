@@ -237,6 +237,9 @@ function createUnsupportedPostgresSyncFacade(pgDb: PgDatabase): AuthoritativeSql
     integrityCheck(): string[] {
       return unsupported("integrityCheck");
     },
+    close(): void {
+      return unsupported("close");
+    },
     transaction<T>(_work: () => T): T {
       return unsupported("transaction");
     },

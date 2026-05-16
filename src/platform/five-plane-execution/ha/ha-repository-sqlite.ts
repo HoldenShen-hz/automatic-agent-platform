@@ -5,6 +5,7 @@
  */
 
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
+import { queryAll, queryOne } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
 import { nowIso } from "../../contracts/types/ids.js";
@@ -34,21 +35,26 @@ export class SqliteHaRepository implements HaRepository {
   }
 
   async getNode(nodeId: string): Promise<CoordinatorNode | undefined> {
-    const row = this.db.connection
-      .prepare(`SELECT * FROM coordinator_nodes WHERE node_id = ?`)
-      .get(nodeId) as unknown as CoordinatorNodeRow | undefined;
+    const row = queryOne<CoordinatorNodeRow>(
+      this.db.connection,
+      `SELECT * FROM coordinator_nodes WHERE node_id = ?`,
+      nodeId,
+    );
     return row ? this.mapRowToNode(row) : undefined;
   }
 
   async listNodes(status?: CoordinatorNodeStatus): Promise<CoordinatorNode[]> {
     if (status) {
-      return (this.db.connection
-        .prepare(`SELECT * FROM coordinator_nodes WHERE status = ? ORDER BY last_heartbeat_at DESC`)
-        .all(status) as unknown as CoordinatorNodeRow[]).map((r) => this.mapRowToNode(r));
+      return queryAll<CoordinatorNodeRow>(
+        this.db.connection,
+        `SELECT * FROM coordinator_nodes WHERE status = ? ORDER BY last_heartbeat_at DESC`,
+        status,
+      ).map((r) => this.mapRowToNode(r));
     }
-    return (this.db.connection
-      .prepare(`SELECT * FROM coordinator_nodes ORDER BY last_heartbeat_at DESC`)
-      .all() as unknown as CoordinatorNodeRow[]).map((r) => this.mapRowToNode(r));
+    return queryAll<CoordinatorNodeRow>(
+      this.db.connection,
+      `SELECT * FROM coordinator_nodes ORDER BY last_heartbeat_at DESC`,
+    ).map((r) => this.mapRowToNode(r));
   }
 
   async updateNodeHeartbeat(nodeId: string, status?: CoordinatorNodeStatus): Promise<void> {
@@ -120,9 +126,11 @@ export class SqliteHaRepository implements HaRepository {
 
   async getExpiredLeases(): Promise<LeaderLease[]> {
     const now = nowIso();
-    return (this.db.connection
-      .prepare(`SELECT * FROM leadership_leases WHERE status = 'active' AND expires_at <= ?`)
-      .all(now) as unknown as LeaderLeaseRow[]).map((r) => this.mapRowToLease(r));
+    return queryAll<LeaderLeaseRow>(
+      this.db.connection,
+      `SELECT * FROM leadership_leases WHERE status = 'active' AND expires_at <= ?`,
+      now,
+    ).map((r) => this.mapRowToLease(r));
   }
 
   async getActiveLeaseByNode(nodeId: string): Promise<LeaderLease | undefined> {
@@ -157,9 +165,11 @@ export class SqliteHaRepository implements HaRepository {
   }
 
   async listEpochs(limit = 100): Promise<LeadershipEpoch[]> {
-    return (this.db.connection
-      .prepare(`SELECT * FROM leadership_epochs ORDER BY epoch DESC LIMIT ?`)
-      .all(limit) as unknown as unknown[]).map((r) => this.mapRowToEpoch(r as EpochRow));
+    return queryAll<EpochRow>(
+      this.db.connection,
+      `SELECT * FROM leadership_epochs ORDER BY epoch DESC LIMIT ?`,
+      limit,
+    ).map((r) => this.mapRowToEpoch(r));
   }
 
   // Failover Decisions
@@ -183,9 +193,11 @@ export class SqliteHaRepository implements HaRepository {
   }
 
   async listFailoverDecisions(limit = 100): Promise<FailoverDecision[]> {
-    return (this.db.connection
-      .prepare(`SELECT * FROM failover_decisions ORDER BY decided_at DESC LIMIT ?`)
-      .all(limit) as unknown as unknown[]).map((r) => this.mapRowToFailoverDecision(r as FailoverDecisionRow));
+    return queryAll<FailoverDecisionRow>(
+      this.db.connection,
+      `SELECT * FROM failover_decisions ORDER BY decided_at DESC LIMIT ?`,
+      limit,
+    ).map((r) => this.mapRowToFailoverDecision(r));
   }
 
   // Leader Action Audit
@@ -213,9 +225,11 @@ export class SqliteHaRepository implements HaRepository {
 
   async getStaleNodes(thresholdMs: number): Promise<CoordinatorNode[]> {
     const thresholdDate = new Date(Date.now() - thresholdMs).toISOString();
-    return (this.db.connection
-      .prepare(`SELECT * FROM coordinator_nodes WHERE last_heartbeat_at < ?`)
-      .all(thresholdDate) as unknown as unknown[]).map((r) => this.mapRowToNode(r as CoordinatorNodeRow));
+    return queryAll<CoordinatorNodeRow>(
+      this.db.connection,
+      `SELECT * FROM coordinator_nodes WHERE last_heartbeat_at < ?`,
+      thresholdDate,
+    ).map((r) => this.mapRowToNode(r));
   }
 
   // Row Mappers

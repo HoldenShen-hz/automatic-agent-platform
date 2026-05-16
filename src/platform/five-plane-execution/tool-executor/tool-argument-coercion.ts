@@ -488,6 +488,17 @@ export function coerceTodoWriteToolRequest(request: TodoWriteToolRequest): ToolA
   return { value: nextValue, traces };
 }
 
+function coerceTypedToolArguments<T extends object>(
+  args: Record<string, unknown>,
+  coerce: (request: T) => ToolArgumentCoercionResult<T>,
+): ToolArgumentCoercionResult<Record<string, unknown>> {
+  const result = coerce(args as T);
+  return {
+    value: Object.assign({}, result.value) as Record<string, unknown>,
+    traces: result.traces,
+  };
+}
+
 /**
  * Dispatches argument coercion to the appropriate tool-specific handler.
  */
@@ -498,17 +509,17 @@ export function coerceToolArguments(
   switch (toolName) {
     case "command_exec":
     case "bash":
-      return coerceCommandToolRequest(args as unknown as CommandToolRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<CommandToolRequest>(args, coerceCommandToolRequest);
     case "edit_replace":
-      return coerceEditReplacementRequest(args as unknown as EditReplacementRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<EditReplacementRequest>(args, coerceEditReplacementRequest);
     case "edit_batch":
-      return coerceEditBatchRequest(args as unknown as EditBatchRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<EditBatchRequest>(args, coerceEditBatchRequest);
     case "apply_patch":
-      return coercePatchToolRequest(args as unknown as PatchToolRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<PatchToolRequest>(args, coercePatchToolRequest);
     case "question":
-      return coerceQuestionToolRequest(args as unknown as QuestionToolRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<QuestionToolRequest>(args, coerceQuestionToolRequest);
     case "todo_write":
-      return coerceTodoWriteToolRequest(args as unknown as TodoWriteToolRequest) as unknown as ToolArgumentCoercionResult<Record<string, unknown>>;
+      return coerceTypedToolArguments<TodoWriteToolRequest>(args, coerceTodoWriteToolRequest);
     default:
       return { value: { ...args }, traces: [] };
   }

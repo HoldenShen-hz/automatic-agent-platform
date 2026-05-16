@@ -163,7 +163,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   }
 
   private get coordinatorCompat(): LeaderElectionCoordinatorCompat {
-    return this.coordinator as unknown as LeaderElectionCoordinatorCompat;
+    return this.coordinator as HaCoordinatorService & LeaderElectionCoordinatorCompat;
   }
 
   // ── Public API ────────────────────────────────────────────────────

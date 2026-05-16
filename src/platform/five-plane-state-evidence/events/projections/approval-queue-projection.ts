@@ -25,7 +25,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - Quorum tracking for multi-party approvals
  * - Timeout and expiration
  */
-export interface ApprovalQueueState {
+export interface ApprovalQueueState extends Record<string, unknown> {
   /** Approval ID */
   approvalId: string | null;
   /** Task ID associated with this approval */
@@ -194,12 +194,12 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as ApprovalQueueState | null;
+  const currentState = state as ApprovalQueueState | null;
   const newState = currentState ? { ...currentState } : createEmptyApprovalQueueState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -290,7 +290,7 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

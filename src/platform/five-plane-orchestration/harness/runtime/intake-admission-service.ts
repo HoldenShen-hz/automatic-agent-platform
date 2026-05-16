@@ -118,6 +118,50 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function markPlaceholder<T extends object>(value: T): T & { _placeholder: true } {
+  return Object.assign({}, value, { _placeholder: true as const });
+}
+
+function asJsonObject(value: { readonly [key: string]: JsonValue }): JsonValue {
+  return value;
+}
+
+function readNormalizedIntentRecord(value: JsonValue): { readonly [key: string]: JsonValue } {
+  if (value != null && typeof value === "object" && !Array.isArray(value)) {
+    return value as { readonly [key: string]: JsonValue };
+  }
+  return {};
+}
+
+function serializePrincipalRef(principal: PrincipalRef): JsonValue {
+  return {
+    principalId: principal.principalId,
+    type: principal.type,
+    tenantId: principal.tenantId,
+    roles: principal.roles,
+    ...(principal.displayName != null ? { displayName: principal.displayName } : {}),
+    ...(principal.authorizationLevel != null ? { authorizationLevel: principal.authorizationLevel } : {}),
+  };
+}
+
+function serializeConfirmationReceipt(receipt: UserConfirmationReceipt | null): JsonValue {
+  if (receipt == null) {
+    return null;
+  }
+  return {
+    receiptId: receipt.receiptId,
+    confirmedBy: serializePrincipalRef(receipt.confirmedBy),
+    riskClass: receipt.riskClass,
+    confirmedAt: receipt.confirmedAt,
+    ...(receipt.expiresAt != null ? { expiresAt: receipt.expiresAt } : {}),
+    state: receipt.state,
+    ...(receipt.riskPreviewVersion != null ? { riskPreviewVersion: receipt.riskPreviewVersion } : {}),
+    ...(receipt.scope != null ? { scope: receipt.scope } : {}),
+    ...(receipt.actor != null ? { actor: receipt.actor } : {}),
+    ...(receipt.timestamp != null ? { timestamp: receipt.timestamp } : {}),
+  };
+}
+
 /**
  * Detects ambiguity flags from raw task input for clarification tracking.
  * R6-11: Enhanced with confidence threshold and AmbiguityResolver support.
@@ -445,7 +489,7 @@ export class IntakeAdmissionService {
       // Use placeholder to satisfy type requirements; caller must check events for clarification_needed
       const result: HarnessAdmissionResult = {
         taskDraft,
-        confirmedTaskSpec: Object.assign({}, createConfirmedTaskSpec({
+        confirmedTaskSpec: markPlaceholder(createConfirmedTaskSpec({
           taskDraftId: taskDraft.taskDraftId,
           tenantId: input.tenantId,
           principal: input.principal,
@@ -456,8 +500,8 @@ export class IntakeAdmissionService {
           ...(input.confirmationReceipt != null ? { confirmationReceipt: input.confirmationReceipt } : {}),
           idempotencyKey: input.idempotencyKey,
           traceId: input.traceId,
-        }), { _placeholder: true } as unknown as ConfirmedTaskSpec),
-        requestEnvelope: Object.assign({}, createRequestEnvelopeFromConfirmedTask({
+        })),
+        requestEnvelope: markPlaceholder(createRequestEnvelopeFromConfirmedTask({
           confirmedTaskSpec: createConfirmedTaskSpec({
             taskDraftId: taskDraft.taskDraftId,
             tenantId: input.tenantId,
@@ -472,12 +516,12 @@ export class IntakeAdmissionService {
           }),
           budgetIntent: input.budgetIntent,
           requestHash: `request:${input.idempotencyKey}`,
-        }), { _placeholder: true } as unknown as RequestEnvelope),
-        runVersionLock: Object.assign({}, createRunVersionLock({
+        })),
+        runVersionLock: markPlaceholder(createRunVersionLock({
           harnessRunId: `pending:${input.idempotencyKey}`,
           runtimeProfileVersion: input.runtimeProfileVersion ?? "runtime-profile:default",
-        }), { _placeholder: true } as unknown as RunVersionLock),
-        harnessRun: Object.assign({}, createHarnessRun({
+        })),
+        harnessRun: markPlaceholder(createHarnessRun({
           tenantId: input.tenantId,
           traceId: input.traceId,
           riskLevel: input.riskPreview.riskClass,
@@ -489,7 +533,7 @@ export class IntakeAdmissionService {
           constraintPackRef: input.constraintPackRef,
           versionLockId: `pending:${input.idempotencyKey}`,
           budgetLedgerId: `pending:${input.idempotencyKey}`,
-        }), { _placeholder: true } as unknown as HarnessRun),
+        })),
         events: [clarificationEvent],
       };
       this.admittedByIdempotencyKey.set(input.idempotencyKey, result);
@@ -579,14 +623,24 @@ export class IntakeAdmissionService {
       tenantId: input.tenantId,
       runId: input.traceId,
       traceId: input.traceId,
-      payload: {
+      payload: asJsonObject({
         domainId,
         confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
         harnessRunId: admitted.aggregate.harnessRunId,
         runVersionLockId: runVersionLock.runVersionLockId,
         // R6-1: Include clarification session in event if present
-        ...(clarificationSession != null ? { clarificationSession } : {}),
-      } as unknown as JsonValue,
+        ...(clarificationSession != null ? {
+          clarificationSession: {
+            sessionId: clarificationSession.sessionId,
+            taskDraftId: clarificationSession.taskDraftId,
+            stage: clarificationSession.stage,
+            ambiguityFlags: clarificationSession.ambiguityFlags,
+            createdAt: clarificationSession.createdAt,
+            expiresAt: clarificationSession.expiresAt,
+            confirmationReceipt: serializeConfirmationReceipt(clarificationSession.confirmationReceipt),
+          },
+        } : {}),
+      }),
       schemaOwner: "intake-admission-service",
       consumerContractTests: ["intake-admission-service.test.ts"],
     });
@@ -638,12 +692,13 @@ export class IntakeAdmissionService {
     }
 
     // Create the confirmed task spec now that clarification is complete
+    const normalizedIntent = readNormalizedIntentRecord(persisted.taskDraft.normalizedIntent);
     const confirmedTaskSpec = createConfirmedTaskSpec({
       taskDraftId: persisted.taskDraft.taskDraftId,
       tenantId: persisted.harnessRun.tenantId,
-      principal: persisted.harnessRun.ownership.ownerId as unknown as PrincipalRef,
-      goal: (persisted.taskDraft.normalizedIntent as Record<string, unknown>)?.goal as string ?? "",
-      inputs: (persisted.taskDraft.normalizedIntent as Record<string, unknown>)?.inputs as JsonValue ?? {},
+      principal: persisted.taskDraft.principal,
+      goal: typeof normalizedIntent.goal === "string" ? normalizedIntent.goal : "",
+      inputs: normalizedIntent.inputs ?? {},
       constraintPackRef: persisted.harnessRun.constraintPackRef ?? "",
       riskClass: persisted.harnessRun.riskLevel as "low" | "medium" | "high" | "critical",
       confirmationReceipt: foundSession.session.confirmationReceipt,
@@ -671,13 +726,13 @@ export class IntakeAdmissionService {
       tenantId: persisted.harnessRun.tenantId,
       runId: persisted.harnessRun.traceId,
       traceId: persisted.harnessRun.traceId,
-      payload: {
+      payload: asJsonObject({
         sessionId: foundSession.session.sessionId,
         taskDraftId: foundSession.session.taskDraftId,
         stage: foundSession.session.stage,
-        confirmationReceipt: foundSession.session.confirmationReceipt,
+        confirmationReceipt: serializeConfirmationReceipt(foundSession.session.confirmationReceipt),
         confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
-      } as unknown as JsonValue,
+      }),
       schemaOwner: "intake-admission-service",
       consumerContractTests: ["intake-admission-service.test.ts"],
     });

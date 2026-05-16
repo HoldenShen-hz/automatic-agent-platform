@@ -123,8 +123,6 @@ export class SqliteAsyncAdapter implements AsyncSqlDatabase {
   }
 
   async close(): Promise<void> {
-    // Cast to 'unknown' then to '{ close(): void }' since AuthoritativeSqlDatabase
-    // doesn't declare close() but SqliteDatabase implements it
-    (this.db as unknown as { close(): void }).close();
+    this.db.close();
   }
 }

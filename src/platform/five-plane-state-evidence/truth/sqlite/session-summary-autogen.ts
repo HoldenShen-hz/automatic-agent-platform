@@ -1,7 +1,7 @@
 import { estimateTextTokens } from "../../../model-gateway/messages/token-estimator.js";
 import { newId } from "../../../contracts/types/ids.js";
 
-import type { SqliteConnection } from "./query-helper.js";
+import { queryAll, queryOne, type SqliteConnection } from "./query-helper.js";
 
 const TERMINAL_SESSION_STATUSES = new Set(["completed", "failed", "cancelled"]);
 
@@ -50,23 +50,25 @@ export function maybeCreateTerminalSessionSummary(
     return;
   }
 
-  const session = connection
-    .prepare(`SELECT task_id AS taskId FROM sessions WHERE id = ? LIMIT 1`)
-    .get(sessionId) as SessionRow | undefined;
+  const session = queryOne<SessionRow>(
+    connection,
+    `SELECT task_id AS taskId FROM sessions WHERE id = ? LIMIT 1`,
+    sessionId,
+  );
   if (!session) {
     return;
   }
 
-  const messageRows = connection
-    .prepare(
-      `SELECT direction, message_type AS messageType, content
-       FROM messages
-       WHERE session_id = ?
-         AND TRIM(COALESCE(content, '')) <> ''
-       ORDER BY created_at DESC, id DESC
-       LIMIT 6`,
-    )
-    .all(sessionId) as unknown as MessagePreviewRow[];
+  const messageRows = queryAll<MessagePreviewRow>(
+    connection,
+    `SELECT direction, message_type AS messageType, content
+     FROM messages
+     WHERE session_id = ?
+       AND TRIM(COALESCE(content, '')) <> ''
+     ORDER BY created_at DESC, id DESC
+     LIMIT 6`,
+    sessionId,
+  );
   if (messageRows.length === 0) {
     return;
   }

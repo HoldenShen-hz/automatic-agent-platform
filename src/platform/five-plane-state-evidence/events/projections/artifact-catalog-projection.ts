@@ -29,7 +29,7 @@ const MAX_PROCESSED_EVENT_IDS = 10_000;
  * - References from workflow runs and steps
  * - Provenance lineage
  */
-export interface ArtifactCatalogState {
+export interface ArtifactCatalogState extends Record<string, unknown> {
   /** Artifact ID */
   artifactId: string | null;
   /** Artifact type */
@@ -205,12 +205,12 @@ export const artifactCatalogProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as unknown as ArtifactCatalogState | null;
+  const currentState = state as ArtifactCatalogState | null;
   const newState = currentState ? { ...currentState } : createEmptyArtifactCatalogState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return newState;
   }
 
   // Parse payload
@@ -344,7 +344,7 @@ export const artifactCatalogProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return newState;
 };
 
 /**

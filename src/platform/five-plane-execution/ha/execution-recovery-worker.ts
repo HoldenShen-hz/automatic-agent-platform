@@ -23,6 +23,11 @@ export interface ExecutionRecoveryWorkerOptions {
   readonly now?: () => string;
 }
 
+type RecoveryCycleMetadata = Readonly<Record<string, unknown>> & {
+  readonly length: number;
+  readonly [index: number]: unknown;
+};
+
 export class ExecutionRecoveryWorker implements RecoveryWorker {
   private readonly cadence: RecoveryCadence;
   private readonly staleThresholdMs: number;
@@ -62,6 +67,13 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
         ...staleCandidates.filter(isAutomaticallyRecoverableCandidate),
       ]);
       const recoveredCount = await this.applyRecoveryActions(actionableCandidates, errors);
+      const metadata = Object.assign([], {
+        activeCandidateCount: activeCandidates.length,
+        staleCandidateCount: staleCandidates.length,
+        blockedCandidateCount: blockedCandidates.length,
+        actionableCandidateCount: actionableCandidates.length,
+        staleBefore,
+      }) as unknown as RecoveryCycleMetadata;
 
       return {
         workerId: this.getWorkerId(),
@@ -72,13 +84,7 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
         itemsProcessed: activeCandidates.length + staleCandidates.length + blockedCandidates.length,
         itemsRecovered: recoveredCount,
         errors,
-        metadata: Object.assign([], {
-          activeCandidateCount: activeCandidates.length,
-          staleCandidateCount: staleCandidates.length,
-          blockedCandidateCount: blockedCandidates.length,
-          actionableCandidateCount: actionableCandidates.length,
-          staleBefore,
-        }) as unknown as Readonly<Record<string, unknown>>,
+        metadata,
       };
     } catch (error) {
       return {

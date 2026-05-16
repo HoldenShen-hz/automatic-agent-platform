@@ -7,7 +7,7 @@
  * - OperatorActionRecord (operator_actions table)
  *
  * All SQL queries use proper column aliasing to match the camelCase domain types.
- * The query helper functions centralize `as unknown as T` type casts.
+ * The query helper functions centralize SQLite row typing boundaries.
  */
 
 import type { ApprovalRecord, OperatorActionRecord, TakeoverSessionRecord } from "../sqlite-repository-contracts.js";

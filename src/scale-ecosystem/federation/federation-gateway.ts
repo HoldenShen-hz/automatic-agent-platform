@@ -224,11 +224,10 @@ export function buildFederationCatalog(
   options?: { status?: FederationCatalogEntry["status"] },
 ): FederationCatalog {
   const entries: FederationCatalogEntry[] = [];
+  const snapshot = gateway.snapshotCatalogState();
 
   // Get all organizations registered in the gateway
-  // Note: This is a simplified implementation; real implementation would
-  // iterate through registered organizations and build catalog entries
-  const orgs = Array.from((gateway as unknown as { organizations: Map<string, FederationOrg> }).organizations.values());
+  const orgs = snapshot.organizations;
 
   for (const org of orgs) {
     if (options?.status && org.enabled !== (options.status === "active")) {
@@ -236,12 +235,12 @@ export function buildFederationCatalog(
     }
 
     // Get trust relationships for this org
-    const trusts = Array.from((gateway as unknown as { trustRelationships: Map<string, TrustRelationship> }).trustRelationships.values())
+    const trusts = snapshot.trustRelationships
       .filter((t) => t.sourceOrgId === org.id || t.targetOrgId === org.id);
 
     const firstTrust = trusts[0];
     const entry: FederationCatalogEntry = {
-      federationId: (gateway as unknown as { config: FederationGatewayConfig }).config.federationId,
+      federationId: snapshot.federationId,
       name: org.name,
       description: `Federation for ${org.domain}`,
       regionCount: 1, // Placeholder - would be derived from region tracking
@@ -318,6 +317,18 @@ export class FederationGateway extends LocalTypedEventEmitter<Record<string, unk
 
   async getOrganization(orgId: string): Promise<FederationOrg | undefined> {
     return this.organizations.get(orgId);
+  }
+
+  snapshotCatalogState(): {
+    readonly federationId: string;
+    readonly organizations: readonly FederationOrg[];
+    readonly trustRelationships: readonly TrustRelationship[];
+  } {
+    return {
+      federationId: this.config.federationId,
+      organizations: Array.from(this.organizations.values()),
+      trustRelationships: Array.from(this.trustRelationships.values()),
+    };
   }
 
   async updateOrganizationCapabilities(orgId: string, capabilities: string[]): Promise<void> {

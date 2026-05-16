@@ -125,6 +125,29 @@ function escapeLikePattern(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+function toStoredSkill(row: Record<string, unknown>): StoredSkill {
+  return {
+    id: String(row.id ?? ""),
+    skill_id: String(row.skill_id ?? ""),
+    name: String(row.name ?? ""),
+    version: String(row.version ?? ""),
+    description: String(row.description ?? ""),
+    author: String(row.author ?? ""),
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? ""),
+    lifecycle: String(row.lifecycle ?? ""),
+    risk_level: String(row.risk_level ?? ""),
+    tags_json: String(row.tags_json ?? "[]"),
+    required_tools_json: String(row.required_tools_json ?? "[]"),
+    required_permissions_json: String(row.required_permissions_json ?? "[]"),
+    cacheable: Number(row.cacheable ?? 0),
+    cache_ttl_seconds: Number(row.cache_ttl_seconds ?? 0),
+    execution_count: Number(row.execution_count ?? 0),
+    success_rate: Number(row.success_rate ?? 0),
+    avg_duration_ms: Number(row.avg_duration_ms ?? 0),
+  };
+}
+
 export class SkillGovernanceService {
   public constructor(private readonly store: AuthoritativeTaskStore) {}
 
@@ -417,29 +440,32 @@ export class SkillGovernanceService {
       sql += " AND " + conditions.join(" AND ");
     }
 
-    const rows = this.withConnection<StoredSkill[]>((connection) =>
-      connection.prepare(sql).all(...params) as unknown as StoredSkill[],
+    const rows = this.withConnection<Record<string, unknown>[]>((connection) =>
+      connection.prepare(sql).all(...params) as Record<string, unknown>[],
     );
 
-    return rows.map((row) => ({
-      skillId: row.skill_id,
-      name: row.name,
-      version: row.version,
-      description: row.description,
-      author: row.author,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lifecycle: row.lifecycle as SkillLifecycle,
-      riskLevel: row.risk_level as SkillRiskLevel,
-      tags: JSON.parse(row.tags_json) as string[],
-      requiredTools: JSON.parse(row.required_tools_json) as string[],
-      requiredPermissions: JSON.parse(row.required_permissions_json) as string[],
-      cacheable: row.cacheable === 1,
-      cacheTtlSeconds: row.cache_ttl_seconds,
-      executionCount: row.execution_count,
-      successRate: row.success_rate,
-      avgDurationMs: row.avg_duration_ms,
-    }));
+    return rows.map((row) => {
+      const stored = toStoredSkill(row);
+      return {
+        skillId: stored.skill_id,
+        name: stored.name,
+        version: stored.version,
+        description: stored.description,
+        author: stored.author,
+        createdAt: stored.created_at,
+        updatedAt: stored.updated_at,
+        lifecycle: stored.lifecycle as SkillLifecycle,
+        riskLevel: stored.risk_level as SkillRiskLevel,
+        tags: JSON.parse(stored.tags_json) as string[],
+        requiredTools: JSON.parse(stored.required_tools_json) as string[],
+        requiredPermissions: JSON.parse(stored.required_permissions_json) as string[],
+        cacheable: stored.cacheable === 1,
+        cacheTtlSeconds: stored.cache_ttl_seconds,
+        executionCount: stored.execution_count,
+        successRate: stored.success_rate,
+        avgDurationMs: stored.avg_duration_ms,
+      };
+    });
   }
 
   /**
