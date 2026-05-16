@@ -832,12 +832,17 @@ export class HierarchicalPromptRegistryService {
     return hasTool && hasEvaluator && hasDomain && hasModel;
   }
 
+  private getOrCreateMap<K, NestedKey, NestedValue>(
+    index: Map<K, Map<NestedKey, NestedValue>>,
+    key: K,
+  ): Map<NestedKey, NestedValue>;
+  private getOrCreateMap<K, V>(index: Map<K, V>, key: K, factory: () => V): V;
   private getOrCreateMap<K, V>(index: Map<K, V>, key: K, factory?: () => V): V {
     const existing = index.get(key);
     if (existing !== undefined) {
       return existing;
     }
-    const created = (factory ?? (() => new Map() as unknown as V))();
+    const created = factory ? factory() : new Map() as V;
     index.set(key, created);
     return created;
   }
