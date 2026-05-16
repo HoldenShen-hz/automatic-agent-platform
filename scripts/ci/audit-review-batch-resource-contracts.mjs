@@ -52,14 +52,14 @@ check(
   "HR_READ_ONLY_TOOL_NAMES replaces inline read/question checks",
 );
 
-const apiUtils = read("src/platform/interface/api/http-server/utils.ts");
+const apiUtils = read("src/platform/five-plane-interface/api/http-server/utils.ts");
 check(
   "tenant access mismatch returns 403",
   apiUtils.includes('new ApiError(403, "api.tenant_scope_mismatch"') && apiUtils.includes('new ApiError(403, "api.tenant_scope_required"'),
   "assertTaskTenantAccess denies missing or mismatched tenant with 403",
 );
 
-const healthRoutes = read("src/platform/interface/api/http-server/health-routes.ts");
+const healthRoutes = read("src/platform/five-plane-interface/api/http-server/health-routes.ts");
 check(
   "health routes split liveness and readiness",
   healthRoutes.includes('pathname: "/livez"') && healthRoutes.includes('pathname: "/readyz"') && healthRoutes.includes("isShuttingDown"),
@@ -278,7 +278,7 @@ check(
   "inventory script lists the five scoped architecture-remediation files",
 );
 
-const apiError = read("src/platform/interface/api/http-server/api-error.ts");
+const apiError = read("src/platform/five-plane-interface/api/http-server/api-error.ts");
 check(
   "API error messages are centralized",
   apiError.includes("API_ERROR_MESSAGES") && apiError.includes("API_ERROR_MESSAGES.taskNotFound") && !apiError.includes('new ApiError(500, "api.internal_error", "Internal server error.")'),
@@ -296,7 +296,7 @@ check(
   "AppError wraps unknown errors and subclasses encode category/status semantics",
 );
 
-const federationRouting = read("src/platform/interface/api/federation-routing-service.ts");
+const federationRouting = read("src/platform/five-plane-interface/api/federation-routing-service.ts");
 check(
   "federation API schema version constants exist",
   federationRouting.includes("FEDERATION_API_DEFAULT_VERSION") && federationRouting.includes("FEDERATION_API_MINIMUM_VERSION"),
@@ -363,6 +363,7 @@ const runtimeEnvSources = [
   httpApiServer,
   fivePlaneHealthRoutes,
   read("src/platform/five-plane-execution/execution-engine/model-call-provider.ts"),
+  read("src/platform/five-plane-execution/execution-engine/model-call-provider-support.ts"),
   sessionManagement,
   serviceAuth,
 ].join("\n");
@@ -412,7 +413,7 @@ check(
   "sleepSync uses Atomics.wait instead of a CPU busy-wait loop",
 );
 
-const healthRoutesCurrent = read("src/platform/interface/api/http-server/health-routes.ts");
+const healthRoutesCurrent = read("src/platform/five-plane-interface/api/http-server/health-routes.ts");
 check(
   "SDK version and handshake routes are present",
   healthRoutesCurrent.includes('pathname: "/v1/version"') && healthRoutesCurrent.includes('pathname: "/v1/handshake"') && healthRoutesCurrent.includes("minClientVersion"),
@@ -452,6 +453,7 @@ check(
 );
 
 const happyPath = read("src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts");
+const happyPathSupport = read("src/platform/five-plane-execution/execution-engine/single-task-happy-path-support.ts");
 check(
   "single-task happy path persists HarnessRun and stale TODO is removed",
   happyPath.includes("INSERT INTO harness_runs") && !happyPath.includes("TODO R4-27"),
@@ -459,19 +461,21 @@ check(
 );
 check(
   "single-task happy path has retry policy",
-  happyPath.includes("DEFAULT_SINGLE_TASK_MAX_RETRIES = 2") &&
+  happyPathSupport.includes("DEFAULT_SINGLE_TASK_MAX_RETRIES = 2") &&
+    happyPathSupport.includes("DEFAULT_SINGLE_TASK_RETRY_BACKOFF = \"linear\"") &&
     happyPath.includes("DEFAULT_SINGLE_TASK_RETRY_BACKOFF") &&
     !happyPath.includes("maxRetries: 0"),
   "single task executions no longer persist a zero-retry policy",
 );
 
 const modelCallProvider = read("src/platform/five-plane-execution/execution-engine/model-call-provider.ts");
+const modelCallProviderSupport = read("src/platform/five-plane-execution/execution-engine/model-call-provider-support.ts");
 const unifiedChatProvider = read("src/platform/model-gateway/provider-registry/unified-chat-provider.ts");
 check(
   "model call provider has retry and fallback chain",
   modelCallProvider.includes("executeGovernedCompletionWithFallback") &&
-    modelCallProvider.includes("AA_MODEL_PROVIDER_FALLBACK_MODELS") &&
-    modelCallProvider.includes("executeWithRetry"),
+    modelCallProvider.includes("executeWithRetry") &&
+    modelCallProviderSupport.includes("AA_MODEL_PROVIDER_FALLBACK_MODELS"),
   "non-streaming LLM calls retry retryable failures and walk configured fallback models",
 );
 check(
@@ -870,19 +874,19 @@ check(
   "migration 44 index replacement has an explicit compatibility gate",
 );
 
-const runtimeStateMachine = read("src/platform/five-plane-execution/runtime-state-machine.ts");
+const runtimeStateMachineModel = read("src/platform/five-plane-execution/runtime-state-machine-model.ts");
 check(
   "runtime state machine terminal harness states are sealed",
-  runtimeStateMachine.includes("completed: []") &&
-    runtimeStateMachine.includes("failed: []") &&
-    runtimeStateMachine.includes("cancelled: []") &&
-    runtimeStateMachine.includes("aborted: []") &&
-    !runtimeStateMachine.includes('completed: ["paused"]'),
+  runtimeStateMachineModel.includes("completed: []") &&
+    runtimeStateMachineModel.includes("failed: []") &&
+    runtimeStateMachineModel.includes("cancelled: []") &&
+    runtimeStateMachineModel.includes("aborted: []") &&
+    !runtimeStateMachineModel.includes('completed: ["paused"]'),
   "terminal harness runs no longer transition back to paused",
 );
 
 const harnessLoop = read("src/platform/five-plane-orchestration/harness/index.ts");
-const oapeflirLoop = read("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts");
+const oapeflirLoop = read("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-core.ts");
 check(
   "harness while loop is guarded by HarnessLoopController",
   harnessLoop.includes("new HarnessLoopController") &&
@@ -1015,13 +1019,13 @@ check(
     read("src/platform/five-plane-execution/execution-engine/agent-middleware-types.ts").includes("export interface MiddlewareContext"),
   `agent-middleware-chain lines=${agentMiddleware.split(/\r?\n/).length}`,
 );
-const budgetAllocator = read("src/platform/five-plane-execution/budget-allocator.ts");
+const budgetAllocatorLargeFile = read("src/platform/five-plane-execution/budget-allocator.ts");
 check(
   "budget allocator is split below 900 lines and 34KB",
-  budgetAllocator.split(/\r?\n/).length < 900 &&
+  budgetAllocatorLargeFile.split(/\r?\n/).length < 900 &&
     statSync("src/platform/five-plane-execution/budget-allocator.ts").size < 34000 &&
     read("src/platform/five-plane-execution/budget-allocator-types.ts").includes("export interface BudgetAllocatorContext"),
-  `budget-allocator lines=${budgetAllocator.split(/\r?\n/).length}, bytes=${statSync("src/platform/five-plane-execution/budget-allocator.ts").size}`,
+  `budget-allocator lines=${budgetAllocatorLargeFile.split(/\r?\n/).length}, bytes=${statSync("src/platform/five-plane-execution/budget-allocator.ts").size}`,
 );
 const durableEventBus = read("src/platform/five-plane-state-evidence/events/durable-event-bus.ts");
 check(

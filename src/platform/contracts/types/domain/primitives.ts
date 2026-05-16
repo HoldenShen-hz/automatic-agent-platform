@@ -8,7 +8,7 @@
  */
 
 declare const TIMESTAMP_BRAND: unique symbol;
-export type Timestamp = string & { readonly [TIMESTAMP_BRAND]?: "Timestamp" };
+export type Timestamp = string & { readonly [TIMESTAMP_BRAND]: "Timestamp" };
 
 // ---------------------------------------------------------------------------
 // Task-related primitives

@@ -28,15 +28,9 @@ import {
   type PartitionSubscriber,
 } from "./durable-event-bus-support.js";
 export type {
-  BackPressureState,
-  ConsumerGroup,
-  EventHandler,
-  EventPartitionKey,
+  BackPressureState, ConsumerGroup, EventHandler, EventPartitionKey,
 } from "./durable-event-bus-support.js";
-export {
-  ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS,
-} from "./durable-event-bus-support.js";
-
+export { ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS } from "./durable-event-bus-support.js";
 const eventBusLogger = new StructuredLogger({ retentionLimit: 200 });
 
 /**

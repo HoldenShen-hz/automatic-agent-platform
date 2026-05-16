@@ -74,6 +74,12 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/openapi.json",
       handler: (ctx) => {
+        if (process.env[OPENAPI_PUBLIC_OPT_IN_ENV] !== "1" && ctx.principal == null) {
+          return buildJsonErrorResponse(ctx.requestId, 401, {
+            code: "api.openapi_auth_required",
+            message: "Authentication is required to access the OpenAPI document.",
+          });
+        }
         return buildJsonDocumentResponse(buildOpenApiDocument(), ctx.requestId);
       },
     },

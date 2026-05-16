@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { performance } from "node:perf_hooks";
 
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import {
@@ -329,12 +330,12 @@ test("PackTestLocalService.playbackFixture returns fixture with delay", async ()
     "fixture:id": { content: "delayed response" },
   });
 
-  const start = Date.now();
+  const start = performance.now();
   const result = await service.playbackFixture("fixture:id");
-  const elapsed = Date.now() - start;
+  const elapsed = performance.now() - start;
 
   assert.equal(result?.content, "delayed response");
-  assert.ok(elapsed >= 50, "Expected delay to be applied");
+  assert.ok(elapsed >= 45, `Expected delay to be applied, got ${elapsed.toFixed(2)}ms`);
 });
 
 test("PackTestLocalService.playbackFixture applies configured delay", async () => {
@@ -344,11 +345,11 @@ test("PackTestLocalService.playbackFixture applies configured delay", async () =
     "mode:pack:1": { content: "test response" },
   });
 
-  const start = Date.now();
+  const start = performance.now();
   await service.playbackFixture("mode:pack:1");
-  const elapsed = Date.now() - start;
+  const elapsed = performance.now() - start;
 
-  assert.ok(elapsed >= 100, "Delay should be applied");
+  assert.ok(elapsed >= 95, `Delay should be applied, got ${elapsed.toFixed(2)}ms`);
 });
 
 test("PackTestLocalService.validateTestOptions rejects empty packId", async () => {

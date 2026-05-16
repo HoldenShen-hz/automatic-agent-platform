@@ -96,7 +96,7 @@ export const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   completed: [],
   failed: [],
   cancelled: [],
-  aborted: ["paused"],
+  aborted: [],
 };
 
 export const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {

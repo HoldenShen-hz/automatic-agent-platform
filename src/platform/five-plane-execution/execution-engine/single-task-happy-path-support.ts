@@ -5,8 +5,8 @@ import type { StructuredLogger } from "../../shared/observability/structured-log
 import type { AdmissionBackpressureSnapshot, AdmissionPolicy } from "../dispatcher/admission-controller.js";
 import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulator.js";
 
-export const DEFAULT_SINGLE_TASK_MAX_RETRIES = 0;
-export const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "none";
+export const DEFAULT_SINGLE_TASK_MAX_RETRIES = 2;
+export const DEFAULT_SINGLE_TASK_RETRY_BACKOFF = "linear";
 
 export const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
