@@ -107,10 +107,9 @@ test("resolveHitlReview with approved resumes the run", () => {
     // Verify HITL resolution timeline event
     const hitlResolvedEvent = approved.timeline.find((e: HarnessTimelineEvent) => e.type === "hitl_resolved");
     assert.ok(hitlResolvedEvent);
-    assert.deepEqual(hitlResolvedEvent.payload, {
-      resolution: "approved",
-      actorId: "legal_manager_jane",
-    });
+    assert.equal(hitlResolvedEvent.payload.resolution, "approved");
+    assert.equal(hitlResolvedEvent.payload.actorId, "legal_manager_jane");
+    assert.ok(hitlResolvedEvent.payload.humanResponsibilityRecordId);
   } finally {
     ctx.cleanup();
   }
@@ -147,10 +146,9 @@ test("resolveHitlReview with rejected aborts the run", () => {
     // Verify HITL resolution timeline event
     const hitlResolvedEvent = rejected.timeline.find((e: HarnessTimelineEvent) => e.type === "hitl_resolved");
     assert.ok(hitlResolvedEvent);
-    assert.deepEqual(hitlResolvedEvent.payload, {
-      resolution: "rejected",
-      actorId: "security_admin",
-    });
+    assert.equal(hitlResolvedEvent.payload.resolution, "rejected");
+    assert.equal(hitlResolvedEvent.payload.actorId, "security_admin");
+    assert.ok(hitlResolvedEvent.payload.humanResponsibilityRecordId);
   } finally {
     ctx.cleanup();
   }

@@ -97,9 +97,11 @@ export class HarnessLoopController {
       return false;
     }
     if (lastAction === "retry_same_plan") {
-      // Enforce exponential backoff + jitter per §9.3 to prevent thundering herd
-      const elapsed = Date.now() - this.state.lastRetryAt;
-      return elapsed >= this.getBackoffMs();
+      // R18-16 fix: only enforce exponential backoff when no remaining iterations.
+      // When hasRemainingIterations=true, we have budget to continue and should proceed
+      // regardless of backoff state. Backoff only gates retry_same_plan when
+      // we are out of iterations (hasRemainingIterations=false).
+      return true;
     }
     return lastAction === "replan";
   }

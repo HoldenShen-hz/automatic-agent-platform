@@ -20,7 +20,7 @@ export interface RolloutTransitionOptions {
 
 const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus[]>> = {
   draft: ["pending_approval", "shadow", "rejected", "paused"],
-  pending_approval: ["approved", "rejected", "paused"],
+  pending_approval: ["approved", "shadow", "rejected", "paused"],
   shadow: ["canary_5", "rolled_back", "paused"],
   proposed: ["under_review", "rejected", "paused"],
   evaluating: ["accepted", "approved", "rejected", "paused"],

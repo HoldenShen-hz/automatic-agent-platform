@@ -12,7 +12,7 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: {
       maxSteps: 30,
-      maxDurationMs: 100,
+      maxDurationMs: 60000,
       maxCost: 50,
       ...overrides,
     },
@@ -377,7 +377,7 @@ describe("HarnessLoopController", () => {
 
       assert.strictEqual(controller.getGuards().maxIterations, 10);
       assert.strictEqual(controller.getGuards().maxReplans, 3);
-      assert.strictEqual(controller.getGuards().maxDurationMs, 100);
+      assert.strictEqual(controller.getGuards().maxDurationMs, 60000);
       assert.strictEqual(controller.getGuards().maxCost, 50);
     });
 

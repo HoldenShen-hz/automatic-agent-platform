@@ -18,11 +18,7 @@ import {
 } from "../../../../src/platform/prompt-engine/rollout/index.js";
 import type { PromptTemplateRecord } from "../../../../src/platform/prompt-engine/registry/index.js";
 
-<<<<<<< Updated upstream
-test("PromptRolloutService.createRollout creates a canary_5 rollout when regression passes", () => {
-=======
 test("PromptRolloutService.createRollout creates canary_5 rollout with L1_suggest mode when regression passes", () => {
->>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_1", "v1.0");
@@ -94,11 +90,7 @@ test("PromptRolloutService.activateRollout transitions canary_5 to canary_20", (
   assert.equal(activated.status, "canary_20");
 });
 
-<<<<<<< Updated upstream
-test("PromptRolloutService.activateRollout transitions canary_20 to stable", () => {
-=======
 test("PromptRolloutService.activateRollout throws for stable rollout (already fully deployed)", () => {
->>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
   const template = createMockTemplate("tpl_test_5", "v1.0");
@@ -112,15 +104,6 @@ test("PromptRolloutService.activateRollout throws for stable rollout (already fu
     domainBlockCompatible: true,
   });
 
-<<<<<<< Updated upstream
-  // Activate from canary_5 to canary_20
-  const canary20 = service.activateRollout(created.rolloutId);
-  assert.equal(canary20.status, "canary_20");
-
-  // Activate again from canary_20 -> stable
-  const stable = service.activateRollout(created.rolloutId);
-  assert.equal(stable.status, "stable");
-=======
   assert.equal(created.status, "stable");
 
   // Try to activate stable - should throw
@@ -128,7 +111,6 @@ test("PromptRolloutService.activateRollout throws for stable rollout (already fu
     () => service.activateRollout(created.rolloutId),
     /cannot transition to active/,
   );
->>>>>>> Stashed changes
 });
 
 test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
@@ -150,35 +132,21 @@ test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
   assert.equal(rolledBack.guardrailSummary, "Test rollback reason");
 });
 
-<<<<<<< Updated upstream
-test("PromptRolloutService.rollbackRollout works on canary_5 status", () => {
-=======
 test("PromptRolloutService.rollbackRollout works on canary_5, canary_20, and stable statuses", () => {
->>>>>>> Stashed changes
   const service = new PromptRolloutService();
 
   // L3_canary creates canary_5 status
   const template = createMockTemplate("tpl_test_7", "v1.0");
   const created = service.createRollout({
     template,
-<<<<<<< Updated upstream
-    mode: "L1_suggest",
-=======
     mode: "L3_canary",
->>>>>>> Stashed changes
     owner: "test@example.com",
     regressionSuiteId: "suite_jkl",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
-<<<<<<< Updated upstream
-  // Rollback directly from canary_5 status
   assert.equal(created.status, "canary_5");
-  const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");
-=======
-  assert.equal(created.status, "canary_5");
->>>>>>> Stashed changes
 
   // Rollback from canary_5 works
   const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");

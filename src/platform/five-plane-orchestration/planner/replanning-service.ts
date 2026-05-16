@@ -42,16 +42,16 @@ export class ReplanningService {
     // an infinite loop: plan→execute→feedback→plan→execute→feedback→...
     // We only allow replan for new problems (failed/escalated outcomes).
     const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
-    const shouldReplan = failed;
 
     // R5-5: Handle downgrade_mode branch - correction signals trigger replan to reduce scope/complexity.
     // After a replan (suppressCorrection=true), do NOT re-trigger downgrade_mode — the plan already
     // incorporates the necessary adjustments. Re-triggering it would cause spurious re-loops.
     const downgradeMode = (!suppressCorrection) && feedback.signals.some((signal) =>
-      signal.category === "correction" ||
       (signal.payload as Record<string, unknown>)?.reasonCode === "scope_too_broad" ||
       (signal.payload as Record<string, unknown>)?.reasonCode === "complexity_exceeded"
     );
+    const repairable = (!suppressCorrection) && feedback.outcome === "repairable";
+    const shouldReplan = failed || repairable || downgradeMode;
 
     let strategy: Plan["strategy"] | null = shouldReplan ? "replanned" : null;
     let reasonCode = trigger?.reasonCode ?? (shouldReplan ? "planning.execution_deviation" : "planning.no_replan_required");
@@ -67,8 +67,8 @@ export class ReplanningService {
     return {
       decisionId: newId("replan_decision"),
       taskId,
-      shouldReplan: shouldReplan || downgradeMode,
-      nextPlanVersion: shouldReplan || downgradeMode ? currentVersion + 1 : null,
+      shouldReplan,
+      nextPlanVersion: shouldReplan ? currentVersion + 1 : null,
       strategy,
       reasonCode,
       decidedAt: Date.now(),

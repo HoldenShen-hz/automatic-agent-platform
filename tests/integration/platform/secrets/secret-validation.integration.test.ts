@@ -371,12 +371,15 @@ test("issueSecretLease rejects when ttlMinutes not provided and policy has no tt
     });
     await assert.rejects(
       async () =>
-        service.issueSecretLease({
-          secretRef: "secret://system/no/ttl",
-          requestedBy: "test.user",
-          grantedTo: "test.worker",
-          usagePurpose: "test",
-        }),
+        service.issueSecretLease(
+          {
+            secretRef: "secret://system/no/ttl",
+            requestedBy: "test.user",
+            grantedTo: "test.worker",
+            usagePurpose: "test",
+          },
+          AUTH_CONTEXT_SYSTEM,
+        ),
       (e: any) => e.code.includes("secret.lease_ttl_required"),
     );
   } finally {
@@ -454,13 +457,16 @@ test("revokeSecretLease rejects empty revokedBy", async () => {
       scopeRef: "system.revoke.empty",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
     });
-    const lease = await service.issueSecretLease({
-      secretRef: "secret://system/revoke/empty",
-      requestedBy: "user",
-      grantedTo: "holder",
-      usagePurpose: "test",
-      ttlMinutes: 60,
-    });
+    const lease = await service.issueSecretLease(
+      {
+        secretRef: "secret://system/revoke/empty",
+        requestedBy: "user",
+        grantedTo: "holder",
+        usagePurpose: "test",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
     assert.throws(
       () =>
         service.revokeSecretLease({
@@ -491,13 +497,16 @@ test("revokeSecretLease rejects empty reasonCode", async () => {
       scopeRef: "system.revoke.reason",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
     });
-    const lease = await service.issueSecretLease({
-      secretRef: "secret://system/revoke/reason",
-      requestedBy: "user",
-      grantedTo: "holder",
-      usagePurpose: "test",
-      ttlMinutes: 60,
-    });
+    const lease = await service.issueSecretLease(
+      {
+        secretRef: "secret://system/revoke/reason",
+        requestedBy: "user",
+        grantedTo: "holder",
+        usagePurpose: "test",
+        ttlMinutes: 60,
+      },
+      AUTH_CONTEXT_SYSTEM,
+    );
     assert.throws(
       () =>
         service.revokeSecretLease({

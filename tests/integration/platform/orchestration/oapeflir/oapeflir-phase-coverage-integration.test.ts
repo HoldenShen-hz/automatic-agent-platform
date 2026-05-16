@@ -327,7 +327,7 @@ test("[PLAN-P2] Plan degraded path handles high complexity with DAG", async () =
     // P2: High complexity -> multi-step DAG with parallel steps
     assert.ok(result.plan.steps.length > 1, "Should have multiple steps");
     // Check for parallel execution indicators
-    const parallelSteps = result.plan.steps.filter((s) => s.dependsOnStepIds.length === 0);
+    const parallelSteps = result.plan.steps.filter((s) => s.dependencies.length === 0);
     assert.ok(parallelSteps.length > 0, "Should have at least one root step for parallel execution");
   } finally {
     ctx.db.close();

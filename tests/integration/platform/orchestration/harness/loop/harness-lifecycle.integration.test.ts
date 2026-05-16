@@ -577,7 +577,7 @@ test("Invariant checking: paused HITL run without hitlRequest", () => {
     };
 
     const { violations } = service.assertInvariants(violatingRun);
-    assert.ok(violations.includes("harness.invariant.waiting_hitl_requires_request"));
+    assert.ok(violations.includes("harness.invariant.awaiting_hitl_requires_request"));
   } finally {
     ctx.cleanup();
   }

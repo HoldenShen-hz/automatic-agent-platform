@@ -1352,7 +1352,10 @@ export class HarnessRuntimeService {
     const reasonCodes: string[] = [];
 
     // §45.25 "LLM-as-Judge cannot override deterministic failure" - check all deterministic signals first
-    if (input.guardrailAbort) {
+    if (input.maxIterationsReached) {
+      action = "abort";
+      reasonCodes.push("harness.max_iterations_reached");
+    } else if (input.guardrailAbort) {
       action = "abort";
       reasonCodes.push("harness.guardrail_deterministic_abort");
     } else if (input.sideEffectMayCommit === false) {
@@ -1361,9 +1364,6 @@ export class HarnessRuntimeService {
     } else if (input.budgetExhausted) {
       action = "abort";
       reasonCodes.push("harness.budget_exhausted");
-    } else if (input.maxIterationsReached) {
-      action = "abort";
-      reasonCodes.push("harness.max_iterations_reached");
     } else if (input.hitlPending) {
       action = "escalate_to_human";
       reasonCodes.push("harness.hitl_pending");
@@ -1888,6 +1888,10 @@ export class HarnessRuntimeService {
     }
     if (current.status === "paused") {
       current = this.transitionRunStatus(this.transitionRunStatus(current, "resuming", "harness.auto_resuming"), "running", "harness.auto_running");
+    }
+    // R18-16 fix: completed runs need to be paused before recovery can proceed
+    if (current.status === "completed" || current.status === "failed") {
+      current = this.transitionRunStatus(current, "paused", "harness.recover_from_terminal");
     }
     return current;
   }

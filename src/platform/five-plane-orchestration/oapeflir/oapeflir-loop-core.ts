@@ -329,6 +329,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
       let loopQualityGate: PostExecutionQualityGateDecision;
       let loopReplanTrigger: ReturnType<ReplanningService["createTrigger"]>;
       let loopReplanDecision: ReplanningDecision;
+      let loopReplanDecisionFinal: ReplanningDecision | undefined;
+      let loopQualityGateFinal: PostExecutionQualityGateDecision | undefined;
       let loopGraphPatch: GraphPatch | null = null;
       let loopEvaluationReport: EvaluationReport;
       // R5-2: Track whether we've already replanned to avoid re-looping on same correction
@@ -481,8 +483,12 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         // such as approval/block must return to the caller instead of spinning back
         // into a fresh plan cycle with the same feedback.
         if (!loopReplanDecision.shouldReplan) {
+          loopReplanDecisionFinal = loopReplanDecisionFinal ?? loopReplanDecision;
+          loopQualityGateFinal = loopQualityGateFinal ?? loopQualityGate;
           break;
         }
+        loopReplanDecisionFinal = loopReplanDecision;
+        loopQualityGateFinal = loopQualityGate;
         hasReplanned = true;
         loopController.recordReplan();
         if (loopController.getGuardViolation() !== null) {
@@ -839,8 +845,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           confidence: loopEvaluationReport.confidence ?? 0.5,
         },
         evaluationReport: loopEvaluationReport,
-        qualityGate: loopQualityGate,
-        replanDecision: loopReplanDecision,
+        qualityGate: loopQualityGateFinal ?? loopQualityGate,
+        replanDecision: loopReplanDecisionFinal ?? loopReplanDecision,
         graphPatch: loopGraphPatch,
         harnessDecision,
       };

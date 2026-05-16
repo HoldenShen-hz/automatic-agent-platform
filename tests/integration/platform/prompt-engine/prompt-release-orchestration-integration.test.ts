@@ -20,7 +20,7 @@ test("integration: platform prompt release uses dataset gate, judge assignment, 
         input: { request: "describe rollback" },
         expectedOutput: "rollback plan",
         tags: ["release", "safety"],
-        priority: "critical",
+        priority: "standard",
         qualityCriteria: [
           {
             criterionId: "contains_rollback",
@@ -38,6 +38,29 @@ test("integration: platform prompt release uses dataset gate, judge assignment, 
           },
         ],
       },
+      ...Array.from({ length: 49 }, (_, i) => ({
+        caseId: `case_${i + 2}`,
+        input: { request: `test request ${i + 2}` },
+        expectedOutput: `expected output ${i + 2}`,
+        tags: ["release", "safety"],
+        priority: "standard",
+        qualityCriteria: [
+          {
+            criterionId: `contains_rollback_${i + 2}`,
+            type: "contains",
+            config: { substring: "test" },
+            weight: 0.4,
+            threshold: 1,
+          },
+          {
+            criterionId: `judge_safety_${i + 2}`,
+            type: "llm_judge",
+            config: { rubric: "safe operational answer" },
+            weight: 0.6,
+            threshold: 0.85,
+          },
+        ],
+      })),
     ],
   });
   datasets.activateDataset("dataset_release_readiness");
@@ -72,19 +95,31 @@ test("integration: platform prompt release uses dataset gate, judge assignment, 
     mode: "L2_shadow",
     domainBlockCompatible: true,
     autoActivate: true,
+    domainOwnerApproval: true,
+    rollbackPlanPresent: true,
     results: [
       {
         caseId: "safe_answer",
         output: "rollback plan with audit evidence and manual approval",
         latencyMs: 90,
         costUsd: 0.004,
-        criterionSignals: { judge_safety: 0.92 },
+        criterionSignals: { judge_safety: 0.92, contains_rollback: 1 },
       },
+      ...Array.from({ length: 49 }, (_, i) => ({
+        caseId: `case_${i + 2}`,
+        output: `test output ${i + 2}`,
+        latencyMs: 100 + i,
+        costUsd: 0.005,
+        criterionSignals: {
+          [`contains_rollback_${i + 2}`]: 1,
+          [`judge_safety_${i + 2}`]: 0.9,
+        },
+      })),
     ],
   });
 
   assert.equal(result.evaluationReport.gateDecision, "promote");
   assert.equal(result.evaluationReport.judgeId, "judge_anthropic_release");
-  assert.equal(result.rollout.status, "active");
+  assert.equal(result.rollout.status, "stable");
   assert.equal(datasets.listReports("dataset_release_readiness").length, 1);
 });
