@@ -11,6 +11,16 @@ import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-r
 import { createBuiltinPlugin } from "../../../../src/plugins/builtin-plugin-registry.js";
 import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
     timeoutMs: 5000,
@@ -26,17 +36,6 @@ function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): Plugin
     rateLimitPerMinute: 60,
     ...overrides,
   };
-}
-
-async function waitFor(condition: () => boolean, timeoutMs = 250): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (condition()) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  assert.fail("Timed out waiting for condition.");
 }
 
 test("PluginSpiRegistry registers plugins and drives lifecycle hooks", async () => {
@@ -155,13 +154,14 @@ test("PluginSpiRegistry isolates plugin failures and disables unhealthy plugins 
 
 test("PluginSpiRegistry enforces namespace sandbox and timeout", async () => {
   const registry = new PluginSpiRegistry();
+  const neverResolves = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.coding.slow",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await neverResolves.promise;
       return [{ knowledgeRef: "knowledge:chunk_1", snippet: "slow chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_1", documentId: "doc_1", matchType: "semantic" as const }];
     },
   }, {
@@ -209,15 +209,22 @@ test("PluginSpiRegistry serializes plugin invocations under isolation limits", a
   const registry = new PluginSpiRegistry();
   let inFlight = 0;
   let maxInFlight = 0;
+  let invocationCount = 0;
+  const firstInvocationStarted = createDeferred<void>();
+  const releaseFirstInvocation = createDeferred<void>();
 
   registry.register({
     pluginId: "plugin.coding.serial",
     domainId: "coding",
     spiType: "retriever",
     async retrieve() {
+      invocationCount += 1;
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (invocationCount === 1) {
+        firstInvocationStarted.resolve();
+        await releaseFirstInvocation.promise;
+      }
       inFlight -= 1;
       return [{ knowledgeRef: "knowledge:chunk_serial", snippet: "serial chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_serial", documentId: "doc_serial", matchType: "semantic" as const }];
     },
@@ -240,18 +247,19 @@ test("PluginSpiRegistry serializes plugin invocations under isolation limits", a
     }),
   });
 
-  const [first, second] = await Promise.all([
-    registry.invokeRetriever("plugin.coding.serial", {
-      domainId: "coding",
-      namespace: "coding/repo",
-      query: { taskId: "task_serial_1", intent: "retry", context: {}, tokenBudget: 100 },
-    }),
-    registry.invokeRetriever("plugin.coding.serial", {
-      domainId: "coding",
-      namespace: "coding/repo",
-      query: { taskId: "task_serial_2", intent: "retry", context: {}, tokenBudget: 100 },
-    }),
-  ]);
+  const firstPromise = registry.invokeRetriever("plugin.coding.serial", {
+    domainId: "coding",
+    namespace: "coding/repo",
+    query: { taskId: "task_serial_1", intent: "retry", context: {}, tokenBudget: 100 },
+  });
+  await firstInvocationStarted.promise;
+  const secondPromise = registry.invokeRetriever("plugin.coding.serial", {
+    domainId: "coding",
+    namespace: "coding/repo",
+    query: { taskId: "task_serial_2", intent: "retry", context: {}, tokenBudget: 100 },
+  });
+  releaseFirstInvocation.resolve();
+  const [first, second] = await Promise.all([firstPromise, secondPromise]);
 
   assert.deepEqual(first, [{ knowledgeRef: "knowledge:chunk_serial", snippet: "serial chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_serial", documentId: "doc_serial", matchType: "semantic" }]);
   assert.deepEqual(second, [{ knowledgeRef: "knowledge:chunk_serial", snippet: "serial chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_serial", documentId: "doc_serial", matchType: "semantic" }]);
@@ -263,9 +271,10 @@ test("PluginSpiRegistry serializes plugin invocations under isolation limits", a
 });
 
 test("PluginSpiRegistry rejects plugin queue overflow and emits isolation event", async () => {
-  let releaseFirst!: () => void;
   let invocationCount = 0;
   const seenEvents: string[] = [];
+  const firstInvocationStarted = createDeferred<void>();
+  const releaseFirst = createDeferred<void>();
   const registry = new PluginSpiRegistry({
     eventPublisher: {
       publish(input) {
@@ -283,9 +292,8 @@ test("PluginSpiRegistry rejects plugin queue overflow and emits isolation event"
       if (invocationCount > 1) {
         return [{ knowledgeRef: "knowledge:chunk_queue", snippet: "queued chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_queue", documentId: "doc_queue", matchType: "semantic" as const }];
       }
-      await new Promise<void>((resolve) => {
-        releaseFirst = resolve;
-      });
+      firstInvocationStarted.resolve();
+      await releaseFirst.promise;
       return [{ knowledgeRef: "knowledge:chunk_queue", snippet: "queued chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_queue", documentId: "doc_queue", matchType: "semantic" as const }];
     },
   }, {
@@ -316,24 +324,29 @@ test("PluginSpiRegistry rejects plugin queue overflow and emits isolation event"
     namespace: "coding/repo",
     query: { taskId: "task_queue_1", intent: "retry", context: {}, tokenBudget: 100 },
   });
-  await waitFor(() =>
-    typeof releaseFirst === "function"
-    && registry.get("plugin.coding.queued")?.activeInvocationCount === 1,
-  );
+  await firstInvocationStarted.promise;
+  assert.equal(registry.get("plugin.coding.queued")?.activeInvocationCount, 1);
   const second = registry.invokeRetriever("plugin.coding.queued", {
     domainId: "coding",
     namespace: "coding/repo",
     query: { taskId: "task_queue_2", intent: "retry", context: {}, tokenBudget: 100 },
   });
-  await waitFor(() => registry.get("plugin.coding.queued")?.queuedInvocationCount === 1);
-  await assert.rejects(() => registry.invokeRetriever("plugin.coding.queued", {
-    domainId: "coding",
-    namespace: "coding/repo",
-    query: { taskId: "task_queue_3", intent: "retry", context: {}, tokenBudget: 100 },
-  }), /queued invocation limit/);
+  await Promise.resolve();
+  assert.equal(registry.get("plugin.coding.queued")?.queuedInvocationCount, 1);
 
-  releaseFirst();
-  const [firstResult, secondResult] = await Promise.all([first, second]);
+  let firstResult;
+  let secondResult;
+  try {
+    await assert.rejects(() => registry.invokeRetriever("plugin.coding.queued", {
+      domainId: "coding",
+      namespace: "coding/repo",
+      query: { taskId: "task_queue_3", intent: "retry", context: {}, tokenBudget: 100 },
+    }), /queued invocation limit/);
+  } finally {
+    releaseFirst.resolve();
+    [firstResult, secondResult] = await Promise.all([first, second]);
+  }
+
   assert.deepEqual(firstResult, [{ knowledgeRef: "knowledge:chunk_queue", snippet: "queued chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_queue", documentId: "doc_queue", matchType: "semantic" }]);
   assert.deepEqual(secondResult, [{ knowledgeRef: "knowledge:chunk_queue", snippet: "queued chunk", score: 0.9, namespace: "coding/repo", chunkId: "chunk_queue", documentId: "doc_queue", matchType: "semantic" }]);
   assert.ok(seenEvents.includes("plugin:error_isolated"));

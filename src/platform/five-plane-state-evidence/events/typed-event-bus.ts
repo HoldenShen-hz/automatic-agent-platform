@@ -342,6 +342,7 @@ export class TypedEventBus {
     executionId?: string | null;
     traceId?: string | null;
     traceContext?: TraceContext | null;
+    principal?: string | null;
     payload: TypedEventPayloadMap[TType];
   }): EventRecord {
     getEventSchema(input.eventType);

@@ -23,6 +23,24 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { getRegisteredConsumers } from "../../../../../src/platform/five-plane-state-evidence/events/event-registry.js";
 
+async function withImmediateTimeouts<T>(operation: () => Promise<T>): Promise<T> {
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((callback: TimerHandler, _delay?: number, ...args: unknown[]) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("String timer callbacks are not supported in tests");
+    }
+    queueMicrotask(() => {
+      callback(...args);
+    });
+    return { ref() {}, unref() {}, hasRef() { return false; } } as ReturnType<typeof setTimeout>;
+  }) as typeof globalThis.setTimeout;
+  try {
+    return await operation();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+}
+
 test("durable event bus integration: event persists after publish and dispose", () => {
   const workspace = createTempWorkspace("aa-integration-persist-");
   let db: SqliteDatabase | undefined;
@@ -90,7 +108,8 @@ test("durable event bus integration: multiple consumers receive events independe
       payload: { fromStatus: "created", toStatus: "running" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await bus.deliverPending("consumer_1");
+    await bus.deliverPending("consumer_2");
 
     assert.equal(consumer1Events.length, 1, "Consumer 1 should receive event");
     assert.equal(consumer2Events.length, 1, "Consumer 2 should receive event");
@@ -126,7 +145,7 @@ test("durable event bus integration: pending events survive unsubscribe/resubscr
       payload: { fromStatus: "created", toStatus: "running" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await bus.deliverPending("cycling_consumer");
 
     // Unsubscribe
     bus.unsubscribe("cycling_consumer");
@@ -137,10 +156,8 @@ test("durable event bus integration: pending events survive unsubscribe/resubscr
       eventsAfterResub.push(event.id);
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // The event was already delivered before unsubscribe, so no new delivery
-    assert.ok(true, "Resubscribe cycle completed");
+    const deliveredAfterResubscribe = await bus.deliverPending("cycling_consumer");
+    assert.equal(deliveredAfterResubscribe, 0, "Resubscribing should not re-deliver acked events");
 
     bus.dispose();
   } finally {
@@ -175,8 +192,10 @@ test("durable event bus integration: retry loop executes exactly 3 times - Issue
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for all retries to complete
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await assert.rejects(
+      () => withImmediateTimeouts(() => bus.deliverPending("inspect_projection")),
+      /dead-lettered/i,
+    );
 
     // Issue #2033: Exactly 3 attempts (not 4)
     assert.equal(attemptCount, 3, `Expected exactly 3 retry attempts, got ${attemptCount}`);
@@ -214,16 +233,20 @@ test("durable event bus integration: event dead-lettered after 3 failed attempts
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for all retries
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await assert.rejects(
+      () => withImmediateTimeouts(() => bus.deliverPending("inspect_projection")),
+      /dead-lettered/i,
+    );
 
     // Verify exactly 3 attempts were made
     assert.equal(attemptCount, 3, "Should have exactly 3 attempts before dead-letter");
 
-    // Event should be removed from pending queue after dead-letter
+    // Failed deliveries remain queryable with failed ack state for operator recovery.
     const pending = bus.pendingForConsumer("inspect_projection");
     const eventStillPending = pending.find((p) => p.event.id === event.id);
-    assert.equal(eventStillPending, undefined, "Event should be dead-lettered");
+    assert.notEqual(eventStillPending, undefined, "Failed delivery should remain inspectable");
+    assert.equal(eventStillPending?.ack.status, "failed");
+    assert.match(eventStillPending?.ack.errorCode ?? "", /failed_after_3_retries/i);
 
     bus.dispose();
   } finally {
@@ -262,8 +285,7 @@ test("durable event bus integration: successful delivery after transient failure
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for retry to succeed
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await withImmediateTimeouts(() => bus.deliverPending("inspect_projection"));
 
     assert.equal(delivered.length, 1, "Event should be delivered after retry");
     assert.equal(attemptCount, 2, "Should have 2 attempts (1 fail + 1 success)");

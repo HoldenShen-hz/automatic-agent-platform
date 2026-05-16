@@ -113,7 +113,7 @@ test("TypedEventBus delivers decision:requested event", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("approval_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].approvalId, "approval-decision-123");
@@ -151,7 +151,7 @@ test("TypedEventBus delivers decision:responded event", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("approval_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].approvalId, "approval-resp-456");
@@ -186,7 +186,7 @@ test("TypedEventBus delivers division:completed event", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("division_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].divisionId, "division-123");
@@ -221,7 +221,7 @@ test("TypedEventBus delivers division:failed event", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("division_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].divisionId, "division-failed-789");
@@ -260,7 +260,7 @@ test("TypedEventBus delivers subtask:completed event", async () => {
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("task_projection");
 
     assert.equal(received.length, 1);
     assert.equal(received[0].subtaskId, "subtask-abc");
@@ -455,7 +455,8 @@ test("TypedEventBus multiple consumers receive same event", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await bus.deliverPending("task_projection");
+    await bus.deliverPending("inspect_projection");
 
     assert.equal(consumer1Received.length, 1);
     assert.equal(consumer2Received.length, 1);

@@ -246,6 +246,7 @@ export class DurableEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: Record<string, unknown>;
+    principal?: string | null;
     // §28.1 replay ordering fields
     aggregateId?: string | null;
     runId?: string | null;
@@ -290,6 +291,7 @@ export class DurableEventBus {
           sequence: resolvedSequence,
           correlationId: input.traceContext?.correlationId ?? null,
           schemaVersion: input.schemaVersion ?? null,
+          principal: input.principal ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
         // R12-05 FIX: Execute volatile dispatch atomically within the transaction.
@@ -329,6 +331,7 @@ export class DurableEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: Record<string, unknown>;
+    principal?: string | null;
     // §28.1 replay ordering fields
     aggregateId?: string | null;
     runId?: string | null;
@@ -376,6 +379,7 @@ export class DurableEventBus {
           sequence: resolvedSequences[index] ?? null,
           correlationId: input.traceContext?.correlationId ?? null,
           schemaVersion: input.schemaVersion ?? null,
+          principal: input.principal ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
         // R12-05 FIX: Atomic volatile dispatch for non-tier-1 events

@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { GracefulShutdown, createGracefulShutdown, type ShutdownHandler } from "../../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
 /**
@@ -40,6 +40,16 @@ class MockSignalBus {
   listeners(event: "SIGTERM" | "SIGINT"): Function[] {
     return this.listenersMap.get(event) || [];
   }
+}
+
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 test("GracefulShutdown - creates instance with default options", () => {
@@ -82,24 +92,32 @@ test("GracefulShutdown - shutdown executes all handlers", async () => {
 });
 
 test("GracefulShutdown - shutdown handles handler timeout", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const shutdown = createGracefulShutdown({
     timeoutMs: 50,
   });
+  const neverResolves = createDeferred<void>();
 
   shutdown.addHandler({
     name: "slow-handler",
     handler: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await neverResolves.promise;
     },
     timeoutMs: 10, // Handler-specific timeout of 10ms
   });
 
-  const result = await shutdown.shutdown();
+  try {
+    const shutdownPromise = shutdown.shutdown();
+    mock.timers.tick(10);
+    const result = await shutdownPromise;
 
-  assert.equal(result.handlersFailed, 1);
-  assert.equal(result.handlersRun, 1);
-  assert.ok(result.errors.length > 0);
-  assert.ok(result.errors[0]?.includes("timed out"));
+    assert.equal(result.handlersFailed, 1);
+    assert.equal(result.handlersRun, 1);
+    assert.ok(result.errors.length > 0);
+    assert.ok(result.errors[0]?.includes("timed out"));
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 test("GracefulShutdown - Issue #2138: timeout handler should not continue after Promise.race resolves", async () => {
@@ -119,10 +137,7 @@ test("GracefulShutdown - Issue #2138: timeout handler should not continue after 
 
   shutdown.addHandler({
     name: "fast-handler",
-    handler: async () => {
-      // Handler completes quickly
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    },
+    handler: async () => {},
   });
 
   const result = await shutdown.shutdown();
@@ -131,10 +146,13 @@ test("GracefulShutdown - Issue #2138: timeout handler should not continue after 
   assert.equal(result.success, true);
   assert.equal(result.handlersFailed, 0);
 
-  // Give a small amount of time to see if exit handler was incorrectly called
-  await new Promise((resolve) => setTimeout(resolve, 50));
-
   // Exit handler should NOT have been called since shutdown completed successfully
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  try {
+    mock.timers.tick(1000);
+  } finally {
+    mock.timers.reset();
+  }
   assert.equal(exitCalled, false, "Exit handler should not be called after successful shutdown");
 });
 
@@ -152,7 +170,7 @@ test("GracefulShutdown - forceKillAfterTimeout triggers exit after timeout", asy
   shutdown.addHandler({
     name: "very-slow-handler",
     handler: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100)); // Very slow
+      await createDeferred<void>().promise;
     },
     timeoutMs: 10,
   });
@@ -339,22 +357,27 @@ test("GracefulShutdown - handlers execute in reverse registration order", async 
 test("GracefulShutdown - async handlers are properly awaited", async () => {
   const shutdown = createGracefulShutdown();
   let completed = false;
+  const releaseHandler = createDeferred<void>();
 
   shutdown.addHandler({
     name: "async",
     handler: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await releaseHandler.promise;
       completed = true;
     },
   });
 
-  const result = await shutdown.shutdown();
+  const shutdownPromise = shutdown.shutdown();
+  assert.equal(completed, false);
+  releaseHandler.resolve();
+  const result = await shutdownPromise;
 
   assert.equal(completed, true);
   assert.equal(result.handlersRun, 1);
 });
 
 test("GracefulShutdown - returns correct duration", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const shutdown = createGracefulShutdown();
 
   shutdown.addHandler({
@@ -364,7 +387,13 @@ test("GracefulShutdown - returns correct duration", async () => {
     },
   });
 
-  const result = await shutdown.shutdown();
+  try {
+    const shutdownPromise = shutdown.shutdown();
+    mock.timers.tick(30);
+    const result = await shutdownPromise;
 
-  assert.ok(result.durationMs >= 20); // At least the sleep duration
+    assert.ok(result.durationMs >= 30);
+  } finally {
+    mock.timers.reset();
+  }
 });

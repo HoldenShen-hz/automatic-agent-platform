@@ -16,6 +16,10 @@ import { createIntegrationContext } from "../../../../helpers/integration-contex
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
+async function flushMacrotask(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
 test("integration: durable event bus persists aggregateId/runId/sequence for replay ordering (R5-37)", () => {
   const ctx = createIntegrationContext("aa-replay-ordering-");
   try {
@@ -110,23 +114,21 @@ test("integration: durable event bus delivers events in sequence order for same 
       }
     });
 
-    // Publish events with different sequences for the same aggregate
     const aggregateId = "aggregate-seq-test";
     for (let i = 1; i <= 5; i++) {
       bus.publish({
-        eventType: "task:status_changed",
+        eventType: "dispatch:ticket_created",
         taskId: "task-seq-order",
         executionId: "exec-seq-order",
         traceId: `trace-seq-${i}`,
-        payload: { fromStatus: "queued", toStatus: "in_progress", step: i },
+        payload: { ticketId: `ticket-seq-${i}`, queueId: "default" },
         aggregateId,
         runId: "run-seq",
         sequence: i,
       });
     }
 
-    // Wait for async delivery
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushMacrotask();
 
     assert.equal(deliveryOrder.length, 5, "All 5 events should be delivered");
     assert.deepEqual(deliveryOrder, [1, 2, 3, 4, 5], "Events should be delivered in sequence order");
@@ -160,37 +162,37 @@ test("integration: durable event bus replays events with same runId together", a
 
     // Publish events from different runId groups
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-run-replay",
       executionId: "exec-run-replay",
       traceId: "trace-run-a",
-      payload: { fromStatus: "queued", toStatus: "in_progress", run: "A" },
+      payload: { ticketId: "ticket-run-a", queueId: "default" },
       aggregateId: "agg-run-a",
       runId: "run-A",
       sequence: 1,
     });
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-run-replay",
       executionId: "exec-run-replay",
       traceId: "trace-run-b",
-      payload: { fromStatus: "queued", toStatus: "in_progress", run: "B" },
+      payload: { ticketId: "ticket-run-b", queueId: "default" },
       aggregateId: "agg-run-b",
       runId: "run-B",
       sequence: 1,
     });
     bus.publish({
-      eventType: "task:status_changed",
+      eventType: "dispatch:ticket_created",
       taskId: "task-run-replay",
       executionId: "exec-run-replay",
       traceId: "trace-run-a2",
-      payload: { fromStatus: "in_progress", toStatus: "completed", run: "A2" },
+      payload: { ticketId: "ticket-run-a2", queueId: "default" },
       aggregateId: "agg-run-a",
       runId: "run-A",
       sequence: 2,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushMacrotask();
 
     assert.ok(runIdGroups.has("run-A"), "run-A should be delivered");
     assert.ok(runIdGroups.has("run-B"), "run-B should be delivered");
@@ -216,6 +218,16 @@ test("integration: cross-module event flow - event published by one module can b
       traceId: "trace-cross-module",
     });
 
+    // Module B: inspect_projection consumes and processes the event
+    let consumedByProjection = false;
+    let projectionEventType = "";
+    bus.subscribe("inspect_projection", (event) => {
+      if (event.eventType === "dispatch:ticket_created") {
+        consumedByProjection = true;
+        projectionEventType = event.eventType;
+      }
+    });
+
     // Module A: dispatch service publishes a ticket_created event
     const ticketEvent = bus.publish({
       eventType: "dispatch:ticket_created",
@@ -229,17 +241,7 @@ test("integration: cross-module event flow - event published by one module can b
       },
     });
 
-    // Module B: inspect_projection consumes and processes the event
-    let consumedByProjection = false;
-    let projectionEventType = "";
-    bus.subscribe("inspect_projection", (event) => {
-      if (event.eventType === "dispatch:ticket_created") {
-        consumedByProjection = true;
-        projectionEventType = event.eventType;
-      }
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await flushMacrotask();
 
     assert.ok(ticketEvent.id.startsWith("evt_"), "Ticket event should be published");
     assert.equal(projectionEventType, "dispatch:ticket_created", "Projection should consume ticket_created event");
@@ -319,8 +321,7 @@ test("integration: deliverPending processes all pending events and acks them", a
       });
     }
 
-    // Wait for polling-based delivery
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await flushMacrotask();
 
     // Verify all events delivered
     assert.equal(deliveredCount, 3, "All 3 events should be delivered");

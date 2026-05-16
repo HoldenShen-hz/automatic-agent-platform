@@ -26,15 +26,60 @@ function createMockSignalBus(): EventEmitter & { handlers: Map<string, Function>
   return emitter as EventEmitter & { handlers: Map<string, Function> };
 }
 
-function createPassingHandler(name: string, delayMs = 0): ShutdownHandler {
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void;
+  return {
+    promise: new Promise<void>((res) => {
+      resolve = res;
+    }),
+    resolve,
+  };
+}
+
+async function flushMacrotask(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+async function withSimulatedTime<T>(operation: (advanceTime: (ms: number) => void) => Promise<T>): Promise<T> {
+  const originalNow = Date.now;
+  let nowMs = 1_700_000_000_000;
+  Date.now = () => nowMs;
+  try {
+    return await operation((ms) => {
+      nowMs += ms;
+    });
+  } finally {
+    Date.now = originalNow;
+  }
+}
+
+async function withImmediateTimeouts<T>(operation: () => Promise<T>, onSchedule?: (ms: number) => void): Promise<T> {
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((callback: TimerHandler, delay?: number, ...args: unknown[]) => {
+    if (typeof callback !== "function") {
+      throw new TypeError("String timer callbacks are not supported in tests");
+    }
+    queueMicrotask(() => {
+      onSchedule?.(delay ?? 0);
+      callback(...args);
+    });
+    return { ref() {}, unref() {}, hasRef() { return false; } } as ReturnType<typeof setTimeout>;
+  }) as typeof globalThis.setTimeout;
+  try {
+    return await operation();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+}
+
+function createPassingHandler(name: string, delayMs = 0, advanceTime?: (ms: number) => void): ShutdownHandler {
   return {
     name,
     handler: async () => {
       if (delayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        advanceTime?.(delayMs);
+        await flushMacrotask();
       }
-      // Ensure we return a Promise that resolves properly
-      return;
     },
   };
 }
@@ -62,7 +107,9 @@ function createSlowHandler(name: string, delayMs: number, handlerTimeoutMs?: num
   return {
     name,
     handler: async () => {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (delayMs > 0) {
+        await new Promise<void>(() => {});
+      }
     },
     timeoutMs: handlerTimeoutMs,
   };
@@ -267,13 +314,15 @@ test("shutdown() continues executing handlers after a failure", async () => {
 });
 
 test("shutdown() tracks duration", async () => {
-  const shutdown = new GracefulShutdown({
-    handlers: [createPassingHandler("handler", 50)],
+  await withSimulatedTime(async (advanceTime) => {
+    const shutdown = new GracefulShutdown({
+      handlers: [createPassingHandler("handler", 50, advanceTime)],
+    });
+
+    const result = await shutdown.shutdown();
+
+    assert.ok(result.durationMs >= 50, `duration ${result.durationMs} should be at least 50ms`);
   });
-
-  const result = await shutdown.shutdown();
-
-  assert.ok(result.durationMs >= 45, `duration ${result.durationMs} should be at least 45ms`);
 });
 
 test("shutdown() is idempotent - returns same promise on second call", async () => {
@@ -292,15 +341,17 @@ test("shutdown() is idempotent - returns same promise on second call", async () 
 // ---------------------------------------------------------------------------
 
 test("shutdown() times out slow handler", async () => {
-  const shutdown = new GracefulShutdown({
-    handlers: [createSlowHandler("slow-handler", 500)],
-    timeoutMs: 100,
+  await withSimulatedTime(async (advanceTime) => {
+    const shutdown = new GracefulShutdown({
+      handlers: [createSlowHandler("slow-handler", 500)],
+      timeoutMs: 100,
+    });
+
+    const result = await withImmediateTimeouts(() => shutdown.shutdown(), advanceTime);
+
+    assert.equal(result.success, false);
+    assert.ok(result.errors.some((e) => e.includes("timed out")));
   });
-
-  const result = await shutdown.shutdown();
-
-  assert.equal(result.success, false);
-  assert.ok(result.errors.some((e) => e.includes("timed out")));
 });
 
 // ---------------------------------------------------------------------------
@@ -314,13 +365,12 @@ test("isShuttingDownState() returns false before shutdown", () => {
 });
 
 test("isShuttingDownState() returns true during shutdown", async () => {
+  const blocker = createDeferred();
   const shutdown = new GracefulShutdown({
     handlers: [
       {
         name: "slow-handler",
-        handler: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        },
+        handler: async () => blocker.promise,
       },
     ],
   });
@@ -328,6 +378,7 @@ test("isShuttingDownState() returns true during shutdown", async () => {
   const shutdownPromise = shutdown.shutdown();
   assert.equal(shutdown.isShuttingDownState(), true);
 
+  blocker.resolve();
   await shutdownPromise;
 });
 
@@ -475,8 +526,8 @@ test("exitHandler is called with 0 on successful shutdown via signal", async () 
   shutdown.registerSignalHandlers();
 
   signalBus.emit("SIGTERM");
-  // Wait for signal handling to complete
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await flushMacrotask();
+  await flushMacrotask();
 
   assert.equal(exitCode, 0);
 });
@@ -492,8 +543,8 @@ test("exitHandler is called with 1 on failed shutdown via signal", async () => {
   shutdown.registerSignalHandlers();
 
   signalBus.emit("SIGTERM");
-  // Wait for signal handling to complete
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await flushMacrotask();
+  await flushMacrotask();
 
   assert.equal(exitCode, 1);
 });

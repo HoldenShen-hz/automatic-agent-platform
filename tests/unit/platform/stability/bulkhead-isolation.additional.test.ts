@@ -12,6 +12,16 @@ import {
   type BulkheadMetrics,
 } from "../../../../src/platform/stability/bulkhead-isolation.js";
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("bulkhead-isolation additional tests", () => {
   describe("BulkheadIsolator concurrency limits", () => {
     test("respects maxConcurrentCalls limit", async () => {
@@ -19,35 +29,43 @@ describe("bulkhead-isolation additional tests", () => {
 
       let activeCount = 0;
       let maxActive = 0;
+      let started = 0;
+      const reachedLimit = createDeferred<void>();
+      const releaseCalls = createDeferred<void>();
 
       const tasks = Array.from({ length: 5 }, async (_, i) => {
         return isolator.execute(async () => {
           activeCount++;
           maxActive = Math.max(maxActive, activeCount);
-          await new Promise((r) => setTimeout(r, 20));
+          started++;
+          if (started === 2) {
+            reachedLimit.resolve();
+          }
+          await releaseCalls.promise;
           activeCount--;
           return i;
         });
       });
 
-      // Only 2 should run at once due to maxConcurrentCalls: 2
+      await reachedLimit.promise;
       assert.ok(maxActive <= 2, `Expected max 2 concurrent, got ${maxActive}`);
+      releaseCalls.resolve();
       await Promise.all(tasks);
     });
 
     test("queues calls when at capacity and queue has space", async () => {
       const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 2 });
 
-      let release: () => void;
-      const blocked = new Promise<void>((r) => { release = r; });
+      const firstCallStarted = createDeferred<void>();
+      const releaseFirstCall = createDeferred<void>();
 
       const p1 = isolator.execute(async () => {
-        await blocked;
+        firstCallStarted.resolve();
+        await releaseFirstCall.promise;
         return "p1";
       });
 
-      // Give p1 time to start
-      await new Promise((r) => setTimeout(r, 10));
+      await firstCallStarted.promise;
 
       const metrics1 = isolator.getMetrics();
       assert.equal(metrics1.activeCalls, 1);
@@ -59,7 +77,7 @@ describe("bulkhead-isolation additional tests", () => {
       const metrics2 = isolator.getMetrics();
       assert.ok(metrics2.queuedCalls >= 1, "Expected calls to be queued");
 
-      release!();
+      releaseFirstCall.resolve();
       const results = await Promise.all([p1, p2, p3]);
       assert.deepEqual(results, ["p1", "p2", "p3"]);
     });
@@ -67,20 +85,19 @@ describe("bulkhead-isolation additional tests", () => {
     test("rejects when queue is full", async () => {
       const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 1 });
 
-      let release: () => void;
-      const blocked = new Promise<void>((r) => { release = r; });
+      const firstCallStarted = createDeferred<void>();
+      const releaseFirstCall = createDeferred<void>();
 
       const p1 = isolator.execute(async () => {
-        await blocked;
+        firstCallStarted.resolve();
+        await releaseFirstCall.promise;
         return "p1";
       });
 
-      await new Promise((r) => setTimeout(r, 10));
+      await firstCallStarted.promise;
 
       // This queues
       const p2 = isolator.execute(async () => "p2");
-
-      await new Promise((r) => setTimeout(r, 10));
 
       // This should reject because queue is full
       await assert.rejects(
@@ -88,7 +105,7 @@ describe("bulkhead-isolation additional tests", () => {
         BulkheadRejectionError,
       );
 
-      release!();
+      releaseFirstCall.resolve();
       await Promise.all([p1, p2]).catch(() => {});
     });
 
@@ -113,10 +130,11 @@ describe("bulkhead-isolation additional tests", () => {
         queueSize: 1,
         timeoutMs: 50,
       });
+      const neverResolves = createDeferred<void>();
 
       await assert.rejects(
         isolator.execute(async () => {
-          await new Promise((r) => setTimeout(r, 100));
+          await neverResolves.promise;
           return "slow";
         }),
         BulkheadTimeoutError,
@@ -128,22 +146,23 @@ describe("bulkhead-isolation additional tests", () => {
     test("tracks average wait time for queued calls", async () => {
       const isolator = new BulkheadIsolator("test-plane", { maxConcurrentCalls: 1, queueSize: 5 });
 
-      let release: () => void;
-      const blocked = new Promise<void>((r) => { release = r; });
+      const firstCallStarted = createDeferred<void>();
+      const releaseFirstCall = createDeferred<void>();
 
       const p1 = isolator.execute(async () => {
-        await blocked;
+        firstCallStarted.resolve();
+        await releaseFirstCall.promise;
         return "p1";
       });
 
-      await new Promise((r) => setTimeout(r, 10));
+      await firstCallStarted.promise;
 
       // Queue several calls
       const queuedTasks = Array.from({ length: 3 }, async (_, i) => {
         return isolator.execute(async () => `task-${i}`);
       });
 
-      release!();
+      releaseFirstCall.resolve();
       await Promise.all([p1, ...queuedTasks].map((t) => t.catch(() => {})));
 
       const metrics = isolator.getMetrics();

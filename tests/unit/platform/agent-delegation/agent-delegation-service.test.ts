@@ -43,6 +43,19 @@ function createDelegationSpec(overrides: Partial<DelegationSpec> = {}): Delegati
   };
 }
 
+async function withSimulatedTime<T>(operation: (advanceTime: (ms: number) => void) => Promise<T>): Promise<T> {
+  const originalNow = Date.now;
+  let nowMs = 1_700_000_000_000;
+  Date.now = () => nowMs;
+  try {
+    return await operation((ms) => {
+      nowMs += ms;
+    });
+  } finally {
+    Date.now = originalNow;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Request Creation and Validation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,37 +331,41 @@ test("createDelegationManager completeWithEvidence rejects invalid evidence", as
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("createDelegationManager revokeExpiredDelegations marks expired delegations", async () => {
-  const service = createDelegationManager();
-  const parent = createParentContext();
-  const spec = createDelegationSpec({ timeout: 1 });
+  await withSimulatedTime(async (advanceTime) => {
+    const service = createDelegationManager();
+    const parent = createParentContext();
+    const spec = createDelegationSpec({ timeout: 1 });
 
-  const handle = await service.delegate(parent, spec);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+    const handle = await service.delegate(parent, spec);
+    advanceTime(10);
 
-  const result = await service.revokeExpiredDelegations();
+    const result = await service.revokeExpiredDelegations();
 
-  assert.equal(result.expired, 1);
-  assert.equal(result.scanned, 1);
-  assert.equal(result.errors.length, 0);
+    assert.equal(result.expired, 1);
+    assert.equal(result.scanned, 1);
+    assert.equal(result.errors.length, 0);
 
-  const delegation = await service.getDelegation(handle.delegationId);
-  assert.equal(delegation?.status, "expired");
+    const delegation = await service.getDelegation(handle.delegationId);
+    assert.equal(delegation?.status, "expired");
+  });
 });
 
 test("createDelegationManager revokeExpiredDelegations skips completed delegations", async () => {
-  const service = createDelegationManager();
-  const parent = createParentContext();
-  const spec = createDelegationSpec({ timeout: 1 });
+  await withSimulatedTime(async (advanceTime) => {
+    const service = createDelegationManager();
+    const parent = createParentContext();
+    const spec = createDelegationSpec({ timeout: 1 });
 
-  const handle = await service.delegate(parent, spec);
-  await service.complete(handle.delegationId);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+    const handle = await service.delegate(parent, spec);
+    await service.complete(handle.delegationId);
+    advanceTime(10);
 
-  const result = await service.revokeExpiredDelegations();
+    const result = await service.revokeExpiredDelegations();
 
-  assert.equal(result.expired, 0);
-  const delegation = await service.getDelegation(handle.delegationId);
-  assert.equal(delegation?.status, "completed");
+    assert.equal(result.expired, 0);
+    const delegation = await service.getDelegation(handle.delegationId);
+    assert.equal(delegation?.status, "completed");
+  });
 });
 
 test("createDelegationManager revokeExpiredDelegations handles empty store", async () => {
@@ -362,64 +379,70 @@ test("createDelegationManager revokeExpiredDelegations handles empty store", asy
 });
 
 test("createDelegationManager getExpiredDelegations returns expired pending/active delegations", async () => {
-  const service = createDelegationManager();
-  const parent = createParentContext();
+  await withSimulatedTime(async (advanceTime) => {
+    const service = createDelegationManager();
+    const parent = createParentContext();
 
-  await service.delegate(parent, createDelegationSpec({
-    timeout: 1,
-    targetAgentId: "child-1",
-    targetPackId: "pack-child-1",
-  }));
-  await service.delegate(parent, createDelegationSpec({
-    timeout: 60000,
-    targetAgentId: "child-2",
-    targetPackId: "pack-child-2",
-  }));
+    await service.delegate(parent, createDelegationSpec({
+      timeout: 1,
+      targetAgentId: "child-1",
+      targetPackId: "pack-child-1",
+    }));
+    await service.delegate(parent, createDelegationSpec({
+      timeout: 60000,
+      targetAgentId: "child-2",
+      targetPackId: "pack-child-2",
+    }));
 
-  await new Promise((resolve) => setTimeout(resolve, 10));
+    advanceTime(10);
 
-  const expired = await service.getExpiredDelegations();
-  assert.equal(expired.length, 1);
+    const expired = await service.getExpiredDelegations();
+    assert.equal(expired.length, 1);
+  });
 });
 
 test("createDelegationManager getPendingExpirationCount returns correct count", async () => {
-  const service = createDelegationManager();
-  const parent = createParentContext();
+  await withSimulatedTime(async (advanceTime) => {
+    const service = createDelegationManager();
+    const parent = createParentContext();
 
-  for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i++) {
+      await service.delegate(parent, createDelegationSpec({
+        timeout: 1,
+        targetAgentId: `child-${i}`,
+        targetPackId: `pack-child-${i}`,
+      }));
+    }
+
     await service.delegate(parent, createDelegationSpec({
-      timeout: 1,
-      targetAgentId: `child-${i}`,
-      targetPackId: `pack-child-${i}`,
+      timeout: 60000,
+      targetAgentId: "child-forever",
+      targetPackId: "pack-child-forever",
     }));
-  }
 
-  await service.delegate(parent, createDelegationSpec({
-    timeout: 60000,
-    targetAgentId: "child-forever",
-    targetPackId: "pack-child-forever",
-  }));
+    advanceTime(10);
 
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
-  assert.equal(await service.getPendingExpirationCount(), 3);
+    assert.equal(await service.getPendingExpirationCount(), 3);
+  });
 });
 
 test("createDelegationManager getExpiredDelegations excludes already expired", async () => {
-  const service = createDelegationManager();
-  const parent = createParentContext();
+  await withSimulatedTime(async (advanceTime) => {
+    const service = createDelegationManager();
+    const parent = createParentContext();
 
-  const handle = await service.delegate(parent, createDelegationSpec({
-    timeout: 1,
-    targetAgentId: "child-1",
-    targetPackId: "pack-1",
-  }));
+    const handle = await service.delegate(parent, createDelegationSpec({
+      timeout: 1,
+      targetAgentId: "child-1",
+      targetPackId: "pack-1",
+    }));
 
-  await new Promise((resolve) => setTimeout(resolve, 10));
-  await service.revokeExpiredDelegations();
+    advanceTime(10);
+    await service.revokeExpiredDelegations();
 
-  const expired = await service.getExpiredDelegations();
-  assert.equal(expired.some((d) => d.delegationId === handle.delegationId), false);
+    const expired = await service.getExpiredDelegations();
+    assert.equal(expired.some((d) => d.delegationId === handle.delegationId), false);
+  });
 });
 
 test("createDelegationManager revokeExpiredDelegations returns errors on failure", async () => {

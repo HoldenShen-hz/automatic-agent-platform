@@ -17,6 +17,10 @@ import { createIntegrationContext } from "../../../../helpers/integration-contex
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
+async function flushMacrotask(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
 test("integration: event bus publishes typed event and creates pending acks for tier-1 consumers", () => {
   const ctx = createIntegrationContext("aa-event-bus-typed-");
   try {
@@ -72,7 +76,7 @@ test("integration: typed event bus delivers events to subscribers and handles ac
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("typed_consumer");
 
     assert.ok(deliveredEvents.includes(event.id), "Subscriber should receive the tier-1 event via deliverPending");
 
@@ -161,7 +165,7 @@ test("integration: event bus dispatches tier-2 events to volatile handlers immed
       payload: { ticketId: "ticket-volatile-1", queueId: "default" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushMacrotask();
 
     assert.ok(handlerCalled, "Tier-2 dispatch events should be dispatched to volatile handlers immediately");
     bus.dispose();
@@ -228,7 +232,7 @@ test("integration: event bus can unsubscribe and stop receiving events", async (
       payload: { ticketId: "ticket-unsub-1", queueId: "default" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushMacrotask();
     const countBeforeUnsub = deliveredCount;
 
     bus.unsubscribe("unsub_consumer");
@@ -241,7 +245,7 @@ test("integration: event bus can unsubscribe and stop receiving events", async (
       payload: { ticketId: "ticket-unsub-2", queueId: "default" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flushMacrotask();
 
     assert.equal(deliveredCount, countBeforeUnsub, "Unsubscribed consumer should not receive new events");
     bus.dispose();
@@ -270,7 +274,7 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
       receivedPayload = envelope.payload;
     });
 
-    durableBus.publish({
+    typedBus.publish({
       eventType: "task:status_changed",
       taskId: "task-typed-payload",
       executionId: "exec-typed-payload",
@@ -278,12 +282,13 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await typedBus.deliverPending("typed_payload_consumer");
 
     assert.ok(receivedPayload !== null, "Payload should be received");
     assert.equal((receivedPayload as any)?.fromStatus, "queued", "From status should match");
     assert.equal((receivedPayload as any)?.toStatus, "in_progress", "To status should match");
 
+    typedBus.dispose();
     durableBus.dispose();
     db.close();
   } finally {
@@ -320,7 +325,8 @@ test("integration: event bus multiple consumers each receive their own pending e
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("consumer_a");
+    await bus.deliverPending("consumer_b");
 
     assert.ok(consumerAEvents.includes(event.id), "Consumer A should have received the event");
     assert.ok(consumerBEvents.includes(event.id), "Consumer B should have also received the event");
