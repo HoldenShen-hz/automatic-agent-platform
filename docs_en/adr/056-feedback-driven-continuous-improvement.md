@@ -58,18 +58,18 @@ LearnHub → ImproveHub → P2 Release Governance Gate → Six-Level Release
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Closed-loop improvement mechanism
 - Data-driven optimization
 - User participation enhances experience
 
-Cons:
+Trade-offs:
 
 - Feedback processing requires resources
 - Pattern recognition accuracy depends on data volume
 
-## Cross References
+## Cross-references
 
 - [ADR-079 Feedback Hub and Seven Signal Types Preprocessing](./079-feedback-hub-signals.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)

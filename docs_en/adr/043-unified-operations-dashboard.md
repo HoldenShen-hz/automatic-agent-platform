@@ -29,7 +29,7 @@ Operations personnel need a unified view to understand the overall platform stat
 ### View Layers
 
 | Layer | Audience | Content |
-|------|---------|---------|
+|-------|----------|---------|
 | Management Layer | Executives | Business metrics, health status |
 | Operations Layer | SRE | System metrics, alerts, capacity |
 | Development Layer | Developers | Task details, logs, traces |
@@ -42,18 +42,18 @@ Operations personnel need a unified view to understand the overall platform stat
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Unified view improves operational efficiency
 - Real-time push ensures timely response
 - Layered views serve different audiences
 
-Cons:
+Trade-offs:
 
 - Dashboard maintenance costs
 - Real-time data pipeline complexity
 
-## Cross References
+## Cross-references
 
 - [ADR-028 Incident and Event Handling Architecture](./028-incident-and-event-handling-architecture.md)
 - [ADR-084 Operations Dashboard and Non-Technical User Experience](./084-operator-dashboard-and-user-experience.md)

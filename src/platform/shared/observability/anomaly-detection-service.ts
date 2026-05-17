@@ -224,7 +224,10 @@ export class AnomalyDetectionService {
     value: number,
     timestamp: string,
   ): AnomalyDetectionResult | null {
-    const combined = `${metricName} ${value} ${timestamp}`;
+    // Signature matching should ignore timestamps. Raw millisecond fragments
+    // like ".503Z" can otherwise accidentally match outage patterns such as
+    // HTTP 503 and produce false positives.
+    const combined = `${metricName} ${value}`;
 
     for (const sig of this.signatures.values()) {
       if (sig.pattern.test(combined)) {

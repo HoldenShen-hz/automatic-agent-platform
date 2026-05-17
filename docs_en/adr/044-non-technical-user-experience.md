@@ -43,18 +43,18 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Reduces barriers for non-technical users
 - Templating improves efficiency
 - Real-time feedback enhances experience
 
-Cons:
+Trade-offs:
 
 - Multi-role interfaces increase complexity
 - Template maintenance requires ongoing investment
 
-## Cross References
+## Cross-references
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)

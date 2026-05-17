@@ -52,18 +52,18 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Proactive perception improves platform intelligence
 - Multi-layer protection prevents trigger storms
 - Multiple trigger types cover common scenarios
 
-Cons:
+Trade-offs:
 
 - Proactive behavior may disturb users
 - Trigger logic complexity is high
 
-## Cross References
+## Cross-references
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)

@@ -52,17 +52,17 @@ interface SharingPolicy {
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Strict isolation prevents data leakage
 - Controlled sharing supports business collaboration
 - Audit tracking ensures accountability
 
-Cons:
+Trade-offs:
 
 - Isolation affects knowledge reuse
 - Sharing process adds latency
 
-## Cross References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)

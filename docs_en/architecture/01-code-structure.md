@@ -1,10 +1,11 @@
 # New Platform Code File Structure Design Document
 
-> **Document Version**: v1.0
-> **Document Status**: Draft
+> **Document Version**: v1.2
+> **Document Status**: Active
 > **Related Document**: "Enterprise Agent Platform Overall Technical Architecture Design Document" v2.7 §35 Recommended Code Directory
 > **Related Document**: "Old System → New Platform Migration Assessment Document" v1.1
 > **Design Date**: 2026-04-19
+> **Last Updated**: 2026-05-17
 
 ---
 
@@ -1356,20 +1357,34 @@ tests/
 
 ## 12. Statistics Summary
 
-### 12.1 Directory Statistics
+### 12.1 Directory Statistics (2026-05-17 Second Round Update)
 
-| Top-level Directory | Architecture Layer | Second-level Directories | Migrated Files | New Files | Total |
-|---------------------|-------------------|------------------------|---------------|-----------|-------|
-| `platform/` | Layer 1-2 | 10 | ~608 | ~53 | ~661 |
-| `domains/` | Layer 3 | 10 | ~18 | ~8 | ~26 |
-| `interaction/` | Layer 4 | 6 | 0 | ~24 | ~24 |
-| `org-governance/` | Layer 5 | 6 | ~2 | ~18 | ~20 |
-| `scale-ecosystem/` | Layer 6 | 6 | ~27 | ~18 | ~45 |
-| `ops-maturity/` | Layer 7 | 11 | ~12 | ~44 | ~56 |
-| `plugins/` | Cross-layer | 5 | ~20 | 0 | ~20 |
-| `sdk/` | Cross-layer | 4 | ~78 | ~5 | ~83 |
-| `apps/` | Entry | 3 | 0 | ~3 | ~3 |
-| **src/ Total** | | **61** | **~765** | **~173** | **~938** |
+| Top-level Directory | Architecture Layer | Actual Direct Subdirectories | With Deep Subdirectories Total | Status |
+|---------------------|-------------------|---------------------------|------------------------------|--------|
+| `platform/` | Layer 1-2 | 19 (5 five-plane-* + 14 independent modules) | Contains 130+ deep submodules | Five planes complete; other modules supplemented per §4 |
+| `five-plane-control-plane/` | P2 | 14 | 44 (with deep) | Complete |
+| `five-plane-execution/` | P4 | 17 | Contains deep submodules | Complete |
+| `five-plane-interface/` | P1 | 9 | 17 (with deep) | Complete |
+| `five-plane-orchestration/` | P3 | 11 | 29 (with deep) | Complete |
+| `five-plane-state-evidence/` | P5 | 12 | 20 (with deep) | Complete |
+| `domains/` | Layer 3 | 40 | Contains 21 root-level service files | **Significant Expansion** (doc noted 10, now 40 domain instance directories) |
+| `interaction/` | Layer 4 | 12 (with deep submodules) | 13 (with deep) | **Expanded** (doc noted 6, now 12 top-level subdirectories) |
+| `org-governance/` | Layer 5 | 23 (with deep submodules) | 24 (with deep) | **Significant Expansion** (doc noted 7, now 23 subdirectories) |
+| `scale-ecosystem/` | Layer 6 | 45 (with deep submodules) | 46 (with deep) | **Significant Expansion** (doc noted 6, now 45 subdirectories) |
+| `ops-maturity/` | Layer 7 | 65 (with deep submodules) | 66 (with deep) | **Significant Expansion** (doc noted 11, now 65 subdirectories) |
+| `plugins/` | Cross-layer | 5 | - | Matches documentation |
+| `sdk/` | Cross-layer | 7 | Contains 70+ scripts under CLI | Matches documentation (updated) |
+| `apps/` | Entry | 3 | - | Matches documentation |
+| `core/` | Compatibility layer | 1 (runtime/) | - | Matches documentation |
+| `testing/` | Test infrastructure | Contains helpers, fixtures, invariants, leaks, etc. | - | Matches documentation |
+| `benchmarks/` | Performance benchmarks | Empty directory | - | Matches documentation |
+
+> **Five-Plane Submodule Count Notes (2026-05-17 Update)**:
+> - `five-plane-control-plane/`: approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + deep threat-model, runbook-executor, etc. → Total 44 directories with deep
+> - `five-plane-execution/`: budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 direct subdirectories
+> - `five-plane-interface/`: api, channel-gateway, console, console-backend, ingress, scheduler, webhook, etc. → 17 directories with deep
+> - `five-plane-orchestration/`: agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing, etc. → 29 directories with deep
+> - `five-plane-state-evidence/`: artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth, etc. → 20 directories with deep
 
 ### 12.2 Comparison with Old System
 

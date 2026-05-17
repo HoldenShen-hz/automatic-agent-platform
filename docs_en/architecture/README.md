@@ -20,3 +20,8 @@ The `architecture/` directory contains the formal documentation that defines "wh
 - Read `00` first, then `01`, then refer to `02-04` as needed.
 - If `02-04` conflicts with `00`, `00` takes precedence.
 - This directory does not contain execution traces, one-time reviews, or temporary TODOs.
+
+## Recent Sync
+
+- 2026-05-14: Architecture/implementation consistency issues in `docs_zh/reviews/issues-table.md` have been re-attached using this directory's README as the index entry point; specific code-level fix evidence is still recorded in the review table's corresponding rows and `scripts/ci/audit-review-batch-resource-contracts.mjs`.
+- Large structural items (giant file splits, symlink migrations, global type escape cleanup) are not falsified as completed within `00-platform-architecture.md`, and continue to progress according to governance boundaries and subsequent split plans.

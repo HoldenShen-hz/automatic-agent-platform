@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
 import test from "node:test";
 
 /**
@@ -140,7 +141,6 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
   const { CallGovernance } = await import("../../../../../src/platform/five-plane-execution/execution-engine/call-governance.js");
 
   const callTimes: number[] = [];
-  const onRetryStartTimes: number[] = [];
   const onRetryEndTimes: number[] = [];
 
   const policy = {
@@ -150,13 +150,12 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
       maxDelayMs: 100,
       backoffMultiplier: 1, // linear delay (no exponential)
       onRetry: ({ attempt, error }: { attempt: number; error: { code: string; message: string; retryable: boolean } }) => {
-        onRetryStartTimes.push(Date.now());
         // Simulate some work in the callback
-        const start = Date.now();
-        while (Date.now() - start < 5) {
+        const start = performance.now();
+        while (performance.now() - start < 5) {
           // busy wait 5ms
         }
-        onRetryEndTimes.push(Date.now());
+        onRetryEndTimes.push(performance.now());
       },
     },
   };
@@ -164,9 +163,9 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
   const governance = new CallGovernance(policy);
   let callCount = 0;
 
-  const startTime = Date.now();
+  const startTime = performance.now();
   const result = await governance.execute("test-key", async () => {
-    callTimes.push(Date.now());
+    callTimes.push(performance.now());
     callCount++;
     if (callCount < 3) {
       const err = new Error("Transient");
@@ -175,7 +174,7 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
     }
     return "success";
   });
-  const endTime = Date.now();
+  const endTime = performance.now();
 
   assert.ok(result.success, "Should eventually succeed");
 
@@ -189,9 +188,12 @@ test("Retry delay is applied after onRetry callback is invoked", async () => {
   // The retry delay happens AFTER the onRetry callback starts,
   // so total time includes both callback execution and delay
   assert.ok(
-    endTime - startTime >= minimumExpectedTime,
-    `Total time (${endTime - startTime}ms) should be >= ${minimumExpectedTime}ms (delay + callback time)`
+    endTime - startTime >= minimumExpectedTime - 1,
+    `Total time (${(endTime - startTime).toFixed(2)}ms) should be >= ${minimumExpectedTime - 1}ms (delay + callback time, allowing 1ms timer jitter)`
   );
+
+  assert.ok(callTimes[1]! - onRetryEndTimes[0]! >= 45, "Retry attempt 2 should wait after the first onRetry callback finishes");
+  assert.ok(callTimes[2]! - onRetryEndTimes[1]! >= 45, "Retry attempt 3 should wait after the second onRetry callback finishes");
 });
 
 test("onRetry is NOT called on successful execution (only on retry)", async () => {

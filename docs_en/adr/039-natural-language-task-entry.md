@@ -22,14 +22,14 @@ Non-technical users need to interact with the platform through natural language,
 
 ```typescript
 interface DetectedIntent {
-  intent_type: IntentType;  // 6 types
+  intent_type: IntentType;  // 8 types
   confidence: number;
   entities: Entity[];
   fallback_domain?: string;
 }
 ```
 
-### 6 intent_types (§6.3 reconciliation)
+### 8 intent_types (§6.3 reconciliation)
 
 > Note: `cancel_task` was removed in §6.3. Please use `abort_task` (abort in-progress task), `pause_task` (pause task), or `panic_kill` (emergency termination) instead.
 

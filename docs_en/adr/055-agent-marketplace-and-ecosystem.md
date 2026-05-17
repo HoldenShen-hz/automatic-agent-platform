@@ -59,18 +59,18 @@ type ListingCategory =
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Open ecosystem attracts partners
 - Market mechanism incentivizes high-quality Packs
 - Certification process ensures quality
 
-Cons:
+Trade-offs:
 
 - Platform governance complexity
 - Quality inconsistency risk
 
-## Cross References
+## Cross-references
 
 - [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
 - [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)

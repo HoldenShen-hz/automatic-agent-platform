@@ -9,13 +9,14 @@ Agent, as a high-risk automated execution unit, must perform risk assessment bef
 
 ## Decision
 
-### Risk Factor Scoring Algorithm (§10.2 canonical)
+### 9-Factor Weighted Scoring Algorithm (§10.2 canonical)
 
 | Factor | Weight | Description |
 |--------|--------|-------------|
-| impact | 4 | Degree of impact on business/system from the operation |
+| operationRisk | 4 | Degree of impact on business/system from the operation |
 | irreversibility | 4 | Degree to which results are irreversible |
 | dataSensitivity | 3 | Sensitivity level of input/output data |
+| targetResourceCriticality | 3 | Criticality of target resource |
 | autonomyModeRisk | 2 | Automation amplification risk from current runtime mode |
 | tenantImpact | 2 | Scope of tenant/organization affected |
 | blastRadius | 2 | Failure propagation radius |
@@ -26,15 +27,16 @@ Agent, as a high-risk automated execution unit, must perform risk assessment bef
 
 ```
 risk_score = (
-  impact*4 +
+  operationRisk*4 +
   irreversibility*4 +
   dataSensitivity*3 +
+  targetResourceCriticality*3 +
   autonomyModeRisk*2 +
   tenantImpact*2 +
   blastRadius*2 +
   historicalFailureRate*2 +
   evidenceConfidence*1
-) / 20
+) / 22
 ```
 
 ### 4-Level Risk Mapping (§10.2 canonical)
@@ -48,7 +50,7 @@ risk_score = (
 
 ### Configuration
 
-- `config/risk/default.json` fully defines the 8 factors and thresholds
+- `config/risk/default.json` fully defines the 9 factors and thresholds
 - RiskEvaluationEngine implements score calculation
 
 ## Consequences
@@ -75,4 +77,4 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- A-18: This ADR originally retained a 6-factor model with `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence`. The root cause was that the risk ADR reused an early step-centric scoring draft and did not upgrade alongside the main architecture to incorporate autonomous mode, tenant impact scope, and evidence sufficiency into the unified risk assessment. Fix: The main text now converges to the 8-factor canonical model, with weights and formula synchronized accordingly.
+- A-18: This ADR originally retained a 6-factor model with `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence`. The root cause was that the risk ADR reused an early step-centric scoring draft and did not upgrade alongside the main architecture to incorporate autonomous mode, tenant impact scope, and evidence sufficiency into the unified risk assessment. Fix: The main text now converges to the 9-factor canonical model, with weights and formula synchronized accordingly.

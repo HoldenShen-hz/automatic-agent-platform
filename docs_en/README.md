@@ -1,6 +1,6 @@
 # Automatic Agent Platform Documentation Entry (English)
 
-`docs_zh/` is now organized by "purpose" rather than "historical source", with top-level directory entries only, and no longer piles up scattered overview files.
+`docs_en/` is now organized by "purpose" rather than "historical source", with top-level directory entries only, and no longer piles up scattered overview files.
 
 ## Recommended Reading Order
 
@@ -13,7 +13,7 @@
 ## Directory Description
 
 | Directory | Purpose | Is Authoritative Source |
-| --- | --- | --- |
+|-----------|---------|------------------------|
 | [architecture/](./architecture/README.md) | Platform skeleton, code structure, architecture reference, timing and diagrams | `Yes` |
 | [migration/](./migration/README.md) | Migration principles, migration scope | `Yes` |
 | [contracts/](./contracts/README.md) | Authoritative contracts, protocols, state machines, object boundaries | `Yes` |

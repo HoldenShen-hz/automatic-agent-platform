@@ -54,18 +54,18 @@ interface ComplianceRule {
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Differentiated compliance supports business needs
 - Inheritance mechanism reduces duplicate configuration
 - Checkpoint mechanism ensures compliance implementation
 
-Cons:
+Trade-offs:
 
 - Policy management complexity
 - Override rules may cause confusion
 
-## Cross References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
