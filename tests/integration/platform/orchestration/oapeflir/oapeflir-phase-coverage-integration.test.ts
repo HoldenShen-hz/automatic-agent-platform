@@ -1176,14 +1176,15 @@ test("[TRANSITION] Failure signal triggers learn/improve/release chain", async (
 
     const result = await service.run(input);
 
-    // With failure signal, learn/improve/release should complete (not skip)
+    // With failure signal, learn and improve should execute, and release may still
+    // skip when no approved candidate clears the release gate.
     const learnEntry = result.timeline.find((e) => e.stage === "learn");
     const improveEntry = result.timeline.find((e) => e.stage === "improve");
     const releaseEntry = result.timeline.find((e) => e.stage === "release");
 
     assert.equal(learnEntry?.status, "completed", "Learn stage should complete with failure");
     assert.equal(improveEntry?.status, "completed", "Improve stage should complete with failure");
-    assert.equal(releaseEntry?.status, "completed", "Release stage should complete with failure");
+    assert.equal(releaseEntry?.status, "skipped", "Release stage should skip when no releasable improvement candidate is produced");
 
     // Replan should be triggered
     assert.equal(result.replanDecision.shouldReplan, true, "Replan should be triggered");

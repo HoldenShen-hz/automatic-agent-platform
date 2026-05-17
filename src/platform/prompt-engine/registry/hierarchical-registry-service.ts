@@ -551,7 +551,17 @@ export class HierarchicalPromptRegistryService {
     for (const scopeKey of scopeKeys) {
       const bundles = [...(this.versionsByScope.get(scopeKey)?.values() ?? [])]
         .filter((bundle) => bundle.metadata.deprecated !== true)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+        .sort((left, right) => {
+          const weightOrder = right.metadata.trafficAllocation.weight - left.metadata.trafficAllocation.weight;
+          if (weightOrder !== 0) {
+            return weightOrder;
+          }
+          const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+          if (createdAtOrder !== 0) {
+            return createdAtOrder;
+          }
+          return right.version - left.version;
+        });
       if (bundles.length > 0) {
         return bundles;
       }

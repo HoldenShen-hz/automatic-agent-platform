@@ -12,6 +12,16 @@ import {
 const VALID_SPI_TYPES = new Set<PluginSpiType>(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 const VALID_TRUST_LEVELS = new Set(["internal", "trusted", "community", "unverified"]);
 
+function normalizeRequiredManifestString(
+  value: unknown,
+  fallback: string,
+): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  return fallback;
+}
+
 function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
   const raw = manifest as PluginManifest & {
     spiType?: string;
@@ -30,9 +40,9 @@ function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
 
   return {
     pluginId,
-    name: typeof raw.name === "string" && raw.name.trim().length > 0 ? raw.name : pluginId || "plugin",
-    version: typeof raw.version === "string" ? raw.version : "",
-    owner: typeof raw.owner === "string" && raw.owner.trim().length > 0 ? raw.owner : "sdk-workbench",
+    name: normalizeRequiredManifestString(raw.name, pluginId || "plugin"),
+    version: normalizeRequiredManifestString(raw.version, ""),
+    owner: normalizeRequiredManifestString(raw.owner, "sdk-workbench"),
     domainIds: Array.isArray(raw.domainIds)
       ? raw.domainIds.filter((domainId): domainId is string => typeof domainId === "string" && domainId.length > 0)
       : typeof raw.domainId === "string" && raw.domainId.length > 0
@@ -50,9 +60,7 @@ function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
     trustLevel: typeof raw.trustLevel === "string" && VALID_TRUST_LEVELS.has(raw.trustLevel)
       ? raw.trustLevel
       : "trusted",
-    publicSdkSurface: typeof raw.publicSdkSurface === "string" && raw.publicSdkSurface.trim().length > 0
-      ? raw.publicSdkSurface
-      : `${pluginId || "plugin"}.sdk`,
+    publicSdkSurface: normalizeRequiredManifestString(raw.publicSdkSurface, `${pluginId || "plugin"}.sdk`),
     settingsSchema: raw.settingsSchema != null && typeof raw.settingsSchema === "object" && !Array.isArray(raw.settingsSchema)
       ? raw.settingsSchema as Record<string, unknown>
       : {},

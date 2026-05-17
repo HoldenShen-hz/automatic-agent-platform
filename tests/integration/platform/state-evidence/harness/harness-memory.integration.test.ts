@@ -8,7 +8,7 @@
  * - Memory management across multiple harness runs
  * - Tier management under realistic workload patterns
  * - Self-enhancement protection in multi-step scenarios
- * - Issue #2035: Unbounded growth behavior
+ * - Issue #2035: Tier capacity enforcement behavior
  */
 
 import assert from "node:assert/strict";
@@ -237,14 +237,14 @@ test("integration: allows legitimate operations that look similar to self-enhanc
 });
 
 // =============================================================================
-// Issue #2035: Unbounded Growth Integration Tests
+// Issue #2035: Tier Capacity Enforcement Integration Tests
 // =============================================================================
 //
-// These tests document the unbounded growth issue where TIER_MAX_SIZE is only
-// enforced during promotion, not during regular writes to the same tier.
+// These tests verify the regression fix that enforces TIER_MAX_SIZE during
+// regular writes, not only during promotion.
 // =============================================================================
 
-test("ISSUE #2035 integration: working tier grows beyond 100 records without eviction", () => {
+test("ISSUE #2035 integration: working tier is capped at 100 records during write bursts", () => {
   const manager = createManager();
 
   // Simulate a busy system with many concurrent runs
@@ -255,22 +255,22 @@ test("ISSUE #2035 integration: working tier grows beyond 100 records without evi
     manager.write("run", `run_${run}`, "state", { status: "running" });
   }
 
-  // With 150 runs * 3 entries each = 450 records in working tier
-  // This far exceeds TIER_MAX_SIZE.working = 100
   let workingCount = 0;
   for (let run = 0; run < 150; run++) {
-    const tier = manager.getTier("run", `run_${run}`, "context");
-    if (tier === "working") {
-      workingCount++;
+    for (const key of ["context", "history", "state"] as const) {
+      const tier = manager.getTier("run", `run_${run}`, key);
+      if (tier === "working") {
+        workingCount++;
+      }
     }
   }
 
-  // All 150 records should still exist in working tier
-  // This demonstrates the unbounded growth issue
-  assert.equal(workingCount, 150, "Issue #2035: Working tier exceeded 100 records without eviction");
+  assert.equal(workingCount, 100, "Issue #2035 regression: working tier must be capped at 100 records");
+  assert.equal(manager.read("run", "run_0", "context"), null, "Oldest working-tier entries should be evicted first");
+  assert.deepEqual(manager.read("run", "run_149", "state"), { status: "running" }, "Newest working-tier entries should remain available");
 });
 
-test("ISSUE #2035 integration: long_term tier grows beyond 500 records without eviction", () => {
+test("ISSUE #2035 integration: long_term tier is capped at 500 records during write bursts", () => {
   const manager = createManager();
 
   // Fill domain namespace with knowledge entries
@@ -281,7 +281,6 @@ test("ISSUE #2035 integration: long_term tier grows beyond 500 records without e
     });
   }
 
-  // Count records in long_term tier
   let longTermCount = 0;
   for (let i = 0; i < 600; i++) {
     const tier = manager.getTier("domain", `knowledge_${i}`, "content");
@@ -290,11 +289,12 @@ test("ISSUE #2035 integration: long_term tier grows beyond 500 records without e
     }
   }
 
-  // All 600 records should exist in long_term tier
-  assert.equal(longTermCount, 600, "Issue #2035: Long term tier exceeded 500 records without eviction");
+  assert.equal(longTermCount, 500, "Issue #2035 regression: long_term tier must be capped at 500 records");
+  assert.equal(manager.read("domain", "knowledge_0", "content"), null, "Oldest long_term entries should be evicted");
+  assert.deepEqual(manager.read("domain", "knowledge_599", "content"), { id: "kb_599", data: "Knowledge entry 599" });
 });
 
-test("ISSUE #2035 integration: shared tier grows beyond 1000 records without eviction", () => {
+test("ISSUE #2035 integration: shared tier is capped at 1000 records during write bursts", () => {
   const manager = createManager();
 
   // Fill shared namespace with global configurations
@@ -305,7 +305,6 @@ test("ISSUE #2035 integration: shared tier grows beyond 1000 records without evi
     });
   }
 
-  // Count records in shared tier
   let sharedCount = 0;
   for (let i = 0; i < 1100; i++) {
     const tier = manager.getTier("shared", `config_${i}`, "settings");
@@ -314,11 +313,12 @@ test("ISSUE #2035 integration: shared tier grows beyond 1000 records without evi
     }
   }
 
-  // All 1100 records should exist in shared tier
-  assert.equal(sharedCount, 1100, "Issue #2035: Shared tier exceeded 1000 records without eviction");
+  assert.equal(sharedCount, 1000, "Issue #2035 regression: shared tier must be capped at 1000 records");
+  assert.equal(manager.read("shared", "config_0", "settings"), null, "Oldest shared-tier entries should be evicted");
+  assert.deepEqual(manager.read("shared", "config_1099", "settings"), { id: "cfg_1099", value: "Config 1099" });
 });
 
-test("ISSUE #2035 integration: eviction only triggers when promoting to full tier", () => {
+test("ISSUE #2035 integration: writing beyond capacity evicts oldest record immediately", () => {
   const manager = createManager();
 
   // First, fill working tier to its limit
@@ -326,22 +326,18 @@ test("ISSUE #2035 integration: eviction only triggers when promoting to full tie
     manager.write("run", `scope_${i}`, "key", `value_${i}`);
   }
 
-  // Now write one more - this will exceed working tier limit
-  // But since we're not promoting, no eviction should happen
+  // Writing one more record should evict the oldest working-tier record immediately.
   manager.write("run", "extra_scope", "key", "extra_value");
 
-  // Verify the extra value exists
   assert.equal(manager.read("run", "extra_scope", "key"), "extra_value");
+  assert.equal(manager.read("run", "scope_0", "key"), null, "Oldest working-tier record should be evicted on overflow");
 
-  // Now trigger promotions by accessing one record many times
-  // This might cause eviction of the oldest working tier record
+  // Accessing a surviving working-tier record can still promote it afterward.
   for (let i = 0; i < 15; i++) {
-    manager.read("run", "scope_0", "key");
+    manager.read("run", "scope_99", "key");
   }
 
-  // The record we were promoting should have moved to long_term
-  // And if long_term was full, eviction would happen
-  const tier = manager.getTier("run", "scope_0", "key");
+  const tier = manager.getTier("run", "scope_99", "key");
   assert.ok(tier === "long_term" || tier === "working");
 });
 

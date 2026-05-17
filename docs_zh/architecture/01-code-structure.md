@@ -1,10 +1,11 @@
 # 新平台代码文件结构设计文档
 
-> **文档版本**：v1.0
-> **文档状态**：Draft
+> **文档版本**：v1.2
+> **文档状态**：Active（续修）
 > **关联文档**：《企业级 Agent 平台总体技术架构设计文档》v2.7 §35 推荐代码目录
 > **关联文档**：《老系统→新平台移植评估文档》v1.1
 > **设计日期**：2026-04-19
+> **最后续修**：2026-05-17（第二轮续修，修正五平面深层子模块计数、interaction/org-governance/scale-ecosystem/ops-maturity 目录膨胀统计、domains 从 51 校准为 40）
 
 ---
 
@@ -135,6 +136,10 @@ new-platform/
 ## 四、platform/ — 基础设施层 + AI 运营层
 
 `platform/` 对应架构 Layer 1（基础设施）和 Layer 2（AI 运营），包含五平面 + 横切关注点。
+
+> **五平面命名约定**：实际代码中五个平面分别对应 `five-plane-interface/`、`five-plane-control-plane/`、`five-plane-orchestration/`、`five-plane-execution/`、`five-plane-state-evidence/` 五個带 `five-plane-` 前缀的目录，与文档中简称 `interface/`、`control-plane/` 等等价。两种命名均为有效入口，源码和配置中无歧义。
+
+**补充说明（2026-05-17 续修）**：以下独立模块亦属于 platform/ 但不属于五平面之一：`agent-delegation/`、`architecture/`、`cost-management/`、`ops-maturity/`、`prompt-registry/`、`remote-coordination/`、`stability/`、`structure/`。
 
 ```
 src/platform/
@@ -748,6 +753,8 @@ src/platform/
 
 `domains/` 对应架构 Layer 3（§37-§38），分为"域框架基础设施"和"域实例"两层。
 
+> **实际域实例数量（2026-05-17 续修）**：`src/domains/` 下当前共有 **51 个目录**，包含 10 个框架基础设施目录（registry、risk-profile、knowledge-schema、eval-framework、prompt-library、recipes、interaction-policy、governance、business-pack、canonical-meta-model）和 **40+ 个垂直域实例**（academic-research、advertising、agriculture、coding、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、operations、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations、yono 等）。文档的早期版本仅记录 10 个目录，当前已大幅扩展。
+
 ```
 src/domains/
 ├── registry/               # 域注册中心（← core/domain-registry/）
@@ -783,10 +790,16 @@ src/domains/
 │   ├── safe-load-division-registry.ts
 │   ├── hr-role-governance-service.ts
 │   └── index.ts
+├── business-pack/          # 业务包域框架
+│   └── index.ts
+├── canonical-meta-model/   # 规范元模型
+│   └── index.ts
 ├── coding/                 # 代码研发域实例
 │   └── index.ts
-└── operations/             # 运维域实例
-    └── index.ts
+├── operations/             # 运维域实例
+│   └── index.ts
+├── [40+ 垂直域实例]         # academic-research、advertising、agriculture、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations、yono 等
+└── [框架与公共服务]         # domain-baseline-catalog.ts、domain-baseline-seeds.ts、domain-descriptor-orchestration-service.ts、domain-eval-framework-service.ts、domain-knowledge-schema-service.ts、domain-module-helper.ts、domain-recipe-service.ts、domain-risk-profile-service.ts、domain-specs.ts、domain-task-design-service.ts、domains-bootstrap.ts
 ```
 
 ---
@@ -794,6 +807,8 @@ src/domains/
 ## 六、interaction/ — 智能交互层
 
 `interaction/` 对应架构 Layer 4（§39-§44），全部为**新建模块**（老系统完全缺失）。
+
+> **实际子模块（2026-05-17 续修）**：文档 §6 记录 6 个子目录，实际代码含 13 个含深层的子目录（autonomy、dashboard、goal-decomposer、nl-gateway、proactive-agent、ux 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
 
 ```
 src/interaction/
@@ -853,6 +868,8 @@ src/interaction/
 
 `org-governance/` 对应架构 Layer 5（§46-§51），除 `org-model/` 从 `core/hr/` 迁入少量代码外，其余为**新建模块**。
 
+> **实际子模块（2026-05-17 续修）**：文档 §7 记录 7 个子目录，实际代码含 24 个含深层的子目录（approval-routing、compliance-engine、delegated-governance、knowledge-boundary、org-model、org-routing、sso-scim 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+
 ```
 src/org-governance/
 ├── org-model/              # 组织层次模型（NEW §46，← core/hr/ 部分迁入）
@@ -909,6 +926,10 @@ src/org-governance/
 ## 八、scale-ecosystem/ — 规模化运行层 + 生态层
 
 `scale-ecosystem/` 对应架构 Layer 6（§52-§57）。`feedback-loop/` 从 `core/feedback/` 迁入，`marketplace/` 从 `core/product/` 部分迁入，其余为**新建模块**。
+
+> **实际子模块（2026-05-17 续修）**：文档 §8 记录 6 个顶层子目录，实际代码含 46 个含深层的子目录（billing、capacity-planning、cost-attribution、enterprise、federation、feedback-loop、integration、intelligence、marketplace、multi-region、operations、resource-manager、runtime-services、sla、sla-engine、tenant-platform 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+
+> **额外子模块（2026-05-17 续修）**：顶层模块数量已从 6 个扩展到 16 个（billing、capacity-planning、cost-attribution、enterprise、federation、intelligence、operations、runtime-services、sla、tenant-platform 等 10 个新增），已纳入第十二节统计。
 
 ```
 src/scale-ecosystem/
@@ -987,6 +1008,10 @@ src/scale-ecosystem/
 ## 九、ops-maturity/ — 运营成熟度层
 
 `ops-maturity/` 对应架构 Layer 7（§59-§70）。`drift-detection/` 从 `core/evolution/` 迁入，其余为**新建模块**。
+
+> **实际子模块（2026-05-17 续修）**：文档 §9 记录 11 个顶层子目录，实际代码含 66 个含深层的子目录（agent-lifecycle、capacity-planner、chaos、compliance-reporter、cost-optimizer、drift-detection、edge-runtime、emergency、explainability、improvement、learning、monitoring、multimodal、platform-ops-agent、version-management、workflow-debugger 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+
+> **额外子模块（2026-05-17 续修）**：顶层模块数量已从 11 个扩展到 16 个（learning、monitoring 等新增），已纳入第十二节统计。
 
 ```
 src/ops-maturity/
@@ -1142,6 +1167,8 @@ src/plugins/
 
 ### 10.2 sdk/ — SDK 与开发者体验（§22）
 
+> **额外子模块（2026-05-17 续修）**：除文档所示 4 个模块外，实际代码还包含 `admin-sdk/`、`harness-sdk/`、`workbench/` 三个额外模块，已纳入第十二节统计。
+
 ```
 src/sdk/
 ├── pack-sdk/               # Business Pack 开发 SDK
@@ -1150,23 +1177,29 @@ src/sdk/
 │   └── index.ts
 ├── client-sdk/             # 客户端 SDK（REST/WebSocket）
 │   └── index.ts
-└── cli/                    # CLI 入口（← src/cli/ 78 个脚本迁入）
-    ├── acceptance-readiness.ts
-    ├── api-server.ts
-    ├── billing.ts
-    ├── channel-gateway.ts
-    ├── dispatch-execution.ts
-    ├── dispatch-reconcile.ts
-    ├── doctor.ts
-    ├── inspect.ts
-    ├── release-pipeline.ts
-    ├── secret-management.ts
-    ├── takeover.ts
-    ├── task-board.ts
-    ├── worker-handshake.ts
-    ├── worker-register.ts
-    ├── worker-writeback.ts
-    ├── ... (其余 63 个 CLI 脚本，结构不变)
+├── cli/                    # CLI 入口（← src/cli/ 78 个脚本迁入）
+│   ├── acceptance-readiness.ts
+│   ├── api-server.ts
+│   ├── billing.ts
+│   ├── channel-gateway.ts
+│   ├── dispatch-execution.ts
+│   ├── dispatch-reconcile.ts
+│   ├── doctor.ts
+│   ├── inspect.ts
+│   ├── release-pipeline.ts
+│   ├── secret-management.ts
+│   ├── takeover.ts
+│   ├── task-board.ts
+│   ├── worker-handshake.ts
+│   ├── worker-register.ts
+│   ├── worker-writeback.ts
+│   ├── ... (其余 63 个 CLI 脚本，结构不变)
+│   └── index.ts
+├── admin-sdk/              # 管理员 SDK
+│   └── index.ts
+├── harness-sdk/           # Harness SDK
+│   └── index.ts
+└── workbench/             # 工作台 SDK
     └── index.ts
 ```
 
@@ -1213,6 +1246,8 @@ new-platform/
 ## 十一、tests/ — 测试目录结构
 
 测试目录**镜像 `src/` 结构**，每个源码目录在 tests/ 下有对应的测试目录。
+
+> **实际测试子目录（2026-05-17 续修）**：实际 `tests/` 还包含 `performance/`（性能基准测试）、`invariants/`（不变量测试）、`leaks/`（内存泄漏测试），以及 `golden/`（快照测试）、`fixtures/`（测试夹具）。文档所列为主要目录，未逐项列出所有专项测试目录。
 
 ```
 tests/
@@ -1358,20 +1393,34 @@ tests/
 
 ## 十二、统计汇总
 
-### 12.1 目录统计
+### 12.1 目录统计（2026-05-17 第二轮续修）
 
-| 顶层目录 | 架构层 | 二级目录数 | 迁移文件数 | 新建文件数 | 合计 |
-|----------|--------|-----------|-----------|-----------|------|
-| `platform/` | Layer 1-2 | 10 | ~608 | ~53 | ~661 |
-| `domains/` | Layer 3 | 10 | ~18 | ~8 | ~26 |
-| `interaction/` | Layer 4 | 6 | 0 | ~24 | ~24 |
-| `org-governance/` | Layer 5 | 6 | ~2 | ~18 | ~20 |
-| `scale-ecosystem/` | Layer 6 | 6 | ~27 | ~18 | ~45 |
-| `ops-maturity/` | Layer 7 | 11 | ~12 | ~44 | ~56 |
-| `plugins/` | 跨层 | 5 | ~20 | 0 | ~20 |
-| `sdk/` | 跨层 | 4 | ~78 | ~5 | ~83 |
-| `apps/` | 入口 | 3 | 0 | ~3 | ~3 |
-| **src/ 合计** | | **61** | **~765** | **~173** | **~938** |
+| 顶层目录 | 架构层 | 实际直接子目录数 | 含深层子目录总数 | 状态 |
+|----------|--------|-----------------|----------------|------|
+| `platform/` | Layer 1-2 | 19（5 five-plane-* + 14 独立模块） | 含 130+ 深层子模块 | 五平面完整，其余模块补充说明见 §4 |
+| `five-plane-control-plane/` | P2 | 14 | 44（含深层） | 完整 |
+| `five-plane-execution/` | P4 | 17 | 含深层子模块 | 完整 |
+| `five-plane-interface/` | P1 | 9 | 17（含深层） | 完整 |
+| `five-plane-orchestration/` | P3 | 11 | 29（含深层） | 完整 |
+| `five-plane-state-evidence/` | P5 | 12 | 20（含深层） | 完整 |
+| `domains/` | Layer 3 | 40 | 含 21 个根级服务文件 | **扩展显著**（文档曾记 10 个，当前 40 个域实例目录） |
+| `interaction/` | Layer 4 | 12（含深层子模块） | 13（含深层） | **扩展**（文档记 6 个，当前 12 个顶层子目录） |
+| `org-governance/` | Layer 5 | 23（含深层子模块） | 24（含深层） | **扩展显著**（文档记 7 个，当前 23 个子目录） |
+| `scale-ecosystem/` | Layer 6 | 45（含深层子模块） | 46（含深层） | **扩展显著**（文档记 6 个，当前 45 个子目录） |
+| `ops-maturity/` | Layer 7 | 65（含深层子模块） | 66（含深层） | **扩展显著**（文档记 11 个，当前 65 个子目录） |
+| `plugins/` | 跨层 | 5 | - | 与文档一致 |
+| `sdk/` | 跨层 | 7 | 含 CLI 下 70+ 个脚本 | 与文档一致（已续修） |
+| `apps/` | 入口 | 3 | - | 与文档一致 |
+| `core/` | 兼容层 | 1（runtime/） | - | 与文档一致 |
+| `testing/` | 测试基础设施 | 含 helpers, fixtures, invariants, leaks 等 | - | 与文档一致 |
+| `benchmarks/` | 性能基准 | 空目录 | - | 与文档一致 |
+
+> **五平面子模块计数说明（2026-05-17 续修）**：
+> - `five-plane-control-plane/`：approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + 深层 threat-model、runbook-executor 等 → 合计 44 个含深层的目录
+> - `five-plane-execution/`：budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 个直接子目录
+> - `five-plane-interface/`：api, channel-gateway, console, console-backend, ingress, scheduler, webhook 等 → 17 个含深层的目录
+> - `five-plane-orchestration/`：agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing 等 → 29 个含深层的目录
+> - `five-plane-state-evidence/`：artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth 等 → 20 个含深层的目录
 
 ### 12.2 与老系统对比
 

@@ -412,8 +412,8 @@ test("HierarchicalPromptRegistryService.getBundle returns default bundle when no
     },
   }, "global");
 
-  // getBundle without version should return default (highest weight)
-  const resolved = registry.resolveBundleForTraffic("default-test", "classification", undefined, undefined, "test-key");
+  // getBundle without version should return default (highest weight/newest bundle)
+  const resolved = registry.getBundle("default-test", "classification");
   assert.ok(resolved !== null);
   assert.equal(resolved!.version, 200); // v2.0 normalizes to version 200
 });
