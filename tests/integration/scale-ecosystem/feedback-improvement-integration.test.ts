@@ -15,7 +15,7 @@ function createSignal(overrides: Partial<FeedbackSignal> & { signalId: string; s
     stepOutputRefs: [],
     timestamp: 0,
     feedbackTrustScore: 0.85,
-    trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.8, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0.7 },
+    trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.8, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
   };
   return { ...defaults, ...overrides };
 }

@@ -76,7 +76,10 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
       // Convert channel string to API path
       // e.g., "shell:openExternal" -> preloadApi.shell.openExternal
       const [namespace, method] = channel.split(":");
-      const namespaceKey = namespace.replace(/-/g, "_"); // kebab-case to camelCase
+      const namespaceKey = namespace
+        .split("-")
+        .map((segment, index) => index === 0 ? segment : `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`)
+        .join("");
 
       // Check if the preload API has this channel
       const apiValue = (preloadApi as any)[namespaceKey]?.[method];

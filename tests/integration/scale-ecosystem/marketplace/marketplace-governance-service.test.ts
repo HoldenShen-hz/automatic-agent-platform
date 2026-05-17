@@ -51,6 +51,9 @@ test("marketplace governance buildCatalog returns correct summary statistics", (
       },
       signatureVerified: true,
       manifestChecksum: "a".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const review1 = service.submitReview({
@@ -136,6 +139,9 @@ test("marketplace governance exportCatalog persists JSON and Markdown artifacts"
       },
       signatureVerified: true,
       manifestChecksum: "c".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const review = service.submitReview({
@@ -209,6 +215,9 @@ test("marketplace governance revokePublication updates catalog status", () => {
       },
       signatureVerified: true,
       manifestChecksum: "d".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const review = service.submitReview({
@@ -277,6 +286,9 @@ test("marketplace governance deprecatePackage marks publication as deprecated", 
       },
       signatureVerified: true,
       manifestChecksum: "e".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const review = service.submitReview({
@@ -340,6 +352,9 @@ test("marketplace governance retirePackage marks package as retired", () => {
       },
       signatureVerified: true,
       manifestChecksum: "f".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const review = service.submitReview({
@@ -357,10 +372,25 @@ test("marketplace governance retirePackage marks package as retired", () => {
       reviewId: review.reviewId,
     });
 
-    // Retire the package
+    service.deprecatePackage({
+      packageId: pkg.packageId,
+      reasonCode: "superseded_by_v2",
+    });
+    service.sunsetPackage({
+      packageId: pkg.packageId,
+      reasonCode: "end_of_life",
+      sunsetAt: "2025-01-01T00:00:00.000Z",
+      endOfLifeAt: "2025-07-01T00:00:00.000Z",
+      migrationTarget: "plugin.retired.v2",
+      replacementSuggestions: ["plugin.retired.v2"],
+    });
+
+    // Retire the package after the required sunset window and migration threshold
     const retired = service.retirePackage({
       packageId: pkg.packageId,
       reasonCode: "end_of_life",
+      retiredAt: "2025-07-02T00:00:00.000Z",
+      migrationCompletionRatio: 0.97,
     });
     assert.equal(retired.lifecycleState, "retired");
 
@@ -404,6 +434,9 @@ test("marketplace governance catalog filters by tenant correctly", () => {
       },
       signatureVerified: true,
       manifestChecksum: "a".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     const pkgB = service.registerExtensionPackage({
@@ -424,6 +457,9 @@ test("marketplace governance catalog filters by tenant correctly", () => {
       },
       signatureVerified: true,
       manifestChecksum: "b".repeat(64),
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
     });
 
     // Publish both

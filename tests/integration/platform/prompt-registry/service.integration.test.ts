@@ -44,11 +44,13 @@ test("Integration: HierarchicalPromptRegistryService and PromptVersionManager sh
   // Verify both systems have the bundle
   const retrievedFromRegistry = registry.getBundle("integration-bundle", "test-task");
   assert.ok(retrievedFromRegistry !== null);
-  assert.equal(retrievedFromRegistry!.version, "v1.0.0");
+  assert.equal(retrievedFromRegistry!.version, 1);
+  assert.equal(retrievedFromRegistry!.displayVersion, "v1.0.0");
 
   const versions = versionManager.listBundleVersions("integration-bundle");
   assert.equal(versions.length, 1);
-  assert.equal(versions[0]!.version, "v1.0.0");
+  assert.equal(versions[0]!.version, 1);
+  assert.equal(versions[0]!.displayVersion, "v1.0.0");
 
   // Register new version in registry
   const newBundle = registry.registerBundle(
@@ -76,14 +78,15 @@ test("Integration: HierarchicalPromptRegistryService and PromptVersionManager sh
   versionManager.registerBundleVersion(newBundle);
 
   // Verify version lineage
-  const lineage = versionManager.getVersionLineage("integration-bundle", "v1.0.0");
-  assert.equal(lineage.current, "v1.0.0");
-  assert.equal(lineage.next, "v2.0.0");
+  const lineage = versionManager.getVersionLineage("integration-bundle", 1);
+  assert.equal(lineage.current, 1);
+  assert.equal(lineage.next, 2);
 
   // Verify latest version in registry
   const latestFromRegistry = registry.getBundle("integration-bundle", "test-task");
   assert.ok(latestFromRegistry !== null);
-  assert.equal(latestFromRegistry!.version, "v2.0.0");
+  assert.equal(latestFromRegistry!.version, 2);
+  assert.equal(latestFromRegistry!.displayVersion, "v2.0.0");
 });
 
 test("Integration: hashPromptPrefix with PromptTemplateRegistryService", () => {
@@ -261,7 +264,7 @@ test("Integration: PromptVersionManager version comparison and lineage", () => {
 
   // Verify sorted versions
   const sorted = manager.getSortedVersions("prompt-v1");
-  assert.deepEqual(sorted, ["v1.0.0", "v1.1.0", "v2.0.0"]);
+  assert.deepEqual(sorted, [1, 2, 3]);
 });
 
 test("Integration: PromptTemplateRegistryService template retrieval and listing", () => {
@@ -458,22 +461,20 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
   assert.equal(allBundles.length, 1);
   assert.equal(allBundles[0]!.bundle.name, "global-prompt");
 
-  // List domain bundles for specific domain
+  // Pack-specific bundles are folded into the domain bucket in the 3-level hierarchy.
   const domainBundles = registry.listBundles("domain", "special");
-  assert.equal(domainBundles.length, 1);
-  assert.equal(domainBundles[0]!.bundle.name, "domain-prompt");
-
-  // List pack bundles for specific pack - use domain level with packId as domain
-  const packBundles = registry.listBundles("domain", undefined, "premium-pack");
-  assert.equal(packBundles.length, 1);
-  assert.equal(packBundles[0]!.bundle.name, "pack-prompt");
+  assert.equal(domainBundles.length, 2);
+  assert.deepEqual(
+    domainBundles.map((entry) => entry.bundle.name).sort(),
+    ["domain-prompt", "pack-prompt"],
+  );
 });
 
-function makeBundle(name: string, version: string) {
+function makeBundle(name: string, displayVersion: string) {
   return {
     name,
-    version: Number(version),
-    displayVersion: version,
+    version: displayVersion === "v1.0.0" ? 1 : displayVersion === "v1.1.0" ? 2 : 3,
+    displayVersion,
     domain: "test-domain",
     taskType: "test-task",
     packId: undefined,
@@ -495,7 +496,7 @@ function makeBundle(name: string, version: string) {
       compatibilityTags: [],
       trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
     },
-    bundleId: `${name}:${version}`,
+    bundleId: `${name}:${displayVersion}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

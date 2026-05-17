@@ -150,6 +150,9 @@ export function loadMarketplaceCliEnv(env: NodeJS.ProcessEnv = process.env): Mar
     compatibility: parseCompatibilityJson(env, "AA_COMPATIBILITY_JSON"),
     signatureVerified: optionalEnv(env, "AA_SIGNATURE_VERIFIED") === "true",
     manifestChecksum: optionalEnv(env, "AA_MANIFEST_CHECKSUM"),
+    sbomVerified: optionalEnv(env, "AA_SBOM_VERIFIED") === "true",
+    sandboxCertVerified: optionalEnv(env, "AA_SANDBOX_CERT_VERIFIED") === "true",
+    egressPolicyCompliant: optionalEnv(env, "AA_EGRESS_POLICY_COMPLIANT") === "true",
     lifecycleState: optionalEnumValue(env, "AA_LIFECYCLE_STATE", [
       "discovered",
       "installed",

@@ -54,6 +54,9 @@ test("marketplace CLI supports package registration, review, publish, revoke, an
       }),
       AA_SIGNATURE_VERIFIED: "true",
       AA_MANIFEST_CHECKSUM: "c".repeat(64),
+      AA_SBOM_VERIFIED: "true",
+      AA_SANDBOX_CERT_VERIFIED: "true",
+      AA_EGRESS_POLICY_COMPLIANT: "true",
     });
     assert.ok(pkg.packageId.length > 0);
 

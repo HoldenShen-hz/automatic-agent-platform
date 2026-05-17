@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { OPERATIONS_RUNBOOK_CATALOG } from "../../../../src/platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
@@ -97,7 +98,7 @@ test("ops-governance CLI summarizes and exports industrial ops package", () => {
       AA_OPS_TASK_ID: taskId,
     });
 
-    assert.equal(summary.summary.runbookCount, 8);
+    assert.equal(summary.summary.runbookCount, OPERATIONS_RUNBOOK_CATALOG.length);
     assert.ok(summary.incident);
     assert.equal(summary.incident?.taskId, taskId);
     assert.ok(summary.incident?.recommendedRunbookIds.length);

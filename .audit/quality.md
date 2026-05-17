@@ -1,22 +1,21 @@
 # Test Quality Report
 
-**Date:** 2026-05-14
-**Scope:** targeted review remediation evidence only
-**Full-suite status:** not claimed in this report
+**Date:** 2026-05-17
+**Scope:** targeted review remediation evidence plus current full-suite verification
+**Full-suite status:** `npm test` passed on 2026-05-17 (log: `/private/tmp/aa-full-test-current.log`)
 
-This file is no longer an authoritative full-suite failure ledger. The previous
+This file is no longer an authoritative stale failure ledger. The previous
 2026-05-13 snapshot listed 58,382 total tests, 56,762 passed tests, 1,620 failed
-tests, and 14 failing files; that snapshot is stale and must not be used as
-current evidence unless a fresh full-suite run is performed.
+tests, and 14 failing files; that snapshot remains historical context only.
+A fresh full-suite run has now been performed on 2026-05-17 and supersedes that
+stale snapshot for current status.
 
 ## Current Evidence Policy
 
-- Do not use this file to claim that all tests pass.
 - Do not use stale full-suite counts to justify issue closure.
-- Use focused commands recorded in `docs_zh/reviews/issues-table.md` for review
-  remediation evidence.
-- Keep unresolved full-suite health questions outside “已解决（本轮落地）”
-  unless a current command output is available.
+- Use current command outputs recorded here and in
+  `docs_zh/reviews/issues-table.md` for review remediation evidence.
+- Treat the 2026-05-13 failure snapshot as archival context only.
 
 ## Targeted Evidence Referenced By The Review Table
 
@@ -27,6 +26,9 @@ current evidence unless a fresh full-suite run is performed.
 | Review guardrails | `node scripts/ci/audit-review-guardrails.mjs` | `review guardrail audit passed: 46/46` |
 | Domain configs | `node scripts/ci/audit-domain-configs.mjs` | `domain config audit passed: 346/346` |
 | Root dependency audit | `npm audit --audit-level=low` | `found 0 vulnerabilities` |
+| Build | `npm run build` | `passed` |
+| CLI regression | `./node_modules/.bin/tsx --test tests/integration/sdk/cli/ops-governance-cli.test.ts tests/integration/sdk/cli/ops-cli.test.ts` | `59/59 passed` |
+| Full suite | `npm test > /private/tmp/aa-full-test-current.log 2>&1` | `passed (exit code 0)` |
 
 ## Historical Failure Snapshot
 

@@ -37,8 +37,11 @@ function calculateBurnRate(
   const validObservations = observations.filter((o) => o.timestampMs >= windowStartMs);
   const totalRequests = validObservations.reduce((sum, o) => sum + o.requestCount, 0);
   const errorCount = validObservations.reduce((sum, o) => sum + o.errorCount, 0);
-  const currentBurnRate = targetErrorRate > 0 ? errorCount / (totalRequests * targetErrorRate) : 0;
-  const errorBudgetConsumed = targetErrorRate > 0 ? (errorCount / (totalRequests * targetErrorRate)) * 100 : 0;
+  const currentBurnRate = targetErrorRate > 0 && totalRequests > 0 ? errorCount / (totalRequests * targetErrorRate) : 0;
+  const uncappedErrorBudgetConsumed = targetErrorRate > 0 && totalRequests > 0
+    ? (errorCount / (totalRequests * targetErrorRate)) * 100
+    : 0;
+  const errorBudgetConsumed = Math.min(100, uncappedErrorBudgetConsumed);
   return {
     totalRequests,
     errorCount,
@@ -58,9 +61,11 @@ interface LatencyPercentiles {
 function calculateLatencyPercentiles(samples: readonly number[]): LatencyPercentiles {
   if (samples.length === 0) return { p50: 0, p95: 0, p99: 0 };
   const sorted = [...samples].sort((a, b) => a - b);
-  const p50Idx = Math.floor(sorted.length * 0.5);
-  const p95Idx = Math.floor(sorted.length * 0.95);
-  const p99Idx = Math.floor(sorted.length * 0.99);
+  const percentileIndex = (percentile: number): number =>
+    Math.max(0, Math.ceil(sorted.length * percentile) - 1);
+  const p50Idx = percentileIndex(0.5);
+  const p95Idx = percentileIndex(0.95);
+  const p99Idx = percentileIndex(0.99);
   return {
     p50: sorted[p50Idx] !== undefined ? sorted[p50Idx] : 0,
     p95: sorted[p95Idx] !== undefined ? sorted[p95Idx] : sorted[sorted.length - 1]!,

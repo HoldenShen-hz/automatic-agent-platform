@@ -30,7 +30,7 @@ function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
 
   return {
     pluginId,
-    name: typeof raw.name === "string" ? raw.name : "",
+    name: typeof raw.name === "string" && raw.name.trim().length > 0 ? raw.name : pluginId || "plugin",
     version: typeof raw.version === "string" ? raw.version : "",
     owner: typeof raw.owner === "string" && raw.owner.trim().length > 0 ? raw.owner : "sdk-workbench",
     domainIds: Array.isArray(raw.domainIds)

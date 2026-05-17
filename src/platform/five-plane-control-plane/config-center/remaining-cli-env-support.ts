@@ -165,6 +165,9 @@ export interface MarketplaceCliEnvConfig {
   compatibility: { apiContract: string; permissionSurface: string; runtimeCapability: string } | null;
   signatureVerified: boolean;
   manifestChecksum: string | null;
+  sbomVerified: boolean;
+  sandboxCertVerified: boolean;
+  egressPolicyCompliant: boolean;
   lifecycleState: "discovered" | "installed" | "enabled" | "disabled" | "reloaded" | "removed";
   reviewRequired: boolean;
   createdAt: string | null;

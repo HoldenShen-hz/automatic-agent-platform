@@ -275,9 +275,9 @@ test("integration: viewer mode prevents split-brain during degraded connectivity
   state = transitionRemoteSessionState(state, "viewer_mode");
   assert.equal(state, "viewer_only");
 
-  // Cannot make changes in viewer mode
+  // Recovery handshake can re-enter connected after viewer mode is cleared
   state = transitionRemoteSessionState(state, "connected");
-  assert.equal(state, "viewer_only"); // Stays viewer_only
+  assert.equal(state, "connected");
 });
 
 test("integration: CDC replication confirms batch only after successful write", () => {

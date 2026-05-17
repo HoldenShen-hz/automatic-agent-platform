@@ -6,6 +6,7 @@
  * - Plugin validation with validatePluginDefinition
  */
 
+import { generateKeyPairSync, sign } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -15,6 +16,7 @@ import {
   defineAdapter,
   defineRetriever,
   defineEvaluator,
+  getSigningKeyRegistry,
   validatePluginDefinition,
   type PluginDefinition,
 } from "../../../src/sdk/plugin-sdk/plugin-definition.js";
@@ -232,11 +234,16 @@ test("2007: validatePluginDefinition re-validates a plugin definition", () => {
 });
 
 test("2007: definePlugin accepts signing information when provided", async () => {
-  const plugin = await definePlugin({
+  const registry = getSigningKeyRegistry();
+  registry.clear();
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  registry.registerKey("test-key", publicKey.export({ type: "spki", format: "pem" }).toString(), "ed25519");
+
+  const canonicalPayload = {
     pluginId: "test.signed-plugin",
     name: "Signed Plugin",
     version: "1.0.0",
-    type: "tool",
+    type: "tool" as const,
     capabilities: [
       {
         name: "run",
@@ -245,9 +252,16 @@ test("2007: definePlugin accepts signing information when provided", async () =>
         outputSchema: { type: "object" },
       },
     ],
+    spiTypes: ["tool"],
+    domainIds: [],
+  };
+  const signature = sign(null, Buffer.from(JSON.stringify(canonicalPayload)), privateKey).toString("base64url");
+
+  const plugin = await definePlugin({
+    ...canonicalPayload,
     signing: {
       keyId: "test-key",
-      signature: "test-signature",
+      signature,
       algorithm: "ed25519",
     },
   });
@@ -255,6 +269,7 @@ test("2007: definePlugin accepts signing information when provided", async () =>
   assert.equal(plugin.pluginId, "test.signed-plugin");
   assert.ok(plugin.signing);
   assert.equal(plugin.signing?.keyId, "test-key");
+  registry.clear();
 });
 
 test("2007: definePlugin supports plugins with dependencies", async () => {

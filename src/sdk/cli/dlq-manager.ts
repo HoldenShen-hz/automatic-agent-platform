@@ -20,6 +20,8 @@
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { ValidationError } from "../../platform/contracts/errors.js";
+import { QUEUE_JOBS_DDL } from "../../platform/five-plane-execution/queue/queue-adapter-types.js";
+import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
 
 interface DlqAction {
@@ -37,6 +39,11 @@ function writeLine(message: string): void {
 
 function writeJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function ensureDlqSchemas(db: ReturnType<typeof openCliAuthoritativeStorageContext>): void {
+  db.sql.connection.exec(QUEUE_JOBS_DDL);
+  db.sql.connection.exec(CHANNEL_DELIVERY_DDL);
 }
 
 export function parseArguments(overrides?: Record<string, string | boolean | undefined>): DlqAction {
@@ -122,8 +129,16 @@ function listJobDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageCon
 function listEventDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number): void {
   const sql = db.sql.connection;
   const rows = sql.prepare(`
-    SELECT id, event_type, consumer_id, error_code, error_message,
-           dead_lettered_at, payload_json
+    SELECT id,
+           original_event_id AS originalEventId,
+           event_type,
+           consumer_id,
+           failure_count,
+           last_error,
+           dead_lettered_at,
+           reprocessed_at,
+           reprocess_result,
+           payload_json
     FROM event_dead_letters
     ORDER BY dead_lettered_at DESC
     LIMIT ?
@@ -203,6 +218,7 @@ function main(): void {
 
   const storage = openCliAuthoritativeStorageContext();
   storage.migrate();
+  ensureDlqSchemas(storage);
 
   try {
     switch (args.action) {

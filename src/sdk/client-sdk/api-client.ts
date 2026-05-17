@@ -448,7 +448,7 @@ export class RetryableApiClient {
         });
       case ApiErrorCategory.VALIDATION:
       case ApiErrorCategory.CONTRACT:
-        return new ValidationError("client_sdk.contract_violation", `Contract validation failed: ${error.message}`, {
+        return new ValidationError("client_sdk.contract_violation", `Request failed with status ${error.statusCode ?? 400}: ${error.message}`, {
           statusCode: error.statusCode ?? 400,
           retryable: false,
         });
@@ -560,12 +560,16 @@ export class RetryableApiClient {
 
       const response = await fetch(url, fetchOptions);
 
-      const retryableStatus = response.status >= 500;
+      const retryableStatus = response.status === 429 || response.status >= 500;
       if (!response.ok && retryableStatus && isIdempotent && attempt < this.retryConfig.maxRetries) {
-        const retryAfter = Math.min(
-          this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
-          this.retryConfig.maxBackoffMs,
-        );
+        const retryAfterHeader = response.headers.get("retry-after");
+        const retryAfterSeconds = retryAfterHeader == null ? Number.NaN : Number.parseInt(retryAfterHeader, 10);
+        const retryAfter = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+          ? Math.min(retryAfterSeconds * 1000, this.retryConfig.maxBackoffMs)
+          : Math.min(
+            this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
+            this.retryConfig.maxBackoffMs,
+          );
         await delay(retryAfter);
         return this.request<T>(request, attempt + 1);
       }

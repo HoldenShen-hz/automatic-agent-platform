@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ConnectorFrameworkService } from "../../../src/scale-ecosystem/integration/connector-framework-service.js";
 
-test("integration: verified connector runs prod callback path while degraded connectors defer instead of succeeding silently", () => {
+test("integration: verified connector runs prod callback path while degraded connectors defer instead of succeeding silently", async () => {
   const service = new ConnectorFrameworkService();
   service.register({
     connectorId: "crm_sync",
@@ -22,7 +22,7 @@ test("integration: verified connector runs prod callback path while degraded con
     checkedAt: "2026-04-20T00:01:00.000Z",
   });
 
-  const result = service.execute({
+  const result = await service.execute({
     connectorId: "crm_sync",
     capability: "sync",
     payload: {},

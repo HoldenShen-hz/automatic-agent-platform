@@ -73,8 +73,8 @@ test("integration: runtime orchestration combines region routing, fair schedulin
       { itemId: "tenant_enterprise_job", tenantId: "tenant_enterprise", priority: 8, ageMs: 60_000 },
     ],
     preemptionCandidates: [
-      { executionId: "exec_standard", priority: 1, progressPercent: 15 },
-      { executionId: "exec_enterprise", priority: 8, progressPercent: 70 },
+      { executionId: "exec_standard", priority: 1, progressPercent: 15, lastCheckpointTimestampMs: Date.now() - 30_000 },
+      { executionId: "exec_enterprise", priority: 8, progressPercent: 70, lastCheckpointTimestampMs: Date.now() - 30_000 },
     ],
   });
 

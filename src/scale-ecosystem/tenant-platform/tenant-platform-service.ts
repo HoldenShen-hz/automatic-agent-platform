@@ -514,16 +514,19 @@ export class TenantPlatformService {
       const createdAt = input.createdAt ?? nowIso();
       const tenantId = assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id");
       const isolationMode = input.isolationMode ?? "shared_hard_scoped";
+      const dedicatedScopeSuffix = isolationMode === "dedicated_pool" ? "-dedicated" : "";
       const tenant: TenantRecord = {
         tenantId,
         organizationId: organization.organizationId,
         displayName: tenantId,
-        storageScope: assertIdentifier(input.storageScope, "tenant.invalid_storage_scope"),
-        identityScope: assertIdentifier(input.identityScope, "tenant.invalid_identity_scope"),
+        storageScope: assertIdentifier(`${input.storageScope}${dedicatedScopeSuffix}`, "tenant.invalid_storage_scope"),
+        identityScope: assertIdentifier(`${input.identityScope}${dedicatedScopeSuffix}`, "tenant.invalid_identity_scope"),
         policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),
-        artifactScope: assertIdentifier(input.artifactScope, "tenant.invalid_artifact_scope"),
+        artifactScope: assertIdentifier(`${input.artifactScope}${dedicatedScopeSuffix}`, "tenant.invalid_artifact_scope"),
         isolationMode,
-        deploymentMode: input.deploymentMode ?? "cloud_shared",
+        deploymentMode: isolationMode === "dedicated_pool"
+          ? "private_cloud"
+          : input.deploymentMode ?? "cloud_shared",
         quotas: {},
         createdAt,
         updatedAt: createdAt,
@@ -592,6 +595,18 @@ export class TenantPlatformService {
       quotaScopeId: dedicatedQuotaId,
     };
     this.dedicatedPoolIsolations.set(tenant.tenantId, isolationRecord);
+    this.store.organization.upsertDataNamespaceRecord({
+      namespaceId: `namespace_${tenant.tenantId}_transactional`,
+      plane: "transactional",
+      tenantId: tenant.tenantId,
+      organizationId: tenant.organizationId,
+      workspaceId: null,
+      retentionPolicy: "retention_30d",
+      encryptionPolicy: "enc_standard",
+      residencyPolicy: null,
+      createdAt: provisionedAt,
+      updatedAt: provisionedAt,
+    });
 
     this.logger?.info("Provisioning dedicated pool isolation", {
       tenantId: tenant.tenantId,

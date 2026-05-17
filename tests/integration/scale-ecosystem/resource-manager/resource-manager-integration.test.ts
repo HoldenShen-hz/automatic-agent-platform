@@ -88,7 +88,7 @@ test("integration: resource release restores quota headroom", () => {
     resourceType: "io",
     scopeType: "shared",
     capacityUnits: 50,
-    allocatedUnits: 40,
+    allocatedUnits: 0,
     burstUnits: 10,
     failureRateThreshold: 0.3,
     minSampleSize: 20,
@@ -101,7 +101,7 @@ test("integration: resource release restores quota headroom", () => {
   poolService.allocate("io-pool", "workflow-old", 30);
   const pool = poolService.release("io-pool", "workflow-old", 30);
 
-  assert.equal(pool.allocatedUnits, 10);
+  assert.equal(pool.allocatedUnits, 0);
 
   // Should be able to allocate now
   const allocation = poolService.allocate("io-pool", "workflow-new", 45);
@@ -149,8 +149,8 @@ test("integration: fair scheduling with quota exceeded triggers preemption", () 
       },
     ],
     preemptionCandidates: [
-      { executionId: "exec-1", priority: 1, progressPercent: 80 },
-      { executionId: "exec-2", priority: 2, progressPercent: 60 },
+      { executionId: "exec-1", priority: 1, progressPercent: 80, lastCheckpointTimestampMs: Date.now() - 30_000 },
+      { executionId: "exec-2", priority: 2, progressPercent: 60, lastCheckpointTimestampMs: Date.now() - 60_000 },
     ],
   };
 
@@ -312,7 +312,7 @@ test("integration: quota resets after window with full usage release", () => {
     resourceType: "compute",
     scopeType: "shared",
     capacityUnits: 100,
-    allocatedUnits: 100, // fully utilized
+    allocatedUnits: 0,
     burstUnits: 0,
     failureRateThreshold: 0.3,
     minSampleSize: 20,

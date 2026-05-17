@@ -571,7 +571,8 @@ test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async 
   assert.equal(summary.stepId, "step_summarize");
   assert.equal(summary.status, "succeeded");
   assert.equal(summary.producedAt, "2026-05-01T12:30:00.000Z");
-  assert.equal(summary.nextNodeRunId, "step_next");
+  assert.equal(summary.nextNodeRunId, null);
+  assert.equal(summary.nextStepId, "step_next");
   assert.deepEqual(summary.outputKeys, ["key1", "key2"]);
   assert.equal(summary.summary, "This is the workflow summary");
   assert.equal(summary.source, "summarize_test");
@@ -611,6 +612,7 @@ test("integration: summarizeWorkflowStepCheckpoint with null values", async () =
   assert.equal(summary.artifactId, "artifact_null_summary");
   assert.equal(summary.stepId, "step_null_summary");
   assert.equal(summary.nextNodeRunId, null);
+  assert.equal(summary.nextStepId, null);
   assert.equal(summary.summary, null);
 });
 

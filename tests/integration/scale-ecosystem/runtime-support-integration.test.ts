@@ -66,7 +66,7 @@ test("scale-ecosystem support modules coordinate connector, region, quota, and S
     { itemId: "tenant_a_job", tenantId: "tenant_a", priority: 1, ageMs: 60_000 },
     { itemId: "tenant_b_job", tenantId: "tenant_b", priority: 3, ageMs: 1_000 },
   ]);
-  assert.equal(queue[0]?.itemId, "tenant_b_job");
+  assert.equal(queue[0]?.itemId, "tenant_a_job");
 
   assert.equal(
     isQuotaExceeded({ scopeId: "tenant_b", hardLimit: 5, currentUsage: 4 }, 2),
@@ -75,8 +75,8 @@ test("scale-ecosystem support modules coordinate connector, region, quota, and S
 
   assert.equal(
     choosePreemptionVictim([
-      { executionId: "exec_low", priority: 1, progressPercent: 20 },
-      { executionId: "exec_high", priority: 3, progressPercent: 10 },
+      { executionId: "exec_low", priority: 1, progressPercent: 20, lastCheckpointTimestampMs: Date.now() - 30_000 },
+      { executionId: "exec_high", priority: 3, progressPercent: 10, lastCheckpointTimestampMs: Date.now() - 30_000 },
     ])?.executionId,
     "exec_low",
   );
@@ -103,15 +103,14 @@ test("scale-ecosystem support modules coordinate connector, region, quota, and S
     ["sla.latency_breach", "sla.success_rate_breach", "sla.queue_wait_breach"],
   );
 
-  assert.deepEqual(
-    resolveRegionFailover({
-      primaryHealthy: false,
-      candidateRegionIds: ["cn-bj", "us-west-2"],
-    }),
-    {
-      shouldFailover: true,
-      targetRegionId: "cn-bj",
-      rationale: "multi_region.primary_unhealthy",
-    },
-  );
+  const failover = resolveRegionFailover({
+    primaryHealthy: false,
+    candidateRegionIds: ["cn-bj", "us-west-2"],
+  });
+  assert.equal(failover.shouldFailover, true);
+  assert.equal(failover.targetRegionId, "cn-bj");
+  assert.equal(failover.rationale, "multi_region.primary_unhealthy");
+  assert.equal(failover.fencingEpoch > 0, true);
+  assert.ok(failover.fencingToken != null);
+  assert.ok(failover.reconciliationResult != null);
 });

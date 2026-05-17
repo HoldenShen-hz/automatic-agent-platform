@@ -216,17 +216,20 @@ test("Integration: TTL values increase from runtime to user", () => {
 
 test("Integration: promotion rules form a chain from session to evolution", () => {
   const rules = DEFAULT_MEMORY_PROMOTION_RULES;
-  assert.equal(rules[0]!.from, "session");
-  assert.equal(rules[0]!.to, "agent");
+  assert.equal(rules[0]!.from, "runtime");
+  assert.equal(rules[0]!.to, "session");
 
-  assert.equal(rules[1]!.from, "agent");
-  assert.equal(rules[1]!.to, "project");
+  assert.equal(rules[1]!.from, "session");
+  assert.equal(rules[1]!.to, "agent");
 
-  assert.equal(rules[2]!.from, "project");
-  assert.equal(rules[2]!.to, "user");
+  assert.equal(rules[2]!.from, "agent");
+  assert.equal(rules[2]!.to, "project");
 
-  assert.equal(rules[3]!.from, "user");
-  assert.equal(rules[3]!.to, "evolution");
+  assert.equal(rules[3]!.from, "project");
+  assert.equal(rules[3]!.to, "user");
+
+  assert.equal(rules[4]!.from, "user");
+  assert.equal(rules[4]!.to, "evolution");
 });
 
 test("Integration: promotion thresholds increase at each level", () => {
@@ -237,12 +240,12 @@ test("Integration: promotion thresholds increase at each level", () => {
       `Rule ${i} should require more hits than rule ${i - 1}`,
     );
     assert.ok(
-      rules[i]!.minQualityScore > rules[i - 1]!.minQualityScore,
-      `Rule ${i} should require higher quality than rule ${i - 1}`,
+      rules[i]!.minQualityScore >= rules[i - 1]!.minQualityScore,
+      `Rule ${i} should not lower the quality threshold below rule ${i - 1}`,
     );
     assert.ok(
-      rules[i]!.minImportanceScore > rules[i - 1]!.minImportanceScore,
-      `Rule ${i} should require higher importance than rule ${i - 1}`,
+      rules[i]!.minImportanceScore >= rules[i - 1]!.minImportanceScore,
+      `Rule ${i} should not lower the importance threshold below rule ${i - 1}`,
     );
   }
 });

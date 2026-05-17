@@ -32,6 +32,8 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadDispatchExecutionCliEnv } from "../../platform/five-plane-control-plane/config-center/runtime-ops-env.js";
 import { ExecutionDispatchService } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { HealthService } from "../../platform/shared/observability/health-service.js";
+import { DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 
 /**
  * Main entry point for the dispatch execution CLI.
@@ -44,7 +46,13 @@ import { ExecutionDispatchService } from "../../platform/five-plane-execution/di
 function main(): void {
   const envConfig = loadDispatchExecutionCliEnv();
   const result = withCliStorage((storage) => {
-    const dispatch = new ExecutionDispatchService(storage.sql, storage.store);
+    const dispatch = new ExecutionDispatchService(
+      storage.sql,
+      storage.store,
+      null,
+      null,
+      new HealthService(storage.sql, storage.store, DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS),
+    );
     const created = dispatch.createTicket({
       executionId: envConfig.executionId,
       ...(envConfig.priority ? { priority: envConfig.priority } : {}),

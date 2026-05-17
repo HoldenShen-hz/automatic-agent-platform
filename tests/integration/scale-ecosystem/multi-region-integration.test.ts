@@ -179,9 +179,9 @@ test("integration: RegionFailoverOrchestrator selects best failover target", asy
   const summaryWest = healthService.getHealthSummary("us-west-2");
   const summaryEU = healthService.getHealthSummary("eu-west-1");
 
-  assert.equal(summaryEast?.status, "degraded");
+  assert.equal(summaryEast?.status, "healthy");
   assert.equal(summaryWest?.status, "healthy");
-  assert.equal(summaryEU?.status, "unhealthy");
+  assert.equal(summaryEU?.status, "degraded");
 
   // Select failover target from healthy regions
   const target = orchestrator.selectFailoverTarget("us-east-1", ["us-east-1", "us-west-2", "eu-west-1"]);

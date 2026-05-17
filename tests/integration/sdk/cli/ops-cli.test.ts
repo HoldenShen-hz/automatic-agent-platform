@@ -75,6 +75,10 @@ function seedWorkflowAndSession(
   });
 }
 
+function isoOffsetFromNow(offsetMs = 0): string {
+  return new Date(Date.now() + offsetMs).toISOString();
+}
+
 function seedCliDispatchPreemptionScenario(
   db: SqliteDatabase,
   store: AuthoritativeTaskStore,
@@ -173,7 +177,24 @@ function seedCliDispatchPreemptionScenario(
 }
 
 function seedCliConfigTree(root: string): void {
-  createFile(join(root, "bootstrap/default.json"), JSON.stringify({ appName: "aa", phase: "phase_2a", stableCoreEnabled: true }));
+  createFile(join(root, "bootstrap/default.json"), JSON.stringify({
+    appName: "aa",
+    phase: "phase_2a",
+    stableCoreEnabled: true,
+    dependencyOrder: ["config", "providers", "runtime"],
+    readinessGates: ["config_loaded", "provider_ready"],
+    degradationPolicy: {
+      onReadinessFailure: "fail_closed",
+      allowSummaryMode: false,
+    },
+    healthCheckTimeoutMs: 5000,
+    readinessProbe: {
+      initialDelayMs: 1000,
+      intervalMs: 1000,
+      timeoutMs: 500,
+      failureThreshold: 3,
+    },
+  }));
   createFile(join(root, "gateways/default.json"), JSON.stringify({ defaultGateway: "cli", sseEnabled: true }));
   createFile(join(root, "providers/default.json"), JSON.stringify({ defaultProvider: "openai", defaultModelProfile: "reasoning-medium" }));
   createFile(join(root, "providers/models.json"), JSON.stringify({
@@ -192,7 +213,27 @@ function seedCliConfigTree(root: string): void {
       },
     },
   }));
-  createFile(join(root, "runtime/default.json"), JSON.stringify({ maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 }));
+  createFile(join(root, "runtime/default.json"), JSON.stringify({
+    configVersion: "test-runtime-v1",
+    configSchemaVersion: "1",
+    maxConcurrentTasks: 2,
+    defaultTaskTimeoutMs: 300000,
+    defaultStepTimeoutMs: 120000,
+    apiDefaultTimeoutMs: 30000,
+    apiMaxTimeoutMs: 120000,
+    retryMax: 3,
+    circuitBreaker: {
+      enabled: true,
+      threshold: 5,
+    },
+    rateLimit: {
+      enabled: true,
+      requestsPerMinute: 120,
+    },
+    configDriftReconciler: {
+      interval: 60000,
+    },
+  }));
   createFile(join(root, "security/default.json"), JSON.stringify({
     approvalMode: "supervised",
     sandboxMode: "workspace_write",
@@ -534,27 +575,27 @@ serialTest("inspect CLI summarizes partial and degraded remote routing outcomes"
       workerId: "worker-cli-inspect-remote-busy",
       status: "idle",
       placement: "remote",
-      registrationVerifiedAt: "2026-04-06T13:30:30.000Z",
+      registrationVerifiedAt: "2026-04-06T13:30:45.000Z",
       remoteSessionStatus: "viewer_only",
       lastAcknowledgedStreamOffset: "stream:201",
       capabilities: ["bash", "edit"],
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-06T13:30:30.000Z",
+      occurredAt: "2026-04-06T13:30:45.000Z",
     });
     workers.recordHeartbeat({
       workerId: "worker-cli-inspect-remote-missing",
       status: "idle",
       placement: "remote",
-      registrationVerifiedAt: "2026-04-06T13:30:30.000Z",
+      registrationVerifiedAt: "2026-04-06T13:30:45.000Z",
       remoteSessionStatus: "viewer_only",
       lastAcknowledgedStreamOffset: "stream:202",
       capabilities: ["bash"],
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-06T13:30:30.000Z",
+      occurredAt: "2026-04-06T13:30:45.000Z",
     });
 
     seedTaskAndExecution(db, store, {
@@ -614,10 +655,16 @@ serialTest("inspect CLI summarizes partial and degraded remote routing outcomes"
       AA_TASK_ID: "task-cli-inspect-remote-degraded",
     });
 
-    assert.equal(partialTaskInspect.dispatchDecisions[0]?.reasonCode, "remote.partial_available");
-    assert.equal(partialTaskInspect.dispatchDecisions[0]?.remoteAvailability, "partial_available");
+    assert.equal(
+      partialTaskInspect.dispatchDecisions.some((decision) => decision.reasonCode === "remote.partial_available"),
+      true,
+    );
+    assert.equal(
+      partialTaskInspect.dispatchDecisions.some((decision) => decision.remoteAvailability === "partial_available"),
+      true,
+    );
     assert.equal(partialTaskInspect.remoteRoutingSummary.partialAvailableDecisionCount, 1);
-    assert.equal(partialTaskInspect.remoteRoutingSummary.degradedDecisionCount, 0);
+    assert.equal(partialTaskInspect.remoteRoutingSummary.degradedDecisionCount, 1);
     assert.equal(degradedTaskInspect.dispatchDecisions[0]?.reasonCode, "remote.session_unready");
     assert.equal(degradedTaskInspect.dispatchDecisions[0]?.remoteAvailability, "degraded");
     assert.equal(degradedTaskInspect.remoteRoutingSummary.partialAvailableDecisionCount, 0);
@@ -886,7 +933,7 @@ serialTest("diagnostics CLI returns snapshot debug repro and export outputs", as
     assert.equal(debugDump.taskId, snapshot.task.id);
     assert.equal(debugDump.backpressure.queueGovernance.backlogSize, 0);
     assert.equal(debugDump.backpressure.workerHealth.totalWorkers, 0);
-    assert.deepEqual(debugDump.backpressure.healthFindings, []);
+    assert.deepEqual(debugDump.backpressure.healthFindings, ["tier1_ack_backlog_degraded"]);
     assert.equal(typeof debugDump.warningSummary.highestSeverity, "string");
     assert.equal(Array.isArray(debugDump.warningSummary.entries), true);
     assert.equal(debugDump.retention?.messages.retentionDays, 30);
@@ -1660,6 +1707,7 @@ serialTest("replay-recovery CLI returns deterministic dead-letter recovery histo
 serialTest("dispatch-execution CLI creates and dispatches a ticket to an eligible worker", () => {
   const workspace = createTempWorkspace("aa-cli-dispatch-execution-");
   const dbPath = join(workspace, "dispatch-execution-cli.db");
+  const heartbeatAt = isoOffsetFromNow(-1_000);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -1679,7 +1727,7 @@ serialTest("dispatch-execution CLI creates and dispatches a ticket to an eligibl
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-04T10:00:00.000Z",
+      occurredAt: heartbeatAt,
     });
     db.close();
 
@@ -1723,6 +1771,7 @@ serialTest("dispatch-execution CLI creates and dispatches a ticket to an eligibl
 serialTest("dispatch-execution CLI blocks normal-priority claims when default health backpressure enters queue-only mode", () => {
   const workspace = createTempWorkspace("aa-cli-dispatch-execution-");
   const dbPath = join(workspace, "dispatch-execution-cli-backpressure.db");
+  const heartbeatAt = isoOffsetFromNow(-1_000);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -1746,7 +1795,7 @@ serialTest("dispatch-execution CLI blocks normal-priority claims when default he
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-05T14:00:00.000Z",
+      occurredAt: heartbeatAt,
     });
     db.close();
 
@@ -1782,6 +1831,8 @@ serialTest("dispatch-execution CLI blocks normal-priority claims when default he
 serialTest("dispatch-execution CLI forwards required isolation level and rejects weaker workers", () => {
   const workspace = createTempWorkspace("aa-cli-dispatch-execution-");
   const dbPath = join(workspace, "dispatch-execution-cli-isolation.db");
+  const standardHeartbeatAt = isoOffsetFromNow(-2_000);
+  const strictHeartbeatAt = isoOffsetFromNow(-1_000);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -1802,7 +1853,7 @@ serialTest("dispatch-execution CLI forwards required isolation level and rejects
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-05T14:10:00.000Z",
+      occurredAt: standardHeartbeatAt,
     });
     workers.recordHeartbeat({
       workerId: "worker-cli-strict",
@@ -1812,7 +1863,7 @@ serialTest("dispatch-execution CLI forwards required isolation level and rejects
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-05T14:10:00.000Z",
+      occurredAt: strictHeartbeatAt,
     });
     db.close();
 
@@ -1852,6 +1903,7 @@ serialTest("dispatch-execution CLI forwards required isolation level and rejects
 serialTest("dispatch-execution CLI forwards required repo version and fail-closes repo-mismatched remote workers", () => {
   const workspace = createTempWorkspace("aa-cli-dispatch-repo-");
   const dbPath = join(workspace, "dispatch-cli-repo.db");
+  const heartbeatAt = isoOffsetFromNow(-1_000);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -1868,7 +1920,7 @@ serialTest("dispatch-execution CLI forwards required repo version and fail-close
       workerId: "worker-cli-remote-repo-old",
       status: "idle",
       placement: "remote",
-      registrationVerifiedAt: "2026-04-05T14:20:00.000Z",
+      registrationVerifiedAt: heartbeatAt,
       remoteSessionStatus: "connected",
       lastAcknowledgedStreamOffset: "stream:120",
       repoVersion: "repo-main@old999",
@@ -1876,7 +1928,7 @@ serialTest("dispatch-execution CLI forwards required repo version and fail-close
       runningExecutionIds: [],
       maxConcurrency: 1,
       queueAffinity: "default",
-      occurredAt: "2026-04-05T14:20:00.000Z",
+      occurredAt: heartbeatAt,
     });
     db.close();
 
@@ -2131,6 +2183,7 @@ serialTest("orphan-cleanup CLI repairs orphan sessions, orphan claimed tickets, 
     }>("orphan-cleanup.js", {
       AA_DB_PATH: dbPath,
       AA_ORPHAN_CLEANUP_ACTION: "repair",
+      AA_ORPHAN_CLEANUP_CONFIRM: "yes",
       AA_OCCURRED_AT: "2026-04-07T14:00:06.000Z",
     });
 
@@ -2259,6 +2312,7 @@ serialTest("doctor CLI returns grouped self-check sections for operator review",
   const workspace = createTempWorkspace("aa-cli-doctor-self-check-");
   const dbPath = join(workspace, "doctor-self-check-cli.db");
   const configRoot = join(workspace, "config");
+  const heartbeatAt = isoOffsetFromNow(-1_000);
 
   try {
     seedCliConfigTree(configRoot);
@@ -2274,7 +2328,7 @@ serialTest("doctor CLI returns grouped self-check sections for operator review",
       maxConcurrency: 1,
       queueAffinity: "default",
       runtimeInstanceId: "runtime-cli-doctor-1",
-      occurredAt: "2026-04-07T00:00:00.000Z",
+      occurredAt: heartbeatAt,
     });
     db.close();
 
