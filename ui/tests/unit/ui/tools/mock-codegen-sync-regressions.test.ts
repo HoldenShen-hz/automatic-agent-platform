@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import { resolveMockRequest } from "../../../../tools/mock-server/src";
-import { parseOpenApiSpec } from "../../../../tools/codegen/src";
+import { generateBindingsFromOpenApi } from "../../../../tools/codegen/src";
 import { ConflictResolver } from "../../../../packages/shared/sync/src/conflict-resolver";
 
 describe("UI tooling regressions", () => {
   it("mock server resolves extended API surfaces beyond dashboard/tasks/workflows", () => {
     expect(resolveMockRequest("/api/v1/approvals")).toEqual(
-      expect.arrayContaining([expect.objectContaining({ status: "pending" })]),
+      expect.arrayContaining([expect.objectContaining({ approvalId: "approval-1", riskLevel: "critical" })]),
     );
-    expect(resolveMockRequest("/api/v1/meta/contract-version")).toEqual(
+    expect(resolveMockRequest("/api/v1/version")).toEqual(
       expect.objectContaining({ contractVersion: "1.0" }),
     );
   });
 
   it("codegen emits DTOs, endpoint clients and query key factories", () => {
-    const generated = parseOpenApiSpec({
+    const generated = generateBindingsFromOpenApi({
       openapi: "3.1.0",
       info: { title: "AA", version: "1.0.0" },
       paths: {
@@ -51,9 +51,9 @@ describe("UI tooling regressions", () => {
       },
     });
 
-    expect(generated.dtoTypes).toContain("export type Task");
-    expect(generated.endpointClients).toContain("export async function listTasks");
-    expect(generated.queryKeys).toContain("listTasksQueryKey");
+    expect(generated).toContain("export interface Task");
+    expect(generated).toContain('export const listTasksPath = { method: "GET", path: "/api/v1/tasks" } as const;');
+    expect(generated).toContain("export type ListTasksResponse = Task[];");
   });
 
   it("conflict resolver supports CRDT-style merge semantics", () => {

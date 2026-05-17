@@ -89,7 +89,7 @@ describe("shared api-client", () => {
     expect(mapEventToQuery({ channel: "global", type: "panic.activated", payload: {} }).scope).toBe("panic");
     expect(mapEventToQuery({ channel: "global", type: "config.feature-flags.updated", payload: {} }).queryKey).toEqual(["feature-flags"]);
     expect(Object.values(endpointCatalog).length).toBeGreaterThanOrEqual(41);
-    expect(endpointCatalog.contractVersion.path).toBe("/api/v1/meta/contract-version");
+    expect(endpointCatalog.contractVersion.path).toBe("/version");
   });
 
   it("routes websocket events through the query router", () => {

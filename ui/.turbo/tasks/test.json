@@ -3,11 +3,12 @@
   "command": [
     "vitest",
     "run",
-    "tests/shared/endpoint-type-contracts.test.ts",
-    "tests/shared/state-normalization.test.ts",
-    "tests/shared/reaudit-batch-r26-45-54.test.tsx",
-    "tests/shared/reaudit-batch-r26-56-61-65.test.ts"
+    "tests/shared/api-client.test.ts",
+    "tests/unit/ui/tools/mock-server-routing.test.ts",
+    "tests/unit/ui/tools/mock-codegen-sync-regressions.test.ts",
+    "tests/unit/ui/apps/web/runtime-contract-version.test.tsx",
+    "tests/unit/ui/apps/web/runtime.test.tsx"
   ],
-  "startedAt": "2026-05-11T07:31:25.372Z",
-  "completedAt": "2026-05-11T07:31:26.686Z"
+  "startedAt": "2026-05-17T16:34:01.721Z",
+  "completedAt": "2026-05-17T16:34:03.298Z"
 }

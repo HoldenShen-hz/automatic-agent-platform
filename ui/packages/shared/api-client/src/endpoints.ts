@@ -217,7 +217,7 @@ export const endpointCatalog = {
   webhooks: { id: "admin.webhooks", path: "/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
-  contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
+  contractVersion: { id: "meta.contract-version", path: "/version", method: "GET", apiLayer: "A", planned: false },
 } satisfies EndpointCatalogDefinition;
 
 function buildQueryString(params: ListQueryParams): string {

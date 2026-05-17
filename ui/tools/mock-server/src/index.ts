@@ -14,18 +14,34 @@ export function describePlannedEndpoint(id: string) {
 }
 
 export function resolveMockRequest(path: string) {
-  if (path.includes("dashboard")) {
+  const requestUrl = new URL(path, "http://mock.local");
+  const pathname = requestUrl.pathname;
+
+  if (pathname === "/api/v1/version") {
+    return {
+      accepted: true,
+      apiVersion: "v1",
+      platformVersion: "0.1.0",
+      contractVersion: "1.0",
+      minServerVersion: "1.0",
+      supportedVersions: ["1.0"],
+    };
+  }
+  if (pathname === "/api/v1/dashboard/snapshot") {
     return defaultMockApiShape.dashboard;
   }
-  if (path.includes("tasks")) {
+  if (pathname === "/api/v1/tasks") {
     return defaultMockApiShape.tasks;
   }
-  if (path.includes("workflows")) {
+  if (pathname === "/api/v1/workflows") {
     return defaultMockApiShape.workflows;
+  }
+  if (pathname === "/api/v1/approvals") {
+    return defaultMockApiShape.approvals;
   }
   return {
     ok: true,
-    path,
+    path: pathname,
   };
 }
 
