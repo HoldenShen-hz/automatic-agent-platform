@@ -29,6 +29,11 @@ function createTempDb(): SqliteDatabase {
 }
 
 function cleanupDb(db: SqliteDatabase): void {
+  try {
+    db.close();
+  } catch {
+    // Allow repeated cleanup paths in perf tests.
+  }
   rmSync(db.filePath, { force: true });
   rmSync(`${db.filePath}-wal`, { force: true });
   rmSync(`${db.filePath}-shm`, { force: true });
@@ -83,7 +88,6 @@ test("event store: Memory growth rate <5MB/sec under sustained write load", (t) 
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -152,7 +156,6 @@ test("event store: Heap usage stability <200MB variance under steady state", (t)
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -201,7 +204,6 @@ test("event store: Memory efficiency <1KB per event stored", (t) => {
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -235,7 +237,6 @@ test("event store: Memory cleanup >80% reclaimed after large batch", (t) => {
     const afterBatchMem = getHeapStats();
 
     // Close database to release memory
-    db.close();
     cleanupDb(db);
 
     // Create new DB to ensure old one is fully released
@@ -264,11 +265,9 @@ test("event store: Memory cleanup >80% reclaimed after large batch", (t) => {
       }
       throw err;
     } finally {
-      db2.close();
-      cleanupDb(db2);
+    cleanupDb(db2);
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -294,8 +293,6 @@ test("event store: Database file size efficiency <2KB per event", async (t) => {
       });
     }
 
-    db.close();
-
     const fs = await import("node:fs");
     const stats = fs.statSync(db.filePath);
     const bytesPerEvent = stats.size / eventCount;
@@ -313,7 +310,6 @@ test("event store: Database file size efficiency <2KB per event", async (t) => {
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -362,7 +358,6 @@ test("event store: Sustained load memory growth <10MB over 10 seconds", (t) => {
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });
@@ -414,7 +409,6 @@ test("event store: Concurrent writes memory efficiency <8MB growth with 10 worke
       throw err;
     }
   } finally {
-    db.close();
     cleanupDb(db);
   }
 });

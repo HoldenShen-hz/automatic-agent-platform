@@ -22,6 +22,10 @@ function isCompatibleFixtureSkip(message: string): boolean {
   return message.includes("duplicate column name") || message.includes("no such column: organization_id");
 }
 
+function getCompatibilitySkipBudget(): number {
+  return Math.max(5, Math.ceil(SQLITE_MIGRATIONS.length * 0.2));
+}
+
 test("SQLite migrations array has contiguous versions from 1 to latest", () => {
   const versions = SQLITE_MIGRATIONS.map((m) => m.version);
   const expected = Array.from({ length: versions.length }, (_, i) => i + 1);
@@ -63,6 +67,7 @@ test("applying all migrations populates the ledger with correct entries", () => 
     );
 
     let appliedCount = 0;
+    let skippedCount = 0;
     for (const migration of SQLITE_MIGRATIONS) {
       try {
         db.exec(migration.sql);
@@ -73,6 +78,7 @@ test("applying all migrations populates the ledger with correct entries", () => 
         // columns already present in the initial schema
         const msg = err instanceof Error ? err.message : String(err);
         if (isCompatibleFixtureSkip(msg)) {
+          skippedCount++;
           continue;
         }
         throw err;
@@ -84,9 +90,16 @@ test("applying all migrations populates the ledger with correct entries", () => 
       name: string;
     }[];
 
+    const compatibilitySkipBudget = getCompatibilitySkipBudget();
+    assert.equal(rows.length, appliedCount, "Ledger row count should match successfully applied migrations");
+    assert.equal(
+      appliedCount + skippedCount,
+      SQLITE_MIGRATIONS.length,
+      "Every migration should either apply successfully or be skipped as a known compatibility backfill",
+    );
     assert.ok(
-      rows.length >= SQLITE_MIGRATIONS.length - 5,
-      `Ledger should have entries for most migrations (${rows.length}/${SQLITE_MIGRATIONS.length})`,
+      skippedCount <= compatibilitySkipBudget,
+      `Expected at most ${compatibilitySkipBudget} compatibility skips (got ${skippedCount})`,
     );
 
     // Verify first migration is version 1 with phase1a_init
@@ -180,9 +193,10 @@ test("migrations can be applied incrementally in order", () => {
     }
 
     // Report which migrations were skipped due to duplicate columns
+    const compatibilitySkipBudget = getCompatibilitySkipBudget();
     assert.ok(
-      failedMigrations.length <= 5,
-      `Expected at most 5 compatibility skips (got ${failedMigrations.length}): ${JSON.stringify(failedMigrations)}`,
+      failedMigrations.length <= compatibilitySkipBudget,
+      `Expected at most ${compatibilitySkipBudget} compatibility skips (got ${failedMigrations.length}): ${JSON.stringify(failedMigrations)}`,
     );
 
     assert.ok(

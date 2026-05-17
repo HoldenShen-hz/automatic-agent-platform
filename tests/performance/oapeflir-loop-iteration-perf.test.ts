@@ -69,15 +69,16 @@ class MinimalExecuteBridge implements ExecuteBridge {
 }
 
 function createMinimalWorkflow(stepCount: number = 1) {
-  const steps = Array.from({ length: stepCount }, (_, i) => ({
-    stepId: newId("step"),
+  const stepIds = Array.from({ length: stepCount }, () => newId("step"));
+  const steps = stepIds.map((stepId, i) => ({
+    stepId,
     divisionId: "coding",
     roleId: "builder",
     inputKeys: [],
     agentId: "agent_builder",
     outputKey: `result_${i}`,
     outputSchemaPath: null,
-    dependsOnStepIds: i > 0 ? [steps[i - 1]!.stepId] : [],
+    dependsOnStepIds: i > 0 ? [stepIds[i - 1]!] : [],
     dependencyTypes: {} as Record<string, string>,
     timeoutMs: 10000,
     maxAttempts: 1,

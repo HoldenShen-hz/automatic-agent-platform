@@ -41,6 +41,69 @@ function cleanupDb(db: SqliteDatabase): void {
   rmSync(`${db.filePath}-shm`, { force: true });
 }
 
+function insertPerfTask(
+  store: AuthoritativeTaskStore,
+  taskId: string,
+  now: string,
+  title = "Performance test task",
+): void {
+  store.insertTask({
+    id: taskId,
+    parentId: null,
+    rootId: taskId,
+    divisionId: "general_ops",
+    title,
+    status: "queued",
+    source: "user",
+    priority: "normal",
+    inputJson: "{}",
+    normalizedInputJson: "{}",
+    outputJson: null,
+    estimatedCostUsd: 0,
+    actualCostUsd: 0,
+    errorCode: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+  });
+}
+
+function insertPerfExecution(
+  store: AuthoritativeTaskStore,
+  executionId: string,
+  taskId: string,
+  now: string,
+  traceId: string,
+): void {
+  store.insertExecution({
+    id: executionId,
+    taskId,
+    workflowId: "single_agent_minimal",
+    parentExecutionId: null,
+    agentId: "agent-1",
+    roleId: "general_executor",
+    runKind: "task_run",
+    status: "queued",
+    inputRef: null,
+    traceId,
+    attempt: 1,
+    timeoutMs: 60000,
+    budgetUsdLimit: 1,
+    requiresApproval: 0,
+    sandboxMode: "workspace_write",
+    allowedToolsJson: "[]",
+    allowedPathsJson: "[]",
+    maxRetries: 0,
+    retryBackoff: "none",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: null,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 // ============================================================================
 // Execution Throughput Benchmarks
 // ============================================================================
@@ -149,11 +212,22 @@ test("performance: execution throughput (simple tasks) >5000 exec/sec", (t) => {
           occurredAt: nowIso(),
         });
 
-        // execution: queued -> executing
+        // execution: queued -> dispatching -> executing
         transitions.transitionExecutionStatus({
           entityKind: "execution",
           entityId: executionId,
           fromStatus: "queued",
+          toStatus: "dispatching",
+          reasonCode: "test",
+          traceId,
+          actorType: "system",
+          occurredAt: nowIso(),
+        });
+
+        transitions.transitionExecutionStatus({
+          entityKind: "execution",
+          entityId: executionId,
+          fromStatus: "dispatching",
           toStatus: "executing",
           reasonCode: "test",
           traceId,
@@ -227,7 +301,7 @@ test("performance: execution throughput (complex tasks) >2000 exec/sec", (t) => 
           completedAt: null,
         });
 
-        store.insertWorkflow({
+        store.workflow.insertWorkflow({
           id: workflowId,
           taskId,
           name: "multi_step_execution",
@@ -307,11 +381,11 @@ test("performance: execution throughput (complex tasks) >2000 exec/sec", (t) => 
       // workflow running
       transitions.transitionWorkflowStatus({
         entityKind: "workflow",
-        entityId: workflowId,
+        entityId: taskId,
         fromStatus: "running",
         toStatus: "running",
         currentStepIndex: 0,
-        outputsJson: null,
+        outputsJson: "{}",
         reasonCode: "test",
         traceId,
         actorType: "system",
@@ -377,80 +451,48 @@ test("performance: lease acquisition latency p50 <1ms, p95 <5ms, p99 <10ms", (t)
   const leaseService = new ExecutionLeaseService(db, store);
 
   try {
-    // Create test execution
-    const executionId = newId("exec");
-    const workerId = newId("worker");
-    const now = nowIso();
-
-    db.transaction(() => {
-      store.insertExecution({
-        id: executionId,
-        taskId: newId("task"),
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "queued",
-        inputRef: null,
-        traceId: newId("trace"),
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
     const iterations = 1000;
     const latencies: number[] = [];
+    const warmupExecutionIds = Array.from({ length: 100 }, () => newId("exec"));
+    const measuredExecutionIds = Array.from({ length: iterations }, () => newId("exec"));
+
+    db.transaction(() => {
+      for (const executionId of [...warmupExecutionIds, ...measuredExecutionIds]) {
+        const taskId = newId("task");
+        const now = nowIso();
+        insertPerfTask(store, taskId, now, "Lease latency task");
+        insertPerfExecution(store, executionId, taskId, now, newId("trace"));
+      }
+    });
 
     // Warmup
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < warmupExecutionIds.length; i++) {
       const warmupWorkerId = `warmup-worker-${i}`;
-      leaseService.acquireLease({
-        executionId,
+      const decision = leaseService.acquireLease({
+        executionId: warmupExecutionIds[i]!,
         workerId: warmupWorkerId,
-        ttlMs: 60000,
+        ttlMs: 10000,
         traceId: newId("trace"),
         occurredAt: nowIso(),
       });
-      leaseService.releaseLease({
-        executionId,
-        workerId: warmupWorkerId,
-        traceId: newId("trace"),
-        occurredAt: nowIso(),
-      });
+      assert.equal(decision.outcome, "granted");
+      assert.ok(decision.lease != null);
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const wId = `bench-worker-${i}`;
       const start = performance.now();
-      leaseService.acquireLease({
-        executionId,
+      const decision = leaseService.acquireLease({
+        executionId: measuredExecutionIds[i]!,
         workerId: wId,
-        ttlMs: 60000,
+        ttlMs: 10000,
         traceId: newId("trace"),
         occurredAt: nowIso(),
       });
+      assert.equal(decision.outcome, "granted");
+      assert.ok(decision.lease != null);
       latencies.push(performance.now() - start);
-      leaseService.releaseLease({
-        executionId,
-        workerId: wId,
-        traceId: newId("trace"),
-        occurredAt: nowIso(),
-      });
     }
 
     latencies.sort((a, b) => a - b);
@@ -490,43 +532,19 @@ test("performance: lease acquisition throughput >10000 ops/sec", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       const executionId = newId("exec");
+      const taskId = newId("task");
       const workerId = newId("worker");
       const now = nowIso();
 
       db.transaction(() => {
-        store.insertExecution({
-          id: executionId,
-          taskId: newId("task"),
-          workflowId: "single_agent_minimal",
-          parentExecutionId: null,
-          agentId: "agent-1",
-          roleId: "general_executor",
-          runKind: "task_run",
-          status: "queued",
-          inputRef: null,
-          traceId: newId("trace"),
-          attempt: 1,
-          timeoutMs: 60000,
-          budgetUsdLimit: 1,
-          requiresApproval: 0,
-          sandboxMode: "workspace_write",
-          allowedToolsJson: "[]",
-          allowedPathsJson: "[]",
-          maxRetries: 0,
-          retryBackoff: "none",
-          lastErrorCode: null,
-          lastErrorMessage: null,
-          startedAt: null,
-          finishedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        });
+        insertPerfTask(store, taskId, now, `Lease throughput task ${i}`);
+        insertPerfExecution(store, executionId, taskId, now, newId("trace"));
       });
 
       leaseService.acquireLease({
         executionId,
         workerId,
-        ttlMs: 60000,
+        ttlMs: 10000,
         traceId: newId("trace"),
         occurredAt: nowIso(),
       });

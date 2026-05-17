@@ -229,7 +229,7 @@ test("performance: RuntimeStateMachine executeTransition() P99 <2ms", (t) => {
 // Concurrent Transition Benchmarks
 // ============================================================================
 
-test("performance: RuntimeStateMachine concurrent transitions (10 parallel) >3000 ops/sec", (t) => {
+test("performance: RuntimeStateMachine concurrent transitions (10 parallel) >3000 ops/sec", async (t) => {
   const machine = new RuntimeStateMachine();
 
   const iterations = 100;
@@ -256,7 +256,7 @@ test("performance: RuntimeStateMachine concurrent transitions (10 parallel) >300
         });
       })()
     );
-    Promise.all(promises);
+    await Promise.all(promises);
   }
 
   const elapsed = performance.now() - start;

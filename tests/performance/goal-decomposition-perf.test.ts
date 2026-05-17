@@ -104,23 +104,30 @@ function createTestGoal(description: string, priority: Goal["priority"] = "norma
   };
 }
 
+async function decomposeFreshGoal(
+  service: GoalDecompositionService,
+  description: string,
+  priority: Goal["priority"] = "normal",
+): Promise<void> {
+  await service.decompose(createTestGoal(description, priority));
+}
+
 test("performance: GoalDecompositionService.decompose() simple goal P99 < 50ms", async () => {
   const service = new GoalDecompositionService({
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal("Build a simple feature");
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, "Build a simple feature");
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, "Build a simple feature");
     latencies.push(performance.now() - start);
   }
 
@@ -146,20 +153,19 @@ test("performance: GoalDecompositionService.decompose() complex goal P99 < 100ms
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal(
-    "Implement a comprehensive marketing campaign with multiple channels including social media, email, and content marketing with detailed ROI tracking and analytics",
-  );
+  const description =
+    "Implement a comprehensive marketing campaign with multiple channels including social media, email, and content marketing with detailed ROI tracking and analytics";
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
     latencies.push(performance.now() - start);
   }
 
@@ -180,18 +186,18 @@ test("performance: GoalDecompositionService.decompose() without LLM generator P9
     llmPlanGenerator: null, // No LLM, use template only
   });
 
-  const goal = createTestGoal("Execute a release launch with multiple phases");
+  const description = "Execute a release launch with multiple phases";
   const iterations = 300;
 
   // Warmup
   for (let i = 0; i < 10; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
     latencies.push(performance.now() - start);
   }
 
@@ -212,18 +218,18 @@ test("performance: GoalDecompositionService.decompose() critical priority P99 < 
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal("Deploy critical hotfix to production", "critical");
+  const description = "Deploy critical hotfix to production";
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description, "critical");
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description, "critical");
     latencies.push(performance.now() - start);
   }
 
@@ -244,18 +250,18 @@ test("performance: GoalDecompositionService.decompose() marketing template P99 <
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal("Run a Facebook and Instagram advertising campaign with creative assets");
+  const description = "Run a Facebook and Instagram advertising campaign with creative assets";
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
     latencies.push(performance.now() - start);
   }
 
@@ -276,18 +282,19 @@ test("performance: GoalDecompositionService.decompose() incident response templa
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal("Investigate and resolve the production outage affecting user authentication");
+  const description =
+    "Investigate and resolve the production outage affecting user authentication";
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
     latencies.push(performance.now() - start);
   }
 
@@ -308,12 +315,12 @@ test("performance: GoalDecompositionService.decompose() throughput > 10 ops/sec"
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
 
-  const goal = createTestGoal("Execute multi-step workflow with dependencies");
+  const description = "Execute multi-step workflow with dependencies";
   const iterations = 20;
 
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
   const elapsed = performance.now() - start;
 
@@ -348,18 +355,18 @@ test("performance: GoalDecompositionService.decompose() with budget control P99 
     },
   });
 
-  const goal = createTestGoal("Execute task with budget constraints");
+  const description = "Execute task with budget constraints";
   const iterations = 150;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose(goal);
+    await decomposeFreshGoal(service, description);
     latencies.push(performance.now() - start);
   }
 
@@ -379,18 +386,19 @@ test("performance: GoalDecompositionService.decompose() string input P99 < 50ms"
   const service = new GoalDecompositionService({
     llmPlanGenerator: new MockLlmPlanGenerator(),
   });
+  const baseDescription = "Simple task description";
 
   const iterations = 200;
 
   // Warmup
   for (let i = 0; i < 5; i++) {
-    await service.decompose("Simple task description");
+    await service.decompose(`${baseDescription} warmup ${i}`);
   }
 
   const latencies: number[] = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    await service.decompose("Simple task description");
+    await service.decompose(`${baseDescription} run ${i}`);
     latencies.push(performance.now() - start);
   }
 

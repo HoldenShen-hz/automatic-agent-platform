@@ -47,10 +47,8 @@ test("performance: retry loop should execute exactly MAX_RETRIES times - Issue #
   const startTime = Date.now();
 
   bus.publish({
-    eventType: "task:status_changed",
-    taskId: "task-retry-perf",
-    executionId: "exec-retry-perf",
-    traceId: "trace-retry-perf",
+    eventType: "perf:test_event",
+    taskId: null,
     payload: { testRetry: true },
   });
 
@@ -98,10 +96,8 @@ test("performance: retry backoff timing follows exponential pattern", (t) => {
   });
 
   bus.publish({
-    eventType: "task:status_changed",
-    taskId: "task-backoff",
-    executionId: "exec-backoff",
-    traceId: "trace-backoff",
+    eventType: "perf:test_event",
+    taskId: null,
     payload: {},
   });
 
@@ -122,9 +118,8 @@ test("performance: retry backoff timing follows exponential pattern", (t) => {
     const tolerance = 50; // Allow 50ms tolerance
 
     if (Math.abs(firstDelay - firstBackoffExpected) > tolerance) {
-      reportSoftPerformanceMiss(
-        "retry_backoff",
-        `First retry delay ${firstDelay}ms differs from expected ${firstBackoffExpected}ms`
+      t.diagnostic(
+        `performance soft miss: First retry delay ${firstDelay}ms differs from expected ${firstBackoffExpected}ms`,
       );
     }
   }

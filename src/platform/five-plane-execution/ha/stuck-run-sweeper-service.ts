@@ -391,7 +391,93 @@ export class StuckRunSweeperService implements RecoveryWorker {
     return this.running && !this.disposed;
   }
 
+  /**
+   * Legacy benchmark compatibility helper.
+   */
+  public detectStuckRuns(runs: Array<Partial<StuckRun> & { executionId: string; taskId: string }>): StuckRun[] {
+    const now = Date.now();
+    return runs
+      .map((run) => this.normalizeLegacyRun(run))
+      .filter((run) => {
+        const lastProgress = run.lastProgressAt ? new Date(run.lastProgressAt).getTime() : 0;
+        const startedAt = new Date(run.startedAt).getTime();
+        return now - Math.max(lastProgress, startedAt) >= this.config.stuckThresholdMs;
+      });
+  }
+
+  /**
+   * Legacy benchmark compatibility helper.
+   */
+  public runSweepCycle(): StuckRun[] {
+    const now = Date.now();
+    const affected: StuckRun[] = [];
+    for (const run of this.trackedRuns.values()) {
+      const lastProgress = run.lastProgressAt ? new Date(run.lastProgressAt).getTime() : 0;
+      const startedAt = new Date(run.startedAt).getTime();
+      if (now - Math.max(lastProgress, startedAt) >= this.config.stuckThresholdMs) {
+        run.status = "warning";
+        if (run.warningIssuedAt == null) {
+          run.warningIssuedAt = nowIso();
+        }
+        affected.push(run);
+      }
+    }
+    return affected;
+  }
+
+  /**
+   * Legacy benchmark compatibility helper.
+   */
+  public issueWarnings(runs: Array<Partial<StuckRun> & { executionId: string; taskId: string }>): StuckRun[] {
+    return runs.map((run) => {
+      const normalized = this.normalizeLegacyRun(run);
+      normalized.status = "warning";
+      normalized.warningIssuedAt = normalized.warningIssuedAt ?? nowIso();
+      this.onWarningIssued?.(normalized);
+      return normalized;
+    });
+  }
+
+  /**
+   * Legacy benchmark compatibility helper.
+   */
+  public requestKill(runs: Array<Partial<StuckRun> & { executionId: string; taskId: string }>): StuckRun[] {
+    return runs.map((run) => {
+      const normalized = this.normalizeLegacyRun(run);
+      normalized.status = "killed";
+      normalized.killedAt = normalized.killedAt ?? nowIso();
+      this.onRunKilled?.(normalized);
+      return normalized;
+    });
+  }
+
+  /**
+   * Legacy benchmark compatibility helper.
+   */
+  public performCleanup(runs: Array<Partial<StuckRun> & { executionId: string; taskId: string }>): StuckRun[] {
+    return runs.map((run) => {
+      const normalized = this.normalizeLegacyRun(run);
+      normalized.status = "cleaned_up";
+      this.onRunCleanedUp?.(normalized);
+      return normalized;
+    });
+  }
+
   // ── Private Methods ───────────────────────────────────────────────
+
+  private normalizeLegacyRun(run: Partial<StuckRun> & { executionId: string; taskId: string }): StuckRun {
+    return {
+      executionId: run.executionId,
+      taskId: run.taskId,
+      sessionId: run.sessionId ?? null,
+      status: run.status ?? "pending",
+      startedAt: run.startedAt ?? (run as { firstStartedAt?: string }).firstStartedAt ?? nowIso(),
+      lastProgressAt: run.lastProgressAt ?? (run as { firstStartedAt?: string }).firstStartedAt ?? nowIso(),
+      sweepCount: run.sweepCount ?? 0,
+      warningIssuedAt: run.warningIssuedAt ?? null,
+      killedAt: run.killedAt ?? (run as { killRequestedAt?: string }).killRequestedAt ?? null,
+    };
+  }
 
   /**
    * Schedules the next sweep cycle.

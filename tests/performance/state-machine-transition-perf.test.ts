@@ -18,8 +18,12 @@ import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/run
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { HarnessRun, NodeRun, BudgetLedger, BudgetReservation } from "../../src/platform/contracts/executable-contracts/index.js";
 
+const PERF_RUN_VERSION_LOCK_ID = "perf-run-lock";
+const PERF_LEASE_ID = "perf-lease";
+const PERF_FENCING_TOKEN = "perf-fence";
+
 function createStateMachine(): RuntimeStateMachine {
-  return new RuntimeStateMachine();
+  return new RuntimeStateMachine({ persistEvent: () => {} });
 }
 
 // ============================================================================
@@ -48,6 +52,9 @@ test("state machine: Single transition throughput >10000 ops/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "warmup",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -69,6 +76,9 @@ test("state machine: Single transition throughput >10000 ops/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -116,6 +126,9 @@ test("state machine: Transition latency P99 <1ms", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "warmup",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -136,6 +149,9 @@ test("state machine: Transition latency P99 <1ms", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
       latencies.push(performance.now() - start);
     }
@@ -187,6 +203,9 @@ test("state machine: Parallel transitions throughput >5000 ops/sec with 10 worke
       tenantId: "perf-tenant",
       reasonCode: "warmup",
       emittedBy: "perf-test",
+      runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+      leaseId: PERF_LEASE_ID,
+      fencingToken: PERF_FENCING_TOKEN,
     });
   }
 
@@ -210,6 +229,9 @@ test("state machine: Parallel transitions throughput >5000 ops/sec with 10 worke
           tenantId: "perf-tenant",
           reasonCode: `worker-${workerId}`,
           emittedBy: "perf-test",
+          runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+          leaseId: PERF_LEASE_ID,
+          fencingToken: PERF_FENCING_TOKEN,
         });
       }
     }),
@@ -260,6 +282,9 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "warmup",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       }).aggregate;
     }
 
@@ -283,6 +308,9 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
       run = result.aggregate;
 
@@ -299,6 +327,8 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
       run = result.aggregate;
 
@@ -315,6 +345,8 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
       run = result.aggregate;
 
@@ -331,6 +363,8 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
       run = result.aggregate;
     }
@@ -383,6 +417,8 @@ test("state machine: NodeRun transition throughput >8000 ops/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "warmup",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -404,6 +440,8 @@ test("state machine: NodeRun transition throughput >8000 ops/sec", (t) => {
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -454,6 +492,8 @@ test("state machine: BudgetLedger transition throughput >10000 ops/sec", (t) => 
         tenantId: "perf-tenant",
         reasonCode: "warmup",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -475,6 +515,8 @@ test("state machine: BudgetLedger transition throughput >10000 ops/sec", (t) => 
         tenantId: "perf-tenant",
         reasonCode: "test",
         emittedBy: "perf-test",
+        leaseId: PERF_LEASE_ID,
+        fencingToken: PERF_FENCING_TOKEN,
       });
     }
 
@@ -599,6 +641,9 @@ test("state machine: High-concurrency stress test >20000 total ops/sec", async (
           tenantId: "perf-tenant",
           reasonCode: `stress-${workerId}`,
           emittedBy: "perf-test",
+          runVersionLockId: PERF_RUN_VERSION_LOCK_ID,
+          leaseId: PERF_LEASE_ID,
+          fencingToken: PERF_FENCING_TOKEN,
         });
       }
     }),

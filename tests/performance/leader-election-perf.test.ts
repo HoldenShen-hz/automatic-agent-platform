@@ -49,10 +49,9 @@ test("performance: HaCoordinatorService acquireLeadership() >300 ops/sec", (t) =
 
     for (let i = 0; i < iterations; i++) {
       const uniqueNodeId = `${newId("node")}-${i}`;
+      coordinator.registerNode(uniqueNodeId, region);
       coordinator.acquireLeadership({
         nodeId: uniqueNodeId,
-        region,
-        desiredLeaderId: uniqueNodeId,
         ttlMs: 5000,
       });
     }
@@ -83,10 +82,9 @@ test("performance: HaCoordinatorService queryLeadership() >2000 ops/sec", (t) =>
     const region = "us-east-1";
 
     // Setup initial leader
+    coordinator.registerNode(nodeId, region);
     coordinator.acquireLeadership({
       nodeId,
-      region,
-      desiredLeaderId: nodeId,
       ttlMs: 10000,
     });
 
@@ -127,10 +125,9 @@ test("performance: HaCoordinatorService renewLeadership() >500 ops/sec", (t) => 
     const region = "us-east-1";
 
     // Setup initial leader
+    coordinator.registerNode(nodeId, region);
     const lease = coordinator.acquireLeadership({
       nodeId,
-      region,
-      desiredLeaderId: nodeId,
       ttlMs: 10000,
     });
 
@@ -140,8 +137,6 @@ test("performance: HaCoordinatorService renewLeadership() >500 ops/sec", (t) => 
     for (let i = 0; i < iterations; i++) {
       coordinator.renewLeadership({
         nodeId,
-        leaseId: lease.leaseId,
-        fencingToken: lease.fencingToken,
         ttlMs: 10000,
       });
     }

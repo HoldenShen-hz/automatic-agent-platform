@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 import { LockingError } from "../../contracts/errors.js";
+import { DISTRIBUTED_LOCKS_DDL } from "./distributed-lock-types.js";
 import { lockLogger } from "./locking-support.js";
 import type { AcquireLockInput, AcquireLockResult, DistributedLockAdapter, LockBackendKind, LockRecord } from "./distributed-lock-types.js";
 
@@ -9,6 +10,7 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   private fencingCounter = 0;
 
   constructor(private readonly db: DatabaseSync) {
+    this.db.exec(DISTRIBUTED_LOCKS_DDL);
     const stmt = this.db.prepare(`SELECT MAX(fencing_token) as max_token FROM distributed_locks`);
     const row = stmt.get() as { max_token: number | null } | undefined;
     if (row?.max_token != null) this.fencingCounter = row.max_token;
@@ -20,8 +22,22 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
     return this.fencingCounter;
   }
 
-  acquire(input: AcquireLockInput): AcquireLockResult {
-    const { lockKey, owner, ttlMs = 30000 } = input;
+  private normalizeAcquireInput(
+    input: AcquireLockInput | { lockName: string; ownerId: string; ttlMs?: number },
+  ): AcquireLockInput {
+    if ("lockKey" in input && "owner" in input) {
+      return input;
+    }
+    return {
+      lockKey: input.lockName,
+      owner: input.ownerId,
+      ...(input.ttlMs != null ? { ttlMs: input.ttlMs } : {}),
+    };
+  }
+
+  acquire(input: AcquireLockInput | { lockName: string; ownerId: string; ttlMs?: number }): AcquireLockResult {
+    const normalized = this.normalizeAcquireInput(input);
+    const { lockKey, owner, ttlMs = 30000 } = normalized;
     const existing = this.db.prepare(`SELECT * FROM distributed_locks WHERE lock_key = ?`).get(lockKey) as { owner: string; fencing_token: number; status: string; acquired_at: string; ttl_ms: number } | undefined;
     if (existing) {
       if (existing.owner === owner && existing.status === "held") {
@@ -64,6 +80,10 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   }
 
   release(lockKey: string, owner: string): boolean {
+    if (typeof lockKey === "object" && lockKey != null) {
+      const legacyInput = lockKey as unknown as { lockName: string; ownerId: string };
+      return this.release(legacyInput.lockName, legacyInput.ownerId);
+    }
     try {
       const result = this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ? AND owner = ?`).run(lockKey, owner);
       return result.changes > 0;
@@ -103,6 +123,10 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   }
 
   inspect(lockKey: string): LockRecord | null {
+    if (typeof lockKey === "object" && lockKey != null) {
+      const legacyInput = lockKey as unknown as { lockName: string };
+      return this.inspect(legacyInput.lockName);
+    }
     try {
       const row = this.db.prepare(`SELECT * FROM distributed_locks WHERE lock_key = ?`).get(lockKey) as { lock_key: string; owner: string; fencing_token: number; status: string; acquired_at: string; ttl_ms: number; metadata: string } | undefined;
       return row
@@ -112,5 +136,9 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
       lockLogger.log({ level: "warn", message: "Lock inspect operation failed", data: { lockKey, error: err instanceof Error ? err.message : String(err) } });
       return null;
     }
+  }
+
+  public queryLock(lockKey: string): LockRecord | null {
+    return this.inspect(lockKey);
   }
 }

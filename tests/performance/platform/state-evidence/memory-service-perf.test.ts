@@ -9,28 +9,40 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
+import { join } from "node:path";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
-import { MemoryService } from "../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
-import { MemoryRetrievalService } from "../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
-import { SessionService } from "../../../src/platform/five-plane-state-evidence/memory/session-service.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { MemoryService } from "../../../../src/platform/five-plane-state-evidence/memory/memory-service.js";
+import { MemoryRetrievalService } from "../../../../src/platform/five-plane-state-evidence/memory/memory-retrieval-service.js";
+import { SessionSummaryService } from "../../../../src/platform/five-plane-state-evidence/memory/session-summary-service.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
+
+function createTempStore(): { db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
+  const workspace = createTempWorkspace("aa-perf-memory-");
+  const db = new SqliteDatabase(join(workspace, "memory-service-perf.db"));
+  db.migrate();
+  return { db, store: new AuthoritativeTaskStore(db), workspace };
+}
 
 test("performance: memory write >5000 ops/sec", (t) => {
-  const memoryService = new MemoryService();
+  const { db, store, workspace } = createTempStore();
+  const memoryService = new MemoryService(store);
 
   try {
     const iterations = 1000;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      memoryService.write({
-        userId: `user_${i % 100}`,
-        content: { type: "experience", data: `Memory content ${i}` },
-        memoryType: "experience",
-        importance: 0.5 + (i % 50) / 100,
-        tags: ["test", "performance"],
-        timestamp: nowIso(),
+      memoryService.remember({
+        taskId: `task_${i % 100}`,
+        scope: "experience",
+        content: { type: "experience", data: `Memory content ${i} for performance testing` },
+        classification: "internal",
+        qualityScore: 0.5 + (i % 50) / 100,
+        createdAt: nowIso(),
       });
     }
 
@@ -51,35 +63,35 @@ test("performance: memory write >5000 ops/sec", (t) => {
       throw err;
     }
   } finally {
-    // No cleanup needed for in-memory service
+    db.close();
+    cleanupPath(workspace);
   }
 });
 
 test("performance: memory retrieval >10000 ops/sec", (t) => {
-  const retrievalService = new MemoryRetrievalService();
+  const { db, store, workspace } = createTempStore();
+  const memoryService = new MemoryService(store);
+  const retrievalService = new MemoryRetrievalService(store);
 
   // Pre-populate some memories
   for (let i = 0; i < 100; i++) {
-    retrievalService.indexMemory({
-      memoryId: `mem_${i}`,
-      userId: `user_${i % 10}`,
-      content: `Memory content ${i}`,
-      memoryType: "experience",
-      importance: 0.5,
-      timestamp: nowIso(),
+    memoryService.remember({
+      taskId: `task_${i % 10}`,
+      scope: "experience",
+      content: `Memory content ${i} indexed for retrieval benchmarks`,
+      classification: "internal",
+      qualityScore: 0.5,
+      createdAt: nowIso(),
     });
   }
+  retrievalService.initializeFts();
 
   try {
     const iterations = 2000;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      retrievalService.search({
-        userId: `user_${i % 10}`,
-        query: "Memory content",
-        limit: 10,
-      });
+      retrievalService.searchMemories({ query: "Memory content", limit: 10 }, { taskId: `task_${i % 10}` });
     }
 
     const elapsed = performance.now() - start;
@@ -98,23 +110,24 @@ test("performance: memory retrieval >10000 ops/sec", (t) => {
       throw err;
     }
   } finally {
-    // No cleanup needed
+    db.close();
+    cleanupPath(workspace);
   }
 });
 
 test("performance: session creation >3000 ops/sec", (t) => {
-  const sessionService = new SessionService();
+  const { db, store, workspace } = createTempStore();
+  const sessionService = new SessionSummaryService(store);
 
   try {
     const iterations = 1000;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      sessionService.createSession({
+      sessionService.createSummary({
         sessionId: newId("session"),
-        userId: `user_session_${i}`,
-        divisionId: "general_ops",
-        createdAt: nowIso(),
+        taskId: `task_session_${i}`,
+        summaryText: `Session summary ${i} generated for throughput benchmarking`,
       });
     }
 
@@ -134,6 +147,7 @@ test("performance: session creation >3000 ops/sec", (t) => {
       throw err;
     }
   } finally {
-    // No cleanup needed
+    db.close();
+    cleanupPath(workspace);
   }
 });

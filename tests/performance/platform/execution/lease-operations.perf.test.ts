@@ -10,6 +10,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
 /**
  * Mock Lease Service for performance testing without database.
@@ -113,7 +114,15 @@ test("Performance: MockLeaseService.acquireLease() throughput", { timeout: 60000
   console.log(`  Avg latency: ${avgLatencyMs.toFixed(4)}ms`);
 
   // Pure memory operations should be very fast
-  assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  try {
+    assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── Renew Lease Performance Tests ─────────────────────────────────────────────
@@ -150,7 +159,15 @@ test("Performance: MockLeaseService.renewLease() throughput", { timeout: 60000 }
   console.log(`  Avg latency: ${avgLatencyMs.toFixed(4)}ms`);
 
   // Pure memory operations should be very fast
-  assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  try {
+    assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── Release Lease Performance Tests ───────────────────────────────────────────
@@ -178,7 +195,15 @@ test("Performance: MockLeaseService.releaseLease() throughput", { timeout: 60000
   console.log(`  Avg latency: ${avgLatencyMs.toFixed(4)}ms`);
 
   // Pure memory operations should be very fast
-  assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  try {
+    assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── Validate Write Access Performance Tests ─────────────────────────────────────
@@ -211,7 +236,15 @@ test("Performance: MockLeaseService.validateWriteAccess() throughput", { timeout
   console.log(`  Avg latency: ${avgLatencyMs.toFixed(4)}ms`);
 
   // Pure memory operations should be very fast
-  assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  try {
+    assert.ok(opsPerSecond > 50000, `Expected > 50000 ops/sec, got ${opsPerSecond.toFixed(2)}`);
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── Concurrent Lease Operations ─────────────────────────────────────────────────

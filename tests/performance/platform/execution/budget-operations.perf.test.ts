@@ -10,9 +10,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
-import { BudgetAllocator, BudgetTier } from "../../../../../src/platform/five-plane-execution/budget-allocator.js";
-import { RuntimeStateMachine } from "../../../../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { BudgetAllocator, BudgetTier } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 
 /**
  * Performance test configuration.
@@ -28,7 +28,6 @@ const DEFAULT_PERF_CONFIG: PerfConfig = {
 };
 
 function createTestLedger(ledgerId: string): ReturnType<typeof createBudgetLedger> {
-  const { createBudgetLedger } = require("../../../../../src/platform/contracts/executable-contracts/index.js");
   return createBudgetLedger({
     tenantId: "tenant-1",
     harnessRunId: `run-${ledgerId}`,

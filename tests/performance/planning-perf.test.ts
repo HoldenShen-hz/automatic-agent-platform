@@ -77,23 +77,24 @@ function createMinimalAssessment(): UnifiedAssessment {
 }
 
 function createMultiStepWorkflow(steps: number): PlannedWorkflow {
-  const executionSteps = Array.from({ length: steps }, (_, i) => ({
-    stepId: newId("step"),
+  const stepIds = Array.from({ length: steps }, () => newId("step"));
+  const executionSteps = stepIds.map((stepId, i) => ({
+    stepId,
     divisionId: "coding",
     roleId: i === 0 ? "planner" : "builder",
     inputKeys: i > 0 ? [`input_${i}`] : [],
     agentId: `agent_${i}`,
     outputKey: `output_${i}`,
     outputSchemaPath: null,
-    dependsOnStepIds: i > 0 ? [`step_${i - 1}`] : [],
+    dependsOnStepIds: i > 0 ? [stepIds[i - 1]!] : [],
     dependencyTypes: {} as Record<string, "hard" | "soft">,
     timeoutMs: 60000,
     maxAttempts: 1,
   }));
 
   const dependencyEdges = Array.from({ length: Math.max(0, steps - 1) }, (_, i) => ({
-    fromStepId: `step_${i}`,
-    toStepId: `step_${i + 1}`,
+    fromStepId: stepIds[i]!,
+    toStepId: stepIds[i + 1]!,
   }));
 
   return {

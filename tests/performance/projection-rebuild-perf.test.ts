@@ -36,6 +36,33 @@ function cleanupDb(db: SqliteDatabase): void {
 
 function createTestEvents(db: SqliteDatabase, count: number, taskId: string): void {
   const repo = new EventRepository(db.connection);
+  const createdAt = nowIso();
+
+  db.connection
+    .prepare(
+      `INSERT OR IGNORE INTO tasks
+       (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      taskId,
+      null,
+      taskId,
+      "general_ops",
+      "Projection rebuild performance task",
+      "pending",
+      "user",
+      "normal",
+      "{}",
+      "{}",
+      null,
+      0,
+      0,
+      null,
+      createdAt,
+      createdAt,
+      null,
+    );
 
   for (let i = 0; i < count; i++) {
     const eventType = i % 3 === 0 ? "task_status_changed" : i % 3 === 1 ? "task_output_available" : "task_completed";

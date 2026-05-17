@@ -12,8 +12,8 @@ import test from "node:test";
 import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 
 import { SlaOperationsService, type SlaTierProfile, type SlaOperationsRequest, type SlaObservation } from "../../../src/scale-ecosystem/sla-engine/sla-operations-service.js";
-import { SlaBreachDetector } from "../../../src/scale-ecosystem/sla-engine/breach-detector/sla-breach-detector.js";
-import { TierResolver } from "../../../src/scale-ecosystem/sla-engine/tier-resolver/tier-resolver.js";
+import { detectSlaBreach } from "../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
+import { resolveHighestPriorityTier } from "../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
 
 function createTier(overrides: Partial<SlaTierProfile> = {}): SlaTierProfile {
   return {
@@ -95,8 +95,6 @@ test("performance: SLA evaluation throughput >5000 ops/sec", (t) => {
 });
 
 test("performance: breach detection >3000 ops/sec", (t) => {
-  const detector = new SlaBreachDetector();
-
   const tiers = [
     createTier({ tierId: "standard", targetLatencyMs: 1000, targetSuccessRate: 0.99 }),
   ];
@@ -106,15 +104,18 @@ test("performance: breach detection >3000 ops/sec", (t) => {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      detector.checkBreaches({
-        tiers,
-        observation: createObservation({
+      detectSlaBreach(
+        createObservation({
           latencyMs: 1200,
           successRate: 0.98,
           queueWaitMs: 3500,
         }),
-        observedAt: new Date().toISOString(),
-      });
+        {
+          maxLatencyMs: tiers[0]!.targetLatencyMs,
+          minSuccessRate: tiers[0]!.targetSuccessRate,
+          maxQueueWaitMs: tiers[0]!.maxQueueWaitMs,
+        },
+      );
     }
 
     const elapsed = performance.now() - start;
@@ -138,8 +139,6 @@ test("performance: breach detection >3000 ops/sec", (t) => {
 });
 
 test("performance: tier resolution >10000 ops/sec", (t) => {
-  const resolver = new TierResolver();
-
   const tiers = [
     createTier({ tierId: "bronze", priority: 1 }),
     createTier({ tierId: "silver", priority: 2 }),
@@ -151,12 +150,7 @@ test("performance: tier resolution >10000 ops/sec", (t) => {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      resolver.resolveTier({
-        tiers,
-        workflowClass: "deterministic",
-        requiredLatencyMs: 500,
-        requiredSuccessRate: 0.999,
-      });
+      resolveHighestPriorityTier(tiers, null);
     }
 
     const elapsed = performance.now() - start;

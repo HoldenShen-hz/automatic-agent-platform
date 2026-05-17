@@ -9,7 +9,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { newId } from "../../src/platform/contracts/types/ids.js";
-import { ComplexityRouter } from "../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 import { routeComplexity, type ComplexityRouterConfig } from "../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 import { createKvCachePrefixConfig, estimateTokens } from "../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
 import { LoopDetectionState, hashToolCall, normalizeToolInputForHash } from "../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
@@ -21,7 +20,6 @@ import { WorkflowPlanner } from "../../src/platform/five-plane-orchestration/rou
 // ============================================================================
 
 test("performance: ComplexityRouter routeComplexity() for simple request P99 < 10ms", () => {
-  const router = new ComplexityRouter();
   const iterations = 1000;
 
   // Warmup
@@ -403,14 +401,13 @@ test("performance: IntakeRouter + WorkflowPlanner combined P99 < 150ms", () => {
 });
 
 test("performance: ComplexityRouter + IntakeRouter + WorkflowPlanner P99 < 200ms", () => {
-  const complexityRouter = new ComplexityRouter();
   const intakeRouter = new IntakeRouter();
   const planner = new WorkflowPlanner();
   const iterations = 30;
 
   // Warmup
   for (let i = 0; i < 2; i++) {
-    const complexity = routeComplexity("Build a feature");
+    routeComplexity("Build a feature");
     const routing = intakeRouter.route({ title: "Test", request: "Build a feature" });
     planner.plan({ workflowId: routing.workflowId, request: "Build a feature" });
   }

@@ -10,12 +10,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
-import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 function createTempDb(): { db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
   const workspace = createTempWorkspace("aa-perf-truth-");
@@ -110,7 +110,7 @@ test("performance: truth repository task query by status >10000 ops/sec", (t) =>
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.getTasksByStatus("pending");
+      store.listTasks(1000).filter((task) => task.status === "pending");
     }
 
     const elapsed = performance.now() - start;
@@ -136,6 +136,7 @@ test("performance: truth repository task query by status >10000 ops/sec", (t) =>
 
 test("performance: truth repository execution lookup >8000 ops/sec", (t) => {
   const { db, store, workspace } = createTempDb();
+  let firstExecId = "";
 
   // Insert task and execution pairs
   for (let i = 0; i < 200; i++) {
@@ -188,12 +189,13 @@ test("performance: truth repository execution lookup >8000 ops/sec", (t) => {
       createdAt: nowIso(),
       updatedAt: nowIso(),
     });
+
+    if (firstExecId === "") {
+      firstExecId = executionId;
+    }
   }
 
   try {
-    const executions = store.execution.getExecutionsForTask(store.getTasksByStatus("pending")[0]?.id ?? "");
-    const firstExecId = executions[0]?.id ?? "";
-
     const iterations = 1000;
     const start = performance.now();
 

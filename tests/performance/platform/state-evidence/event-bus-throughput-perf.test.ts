@@ -11,14 +11,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
-import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
-import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
-import { DurableEventBus } from "../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
-import { seedTaskAndExecution } from "../../helpers/seed.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-facade.js";
+import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createTempDb(): { db: SqliteDatabase; workspace: string } {
   const workspace = createTempWorkspace("aa-perf-event-bus-");
@@ -39,10 +38,8 @@ test("performance: event bus publishes >5000 events/sec", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       bus.publish({
-        eventType: "task:status_changed",
-        taskId: `task-perf-${i}`,
-        executionId: `exec-perf-${i}`,
-        traceId: newId("trace"),
+        eventType: "perf:test_event",
+        taskId: null,
         payload: { index: i },
       });
     }
@@ -81,10 +78,8 @@ test("performance: event bus handles burst of 1000 events", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       bus.publish({
-        eventType: "task:created",
-        taskId: `task-burst-${i}`,
-        executionId: `exec-burst-${i}`,
-        traceId: newId("trace"),
+        eventType: "perf:burst_event",
+        taskId: null,
         payload: { burstIndex: i },
       });
     }
@@ -133,10 +128,8 @@ test("performance: event bus subscription delivery scales with subscribers", (t)
 
       for (let i = 0; i < iterations; i++) {
         bus.publish({
-          eventType: "task:updated",
-          taskId: `task-scale-${i}`,
-          executionId: `exec-scale-${i}`,
-          traceId: newId("trace"),
+          eventType: "perf:test_event",
+          taskId: null,
           payload: { scaleIndex: i, subscriberCount: subCount },
         });
       }

@@ -319,43 +319,42 @@ test("performance: RuntimeTruthRepository snapshot memory overhead <10MB for 100
 
 test("performance: RuntimeTruthRepository snapshot with 1000 events <150ms", (t) => {
   const repo = new RuntimeTruthRepository();
-  const stateMachine = new RuntimeStateMachine();
-
-  // Seed a harness run first
-  const harnessRun: HarnessRun = {
-    harnessRunId: newId("harness"),
-    taskId: newId("task"),
-    workflowId: "test_workflow",
-    status: "running",
-    attempt: 1,
-    agentId: "test_agent",
-    roleId: "test_role",
-    sandboxMode: "workspace_write",
-    allowedToolsJson: "[]",
-    allowedPathsJson: "[]",
-    maxRetries: 3,
-    retryBackoff: "exponential",
-    budgetUsdLimit: 1.0,
-    requiresApproval: false,
-    fenceVersion: 1,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    startedAt: nowIso(),
-    finishedAt: null,
-    lastError: null,
-    leaseId: null,
-    fencingToken: null,
-  };
+  const stateMachine = new RuntimeStateMachine({ persistEvent: () => undefined });
+  let harnessRun = stateMachine.createHarnessRunAggregate(newId("harness"));
   repo.seed("HarnessRun", harnessRun);
 
-  // Append events via transitions
-  for (let i = 0; i < 1000; i++) {
-    repo.transition({
+  const steadyStateTransitions = ["paused", "resuming", "running"] as const;
+  let eventIndex = 0;
+
+  const applyHarnessTransition = (toStatus: typeof steadyStateTransitions[number] | "admitted" | "planning" | "ready") => {
+    const result = repo.transition({
+      commandId: `truth-snapshot-cmd-${eventIndex}`,
+      entityType: "HarnessRun",
+      entityId: harnessRun.harnessRunId,
+      principal: "perf-test",
       aggregateType: "HarnessRun",
       aggregate: harnessRun,
-      commandType: "HarnessRun.admit",
-      auditRef: `test_event_${i}`,
+      fromStatus: harnessRun.status,
+      toStatus,
+      traceId: harnessRun.traceId,
+      tenantId: harnessRun.tenantId,
+      reasonCode: "performance.snapshot_benchmark",
+      emittedBy: "perf-test",
+      runVersionLockId: harnessRun.versionLockId,
+      leaseId: harnessRun.leaseId,
+      fencingToken: harnessRun.fencingToken,
     });
+    harnessRun = result.aggregate;
+    eventIndex += 1;
+  };
+
+  applyHarnessTransition("admitted");
+  applyHarnessTransition("planning");
+  applyHarnessTransition("ready");
+  applyHarnessTransition("running");
+
+  while (eventIndex < 1000) {
+    applyHarnessTransition(steadyStateTransitions[(eventIndex - 4) % steadyStateTransitions.length]!);
   }
 
   const iterations = 20;

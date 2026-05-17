@@ -20,6 +20,82 @@ import { rmSync } from "node:fs";
 
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
+function insertTask(db: SqliteDatabase, id: string, status: string = "pending"): void {
+  const timestamp = new Date().toISOString();
+  db.connection
+    .prepare(
+      `INSERT INTO tasks (
+        id, parent_id, root_id, division_id, title, status, source, priority,
+        input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd,
+        error_code, created_at, updated_at, completed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      null,
+      id,
+      "general_ops",
+      `Task ${id}`,
+      status,
+      "user",
+      "normal",
+      "{}",
+      "{}",
+      null,
+      0,
+      0,
+      null,
+      timestamp,
+      timestamp,
+      null,
+    );
+}
+
+function insertExecution(
+  db: SqliteDatabase,
+  id: string,
+  taskId: string,
+  status: string = "running",
+): void {
+  const timestamp = new Date().toISOString();
+  db.connection
+    .prepare(
+      `INSERT INTO executions (
+        id, task_id, workflow_id, parent_execution_id, agent_id, role_id, run_kind, status,
+        input_ref, trace_id, attempt, timeout_ms, budget_usd_limit, requires_approval,
+        sandbox_mode, allowed_tools_json, allowed_paths_json, max_retries, retry_backoff,
+        last_error_code, last_error_message, started_at, finished_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      taskId,
+      null,
+      null,
+      "perf-agent",
+      null,
+      "task_execution",
+      status,
+      null,
+      `trace-${id}`,
+      1,
+      30000,
+      null,
+      0,
+      null,
+      null,
+      null,
+      0,
+      "none",
+      null,
+      null,
+      timestamp,
+      null,
+      timestamp,
+      timestamp,
+    );
+}
+
 function createTempDb(): SqliteDatabase {
   const dbPath = join(".tmp", `sqlite-query-perf-${process.pid}-${Date.now()}.db`);
   const db = new SqliteDatabase(dbPath);
@@ -43,12 +119,8 @@ test("performance: simple SELECT query <1ms P99", (t) => {
 
   try {
     // Insert test data
-    db.connection
-      .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run("test-1", "Test Task 1", "pending", "normal", new Date().toISOString(), new Date().toISOString());
-    db.connection
-      .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run("test-2", "Test Task 2", "in_progress", "high", new Date().toISOString(), new Date().toISOString());
+    insertTask(db, "test-1", "pending");
+    insertTask(db, "test-2", "in_progress");
 
     const latencies: number[] = [];
     const iterations = 1000;
@@ -94,9 +166,7 @@ test("performance: simple INSERT throughput >10000 ops/sec", (t) => {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`task-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `task-${i}`, "pending");
     }
 
     const elapsed = performance.now() - start;
@@ -129,13 +199,8 @@ test("performance: complex SELECT with JOIN <5ms P99", (t) => {
   try {
     // Insert test data across multiple tables
     for (let i = 0; i < 100; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`task-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
-
-      db.connection
-        .prepare(`INSERT INTO executions (id, task_id, status, created_at) VALUES (?, ?, ?, ?)`)
-        .run(`exec-${i}`, `task-${i}`, "running", new Date().toISOString());
+      insertTask(db, `task-${i}`, "pending");
+      insertExecution(db, `exec-${i}`, `task-${i}`, "running");
     }
 
     const latencies: number[] = [];
@@ -184,9 +249,7 @@ test("performance: aggregate query <3ms P99", (t) => {
   try {
     // Insert test data
     for (let i = 0; i < 1000; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`task-${i}`, `Task ${i}`, i % 2 === 0 ? "pending" : "completed", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `task-${i}`, i % 2 === 0 ? "pending" : "completed");
     }
 
     const latencies: number[] = [];
@@ -242,9 +305,7 @@ test("performance: transaction throughput >5000 ops/sec", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       db.transaction(() => {
-        db.connection
-          .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(`txn-task-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `txn-task-${i}`, "pending");
       });
     }
 
@@ -278,9 +339,7 @@ test("performance: transaction P99 latency <2ms", (t) => {
     // Warmup
     for (let i = 0; i < 10; i++) {
       db.transaction(() => {
-        db.connection
-          .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(`warmup-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `warmup-${i}`, "pending");
       });
     }
 
@@ -288,9 +347,7 @@ test("performance: transaction P99 latency <2ms", (t) => {
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
       db.transaction(() => {
-        db.connection
-          .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(`txn-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `txn-${i}`, "pending");
       });
       latencies.push(performance.now() - start);
     }
@@ -329,9 +386,7 @@ test("performance: bulk INSERT of 1000 rows <100ms", (t) => {
 
     db.transaction(() => {
       for (let i = 0; i < rowCount; i++) {
-        db.connection
-          .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(`bulk-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+        insertTask(db, `bulk-${i}`, "pending");
       }
     });
 
@@ -365,9 +420,7 @@ test("performance: batch operations scale linearly", (t) => {
       const start = performance.now();
       db.transaction(() => {
         for (let i = 0; i < batchSize; i++) {
-          db.connection
-            .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-            .run(`batch-${batchSize}-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+          insertTask(db, `batch-${batchSize}-${i}`, "pending");
         }
       });
       const elapsed = performance.now() - start;
@@ -405,9 +458,7 @@ test("performance: WAL checkpoint <50ms", (t) => {
   try {
     // Generate some WAL content
     for (let i = 0; i < 1000; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`wal-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+      insertTask(db, `wal-${i}`, "pending");
     }
 
     const start = performance.now();
@@ -441,9 +492,7 @@ test("performance: read transaction throughput >10000 ops/sec", (t) => {
   try {
     // Insert test data
     for (let i = 0; i < 100; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`read-txn-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+      insertTask(db, `read-txn-${i}`, "pending");
     }
 
     const iterations = 5000;
@@ -481,9 +530,7 @@ test("performance: read transaction P99 latency <0.5ms", (t) => {
   try {
     // Insert test data
     for (let i = 0; i < 100; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`read-lat-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+      insertTask(db, `read-lat-${i}`, "pending");
     }
 
     const latencies: number[] = [];
@@ -536,9 +583,7 @@ test("performance: handles 10000 queries without degradation", (t) => {
   try {
     // Insert test data
     for (let i = 0; i < 100; i++) {
-      db.connection
-        .prepare(`INSERT INTO tasks (id, title, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(`stress-${i}`, `Task ${i}`, "pending", "normal", new Date().toISOString(), new Date().toISOString());
+      insertTask(db, `stress-${i}`, "pending");
     }
 
     const iterations = 10000;

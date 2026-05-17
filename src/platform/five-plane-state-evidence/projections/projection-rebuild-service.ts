@@ -202,6 +202,10 @@ export class ProjectionRebuildService {
     this.registry.register(projectionName, handler);
   }
 
+  public listProjectionNames(): string[] {
+    return this.registry.listProjectionNames();
+  }
+
   /**
    * Rebuild a specific projection from scratch
    */

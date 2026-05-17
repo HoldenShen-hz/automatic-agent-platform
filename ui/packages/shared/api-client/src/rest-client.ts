@@ -391,17 +391,14 @@ export class DefaultRESTClient implements RESTClient {
 }
 
 export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>): RESTClient {
-  const baseUrl = options?.baseUrl;
-  if (baseUrl != null) {
-    return new DefaultRESTClient((request) => new HttpTransport({
-      baseUrl,
-      acceptVersion: options.acceptVersion,
-      ...(options?.headers == null ? {} : { headers: options.headers }),
-      ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
-      fallbackToMock: options?.fallbackToMock ?? true,
-    }).send(request));
-  }
-  return new DefaultRESTClient((request) => new MockTransport().send(request));
+  const baseUrl = options?.baseUrl ?? "/api/v1";
+  return new DefaultRESTClient((request) => new HttpTransport({
+    baseUrl,
+    acceptVersion: options?.acceptVersion,
+    ...(options?.headers == null ? {} : { headers: options.headers }),
+    ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
+    fallbackToMock: options?.fallbackToMock ?? false,
+  }).send(request));
 }
 
 export function createRESTClient(options?: Partial<HttpTransportOptions>): RESTClient {

@@ -10,13 +10,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
-import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { ExecutionDispatchService } from "../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { ExecutionDispatchService } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 function createTempDb(): { db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
   const workspace = createTempWorkspace("aa-perf-dispatch-");
@@ -79,6 +79,7 @@ function seedTaskAndExecution(store: AuthoritativeTaskStore, taskId: string, exe
 }
 
 function upsertWorkerSnapshot(store: AuthoritativeTaskStore, workerId: string): void {
+  const occurredAt = nowIso();
   store.upsertWorkerSnapshot({
     workerId,
     status: "idle",
@@ -91,16 +92,29 @@ function upsertWorkerSnapshot(store: AuthoritativeTaskStore, workerId: string): 
     credentialRefreshSuccessRate: null,
     sessionConsistencyCheckStatus: null,
     sessionConsistencyCheckedAt: null,
-    admittedAt: nowIso(),
-    lastHeartbeatAt: nowIso(),
-    currentTaskExecutionId: null,
-    currentTaskId: null,
-    allowedTierIds: null,
-    blockedReason: null,
-    poolSize: 1,
-    activeWorkItems: 0,
-    maxConcurrentTasks: 5,
-    version: 1,
+    workspaceSyncStatus: null,
+    workspaceSyncCheckedAt: null,
+    saturation: 0,
+    activeLeaseCount: 0,
+    meanStartupLatencyMs: null,
+    sandboxSuccessRate: null,
+    repoCacheHitRate: null,
+    registrationVerifiedAt: null,
+    registrationChallengeId: null,
+    capabilitiesJson: JSON.stringify(["code-execution"]),
+    runningExecutionsJson: "[]",
+    maxConcurrency: 5,
+    queueAffinity: "general_ops",
+    runtimeInstanceId: `runtime-${workerId}`,
+    restartedFromRuntimeInstanceId: null,
+    restartGeneration: 0,
+    cpuPct: 10,
+    memoryMb: 256,
+    toolBacklogCount: 0,
+    currentStepId: null,
+    lastProgressAt: occurredAt,
+    lastHeartbeatAt: occurredAt,
+    updatedAt: occurredAt,
   });
 }
 
@@ -117,18 +131,11 @@ test("performance: dispatch ticket creation >500 ops/sec", (t) => {
       const executionId = newId("exec");
       seedTaskAndExecution(store, taskId, executionId);
 
-      dispatchService.createExecutionTicket({
-        taskId,
+      dispatchService.createTicket({
         executionId,
         priority: "normal",
-        runKind: "task_run",
-        workflowId: "perf_workflow",
-        divisionId: "general_ops",
-        sandboxMode: "workspace_write",
-        allowedTools: [],
-        allowedPaths: [],
-        maxRetries: 0,
-        timeoutMs: 60_000,
+        queueName: "general_ops",
+        occurredAt: nowIso(),
       });
     }
 
@@ -171,18 +178,11 @@ test("performance: dispatch decision evaluation >1000 ops/sec", (t) => {
       const executionId = newId("exec");
       seedTaskAndExecution(store, taskId, executionId);
 
-      dispatchService.createExecutionTicket({
-        taskId,
+      dispatchService.createTicket({
         executionId,
         priority: "normal",
-        runKind: "task_run",
-        workflowId: "perf_workflow",
-        divisionId: "general_ops",
-        sandboxMode: "workspace_write",
-        allowedTools: [],
-        allowedPaths: [],
-        maxRetries: 0,
-        timeoutMs: 60_000,
+        queueName: "general_ops",
+        occurredAt: nowIso(),
       });
     }
 
@@ -229,18 +229,11 @@ test("performance: dispatch scales with worker pool size", (t) => {
         const executionId = newId("exec");
         seedTaskAndExecution(store, taskId, executionId);
 
-        dispatchService.createExecutionTicket({
-          taskId,
+        dispatchService.createTicket({
           executionId,
           priority: "normal",
-          runKind: "task_run",
-          workflowId: "perf_workflow",
-          divisionId: "general_ops",
-          sandboxMode: "workspace_write",
-          allowedTools: [],
-          allowedPaths: [],
-          maxRetries: 0,
-          timeoutMs: 60_000,
+          queueName: "general_ops",
+          occurredAt: nowIso(),
         });
       }
 

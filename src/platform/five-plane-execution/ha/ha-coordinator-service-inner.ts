@@ -73,6 +73,7 @@ export class HaCoordinatorService {
     private readonly db: AuthoritativeSqlDatabase,
     options?: HaCoordinatorServiceOptions,
   ) {
+    this.db.connection.exec(HA_COORDINATOR_DDL);
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
     this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
@@ -591,6 +592,21 @@ export class HaCoordinatorService {
     return (this.db.connection
       .prepare(`SELECT * FROM leadership_epochs ORDER BY epoch DESC LIMIT ?`)
       .all(limit) as RawRow[]).map((r) => mapEpoch(r));
+  }
+
+  /**
+   * Legacy benchmark compatibility helper.
+   * Registers the node if needed, then forces a fresh leadership epoch.
+   */
+  incrementEpoch(input: { nodeId: string; region?: string; reason?: string }): LeadershipEpoch {
+    if (this.getNode(input.nodeId) == null) {
+      this.registerNode(input.nodeId, input.region ?? "unknown");
+    }
+    this.acquireLeadership({
+      nodeId: input.nodeId,
+      forceAcquire: true,
+    });
+    return this.getLatestEpoch();
   }
 
   // ── Failover ───────────────────────────────────────────────────────

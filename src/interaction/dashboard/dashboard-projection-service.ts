@@ -127,6 +127,32 @@ export class DashboardProjectionService {
   }
 
   /**
+   * Legacy benchmark helper retained for older performance suites.
+   */
+  public generateProjection(input: {
+    taskId: string;
+    executionId?: string;
+    timestamp?: string;
+  }): DashboardProjectionState {
+    return this.buildStateFromProjections([
+      {
+        projectionId: newId("projection"),
+        sourceEventId: input.executionId ?? input.taskId,
+        projectionName: "task_summary",
+        entityRef: input.taskId,
+        state: {
+          taskId: input.taskId,
+          executionId: input.executionId ?? null,
+          taskStatus: "running",
+          tenantId: null,
+          latencyMs: 0,
+        },
+        updatedAt: input.timestamp ?? nowIso(),
+      },
+    ]);
+  }
+
+  /**
    * Gets all pending deltas since last emission.
    *
    * @returns Array of pending deltas

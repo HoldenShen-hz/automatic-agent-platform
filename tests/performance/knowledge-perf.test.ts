@@ -113,7 +113,7 @@ test("performance: KnowledgeQueryService async queryAdaptive P99 < 300ms", () =>
 
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    service.queryAdaptive("testing", { namespace: "docs" });
+    service.queryAdaptive("testing", { namespace: "shared" });
     latencies.push(performance.now() - start);
   }
 
