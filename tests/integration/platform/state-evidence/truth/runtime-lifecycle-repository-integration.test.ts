@@ -205,7 +205,7 @@ test("RuntimeLifecycleRepository updateWorkflowStateCas prevents stale updates",
     let affected = ctx.db.transaction(() => {
       return ctx.store.workflow.updateWorkflowStateCas(
         taskId,
-        1, // expected version
+        0, // expected current step index
         "running",
         "running",
         1,
@@ -219,7 +219,7 @@ test("RuntimeLifecycleRepository updateWorkflowStateCas prevents stale updates",
     affected = ctx.db.transaction(() => {
       return ctx.store.workflow.updateWorkflowStateCas(
         taskId,
-        1, // stale version - should be 2 now
+        0, // stale step index - should be 1 now
         "running",
         "running",
         2,

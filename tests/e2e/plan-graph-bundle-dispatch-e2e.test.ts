@@ -169,8 +169,7 @@ test("E2E PlanGraphBundle: runMultiStepOrchestration with oapeflir://plan create
       assert.ok(snapshot.task, "Snapshot should contain task");
       assert.ok(snapshot.workflow, "Snapshot should contain workflow");
       assert.ok(snapshot.session, "Snapshot should contain session");
-// @ts-ignore
-      assert.ok(snapshot.executions, "Snapshot should contain executions array");
+      assert.ok(snapshot.execution, "Snapshot should contain current execution");
 
     } finally {
       harness.cleanup();

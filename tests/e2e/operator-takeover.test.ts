@@ -72,6 +72,7 @@ function insertTaskAndExecution(
   executionId: string,
   traceId: string,
   status: ExecutionStatus = "executing",
+  sessionId: string = `${taskId}-session`,
 ): void {
   const now = nowIso();
   db.transaction(() => {
@@ -122,6 +123,15 @@ function insertTaskAndExecution(
       createdAt: now,
       updatedAt: now,
     });
+    store.insertSession({
+      id: sessionId,
+      taskId,
+      channel: "cli",
+      status: "open",
+      externalSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 }
 
@@ -133,9 +143,10 @@ test("E2E: operator takeover - operator can take over executing task", () => {
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
     const operatorId = newId("operator");
 
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing", sessionId);
 
     // Create takeover session for operator
     const takeoverSessionId = newId("takeover-sess");
@@ -171,9 +182,10 @@ test("E2E: operator takeover - task status reflects takeover in progress", () =>
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
     const operatorId = newId("operator");
 
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing", sessionId);
 
     // Create active takeover session
     const takeoverSessionId = newId("takeover-sess");
@@ -211,9 +223,10 @@ test("E2E: operator takeover - takeover session can be closed and task resumed",
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
     const operatorId = newId("operator");
 
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing", sessionId);
 
     // Create takeover session
     const takeoverSessionId = newId("takeover-sess");
@@ -256,9 +269,10 @@ test("E2E: operator takeover - task can complete after takeover ends", () => {
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
     const operatorId = newId("operator");
 
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "executing", sessionId);
 
     // Create and close takeover session
     const takeoverSessionId = newId("takeover-sess");
@@ -281,7 +295,7 @@ test("E2E: operator takeover - task can complete after takeover ends", () => {
     // Task reaches terminal state
     ts.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId: execId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "running",

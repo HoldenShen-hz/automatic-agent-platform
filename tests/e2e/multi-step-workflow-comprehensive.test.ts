@@ -700,7 +700,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
 
     // Verify resumable state
     let workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow!.resumableFromStep, 1, "Should be resumable from step 1");
+    assert.equal(Number(workflow!.resumableFromStep), 1, "Should be resumable from step 1");
     assert.equal(workflow!.retryCount, 1, "Should have one retry count");
 
     // Retry: update state to running and resume from step 1

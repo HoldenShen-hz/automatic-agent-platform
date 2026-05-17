@@ -90,7 +90,7 @@ test("E2E Config Rollout: shouldApplyConfig respects deterministic hash percenta
     store.save(rollout);
 
     // Hash that falls within 50% should apply
-    const decisionWithin = service.shouldApplyConfig("runtime.maxRetries", "platform", null, "tenant-001");
+    const decisionWithin = service.shouldApplyConfig("runtime.maxRetries", "platform", null, "d");
     assert.equal(decisionWithin.shouldApply, true, "Hash within percentage should apply");
     assert.equal(decisionWithin.percentage, 50);
 

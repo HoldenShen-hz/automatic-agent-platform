@@ -1,119 +1,71 @@
-/**
- * E2E Tests for Compensation Manager Service
- *
- * End-to-end tests covering:
- * 1. Compensation planning
- * 2. Rollback execution
- * 3. Compensating action tracking
- * 4. Error handling during compensation
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { createE2EHarness } from "../../helpers/e2e-harness.js";
-// @ts-ignore
-import { CompensationManagerService } from "../../../src/platform/five-plane-execution/compensation-manager.js";
-// @ts-ignore
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-// @ts-ignore
-import type { CompensationPlan, CompensatingAction, WorkflowExecution } from "../../../src/platform/contracts/execution-schemas.js";
+import {
+  createSideEffectRecord,
+  type ArtifactRef,
+  type SideEffectRecord,
+} from "../../../../src/platform/contracts/executable-contracts/index.js";
+import {
+  CompensationManager,
+  type CompensationContext,
+} from "../../../../src/platform/five-plane-execution/compensation-manager.js";
 
-function createWorkflowExecution(overrides: Partial<WorkflowExecution> = {}): WorkflowExecution {
+const planArtifact: ArtifactRef = {
+  artifactId: "artifact-comp-1",
+  uri: "artifact://artifact-comp-1",
+  hash: "sha256:test",
+};
+
+function createSideEffect(overrides: Partial<SideEffectRecord> = {}): SideEffectRecord {
+  return createSideEffectRecord({
+    harnessRunId: overrides.harnessRunId ?? "hrun-comp-e2e",
+    nodeRunId: overrides.nodeRunId ?? "nrun-comp-e2e",
+    nodeAttemptId: overrides.nodeAttemptId ?? "attempt-comp-e2e",
+    effectKind: overrides.effectKind ?? "external_api",
+    idempotencyKey: overrides.idempotencyKey ?? "idem-comp-e2e",
+    status: overrides.status ?? "compensation_required",
+    riskClass: overrides.riskClass ?? "medium",
+    preCommitPolicyProofRef: overrides.preCommitPolicyProofRef ?? planArtifact,
+    ...(overrides.externalRef != null ? { externalRef: overrides.externalRef } : {}),
+  });
+}
+
+function createContext(): CompensationContext {
   return {
-    executionId: overrides.executionId ?? newId("exec"),
-    workflowId: overrides.workflowId ?? "wf_comp",
-    taskId: overrides.taskId ?? newId("task"),
-    status: overrides.status ?? "in_progress",
-    completedSteps: overrides.completedSteps ?? [],
-    failedStepIndex: overrides.failedStepIndex ?? null,
-    rollbackFromIndex: overrides.rollbackFromIndex ?? null,
-    compensationState: overrides.compensationState ?? "idle",
-    ...overrides,
+    tenantId: "tenant-e2e",
+    traceId: "trace-comp-e2e",
+    operatorId: "operator-e2e",
+    reason: "workflow repair",
   };
 }
 
-function createCompensatingAction(overrides: Partial<CompensatingAction> = {}): CompensatingAction {
-  return {
-    actionId: overrides.actionId ?? newId("action"),
-    stepIndex: overrides.stepIndex ?? 2,
-    actionType: overrides.actionType ?? "rollback",
-    targetStepOutput: overrides.targetStepOutput ?? {},
-    status: overrides.status ?? "pending",
-    errorMessage: overrides.errorMessage ?? null,
-    ...overrides,
-  };
-}
+test("E2E Compensation: plans compensation steps for a compensatable side effect", () => {
+  const manager = new CompensationManager();
+  const sideEffect = createSideEffect();
 
-test("E2E Compensation: Creates compensation plan for failed workflow", async () => {
-  const harness = createE2EHarness("aa-e2e-comp-plan-");
-  try {
-    const service = new CompensationManagerService(harness.store);
+  const plan = manager.planCompensation(sideEffect, createContext());
 
-    const workflow = createWorkflowExecution({
-      completedSteps: [
-        { stepIndex: 0, output: { result: "step_0" } },
-        { stepIndex: 1, output: { result: "step_1" } },
-        { stepIndex: 2, output: { result: "step_2" } },
-      ],
-      failedStepIndex: 3,
-    });
-
-    const plan = service.createCompensationPlan(workflow);
-
-    assert.ok(plan);
-    assert.equal(plan.executionId, workflow.executionId);
-    assert.ok(plan.actions.length > 0, "Should have compensating actions");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(plan.sideEffectId, sideEffect.sideEffectId);
+  assert.equal(plan.harnessRunId, sideEffect.harnessRunId);
+  assert.ok(plan.steps.length > 0);
 });
 
-test("E2E Compensation: Executes compensating actions in reverse order", async () => {
-  const harness = createE2EHarness("aa-e2e-comp-exec-");
-  try {
-    const service = new CompensationManagerService(harness.store);
+test("E2E Compensation: executes the generated compensation plan and emits evidence", () => {
+  const manager = new CompensationManager();
+  const sideEffect = createSideEffect({ externalRef: "ext-123" });
+  const plan = manager.planCompensation(sideEffect, createContext());
 
-    const workflow = createWorkflowExecution({
-      completedSteps: [
-        { stepIndex: 0, output: { resourceId: "resource_0" } },
-        { stepIndex: 1, output: { resourceId: "resource_1" } },
-      ],
-      failedStepIndex: 2,
-    });
+  const result = manager.executeCompensationSteps(plan, createContext());
 
-    const plan = service.createCompensationPlan(workflow);
-    const result = service.executeCompensation(plan);
-
-    assert.ok(result);
-// @ts-ignore
-    assert.equal(result.status, "completed" || result.status === "partial");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(result.success, true);
+  assert.equal(result.finalStatus, "succeeded");
+  assert.ok(result.evidenceRefs.length > 0);
 });
 
-test("E2E Compensation: Handles compensation failure gracefully", async () => {
-  const harness = createE2EHarness("aa-e2e-comp-fail-");
-  try {
-    const service = new CompensationManagerService(harness.store);
+test("E2E Compensation: high-impact compensation requires human approval", () => {
+  const manager = new CompensationManager();
 
-    const workflow = createWorkflowExecution({
-      completedSteps: [
-        { stepIndex: 0, output: { criticalResource: true } },
-      ],
-      failedStepIndex: 1,
-    });
-
-    const plan = service.createCompensationPlan(workflow);
-    plan.actions[0]!.status = "failed";
-
-    const result = service.executeCompensation(plan);
-
-    assert.ok(result.status === "failed" || result.status === "partial");
-    assert.ok(result.failedActions.length >= 0);
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(manager.requiresHumanApproval("high"), true);
+  assert.equal(manager.requiresHumanApproval("medium"), false);
 });

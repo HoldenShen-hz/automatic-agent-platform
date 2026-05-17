@@ -17,12 +17,16 @@ export interface DurableHarnessStore {
   listRecords(): DurableHarnessRecord[];
 }
 
+function resolveDurableHarnessRunId(run: Pick<HarnessRunRuntimeState, "runId" | "harnessRunId">): string {
+  return run.runId || run.harnessRunId;
+}
+
 export class InMemoryDurableHarnessStore implements DurableHarnessStore {
   private readonly runs = new Map<string, DurableHarnessRecord>();
   private readonly checkpoints = new Map<string, HarnessRunRuntimeState>();
 
   public saveRecord(record: DurableHarnessRecord): void {
-    this.runs.set(record.run.runId, record);
+    this.runs.set(resolveDurableHarnessRunId(record.run), record);
   }
 
   public getRecord(runId: string): DurableHarnessRecord | null {
@@ -70,7 +74,7 @@ export class SqliteDurableHarnessStore implements DurableHarnessStore {
         checkpoint_ref = excluded.checkpoint_ref,
         persisted_at = excluded.persisted_at
     `).run(
-      record.run.runId,
+      resolveDurableHarnessRunId(record.run),
       record.recordId,
       JSON.stringify(record.run),
       record.checkpointRef,

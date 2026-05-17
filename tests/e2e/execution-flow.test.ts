@@ -563,6 +563,16 @@ test("E2E: execution flow — multi-step workflow progression", () => {
     assert.equal(workflow?.currentStepIndex, 3, "Should be at final step index");
 
     // Complete task
+    h.transitions.transitionSessionStatus({
+      entityKind: "session",
+      entityId: sessionId,
+      fromStatus: "open",
+      toStatus: "streaming",
+      reasonCode: "session.streaming_started",
+      traceId,
+      actorType: "system",
+      occurredAt: nowIso(),
+    });
     h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "executing", "succeeded", traceId));
     h.transitions.transitionTaskTerminalState({
       taskId,

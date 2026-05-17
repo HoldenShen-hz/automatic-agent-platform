@@ -62,12 +62,12 @@ function createDelegationSpec(overrides: Partial<DelegationSpec> = {}): Delegati
 // Test: Single level delegation with permission propagation
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: single delegation propagates allowed permissions to delegate", () => {
+test("E2E Delegation: single delegation propagates allowed permissions to delegate", async () => {
   const service = createDelegationManager();
   const parent = createParentContext();
   const spec = createDelegationSpec();
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 
 // @ts-ignore
   assert.ok(handle.delegationId, "Should have delegation ID");
@@ -80,7 +80,7 @@ test("E2E Delegation: single delegation propagates allowed permissions to delega
 
   // Verify delegation record
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation, "Should retrieve delegation");
 // @ts-ignore
   assert.equal(delegation!.status, "pending", "New delegation should be pending");
@@ -94,13 +94,14 @@ test("E2E Delegation: single delegation propagates allowed permissions to delega
 // Test: Permission narrowing through delegation chain
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: permissions narrow at each delegation level", () => {
+test("E2E Delegation: permissions narrow at each delegation level", async () => {
   const service = createDelegationManager();
 
   // Level 1: Parent with full permissions
   const level1Parent = createParentContext({ agentId: "level0-agent" });
   const level1Spec = createDelegationSpec({
     targetAgentId: "level1-agent",
+    targetPackId: "pack-level1",
     requiredPermissions: {
       resources: ["resource-a", "resource-b"],
       actions: ["action-read", "action-write"],
@@ -108,11 +109,11 @@ test("E2E Delegation: permissions narrow at each delegation level", () => {
     },
   });
 
-  const handle1 = service.delegate(level1Parent, level1Spec);
+  const handle1 = await service.delegate(level1Parent, level1Spec);
 // @ts-ignore
   assert.equal(handle1.depth, 1, "Level 1 depth should be 1");
 // @ts-ignore
-  const delegation1 = service.getDelegation(handle1.delegationId);
+  const delegation1 = await service.getDelegation(handle1.delegationId);
 // @ts-ignore
   assert.deepEqual(delegation1!.grantedPermissions.resources, ["resource-a", "resource-b"]);
 
@@ -127,6 +128,7 @@ test("E2E Delegation: permissions narrow at each delegation level", () => {
 
   const level2Spec = createDelegationSpec({
     targetAgentId: "level2-agent",
+    targetPackId: "pack-level2",
     requiredPermissions: {
       resources: ["resource-a"],
       actions: ["action-read"],
@@ -134,11 +136,11 @@ test("E2E Delegation: permissions narrow at each delegation level", () => {
     },
   });
 
-  const handle2 = service.delegate(level2Parent, level2Spec);
+  const handle2 = await service.delegate(level2Parent, level2Spec);
 // @ts-ignore
   assert.equal(handle2.depth, 2, "Level 2 depth should be 2");
 // @ts-ignore
-  const delegation2 = service.getDelegation(handle2.delegationId);
+  const delegation2 = await service.getDelegation(handle2.delegationId);
 // @ts-ignore
   assert.deepEqual(delegation2!.grantedPermissions.resources, ["resource-a"], "Should be narrowed");
 // @ts-ignore
@@ -149,14 +151,14 @@ test("E2E Delegation: permissions narrow at each delegation level", () => {
 // Test: Multi-level delegation chain
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: multi-level chain creates complete delegation tree", () => {
+test("E2E Delegation: multi-level chain creates complete delegation tree", async () => {
   const service = createDelegationManager();
 
   // Root
   const root = createParentContext({ agentId: "root-agent" });
 
   // Level 1 delegation
-  const handle1 = service.delegate(root, createDelegationSpec({
+  const handle1 = await service.delegate(root, createDelegationSpec({
     targetAgentId: "level1-agent",
     targetPackId: "pack-level1",
   }));
@@ -171,7 +173,7 @@ test("E2E Delegation: multi-level chain creates complete delegation tree", () =>
     packId: "pack-level1",
     delegationDepth: 1,
   });
-  const handle2 = service.delegate(ctx1, createDelegationSpec({
+  const handle2 = await service.delegate(ctx1, createDelegationSpec({
     targetAgentId: "level2-agent",
     targetPackId: "pack-level2",
   }));
@@ -186,7 +188,7 @@ test("E2E Delegation: multi-level chain creates complete delegation tree", () =>
     packId: "pack-level2",
     delegationDepth: 2,
   });
-  const handle3 = service.delegate(ctx2, createDelegationSpec({
+  const handle3 = await service.delegate(ctx2, createDelegationSpec({
     targetAgentId: "level3-agent",
     targetPackId: "pack-level3",
   }));
@@ -194,7 +196,7 @@ test("E2E Delegation: multi-level chain creates complete delegation tree", () =>
   assert.equal(handle3.depth, 3);
 
   // Verify chain
-  const chain = service.getDelegationChain("root-agent");
+  const chain = await service.getDelegationChain("root-agent");
   assert.ok(chain, "Should have delegation chain");
 // @ts-ignore
   assert.equal(chain!.rootAgentId, "root-agent");
@@ -212,13 +214,16 @@ test("E2E Delegation: multi-level chain creates complete delegation tree", () =>
 // Test: Delegation depth limit enforcement
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegation depth limit is enforced", () => {
+test("E2E Delegation: delegation depth limit is enforced", async () => {
   const service = createDelegationManager({ maxDelegationDepth: 3 });
 
   const root = createParentContext({ agentId: "root-agent", delegationDepth: 0 });
 
   // Level 1 - OK
-  const handle1 = service.delegate(root, createDelegationSpec({ targetAgentId: "level1-agent" }));
+  const handle1 = await service.delegate(root, createDelegationSpec({
+    targetAgentId: "level1-agent",
+    targetPackId: "pack-level1",
+  }));
 // @ts-ignore
   assert.equal(handle1.depth, 1);
 
@@ -230,7 +235,10 @@ test("E2E Delegation: delegation depth limit is enforced", () => {
     packId: "pack-level1",
     delegationDepth: 1,
   });
-  const handle2 = service.delegate(ctx1, createDelegationSpec({ targetAgentId: "level2-agent" }));
+  const handle2 = await service.delegate(ctx1, createDelegationSpec({
+    targetAgentId: "level2-agent",
+    targetPackId: "pack-level2",
+  }));
 // @ts-ignore
   assert.equal(handle2.depth, 2);
 
@@ -242,7 +250,10 @@ test("E2E Delegation: delegation depth limit is enforced", () => {
     packId: "pack-level2",
     delegationDepth: 2,
   });
-  const handle3 = service.delegate(ctx2, createDelegationSpec({ targetAgentId: "level3-agent" }));
+  const handle3 = await service.delegate(ctx2, createDelegationSpec({
+    targetAgentId: "level3-agent",
+    targetPackId: "pack-level3",
+  }));
 // @ts-ignore
   assert.equal(handle3.depth, 3);
 
@@ -256,7 +267,10 @@ test("E2E Delegation: delegation depth limit is enforced", () => {
   });
 
   try {
-    service.delegate(ctx3, createDelegationSpec({ targetAgentId: "level4-agent" }));
+    await service.delegate(ctx3, createDelegationSpec({
+      targetAgentId: "level4-agent",
+      targetPackId: "pack-level4",
+    }));
     assert.fail("Should have thrown for exceeding depth limit");
   } catch (error) {
     assert.ok(error instanceof Error);
@@ -268,7 +282,7 @@ test("E2E Delegation: delegation depth limit is enforced", () => {
 // Test: Context isolation between delegator and delegate
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegate cannot access delegator's private resources", () => {
+test("E2E Delegation: delegate cannot access delegator's private resources", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext({
@@ -289,9 +303,9 @@ test("E2E Delegation: delegate cannot access delegator's private resources", () 
     },
   });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // Private resource should not be in granted permissions
 // @ts-ignore
@@ -304,22 +318,22 @@ test("E2E Delegation: delegate cannot access delegator's private resources", () 
 // Test: Delegation completion and cleanup
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegation completes and cleans up active state", () => {
+test("E2E Delegation: delegation completes and cleans up active state", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext();
   const spec = createDelegationSpec({ targetAgentId: "child-agent" });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 // @ts-ignore
   assert.equal(handle.status, "pending");
 
   // Complete the delegation
 // @ts-ignore
-  service.completeDelegation(handle.delegationId);
+  await service.completeDelegation(handle.delegationId);
 
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation!.status, "completed", "Delegation should be completed");
 // @ts-ignore
@@ -330,22 +344,22 @@ test("E2E Delegation: delegation completes and cleans up active state", () => {
 // Test: Delegation cancellation
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegation can be cancelled before completion", () => {
+test("E2E Delegation: delegation can be cancelled before completion", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext();
   const spec = createDelegationSpec({ targetAgentId: "child-agent" });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 // @ts-ignore
   assert.equal(handle.status, "pending");
 
   // Cancel the delegation
 // @ts-ignore
-  service.cancelDelegation(handle.delegationId);
+  await service.cancelDelegation(handle.delegationId);
 
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation!.status, "cancelled", "Delegation should be cancelled");
 });
@@ -354,7 +368,7 @@ test("E2E Delegation: delegation can be cancelled before completion", () => {
 // Test: Delegation timeout
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegation times out when child does not respond", () => {
+test("E2E Delegation: delegation times out when child does not respond", async () => {
   const service = createDelegationManager({ defaultTimeoutMs: 1000 });
 
   const parent = createParentContext();
@@ -363,16 +377,16 @@ test("E2E Delegation: delegation times out when child does not respond", () => {
     timeout: 1000, // 1 second timeout
   });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 // @ts-ignore
   assert.equal(handle.status, "pending");
 
   // Simulate timeout
 // @ts-ignore
-  service.handleDelegationTimeout(handle.delegationId);
+  await service.handleDelegationTimeout(handle.delegationId);
 
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation!.status, "timed_out", "Delegation should be timed_out");
 });
@@ -381,11 +395,14 @@ test("E2E Delegation: delegation times out when child does not respond", () => {
 // Test: Delegation chain retrieval by agent
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: chain can be retrieved for any agent in chain", () => {
+test("E2E Delegation: chain can be retrieved for any agent in chain", async () => {
   const service = createDelegationManager();
 
   const root = createParentContext({ agentId: "root-agent" });
-  const handle1 = service.delegate(root, createDelegationSpec({ targetAgentId: "level1-agent" }));
+  const handle1 = await service.delegate(root, createDelegationSpec({
+    targetAgentId: "level1-agent",
+    targetPackId: "pack-level1",
+  }));
 // @ts-ignore
   const ctx1 = service.createDelegationContext(handle1.delegationId, {
     agentId: "level1-agent",
@@ -393,14 +410,17 @@ test("E2E Delegation: chain can be retrieved for any agent in chain", () => {
     packId: "pack-level1",
     delegationDepth: 1,
   });
-  service.delegate(ctx1, createDelegationSpec({ targetAgentId: "level2-agent" }));
+  await service.delegate(ctx1, createDelegationSpec({
+    targetAgentId: "level2-agent",
+    targetPackId: "pack-level2",
+  }));
 
   // Get chain by any node
-  const chainFromRoot = service.getDelegationChain("root-agent");
+  const chainFromRoot = await service.getDelegationChain("root-agent");
 // @ts-ignore
   assert.equal(chainFromRoot!.nodes.length, 2);
 
-  const chainFromLevel1 = service.getDelegationChain("level1-agent");
+  const chainFromLevel1 = await service.getDelegationChain("level1-agent");
 // @ts-ignore
   assert.equal(chainFromLevel1!.nodes.length, 1);
 // @ts-ignore
@@ -411,7 +431,7 @@ test("E2E Delegation: chain can be retrieved for any agent in chain", () => {
 // Test: Nested delegation with different permission scopes
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: nested delegation creates hierarchical permission scopes", () => {
+test("E2E Delegation: nested delegation creates hierarchical permission scopes", async () => {
   const service = createDelegationManager();
 
   // Root coordinator with broad permissions
@@ -428,29 +448,31 @@ test("E2E Delegation: nested delegation creates hierarchical permission scopes",
   const dbWorkerSpec = createDelegationSpec({
     targetAgentId: "db-worker",
     targetAgentType: "specialist",
+    targetPackId: "pack-db-worker",
     requiredPermissions: {
       resources: ["db:read", "db:write"],
       actions: ["action-read", "action-write"],
       constraints: {},
     },
   });
-  const dbHandle = service.delegate(coordinator, dbWorkerSpec);
+  const dbHandle = await service.delegate(coordinator, dbWorkerSpec);
 
   // Second delegate: API worker (different narrow scope)
   const apiWorkerSpec = createDelegationSpec({
     targetAgentId: "api-worker",
     targetAgentType: "specialist",
+    targetPackId: "pack-api-worker",
     requiredPermissions: {
       resources: ["api:read", "api:write"],
       actions: ["action-read", "action-write"],
       constraints: {},
     },
   });
-  const apiHandle = service.delegate(coordinator, apiWorkerSpec);
+  const apiHandle = await service.delegate(coordinator, apiWorkerSpec);
 
   // Verify DB worker permissions
 // @ts-ignore
-  const dbDelegation = service.getDelegation(dbHandle.delegationId);
+  const dbDelegation = await service.getDelegation(dbHandle.delegationId);
 // @ts-ignore
   assert.deepEqual(dbDelegation!.grantedPermissions.resources, ["db:read", "db:write"]);
 // @ts-ignore
@@ -458,7 +480,7 @@ test("E2E Delegation: nested delegation creates hierarchical permission scopes",
 
   // Verify API worker permissions
 // @ts-ignore
-  const apiDelegation = service.getDelegation(apiHandle.delegationId);
+  const apiDelegation = await service.getDelegation(apiHandle.delegationId);
 // @ts-ignore
   assert.deepEqual(apiDelegation!.grantedPermissions.resources, ["api:read", "api:write"]);
 // @ts-ignore
@@ -469,7 +491,7 @@ test("E2E Delegation: nested delegation creates hierarchical permission scopes",
 // Test: Delegation with correlation ID propagation
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: correlation ID propagates through delegation chain", () => {
+test("E2E Delegation: correlation ID propagates through delegation chain", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext({
@@ -477,19 +499,23 @@ test("E2E Delegation: correlation ID propagates through delegation chain", () =>
     correlationId: "corr-123-abc",
   });
 
-  const handle = service.delegate(parent, createDelegationSpec({ targetAgentId: "child-agent" }));
+  const handle = await service.delegate(parent, createDelegationSpec({ targetAgentId: "child-agent" }));
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
 // @ts-ignore
-  assert.equal(delegation!.correlationId, "corr-123-abc", "Should propagate correlation ID");
+  assert.equal(
+    delegation!.correlationId,
+    "corr-123-abc:child-agent",
+    "Should scope correlation ID to the delegated child agent",
+  );
 });
 
 // ---------------------------------------------------------------------------
 // Test: Delegation approval required for high-risk operations
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: high-risk delegation requires explicit approval", () => {
+test("E2E Delegation: high-risk delegation requires explicit approval", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext({
@@ -511,7 +537,7 @@ test("E2E Delegation: high-risk delegation requires explicit approval", () => {
     requiresApproval: true,
   });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 
 // @ts-ignore
   assert.equal(handle.status, "pending_approval", "Should require approval");
@@ -523,15 +549,15 @@ test("E2E Delegation: high-risk delegation requires explicit approval", () => {
 // Test: Delegation audit trail
 // ---------------------------------------------------------------------------
 
-test("E2E Delegation: delegation creates proper audit trail", () => {
+test("E2E Delegation: delegation creates proper audit trail", async () => {
   const service = createDelegationManager();
 
   const parent = createParentContext({ agentId: "auditor-parent" });
   const spec = createDelegationSpec({ targetAgentId: "audited-child" });
 
-  const handle = service.delegate(parent, spec);
+  const handle = await service.delegate(parent, spec);
 // @ts-ignore
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
 // @ts-ignore
   assert.ok(delegation!.delegationId, "Should have delegation ID");

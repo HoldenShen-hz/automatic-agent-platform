@@ -151,6 +151,9 @@ export class DelegatedGovernanceService {
     const reasons: string[] = [];
 
     for (const guardrail of allGuardrails) {
+      if (!guardrailAppliesToOperation(guardrail, operation)) {
+        continue;
+      }
       if (attemptedValue === undefined) {
         violatedGuardrails.push(guardrail.guardrailId);
         reasons.push(`Guardrail ${guardrail.guardrailId} requires an attempted value`);
@@ -258,5 +261,29 @@ export class DelegatedGovernanceService {
       default:
         return { allowed: false, reason: "Unknown action" };
     }
+  }
+}
+
+function guardrailAppliesToOperation(
+  guardrail: Guardrail,
+  operation: GovernanceOperationType,
+): boolean {
+  const guardrailType: string | undefined = guardrail.type ?? (guardrail as { guardrailType?: string }).guardrailType;
+  switch (guardrailType) {
+    case "budget_limit":
+    case "max_budget":
+      return operation === "approve_task" ||
+        operation === "approve_budget_increase" ||
+        operation === "domain_onboarding" ||
+        operation === "modify_approval_rules" ||
+        operation === "adjust_agent_autonomy";
+    case "max_risk_level":
+      return operation === "approve_task" ||
+        operation === "domain_onboarding" ||
+        operation === "adjust_agent_autonomy";
+    case "forbidden_tools":
+      return operation === "publish_pack" || operation === "adjust_agent_autonomy";
+    default:
+      return true;
   }
 }

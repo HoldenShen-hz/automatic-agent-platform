@@ -66,6 +66,7 @@ export const PlanSchema = z.object({
 export type PlanStrategy = z.infer<typeof PlanStrategySchema>;
 export type PlanStepStatus = z.infer<typeof PlanStepStatusSchema>;
 export type PlanStep = z.output<typeof PlanStepSchema>;
+export type PlanGraphNode = z.output<typeof PlanGraphNodeSchema>;
 export type Plan = z.output<typeof PlanSchema>;
 
 export function parsePlan(input: unknown): Plan {

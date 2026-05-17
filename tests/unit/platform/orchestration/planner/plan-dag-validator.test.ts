@@ -204,8 +204,7 @@ test("PlanDagValidator returns original steps on cycle", () => {
 
   assert.equal(result.valid, false);
   assert.ok(result.issues.includes("planning.cycle_detected"));
-  // When cycle detected, orderedSteps contains original order
-  assert.equal(result.orderedSteps.length, 3);
+  assert.equal(result.orderedSteps.length, 0);
 });
 
 test("PlanDagValidator validates steps with no dependencies", () => {

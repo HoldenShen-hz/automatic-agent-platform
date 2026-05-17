@@ -443,10 +443,20 @@ class TaskTerminalTransitionService {
     const workflowTerminal: WorkflowStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
-    const shouldTransitionExecution = input.currentExecutionStatus !== executionTerminal;
+    const currentWorkflow = this.repository.getWorkflowState(input.taskId);
+    const shouldTransitionWorkflow = currentWorkflow !== null;
+    const executionAlreadyTerminal =
+      input.currentExecutionStatus === "succeeded" ||
+      input.currentExecutionStatus === "failed" ||
+      input.currentExecutionStatus === "cancelled" ||
+      input.currentExecutionStatus === "superseded";
+    const shouldTransitionExecution =
+      !executionAlreadyTerminal && input.currentExecutionStatus !== executionTerminal;
 
     taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
-    workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
+    if (shouldTransitionWorkflow) {
+      workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
+    }
     sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
     if (shouldTransitionExecution) {
       executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
@@ -484,23 +494,22 @@ class TaskTerminalTransitionService {
         `task.transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
       );
     }
-    const currentWorkflow = this.repository.getWorkflowState(input.taskId);
-    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
-
-    // R9-02 fix: Use CAS update for workflow
-    const workflowAffected = this.repository.updateWorkflowStateCas(
-      input.taskId,
-      currentWorkflow?.currentStepIndex ?? 0,
-      input.currentWorkflowStatus,
-      workflowTerminal,
-      terminalStepIndex,
-      input.outputsJson,
-      input.context.occurredAt,
-    );
-    if (workflowAffected === 0) {
-      throw new Error(
-        `workflow.transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`,
+    if (shouldTransitionWorkflow) {
+      const terminalStepIndex = currentWorkflow.currentStepIndex;
+      const workflowAffected = this.repository.updateWorkflowStateCas(
+        input.taskId,
+        currentWorkflow.currentStepIndex,
+        input.currentWorkflowStatus,
+        workflowTerminal,
+        terminalStepIndex,
+        input.outputsJson,
+        input.context.occurredAt,
       );
+      if (workflowAffected === 0) {
+        throw new Error(
+          `workflow.transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`,
+        );
+      }
     }
 
     // R9-02 fix: Use CAS update for session

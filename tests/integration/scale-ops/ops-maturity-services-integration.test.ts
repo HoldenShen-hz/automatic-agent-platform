@@ -134,6 +134,13 @@ test("AgentLifecycleService and ExplanationPipelineService integrate for agent d
     updatedAt: new Date().toISOString(),
   };
   lifecycleService.registerAgent(agent);
+  lifecycleService.addVersion({
+    agentId: "coding-agent-001",
+    versionId: "v1.0.0",
+    semver: "1.0.0",
+    createdAt: new Date().toISOString(),
+    releaseNotes: [],
+  });
 
   // Bind a task to the agent
   const binding = lifecycleService.bindTask("coding-agent-001", "task-001");
@@ -205,6 +212,20 @@ test("OpsMaturityScoreService and AgentLifecycleService integrate for agent-leve
     currentVersionId: "v1.5.0",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  });
+  lifecycleService.addVersion({
+    agentId: "agent-alpha",
+    versionId: "v2.0.0",
+    semver: "2.0.0",
+    createdAt: new Date().toISOString(),
+    releaseNotes: [],
+  });
+  lifecycleService.addVersion({
+    agentId: "agent-beta",
+    versionId: "v1.5.0",
+    semver: "1.5.0",
+    createdAt: new Date().toISOString(),
+    releaseNotes: [],
   });
 
   // Assess each agent's maturity
@@ -350,6 +371,13 @@ test("Multiple services work together for platform operations workflow", async (
     currentVersionId: "v0.9.0",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  });
+  lifecycleService.addVersion({
+    agentId: "ops-agent-001",
+    versionId: "v0.9.0",
+    semver: "0.9.0",
+    createdAt: new Date().toISOString(),
+    releaseNotes: [],
   });
 
   // 2. Record cost for agent operations

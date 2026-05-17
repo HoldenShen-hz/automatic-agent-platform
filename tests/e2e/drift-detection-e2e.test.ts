@@ -20,6 +20,7 @@ import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 import { EvolutionMvpService } from "../../src/ops-maturity/drift-detection/evolution-mvp-service.js";
 import { ApprovalService } from "../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { ExperienceCacheService } from "../../src/platform/five-plane-state-evidence/memory/experience-cache-service.js";
 import { MemoryService } from "../../src/platform/five-plane-state-evidence/memory/memory-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { BudgetPolicy } from "../../src/platform/model-gateway/cost-tracker/budget-guard.js";
@@ -45,7 +46,6 @@ test("E2E Drift Detection: creates budget adjustment proposal based on observed 
     const service = new EvolutionMvpService(harness.db, harness.store, approvalService, memoryService);
 
     const taskId = newId("task");
-    const executionId = newId("exec");
     const now = nowIso();
 
     // Setup task
@@ -87,7 +87,6 @@ test("E2E Drift Detection: creates budget adjustment proposal based on observed 
 
     const result = service.proposeBudgetAdjustment({
       taskId,
-      executionId,
       sourceAgentId: "agent-general",
       scopeType: "division",
       scopeRef: "general_ops",
@@ -128,6 +127,7 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
   try {
     const approvalService = createMockApprovalService(harness);
     const memoryService = new MemoryService(harness.store);
+    const experienceCache = new ExperienceCacheService(harness.store);
     const service = new EvolutionMvpService(harness.db, harness.store, approvalService, memoryService);
 
     const taskId = newId("task");
@@ -158,7 +158,6 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
       });
     });
 
-    // Create experience in memory service first
     memoryService.remember({
       taskId,
       executionId,
@@ -178,16 +177,28 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
       },
       createdAt: now,
     });
+    experienceCache.recordExperience({
+      taskId,
+      sessionId: "session-general",
+      agentId: "agent-general",
+      executionId,
+      taskContext: "Successfully completed complex refactoring task",
+      taskIntent: "refactoring",
+      toolsUsed: [{ toolName: "refactor", callId: "call-1", status: "succeeded", durationMs: 1500 }],
+      outcome: "succeeded",
+      finalErrorCode: null,
+      qualityScore: 0.85,
+    });
 
 // @ts-ignore
     const result = service.proposeExperiencePromotion({
       taskId,
-      executionId,
       sourceAgentId: "agent-general",
       scopeType: "role",
       scopeRef: "general_ops:coding",
       taskContext: "Successfully completed complex refactoring task",
       taskIntent: "refactoring",
+      targetScope: "domain:coding",
       minQualityScore: 0.65,
     });
 
@@ -353,17 +364,10 @@ test("E2E Drift Detection: approved proposal is applied correctly", async () => 
       proposalReason: "Need higher task budget",
     });
 
-    harness.db.transaction(() => {
-      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
-      if (approval) {
-        harness.store.approval.updateApprovalRequest({
-          id: approval.id,
-          requestJson: JSON.stringify({
-            ...JSON.parse(approval.requestJson),
-            status: "approved",
-          }),
-        });
-      }
+    approvalService.resolve({
+      approvalId: proposalResult.proposal.approvalId!,
+      decision: "approved",
+      resolvedBy: "manager-001",
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
 
@@ -451,17 +455,10 @@ test("E2E Drift Detection: applied proposal can be rolled back", async () => {
       proposalReason: "Test rollback",
     });
 
-    harness.db.transaction(() => {
-      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
-      if (approval) {
-        harness.store.approval.updateApprovalRequest({
-          id: approval.id,
-          requestJson: JSON.stringify({
-            ...JSON.parse(approval.requestJson),
-            status: "approved",
-          }),
-        });
-      }
+    approvalService.resolve({
+      approvalId: proposalResult.proposal.approvalId!,
+      decision: "approved",
+      resolvedBy: "manager-001",
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });
@@ -551,17 +548,10 @@ test("E2E Drift Detection: resolves budget policy with active evolution policy",
       proposalReason: "Increase task budget",
     });
 
-    harness.db.transaction(() => {
-      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
-      if (approval) {
-        harness.store.approval.updateApprovalRequest({
-          id: approval.id,
-          requestJson: JSON.stringify({
-            ...JSON.parse(approval.requestJson),
-            status: "approved",
-          }),
-        });
-      }
+    approvalService.resolve({
+      approvalId: proposalResult.proposal.approvalId!,
+      decision: "approved",
+      resolvedBy: "manager-001",
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });

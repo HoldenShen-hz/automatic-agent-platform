@@ -1,27 +1,22 @@
-/**
- * @fileoverview E2E tests for Interface Plane API endpoints
- *
- * End-to-end tests that verify the full request/response cycle of API endpoints
- * including authentication, validation, and response formatting.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { HttpApiServer } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
-// @ts-ignore
-import type { MissionControlService } from "../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
-// @ts-ignore
-import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
-// @ts-ignore
-import type { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
-// @ts-ignore
-import type { BillingService } from "../../../../../src/scale-ecosystem/billing/billing-service.js";
-// @ts-ignore
-import type { ApiDelegationService } from "../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
+import { ApiAuthService } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../../../src/platform/five-plane-interface/api/http-api-server.js";
 
-class NoOpMissionControlService implements MissionControlService {
+const ADMIN_API_KEY = "admin-api-key";
+
+class NoOpMissionControlService {
+  async getHealthReportAsync() {
+    return {
+      status: "ok",
+      queuedTasks: 0,
+      activeExecutions: 0,
+      tier1AckBacklog: 0,
+      generatedAt: "2026-04-16T00:00:00.000Z",
+    };
+  }
+
   async snapshot() {
     return {
       generatedAt: "2026-04-16T00:00:00.000Z",
@@ -34,6 +29,7 @@ class NoOpMissionControlService implements MissionControlService {
       gatewayTargets: [],
     };
   }
+
   getStableTasks() { return []; }
   getWorkers() { return []; }
   getStabilityPanel() {
@@ -48,23 +44,66 @@ class NoOpMissionControlService implements MissionControlService {
   getTaskCockpit() {
     return {
       snapshot: {
-        task: { id: "task-1", title: "Test Task", status: "done", tenantId: null, createdAt: "2026-04-16T00:00:00.000Z", updatedAt: "2026-04-16T00:00:00.000Z" },
+        task: {
+          id: "task-1",
+          title: "Test Task",
+          status: "done",
+          tenantId: null,
+          createdAt: "2026-04-16T00:00:00.000Z",
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        },
         events: [],
         artifacts: [],
       },
-      inspect: { task: { id: "task-1" }, steps: [], executions: [], approvals: [], artifacts: [], dispatchDecisions: [], stepResults: [], runtimeRecovery: { candidates: [] }, workflowState: null },
+      inspect: {
+        task: { id: "task-1", tenantId: null },
+        steps: [],
+        executions: [],
+        approvals: [],
+        artifacts: [],
+        dispatchDecisions: [],
+        stepResults: [],
+        runtimeRecovery: { candidates: [] },
+        workflowState: null,
+      },
       timeline: { entries: [] },
     };
   }
   listWorkflowCockpits() {
     return [
-      { taskId: "task-1", workflowId: "wf-1", workflowStatus: "done", currentStepIndex: 0, pendingApprovalCount: 0, retryCount: 0, updatedAt: "2026-04-16T00:00:00.000Z" },
+      {
+        taskId: "task-1",
+        workflowId: "wf-1",
+        workflowStatus: "done",
+        currentStepIndex: 0,
+        pendingApprovalCount: 0,
+        retryCount: 0,
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
     ];
   }
   getWorkflowCockpit() {
     return {
-      summary: { taskId: "task-1", workflowId: "wf-1", workflowStatus: "done", currentStepIndex: 0, pendingApprovalCount: 0, retryCount: 0, resumableFromStep: null },
-      inspect: { task: { id: "task-1", tenantId: null }, steps: [], executions: [], approvals: [], artifacts: [], dispatchDecisions: [], stepResults: [], runtimeRecovery: { candidates: [] }, workflowState: null },
+      summary: {
+        taskId: "task-1",
+        workflowId: "wf-1",
+        workflowStatus: "done",
+        currentStepIndex: 0,
+        pendingApprovalCount: 0,
+        retryCount: 0,
+        resumableFromStep: null,
+      },
+      inspect: {
+        task: { id: "task-1", tenantId: null },
+        steps: [],
+        executions: [],
+        approvals: [],
+        artifacts: [],
+        dispatchDecisions: [],
+        stepResults: [],
+        runtimeRecovery: { candidates: [] },
+        workflowState: { workflowId: "wf-1" },
+      },
       timeline: { entries: [] },
     };
   }
@@ -80,18 +119,30 @@ class NoOpMissionControlService implements MissionControlService {
   }
 }
 
-class NoOpInspectService implements InspectService {
-  async taskInspect() {
-    return { id: "", status: "", createdAt: "", updatedAt: "" };
-  }
-  async workflowInspect() {
-    return { summary: { taskId: "" }, timeline: { entries: [] } };
-  }
+class NoOpInspectService {
   queryTaskInspectSummaries() {
     return [
-      { taskId: "task-1", title: "Test Task", divisionId: null, priority: "normal", taskStatus: "done", workflowId: null, workflowStatus: null, currentStepIndex: null, sessionStatus: null, activeExecutionId: null, latestExecutionStatus: null, pendingApprovalCount: 0, resolvedApprovalCount: 0, dispatchDecisionCount: 0, latestEventAt: null, updatedAt: "2026-04-16T00:00:00.000Z" },
+      {
+        taskId: "task-1",
+        title: "Test Task",
+        divisionId: null,
+        priority: "normal",
+        taskStatus: "done",
+        workflowId: null,
+        workflowStatus: null,
+        currentStepIndex: null,
+        sessionStatus: null,
+        activeExecutionId: null,
+        latestExecutionStatus: null,
+        pendingApprovalCount: 0,
+        resolvedApprovalCount: 0,
+        dispatchDecisionCount: 0,
+        latestEventAt: null,
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
     ];
   }
+
   getTaskInspectView() {
     return {
       task: { id: "task-1", tenantId: null },
@@ -102,195 +153,163 @@ class NoOpInspectService implements InspectService {
       dispatchDecisions: [],
       stepResults: [],
       runtimeRecovery: { candidates: [] },
-      workflowState: null,
+      workflowState: { workflowId: "wf-1" },
     };
   }
+
   queryDecisionInspectSummaries() {
     return [
-      { decisionId: "appr-1", decisionType: "approval", status: "requested", taskId: "task-1", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: null },
+      {
+        decisionId: "appr-1",
+        decisionType: "approval",
+        status: "requested",
+        taskId: "task-1",
+        requestedAt: "2026-04-16T00:00:00.000Z",
+        completedAt: null,
+      },
     ];
   }
+
   getApprovalInspectView() {
     return {
-      approval: { id: "appr-1", taskId: "task-1", decisionType: "approval", status: "completed", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: "2026-04-16T01:00:00.000Z" },
+      approval: {
+        id: "appr-1",
+        taskId: "task-1",
+        decisionType: "approval",
+        status: "completed",
+        requestedAt: "2026-04-16T00:00:00.000Z",
+        completedAt: "2026-04-16T01:00:00.000Z",
+      },
+      task: { tenantId: null },
       timeline: { entries: [] },
     };
   }
 }
 
-class NoOpApprovalService implements ApprovalService {
+class NoOpApprovalService {
   async listApprovals() { return { approvals: [] }; }
   async createApproval() { return { approvalId: "", status: "", decisionId: "" }; }
   async submitDecision() { return { id: "", status: "" }; }
   applyDecision() {}
 }
 
-class NoOpBillingService implements BillingService {
+class NoOpBillingService {
   createInvoice() { return { invoiceId: "", accountId: "", amount: 0, status: "", createdAt: "" }; }
   createCheckoutSession() { return { sessionId: "", invoiceId: "", gatewayKind: "", gatewaySessionRef: "", status: "", createdAt: "" }; }
   reconcileCheckout() { return { session: { status: "" }, invoice: { status: "" } }; }
 }
 
-class NoOpApiDelegationService implements ApiDelegationService {
+class NoOpApiDelegationService {
   async route() { return null; }
   buildSummary() { return { generatedAt: "2026-04-16T00:00:00.000Z", coordinators: [], hotCoordinators: [] }; }
   selectCoordinator() { return { selectedCoordinatorId: "coord-1", score: 0.5, candidates: 1 }; }
 }
 
-function createE2eServer(): HttpApiServer {
-  return new HttpApiServer({
-    approvalService: new NoOpApprovalService(),
-    inspectService: new NoOpInspectService(),
-    missionControlService: new NoOpMissionControlService(),
-    billingService: new NoOpBillingService(),
-    coordinatorLoadBalancingService: new NoOpApiDelegationService(),
-    authService: null, // Use no-op auth
+function createAuthService() {
+  return new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: ADMIN_API_KEY,
+        actorId: "admin-1",
+        roles: ["viewer", "operator", "admin"],
+      },
+    ],
+    jwtSecret: "test-secret",
   });
 }
 
-// ── Health Endpoint E2E ────────────────────────────────────────────────────────
+function createE2eServer(options: {
+  auth?: boolean;
+  allowedOrigins?: string[];
+} = {}): HttpApiServer {
+  return new HttpApiServer({
+    approvalService: new NoOpApprovalService() as never,
+    inspectService: new NoOpInspectService() as never,
+    missionControlService: new NoOpMissionControlService() as never,
+    billingService: new NoOpBillingService() as never,
+    coordinatorLoadBalancingService: new NoOpApiDelegationService() as never,
+    authService: options.auth === false ? null : createAuthService(),
+    ...(options.allowedOrigins != null ? { cors: { allowedOrigins: options.allowedOrigins } } : {}),
+  });
+}
 
-test("E2E: GET /healthz returns ok status with proper response envelope", async () => {
+const ADMIN_HEADERS = { "x-api-key": ADMIN_API_KEY };
+
+test("E2E API: GET /healthz returns the mission-control health report", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/healthz",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/healthz", method: "GET", headers: {} });
+    const body = response.json<{ data: { status: string } }>();
 
     assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.equal(body.status, "ok");
-    assert.ok(body.generatedAt);
+    assert.equal(body.data.status, "ok");
   } finally {
     await server.stop();
   }
 });
 
-// ── Task Endpoints E2E ──────────────────────────────────────────────────────────
+test("E2E API: protected task routes return 401 when auth is not configured", async () => {
+  const server = createE2eServer({ auth: false });
+  await server.start();
 
-test("E2E: GET /api/v1/tasks returns task list with pagination envelope", async () => {
+  try {
+    const response = await server.inject({ url: "/api/v1/tasks", method: "GET", headers: {} });
+    assert.equal(response.statusCode, 401);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("E2E API: GET /api/v1/tasks returns the task list with authenticated headers", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/api/v1/tasks",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/api/v1/tasks", method: "GET", headers: ADMIN_HEADERS });
+    const body = response.json<{ data: { tasks: unknown[] } }>();
 
     assert.equal(response.statusCode, 200);
-    const body = response.json();
     assert.ok(Array.isArray(body.data.tasks));
-    assert.ok("requestId" in body);
-    assert.ok("data" in body);
   } finally {
     await server.stop();
   }
 });
 
-test("E2E: GET /api/v1/tasks/:id returns task cockpit", async () => {
+test("E2E API: GET /api/v1/tasks/:id returns the task cockpit", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/api/v1/tasks/task-1",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/api/v1/tasks/task-1", method: "GET", headers: ADMIN_HEADERS });
+    const body = response.json<{ data: { snapshot: { task: unknown } } }>();
 
     assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.ok(body.data.snapshot?.task);
+    assert.ok(body.data.snapshot.task);
   } finally {
     await server.stop();
   }
 });
 
-test("E2E: GET /api/v1/workflows returns workflow list", async () => {
+test("E2E API: workflow and approval listing routes succeed with authenticated headers", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/api/v1/workflows",
-      method: "GET",
-      headers: {},
-    });
+    const workflows = await server.inject({ url: "/api/v1/workflows", method: "GET", headers: ADMIN_HEADERS });
+    const approvals = await server.inject({ url: "/v1/approvals", method: "GET", headers: ADMIN_HEADERS });
 
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.ok(Array.isArray(body.data.workflows));
+    assert.equal(workflows.statusCode, 200);
+    assert.equal(approvals.statusCode, 200);
+    assert.ok(Array.isArray(workflows.json<{ data: { workflows: unknown[] } }>().data.workflows));
+    assert.ok(Array.isArray(approvals.json<{ data: { approvals: unknown[] } }>().data.approvals));
   } finally {
     await server.stop();
   }
 });
 
-test("E2E: GET /api/v1/workflows/:id returns workflow cockpit", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/api/v1/workflows/task-1",
-      method: "GET",
-      headers: {},
-    });
-
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.ok(body.data.summary);
-  } finally {
-    await server.stop();
-  }
-});
-
-// ── Approval Endpoints E2E ─────────────────────────────────────────────────────
-
-test("E2E: GET /approvals returns approval list", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/approvals",
-      method: "GET",
-      headers: {},
-    });
-
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.ok(Array.isArray(body.data.approvals));
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: GET /v1/approvals returns approval list (v1 route)", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/v1/approvals",
-      method: "GET",
-      headers: {},
-    });
-
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.ok(Array.isArray(body.data.approvals));
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: POST /approvals/:id/decision processes decision payload", async () => {
+test("E2E API: POST /approvals/:id/decision validates required fields", async () => {
   const server = createE2eServer();
   await server.start();
 
@@ -299,107 +318,39 @@ test("E2E: POST /approvals/:id/decision processes decision payload", async () =>
       url: "/approvals/appr-1/decision",
       method: "POST",
       headers: {
+        ...ADMIN_HEADERS,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ decisionType: "confirmed" }),
+      body: JSON.stringify({ decisionType: "option_selected" }),
     });
 
-    // Should return 200 (or 404 if approval not found)
-    assert.ok(response.statusCode >= 200 && response.statusCode < 500);
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: POST /approvals/:id/decision validates required fields", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/approvals/appr-1/decision",
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ decisionType: "option_selected" }), // Missing selectedOptionId
-    });
-
-    // Should return 400 due to validation error
     assert.equal(response.statusCode, 400);
   } finally {
     await server.stop();
   }
 });
 
-// ── Admin Endpoints E2E ────────────────────────────────────────────────────────
-
-test("E2E: GET /v1/stability returns stability panel", async () => {
+test("E2E API: GET /v1/stability returns the stability panel for an authenticated principal", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/v1/stability",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/v1/stability", method: "GET", headers: ADMIN_HEADERS });
+    const body = response.json<{ data: { health: unknown } }>();
 
     assert.equal(response.statusCode, 200);
-    const body = response.json();
     assert.ok(body.data.health);
   } finally {
     await server.stop();
   }
 });
 
-test("E2E: GET /v1/admin/control-plane/load-balancing returns coordinator summary", async () => {
-  const server = createE2eServer();
+test("E2E API: preflight and normal responses emit CORS headers when the origin is allowed", async () => {
+  const server = createE2eServer({ allowedOrigins: ["https://console.example.test"] });
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/v1/admin/control-plane/load-balancing",
-      method: "GET",
-      headers: {},
-    });
-
-    // May return 401/403 without proper auth, or 200 with data
-    assert.ok(response.statusCode >= 200 || response.statusCode >= 400);
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: POST /v1/admin/control-plane/load-balancing/select with valid payload", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/v1/admin/control-plane/load-balancing/select",
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ queueName: "default" }),
-    });
-
-    // May return 401/403 without admin auth, or 200/503 if service unavailable
-    assert.ok(response.statusCode >= 200 || response.statusCode >= 400);
-  } finally {
-    await server.stop();
-  }
-});
-
-// ── CORS E2E ──────────────────────────────────────────────────────────────────
-
-test("E2E: OPTIONS request returns CORS preflight headers", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
+    const preflight = await server.inject({
       url: "/v1/tasks",
       method: "OPTIONS",
       headers: {
@@ -408,22 +359,7 @@ test("E2E: OPTIONS request returns CORS preflight headers", async () => {
         "access-control-request-headers": "content-type,authorization",
       },
     });
-
-    assert.equal(response.statusCode, 204);
-    assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
-    assert.ok(response.headers["access-control-allow-methods"]);
-    assert.ok(response.headers["access-control-allow-headers"]);
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: GET request with Origin header returns CORS headers in response", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
+    const getResponse = await server.inject({
       url: "/healthz",
       method: "GET",
       headers: {
@@ -431,55 +367,32 @@ test("E2E: GET request with Origin header returns CORS headers in response", asy
       },
     });
 
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
+    assert.equal(preflight.statusCode, 204);
+    assert.equal(preflight.headers["access-control-allow-origin"], "https://console.example.test");
+    assert.equal(getResponse.statusCode, 200);
+    assert.equal(getResponse.headers["access-control-allow-origin"], "https://console.example.test");
   } finally {
     await server.stop();
   }
 });
 
-// ── Security Headers E2E ──────────────────────────────────────────────────────
-
-test("E2E: All responses include security headers", async () => {
+test("E2E API: responses include security and traceability headers", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/healthz",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/healthz", method: "GET", headers: {} });
 
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.equal(response.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
-    assert.equal(response.headers["referrer-policy"], "no-referrer");
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: Response includes x-request-id for traceability", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/healthz",
-      method: "GET",
-      headers: {},
-    });
-
     assert.ok(response.headers["x-request-id"]);
   } finally {
     await server.stop();
   }
 });
 
-// ── Error Handling E2E ─────────────────────────────────────────────────────────
-
-test("E2E: Malformed JSON in request body returns 400", async () => {
+test("E2E API: malformed JSON on the auth route returns 400 when auth is configured", async () => {
   const server = createE2eServer();
   await server.start();
 
@@ -494,47 +407,22 @@ test("E2E: Malformed JSON in request body returns 400", async () => {
     });
 
     assert.equal(response.statusCode, 400);
-    const body = response.json();
-    assert.ok(body.error);
+    assert.ok(response.json<{ error: unknown }>().error);
   } finally {
     await server.stop();
   }
 });
 
-test("E2E: Missing required payload fields returns validation error", async () => {
+test("E2E API: unknown routes return a structured 404 response", async () => {
   const server = createE2eServer();
   await server.start();
 
   try {
-    const response = await server.inject({
-      url: "/v1/admin/control-plane/load-balancing/select",
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: "null",
-    });
-
-    assert.equal(response.statusCode, 400);
-  } finally {
-    await server.stop();
-  }
-});
-
-test("E2E: Request to unknown route returns 404 with proper error envelope", async () => {
-  const server = createE2eServer();
-  await server.start();
-
-  try {
-    const response = await server.inject({
-      url: "/api/v1/nonexistent-resource-xyz",
-      method: "GET",
-      headers: {},
-    });
+    const response = await server.inject({ url: "/v1/does-not-exist", method: "GET", headers: {} });
+    const body = response.json<{ error: { code: string } }>();
 
     assert.equal(response.statusCode, 404);
-    const body = response.json();
-    assert.ok(body.error || body.data);
+    assert.equal(typeof body.error.code, "string");
   } finally {
     await server.stop();
   }

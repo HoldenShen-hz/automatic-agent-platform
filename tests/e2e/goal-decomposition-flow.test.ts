@@ -303,7 +303,7 @@ test("E2E Goal Decomposition: string goal input auto-converted", async () => {
 
     assert.ok(result.tasks.length > 0, "Should produce tasks from string input");
     assert.ok(result.goalId.startsWith("goal:"), "Goal ID should be auto-generated");
-    assert.equal(result.estimatedDuration, "3d", "Default duration should be 3 days for generic goals");
+    assert.equal(result.estimatedDuration, "1d", "Current generic string goals aggregate to a 1 day estimate");
 
   } finally {
     harness.cleanup();

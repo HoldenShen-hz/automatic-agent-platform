@@ -46,7 +46,19 @@ export const FeedbackSignalSchema = z.object({
   severity: FeedbackSeveritySchema,
   payload: z.record(z.string(), z.unknown()).default({}),
   stepOutputRefs: z.array(z.string()).default([]),
-  timestamp: z.number().int().nonnegative(),
+  timestamp: z.preprocess((value) => {
+    if (typeof value === "string") {
+      const parsedDate = Date.parse(value);
+      if (!Number.isNaN(parsedDate)) {
+        return parsedDate;
+      }
+      const parsedNumber = Number(value);
+      if (!Number.isNaN(parsedNumber)) {
+        return parsedNumber;
+      }
+    }
+    return value;
+  }, z.number().int().nonnegative()),
   /** Trust score object with overallScore and individual factors. */
   trustScore: TrustScoreSchema.optional(),
   /** @deprecated Use trustScore.overallScore instead - composite trust score [0,1] derived from trust factors. */

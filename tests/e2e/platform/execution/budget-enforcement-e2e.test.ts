@@ -11,13 +11,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-ignore
-import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { createE2EHarness } from "../../../helpers/e2e-harness.js";
 // @ts-ignore
-import { BudgetAllocator, type BudgetAllocatorContext } from "../../../src/platform/five-plane-execution/budget-allocator.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 // @ts-ignore
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 // @ts-ignore
-import type { BudgetLedger, BudgetResourceKind } from "../../../src/platform/contracts/executable-contracts/schemas.js";
+import type { BudgetLedger, BudgetResourceKind } from "../../../../src/platform/contracts/executable-contracts/schemas.js";
 
 function createTestLedger(overrides?: Partial<BudgetLedger>): BudgetLedger {
   return {

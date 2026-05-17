@@ -13,12 +13,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { ConfigGovernanceService } from "../../src/platform/five-plane-control-plane/config-center/config-governance-service.js";
-import { createWorkspaceWritePolicy } from "../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 // ---------------------------------------------------------------------------
 // Helper: Create a temporary config structure for testing
@@ -110,7 +109,7 @@ test("E2E Config Governance: detects tampering when configuration is modified", 
 
     // Tamper with the configuration
     const runtimeDefault = join(configRoot, "runtime", "default.json");
-    const originalContent = JSON.parse(require("node:fs").readFileSync(runtimeDefault, "utf8"));
+    const originalContent = JSON.parse(readFileSync(runtimeDefault, "utf8"));
     originalContent.maxRetries = 10; // Change a value
     writeFileSync(runtimeDefault, JSON.stringify(originalContent, null, 2));
 
@@ -139,7 +138,7 @@ test("E2E Config Governance: diffBundles shows differences between configs", () 
 
     // Modify a config value
     const runtimeDefault = join(configRoot, "runtime", "default.json");
-    const originalContent = JSON.parse(require("node:fs").readFileSync(runtimeDefault, "utf8"));
+    const originalContent = JSON.parse(readFileSync(runtimeDefault, "utf8"));
     originalContent.maxRetries = 999;
     writeFileSync(runtimeDefault, JSON.stringify(originalContent, null, 2));
 
@@ -216,7 +215,7 @@ test("E2E Config Governance: detectTampering flags bundle with validation issues
 
     // Add invalid config that will cause validation issues
     const bootstrapDefault = join(configRoot, "bootstrap", "default.json");
-    const originalBootstrap = JSON.parse(require("node:fs").readFileSync(bootstrapDefault, "utf8"));
+    const originalBootstrap = JSON.parse(readFileSync(bootstrapDefault, "utf8"));
     originalBootstrap.appName = ""; // Invalid - minLength: 1
     writeFileSync(bootstrapDefault, JSON.stringify(originalBootstrap, null, 2));
 

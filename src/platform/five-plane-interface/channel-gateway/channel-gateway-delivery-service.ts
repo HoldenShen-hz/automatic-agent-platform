@@ -69,6 +69,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 export class ChannelGatewayDeliveryService {
   private readonly deliveryConfig: DeliveryGuaranteeConfig;
   private readonly rateLimitConfig: RateLimitConfig;
+  private readonly recentRateLimitHits = new Map<string, number[]>();
   private _deliverySchemaInitialized = false;
 
   constructor(
@@ -135,7 +136,11 @@ export class ChannelGatewayDeliveryService {
       )
       .get(bucket, windowStart) as { message_count: number } | undefined;
 
-    const currentCount = row?.message_count ?? 0;
+    const persistedCount = row?.message_count ?? 0;
+    const currentCount = Math.max(
+      persistedCount,
+      this.getRecentRateLimitHitCount(bucket, limitConfig.windowMs, now),
+    );
 
     if (currentCount >= limitConfig.limit) {
       return {
@@ -171,6 +176,7 @@ export class ChannelGatewayDeliveryService {
 
     const now = Date.now();
     const windowStart = new Date(now - (now % limitConfig.windowMs)).toISOString();
+    this.appendRecentRateLimitHit(bucket, now, limitConfig.windowMs);
 
     this.db.connection
       .prepare(
@@ -211,7 +217,10 @@ export class ChannelGatewayDeliveryService {
         .get(bucket, windowStart) as { message_count: number } | undefined;
 
       result[channel] = {
-        currentCount: row?.message_count ?? 0,
+        currentCount: Math.max(
+          row?.message_count ?? 0,
+          this.getRecentRateLimitHitCount(bucket, config.windowMs, now),
+        ),
         limit: config.limit,
         windowMs: config.windowMs,
       };
@@ -644,6 +653,39 @@ export class ChannelGatewayDeliveryService {
       ? tenantId.trim()
       : "__global__";
     return `${channel}::${normalizedTenantId}`;
+  }
+
+  private appendRecentRateLimitHit(bucket: string, timestampMs: number, windowMs: number): void {
+    const retainedHits = this.pruneRecentRateLimitHits(
+      this.recentRateLimitHits.get(bucket) ?? [],
+      timestampMs,
+      windowMs,
+    );
+    retainedHits.push(timestampMs);
+    this.recentRateLimitHits.set(bucket, retainedHits);
+  }
+
+  private getRecentRateLimitHitCount(bucket: string, windowMs: number, now: number): number {
+    const retainedHits = this.pruneRecentRateLimitHits(
+      this.recentRateLimitHits.get(bucket) ?? [],
+      now,
+      windowMs,
+    );
+    if (retainedHits.length === 0) {
+      this.recentRateLimitHits.delete(bucket);
+      return 0;
+    }
+    this.recentRateLimitHits.set(bucket, retainedHits);
+    return retainedHits.length;
+  }
+
+  private pruneRecentRateLimitHits(
+    hitTimestamps: readonly number[],
+    now: number,
+    windowMs: number,
+  ): number[] {
+    const cutoff = now - windowMs;
+    return hitTimestamps.filter((timestamp) => timestamp > cutoff);
   }
 
   /**

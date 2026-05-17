@@ -124,7 +124,7 @@ test("E2E NL Gateway: DisambiguationHandler detects ambiguous requests and offer
     // Use disambiguate method which returns a DisambiguationResult
     const result = handler.disambiguate(
       ambiguousMessage,
-      0.5, // low confidence
+      0.4,
 // @ts-ignore
       { intentType: "task_create", confidence: 0.5, entities: [] },
       [{ intentType: "task_create", confidence: 0.5, entities: [] }]

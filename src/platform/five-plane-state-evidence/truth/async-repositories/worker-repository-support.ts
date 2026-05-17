@@ -6,8 +6,8 @@ export async function executeWorkerSnapshotUpsert(
   conn: AsyncSqlConnection,
   snapshot: WorkerSnapshotRecord,
 ): Promise<void> {
-  const expectedVersion = snapshot.version;
-  const insertedVersion = expectedVersion > 0 ? expectedVersion : 1;
+  const expectedVersion = snapshot.version ?? null;
+  const insertedVersion = typeof snapshot.version === "number" && snapshot.version > 0 ? snapshot.version : 1;
   const changes = await asyncExecute(
     conn,
     `INSERT INTO worker_snapshots (
@@ -55,7 +55,7 @@ export async function executeWorkerSnapshotUpsert(
       last_heartbeat_at = excluded.last_heartbeat_at,
       updated_at = excluded.updated_at,
       version = worker_snapshots.version + 1
-    WHERE worker_snapshots.version = $36`,
+    WHERE $36 IS NULL OR worker_snapshots.version = $36`,
     snapshot.workerId,
     snapshot.status,
     snapshot.placement ?? "local",

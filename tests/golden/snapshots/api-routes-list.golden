@@ -1,6 +1,7 @@
 {
-  "totalRoutes": 41,
+  "totalRoutes": 80,
   "routes": [
+    "DELETE:/v1/missions/{missionId}/members/{membershipId}",
     "GET:/health",
     "GET:/healthz",
     "GET:/metrics",
@@ -19,7 +20,6 @@
     "GET:/v1/domains",
     "GET:/v1/domains/{domainId}",
     "GET:/v1/domains/{domainId}/plugins",
-    "GET:/v1/gateway/targets",
-    "GET:/v1/gateway/targets/resolve"
+    "GET:/v1/gateway/targets"
   ]
 }

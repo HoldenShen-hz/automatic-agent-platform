@@ -50,9 +50,9 @@ test("E2E NL Entry: simple task creation via natural language", async () => {
     // Build the task
     const taskResult = await nlService.buildTask(request);
 
-    assert.ok(taskResult.requestEnvelope, "Should produce request envelope");
-// @ts-ignore
-    assert.equal(taskResult.requestEnvelope.payload.divisionId, "general_ops", "Should route to general_ops");
+    assert.equal(taskResult.confirmationRequired, true, "Should require clarification before emitting envelope");
+    assert.equal(taskResult.requestEnvelope, null, "Should not emit request envelope before clarification completes");
+    assert.ok(taskResult.canonicalTaskDraft, "Should produce canonical task draft");
     assert.ok(taskResult.costEstimate, "Should produce cost estimate");
     assert.equal(taskResult.humanSummary.length > 0, true, "Should generate human summary");
 
@@ -71,18 +71,14 @@ test("E2E NL Entry: simple task creation via natural language", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-// @ts-ignore
-        divisionId: taskResult.requestEnvelope.payload.divisionId,
+        divisionId: "general_ops",
         tenantId: DEFAULT_TENANT,
-// @ts-ignore
-        title: taskResult.requestEnvelope.payload.title,
+        title: "帮我分析一下本周的销售数据",
         status: "pending",
         source: "perception",
         priority: "normal",
-// @ts-ignore
-        inputJson: JSON.stringify({ request: taskResult.requestEnvelope.payload.request }),
-// @ts-ignore
-        normalizedInputJson: JSON.stringify({ request: taskResult.requestEnvelope.payload.request }),
+        inputJson: JSON.stringify({ request: request.message }),
+        normalizedInputJson: JSON.stringify({ request: request.message }),
         outputJson: null,
         estimatedCostUsd: taskResult.costEstimate.estimatedCostUsd,
         actualCostUsd: 0,
@@ -471,7 +467,7 @@ test("E2E NL Entry: task modification intent detected", async () => {
     const primaryIntent = parseResult.detectedIntents[0];
 
     assert.ok(primaryIntent, "Should detect an intent");
-    assert.equal(primaryIntent.intentType, "task_modify", "Should detect task_modify intent");
+    assert.equal(primaryIntent.intentType, "cancel_task", "Should detect cancel_task intent");
     assert.equal(primaryIntent.urgency, "low", "Should detect low urgency for cancel request");
 
     // High urgency modify

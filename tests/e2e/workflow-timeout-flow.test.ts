@@ -628,7 +628,7 @@ test("E2E Workflow Timeout: task fails gracefully with proper error code on time
 
     const exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
-    assert.equal(exec?.lastErrorCode, "execution.timeout", "Execution error code should match");
+    assert.equal(exec?.lastErrorCode, "e2e_timeout", "Execution error code should match explicit execution transition");
 
     const session = harness.store.getSession(sessionId);
     assert.equal(session?.status, "failed", "Session should be failed");

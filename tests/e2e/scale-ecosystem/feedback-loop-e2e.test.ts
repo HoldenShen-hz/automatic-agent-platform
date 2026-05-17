@@ -1,135 +1,94 @@
-/**
- * E2E Tests for Feedback Loop Service
- *
- * End-to-end tests covering:
- * 1. Feedback signal collection and deduplication
- * 2. Learning signal generation
- * 3. Feedback improvement application
- * 4. Quality grading
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../../helpers/e2e-harness.js";
-// @ts-ignore
-import { FeedbackLoopService } from "../../../src/scale-ecosystem/feedback-loop/feedback-loop-service.js";
-// @ts-ignore
-import { ImprovementTracker } from "../../../src/scale-ecosystem/feedback-loop/improvement-tracker/improvement-tracker.js";
-// @ts-ignore
-import { QualityGrader } from "../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
-// @ts-ignore
-import type { FeedbackSignal, ImprovementAction } from "../../../src/scale-ecosystem/feedback-loop/types.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { FeedbackCollector } from "../../../src/scale-ecosystem/feedback-loop/collector/feedback-collector.js";
+import { FeedbackImprovementService } from "../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
+import { FeedbackQualityGrader } from "../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
+import type { FeedbackSignal } from "../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
-function createFeedbackSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
+function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   return {
-    signalId: overrides.signalId ?? newId("fb"),
-    taskId: overrides.taskId ?? newId("task"),
-    executionId: overrides.executionId ?? newId("exec"),
-    agentId: overrides.agentId ?? "agent_fb",
-    signalType: overrides.signalType ?? "success",
-    score: overrides.score ?? 1.0,
-    latencyMs: overrides.latencyMs ?? 100,
-    toolName: overrides.toolName ?? "read_file",
-    inputHash: overrides.inputHash ?? "abc123",
-    outputHash: overrides.outputHash ?? "def456",
-    errorCode: overrides.errorCode ?? null,
+    signalId: overrides.signalId ?? "signal-001",
+    taskId: overrides.taskId ?? "task-001",
+    source: overrides.source ?? "user",
+    category: overrides.category ?? "correction",
+    severity: overrides.severity ?? "warning",
+    payload: overrides.payload ?? { summary: "Operator corrected the output", reasonCode: "correction" },
+    stepOutputRefs: overrides.stepOutputRefs ?? ["step-output-1"],
     timestamp: overrides.timestamp ?? nowIso(),
-    metadata: overrides.metadata ?? {},
-    ...overrides,
+    trustFactors: overrides.trustFactors ?? {
+      sourceReliability: 1,
+      historicalAccuracy: 1,
+      authenticatedSource: true,
+      attackSurfaceExposure: 0,
+      holdoutOverlap: 0,
+    },
+    feedbackTrustScore: overrides.feedbackTrustScore,
+    trustScore: overrides.trustScore,
   };
 }
 
-test("E2E FeedbackLoop: Signals are collected and deduplicated", async () => {
-  const harness = createE2EHarness("aa-e2e-feedback-collect-");
-  try {
-    const service = new FeedbackLoopService(harness.store);
+test("E2E FeedbackLoop: collector normalizes duplicate signals", () => {
+  const collector = new FeedbackCollector();
+  const feedback = collector.collect({
+    taskId: "task-feedback-dedupe",
+    signals: [
+      createSignal({ signalId: "sig-a" }),
+      createSignal({ signalId: "sig-b" }),
+    ],
+  });
 
-    const signal1 = createFeedbackSignal({
-      signalId: "sig_001",
-      inputHash: "same_input",
-      outputHash: "same_output",
-    });
-    const signal2 = createFeedbackSignal({
-      signalId: "sig_002",
-      inputHash: "same_input", // Same input as signal1
-      outputHash: "same_output", // Same output as signal1
-    });
-
-    service.addSignal(signal1);
-    service.addSignal(signal2);
-
-    const deduplicated = service.getDeduplicatedSignals();
-    // Signals with same input+output should be deduplicated to 1
-    assert.ok(deduplicated.length <= 2);
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(feedback.signals.length, 1);
+  assert.match(feedback.signals[0]!.signalId, /sig-a|sig-b/);
 });
 
-test("E2E FeedbackLoop: Learning signals are generated from feedback", async () => {
-  const harness = createE2EHarness("aa-e2e-feedback-learn-");
-  try {
-    const service = new FeedbackLoopService(harness.store);
+test("E2E FeedbackLoop: ingest produces learning signals and candidates from reviewable feedback", () => {
+  const service = new FeedbackImprovementService();
+  const result = service.ingest({
+    taskId: "task-feedback-ingest",
+    signals: [
+      createSignal({
+        signalId: "sig-failure",
+        source: "execution",
+        category: "failure",
+        severity: "error",
+        payload: { summary: "Execution failed", reasonCode: "timeout" },
+      }),
+      createSignal({
+        signalId: "sig-correction",
+        source: "user",
+        category: "correction",
+        severity: "warning",
+        payload: { summary: "User corrected the plan", reasonCode: "manual_fix" },
+      }),
+      createSignal({
+        signalId: "sig-recovery",
+        source: "validation",
+        category: "success",
+        severity: "info",
+        payload: { summary: "Recovery path succeeded", reasonCode: "validated" },
+      }),
+    ],
+  });
 
-    // Add multiple success signals
-    for (let i = 0; i < 3; i++) {
-      service.addSignal(createFeedbackSignal({
-        signalId: newId("sig"),
-        signalType: "success",
-        score: 1.0,
-      }));
-    }
-
-    const signals = service.getSignalsForLearning();
-    assert.ok(signals.length >= 3, "Should have signals for learning");
-  } finally {
-    harness.cleanup();
-  }
+  assert.ok(result.learningSignals.length > 0);
+  assert.ok(result.candidates.length > 0);
+  assert.equal(service.listCandidates().length, result.candidates.length);
 });
 
-test("E2E FeedbackLoop: Quality grades are computed", async () => {
-  const harness = createE2EHarness("aa-e2e-feedback-grade-");
-  try {
-    const grader = new QualityGrader();
+test("E2E FeedbackLoop: quality grader returns bounded scores", () => {
+  const grader = new FeedbackQualityGrader();
+  const grade = grader.gradeSignals([
+    createSignal({
+      signalId: "sig-grade",
+      source: "hitl",
+      category: "correction",
+      severity: "critical",
+      payload: { summary: "Detailed correction", reasonCode: "precision_fix", notes: "long form" },
+    }),
+  ]);
 
-    const grade = grader.computeGrade({
-      successRate: 0.95,
-      avgLatencyMs: 150,
-      errorRate: 0.05,
-      throughputScore: 0.8,
-    });
-
-    assert.ok(grade >= 0 && grade <= 1);
-    assert.equal(typeof grade, "number");
-  } finally {
-    harness.cleanup();
-  }
-});
-
-test("E2E FeedbackLoop: Improvement actions are tracked", async () => {
-  const harness = createE2EHarness("aa-e2e-feedback-improve-");
-  try {
-    const tracker = new ImprovementTracker();
-
-    const action: ImprovementAction = {
-      actionId: newId("action"),
-      agentId: "agent_improve",
-      actionType: "retrain",
-      targetModel: "gpt-4",
-      priorScore: 0.7,
-      newScore: 0.85,
-      appliedAt: nowIso(),
-      status: "completed",
-    };
-
-    tracker.trackAction(action);
-    const actions = tracker.getRecentActions(10);
-
-    assert.ok(actions.length >= 1);
-    assert.equal(actions[0]?.actionId, action.actionId);
-  } finally {
-    harness.cleanup();
-  }
+  assert.ok(grade.score.overall >= 0 && grade.score.overall <= 1);
+  assert.ok(["discard", "low", "medium", "high"].includes(grade.grade));
 });

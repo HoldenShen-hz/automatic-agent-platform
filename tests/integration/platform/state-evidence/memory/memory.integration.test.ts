@@ -1,6 +1,6 @@
 /**
  * Integration tests for Memory system - Issue coverage for:
- * - Issue #2027: Content hash truncation (collision risk)
+ * - Issue #2027: Content hash integrity
  * - Issue #2031: Size check uses .length not bytes
  * - Issue #2028: scope→SixLayerMemoryType no mapping
  * - Issue #2037: Manual quote escaping breaks DELETE
@@ -58,10 +58,10 @@ function createMemoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord
 }
 
 // =============================================================================
-// Issue #2027: Content hash truncation tests with real database
+// Issue #2027: Content hash integrity tests with real database
 // =============================================================================
 
-test("Issue #2027: contentHash truncated to 16 chars in real database", () => {
+test("Issue #2027: contentHash persists full SHA-256 width in real database", () => {
   const workspace = createTempWorkspace("aa-memory-hash-");
   let db: SqliteDatabase | undefined;
 
@@ -77,12 +77,8 @@ test("Issue #2027: contentHash truncated to 16 chars in real database", () => {
       content: "Test memory with content for hash collision testing",
     });
 
-    // Issue #2027: SHA-256 produces 64 hex chars, but code truncates to 16
-    assert.equal(memory.contentHash!.length, 16,
-      "Issue #2027: Hash should be truncated to 16 chars");
-
-    // With 16 hex chars (64 bits entropy), collision risk increases
-    // For millions of memories, truncated hash causes deduplication failures
+    assert.equal(memory.contentHash!.length, 64,
+      "Issue #2027 regression: hash should preserve full SHA-256 width");
 
     db.close();
   } finally {
@@ -90,7 +86,7 @@ test("Issue #2027: contentHash truncated to 16 chars in real database", () => {
   }
 });
 
-test("Issue #2027: similar content may produce colliding truncated hashes", () => {
+test("Issue #2027: similar content keeps distinct full hashes", () => {
   const workspace = createTempWorkspace("aa-memory-collision-");
   let db: SqliteDatabase | undefined;
 
@@ -108,14 +104,10 @@ test("Issue #2027: similar content may produce colliding truncated hashes", () =
     const memory1 = service.remember({ scope: "project", content: content1 });
     const memory2 = service.remember({ scope: "project", content: content2 });
 
-    // The truncated hashes may or may not collide depending on where the
-    // differences fall in the SHA-256 output, but collision risk is real
     console.log(`Issue #2027 - Hash1: ${memory1.contentHash}, Hash2: ${memory2.contentHash}`);
-
-    // If they collide, memory2.hitCount would be incremented
-    // This demonstrates the deduplication weakness
-    assert.ok(memory1.contentHash!.length < 64,
-      "Issue #2027: Truncated hash documented");
+    assert.equal(memory1.contentHash!.length, 64, "Issue #2027 regression: first hash should be full width");
+    assert.equal(memory2.contentHash!.length, 64, "Issue #2027 regression: second hash should be full width");
+    assert.notEqual(memory1.contentHash, memory2.contentHash, "Distinct content should keep distinct hashes");
 
     db.close();
   } finally {
@@ -186,7 +178,7 @@ test("Issue #2031: ASCII content length matches byte count", () => {
 // Issue #2028: scope mapping with real decay calculations
 // =============================================================================
 
-test("Issue #2028: project scope uses session decay config in real system", () => {
+test("Issue #2028: project scope uses semantic decay config in real system", () => {
   const workspace = createTempWorkspace("aa-memory-decay-project-");
   let db: SqliteDatabase | undefined;
 
@@ -217,10 +209,8 @@ test("Issue #2028: project scope uses session decay config in real system", () =
 
     console.log(`Issue #2028 - project freshness: ${projectFreshness}, semantic freshness: ${semanticFreshness}`);
 
-    // BUG: project uses session config (halfLife=3600s) instead of semantic (halfLife=604800s)
-    // After 1 day: session freshness ≈ very low (< 0.001), semantic freshness ≈ 0.92
-    assert.ok(projectFreshness < 0.01, "Issue #2028: project freshness too low (using session config)");
-    assert.ok(semanticFreshness > 0.5, "Issue #2028: semantic freshness should be high");
+    assert.ok(projectFreshness > 0.5, "Issue #2028 regression: project freshness should stay high after one day");
+    assert.ok(Math.abs(projectFreshness - semanticFreshness) < 0.000001, "Project and semantic scopes should share the same decay profile");
 
     db.close();
   } finally {
@@ -275,7 +265,7 @@ test("Issue #2037: unindexMemory with single quote in ID", () => {
 // Issue #2036: verificationStatus mutation with real KnowledgePromotionService
 // =============================================================================
 
-test("Issue #2036: updateVerificationStatus mutates stored lineage", () => {
+test("Issue #2036: updateVerificationStatus preserves caller lineage immutability", () => {
   const service = new KnowledgePromotionService();
 
   const memory = createMemoryRecord({
@@ -302,20 +292,16 @@ test("Issue #2036: updateVerificationStatus mutates stored lineage", () => {
   const originalStatus = originalLineage.verificationStatus;
   assert.equal(originalStatus, "unverified");
 
-  // Update - this MUTATES the stored lineage object
+  // Update should persist in the store without mutating the original reference
   const updated = service.updateVerificationStatus(lineageId, "verified", "looks good");
   assert.equal(updated, true);
 
-  // The original lineage reference now shows mutated state
-  // This breaks immutability assumptions
-  assert.equal(originalLineage.verificationStatus, "verified",
-    "Issue #2036: Original lineage reference was mutated");
+  assert.equal(originalLineage.verificationStatus, "unverified",
+    "Issue #2036 regression: original lineage reference should remain unchanged");
 
   // Get fresh from store
   const lineages = service.getLineage(memory.id);
   assert.equal(lineages[0]?.verificationStatus, "verified");
-
-  db.close();
 });
 
 // =============================================================================

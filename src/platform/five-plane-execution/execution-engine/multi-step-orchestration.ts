@@ -584,11 +584,23 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       const lastExecutionId = lastExecution?.id ?? newId("exec");
 
       if (workflowFailed) {
-        const ctx = createContext(traceContext, workflowLastErrorCode ?? "workflow.step_failed");
-        transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "failed", executionId: lastExecutionId, ...ctx });
-        transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "failed", currentStepIndex: plannedWorkflow.executionSteps.length, outputsJson: JSON.stringify(outputs), ...ctx });
-        transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "failed", ...ctx });
-        store.task.updateTaskOutput(taskId, JSON.stringify({ error: workflowLastErrorCode ?? "workflow.step_failed", failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] }), ctx.occurredAt);
+        transitions.transitionTaskTerminalState({
+          taskId,
+          sessionId,
+          executionId: lastExecutionId,
+          currentTaskStatus: "in_progress",
+          currentWorkflowStatus: "running",
+          currentSessionStatus: "streaming",
+          currentExecutionStatus: lastExecution?.status ?? "failed",
+          terminalStatus: "failed",
+          taskOutputJson: JSON.stringify({
+            error: workflowLastErrorCode ?? "workflow.step_failed",
+            failedStepIds: [...failedStepIds],
+            skippedStepIds: [...skippedStepIds],
+          }),
+          outputsJson: JSON.stringify(outputs),
+          context: createContext(traceContext, workflowLastErrorCode ?? "workflow.step_failed"),
+        });
       } else {
         transitions.transitionTaskTerminalState({
           taskId,

@@ -1,150 +1,90 @@
-/**
- * E2E Evaluator Service Tests
- *
- * End-to-end tests covering evaluator service:
- * 1. Step result evaluation
- * 2. Workflow state evaluation
- * 3. Decision generation based on evaluation
- * 4. Evaluation caching
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-// @ts-ignore
-import { EvaluatorService } from "../../src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
-// @ts-ignore
-import type { EvaluationResult, StepEvaluation, WorkflowEvaluation } from "../../src/platform/five-plane-orchestration/evaluator/types.js";
+import { createMinimalPlanGraphBundle } from "../../../helpers/fixtures/base.js";
+import { EvaluatorService } from "../../../../src/platform/five-plane-orchestration/evaluator/evaluator-service.js";
+import type { FeedbackBatch } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
-
-function createStepEvaluation(overrides: Partial<StepEvaluation> = {}): StepEvaluation {
+function createFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
   return {
-    stepName: overrides.stepName ?? "step_execute",
-    status: overrides.status ?? "succeeded",
-    output: overrides.output ?? { result: "success" },
-    latencyMs: overrides.latencyMs ?? 500,
-    costUsd: overrides.costUsd ?? 0.01,
-    riskScore: overrides.riskScore ?? 20,
-    errorCode: overrides.errorCode ?? null,
-    timestamp: overrides.timestamp ?? new Date().toISOString(),
+    feedbackId: "feedback-e2e-001",
+    taskId: "task-e2e-001",
+    executionId: null,
+    planId: null,
+    outcome: "completed",
+    emittedAt: Date.now(),
+    signals: [],
     ...overrides,
   };
 }
 
-function createWorkflowEvaluation(overrides: Partial<WorkflowEvaluation> = {}): WorkflowEvaluation {
-  return {
-    workflowId: overrides.workflowId ?? "wf_e2e_001",
-    taskId: overrides.taskId ?? "task_e2e_001",
-    overallStatus: overrides.overallStatus ?? "running",
-    stepEvaluations: overrides.stepEvaluations ?? [],
-    totalCostUsd: overrides.totalCostUsd ?? 0.05,
-    riskLevel: overrides.riskLevel ?? "low",
-    ...overrides,
-  };
-}
+test("E2E Evaluator: accepts a clean successful feedback batch", () => {
+  const service = new EvaluatorService();
+  const bundle = createMinimalPlanGraphBundle("hrun-eval-accept");
 
-// ---------------------------------------------------------------------------
-// Test Suite 1: Step Evaluation
-// ---------------------------------------------------------------------------
-
-test("E2E Evaluator: EvaluatorService evaluates step execution result", async () => {
-  const harness = createE2EHarness("aa-e2e-eval-step-");
-  try {
-    const service = new EvaluatorService();
-
-    const stepEval = createStepEvaluation({
-      stepName: "step_read_file",
-      status: "succeeded",
-      latencyMs: 200,
-    });
-
-    const result = service.evaluateStep(stepEval);
-
-    assert.ok(result, "Should return evaluation result");
-    assert.equal(result.decision, "continue", "Should decide to continue");
-  } finally {
-    harness.cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Test Suite 2: Workflow Evaluation
-// ---------------------------------------------------------------------------
-
-test("E2E Evaluator: Service evaluates workflow state and determines outcome", async () => {
-  const harness = createE2EHarness("aa-e2e-eval-workflow-");
-  try {
-    const service = new EvaluatorService();
-
-    const workflowEval = createWorkflowEvaluation({
-      stepEvaluations: [
-        createStepEvaluation({ stepName: "step_1", status: "succeeded" }),
-        createStepEvaluation({ stepName: "step_2", status: "succeeded" }),
+  const report = service.evaluate({
+    planGraphBundle: bundle,
+    feedback: createFeedback({
+      signals: [
+        {
+          signalId: "sig-success",
+          taskId: "task-e2e-001",
+          source: "execution",
+          category: "success",
+          severity: "info",
+          payload: { summary: "step completed" },
+          stepOutputRefs: [],
+          timestamp: Date.now(),
+        },
       ],
-      totalCostUsd: 0.02,
-    });
+    }),
+  });
 
-    const result = service.evaluateWorkflow(workflowEval);
-
-    assert.ok(result, "Should return workflow evaluation");
-    assert.equal(result.continueExecution, true, "Should continue execution");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(report.passed, true);
+  assert.equal(report.decision, "accept");
+  assert.ok(report.qualityScore >= 0.7);
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 3: Decision Generation
-// ---------------------------------------------------------------------------
+test("E2E Evaluator: converts failure signals into a non-accept decision", () => {
+  const service = new EvaluatorService();
+  const bundle = createMinimalPlanGraphBundle("hrun-eval-fail");
 
-test("E2E Evaluator: Service generates decision based on evaluation criteria", async () => {
-  const harness = createE2EHarness("aa-e2e-eval-decision-");
-  try {
-    const service = new EvaluatorService();
+  const report = service.evaluate({
+    planGraphBundle: bundle,
+    feedback: createFeedback({
+      outcome: "failed",
+      signals: [
+        {
+          signalId: "sig-failure",
+          taskId: "task-e2e-002",
+          source: "execution",
+          category: "failure",
+          severity: "error",
+          payload: { reasonCode: "timeout" },
+          stepOutputRefs: [],
+          timestamp: Date.now(),
+        },
+      ],
+    }),
+  });
 
-    const stepEval = createStepEvaluation({
-      status: "failed",
-      errorCode: "TIMEOUT",
-    });
-
-    const result = service.evaluateStep(stepEval);
-
-    assert.ok(result.decision, "Should have decision");
-    assert.ok(["continue", "retry", "replan", "escalate", "abort"].includes(result.decision), "Should be valid decision");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(report.passed, false);
+  assert.notEqual(report.decision, "accept");
+  assert.ok(report.findings.some((finding) => finding.category === "quality"));
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 4: Evaluation Cache
-// ---------------------------------------------------------------------------
+test("E2E Evaluator: emits budget findings when actual cost exceeds the plan", () => {
+  const service = new EvaluatorService();
+  const bundle = createMinimalPlanGraphBundle("hrun-eval-budget");
 
-test("E2E Evaluator: EvaluatorService caches evaluation results for repeated steps", async () => {
-  const harness = createE2EHarness("aa-e2e-eval-cache-");
-  try {
-    const service = new EvaluatorService();
+  const report = service.evaluate({
+    planGraphBundle: bundle,
+    feedback: createFeedback(),
+    actualCost: 999,
+  });
 
-    const stepEval = createStepEvaluation({
-      stepName: "step_repeated",
-      status: "succeeded",
-    });
-
-    // First evaluation
-    const result1 = service.evaluateStep(stepEval);
-
-    // Cached evaluation
-    const result2 = service.evaluateStep(stepEval);
-
-    assert.ok(result2.fromCache !== undefined, "Should indicate cache status");
-  } finally {
-    harness.cleanup();
-  }
+  const budgetFinding = report.findings.find((finding) => finding.category === "budget");
+  assert.ok(budgetFinding);
+  assert.equal(budgetFinding.severity, "info");
+  assert.ok(budgetFinding.message.includes("cost consumed"));
 });

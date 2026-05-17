@@ -66,7 +66,7 @@ test("golden: mission control getSnapshot has expected structure", () => {
   assert.ok(typeof snapshot.uptimePercent === "number", "uptimePercent should be number");
 
   assertGolden("mission-control-snapshot-structure", {
-    generatedAt: snapshot.generatedAt,
+    generatedAt: "<iso-timestamp>",
     taskBoardCount: snapshot.taskBoard.length,
     pendingApprovalsCount: snapshot.pendingApprovals.length,
     divisionsCount: snapshot.divisions.length,
@@ -160,7 +160,7 @@ test("golden: mission control getStabilityPanel has expected structure", () => {
   assert.ok(typeof panel.findingsCount === "number", "findingsCount should be number");
 
   assertGolden("mission-control-stability-panel", {
-    generatedAt: panel.generatedAt,
+    generatedAt: "<iso-timestamp>",
     activeTaskCount: panel.activeTaskCount,
     queuedTaskCount: panel.queuedTaskCount,
     blockedTaskCount: panel.blockedTaskCount,

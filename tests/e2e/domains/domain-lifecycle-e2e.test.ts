@@ -120,7 +120,7 @@ function createE2EDomain(overrides: Partial<DomainDefinition> = {}): DomainDefin
       optionalTools: ["write", "compress"],
       modelPreferences: { preferredModel: "claude-3-sonnet" },
       budgetLimits: { maxTokensPerTask: 8000, maxCostPerTask: 10 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "validated",
     externalAdapters: ["e2e_adapter"],
@@ -148,7 +148,7 @@ test("E2E: Full domain lifecycle - registration to archival", () => {
   assert.equal(validation.passed, true);
 
   // Step 3: Activate domain (standard activation)
-  let result = service.activate("full-lifecycle-e2e", false);
+  let result = service.activate("full-lifecycle-e2e");
   assert.equal(result.status, "active");
 
   // Step 4: Verify workflow lookup
@@ -198,11 +198,13 @@ test("E2E: Canary deployment lifecycle", () => {
   const service = new DomainRegistryService();
 
   // Step 1: Register domain with canary status
-  const domain = createE2EDomain({ domainId: "canary-e2e", status: "canary" });
+  const domain = createE2EDomain({ domainId: "canary-e2e", status: "registered" });
   service.register(domain);
 
-  // Step 2: Activate with canary flag
-  let result = service.activate("canary-e2e", true);
+  // Step 2: Promote to canary, then activate
+  let result = service.promoteToCanary("canary-e2e");
+  assert.equal(result.status, "canary");
+  result = service.activate("canary-e2e");
   assert.equal(result.status, "active");
 
   // Step 3: Verify canary domain behaves like normal active domain
@@ -278,7 +280,7 @@ test("E2E: Domain lifecycle with plugin bindings", () => {
   assert.equal(bindings[0]!.pluginId, "e2e.plugin.retriever");
 
   // Activate domain
-  const result = service.activate("plugin-lifecycle-e2e", false);
+  const result = service.activate("plugin-lifecycle-e2e");
   assert.equal(result.status, "active");
 
   // Resolve plugins
@@ -402,7 +404,7 @@ test("E2E: Domain state transitions reject invalid operations", () => {
   );
 
   // Activate first
-  service.activate("invalid-ops-e2e", false);
+  service.activate("invalid-ops-e2e");
 
   // Cannot archive from active state
   assert.throws(
@@ -419,8 +421,8 @@ test("E2E: Domain state transitions reject invalid operations", () => {
 
   // Cannot activate archived domain
   assert.throws(
-    () => service.activate("invalid-ops-e2e", false),
-    /invalid_activation_state|registered/,
+    () => service.activate("invalid-ops-e2e"),
+    /invalid_activation_state|activate from canary state/i,
   );
 
   // Cannot update archived domain
@@ -473,14 +475,18 @@ test("E2E: Smoke test validation blocks invalid domain registration", () => {
     ],
   });
 
-  assert.throws(
-    () => service.register(invalidDomain),
-    /smoke_test_failed/,
-  );
+  const registered = service.register(invalidDomain);
+  assert.equal(registered.status, "registered");
 
-  // Verify domain was not registered
-  const retrieved = service.get("smoke-fail-e2e");
-  assert.equal(retrieved, null);
+  const validation = service.validate("smoke-fail-e2e");
+  assert.equal(validation.passed, false);
+  assert.ok(validation.issues.includes("domain_registry.runtime_checks_failed"));
+  assert.ok(validation.runtimeChecks.some((check) => check.checkId === "dependency_graph" && check.passed === false));
+
+  assert.throws(
+    () => service.activate("smoke-fail-e2e"),
+    /smoke_test_failed|smoke test failed/i,
+  );
 });
 
 test("E2E: Smoke test validation during update cycle", () => {
@@ -511,7 +517,7 @@ test("E2E: Smoke test validation during update cycle", () => {
     ],
   });
   service.register(domain);
-  service.activate("update-smoke-e2e", false);
+  service.activate("update-smoke-e2e");
 
   // Enter updating state
   service.updating("update-smoke-e2e");
@@ -541,7 +547,7 @@ test("E2E: Domain registry maintains state across multiple operations", () => {
 
   // Activate some domains
   for (let i = 0; i < 3; i++) {
-    service.activate(`multi-${i}`, false);
+    service.activate(`multi-${i}`);
   }
 
   // Verify active count
@@ -586,7 +592,7 @@ test("E2E: Full domain lifecycle with events", () => {
   assert.ok(events.some((e) => e.eventType === "domain:registered"));
 
   // Activate domain
-  service.activate("events-e2e", false);
+  service.activate("events-e2e");
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 
   // Enter updating
@@ -599,7 +605,7 @@ test("E2E: Full domain lifecycle with events", () => {
 
   // Deprecate
   service.deprecate("events-e2e");
-  // Note: deprecate doesn't publish event in current impl
+  assert.ok(events.some((e) => e.eventType === "domain:deprecated"));
 
   // Archive
   service.archive("events-e2e");

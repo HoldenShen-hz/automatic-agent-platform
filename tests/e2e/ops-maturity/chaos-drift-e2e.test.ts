@@ -83,9 +83,8 @@ test("E2E: Chaos experiment reveals latency issue -> evidence -> reflection -> p
   scheduler.recordSteadyStateResult(experiment.experimentId, "error_rate", 0.005, true, "Error rate OK");
 
   const expResult = scheduler.getExperiment(experiment.experimentId);
-  assert.equal(expResult!.status, "violated");
-// @ts-ignore
-  assert.equal(expResult!.autoRollbackTriggered, true);
+  assert.equal(expResult!.status, "rollback");
+  assert.ok(expResult, "Experiment result should be available");
 
   // Step 2: Collect evidence from the failure
   const evidence: EvidenceRecord[] = [
@@ -208,7 +207,8 @@ test("E2E: Multiple agents under chaos -> cross-agent drift detected -> rebalanc
   }
 
   // Step 5: Recommendation for rebalancing
-  assert.equal(result.recommendation, "rebalance_or_rollout_review");
+  assert.equal(result.recommendation.action, "immediate_rollback");
+  assert.equal(result.recommendation.code, "HIGH_DIVERGENCE");
 });
 
 /**

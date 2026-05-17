@@ -1,136 +1,64 @@
-/**
- * E2E Routing Service Tests
- *
- * End-to-end tests covering workflow routing service:
- * 1. Intake routing based on classification
- * 2. Workflow assignment
- * 3. Agent-team routing
- * 4. Routing strategy selection
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-// @ts-ignore
-import { IntakeRouter } from "../../src/platform/five-plane-orchestration/routing/intake-router.js";
-// @ts-ignore
-import { WorkflowPlanner } from "../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
-// @ts-ignore
-import { AgentTeamService } from "../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
-// @ts-ignore
-import type { IntakeClassification, RoutingDecision, WorkflowAssignment } from "../../src/platform/five-plane-orchestration/routing/types.js";
+import { IntakeRouter } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
+import { WorkflowPlanner } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { AgentTeamService } from "../../../../src/platform/five-plane-orchestration/routing/agent-team-service.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
+test("E2E Routing: simple request stays on the minimal workflow", () => {
+  const router = new IntakeRouter();
 
-function createIntakeClassification(overrides: Partial<IntakeClassification> = {}): IntakeClassification {
-  return {
-    intent: overrides.intakeClassification ?? "create",
-    continuation: overrides.continuation ?? "new_task",
-    confidence: overrides.confidence ?? 0.95,
-    divisionId: overrides.divisionId ?? "devops",
-    workflowId: overrides.workflowId ?? "single_agent_minimal",
-    matchedRules: overrides.matchedRules ?? ["default"],
-    ambiguityFlags: overrides.ambiguityFlags ?? [],
-    ...overrides,
-  };
-}
+  const decision = router.route({
+    title: "Read a file",
+    request: "Open README.md and summarize the first section.",
+  });
 
-// ---------------------------------------------------------------------------
-// Test Suite 1: Intake Routing
-// ---------------------------------------------------------------------------
-
-test("E2E Routing: IntakeRouter classifies incoming request and assigns workflow", async () => {
-  const harness = createE2EHarness("aa-e2e-routing-");
-  try {
-    const router = new IntakeRouter();
-
-    const classification = createIntakeClassification({
-      intent: "create",
-      continuation: "new_task",
-    });
-
-    const decision = router.route(classification);
-
-    assert.ok(decision, "Should return routing decision");
-    assert.ok(decision.workflowId, "Should have workflow ID");
-    assert.equal(decision.targetDivision, "devops", "Should target correct division");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(decision.requiresOrchestration, false);
+  assert.equal(typeof decision.workflowId, "string");
+  assert.equal(typeof decision.divisionId, "string");
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 2: Workflow Planning
-// ---------------------------------------------------------------------------
+test("E2E Routing: orchestration-heavy request is routed to a multi-step workflow", () => {
+  const router = new IntakeRouter();
 
-test("E2E Routing: WorkflowPlanner generates execution plan for workflow", async () => {
-  const harness = createE2EHarness("aa-e2e-routing-plan-");
-  try {
-    const planner = new WorkflowPlanner();
+  const decision = router.route({
+    title: "Plan and execute",
+    request: "Analyze the task, break it down, orchestrate multiple steps, validate the result, and explain the tradeoffs.",
+  });
 
-    const assignment: WorkflowAssignment = {
-      workflowId: "single_agent_minimal",
-      taskId: "task_e2e_001",
-      divisionId: "devops",
-    };
-
-    const plan = planner.generatePlan(assignment);
-
-    assert.ok(plan, "Should return execution plan");
-    assert.ok(Array.isArray(plan.steps), "Should have steps");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(decision.requiresOrchestration, true);
+  assert.ok(decision.routeReason.length > 0);
+  assert.ok(decision.routeTrace.length > 0);
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 3: Agent Team Service
-// ---------------------------------------------------------------------------
+test("E2E Routing: workflow planner materializes execution steps and dependency edges", () => {
+  const planner = new WorkflowPlanner();
 
-test("E2E Routing: AgentTeamService assigns agents to workflow tasks", async () => {
-  const harness = createE2EHarness("aa-e2e-routing-team-");
-  try {
-    const service = new AgentTeamService();
+  const planned = planner.plan({
+    workflowId: "single_division_multi_step_orchestration",
+    request: "Run a multi-step coding workflow.",
+  });
 
-    const assignment: WorkflowAssignment = {
-      workflowId: "multi_agent_collaboration",
-      taskId: "task_e2e_001",
-      divisionId: "devops",
-    };
-
-    const teamAssignment = service.assignTeam(assignment);
-
-    assert.ok(teamAssignment, "Should return team assignment");
-    assert.ok(Array.isArray(teamAssignment.agents), "Should have agents array");
-  } finally {
-    harness.cleanup();
-  }
+  assert.ok(planned.executionSteps.length > 1);
+  assert.ok(planned.dependencyEdges.length > 0);
+  assert.equal(planned.workflow.workflowId, "single_division_multi_step_orchestration");
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 4: Routing Strategy Selection
-// ---------------------------------------------------------------------------
+test("E2E Routing: agent team plan derives lanes from the planned workflow", () => {
+  const planner = new WorkflowPlanner();
+  const teamService = new AgentTeamService();
+  const workflow = planner.plan({
+    workflowId: "single_division_multi_step_orchestration",
+    request: "Prepare a coordinated multi-step workflow.",
+  });
 
-test("E2E Routing: Service selects appropriate routing strategy based on task characteristics", async () => {
-  const harness = createE2EHarness("aa-e2e-routing-strategy-");
-  try {
-    const router = new IntakeRouter();
+  const teamPlan = teamService.buildPlan({
+    taskId: "task-routing-team",
+    workflow,
+    riskLevel: "medium",
+  });
 
-    const highPriorityClassification = createIntakeClassification({
-      intent: "create",
-      confidence: 0.95,
-    });
-
-    const decision = router.route(highPriorityClassification);
-
-    assert.ok(decision.strategy, "Should have routing strategy");
-  } finally {
-    harness.cleanup();
-  }
+  assert.ok(teamPlan.lanes.length >= workflow.executionSteps.length);
+  assert.ok(teamPlan.executionLoop.includes("plan"));
+  assert.ok(teamPlan.executionLoop.includes("release"));
 });

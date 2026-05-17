@@ -112,20 +112,14 @@ test("E2E Proactive: UserPreferenceTracker records and retrieves preferences", a
   try {
     const tracker = new UserPreferenceTracker();
 
-    // Set preference
-// @ts-ignore
-    tracker.setPreference("user_e2e_001", "notify_via", "dashboard");
-// @ts-ignore
-    tracker.setPreference("user_e2e_001", "auto_scale", true);
+    tracker.recordAdopted("suggestion_001", "trigger_e2e_001", "operations", 1_000);
+    tracker.recordDismissed("suggestion_002", "trigger_e2e_001", "operations", 2_000);
 
-    // Retrieve preference
-// @ts-ignore
-    const notifyPref = tracker.getPreference("user_e2e_001", "notify_via");
-    assert.equal(notifyPref, "dashboard", "Should return set preference");
-
-// @ts-ignore
-    const autoScale = tracker.getPreference("user_e2e_001", "auto_scale");
-    assert.equal(autoScale, true, "Should return boolean preference");
+    const triggerStats = tracker.getTriggerStats("trigger_e2e_001");
+    assert.ok(triggerStats, "Should aggregate trigger stats");
+    assert.equal(triggerStats?.totalSuggestions, 2, "Should count all feedback");
+    assert.equal(triggerStats?.adoptedCount, 1, "Should count adopted feedback");
+    assert.equal(triggerStats?.dismissedCount, 1, "Should count dismissed feedback");
   } finally {
     harness.cleanup();
   }

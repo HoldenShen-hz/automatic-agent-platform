@@ -268,17 +268,17 @@ test("R23-36: RecoveryController records tool_timeout retries before sleeping", 
   assert.ok(published.some((event) => event.payload.reasonCode === "tool_timeout"));
 });
 
-test("R23-37: LearningObject lifecycle supports untrusted, validating, and quarantined states", () => {
+test("R23-37: LearningObject lifecycle supports quarantine, validating, and quarantined states", () => {
   const parsedDefault = parseLearningObject({
     ...createLearningObject({ learningObjectId: "lo-default" }),
     promotionStatus: undefined,
   });
-  assert.equal(parsedDefault.promotionStatus, "untrusted");
+  assert.equal(parsedDefault.promotionStatus, "quarantine");
 
   const validator = new LearningObjectValidator();
   const validated = validator.validate(createLearningObject({
     learningObjectId: "lo-validated",
-    promotionStatus: "untrusted",
+    promotionStatus: "quarantine",
   }));
   assert.equal(validated.learningObject.promotionStatus, "validated");
 

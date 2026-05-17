@@ -1,111 +1,110 @@
-/**
- * E2E Runtime Services Tests
- *
- * End-to-end tests covering runtime services:
- * 1. Runtime governance
- * 2. Intelligence services
- * 3. Feedback loop
- * 4. Enterprise services
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-// @ts-ignore
-import { RuntimeGovernanceService } from "../../src/scale-ecosystem/runtime-services/runtime-governance-service.js";
-// @ts-ignore
-import { FeedbackLoopService } from "../../src/scale-ecosystem/feedback-loop/feedback-loop-service.js";
-// @ts-ignore
-import type { GovernanceDecision, RuntimeMetrics } from "../../src/scale-ecosystem/runtime-services/types.js";
+import { RuntimeGovernanceService } from "../../../src/scale-ecosystem/runtime-governance-service.js";
+import { FeedbackImprovementService } from "../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
+test("E2E Runtime: RuntimeGovernanceService evaluates connectors, routing, quotas, and SLA together", () => {
+  const service = new RuntimeGovernanceService();
+  const decision = service.evaluate({
+    capability: "task.execute",
+    connectors: [{
+      connectorId: "connector-1",
+      provider: "openai",
+      capabilities: ["task.execute"],
+      capabilityProfile: {},
+      authMode: "api_key",
+      rateLimits: {},
+      supportedEvents: [],
+      lifecycleState: "enabled",
+    }],
+    connectorHealthReports: [{
+      connectorId: "connector-1",
+      checkedAt: new Date().toISOString(),
+      status: "healthy",
+      latencyMs: 20,
+    }],
+    regions: [
+      {
+        regionId: "cn-shanghai",
+        provider: "local",
+        endpoints: { api: "https://cn-shanghai.example.test" },
+        dataResidencyPolicy: "regional",
+        countryCode: "CN",
+        jurisdiction: "CN",
+        capabilities: [],
+        status: "active",
+        latencyScore: 20,
+        residencyAllowed: true,
+        isPartitionLeader: true,
+      },
+      {
+        regionId: "us-west",
+        provider: "remote",
+        endpoints: { api: "https://us-west.example.test" },
+        dataResidencyPolicy: "regional",
+        countryCode: "US",
+        jurisdiction: "US",
+        capabilities: [],
+        status: "active",
+        latencyScore: 80,
+        residencyAllowed: true,
+        isPartitionLeader: false,
+      },
+    ],
+    primaryRegionHealthy: false,
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 2 } },
+    requestedUnits: 2,
+    queueItems: [
+      { itemId: "queue-1", tenantId: "tenant-001", priority: 10, ageMs: 30_000 },
+      { itemId: "queue-2", tenantId: "tenant-001", priority: 50, ageMs: 10_000 },
+    ],
+    preemptionCandidates: [],
+    tiers: [
+      { tierId: "gold", displayName: "Gold", priority: 10 },
+      { tierId: "silver", displayName: "Silver", priority: 1 },
+    ],
+    reservedCapacityPlan: [{ tierId: "gold", reservedPercent: 30 }, { tierId: "silver", reservedPercent: 20 }],
+    totalCapacityUnits: 100,
+    observation: { latencyMs: 200, successRate: 0.999, queueWaitMs: 100 },
+    commitment: { maxLatencyMs: 500, minSuccessRate: 0.99, maxQueueWaitMs: 1000 },
+  });
 
-function createRuntimeMetrics(overrides: Partial<RuntimeMetrics> = {}): RuntimeMetrics {
-  return {
-    taskId: overrides.taskId ?? "task_e2e_001",
-    executionId: overrides.executionId ?? "exec_e2e_001",
-    latencyMs: overrides.latencyMs ?? 500,
-    costUsd: overrides.costUsd ?? 0.01,
-    success: overrides.success ?? true,
-    errorCode: overrides.errorCode ?? null,
-    timestamp: overrides.timestamp ?? new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Test Suite 1: Runtime Governance
-// ---------------------------------------------------------------------------
-
-test("E2E Runtime: RuntimeGovernanceService makes governance decisions for runtime operations", async () => {
-  const harness = createE2EHarness("aa-e2e-runtime-governance-");
-  try {
-    const service = new RuntimeGovernanceService();
-
-    const metrics = createRuntimeMetrics({
-      riskScore: 75,
-    });
-
-    const decision = service.evaluateGovernance(metrics);
-
-    assert.ok(decision, "Should return governance decision");
-    assert.ok(decision.action, "Should have action");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(decision.connectorId, "connector-1");
+  assert.equal(decision.regionId, "cn-shanghai");
+  assert.equal(decision.failoverRegionId, "us-west");
+  assert.equal(decision.quotaAllowed, true);
+  assert.equal(decision.highestTierId, "gold");
+  assert.equal(decision.reservedCapacity["gold"], 30);
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 2: Feedback Loop
-// ---------------------------------------------------------------------------
+test("E2E Runtime: feedback improvement service builds actionable snapshot", () => {
+  const service = new FeedbackImprovementService();
+  const ingested = service.ingest({
+    taskId: "task-runtime-feedback",
+    signals: [
+      {
+        signalId: "runtime-feedback-1",
+        taskId: "task-runtime-feedback",
+        source: "user",
+        category: "correction",
+        severity: "warning",
+        payload: { summary: "Prompt should be more explicit", reasonCode: "prompt_gap" },
+        stepOutputRefs: ["step-a"],
+        timestamp: Date.now(),
+        trustFactors: {
+          sourceReliability: 1,
+          historicalAccuracy: 1,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0,
+          holdoutOverlap: 0,
+        },
+      },
+    ],
+  });
 
-test("E2E Runtime: FeedbackLoopService processes execution feedback for optimization", async () => {
-  const harness = createE2EHarness("aa-e2e-feedback-");
-  try {
-    const service = new FeedbackLoopService();
-
-    const feedback = {
-      taskId: "task_e2e_001",
-      executionId: "exec_e2e_001",
-      success: true,
-      latencyMs: 450,
-      qualityScore: 0.92,
-      timestamp: new Date().toISOString(),
-    };
-
-    const result = await service.processFeedback(feedback);
-
-    assert.ok(result, "Should process feedback");
-    assert.ok(result.insights, "Should return insights");
-  } finally {
-    harness.cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Test Suite 3: Runtime Metrics Collection
-// ---------------------------------------------------------------------------
-
-test("E2E Runtime: Service aggregates metrics across executions", async () => {
-  const harness = createE2EHarness("aa-e2e-runtime-metrics-");
-  try {
-    const service = new RuntimeGovernanceService();
-
-    // Record multiple executions
-    service.recordMetrics(createRuntimeMetrics({ taskId: "task_001", latencyMs: 300 }));
-    service.recordMetrics(createRuntimeMetrics({ taskId: "task_002", latencyMs: 500 }));
-    service.recordMetrics(createRuntimeMetrics({ taskId: "task_003", latencyMs: 400 }));
-
-    const aggregated = service.getAggregatedMetrics();
-    assert.ok(aggregated, "Should return aggregated metrics");
-    assert.ok(aggregated.avgLatencyMs > 0, "Should have average latency");
-  } finally {
-    harness.cleanup();
-  }
+  const snapshot = service.buildSnapshot(ingested.feedback.signals);
+  assert.ok(snapshot.generatedAt.length > 0);
+  assert.ok(snapshot.analysis.totalSignals >= 1);
+  assert.ok(snapshot.candidateCount >= ingested.candidates.length);
 });

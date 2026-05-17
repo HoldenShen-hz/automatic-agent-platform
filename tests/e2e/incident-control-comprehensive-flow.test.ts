@@ -1,16 +1,9 @@
-/**
- * E2E Test: Incident Control Flow
- * Tests complete incident lifecycle from detection through resolution
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   IncidentDetector,
-  type IncidentDetection,
   type IncidentSeverity,
-// @ts-ignore
-  type RunbookPriority,
 } from "../../src/platform/five-plane-control-plane/incident-control/incident-detector.js";
 import {
   AutoStopLossService,
@@ -19,10 +12,9 @@ import {
 
 test.describe("Incident Control E2E Flow", () => {
   test("complete incident lifecycle: detection -> classification -> escalation", () => {
-    // Step 1: Detect incident from health check
     const detector = new IncidentDetector();
 
-    const checks = [
+    const incidents = detector.detectFromChecks([
       {
         checkId: "db",
         status: "fail_closed",
@@ -30,34 +22,21 @@ test.describe("Incident Control E2E Flow", () => {
         findings: ["db_write_probe_failed"],
         metrics: { dbWritable: false },
       },
-    ];
+    ]);
 
-    const incidents = detector.detectFromChecks(checks);
     assert.ok(incidents.length > 0);
-
     const incident = incidents[0]!;
     assert.equal(incident.severity, "SEV1");
-// @ts-ignore
-    assert.equal(incident.runbookPriority, "P0");
     assert.equal(incident.status, "open");
-
-    // Step 2: Classify urgency
-    const urgency = detector.classifyUrgency(incident.severity);
-    assert.equal(urgency, "critical");
-
-    // Step 3: Check if should auto-escalate
-    const shouldEscalate = detector.shouldAutoEscalate(incident.detectedAt, incident.severity);
-    // Recent detection shouldn't trigger auto-escalate
-    assert.equal(shouldEscalate, false);
+    assert.equal(detector.classifyUrgency(incident.severity), "critical");
+    assert.equal(detector.shouldAutoEscalate(incident.detectedAt, incident.severity), false);
   });
 
-  test("P3/P4 incident flow with lower priority", () => {
+  test("lower-severity incidents stay low urgency and do not auto-escalate", () => {
     const detector = new IncidentDetector();
 
-    // Create a P3 incident
-    const p3Incident = detector.createIncident({
+    const incident = detector.createIncident({
       category: "performance",
-// @ts-ignore
       severity: "SEV4",
       title: "Minor degradation",
       description: "Minor performance issue",
@@ -66,20 +45,10 @@ test.describe("Incident Control E2E Flow", () => {
       metrics: { error_rate: 0.02 },
     });
 
-    assert.equal(p3Incident.severity, "SEV4");
-// @ts-ignore
-    assert.equal(p3Incident.runbookPriority, "P3");
-    assert.equal(p3Incident.status, "open");
-
-    // Classify urgency for P3
-// @ts-ignore
-    const urgency = detector.classifyUrgency("SEV4");
-    assert.equal(urgency, "low");
-
-    // P3/P4 should not auto-escalate
-// @ts-ignore
-    const shouldEscalate = detector.shouldAutoEscalate(p3Incident.detectedAt, "SEV4");
-    assert.equal(shouldEscalate, false);
+    assert.equal(incident.severity, "SEV4");
+    assert.equal(incident.status, "open");
+    assert.equal(detector.classifyUrgency("SEV4"), "low");
+    assert.equal(detector.shouldAutoEscalate(incident.detectedAt, "SEV4"), false);
   });
 
   test("health check to auto-stop-loss integration", () => {
@@ -95,82 +64,60 @@ test.describe("Incident Control E2E Flow", () => {
       providerHealth: "degraded",
     };
 
-    // Update health check - should trigger evaluation
     autoStopLoss.updateHealthCheck(snapshot);
 
-    // Verify health check was recorded
     const lastCheck = autoStopLoss.getLastHealthCheck();
     assert.ok(lastCheck);
     assert.equal(lastCheck.status, "overloaded");
-
-    // Get stats to verify evaluation happened
-    const stats = autoStopLoss.getExecutionStats();
-    assert.ok(typeof stats.totalExecutions === "number");
+    assert.equal(typeof autoStopLoss.getExecutionStats().totalExecutions, "number");
   });
 
   test("multi-severity incident detection from health report", () => {
     const detector = new IncidentDetector();
 
-    const healthReport = [
+    const incidents = detector.detectFromChecks([
       { checkId: "db", status: "fail_closed", summary: "DB down", findings: [], metrics: {} },
       { checkId: "workers", status: "degraded", summary: "Workers degraded", findings: [], metrics: {} },
-      { checkId: "cache", status: "warning", summary: "Cache miss rate up", findings: [], metrics: { error_rate: 0.06 } },
-    ];
+      {
+        checkId: "config",
+        status: "warning",
+        summary: "Configuration drift detected",
+        findings: [],
+        metrics: { config_drift_detected: true },
+      },
+    ]);
 
-    const incidents = detector.detectFromChecks(healthReport);
-
-    // Should detect at least 3 incidents with different severities
+    const severities = incidents.map((incident) => incident.severity);
     assert.ok(incidents.length >= 3);
-
-    const severities = incidents.map((i) => i.severity);
-// @ts-ignore
     assert.ok(severities.includes("SEV1"));
-// @ts-ignore
     assert.ok(severities.includes("SEV2"));
-// @ts-ignore
     assert.ok(severities.includes("SEV3"));
   });
 
-  test("incident severity mapping to runbook priority", () => {
+  test("incident severity mapping to urgency remains stable", () => {
     const detector = new IncidentDetector();
 
-    const testCases: Array<{ severity: IncidentSeverity; expectedPriority: RunbookPriority }> = [
-// @ts-ignore
-      { severity: "SEV1", expectedPriority: "P0" },
-// @ts-ignore
-      { severity: "SEV2", expectedPriority: "P1" },
-// @ts-ignore
-      { severity: "SEV3", expectedPriority: "P2" },
-// @ts-ignore
-      { severity: "SEV4", expectedPriority: "P3" },
+    const testCases: Array<{ severity: IncidentSeverity; expected: "critical" | "high" | "medium" | "low" }> = [
+      { severity: "SEV1", expected: "critical" },
+      { severity: "SEV2", expected: "high" },
+      { severity: "SEV3", expected: "medium" },
+      { severity: "SEV4", expected: "low" },
     ];
 
-    for (const { severity, expectedPriority } of testCases) {
-      const incident = detector.createIncident({
-        category: "system_health",
-        severity,
-        title: `Test ${severity}`,
-        description: "Test",
-      });
-      assert.equal(
-// @ts-ignore
-        incident.runbookPriority,
-        expectedPriority,
-        `${severity} should map to ${expectedPriority}`
-      );
+    for (const { severity, expected } of testCases) {
+      assert.equal(detector.classifyUrgency(severity), expected);
     }
   });
 
-  test("auto-stop-loss playbook execution flow", async () => {
+  test("auto-stop-loss playbook execution flow", () => {
     const autoStopLoss = new AutoStopLossService();
 
-    // Trigger anomaly evaluation
     const result = autoStopLoss.evaluateAnomaly("critical", "memory_usage_mb", {
       memoryUsageMb: 2048,
       healthStatus: "overloaded",
     });
 
-    assert.ok(typeof result.shouldExecute === "boolean");
+    assert.equal(typeof result.shouldExecute, "boolean");
     assert.ok(Array.isArray(result.matchingPlaybooks));
     assert.ok(["observe", "warn", "act", "critical"].includes(result.escalation));
   });
@@ -186,12 +133,7 @@ test.describe("Incident Control E2E Flow", () => {
     ];
 
     for (const { status, expectedEscalation } of testCases) {
-      const result = autoStopLoss.evaluateHealth(status);
-      assert.equal(
-        result.escalation,
-        expectedEscalation,
-        `${status} should map to ${expectedEscalation}`
-      );
+      assert.equal(autoStopLoss.evaluateHealth(status).escalation, expectedEscalation);
     }
   });
 });

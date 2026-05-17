@@ -12,6 +12,9 @@ import type {
   ApprovalRecord,
 } from "../../../src/platform/contracts/types/domain.js";
 import {
+  createSideEffectRecord as createCanonicalSideEffectRecord,
+} from "../../../src/platform/contracts/executable-contracts/index.js";
+import {
   createMinimalBudgetLedger as createCanonicalBudgetLedger,
   createMinimalBudgetReservation as createCanonicalBudgetReservation,
   createMinimalHarnessRun as createCanonicalHarnessRun,
@@ -118,6 +121,8 @@ export function createMinimalApproval(overrides: Partial<ApprovalRecord> = {}): 
     ...overrides,
   };
 }
+
+export { createCanonicalSideEffectRecord as createSideEffectRecord };
 
 export function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return createCanonicalHarnessRun({

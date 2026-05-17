@@ -127,6 +127,8 @@ export class PlatformApplicationKernel {
   }
 }
 
+let defaultPlatformApplicationKernel: PlatformApplicationKernel | null = null;
+
 export function registerPlatformApplicationKernel(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformApplicationKernel {
   registry.register<PlatformApplicationKernel>("architecture.application-kernel", {
     init: () => new PlatformApplicationKernel(),
@@ -134,7 +136,11 @@ export function registerPlatformApplicationKernel(registry: ServiceRegistry = Se
   return registry.get<PlatformApplicationKernel>("architecture.application-kernel");
 }
 
-export function getPlatformApplicationKernel(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformApplicationKernel {
+export function getPlatformApplicationKernel(registry?: ServiceRegistry): PlatformApplicationKernel {
+  if (registry == null) {
+    defaultPlatformApplicationKernel ??= new PlatformApplicationKernel();
+    return defaultPlatformApplicationKernel;
+  }
   if (!registry.isInitialized("architecture.application-kernel")) {
     return registerPlatformApplicationKernel(registry);
   }

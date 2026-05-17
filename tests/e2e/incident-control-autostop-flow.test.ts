@@ -106,7 +106,7 @@ test("E2E: auto stop-loss health loop executes auto playbooks, queues approvals,
     .filter((entry) => entry.playbookId === "overload_auto");
   assert.equal(autoExecutions.length, 1);
 
-  const approved = service.approvePendingExecution(pendingApproval?.id ?? "", true);
+  const approved = await service.approvePendingExecution(pendingApproval?.id ?? "", true);
   assert.equal(approved, true);
   assert.equal(service.getPendingApprovals().length, 0);
 

@@ -1,14 +1,5 @@
 /**
  * E2E Workflow Debugger Tests
- *
- * End-to-end tests covering workflow debugger service:
- * 1. Breakpoint management
- * 2. Time-travel debugging
- * 3. Run comparison
- * 4. Timeline rendering
- * 5. WebSocket debug stream
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
  */
 
 import assert from "node:assert/strict";
@@ -16,161 +7,91 @@ import test from "node:test";
 
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { WorkflowDebuggerService } from "../../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
-// @ts-ignore
-import { BreakpointManager } from "../../../src/ops-maturity/workflow-debugger/breakpoint-manager/index.js";
+import { isBreakpointHit } from "../../../src/ops-maturity/workflow-debugger/breakpoint-manager/index.js";
 import { TimeTravelDebugService } from "../../../src/ops-maturity/workflow-debugger/time-travel-debug-service.js";
-// @ts-ignore
-import { RunComparator } from "../../../src/ops-maturity/workflow-debugger/run-comparator/index.js";
-import type { DebugBreakpoint, DebugSnapshot, WorkflowRunRecord } from "../../../src/ops-maturity/workflow-debugger/types.js";
+import { buildRunComparison } from "../../../src/ops-maturity/workflow-debugger/run-comparator/index.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
-
-function createDebugBreakpoint(overrides: Partial<DebugBreakpoint> = {}): DebugBreakpoint {
-  return {
-    breakpointId: overrides.breakpointId ?? "bp_e2e_001",
-    taskId: overrides.taskId ?? "task_e2e_001",
-    stepIndex: overrides.stepIndex ?? 2,
-    condition: overrides.condition ?? null,
-    enabled: overrides.enabled ?? true,
-    createdAt: overrides.createdAt ?? new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-function createWorkflowRunRecord(overrides: Partial<WorkflowRunRecord> = {}): WorkflowRunRecord {
-  return {
-    runId: overrides.runId ?? "run_e2e_001",
-    taskId: overrides.taskId ?? "task_e2e_001",
-    workflowId: overrides.workflowId ?? "wf_test",
-    status: overrides.status ?? "completed",
-    startTime: overrides.startTime ?? "2026-05-01T10:00:00Z",
-    endTime: overrides.endTime ?? "2026-05-01T10:05:00Z",
-    steps: overrides.steps ?? [],
-    events: overrides.events ?? [],
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Test Suite 1: Breakpoint Manager
-// ---------------------------------------------------------------------------
-
-test("E2E Debugger: BreakpointManager sets and triggers breakpoints", async () => {
+test("E2E Debugger: breakpoint matcher identifies matching step IDs", async () => {
   const harness = createE2EHarness("aa-e2e-debug-bp-");
   try {
-    const manager = new BreakpointManager();
-
-    // Set breakpoint at step 2
-    const bp = createDebugBreakpoint({ stepIndex: 2 });
-    manager.setBreakpoint(bp);
-
-    assert.ok(manager.hasBreakpoint("task_e2e_001", 2), "Breakpoint should be set");
-
-    // Verify breakpoint retrieval
-    const retrieved = manager.getBreakpoint("bp_e2e_001");
-    assert.ok(retrieved, "Should retrieve breakpoint");
-    assert.equal(retrieved?.stepIndex, 2, "Should match step index");
+    const hit = isBreakpointHit([{ breakpointId: "bp_e2e_001", stepId: "step_2" }], "step_2");
+    assert.equal(hit, true);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 2: Time Travel Debug Service
-// ---------------------------------------------------------------------------
-
-test("E2E Debugger: TimeTravelDebugService reconstructs workflow state at checkpoint", async () => {
+test("E2E Debugger: TimeTravelDebugService reconstructs replay state at breakpoint", async () => {
   const harness = createE2EHarness("aa-e2e-debug-timetravel-");
   try {
     const service = new TimeTravelDebugService();
+    const session = service.createSession("task_e2e_001", "exec_e2e_001");
+    service.loadEventStore("exec_e2e_001", [
+      { stepId: "step_0", timestamp: "2026-05-01T10:00:00Z", variables: { a: 1 } },
+      { stepId: "step_1", timestamp: "2026-05-01T10:01:00Z", variables: { b: 2 } },
+      { stepId: "step_2", timestamp: "2026-05-01T10:02:00Z", variables: { c: 3 } },
+    ]);
+    service.setBreakpoints(session.sessionId, ["step_1"]);
 
-    const run = createWorkflowRunRecord({
-      runId: "run_timetravel_001",
-      steps: [
-        { stepIndex: 0, status: "completed", output: "step_0_output" },
-        { stepIndex: 1, status: "completed", output: "step_1_output" },
-        { stepIndex: 2, status: "completed", output: "step_2_output" },
-      ],
-    });
+    const replay = service.replayToCursor(session.sessionId, 3);
 
-    // Reconstruct state at step 1
-// @ts-ignore
-    const snapshot = service.reconstructAtStep(run, 1);
-
-    assert.ok(snapshot, "Should return state snapshot");
-    assert.ok(snapshot.workflowState, "Should have workflow state");
-    assert.equal(snapshot.stepIndex, 1, "Should match requested step");
+    assert.ok(replay, "Should return replay state");
+    assert.equal(replay?.reachedBreakpoint, true);
+    assert.equal(replay?.currentEventIndex, 2);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 3: Run Comparison
-// ---------------------------------------------------------------------------
-
-test("E2E Debugger: RunComparator identifies differences between two runs", async () => {
+test("E2E Debugger: run comparator identifies differences between two runs", async () => {
   const harness = createE2EHarness("aa-e2e-debug-compare-");
   try {
-    const comparator = new RunComparator();
-
-    const runA = createWorkflowRunRecord({
-      runId: "run_a",
-      steps: [
-        { stepIndex: 0, status: "completed", output: "output_a" },
-        { stepIndex: 1, status: "completed", output: "output_b" },
+    const diff = buildRunComparison(
+      [
+        { stepId: "step_0", status: "completed", outputHash: "a" },
+        { stepId: "step_1", status: "completed", outputHash: "b" },
       ],
-    });
-
-    const runB = createWorkflowRunRecord({
-      runId: "run_b",
-      steps: [
-        { stepIndex: 0, status: "completed", output: "output_a" },
-        { stepIndex: 1, status: "completed", output: "output_c" }, // Different output
+      [
+        { stepId: "step_0", status: "completed", outputHash: "a" },
+        { stepId: "step_1", status: "failed", outputHash: "c" },
       ],
-    });
+    );
 
-    const diff = comparator.compare(runA, runB);
-
-    assert.ok(diff, "Should return comparison result");
-    assert.ok(Array.isArray(diff.differences), "Should have differences array");
+    assert.equal(diff.length, 2);
+    assert.equal(diff[1]?.statusChanged, true);
+    assert.equal(diff[1]?.outputChanged, true);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 4: Workflow Debugger Service
-// ---------------------------------------------------------------------------
-
-test("E2E Debugger: WorkflowDebuggerService manages debugging session", async () => {
+test("E2E Debugger: WorkflowDebuggerService manages breakpoints and comparison reports", async () => {
   const harness = createE2EHarness("aa-e2e-debugger-");
   try {
     const service = new WorkflowDebuggerService();
 
-// @ts-ignore
-    const session = service.startDebugSession("task_e2e_debug");
+    const breakpoint = service.registerBreakpoint(
+      { actorId: "debugger", allowedRuntime: "replay_sandbox" },
+      "dev",
+      {
+        breakpointId: "bp_session_001",
+        workflowId: "task_e2e_debug",
+        stepSelector: "step_1",
+        condition: "always",
+        action: "pause",
+      },
+    );
+    const breakpoints = service.listBreakpoints("task_e2e_debug");
+    const report = service.buildComparisonReport(
+      "task_e2e_debug",
+      [{ stepId: "step_1", status: "completed", timestamp: "2026-05-01T10:00:00Z", label: "left" }],
+      [{ stepId: "step_1", status: "failed", timestamp: "2026-05-01T10:01:00Z", label: "right" }],
+    );
 
-    assert.ok(session, "Should create debug session");
-    assert.ok(session.sessionId, "Should have session ID");
-    assert.equal(session.taskId, "task_e2e_debug", "Should match task ID");
-
-    // Add breakpoint
-// @ts-ignore
-    service.setBreakpoint({
-      breakpointId: "bp_session_001",
-      taskId: "task_e2e_debug",
-      stepIndex: 1,
-      enabled: true,
-      createdAt: new Date().toISOString(),
-    });
-
-    // Verify breakpoint in session
-// @ts-ignore
-    const breakpoints = service.getBreakpoints("task_e2e_debug");
-    assert.ok(breakpoints.length > 0, "Should have breakpoints");
+    assert.equal(breakpoint.breakpointId, "bp_session_001");
+    assert.equal(breakpoints.length, 1);
+    assert.equal(report.regressionDetected, true);
+    assert.ok(report.differences.length > 0);
   } finally {
     harness.cleanup();
   }

@@ -1,101 +1,167 @@
-/**
- * E2E Tests for Tool Executor
- *
- * End-to-end tests covering:
- * 1. Tool execution lifecycle
- * 2. Tool timeout handling
- * 3. Tool error propagation
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-ignore
-import { createE2EHarness } from "../../helpers/e2e-harness.js";
-// @ts-ignore
-import { ToolExecutorService } from "../../../src/platform/five-plane-execution/tool-executor/tool-executor-service.js";
-// @ts-ignore
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-// @ts-ignore
-import type { ToolExecutionRequest, ToolDefinition } from "../../../src/platform/contracts/tool-schemas.js";
+import { ToolExecutor } from "../../../../src/platform/five-plane-execution/tool-executor/tool-executor.js";
+import type {
+  CommandExecutor,
+  CommandExecutionResult,
+} from "../../../../src/platform/five-plane-execution/tool-executor/command-executor.js";
+import type { CommandToolRequest } from "../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
-function createToolDefinition(overrides: Partial<ToolDefinition> = {}): ToolDefinition {
+function mockCommandExecutor(
+  execute: (request: CommandToolRequest, signal?: AbortSignal) => Promise<CommandExecutionResult>,
+): CommandExecutor {
+  return { execute } as unknown as CommandExecutor;
+}
+
+function createRequest(overrides: Partial<CommandToolRequest> = {}): CommandToolRequest {
   return {
-    name: overrides.name ?? "test_tool",
-    description: overrides.description ?? "A test tool",
-    inputSchema: overrides.inputSchema ?? { type: "object" },
-    outputSchema: overrides.outputSchema ?? { type: "object" },
-    timeoutMs: overrides.timeoutMs ?? 5000,
-    retryable: overrides.retryable ?? true,
-    ...overrides,
+    callId: overrides.callId ?? "call-tool-e2e",
+    taskId: overrides.taskId ?? "task-tool-e2e",
+    agentId: overrides.agentId ?? "agent-tool-e2e",
+    traceId: overrides.traceId ?? "trace-tool-e2e",
+    toolName: overrides.toolName ?? "command_exec",
+    sandboxPolicy: overrides.sandboxPolicy ?? {
+      policyId: "policy-tool-e2e",
+      mode: "workspace_write",
+      allowedRoots: ["/tmp"],
+      deniedRoots: [],
+      realpathEnforced: false,
+      symlinkPolicy: "deny",
+      processRuleMode: "allow",
+    },
+    command: overrides.command ?? "echo",
+    args: overrides.args ?? ["hello"],
+    cwd: overrides.cwd ?? "/tmp",
+    ...(overrides.timeoutMs != null ? { timeoutMs: overrides.timeoutMs } : {}),
   };
 }
 
-function createToolRequest(overrides: Partial<ToolExecutionRequest> = {}): ToolExecutionRequest {
-  return {
-    executionId: overrides.executionId ?? newId("exec"),
-    toolCallId: overrides.toolCallId ?? newId("tc"),
-    tool: overrides.tool ?? createToolDefinition(),
-    input: overrides.input ?? {},
-    timeoutMs: overrides.timeoutMs ?? 5000,
-    retryCount: overrides.retryCount ?? 0,
-    ...overrides,
-  };
-}
+test("E2E ToolExecutor: executeCommand returns the underlying command envelope", async () => {
+  const executor = new ToolExecutor(
+    mockCommandExecutor(async (request) => ({
+      callId: request.callId,
+      toolName: request.toolName,
+      status: "succeeded",
+      success: true,
+      output: {
+        sanitizedText: "hello",
+        warnings: [],
+        truncated: false,
+        redactionCount: 0,
+        controlCharsRemoved: 0,
+        ansiRemoved: false,
+        nfcNormalized: false,
+        unicodeTagsRemoved: 0,
+        zeroWidthCharsRemoved: 0,
+        privateUseCharsRemoved: 0,
+        injectionRisk: "none",
+        matchedInjectionRules: [],
+        rawRef: null,
+      },
+      data: {
+        rawRef: null,
+        truncated: false,
+        redactionCount: 0,
+        controlCharsRemoved: 0,
+        ansiRemoved: false,
+        injectionRisk: "none",
+        matchedInjectionRules: [],
+      },
+      metadata: {
+        command: request.command,
+        args: request.args,
+        cwd: request.cwd,
+        warnings: [],
+        coercions: [],
+        artifactCount: 0,
+      },
+      artifacts: [],
+      durationMs: 10,
+      error: null,
+      executionReceipt: "receipt-1",
+    })),
+  );
 
-test("E2E ToolExecutor: Executes tool and returns result", async () => {
-  const harness = createE2EHarness("aa-e2e-tool-exec-");
-  try {
-    const executor = new ToolExecutorService();
+  const result = await executor.executeCommand(createRequest());
 
-    const request = createToolRequest({
-      tool: createToolDefinition({ name: "echo" }),
-      input: { message: "hello" },
-    });
-
-    const result = await executor.execute(request);
-
-    assert.equal(result.status, "completed");
-    assert.equal(result.toolCallId, request.toolCallId);
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(result.status, "succeeded");
+  assert.equal(result.success, true);
+  assert.equal(result.metadata.command, "echo");
 });
 
-test("E2E ToolExecutor: Handles tool timeout", async () => {
-  const harness = createE2EHarness("aa-e2e-tool-timeout-");
-  try {
-    const executor = new ToolExecutorService();
+test("E2E ToolExecutor: passes AbortSignal through to the command executor", async () => {
+  let receivedSignal: AbortSignal | undefined;
+  const executor = new ToolExecutor(
+    mockCommandExecutor(async (request, signal) => {
+      receivedSignal = signal;
+      return {
+        callId: request.callId,
+        toolName: request.toolName,
+        status: "succeeded",
+        success: true,
+        output: {
+          sanitizedText: "",
+          warnings: [],
+          truncated: false,
+          redactionCount: 0,
+          controlCharsRemoved: 0,
+          ansiRemoved: false,
+          nfcNormalized: false,
+          unicodeTagsRemoved: 0,
+          zeroWidthCharsRemoved: 0,
+          privateUseCharsRemoved: 0,
+          injectionRisk: "none",
+          matchedInjectionRules: [],
+          rawRef: null,
+        },
+        data: {
+          rawRef: null,
+          truncated: false,
+          redactionCount: 0,
+          controlCharsRemoved: 0,
+          ansiRemoved: false,
+          injectionRisk: "none",
+          matchedInjectionRules: [],
+        },
+        metadata: {
+          command: request.command,
+          args: request.args,
+          cwd: request.cwd,
+          warnings: [],
+          coercions: [],
+          artifactCount: 0,
+        },
+        artifacts: [],
+        durationMs: 0,
+        error: null,
+        executionReceipt: null,
+      };
+    }),
+  );
 
-    const request = createToolRequest({
-      tool: createToolDefinition({ name: "slow_tool", timeoutMs: 10 }),
-      input: { delayMs: 100 },
-      timeoutMs: 10,
-    });
+  const controller = new AbortController();
+  await executor.executeCommand(createRequest({ command: "sleep", args: ["1"] }), controller.signal);
 
-    const result = await executor.execute(request);
-
-    assert.equal(result.status, "timeout");
-  } finally {
-    harness.cleanup();
-  }
+  assert.ok(receivedSignal);
 });
 
-test("E2E ToolExecutor: Propagates tool errors correctly", async () => {
-  const harness = createE2EHarness("aa-e2e-tool-error-");
-  try {
-    const executor = new ToolExecutorService();
+test("E2E ToolExecutor: executeParallel aggregates multiple items", async () => {
+  const executor = new ToolExecutor(mockCommandExecutor(async () => {
+    throw new Error("unused");
+  }));
 
-    const request = createToolRequest({
-      tool: createToolDefinition({ name: "error_tool" }),
-      input: { shouldFail: true },
-    });
+  const result = await executor.executeParallel([
+    {
+      metadata: { toolName: "parallel.a" } as { toolName: string },
+      execute: async () => "alpha",
+    },
+    {
+      metadata: { toolName: "parallel.b" } as { toolName: string },
+      execute: async () => "beta",
+    },
+  ]);
 
-    const result = await executor.execute(request);
-
-    assert.ok(result.status === "error" || result.status === "failed");
-    assert.ok(result.error !== undefined || result.errorMessage !== undefined);
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(result.allSucceeded, true);
+  assert.deepEqual(result.results, ["alpha", "beta"]);
 });

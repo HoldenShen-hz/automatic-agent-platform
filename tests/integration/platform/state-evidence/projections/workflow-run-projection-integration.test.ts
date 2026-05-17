@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { ProjectionRebuildService } from "../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
-import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createSeededIntegrationContext } from "../../../../helpers/integration-context.js";
+import { ProjectionRebuildService } from "../../../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("workflow-run-projection: ProjectionRebuildService processes workflow events", () => {
   const ctx = createSeededIntegrationContext("aa-wf-proj-rebuild-", {
@@ -133,7 +133,7 @@ test("workflow-run-projection: Idempotency - same event processed twice produces
     const eventId = "evt-idempotent-001";
     const now = nowIso();
 
-    // Insert same event twice (simulating duplicate delivery)
+    // Insert a single event, then rebuild twice to verify replay determinism.
     ctx.db.transaction(() => {
       ctx.store.event.insertEvent({
         id: eventId,
@@ -146,25 +146,19 @@ test("workflow-run-projection: Idempotency - same event processed twice produces
         traceId: "trace-idempotent",
         createdAt: now,
       } as any);
-
-      // Duplicate
-      ctx.store.event.insertEvent({
-        id: eventId, // Same event ID
-        taskId,
-        sessionId: null,
-        executionId: null,
-        eventType: "workflow:step_completed",
-        eventTier: "tier_1",
-        payloadJson: JSON.stringify({ stepIndex: 0, stepId: "step_repeat" }),
-        traceId: "trace-idempotent",
-        createdAt: now,
-      } as any);
     });
 
-    const result = service.rebuildProjection("workflow_run_projection", { batchSize: 10 });
+    const first = service.rebuildProjection("workflow_run_projection", { batchSize: 10 });
+    const firstSnapshot = service.getProjectionSnapshotStatus("workflow_run_projection").active;
+    const second = service.rebuildProjection("workflow_run_projection", { batchSize: 10 });
+    const secondSnapshot = service.getProjectionSnapshotStatus("workflow_run_projection").active;
 
-    // Events processed counts how many were considered, but skipped should include duplicates
-    assert.equal(typeof result.eventsProcessed === "number", true, "Should handle duplicate events");
+    assert.ok(firstSnapshot, "First rebuild should produce an active snapshot");
+    assert.ok(secondSnapshot, "Second rebuild should produce an active snapshot");
+    assert.equal(first.eventsProcessed, 1, "First rebuild should process the workflow event once");
+    assert.equal(second.eventsProcessed, 1, "Second rebuild should replay the same event set once");
+    assert.equal(secondSnapshot.stateHash, firstSnapshot.stateHash, "Repeated rebuilds should converge to the same state");
+    assert.deepEqual(secondSnapshot.state, firstSnapshot.state, "Repeated rebuilds should preserve projection state");
   } finally {
     ctx.cleanup();
   }

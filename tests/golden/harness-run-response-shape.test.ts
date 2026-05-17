@@ -40,6 +40,20 @@ import {
 } from "../../src/platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 
+function normalizeGeneratedId(value: string | undefined, prefix: string): string | undefined {
+  if (value == null) {
+    return value;
+  }
+  return value.startsWith(`${prefix}_`) ? `<${prefix}>` : value;
+}
+
+function normalizeIsoTimestamp(value: string | undefined): string | undefined {
+  if (value == null) {
+    return value;
+  }
+  return /^\d{4}-\d{2}-\d{2}T/.test(value) ? "<iso-timestamp>" : value;
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -143,21 +157,21 @@ test("golden: HarnessRun response shape matches canonical interface (R18-27)", (
 
     // Golden assertion
     assertGolden("harness-run-response-shape-v1", {
-      harnessRunId: harnessRun.harnessRunId,
+      harnessRunId: "<harness_run>",
       tenantId: harnessRun.tenantId,
       domainId: harnessRun.domainId,
-      confirmedTaskSpecId: harnessRun.confirmedTaskSpecId,
-      requestEnvelopeId: harnessRun.requestEnvelopeId,
-      requestHash: harnessRun.requestHash,
+      confirmedTaskSpecId: "confirmed_task_spec:<harness_run>",
+      requestEnvelopeId: "request_envelope:<harness_run>",
+      requestHash: "hash:<harness_run>",
       status: harnessRun.status,
       constraintPackRef: harnessRun.constraintPackRef,
-      versionLockId: harnessRun.versionLockId,
-      planGraphBundleId: harnessRun.planGraphBundleId,
-      budgetLedgerId: harnessRun.budgetLedgerId,
+      versionLockId: normalizeGeneratedId(harnessRun.versionLockId, "version_lock"),
+      planGraphBundleId: "bundle:<harness_run>",
+      budgetLedgerId: normalizeGeneratedId(harnessRun.budgetLedgerId, "budget_ledger"),
       currentSeq: harnessRun.currentSeq,
-      createdAt: harnessRun.createdAt,
-      updatedAt: harnessRun.updatedAt,
-      terminalAt: harnessRun.terminalAt,
+      createdAt: normalizeIsoTimestamp(harnessRun.createdAt),
+      updatedAt: normalizeIsoTimestamp(harnessRun.updatedAt),
+      terminalAt: normalizeIsoTimestamp(harnessRun.terminalAt),
     });
 
   } finally {
@@ -197,7 +211,7 @@ test("golden: HarnessRun terminal states are properly represented (R18-27)", () 
     // Golden assertion for terminal state
     assertGolden("harness-run-terminal-state-v1", {
       status: completedRun.status,
-      terminalAt: completedRun.terminalAt,
+      terminalAt: normalizeIsoTimestamp(completedRun.terminalAt),
       terminalReason: completedRun.terminalReason,
       currentSeq: completedRun.currentSeq,
     });
@@ -270,7 +284,7 @@ test("golden: PlanGraphBundle response shape matches canonical interface (R18-27
 
     // Golden assertion
     assertGolden("plan-graph-bundle-response-shape-v1", {
-      planGraphBundleId: bundle.planGraphBundleId,
+      planGraphBundleId: normalizeGeneratedId(bundle.planGraphBundleId, "pgb"),
       harnessRunId: bundle.harnessRunId,
       graphVersion: bundle.graphVersion,
       graph: {
@@ -287,7 +301,7 @@ test("golden: PlanGraphBundle response shape matches canonical interface (R18-27
       riskProfile: bundle.riskProfile,
       validationReport: bundle.validationReport,
       artifactRefsCount: bundle.artifactRefs.length,
-      createdAt: bundle.createdAt,
+      createdAt: normalizeIsoTimestamp(bundle.createdAt),
     });
 
   } finally {
@@ -420,16 +434,16 @@ test("golden: NodeRun response shape matches canonical interface (R18-27)", () =
 
     // Golden assertion
     assertGolden("node-run-response-shape-v1", {
-      nodeRunId: nodeRun.nodeRunId,
-      harnessRunId: nodeRun.harnessRunId,
+      nodeRunId: normalizeGeneratedId(nodeRun.nodeRunId, "node_run"),
+      harnessRunId: normalizeGeneratedId(nodeRun.harnessRunId, "harness_run"),
       planGraphBundleId: nodeRun.planGraphBundleId,
       graphVersion: nodeRun.graphVersion,
       nodeId: nodeRun.nodeId,
       status: nodeRun.status,
       attemptCount: nodeRun.attemptCount,
       currentSeq: nodeRun.currentSeq,
-      createdAt: nodeRun.createdAt,
-      updatedAt: nodeRun.updatedAt,
+      createdAt: normalizeIsoTimestamp(nodeRun.createdAt),
+      updatedAt: normalizeIsoTimestamp(nodeRun.updatedAt),
       leaseId: nodeRun.leaseId,
       fencingToken: nodeRun.fencingToken,
       terminalReason: nodeRun.terminalReason,
@@ -470,15 +484,15 @@ test("golden: NodeAttempt response shape matches canonical interface (R18-27)", 
 
     // Golden assertion
     assertGolden("node-attempt-response-shape-v1", {
-      nodeAttemptId: nodeAttempt.nodeAttemptId,
-      nodeRunId: nodeAttempt.nodeRunId,
+      nodeAttemptId: normalizeGeneratedId(nodeAttempt.nodeAttemptId, "node_attempt"),
+      nodeRunId: normalizeGeneratedId(nodeAttempt.nodeRunId, "node_run"),
       attemptNo: nodeAttempt.attemptNo,
       attemptKind: nodeAttempt.attemptKind,
       executorRef: nodeAttempt.executorRef,
       inputSnapshotRef: nodeAttempt.inputSnapshotRef,
       receiptId: nodeAttempt.receiptId,
-      startedAt: nodeAttempt.startedAt,
-      completedAt: nodeAttempt.completedAt,
+      startedAt: normalizeIsoTimestamp(nodeAttempt.startedAt),
+      completedAt: normalizeIsoTimestamp(nodeAttempt.completedAt),
     });
 
   } finally {
@@ -511,8 +525,8 @@ test("golden: NodeAttemptReceipt response shape matches canonical interface (R18
 
     // Golden assertion
     assertGolden("node-attempt-receipt-response-shape-v1", {
-      nodeAttemptId: receipt.nodeAttemptId,
-      nodeRunId: receipt.nodeRunId,
+      nodeAttemptId: normalizeGeneratedId(receipt.nodeAttemptId, "node_attempt"),
+      nodeRunId: normalizeGeneratedId(receipt.nodeRunId, "node_run"),
       receiptKind: receipt.receiptKind,
       status: receipt.status,
       evidenceRefs: receipt.evidenceRefs,

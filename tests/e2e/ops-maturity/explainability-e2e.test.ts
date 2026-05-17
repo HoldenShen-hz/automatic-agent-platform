@@ -1,14 +1,5 @@
 /**
  * E2E Explainability Service Tests
- *
- * End-to-end tests covering the complete explainability pipeline:
- * 1. Evidence collection and causal chain building
- * 2. Explanation pipeline processing
- * 3. Explanation caching
- * 4. Explanation rendering
- * 5. Simplified explainer output
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
  */
 
 import assert from "node:assert/strict";
@@ -16,198 +7,99 @@ import test from "node:test";
 
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { ExplanationPipelineService } from "../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
-// @ts-ignore
-import { CausalChainBuilder } from "../../../src/ops-maturity/explainability/causal-chain-builder/index.js";
-// @ts-ignore
-import { EvidenceCollector } from "../../../src/ops-maturity/explainability/evidence-collector/index.js";
-// @ts-ignore
-import { ExplanationCache } from "../../../src/ops-maturity/explainability/explanation-cache/index.js";
-// @ts-ignore
-import { SimplifiedExplainer } from "../../../src/ops-maturity/explainability/simplified-explainer/index.js";
-// @ts-ignore
-import type { CausalChainNode, EvidenceRecord } from "../../../src/ops-maturity/explainability/types.js";
+import { buildCausalChain } from "../../../src/ops-maturity/explainability/causal-chain-builder/index.js";
+import { collectExplanationEvidence } from "../../../src/ops-maturity/explainability/evidence-collector/index.js";
+import { putExplanationCacheEntry } from "../../../src/ops-maturity/explainability/explanation-cache/index.js";
+import { simplifyExplanation } from "../../../src/ops-maturity/explainability/simplified-explainer/index.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
-
-function createEvidenceRecord(overrides: Partial<EvidenceRecord> = {}): EvidenceRecord {
-  return {
-    id: overrides.id ?? "ev_e2e_001",
-    taskId: overrides.taskId ?? "task_e2e_001",
-    executionId: overrides.executionId ?? "exec_e2e_001",
-    traceId: overrides.traceId ?? "trace_e2e_001",
-    agentId: overrides.agentId ?? "agent_e2e",
-    action: overrides.action ?? "tool_call",
-    toolName: overrides.toolName ?? "read_file",
-    inputSummary: overrides.inputSummary ?? '{"path": "/tmp/test.txt"}',
-    outputSummary: overrides.outputSummary ?? '{"content": "test data"}',
-    latencyMs: overrides.latencyMs ?? 150,
-    costUsd: overrides.costUsd ?? 0.002,
-    riskScore: overrides.riskScore ?? 20,
-    success: overrides.success ?? true,
-    timestamp: overrides.timestamp ?? new Date().toISOString(),
-    tags: overrides.tags ?? [],
-    ...overrides,
-  };
-}
-
-function createCausalChainNode(overrides: Partial<CausalChainNode> = {}): CausalChainNode {
-  return {
-    nodeId: overrides.nodeId ?? "node_001",
-    type: overrides.type ?? "action",
-    label: overrides.label ?? "Read file",
-    parentIds: overrides.parentIds ?? [],
-    confidence: overrides.confidence ?? 0.95,
-    evidenceIds: overrides.evidenceIds ?? [],
-    metadata: overrides.metadata ?? {},
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Test Suite 1: Evidence Collection
-// ---------------------------------------------------------------------------
-
-test("E2E Explainability: EvidenceCollector aggregates records from task execution", async () => {
+test("E2E Explainability: evidence collector aggregates records by category", async () => {
   const harness = createE2EHarness("aa-e2e-explain-ev-");
   try {
-    const collector = new EvidenceCollector();
+    const aggregated = collectExplanationEvidence([
+      { evidenceId: "ev_read_001", category: "tool_call", excerpt: "read config" },
+      { evidenceId: "ev_write_001", category: "tool_call", excerpt: "write report" },
+    ]);
 
-    // Add evidence records from multiple tool calls
-    const evidence1 = createEvidenceRecord({
-      id: "ev_read_001",
-      toolName: "read_file",
-      action: "tool_call",
-      success: true,
-      latencyMs: 120,
-    });
-
-    const evidence2 = createEvidenceRecord({
-      id: "ev_write_001",
-      toolName: "write_file",
-      action: "tool_call",
-      success: true,
-      latencyMs: 200,
-    });
-
-    collector.addEvidence(evidence1);
-    collector.addEvidence(evidence2);
-
-    const aggregated = collector.getAggregatedEvidence("task_e2e_001");
-    assert.ok(Array.isArray(aggregated), "Should return array of evidence");
-    assert.equal(aggregated.length, 2, "Should have 2 evidence records");
+    assert.equal(aggregated.evidenceIds.length, 2);
+    assert.equal(aggregated.groupedByCategory.tool_call?.length, 2);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 2: Causal Chain Building
-// ---------------------------------------------------------------------------
-
-test("E2E Explainability: CausalChainBuilder constructs chain from evidence", async () => {
+test("E2E Explainability: causal chain builder constructs chain from nodes and links", async () => {
   const harness = createE2EHarness("aa-e2e-explain-chain-");
   try {
-    const builder = new CausalChainBuilder();
+    const chain = buildCausalChain(
+      [
+        { nodeId: "node_001", title: "Read config", category: "action" },
+        { nodeId: "node_002", title: "Generate report", category: "outcome" },
+      ],
+      [
+        { source: "node_001", target: "node_002", rationale: "configuration enabled the report run" },
+      ],
+    );
 
-    // Build chain from evidence records
-    const evidence = [
-      createEvidenceRecord({ id: "ev_001", toolName: "read_file" }),
-      createEvidenceRecord({ id: "ev_002", toolName: "bash" }),
-      createEvidenceRecord({ id: "ev_003", toolName: "write_file" }),
-    ];
-
-    const chain = builder.buildFromEvidence("task_e2e_001", evidence);
-
-    assert.ok(chain, "Should return causal chain");
-    assert.ok(Array.isArray(chain.nodes), "Chain should have nodes array");
-    assert.ok(chain.rootNodeId, "Chain should have root node");
+    assert.equal(chain.nodes.length, 2);
+    assert.equal(chain.links.length, 1);
+    assert.ok(chain.summary[0]?.includes("node_001 -> node_002"));
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 3: Explanation Pipeline
-// ---------------------------------------------------------------------------
-
-test("E2E Explainability: ExplanationPipelineService processes chain to explanation", async () => {
+test("E2E Explainability: ExplanationPipelineService processes rationale into explanation bundle", async () => {
   const harness = createE2EHarness("aa-e2e-explain-pipeline-");
   try {
     const pipeline = new ExplanationPipelineService();
-
-    const chain = {
-      chainId: "chain_e2e_001",
+    const explanation = pipeline.generate({
       taskId: "task_e2e_001",
-      rootNodeId: "node_root",
-      nodes: [
-        createCausalChainNode({ nodeId: "node_root", type: "action", label: "Read config" }),
-        createCausalChainNode({ nodeId: "node_1", type: "action", label: "Process data", parentIds: ["node_root"] }),
-      ],
-      metadata: { builtAt: new Date().toISOString() },
-    };
+      stageId: "execute",
+      summary: "Processed the task successfully",
+      decision: "accept",
+      decisionFactors: ["low_risk", "cost_within_budget"],
+      evidence: [{ evidenceId: "ev_001", category: "tool_call" }],
+      riskNotes: ["none"],
+      causalLinks: [{ source: "read", target: "write", rationale: "input drove output" }],
+    });
 
-// @ts-ignore
-    const explanation = await pipeline.process(chain);
-
-    assert.ok(explanation, "Should produce explanation");
-    assert.ok(explanation.summary, "Should have summary");
-    assert.ok(Array.isArray(explanation.factors), "Should have factors array");
+    assert.ok(explanation.rendered.length > 0);
+    assert.equal(explanation.rationale.taskId, "task_e2e_001");
+    assert.equal(explanation.causalSummary.length, 1);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 4: Explanation Cache
-// ---------------------------------------------------------------------------
-
-test("E2E Explainability: ExplanationCache stores and retrieves explanations", async () => {
+test("E2E Explainability: explanation cache stores and retrieves summaries", async () => {
   const harness = createE2EHarness("aa-e2e-explain-cache-");
   try {
-    const cache = new ExplanationCache({ ttlSeconds: 300 });
-
-    const explanation = {
+    const cache = putExplanationCacheEntry({}, {
+      cacheKey: "task_e2e_001:execute:L2",
       summary: "Task completed successfully",
-      factors: [{ factor: "low_risk", weight: 0.8 }],
-      confidence: 0.92,
-    };
+      ttlHours: 24,
+    });
 
-    cache.set("task_e2e_001", explanation);
-
-    const cached = cache.get("task_e2e_001");
-    assert.ok(cached, "Should retrieve cached explanation");
-    assert.equal(cached?.summary, "Task completed successfully", "Should match original summary");
+    assert.equal(cache["task_e2e_001:execute:L2"]?.summary, "Task completed successfully");
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 5: Simplified Explainer
-// ---------------------------------------------------------------------------
-
-test("E2E Explainability: SimplifiedExplainer generates user-friendly explanation", async () => {
+test("E2E Explainability: simplified explainer generates user-friendly explanation", async () => {
   const harness = createE2EHarness("aa-e2e-explain-simple-");
   try {
-    const explainer = new SimplifiedExplainer();
+    const simplified = simplifyExplanation(
+      "execute",
+      "Workflow execution completed with acceptable latency",
+      ["low risk", "good performance"],
+      [{ source: "observe", target: "execute", rationale: "healthy telemetry supported execution" }],
+      "low",
+    );
 
-    const detailedExplanation = {
-      summary: "File processing completed with data transformation",
-      factors: [
-        { factor: "sequential_processing", weight: 0.6 },
-        { factor: "data_validation", weight: 0.4 },
-      ],
-      causalChain: ["read_input", "transform_data", "write_output"],
-      confidence: 0.88,
-    };
-
-    const simplified = explainer.simplify(detailedExplanation);
-
-    assert.ok(simplified, "Should produce simplified explanation");
-    assert.ok(simplified.plainLanguage, "Should have plain language version");
-    assert.ok(simplified.keyPoints, "Should have key points");
+    assert.ok(simplified.headline.length > 0);
+    assert.ok(simplified.whatHappened.length > 0);
+    assert.equal(simplified.riskLevel, "low");
   } finally {
     harness.cleanup();
   }

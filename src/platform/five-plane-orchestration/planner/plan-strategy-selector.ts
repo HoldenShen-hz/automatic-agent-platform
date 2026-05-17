@@ -13,9 +13,14 @@ export class PlanStrategySelector {
     const divisionCount = new Set(input.workflow.executionSteps.map((step) => step.divisionId)).size;
     const availableTools = new Set(input.observation.environmentContext?.availableTools ?? []);
     const destructiveTools = ["apply_patch", "deploy", "shell"].some((tool) => availableTools.has(tool));
-    const tokenBudget = input.assessment.resourceAllocation.maxTokens;
-    const timeoutMs = input.assessment.resourceAllocation.timeoutMs;
-    const objective = input.observation.objective.toLowerCase();
+    const tokenBudget = input.assessment.resourceAllocation?.maxTokens ?? Number.POSITIVE_INFINITY;
+    const timeoutMs = input.assessment.resourceAllocation?.timeoutMs ?? 60_000;
+    const objective = (
+      input.observation.objective
+      ?? input.observation.userIntent?.normalized
+      ?? input.observation.userIntent?.raw
+      ?? ""
+    ).toLowerCase();
 
     if (input.assessment.complexity === "trivial" || (stepCount <= 2 && input.assessment.risk === "low")) {
       return "linear";

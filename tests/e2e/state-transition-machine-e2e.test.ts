@@ -135,40 +135,28 @@ test("E2E StateMachine: rejects invalid workflow transition from running to pend
 // Test Suite 3: No-op Transitions (Self-loops)
 // ============================================================================
 
-test("E2E StateMachine: rejects no-op transition queued to queued", () => {
+test("E2E StateMachine: allows no-op transition queued to queued", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
-    () => machine.assertTransition("queued", "queued"),
-    /noop_transition/i,
-  );
+  assert.doesNotThrow(() => machine.assertTransition("queued", "queued"));
 });
 
-test("E2E StateMachine: rejects no-op transition in_progress to in_progress", () => {
+test("E2E StateMachine: allows no-op transition in_progress to in_progress", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
-    () => machine.assertTransition("in_progress", "in_progress"),
-    /noop_transition/i,
-  );
+  assert.doesNotThrow(() => machine.assertTransition("in_progress", "in_progress"));
 });
 
-test("E2E StateMachine: rejects no-op transition done to done", () => {
+test("E2E StateMachine: allows no-op transition done to done", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
-    () => machine.assertTransition("done", "done"),
-    /noop_transition/i,
-  );
+  assert.doesNotThrow(() => machine.assertTransition("done", "done"));
 });
 
-test("E2E StateMachine: rejects no-op transition failed to failed", () => {
+test("E2E StateMachine: allows no-op transition failed to failed", () => {
   const machine = createTaskStateMachine();
 
-  assert.throws(
-    () => machine.assertTransition("failed", "failed"),
-    /noop_transition/i,
-  );
+  assert.doesNotThrow(() => machine.assertTransition("failed", "failed"));
 });
 
 // ============================================================================

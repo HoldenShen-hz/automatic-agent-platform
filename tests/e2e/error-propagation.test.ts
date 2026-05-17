@@ -73,6 +73,7 @@ function insertTaskAndExecution(
   traceId: string,
   taskStatus: TaskStatus = "in_progress",
   executionStatus: ExecutionStatus = "executing",
+  sessionId: string = `${taskId}-session`,
 ): void {
   const now = nowIso();
   db.transaction(() => {
@@ -123,6 +124,28 @@ function insertTaskAndExecution(
       createdAt: now,
       updatedAt: now,
     });
+    store.insertWorkflowState({
+      taskId,
+      divisionId: "general_ops",
+      workflowId: "single_agent_minimal",
+      currentStepIndex: 0,
+      status: "running",
+      outputsJson: "{}",
+      lastErrorCode: null,
+      retryCount: 0,
+      resumableFromStep: null,
+      startedAt: now,
+      updatedAt: now,
+    });
+    store.insertSession({
+      id: sessionId,
+      taskId,
+      channel: "cli",
+      status: "open",
+      externalSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 }
 
@@ -134,9 +157,10 @@ test("E2E: error propagation - execution failure propagates to task", () => {
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
 
     // Insert with task in_progress and execution in executing state
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing", sessionId);
 
     // Execution fails
     ts.transitionExecutionStatus(makeExecCommand(execId, "executing", "failed", traceId));
@@ -144,7 +168,7 @@ test("E2E: error propagation - execution failure propagates to task", () => {
     // Task reaches terminal state via terminal transition
     ts.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId: execId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "running",
@@ -178,9 +202,10 @@ test("E2E: error propagation - task can be cancelled mid-execution", () => {
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
 
     // Insert with task in_progress and execution in executing state
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing", sessionId);
 
     // Cancel task mid-execution
     ts.transitionTaskStatus({
@@ -211,9 +236,10 @@ test("E2E: error propagation - error code is preserved through transition", () =
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
 
     // Insert with task in_progress and execution in executing state
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing", sessionId);
 
     // Execution fails
     ts.transitionExecutionStatus(makeExecCommand(execId, "executing", "failed", traceId));
@@ -221,7 +247,7 @@ test("E2E: error propagation - error code is preserved through transition", () =
     // Task reaches terminal state with error
     ts.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId: execId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "running",
@@ -255,9 +281,10 @@ test("E2E: error propagation - completed task cannot transition to failed", () =
     const traceId = newId("trace");
     const taskId = newId("task");
     const execId = newId("exec");
+    const sessionId = newId("sess");
 
     // Insert with task in_progress and execution in executing state
-    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing");
+    insertTaskAndExecution(h.db, h.store, taskId, execId, traceId, "in_progress", "executing", sessionId);
 
     // Complete the execution
     ts.transitionExecutionStatus(makeExecCommand(execId, "executing", "succeeded", traceId));
@@ -265,7 +292,7 @@ test("E2E: error propagation - completed task cannot transition to failed", () =
     // Task reaches terminal state - done
     ts.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId: execId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "running",

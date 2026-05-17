@@ -137,7 +137,7 @@ test("E2E: HarnessSdk creates and manages runs", () => {
 // @ts-ignore
   assert.equal(run.taskId, "e2e_task");
   assert.equal(run.domainId, "testing");
-  assert.equal(run.status, "running");
+  assert.equal(run.status, "created");
 
   // Append a step
   const updated = sdk.appendStep(run, {

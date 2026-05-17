@@ -77,13 +77,13 @@ test("E2E: delegation chain creates and tracks single delegation", async () => {
   assert.equal(handle.depth, 1, "Depth should be 1 for first delegation");
 
   // Verify delegation can be retrieved
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation, "Should be able to get delegation");
 // @ts-ignore
   assert.equal(delegation!.status, "pending", "New delegation should be pending");
 
   // Verify chain is recorded
-  const chain = service.getDelegationChain("parent-agent");
+  const chain = await service.getDelegationChain("parent-agent");
   assert.ok(chain, "Should have delegation chain");
 // @ts-ignore
   assert.equal(chain!.rootAgentId, "parent-agent");
@@ -135,7 +135,7 @@ test("E2E: delegation chain propagates through multi-level chain", async () => {
   // Verify chain for root-agent (tracks root's direct delegations only)
   // Note: getDelegationChain returns per-agent chains, not a unified tree.
   // Multi-level propagation is verified via handle.depth values above.
-  const chain = service.getDelegationChain("root-agent");
+  const chain = await service.getDelegationChain("root-agent");
   assert.ok(chain, "Should have chain for root");
 // @ts-ignore
   assert.equal(chain!.nodes.length, 1, "Chain should have 1 direct child node");
@@ -204,7 +204,7 @@ test("E2E: delegation chain narrows permissions", async () => {
   const handle = await service.delegate(parent, spec);
 
   // Verify the delegation stores narrowed permissions
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation, "Should have delegation");
 
   // Permissions should be narrowed (intersection of parent and required)
@@ -238,7 +238,7 @@ test("E2E: delegation chain tracks active delegations for agent", async () => {
     targetPackId: "pack-child-2",
   }));
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
 // @ts-ignore
   assert.equal(active.length, 2, "Should have 2 active delegations");
 });
@@ -253,7 +253,7 @@ test("E2E: delegation chain completes and updates status", async () => {
   // Complete the delegation
   await service.complete(handle.delegationId, "artifact:result-1");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation?.status, "completed", "Delegation should be completed");
 });
@@ -268,7 +268,7 @@ test("E2E: delegation chain fails delegation", async () => {
   // Fail the delegation
   await service.fail(handle.delegationId, "Execution failed");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation?.status, "failed", "Delegation should be failed");
 });
@@ -283,7 +283,7 @@ test("E2E: delegation chain cancels pending delegation", async () => {
   // Cancel the delegation
   await service.cancel(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation?.status, "cancelled", "Delegation should be cancelled");
 });
@@ -321,7 +321,7 @@ test("E2E: delegation chain sets correct expiration", async () => {
 
   const handle = await service.delegate(parent, spec);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.ok(delegation?.expiresAt, "Should have expiration time");
 
@@ -343,7 +343,7 @@ test("E2E: delegation chain completes with evidence", async () => {
     "artifact:final-result",
   );
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation?.status, "completed", "Delegation should be completed with evidence");
 });
@@ -360,14 +360,14 @@ test("E2E: delegation chain revokes expired delegations", async () => {
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   // Revoke expired
-  const result = service.revokeExpiredDelegations();
+  const result = await service.revokeExpiredDelegations();
 
 // @ts-ignore
   assert.equal(result.expired, 1, "Should have expired 1 delegation");
 // @ts-ignore
   assert.equal(result.scanned, 1, "Should have scanned 1 delegation");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 // @ts-ignore
   assert.equal(delegation?.status, "expired", "Delegation should be marked expired");
 });
@@ -393,23 +393,23 @@ test("E2E: delegation chain getExpiredDelegations returns correct delegations", 
   // Wait for first to expire
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  const expired = service.getExpiredDelegations();
+  const expired = await service.getExpiredDelegations();
 // @ts-ignore
   assert.equal(expired.length, 1, "Should have 1 expired delegation");
 // @ts-ignore
   assert.equal(expired[0]?.childAgentId, "expired-agent");
 });
 
-test("E2E: delegation chain returns null for unknown delegation", () => {
+test("E2E: delegation chain returns null for unknown delegation", async () => {
   const service = createDelegationManager();
 
-  const result = service.getDelegation("unknown-id");
+  const result = await service.getDelegation("unknown-id");
   assert.equal(result, null, "Should return null for unknown delegation");
 });
 
-test("E2E: delegation chain returns null chain for unknown agent", () => {
+test("E2E: delegation chain returns null chain for unknown agent", async () => {
   const service = createDelegationManager();
 
-  const result = service.getDelegationChain("unknown-agent");
+  const result = await service.getDelegationChain("unknown-agent");
   assert.equal(result, null, "Should return null for unknown agent chain");
 });

@@ -26,6 +26,7 @@ function createCandidate(overrides: Partial<ImprovementCandidate> = {}): Improve
   return parseImprovementCandidate({
     candidateId: "candidate-e2e",
     taskId: "task-e2e-rollback",
+    learningObjectId: "learning-object-e2e-rollback",
     sourceSignalRefs: ["signal:1", "signal:2"],
     sourceLearningObjectIds: [],
     changeScope: "prompt",
@@ -89,9 +90,24 @@ test("E2E: rollout state machine rejects invalid transition", () => {
 test("E2E: rollout state machine advances through all phases", () => {
   const machine = new RolloutStateMachine();
 
-  // Draft -> L1_evaluate (proposed can go to L1_evaluate directly)
   let candidate = createCandidate({ status: "candidate_created" });
-  let record = machine.transition(candidate, "L1_evaluate", { approvedBy: "admin-1" });
+  let record = machine.transition(candidate, "L0_off", {
+    currentStatus: "candidate_created",
+    targetStatus: "under_review",
+  });
+  assert.equal(record.status, "under_review");
+
+  record = machine.transition(candidate, "L0_off", {
+    currentStatus: "under_review",
+    targetStatus: "approved",
+    approvedBy: "admin-1",
+  });
+  assert.equal(record.status, "approved");
+
+  record = machine.transition(candidate, "L1_evaluate", {
+    currentStatus: "approved",
+    approvedBy: "admin-1",
+  });
   assert.equal(record.status, "evaluation_enabled");
 
   // L1_evaluate -> L2_canary (L1_evaluate can go to L2_canary)
@@ -269,9 +285,10 @@ test("E2E: rollout state machine allows resume from paused state", () => {
 
 test("E2E: rollout state machine records approval in transition", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createCandidate({ status: "candidate_created" });
+  const candidate = createCandidate({ status: "approved" });
 
   const record = machine.transition(candidate, "L1_evaluate", {
+    currentStatus: "approved",
     approvedBy: "senior-ops-42",
     strategyVersionId: "strategy-v2",
   });
@@ -287,7 +304,7 @@ test("E2E: rollout state machine preserves evidence from candidate", () => {
     sourceSignalRefs: ["signal:perf-degradation", "signal:error-spike"],
   });
 
-  const record = machine.transition(candidate, "L2_canary");
+  const record = machine.transition(candidate, "L3_partial", { currentStatus: "canary_5" });
 
   assert.deepEqual(record.evidence, ["signal:perf-degradation", "signal:error-spike"], "Should preserve evidence");
 });

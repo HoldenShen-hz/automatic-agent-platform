@@ -6,6 +6,7 @@ export const FeedbackBatchOutcomeSchema = z.enum(["completed", "failed", "repair
 
 export const FeedbackBatchSchema = z.object({
   feedbackId: z.string().min(1),
+  batchId: z.string().min(1).optional(),
   taskId: z.string().min(1),
   executionId: z.string().nullable().default(null),
   planId: z.string().nullable().default(null),

@@ -79,17 +79,45 @@ export const LearningObjectSchema = z.object({
   sourceSignalIds: z.array(z.string()).default([]),
   recommendation: z.string().min(1).optional(),
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
-  promotionStatus: LearningObjectPromotionStatusSchema.default("untrusted"),
+  promotionStatus: LearningObjectPromotionStatusSchema.default("quarantine"),
   status: z.enum(["created", "validating", "validated", "rejected", "promoted"]).optional(),
   createdAt: z.union([z.string(), z.number().int().nonnegative()]),
   validatedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
   promotedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
+}).superRefine((value, context) => {
+  const content = value.content;
+  const title = value.title ?? content?.title;
+  const summary = value.summary ?? content?.summary;
+  const recommendation = value.recommendation ?? content?.recommendation;
+
+  if (title == null || title.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "LearningObject title is required",
+      path: ["title"],
+    });
+  }
+  if (summary == null || summary.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "LearningObject summary is required",
+      path: ["summary"],
+    });
+  }
+  if (recommendation == null || recommendation.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "LearningObject recommendation is required",
+      path: ["recommendation"],
+    });
+  }
 });
 
 function statusFromPromotionStatus(promotionStatus: LearningObjectPromotionStatus): LearningObjectStatus {
   switch (promotionStatus) {
     case "draft":
     case "untrusted":
+    case "quarantine":
       return "created";
     case "validating":
       return "validating";
@@ -97,7 +125,6 @@ function statusFromPromotionStatus(promotionStatus: LearningObjectPromotionStatu
       return "validated";
     case "promoted":
       return "promoted";
-    case "quarantine":
     case "quarantined":
     case "retired":
       return "rejected";
@@ -107,7 +134,7 @@ function statusFromPromotionStatus(promotionStatus: LearningObjectPromotionStatu
 function promotionStatusFromStatus(status: LearningObjectStatus): LearningObjectPromotionStatus {
   switch (status) {
     case "created":
-      return "untrusted";
+      return "quarantine";
     case "validating":
       return "validating";
     case "validated":

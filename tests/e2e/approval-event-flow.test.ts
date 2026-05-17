@@ -99,11 +99,14 @@ test("E2E: blocked-for-approval flow emits tier1 events and drains consumer acks
     await bus.deliverPending("approval_projection");
     await bus.deliverPending("inspect_projection");
 
-    assert.deepEqual(seenByConsumer.get("task_projection"), ["task:status_changed"]);
+    assert.deepEqual(
+      seenByConsumer.get("task_projection"),
+      ["task:status_changed", "session:status_changed", "execution:status_changed"],
+    );
     assert.deepEqual(seenByConsumer.get("approval_projection"), ["decision:requested"]);
     assert.deepEqual(
       [...(seenByConsumer.get("inspect_projection") ?? [])].sort(),
-      ["decision:requested", "task:status_changed"],
+      ["decision:requested", "execution:status_changed", "session:status_changed", "task:status_changed"],
     );
 
     approvals.applyDecision({
@@ -121,7 +124,7 @@ test("E2E: blocked-for-approval flow emits tier1 events and drains consumer acks
     assert.deepEqual(seenByConsumer.get("approval_projection"), ["decision:requested", "decision:responded"]);
     assert.deepEqual(
       [...(seenByConsumer.get("inspect_projection") ?? [])].sort(),
-      ["decision:requested", "decision:responded", "task:status_changed"],
+      ["decision:requested", "decision:responded", "execution:status_changed", "session:status_changed", "task:status_changed"],
     );
     assert.equal(store.countPendingTier1Acks(), 0);
 

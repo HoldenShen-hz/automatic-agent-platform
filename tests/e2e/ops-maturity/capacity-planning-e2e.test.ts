@@ -1,13 +1,5 @@
 /**
  * E2E Capacity Planning Tests
- *
- * End-to-end tests covering capacity planning service:
- * 1. Capacity planning calculations
- * 2. Forecasting future resource needs
- * 3. Resource simulation scenarios
- * 4. Trend analysis
- *
- * Uses node:test + node:assert/strict. ESM imports with .js extensions.
  */
 
 import assert from "node:assert/strict";
@@ -15,147 +7,99 @@ import test from "node:test";
 
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { CapacityPlanningService } from "../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
-// @ts-ignore
-import { TrendAnalyzer } from "../../../src/ops-maturity/capacity-planner/trend-analyzer/index.js";
-import type { CapacitySnapshot, ForecastRequest, ResourceAllocation } from "../../../src/ops-maturity/capacity-planner/types.js";
+import { CapacityTrendAnalyzerService } from "../../../src/ops-maturity/capacity-planner/trend-analyzer/index.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
-
-function createCapacitySnapshot(overrides: Partial<CapacitySnapshot> = {}): CapacitySnapshot {
-  return {
-    timestamp: overrides.timestamp ?? new Date().toISOString(),
-    divisionId: overrides.divisionId ?? "devops",
-    activeTasks: overrides.activeTasks ?? 10,
-    queuedTasks: overrides.queuedTasks ?? 5,
-    activeExecutions: overrides.activeExecutions ?? 8,
-    workerCount: overrides.workerCount ?? 4,
-    avgLatencyMs: overrides.avgLatencyMs ?? 500,
-    successRate: overrides.successRate ?? 0.98,
-    resourceUtilization: overrides.resourceUtilization ?? 0.65,
-    ...overrides,
-  };
+function recordUsageSeries(service: CapacityPlanningService, values: readonly number[]) {
+  values.forEach((value, index) => {
+    service.recordSignal({
+      resourceType: "workers",
+      timestamp: `2026-05-01T0${index}:00:00.000Z`,
+      usage: value,
+      queueDepth: Math.max(0, value - 10),
+    });
+  });
 }
 
-function createForecastRequest(overrides: Partial<ForecastRequest> = {}): ForecastRequest {
-  return {
-    divisionId: overrides.divisionId ?? "devops",
-    horizonHours: overrides.horizonHours ?? 24,
-    currentSnapshot: overrides.currentSnapshot ?? createCapacitySnapshot(),
-    historicalSnapshots: overrides.historicalSnapshots ?? [],
-    confidenceLevel: overrides.confidenceLevel ?? 0.95,
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Test Suite 1: Capacity Planning Service
-// ---------------------------------------------------------------------------
-
-test("E2E Capacity: CapacityPlanningService calculates current utilization", async () => {
+test("E2E Capacity: CapacityPlanningService forecasts current usage trend", async () => {
   const harness = createE2EHarness("aa-e2e-capacity-");
   try {
     const service = new CapacityPlanningService();
+    recordUsageSeries(service, [40, 45, 50, 55]);
 
-    const snapshot = createCapacitySnapshot({
-      activeTasks: 20,
-      workerCount: 8,
-      resourceUtilization: 0.75,
+    const forecast = service.forecast("workers", 3, {
+      start: "2026-05-01T00:00:00.000Z",
+      end: "2026-05-01T03:00:00.000Z",
     });
 
-// @ts-ignore
-    const analysis = service.analyzeUtilization(snapshot);
-
-    assert.ok(analysis, "Should return utilization analysis");
-    assert.ok(typeof analysis.utilizationPercent === "number", "Should have utilization percentage");
-    assert.ok(analysis.recommendations, "Should have recommendations");
+    assert.equal(forecast.resourceType, "workers");
+    assert.equal(forecast.trainingWindow.sampleCount, 4);
+    assert.equal(forecast.trend, "up");
+    assert.equal(forecast.projectedUsage.length, 3);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 2: Forecasting
-// ---------------------------------------------------------------------------
-
-test("E2E Capacity: Service forecasts resource needs for horizon period", async () => {
+test("E2E Capacity: Service compares forecast to actual usage", async () => {
   const harness = createE2EHarness("aa-e2e-capacity-forecast-");
   try {
     const service = new CapacityPlanningService();
+    recordUsageSeries(service, [20, 22, 25, 28]);
 
-    // Historical snapshots for trend analysis
-    const historical: CapacitySnapshot[] = [
-      createCapacitySnapshot({ timestamp: "2026-05-01T00:00:00Z", activeTasks: 15 }),
-      createCapacitySnapshot({ timestamp: "2026-05-01T06:00:00Z", activeTasks: 18 }),
-      createCapacitySnapshot({ timestamp: "2026-05-01T12:00:00Z", activeTasks: 22 }),
-    ];
-
-    const request = createForecastRequest({
-      horizonHours: 24,
-      historicalSnapshots: historical,
+    const forecast = service.forecast("workers", 2, {
+      start: "2026-05-01T00:00:00.000Z",
+      end: "2026-05-01T03:00:00.000Z",
+    });
+    const comparison = service.compareForecastToActual({
+      forecast,
+      actualUsage: forecast.projectedUsage.at(-1) ?? 0,
+      maxErrorRatio: 0.2,
     });
 
-// @ts-ignore
-    const forecast = service.forecast(request);
-
-    assert.ok(forecast, "Should return forecast");
-// @ts-ignore
-    assert.ok(forecast.predictedDemand, "Should have predicted demand");
-    assert.ok(forecast.confidenceInterval, "Should have confidence interval");
+    assert.equal(comparison.resourceType, "workers");
+    assert.equal(comparison.needsRecalibration, false);
+    assert.equal(comparison.errorRatio, 0);
   } finally {
     harness.cleanup();
   }
 });
 
-// ---------------------------------------------------------------------------
-// Test Suite 3: Trend Analysis
-// ---------------------------------------------------------------------------
-
-test("E2E Capacity: TrendAnalyzer identifies patterns in historical data", async () => {
+test("E2E Capacity: Trend analyzer identifies rising workload patterns", async () => {
   const harness = createE2EHarness("aa-e2e-trend-");
   try {
-    const analyzer = new TrendAnalyzer();
+    const analyzer = new CapacityTrendAnalyzerService();
+    const trends = analyzer.analyze([10, 12, 15, 18]);
 
-    const snapshots: CapacitySnapshot[] = [
-      createCapacitySnapshot({ timestamp: "2026-05-01T00:00:00Z", activeTasks: 10, queuedTasks: 2 }),
-      createCapacitySnapshot({ timestamp: "2026-05-01T04:00:00Z", activeTasks: 12, queuedTasks: 3 }),
-      createCapacitySnapshot({ timestamp: "2026-05-01T08:00:00Z", activeTasks: 15, queuedTasks: 4 }),
-      createCapacitySnapshot({ timestamp: "2026-05-01T12:00:00Z", activeTasks: 18, queuedTasks: 5 }),
-    ];
-
-    const trends = analyzer.analyzeTrends(snapshots);
-
-    assert.ok(trends, "Should return trend analysis");
-    assert.ok(Array.isArray(trends.patterns), "Should have patterns");
-    assert.ok(trends.growthRate, "Should identify growth rate");
+    assert.equal(trends.direction, "up");
+    assert.ok(trends.average > 0);
+    assert.ok(trends.volatility > 0);
+    assert.ok(trends.confidencePercent >= 55);
   } finally {
     harness.cleanup();
   }
 });
-
-// ---------------------------------------------------------------------------
-// Test Suite 4: Resource Allocation
-// ---------------------------------------------------------------------------
 
 test("E2E Capacity: Service recommends resource allocation adjustments", async () => {
   const harness = createE2EHarness("aa-e2e-alloc-");
   try {
     const service = new CapacityPlanningService();
+    recordUsageSeries(service, [70, 78, 85, 92]);
 
-    const snapshot = createCapacitySnapshot({
-      activeTasks: 50,
-      workerCount: 8,
-      avgLatencyMs: 2000,
-      resourceUtilization: 0.95,
+    const forecast = service.forecast("workers", 2, {
+      start: "2026-05-01T00:00:00.000Z",
+      end: "2026-05-01T03:00:00.000Z",
+    });
+    const recommendation = service.buildRecommendation(forecast, {
+      costPerUnit: 0.15,
+      targetHeadroomPercent: 25,
+      maxQueueDepth: 20,
+      latestQueueDepth: 24,
+      latestErrorBudgetBurn: 0.12,
     });
 
-// @ts-ignore
-    const allocation = service.calculateAllocation(snapshot);
-
-    assert.ok(allocation, "Should return allocation recommendation");
-    assert.ok(typeof allocation.currentWorkers === "number", "Should have current workers");
-    assert.ok(typeof allocation.recommendedWorkers === "number", "Should have recommended workers");
+    assert.equal(recommendation.resourceType, "workers");
+    assert.equal(recommendation.recommendedAction, "scale_up");
+    assert.equal(recommendation.sloRisk, "high");
   } finally {
     harness.cleanup();
   }

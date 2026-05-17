@@ -1,111 +1,68 @@
-/**
- * E2E Tests for Agent Lifecycle Service
- *
- * End-to-end tests covering:
- * 1. Agent lifecycle state transitions
- * 2. Agent registration and deregistration
- * 3. Agent health monitoring
- * 4. Agent resource allocation
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../../helpers/e2e-harness.js";
-// @ts-ignore
-import { AgentLifecycleService, type AgentLifecycleState, type AgentRegistrationRequest } from "../../../src/scale-ecosystem/runtime-services/agent-lifecycle/agent-lifecycle-service.js";
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { AgentLifecycleService, type ManagedAgentDefinition } from "../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 
-function createAgentRegistration(overrides: Partial<AgentRegistrationRequest> = {}): AgentRegistrationRequest {
+function createAgent(overrides: Partial<ManagedAgentDefinition> = {}): ManagedAgentDefinition {
+  const timestamp = nowIso();
   return {
-    agentId: overrides.agentId ?? newId("agent"),
-    agentType: overrides.agentType ?? "executor",
-    capabilities: overrides.capabilities ?? ["task_execution", "tool_use"],
-    maxConcurrentTasks: overrides.maxConcurrentTasks ?? 5,
-    healthCheckIntervalMs: overrides.healthCheckIntervalMs ?? 30_000,
-    ...overrides,
+    agentId: overrides.agentId ?? "agent-e2e-001",
+    name: overrides.name ?? "E2E Agent",
+    domainId: overrides.domainId ?? "general_ops",
+    owner: overrides.owner ?? {
+      orgNodeId: "org.platform.sre",
+      path: "/platform/sre",
+    },
+    components: overrides.components ?? {
+      pack: { packId: "pack.platform", version: "1.0.0" },
+      promptBundle: { bundleId: "prompt.platform", version: "1.0.0" },
+      modelBinding: { provider: "openai", model: "gpt-4.1", fallbackChain: [] },
+      trustProfile: { initialLevel: "no_write", scoringConfig: {} },
+      triggerSet: [],
+      connectorBindings: [],
+      autonomyConfig: {
+        maxAutomationLevel: "manual_only",
+        requireHumanApprovalForHighRisk: true,
+        maxRetriesBeforeApproval: 3,
+      },
+    },
+    currentVersionId: overrides.currentVersionId ?? "ver-001",
+    lifecycleState: overrides.lifecycleState ?? "draft",
+    createdAt: overrides.createdAt ?? timestamp,
+    updatedAt: overrides.updatedAt ?? timestamp,
   };
 }
 
-test("E2E AgentLifecycle: Agent transitions from initializing to active", async () => {
-  const harness = createE2EHarness("aa-e2e-agent-lifecycle-");
-  try {
-    const service = new AgentLifecycleService(harness.store);
+test("E2E AgentLifecycle: valid transitions promote an agent to active", () => {
+  const service = new AgentLifecycleService();
+  const agent = service.registerAgent(createAgent());
 
-    const registration = createAgentRegistration();
-    const result = service.registerAgent(registration);
-
-    assert.equal(result.status, "initializing");
-
-    // Transition to active
-    const activated = service.activateAgent(registration.agentId);
-    assert.equal(activated.status, "active");
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(agent.lifecycleState, "draft");
+  assert.equal(service.transition(agent.agentId, "testing").allowed, true);
+  assert.equal(service.transition(agent.agentId, "staging").allowed, true);
+  assert.equal(service.transition(agent.agentId, "active").allowed, true);
+  assert.equal(service.listActive().map((item) => item.agentId).includes(agent.agentId), true);
 });
 
-test("E2E AgentLifecycle: Agent can be registered and deregistered", async () => {
-  const harness = createE2EHarness("aa-e2e-agent-dereg-");
-  try {
-    const service = new AgentLifecycleService(harness.store);
+test("E2E AgentLifecycle: invalid transitions are rejected without mutating state", () => {
+  const service = new AgentLifecycleService();
+  const agent = service.registerAgent(createAgent({ agentId: "agent-e2e-invalid" }));
 
-    const registration = createAgentRegistration();
-    service.registerAgent(registration);
-
-    const deregistered = service.deregisterAgent(registration.agentId);
-    assert.equal(deregistered.status, "deregistered");
-  } finally {
-    harness.cleanup();
-  }
+  const rejected = service.transition(agent.agentId, "active");
+  assert.equal(rejected.allowed, false);
+  assert.match(rejected.reason ?? "", /Invalid transition/);
+  assert.equal(service.listActive().length, 0);
 });
 
-test("E2E AgentLifecycle: Agent health monitoring transitions state", async () => {
-  const harness = createE2EHarness("aa-e2e-agent-health-");
-  try {
-    const service = new AgentLifecycleService(harness.store);
+test("E2E AgentLifecycle: documented production state is normalized to active", () => {
+  const service = new AgentLifecycleService();
+  const agent = service.registerAgent(createAgent({
+    agentId: "agent-e2e-production",
+    lifecycleState: "canary",
+  }));
 
-    const registration = createAgentRegistration();
-    service.registerAgent(registration);
-    service.activateAgent(registration.agentId);
-
-    // Mark agent as unhealthy
-    const unhealthy = service.updateAgentHealth(registration.agentId, {
-      status: "unhealthy",
-      errorCode: "heartbeat_timeout",
-    });
-
-    assert.equal(unhealthy.status, "degraded");
-  } finally {
-    harness.cleanup();
-  }
-});
-
-test("E2E AgentLifecycle: Agent can handle concurrent task assignments", async () => {
-  const harness = createE2EHarness("aa-e2e-agent-concurrent-");
-  try {
-    const service = new AgentLifecycleService(harness.store);
-
-    const registration = createAgentRegistration({ maxConcurrentTasks: 3 });
-    service.registerAgent(registration);
-    service.activateAgent(registration.agentId);
-
-    const taskIds = [newId("task"), newId("task"), newId("task")];
-
-    // Assign 3 tasks (at capacity)
-    const result1 = service.assignTask(registration.agentId, taskIds[0]!);
-    const result2 = service.assignTask(registration.agentId, taskIds[1]!);
-    const result3 = service.assignTask(registration.agentId, taskIds[2]!);
-
-    assert.equal(result1.assigned, true);
-    assert.equal(result2.assigned, true);
-    assert.equal(result3.assigned, true);
-
-    // Fourth task should be queued (not rejected)
-    const result4 = service.assignTask(registration.agentId, newId("task"));
-    assert.equal(result4.assigned, false);
-    assert.ok(result4.queued === true || result4.reason !== undefined);
-  } finally {
-    harness.cleanup();
-  }
+  const transitioned = service.transition(agent.agentId, "production");
+  assert.equal(transitioned.allowed, true);
+  assert.equal(service.listActive().some((item) => item.agentId === agent.agentId), true);
 });

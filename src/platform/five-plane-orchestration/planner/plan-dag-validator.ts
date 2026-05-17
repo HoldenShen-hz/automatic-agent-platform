@@ -96,7 +96,7 @@ export class PlanDagValidator {
     return {
       valid: issues.length === 0,
       issues,
-      orderedSteps: orderedSteps.length === steps.length ? orderedSteps : [...steps],
+      orderedSteps,
     };
   }
 

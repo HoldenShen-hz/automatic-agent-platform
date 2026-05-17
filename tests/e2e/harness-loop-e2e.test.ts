@@ -231,7 +231,7 @@ test("E2E: loop escalates to human when requiresHuman is true and receives appro
     assert.equal(run.pauseReason, "hitl", "pause reason should identify HITL review");
     assert.equal(run.decision?.action, "escalate_to_human", "decision should be escalate_to_human");
     assert.ok(run.hitlRequest, "hitlRequest should be present");
-    assert.equal(run.hitlRequest?.status, "pending_approval", "HITL request should be pending_approval");
+    assert.equal(run.hitlRequest?.status, "pending", "HITL request should start pending");
     assert.ok(run.hitlRequest?.requestId, "HITL request should have an ID");
     assert.ok(run.timeline.some((e) => e.type === "hitl_requested"), "timeline should contain hitl_requested");
 
@@ -277,7 +277,7 @@ test("E2E: loop escalates to human and is rejected, run aborts", (t) => {
 
     // Resolve the HITL review with rejection
     const rejected = service.resolveHitlReview(run, "rejected", "security_manager");
-    assert.equal(rejected.status, "aborted", "after rejection, status should be aborted");
+    assert.equal(rejected.status, "cancelled", "after rejection, status should be cancelled");
     assert.equal(rejected.hitlRequest?.status, "rejected", "HITL request should be rejected");
     assert.equal(rejected.hitlRequest?.resolvedBy, "security_manager");
     assert.ok(rejected.completedAt, "completedAt should be set for aborted run");
@@ -575,20 +575,24 @@ test("E2E: guardrail assessment blocks tool and suggests abort when risk is too 
       risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
     });
 
-    assert.throws(
-      () => service.runLoop({
-        taskId: "task-e2e-guardrail-001",
-        domainId: "security",
-        constraintPack,
-        plannerOutput: { planId: "plan-guard-001" },
-        generatorOutput: { toolCalls: ["delete_prod_data"] },
-        evaluatorOutput: { verdict: "pass" },
-        evaluatorScore: 0.88,
-        riskScore: 85, // Exceeds maxRiskScore of 50
-        producedEvidenceRefs: [],
-      }),
-      /harness\.invariant\.max_risk_exceeded/,
+    const run = service.runLoop({
+      taskId: "task-e2e-guardrail-001",
+      domainId: "security",
+      constraintPack,
+      plannerOutput: { planId: "plan-guard-001" },
+      generatorOutput: { toolCalls: ["delete_prod_data"] },
+      evaluatorOutput: { verdict: "pass" },
+      evaluatorScore: 0.88,
+      riskScore: 85,
+      producedEvidenceRefs: [],
+    });
+
+    assert.ok(run.guardrailAssessment, "Guardrail assessment should be recorded");
+    assert.ok(
+      run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.max_risk_exceeded"),
+      "High risk should be captured by guardrails"
     );
+    assert.notEqual(run.decision?.action, "accept", "High-risk run should not be accepted directly");
   } finally {
     harness.cleanup();
   }

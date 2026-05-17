@@ -167,6 +167,7 @@ test("E2E Task: insertStepOutput records step data correctly", async () => {
   const harness = createE2EHarness("aa-e2e-step-");
   try {
     const taskId = newId("task");
+    const workflowId = "step_output_wf";
     const now = nowIso();
 
     // Setup task in running state
@@ -190,6 +191,19 @@ test("E2E Task: insertStepOutput records step data correctly", async () => {
         updatedAt: now,
         completedAt: null,
       });
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId,
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
     });
 
     // Insert step output via workflow repository
@@ -197,26 +211,30 @@ test("E2E Task: insertStepOutput records step data correctly", async () => {
 // @ts-ignore
       harness.store.workflow.insertStepOutput({
         id: newId("step"),
-        taskId,
+        workflowId,
         stepId: "intake_triage",
-        roleId: "general_executor",
         status: "succeeded",
         dataJson: JSON.stringify({
           summary: "Analysis complete",
           result: "Task processed successfully",
         }),
+        createdAt: now,
+        updatedAt: now,
+        roleId: "general_executor",
         summary: "Analysis complete",
         artifactsJson: "[]",
         tokenCost: 42,
         durationMs: 1200,
         validationJson: JSON.stringify({ valid: true }),
-        producedAt: now,
       });
     });
 
-    // Verify step output was inserted by checking workflow state update
+    // Verify step output was inserted while preserving workflow state
     const workflow = harness.store.getWorkflowState(taskId);
+    const outputs = harness.store.workflow.listStepOutputsByWorkflow(workflowId);
     assert.ok(workflow, "Workflow should exist after step output insertion");
+    assert.equal(outputs.length, 1, "Should persist one workflow step output");
+    assert.equal(outputs[0]?.stepId, "intake_triage");
 
   } finally {
     harness.cleanup();
@@ -405,12 +423,11 @@ test("E2E Multi-Step: multiple step outputs are recorded and retrieved", async (
       });
     }
 
-    // Verify step outputs were recorded by checking workflow output aggregation
+    // Verify step outputs were recorded in the workflow step-output table
     const wf = harness.store.getWorkflowState(taskId);
+    const persistedOutputs = harness.store.workflow.listStepOutputsByWorkflow("three_step_wf");
     assert.ok(wf, "Workflow should exist");
-    const wfOutputs = JSON.parse(wf!.outputsJson);
-    assert.ok(wfOutputs.step_extract || wfOutputs.step_transform || wfOutputs.step_load, "Should have some step outputs in workflow");
-    // Step outputs are tracked via insertStepOutput calls above, workflow outputsJson accumulates them
+    assert.equal(persistedOutputs.length, 3, "Should persist all three step outputs");
 
   } finally {
     harness.cleanup();
@@ -796,7 +813,7 @@ test("E2E Budget: multi-step workflow aggregates costs from all steps", async ()
 
     // Calculate total cost
     const totalCost = costs.reduce((sum, c) => sum + c.costUsd, 0);
-    assert.equal(totalCost, 0.009, "Total cost should be 0.009");
+    assert.ok(Math.abs(totalCost - 0.009) < 1e-9, "Total cost should be 0.009");
 
   } finally {
     harness.cleanup();
@@ -1214,8 +1231,7 @@ test("E2E Rollback: workflow records compensation events", async () => {
     });
 
     // Verify compensation event was recorded
-// @ts-ignore
-    const events = harness.store.event.listEventsByTask(taskId);
+    const events = harness.store.event.listEventsForTask(taskId);
 // @ts-ignore
     const compEvent = events.find(e => e.eventType === "compensation:started");
     assert.ok(compEvent, "Compensation event should be recorded");
@@ -1335,8 +1351,7 @@ test("E2E Rollback: saga-style compensation for multi-step workflow", async () =
     });
 
     // Verify compensation event
-// @ts-ignore
-    const events = harness.store.event.listEventsByTask(taskId);
+    const events = harness.store.event.listEventsForTask(taskId);
 // @ts-ignore
     const sagaEvent = events.find(e => e.eventType === "saga.compensation_started");
     assert.ok(sagaEvent, "Saga compensation event should be recorded");
@@ -1701,8 +1716,7 @@ test("E2E Events: tier-1 and tier-2 events are recorded correctly", async () => 
     });
 
     // Verify events were recorded
-// @ts-ignore
-    const events = harness.store.event.listEventsByTask(taskId);
+    const events = harness.store.event.listEventsForTask(taskId);
     assert.equal(events.length, 2, "Should have 2 events");
 
 // @ts-ignore

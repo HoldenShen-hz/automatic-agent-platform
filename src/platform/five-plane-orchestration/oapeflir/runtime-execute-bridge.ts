@@ -111,17 +111,21 @@ export function minimalWorkflowToPlanGraphBundle(
   harnessRunId: string,
 ): PlanGraphBundle {
   const steps = [...(workflow.steps ?? workflow.executionSteps ?? [])];
-  const nodes: PlanNode[] = steps.map((step) => ({
-    nodeId: step.stepId,
-    nodeType: "tool",
-    inputRefs: [...(step.dependsOnStepIds ?? [])],
-    outputSchemaRef: step.outputKey ?? `schema:${step.stepId}`,
-    riskClass: "medium",
-    budgetIntent: { amount: 1000, currency: "USD", resourceKinds: ["token", "compute"] },
-    sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
-    retryPolicyRef: `retry:max:${step.maxAttempts ?? 1}`,
-    timeoutMs: step.timeoutMs ?? 60_000,
-  }));
+  const nodes: PlanNode[] = steps.map((step) => {
+    const rawRoleId: unknown = "roleId" in step ? step.roleId : undefined;
+    const roleId = typeof rawRoleId === "string" ? rawRoleId : undefined;
+    return {
+      nodeId: step.stepId,
+      nodeType: inferNodeType(step.stepId, roleId),
+      inputRefs: [...(step.dependsOnStepIds ?? [])],
+      outputSchemaRef: step.outputKey ?? `schema:${step.stepId}`,
+      riskClass: "medium",
+      budgetIntent: { amount: 1000, currency: "USD", resourceKinds: ["token", "compute"] },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: `retry:max:${step.maxAttempts ?? 1}`,
+      timeoutMs: step.timeoutMs ?? 60_000,
+    };
+  });
   const edges: PlanEdge[] = steps.flatMap((step) =>
     [...(step.dependsOnStepIds ?? [])].map((dep) => ({
       edgeId: `edge:${dep}->${step.stepId}`,
@@ -157,6 +161,17 @@ export function minimalWorkflowToPlanGraphBundle(
     artifactRefs: [],
     createdAt: nowIso(),
   };
+}
+
+function inferNodeType(stepId: string, roleId: string | undefined): PlanNode["nodeType"] {
+  const seed = `${roleId ?? ""}:${stepId}`.toLowerCase();
+  if (seed.includes("evaluator")) {
+    return "evaluator";
+  }
+  if (seed.includes("planner") || seed.includes("llm")) {
+    return "llm";
+  }
+  return "tool";
 }
 
 export class RuntimeExecuteBridge implements ExecuteBridge {

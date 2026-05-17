@@ -9,15 +9,18 @@ export interface TaskDecomposition {
 
 export class TaskDecompositionService {
   public decompose(workflow: PlannedWorkflow): TaskDecomposition[] {
-    return workflow.executionSteps.map((step) => ({
-      title: `${step.stepId}:${step.outputKey}`,
-      dependsOn: [...step.dependsOnStepIds],
-      ownerRoleId: step.roleId,
-      toolNames: [
-        ...(step.dependsOnStepIds.length > 0 ? ["read"] : []),
-        ...(step.compensationModel != null ? ["apply_patch"] : []),
-        ...(step.outputSchemaPath != null ? ["validate_output"] : []),
-      ],
-    }));
+    return workflow.executionSteps.map((step) => {
+      const dependsOnStepIds = step.dependsOnStepIds ?? [];
+      return {
+        title: `${step.stepId}:${step.outputKey}`,
+        dependsOn: [...dependsOnStepIds],
+        ownerRoleId: step.roleId,
+        toolNames: [
+          ...(dependsOnStepIds.length > 0 ? ["read"] : []),
+          ...(step.compensationModel != null ? ["apply_patch"] : []),
+          ...(step.outputSchemaPath != null ? ["validate_output"] : []),
+        ],
+      };
+    });
   }
 }

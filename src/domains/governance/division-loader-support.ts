@@ -64,6 +64,7 @@ export interface RawWorkflowStepConfig {
   timeout_ms: unknown;
   max_attempts: unknown;
   depends_on?: unknown;
+  compensation_model?: unknown;
 }
 
 export interface RawWorkflowConfig {

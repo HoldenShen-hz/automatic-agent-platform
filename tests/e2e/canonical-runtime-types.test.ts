@@ -11,7 +11,7 @@
  * type usage.
  *
  * Tests verify:
- * - HarnessRun full lifecycle (created -> ready -> running -> completed/failed)
+ * - HarnessRun full lifecycle (created -> admitted -> planning -> ready -> running -> completed/failed)
  * - NodeRun state transitions via RuntimeStateMachine
  * - NodeAttempt execution with budget tracking
  * - BudgetReservation lifecycle (reserved -> settled/released)
@@ -58,8 +58,8 @@ test("E2E Canonical HarnessRun: full lifecycle from created to completed", async
       });
       const traceId = newId("trace");
 
-      // created -> ready
-      const ready = machine.transition({
+      // created -> admitted
+      const admitted = machine.transition({
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: harnessRun.harnessRunId,
@@ -67,18 +67,54 @@ test("E2E Canonical HarnessRun: full lifecycle from created to completed", async
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
         fromStatus: "created",
+        toStatus: "admitted",
+        tenantId: harnessRun.tenantId,
+        traceId,
+        reasonCode: "e2e.harness.admitted",
+        emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+        runVersionLockId: harnessRun.versionLockId,
+        fencingToken: harnessRun.fencingToken ?? "fence_default",
+        auditRef: "audit://harness-lifecycle/admitted",
+      });
+      assert.equal(admitted.aggregate.status, "admitted");
+      assert.equal(admitted.event.eventType, "platform.harness_run.status_changed");
+
+      const planning = machine.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun",
+        entityId: harnessRun.harnessRunId,
+        principal: "e2e-harness-lifecycle",
+        aggregateType: "HarnessRun",
+        aggregate: admitted.aggregate,
+        fromStatus: "admitted",
+        toStatus: "planning",
+        tenantId: harnessRun.tenantId,
+        traceId,
+        reasonCode: "e2e.harness.planning",
+        emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+        fencingToken: harnessRun.fencingToken ?? "fence_default",
+        auditRef: "audit://harness-lifecycle/planning",
+      });
+      assert.equal(planning.aggregate.status, "planning");
+
+      const ready = machine.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun",
+        entityId: harnessRun.harnessRunId,
+        principal: "e2e-harness-lifecycle",
+        aggregateType: "HarnessRun",
+        aggregate: planning.aggregate,
+        fromStatus: "planning",
         toStatus: "ready",
         tenantId: harnessRun.tenantId,
         traceId,
         reasonCode: "e2e.harness.ready",
         emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-        fencingToken: harnessRun.fenceToken ?? "fence_default",
+        fencingToken: harnessRun.fencingToken ?? "fence_default",
         auditRef: "audit://harness-lifecycle/ready",
       });
       assert.equal(ready.aggregate.status, "ready");
-      assert.equal(ready.event.eventType, "platform.harness_run.status_changed");
 
-      // ready -> running
       const running = machine.transition({
         commandId: newId("cmd"),
         entityType: "HarnessRun",
@@ -92,7 +128,7 @@ test("E2E Canonical HarnessRun: full lifecycle from created to completed", async
         traceId,
         reasonCode: "e2e.harness.running",
         emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-        fencingToken: harnessRun.fenceToken ?? "fence_default",
+        fencingToken: harnessRun.fencingToken ?? "fence_default",
         auditRef: "audit://harness-lifecycle/running",
       });
       assert.equal(running.aggregate.status, "running");
@@ -111,11 +147,11 @@ test("E2E Canonical HarnessRun: full lifecycle from created to completed", async
         traceId,
         reasonCode: "e2e.harness.completed",
         emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-        fencingToken: harnessRun.fenceToken ?? "fence_default",
+        fencingToken: harnessRun.fencingToken ?? "fence_default",
         auditRef: "audit://harness-lifecycle/completed",
       });
       assert.equal(completed.aggregate.status, "completed");
-      assert.ok(completed.aggregate.completedAt, "completedAt should be set");
+      assert.ok(completed.aggregate.terminalAt, "terminalAt should be set");
 
     } finally {
       harness.cleanup();
@@ -135,8 +171,7 @@ test("E2E Canonical HarnessRun: failure path transitions to failed terminal stat
     });
     const traceId = newId("trace");
 
-    // Quick path: created -> ready -> running -> failed
-    const ready = machine.transition({
+    const admitted = machine.transition({
       commandId: newId("cmd"),
       entityType: "HarnessRun",
       entityId: harnessRun.harnessRunId,
@@ -144,12 +179,47 @@ test("E2E Canonical HarnessRun: failure path transitions to failed terminal stat
       aggregateType: "HarnessRun",
       aggregate: harnessRun,
       fromStatus: "created",
+      toStatus: "admitted",
+      tenantId: harnessRun.tenantId,
+      traceId,
+      reasonCode: "e2e.harness.admitted",
+      emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+      runVersionLockId: harnessRun.versionLockId,
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
+      auditRef: "audit://harness-failed/admitted",
+    });
+
+    const planning = machine.transition({
+      commandId: newId("cmd"),
+      entityType: "HarnessRun",
+      entityId: harnessRun.harnessRunId,
+      principal: "e2e-harness-failed",
+      aggregateType: "HarnessRun",
+      aggregate: admitted.aggregate,
+      fromStatus: "admitted",
+      toStatus: "planning",
+      tenantId: harnessRun.tenantId,
+      traceId,
+      reasonCode: "e2e.harness.planning",
+      emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
+      auditRef: "audit://harness-failed/planning",
+    });
+
+    const ready = machine.transition({
+      commandId: newId("cmd"),
+      entityType: "HarnessRun",
+      entityId: harnessRun.harnessRunId,
+      principal: "e2e-harness-failed",
+      aggregateType: "HarnessRun",
+      aggregate: planning.aggregate,
+      fromStatus: "planning",
       toStatus: "ready",
       tenantId: harnessRun.tenantId,
       traceId,
       reasonCode: "e2e.harness.ready",
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-      fencingToken: harnessRun.fenceToken ?? "fence_default",
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
       auditRef: "audit://harness-failed/ready",
     });
 
@@ -166,7 +236,7 @@ test("E2E Canonical HarnessRun: failure path transitions to failed terminal stat
       traceId,
       reasonCode: "e2e.harness.running",
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-      fencingToken: harnessRun.fenceToken ?? "fence_default",
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
       auditRef: "audit://harness-failed/running",
     });
 
@@ -183,13 +253,13 @@ test("E2E Canonical HarnessRun: failure path transitions to failed terminal stat
       traceId,
       reasonCode: "e2e.harness.failed",
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-      fencingToken: harnessRun.fenceToken ?? "fence_default",
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
       auditRef: "audit://harness-failed/failed",
       errorCode: "E2E_TEST_FAILURE",
     });
 
     assert.equal(failed.aggregate.status, "failed");
-    assert.ok(failed.aggregate.completedAt, "completedAt should be set");
+    assert.ok(failed.aggregate.terminalAt, "terminalAt should be set");
 
   } finally {
     harness.cleanup();
@@ -259,7 +329,7 @@ test("E2E Canonical NodeRun: state transitions via RuntimeStateMachine", async (
       });
       assert.equal(step2.aggregate.status, "leased");
 
-      // leased -> executing
+      // leased -> running
       const step3 = machine.transition({
         commandId: newId("cmd"),
         entityType: "NodeRun",
@@ -268,18 +338,18 @@ test("E2E Canonical NodeRun: state transitions via RuntimeStateMachine", async (
         aggregateType: "NodeRun",
         aggregate: step2.aggregate,
         fromStatus: "leased",
-        toStatus: "executing",
+        toStatus: "running",
         tenantId,
         traceId,
-        reasonCode: "e2e.nrun.executing",
+        reasonCode: "e2e.nrun.running",
         emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
         leaseId: nodeRun.leaseId!,
         fencingToken: nodeRun.fencingToken!,
-        auditRef: "audit://nrun-fsm/executing",
+        auditRef: "audit://nrun-fsm/running",
       });
-      assert.equal(step3.aggregate.status, "executing");
+      assert.equal(step3.aggregate.status, "running");
 
-      // executing -> succeeded
+      // running -> succeeded
       const step4 = machine.transition({
         commandId: newId("cmd"),
         entityType: "NodeRun",
@@ -287,7 +357,7 @@ test("E2E Canonical NodeRun: state transitions via RuntimeStateMachine", async (
         principal: "e2e-nrun-fsm",
         aggregateType: "NodeRun",
         aggregate: step3.aggregate,
-        fromStatus: "executing",
+        fromStatus: "running",
         toStatus: "succeeded",
         tenantId,
         traceId,
@@ -298,7 +368,7 @@ test("E2E Canonical NodeRun: state transitions via RuntimeStateMachine", async (
         auditRef: "audit://nrun-fsm/succeeded",
       });
       assert.equal(step4.aggregate.status, "succeeded");
-      assert.ok(step4.aggregate.completedAt, "completedAt should be set");
+      assert.ok(step4.aggregate.terminalReason, "terminalReason should be set");
 
     } finally {
       harness.cleanup();
@@ -319,11 +389,12 @@ test("E2E Canonical NodeRun: failed execution transitions to failed state", asyn
     const nodeRun = createMinimalNodeRun(harnessRun.harnessRunId, planGraphBundle.planGraphBundleId, {
       status: "created",
       nodeId: planGraphBundle.graph.entryNodeIds[0]!,
+      leaseId: "lease_nrun_failed",
+      fencingToken: "fence_nrun_failed",
     });
     const traceId = newId("trace");
 
-    // Quick path to failed
-    const executing = machine.transition({
+    const ready = machine.transition({
       commandId: newId("cmd"),
       entityType: "NodeRun",
       entityId: nodeRun.nodeRunId,
@@ -331,14 +402,50 @@ test("E2E Canonical NodeRun: failed execution transitions to failed state", asyn
       aggregateType: "NodeRun",
       aggregate: nodeRun,
       fromStatus: "created",
-      toStatus: "executing",
+      toStatus: "ready",
       tenantId: harnessRun.tenantId,
       traceId,
-      reasonCode: "e2e.nrun.executing",
+      reasonCode: "e2e.nrun.ready",
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
       leaseId: nodeRun.leaseId!,
       fencingToken: nodeRun.fencingToken!,
-      auditRef: "audit://nrun-failed/executing",
+      auditRef: "audit://nrun-failed/ready",
+    });
+
+    const leased = machine.transition({
+      commandId: newId("cmd"),
+      entityType: "NodeRun",
+      entityId: nodeRun.nodeRunId,
+      principal: "e2e-nrun-failed",
+      aggregateType: "NodeRun",
+      aggregate: ready.aggregate,
+      fromStatus: "ready",
+      toStatus: "leased",
+      tenantId: harnessRun.tenantId,
+      traceId,
+      reasonCode: "e2e.nrun.leased",
+      emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+      leaseId: nodeRun.leaseId!,
+      fencingToken: nodeRun.fencingToken!,
+      auditRef: "audit://nrun-failed/leased",
+    });
+
+    const running = machine.transition({
+      commandId: newId("cmd"),
+      entityType: "NodeRun",
+      entityId: nodeRun.nodeRunId,
+      principal: "e2e-nrun-failed",
+      aggregateType: "NodeRun",
+      aggregate: leased.aggregate,
+      fromStatus: "leased",
+      toStatus: "running",
+      tenantId: harnessRun.tenantId,
+      traceId,
+      reasonCode: "e2e.nrun.running",
+      emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
+      leaseId: nodeRun.leaseId!,
+      fencingToken: nodeRun.fencingToken!,
+      auditRef: "audit://nrun-failed/running",
     });
 
     const failed = machine.transition({
@@ -347,8 +454,8 @@ test("E2E Canonical NodeRun: failed execution transitions to failed state", asyn
       entityId: nodeRun.nodeRunId,
       principal: "e2e-nrun-failed",
       aggregateType: "NodeRun",
-      aggregate: executing.aggregate,
-      fromStatus: "executing",
+      aggregate: running.aggregate,
+      fromStatus: "running",
       toStatus: "failed",
       tenantId: harnessRun.tenantId,
       traceId,
@@ -361,7 +468,7 @@ test("E2E Canonical NodeRun: failed execution transitions to failed state", asyn
     });
 
     assert.equal(failed.aggregate.status, "failed");
-    assert.ok(failed.aggregate.completedAt, "completedAt should be set");
+    assert.ok(failed.aggregate.terminalReason, "terminalReason should be set");
 
   } finally {
     harness.cleanup();
@@ -586,7 +693,7 @@ test("E2E Canonical Runtime: runMultiStepOrchestration produces valid HarnessRun
       // Verify workflow uses canonical path
       assert.ok(result.plannedWorkflow, "Should have planned workflow");
       const workflow = result.plannedWorkflow;
-      assert.ok(workflow.workflowId.startsWith("oapeflir_"), "Workflow should use canonical oapeflir_ prefix");
+      assert.ok(workflow.workflow.workflowId.startsWith("oapeflir_"), "Workflow should use canonical oapeflir_ prefix");
 
       // Verify routing indicates canonical path
       assert.equal(result.routing.routeReason, "oapeflir_bridge", "Should route via oapeflir_bridge canonical path");
@@ -621,7 +728,7 @@ test("E2E Canonical Runtime: HarnessRun + PlanGraphBundle + NodeRun aggregate in
     assert.equal(nodeRun.harnessRunId, harnessRun.harnessRunId);
     assert.equal(nodeRun.planGraphBundleId, planGraphBundle.planGraphBundleId);
 
-    // Create -> Ready for HarnessRun
+    // Create -> Admitted for HarnessRun
     const hrunReady = machine.transition({
       commandId: newId("cmd"),
       entityType: "HarnessRun",
@@ -630,13 +737,14 @@ test("E2E Canonical Runtime: HarnessRun + PlanGraphBundle + NodeRun aggregate in
       aggregateType: "HarnessRun",
       aggregate: harnessRun,
       fromStatus: "created",
-      toStatus: "ready",
+      toStatus: "admitted",
       tenantId: harnessRun.tenantId,
       traceId,
-      reasonCode: "e2e.canonical.agg.ready",
+      reasonCode: "e2e.canonical.agg.admitted",
       emittedBy: "tests/e2e/canonical-runtime-types.test.ts",
-      fencingToken: harnessRun.fenceToken ?? "fence_default",
-      auditRef: "audit://canonical-agg/hrun-ready",
+      runVersionLockId: harnessRun.versionLockId,
+      fencingToken: harnessRun.fencingToken ?? "fence_default",
+      auditRef: "audit://canonical-agg/hrun-admitted",
     });
 
     // Verify HarnessRun state machine emits correct event

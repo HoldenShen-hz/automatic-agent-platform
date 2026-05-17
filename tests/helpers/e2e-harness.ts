@@ -128,6 +128,20 @@ export function createSeededE2EHarness(
       createdAt: now,
       updatedAt: now,
     });
+
+    harness.store.insertWorkflowState({
+      taskId,
+      divisionId: "general_ops",
+      workflowId: "single_agent_minimal",
+      currentStepIndex: 0,
+      status: "running",
+      outputsJson: "{}",
+      lastErrorCode: null,
+      retryCount: 0,
+      resumableFromStep: null,
+      startedAt: now,
+      updatedAt: now,
+    });
   });
 
   return harness;

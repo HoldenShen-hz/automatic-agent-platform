@@ -50,9 +50,9 @@ test("E2E Canonical Intake: raw request flows through task draft, confirmed spec
   });
 
 // @ts-ignore
-  assert.ok(result.taskDraft.taskDraftId.startsWith("taskdraft_"));
+  assert.ok(result.taskDraft.taskDraftId.startsWith("draft:"));
 // @ts-ignore
-  assert.equal(result.clarificationSession, null);
+  assert.equal(result.clarificationSession, undefined);
 // @ts-ignore
   assert.equal(result.confirmedTaskSpec.confirmedTaskSpecId, result.confirmedTaskSpecId);
 // @ts-ignore
@@ -61,9 +61,9 @@ test("E2E Canonical Intake: raw request flows through task draft, confirmed spec
   assert.equal(result.requestEnvelope.traceId, "trace-e2e-intake");
 // @ts-ignore
   assert.equal(result.requestEnvelope.tenantId, harnessRun.tenantId);
-  assert.ok(result.routeTrace.some((entry) => entry.startsWith("stage1:taskDraft:")));
-  assert.ok(result.routeTrace.some((entry) => entry.startsWith("stage3:confirmed_task_spec:")));
-  assert.ok(result.routeTrace.some((entry) => entry.startsWith("stage4:request_envelope:")));
+  assert.ok(result.routeTrace.includes("tenantId:tenant-e2e"));
+  assert.ok(result.routeTrace.includes("traceId:trace-e2e-intake"));
+  assert.ok(result.routeTrace.some((entry) => entry.startsWith("route:selected:")));
 });
 
 test("E2E SideEffect Lifecycle: canonical runtime state machine records commit, ambiguity, and compensation path", () => {
@@ -118,7 +118,7 @@ test("E2E SideEffect Lifecycle: canonical runtime state machine records commit, 
     });
     sideEffect = result.aggregate;
     assert.equal(result.event.eventType, "platform.side_effect.status_changed");
-    assert.equal(result.event.correlationId, "trace-side-effect-e2e");
+    assert.equal(result.event.correlationId, sideEffect.harnessRunId);
   }
 
   assert.equal(sideEffect.status, "compensated");

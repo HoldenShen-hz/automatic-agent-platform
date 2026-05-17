@@ -50,6 +50,9 @@ test("E2E: marketplace governance turns security-reviewed packages into publicat
         permissionSurface: "^1.0.0",
         runtimeCapability: "^1.0.0",
       },
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       signatureVerified: true,
       manifestChecksum: safeChecksum,
     });

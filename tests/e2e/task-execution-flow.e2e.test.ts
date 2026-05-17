@@ -38,7 +38,6 @@ test("E2E Task Execution: single task happy path - task creation to completion",
         stepOutputOverride: {
           summary: "Request analyzed successfully",
           result: "Analysis complete",
-          analysis: "Test analysis",
         },
       });
 
@@ -355,9 +354,9 @@ test("E2E Task Execution: multi-step orchestration completes multiple steps", as
           },
         ])}`,
         stepOutputOverrides: {
-          step_extract: { extracted_data: "extracted value" },
-          step_transform: { transformed_data: "transformed value" },
-          step_load: { final_result: "final result" },
+          step_extract: { summary: "Extracted source data", result: "extracted value" },
+          step_transform: { summary: "Transformed extracted data", result: "transformed value" },
+          step_load: { summary: "Loaded final result", result: "final result" },
         },
       });
 
@@ -365,7 +364,7 @@ test("E2E Task Execution: multi-step orchestration completes multiple steps", as
       assert.ok(result.snapshot, "Should return task snapshot");
       assert.ok(result.routing, "Should have routing info");
       assert.ok(result.plannedWorkflow, "Should have planned workflow");
-      assert.equal(result.streamFrames.length, 0, "Should have no stream frames in test mode");
+      assert.ok(result.streamFrames.length >= 1, "Should replay workflow stream frames");
 
       // Verify task reached done status
       const task = result.snapshot.task;
@@ -374,7 +373,7 @@ test("E2E Task Execution: multi-step orchestration completes multiple steps", as
 
       // Verify all step outputs were recorded
 // @ts-ignore
-      const stepOutputs = harness.store.listStepOutputsByTask(task!.id);
+      const stepOutputs = result.snapshot.stepOutputs;
       assert.ok(stepOutputs.length >= 3, "Should have outputs for all 3 steps");
 
       // Verify workflow is completed
@@ -433,7 +432,7 @@ test("E2E Task Execution: multi-step orchestration handles step failure", async 
           step_transform: ["transform.failed", "Transform step encountered an error"],
         },
         stepOutputOverrides: {
-          step_extract: { extracted_data: "extracted value" },
+          step_extract: { summary: "Extracted source data", result: "extracted value" },
         },
       });
 
@@ -568,10 +567,6 @@ test("E2E Task Execution: task execution produces step output artifacts", async 
         stepOutputOverride: {
           summary: "Artifacts created",
           result: "Artifacts generated successfully",
-          artifactData: {
-            files: ["file1.txt", "file2.txt"],
-            count: 2,
-          },
         },
       });
 
@@ -581,7 +576,7 @@ test("E2E Task Execution: task execution produces step output artifacts", async 
 
       // Verify step outputs were recorded
 // @ts-ignore
-      const stepOutputs = harness.store.listStepOutputsByTask(result.task!.id);
+      const stepOutputs = result.stepOutputs;
       assert.ok(stepOutputs.length > 0, "Should have step outputs");
 
       // Verify step output contains our custom data

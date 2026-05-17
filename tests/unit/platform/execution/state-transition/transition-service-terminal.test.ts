@@ -516,6 +516,61 @@ test("TaskTerminalTransitionService.apply() uses CAS updates for session status"
   assert.ok(repository.updateSessionStatusCasCalls.includes("session-1"), "updateSessionStatusCas should be called");
 });
 
+test("TaskTerminalTransitionService.apply() skips workflow CAS when no workflow state exists", () => {
+  const db = createMockDatabase();
+  const repository = createMockRepository();
+  const mockStore = {} as AuthoritativeTaskStore;
+
+  repository.mockState.taskStatuses.set("task-1", { status: "in_progress", updatedAt: new Date().toISOString() });
+  repository.mockState.sessionStatuses.set("session-1", { status: "streaming", updatedAt: new Date().toISOString() });
+  repository.mockState.executionStatuses.set("exec-1", { status: "executing", startedAt: null, finishedAt: null, lastErrorCode: null, updatedAt: new Date().toISOString() });
+
+  const service = new TransitionService(db, mockStore, repository);
+
+  service.applyTaskTerminalState(makeTerminalInput({
+    currentWorkflowStatus: "running",
+    terminalStatus: "done",
+  }));
+
+  assert.equal(repository.updateWorkflowStateCasCalls.length, 0, "workflow CAS should be skipped when no workflow exists");
+  assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done");
+  assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "completed");
+  assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded");
+});
+
+test("TaskTerminalTransitionService.apply() skips execution CAS when execution is already terminal", () => {
+  const db = createMockDatabase();
+  const repository = createMockRepository();
+  const mockStore = {} as AuthoritativeTaskStore;
+
+  repository.mockState.taskStatuses.set("task-1", { status: "awaiting_decision", updatedAt: new Date().toISOString() });
+  repository.mockState.workflowStates.set("task-1", { status: "running", currentStepIndex: 0, updatedAt: new Date().toISOString() });
+  repository.mockState.sessionStatuses.set("session-1", { status: "awaiting_user", updatedAt: new Date().toISOString() });
+  repository.mockState.executionStatuses.set("exec-1", {
+    status: "cancelled",
+    startedAt: null,
+    finishedAt: new Date().toISOString(),
+    lastErrorCode: "approval.denied",
+    updatedAt: new Date().toISOString(),
+  });
+
+  const service = new TransitionService(db, mockStore, repository);
+
+  service.applyTaskTerminalState(makeTerminalInput({
+    currentTaskStatus: "awaiting_decision",
+    currentWorkflowStatus: "running",
+    currentSessionStatus: "awaiting_user",
+    currentExecutionStatus: "cancelled",
+    terminalStatus: "failed",
+    context: makeContext({ reasonCode: "approval.rejected" }),
+  }));
+
+  assert.equal(repository.updateExecutionStatusCasCalls.length, 0, "execution CAS should be skipped");
+  assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "failed");
+  assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "failed");
+  assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "cancelled");
+});
+
 test("TaskTerminalTransitionService.apply() uses CAS updates for execution status", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();

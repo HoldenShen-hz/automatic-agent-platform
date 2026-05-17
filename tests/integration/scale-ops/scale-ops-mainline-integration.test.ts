@@ -97,7 +97,7 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       latencyMs: 110,
       checkedAt: "2026-04-22T08:04:00.000Z",
     });
-    const connectorExecution = connectors.execute(
+    const connectorExecution = await connectors.execute(
       {
         connectorId: governanceDecision.connectorId!,
         capability: "send_message",
@@ -311,6 +311,7 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
         generatedAt: "2026-04-22T08:14:00.000Z",
       },
       "L3",
+      { forensicBudgetReservationId: "budget_forensics_001" },
     );
     assert.equal(explanation.redactedEvidenceRefs.includes(multimodalRun.gatewayRunId), true);
     assert.equal(explanationPipeline.getCached(explanation.cacheKey), null);

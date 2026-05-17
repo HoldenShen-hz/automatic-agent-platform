@@ -7,14 +7,17 @@ export interface FeedbackCollectorInput {
   taskId: string;
   executionId?: string | null;
   planId?: string | null;
-  signals: readonly FeedbackSignal[];
+  signals?: readonly FeedbackSignal[];
+  feedbackSignals?: readonly FeedbackSignal[];
 }
 
 export class FeedbackCollector {
   private readonly preprocessor = new SignalPreprocessor();
 
   public collect(input: FeedbackCollectorInput): FeedbackBatch {
-    const signals = this.preprocessor.normalize(input.signals.map((item) => parseFeedbackSignal(item)));
+    const rawSignals = input.signals ?? input.feedbackSignals ?? [];
+    const signals = this.preprocessor.normalize(rawSignals.map((item) => parseFeedbackSignal(item)));
+    const feedbackId = newId("feedback");
     const outcome =
       signals.some((signal) => signal.category === "failure" || signal.category === "timeout")
         ? "failed"
@@ -25,7 +28,8 @@ export class FeedbackCollector {
             : "completed";
 
     return parseFeedbackBatch({
-      feedbackId: newId("feedback"),
+      feedbackId,
+      batchId: feedbackId,
       taskId: input.taskId,
       executionId: input.executionId ?? null,
       planId: input.planId ?? null,

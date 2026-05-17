@@ -30,6 +30,7 @@ function createCandidate(overrides: Partial<ImprovementCandidate> = {}): Improve
   return parseImprovementCandidate({
     candidateId: "candidate-e2e-rollout",
     taskId: "task-e2e-rollout",
+    learningObjectId: "learning-object-e2e-rollout",
     sourceSignalRefs: ["signal:1"],
     sourceLearningObjectIds: [],
     changeScope: "prompt",
@@ -49,25 +50,42 @@ test("E2E Rollout: full pipeline draft -> shadow -> canary -> stable", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({ status: "candidate_created" });
 
-  // Phase 1: Draft to Shadow (L1_evaluate)
-  let record = machine.transition(candidate, "L1_evaluate", { approvedBy: "admin-1" });
+  // Phase 1: Candidate review and approval
+  let record = machine.transition(candidate, "L0_off", {
+    currentStatus: "candidate_created",
+    targetStatus: "under_review",
+  });
+  assert.equal(record.status, "under_review", "Should reach under_review status");
+
+  record = machine.transition(candidate, "L0_off", {
+    currentStatus: "under_review",
+    targetStatus: "approved",
+    approvedBy: "admin-1",
+  });
+  assert.equal(record.status, "approved", "Should reach approved status");
+
+  // Phase 2: Approved to evaluation
+  record = machine.transition(candidate, "L1_evaluate", {
+    currentStatus: "approved",
+    approvedBy: "admin-1",
+  });
   assert.equal(record.status, "evaluation_enabled", "Should reach evaluation_enabled status");
   assert.equal(record.level, "L1_evaluate", "Should have L1_evaluate level");
   assert.equal(record.approvedBy, "admin-1", "Should record approver");
 
-  // Phase 2: Shadow to Canary 5% (L2_canary)
+  // Phase 3: Evaluation to Canary 5% (L2_canary)
   record = machine.transition(candidate, "L2_canary", { currentStatus: "evaluation_enabled" });
   assert.equal(record.status, "canary_5", "Should reach canary_5 status");
 
-  // Phase 3: Canary 5% to Partial 25% (L3_partial)
+  // Phase 4: Canary 5% to Partial 25% (L3_partial)
   record = machine.transition(candidate, "L3_partial", { currentStatus: "canary_5" });
   assert.equal(record.status, "partial_25", "Should reach partial_25 status");
 
-  // Phase 4: Partial 25% to Stable 75% (L4_stable)
+  // Phase 5: Partial 25% to Stable 75% (L4_stable)
   record = machine.transition(candidate, "L4_stable", { currentStatus: "partial_25" });
   assert.equal(record.status, "stable_75", "Should reach stable_75 status");
 
-  // Phase 5: Stable 75% to Full (L5_full)
+  // Phase 6: Stable 75% to Full (L5_full)
   record = machine.transition(candidate, "L5_full", { currentStatus: "stable_75" });
   assert.equal(record.status, "stable_100", "Should reach stable_100 status");
   assert.equal(record.level, "L5_full", "Should have L5_full level");
@@ -347,8 +365,22 @@ test("E2E Rollout: policy rollout advances through stages with evidence", () => 
     sourceSignalRefs: ["signal:policy-violation", "signal:compliance-gap"],
   });
 
-  // Draft to Shadow with policy focus
-  let record = machine.transition(candidate, "L1_evaluate", {
+  let record = machine.transition(candidate, "L0_off", {
+    currentStatus: "candidate_created",
+    targetStatus: "under_review",
+  });
+  assert.equal(record.status, "under_review");
+
+  record = machine.transition(candidate, "L0_off", {
+    currentStatus: "under_review",
+    targetStatus: "approved",
+    approvedBy: "compliance-team",
+  });
+  assert.equal(record.status, "approved");
+
+  // Approved to evaluation with policy focus
+  record = machine.transition(candidate, "L1_evaluate", {
+    currentStatus: "approved",
     approvedBy: "compliance-team",
   });
   assert.equal(record.status, "evaluation_enabled");

@@ -7,3 +7,4 @@ steps:
     output_schema: schemas/minimal-output.json
     timeout_ms: 120000
     max_attempts: 1
+    compensation_model: idempotent_replay

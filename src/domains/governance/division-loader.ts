@@ -80,7 +80,20 @@ function toRawWorkflowStepConfig(entry: Record<string, unknown>): RawWorkflowSte
     timeout_ms: entry.timeout_ms,
     max_attempts: entry.max_attempts,
     depends_on: entry.depends_on,
+    compensation_model: entry.compensation_model,
   };
+}
+
+function toCompensationModel(value: unknown): MinimalWorkflowStep["compensationModel"] | undefined {
+  switch (value) {
+    case "idempotent_replay":
+    case "compare_and_swap_write":
+    case "compensating_action":
+    case "manual_reconciliation_required":
+      return value;
+    default:
+      return undefined;
+  }
 }
 
 
@@ -594,6 +607,7 @@ export class DivisionLoader {
     divisionRoot: string,
     policy: SandboxPolicy,
   ): MinimalWorkflowStep {
+    const compensationModel = toCompensationModel(entry.compensation_model);
     return {
       stepId: expectNonEmptyString(entry.step_id, `workflow.step_id_missing:${sourcePath}:${index}`),
       divisionId:
@@ -616,6 +630,7 @@ export class DivisionLoader {
       timeoutMs: toInteger(entry.timeout_ms, NaN),
       maxAttempts: toInteger(entry.max_attempts, NaN),
       dependsOnStepIds: toStringArray(entry.depends_on),
+      ...(compensationModel != null ? { compensationModel } : {}),
     };
   }
 

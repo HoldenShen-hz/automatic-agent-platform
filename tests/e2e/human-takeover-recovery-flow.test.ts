@@ -50,19 +50,22 @@ test("E2E: async human takeover retries a failed multi-step workflow, reposition
         errorCode: "execution.failed",
         completedAt: now,
       });
-      harness.store.insertWorkflowState({
-        taskId: seeded.taskId,
-        divisionId: "general_ops",
-        workflowId: seeded.workflowId,
-        currentStepIndex: 2,
-        status: "failed",
-        outputsJson: seeded.outputsJson,
-        lastErrorCode: "execution.failed",
-        retryCount: 0,
-        resumableFromStep: "final_review",
-        startedAt: now,
-        updatedAt: now,
-      });
+      harness.db.connection
+        .prepare(
+          "UPDATE workflow_state SET workflow_id = ?, current_step_index = ?, status = ?, outputs_json = ?, last_error_code = ?, retry_count = ?, resumable_from_step = ?, started_at = ?, updated_at = ? WHERE task_id = ?",
+        )
+        .run(
+          seeded.workflowId,
+          2,
+          "failed",
+          seeded.outputsJson,
+          "execution.failed",
+          0,
+          "final_review",
+          now,
+          now,
+          seeded.taskId,
+        );
       harness.store.insertSession({
         id: seeded.sessionId,
         taskId: seeded.taskId,

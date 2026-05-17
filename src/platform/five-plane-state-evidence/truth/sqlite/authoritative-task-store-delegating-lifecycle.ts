@@ -139,6 +139,54 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
   }
 
   public override updateExecutionStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]> {
+    if (
+      args.length >= 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && this.isIsoTimestamp(args[2])
+      && typeof args[3] === "string"
+      && !this.isIsoTimestamp(args[3])
+    ) {
+      const legacyArgs = args as unknown as [
+        string,
+        string,
+        string,
+        string,
+        (string | null | undefined)?,
+        (string | null | undefined)?,
+      ];
+      return this.execution.updateExecutionStatus(
+        legacyArgs[0],
+        legacyArgs[1],
+        legacyArgs[2],
+        null,
+        legacyArgs[4] ?? null,
+        legacyArgs[5] ?? legacyArgs[3],
+      ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>;
+    }
+    if (
+      args.length === 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && typeof args[2] === "string"
+      && args[3] != null
+      && this.isIsoTimestamp(args[3])
+      && !this.isIsoTimestamp(args[2])
+    ) {
+      const legacyArgs = args as unknown as [string, string, string, string];
+      const terminalFinishedAt =
+        legacyArgs[1] === "failed" || legacyArgs[1] === "succeeded" || legacyArgs[1] === "cancelled"
+          ? legacyArgs[3]
+          : null;
+      return this.execution.updateExecutionStatus(
+        legacyArgs[0],
+        legacyArgs[1],
+        legacyArgs[3],
+        null,
+        terminalFinishedAt,
+        legacyArgs[2],
+      ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatus"]>;
+    }
     return this.delegateLegacy("updateExecutionStatus", "execution", "updateExecutionStatus", ...args);
   }
 

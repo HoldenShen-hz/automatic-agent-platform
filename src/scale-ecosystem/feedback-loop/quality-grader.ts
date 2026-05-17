@@ -149,14 +149,24 @@ export class FeedbackQualityGrader {
     const reasons: string[] = [];
     let signalQualitySum = 0;
     let labelReliabilitySum = 0;
+    let hasExpiredSignal = false;
 
     for (const signal of signals) {
       const ageDays = (Date.now() - signal.timestamp) / (1000 * 60 * 60 * 24);
       if (ageDays > this.options.maxAgeDays) {
+        hasExpiredSignal = true;
         reasons.push(`Signal ${signal.signalId} exceeds max age (${Math.round(ageDays)}d > ${this.options.maxAgeDays}d)`);
       }
       signalQualitySum += assessSignalQuality(signal);
       labelReliabilitySum += assessLabelReliability(signal);
+    }
+
+    if (hasExpiredSignal) {
+      return {
+        grade: "discard",
+        score: { overall: 0, signalQuality: 0, diversityScore: 0, informationDensity: 0, labelReliability: 0 },
+        reasons,
+      };
     }
 
     const signalQuality = signalQualitySum / signals.length;

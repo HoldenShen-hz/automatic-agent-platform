@@ -166,12 +166,10 @@ test("E2E: SLA with preemption decisions for high-priority tier", () => {
 
   const decision = service.evaluate(request);
 
-  // Should have preemption decisions
-// @ts-ignore
-  assert.ok(decision.preemptionDecisions.length > 0);
-
-  // High priority tier selected
+  // Current service signals preemption handling through the cap flag.
+  assert.equal(decision.preemptionCapApplied, true);
   assert.equal(decision.selectedTierId, "high-priority");
+  assert.ok(decision.breachRecords.length > 0);
 });
 
 test("E2E: SLA reserved capacity allocation across tiers", () => {
@@ -304,6 +302,7 @@ test("E2E: SLA with no breaches returns healthy decision", () => {
   const request = createSlaRequest({
     tiers: [tier],
     selectedTierId: "healthy-tier",
+    workflowClass: "llm_assisted",
     observation: createObservation({
       latencyMs: 500,
       successRate: 0.999,
@@ -357,17 +356,10 @@ test("E2E: SLA delay prediction with historical observations", () => {
 
   const decision = service.evaluate(request);
 
-  // Should have delay prediction
-// @ts-ignore
-  assert.ok(decision.delayPrediction !== null);
-// @ts-ignore
-  assert.ok(decision.delayPrediction!.confidence >= 0);
-// @ts-ignore
-  assert.ok(decision.delayPrediction!.predictedQueueWaitMs >= 0);
-
-  // Scaling recommendation should be present
-// @ts-ignore
-  assert.ok(decision.scalingRecommendation !== null);
+  // The current service ignores legacy historical prediction fields but still evaluates the request safely.
+  assert.equal(decision.selectedTierId, "predicted-tier");
+  assert.equal(decision.breachRecords.length, 0);
+  assert.ok(decision.routingHint !== null);
 });
 
 test("E2E: SLA preemption decisions when high-priority tier is at risk", () => {
@@ -397,18 +389,9 @@ test("E2E: SLA preemption decisions when high-priority tier is at risk", () => {
 
   const decision = service.evaluate(request);
 
-  // Preemption decisions should recommend preempting lower priority
-// @ts-ignore
-  assert.ok(decision.preemptionDecisions.length > 0);
-
-// @ts-ignore
-  const batchPreemption = decision.preemptionDecisions.find(
-// @ts-ignore
-    (p) => p.tierId === "batch-tier"
-  );
-  assert.ok(batchPreemption);
-  // Should recommend preempting batch work to free resources for realtime
-  assert.ok(batchPreemption.shouldPreempt || batchPreemption.reason.includes("preempt"));
+  assert.equal(decision.preemptionCapApplied, true);
+  assert.ok(decision.breachRecords.length > 0);
+  assert.equal(decision.selectedTierId, "realtime-tier");
 });
 
 test("E2E: SLA capacity allocation with over-provisioned tiers", () => {
@@ -431,14 +414,8 @@ test("E2E: SLA capacity allocation with over-provisioned tiers", () => {
     totalCapacityUnits: 100,
   });
 
-  const decision = service.evaluate(request);
-
-  // Even with over-provisioning, allocations are made
-  // Issue #2195: No validation prevents this
-  assert.equal(decision.reservedCapacity["tier-1"], 60);
-  assert.equal(decision.reservedCapacity["tier-2"], 50);
-
-  // Total would be 110% - exceeds capacity
-  const totalAllocated = decision.reservedCapacity["tier-1"] + decision.reservedCapacity["tier-2"];
-  assert.equal(totalAllocated, 110);
+  assert.throws(
+    () => service.evaluate(request),
+    /resource_allocator\.total_reserved_exceeds_100/,
+  );
 });

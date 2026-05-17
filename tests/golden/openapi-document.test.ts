@@ -176,7 +176,10 @@ test("golden: all routes have required fields", () => {
   const routes = listApiRoutes();
 
   for (const route of routes) {
-    assert.ok(route.method === "GET" || route.method === "POST", `Route ${route.path} should have valid method`);
+    assert.ok(
+      route.method === "GET" || route.method === "POST" || route.method === "PATCH" || route.method === "DELETE",
+      `Route ${route.path} should have valid method`,
+    );
     assert.ok(route.path.startsWith("/"), `Route path should start with /`);
     assert.ok(route.summary.length > 0, `Route ${route.path} should have a summary`);
     assert.ok(Array.isArray(route.tags), `Route ${route.path} should have tags array`);
@@ -186,7 +189,7 @@ test("golden: all routes have required fields", () => {
 
 test("golden: route tags are from allowed set", () => {
   const routes = listApiRoutes();
-  const allowedTags = new Set(["health", "meta", "metrics", "auth", "dashboard", "divisions", "gateway", "tasks", "approvals", "admin", "knowledge", "domains", "plugins", "artifacts", "webhooks"]);
+  const allowedTags = new Set(["health", "meta", "metrics", "auth", "dashboard", "divisions", "gateway", "tasks", "approvals", "admin", "knowledge", "domains", "plugins", "artifacts", "webhooks", "missions", "yono"]);
 
   for (const route of routes) {
     for (const tag of route.tags) {

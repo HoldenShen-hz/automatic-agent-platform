@@ -51,9 +51,9 @@ test("RolloutRecordSchema applies defaults", () => {
   };
 
   const result = RolloutRecordSchema.parse(input);
-  assert.equal(result.previousLevel, "off");
+  assert.equal(result.previousLevel, "L0_off");
   assert.equal(result.strategyVersionId, null);
-  assert.equal(result.status, "draft");
+  assert.equal(result.status, "candidate_created");
   assert.deepEqual(result.guardrailReasonCodes, []);
   assert.deepEqual(result.evidence, []);
 });

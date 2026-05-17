@@ -16,7 +16,7 @@ import test from "node:test";
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { AutonomyService } from "../../../src/interaction/autonomy/autonomy-service.js";
 import { AutonomyAuditService } from "../../../src/interaction/autonomy/autonomy-audit-service.js";
-import type { AutonomyLevel, AutonomyDecision, EscalationRequest } from "../../../src/interaction/autonomy/types.js";
+import type { AutonomyDecision } from "../../../src/interaction/autonomy/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -89,18 +89,25 @@ test("E2E Autonomy: AutonomyAuditService records all autonomy decisions", async 
   try {
     const auditService = new AutonomyAuditService();
 
-    // Record decisions
-    const decision = createAutonomyDecision({
-      level: "auto",
-      reason: "Low risk task",
+    auditService.recordChange({
+      eventType: "agent.autonomy.promoted",
+      agentId: "agent_e2e_001",
+      capabilityId: "code_generation",
+      fromLevel: "semi_auto",
+      toLevel: "auto",
+      trigger: "rule_engine",
+      approvedBy: "auto",
+      evidence: {
+        successRate: 0.98,
+        totalExecutions: 50,
+        incidentCount: 0,
+        evaluationWindow: "30d",
+      },
     });
-// @ts-ignore
-    auditService.record(decision);
 
-    // Query audit trail
-// @ts-ignore
-    const trail = auditService.getTrail("task_e2e_001");
+    const trail = auditService.getByAgent("agent_e2e_001");
     assert.ok(Array.isArray(trail), "Should return audit trail");
+    assert.equal(trail.length, 1, "Should record one autonomy change");
   } finally {
     harness.cleanup();
   }

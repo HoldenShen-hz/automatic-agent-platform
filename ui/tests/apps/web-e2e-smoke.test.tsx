@@ -2,6 +2,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { mockRestClient } = vi.hoisted(() => ({
+  mockRestClient: {},
+}));
+
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children, title }: { children: ReactNode; title: string }) => (
     <section>
@@ -49,6 +53,7 @@ vi.mock("@aa/ui-core", () => ({
 }));
 
 vi.mock("@aa/shared-state", () => ({
+  useRestClient: () => mockRestClient,
   useApprovalsQuery: () => ({
     data: [
       { approvalId: "approval-1", taskId: "task-1", riskLevel: "low", reasonSummary: "Routine low risk change" },
@@ -82,6 +87,15 @@ vi.mock("@aa/shared-state", () => ({
   }),
 }));
 
+vi.mock("@aa/shared-api-client", () => ({
+  approveApproval: vi.fn().mockResolvedValue(undefined),
+  rejectApproval: vi.fn().mockResolvedValue(undefined),
+  delegateApproval: vi.fn().mockResolvedValue(undefined),
+  requestMoreContextApproval: vi.fn().mockResolvedValue(undefined),
+  createRESTClient: vi.fn().mockReturnValue(mockRestClient),
+  updatePreferences: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { ApprovalWebView } from "../../packages/features/approval/src/web";
 import { SettingsWebView } from "../../packages/features/settings/src/web";
 
@@ -102,8 +116,8 @@ describe("web app interaction smoke", () => {
   it("loads settings view and persists visible save state", async () => {
     render(<SettingsWebView />);
 
-    expect(await screen.findByText("Settings")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "Save Settings" }));
-    expect(await screen.findByText(/Save State: saved/i)).toBeInTheDocument();
+    expect(await screen.findByText("设置中心")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "保存设置" }));
+    expect(await screen.findByText(/保存状态: saved/i)).toBeInTheDocument();
   });
 });

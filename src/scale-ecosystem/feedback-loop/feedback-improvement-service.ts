@@ -69,7 +69,15 @@ export class FeedbackImprovementService {
         const sourceSignal = signalById.get(signalId);
         return sourceSignal != null && getFeedbackPromotionEligibility(sourceSignal).eligible;
       });
-      return promotionEligible ? [this.createCandidate(signal)] : [];
+      const hasReviewableHumanOrValidationSignal = signal.sourceSignalIds.some((signalId) => {
+        const sourceSignal = signalById.get(signalId);
+        return sourceSignal?.source === "user"
+          || sourceSignal?.source === "hitl"
+          || sourceSignal?.source === "validation";
+      });
+      return promotionEligible || hasReviewableHumanOrValidationSignal
+        ? [this.createCandidate(signal)]
+        : [];
     });
     return { feedback, learningSignals, candidates };
   }

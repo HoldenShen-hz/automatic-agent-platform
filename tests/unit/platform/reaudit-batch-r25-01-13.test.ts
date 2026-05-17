@@ -214,6 +214,26 @@ test("R25-07 rate limiting is isolated per tenant instead of sharing a channel-w
   }
 });
 
+test("R25-07 rate limiting still blocks recent tenant traffic across a fixed-window boundary", () => {
+  const harness = createDeliveryHarness();
+  const originalNow = Date.now;
+  try {
+    Date.now = () => 1500;
+    for (let index = 0; index < 50; index += 1) {
+      harness.service.recordRateLimitHit("default", "tenant-a");
+    }
+
+    Date.now = () => 2001;
+    const tenantA = harness.service.checkRateLimit("default", "tenant-a");
+    const tenantB = harness.service.checkRateLimit("default", "tenant-b");
+    assert.equal(tenantA.allowed, false);
+    assert.equal(tenantB.allowed, true);
+  } finally {
+    Date.now = originalNow;
+    harness.cleanup();
+  }
+});
+
 test("R25-09 StreamBridge replay buffer remains bounded and evicts old droppable frames", () => {
   const bridge = new StreamBridge({ maxReplayFrames: 2 });
   const streamId = bridge.createStreamId("task-1", "updates");

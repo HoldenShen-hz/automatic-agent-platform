@@ -126,6 +126,10 @@ export class IntakeRouter {
       routeTrace.push(`traceId:${input.traceId}`);
       routeTrace.push(`pipeline_context:traceId=${input.traceId}`);
     }
+    if (input.principal?.principalId != null && input.principal.principalId.length > 0) {
+      routeTrace.push(`principalId:${input.principal.principalId}`);
+      routeTrace.push(`pipeline_context:principalId=${input.principal.principalId}`);
+    }
     if (input.confirmedTaskSpecId != null && input.confirmedTaskSpecId.length > 0) {
       routeTrace.push(`confirmedTaskSpecId:${input.confirmedTaskSpecId}`);
     }

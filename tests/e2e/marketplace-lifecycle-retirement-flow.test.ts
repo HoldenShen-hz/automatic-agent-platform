@@ -37,6 +37,9 @@ test("E2E: marketplace lifecycle transitions from published to deprecated to ret
         permissionSurface: "^1.0.0",
         runtimeCapability: "^1.0.0",
       },
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       signatureVerified: true,
       manifestChecksum: checksum,
     });
@@ -69,14 +72,25 @@ test("E2E: marketplace lifecycle transitions from published to deprecated to ret
       reasonCode: "lifecycle_deprecated",
       deprecatedAt: "2026-04-24T13:00:00.000Z",
     });
+    const sunset = governance.sunsetPackage({
+      tenantId: packageRecord.tenantId,
+      packageId: packageRecord.packageId,
+      reasonCode: "lifecycle_sunset",
+      migrationPath: "plugin.marketplace.lifecycle.v2",
+      sunsetAt: "2026-04-24T13:05:00.000Z",
+      endOfLifeAt: "2026-10-24T13:05:00.000Z",
+      gracePeriodDays: 180,
+      migrationCompletionRatio: 0.97,
+    });
     const retired = governance.retirePackage({
       tenantId: packageRecord.tenantId,
       packageId: packageRecord.packageId,
       reasonCode: "lifecycle_retired",
-      retiredAt: "2026-04-24T13:10:00.000Z",
+      retiredAt: "2026-10-25T13:10:00.000Z",
+      migrationCompletionRatio: 0.97,
     });
 
-    const exported = governance.exportCatalog("2026-04-24T13:15:00.000Z", packageRecord.tenantId);
+    const exported = governance.exportCatalog("2026-10-25T13:15:00.000Z", packageRecord.tenantId);
     const publicationRecord = governance.listPublications(10, packageRecord.tenantId)[0];
     const jsonArtifact = JSON.parse(readFileSync(exported.jsonArtifact.uri, "utf8")) as {
       summary: { revoked: number; blocked: number; overallVerdict: string };
@@ -87,6 +101,7 @@ test("E2E: marketplace lifecycle transitions from published to deprecated to ret
 
     assert.equal(publication.status, "published");
     assert.equal(deprecated.lifecycleState, "deprecated");
+    assert.equal(sunset.lifecycleState, "sunset");
     assert.equal(retired.lifecycleState, "retired");
     assert.equal(publicationRecord?.status, "retired");
     assert.equal(publicationRecord?.revocationReasonCode, "lifecycle_retired");

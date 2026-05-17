@@ -1,4 +1,4 @@
-import type { PlanStep } from "../../five-plane-orchestration/oapeflir/types/plan.js";
+import type { PlanGraphNode, PlanStep } from "../../five-plane-orchestration/oapeflir/types/plan.js";
 import {
   GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
   type MinimalWorkflowDefinition,
@@ -17,25 +17,56 @@ export function deserializeOapeflirPlan(request: string): PlanStep[] {
   return JSON.parse(json) as PlanStep[];
 }
 
-function resolveOapeflirRoleId(_step: PlanStep): string {
+type OapeflirPlanInput = PlanStep | PlanGraphNode;
+
+function resolveOapeflirRoleId(_step: OapeflirPlanInput): string {
   return "general_executor";
 }
 
-function oapeflirStepToMinimalStep(step: PlanStep): MinimalWorkflowStep {
+function isLegacyPlanStep(step: OapeflirPlanInput): step is PlanStep {
+  return "stepId" in step;
+}
+
+function resolvePlanGraphOutputSchemaPath(step: PlanGraphNode): string {
+  const outputSchemaRef = "outputSchemaRef" in step ? step.outputSchemaRef : undefined;
+  return typeof outputSchemaRef === "string" && outputSchemaRef.length > 0
+    ? outputSchemaRef
+    : `schema:${step.nodeId}.output`;
+}
+
+function oapeflirStepToMinimalStep(step: OapeflirPlanInput): MinimalWorkflowStep {
+  if (isLegacyPlanStep(step)) {
+    return {
+      stepId: step.stepId,
+      roleId: resolveOapeflirRoleId(step),
+      outputKey: step.outputs?.[0] ?? `output_${step.stepId}`,
+      outputSchemaPath: step.outputSchemaPath ?? GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
+      inputKeys: step.dependencies,
+      timeoutMs: step.timeout,
+      maxAttempts: Math.max(1, step.retryPolicy.maxRetries + 1),
+      dependsOnStepIds: step.dependencies,
+    };
+  }
+
+  const stepId = step.nodeId;
+  const dependencies = step.inputRefs ?? [];
   return {
-    stepId: step.stepId,
+    stepId,
     roleId: resolveOapeflirRoleId(step),
-    outputKey: step.outputs?.[0] ?? `output_${step.stepId}`,
-    outputSchemaPath: step.outputSchemaPath ?? GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
-    inputKeys: step.dependencies,
-    timeoutMs: step.timeout,
-    maxAttempts: Math.max(1, step.retryPolicy.maxRetries + 1),
-    dependsOnStepIds: step.dependencies,
+    outputKey: stepId,
+    // Graph-node plans usually carry schema refs instead of loadable schema paths.
+    // Keep a non-empty schema identifier so output validation can fail open when
+    // the schema is not locally materialized.
+    outputSchemaPath: resolvePlanGraphOutputSchemaPath(step),
+    inputKeys: dependencies,
+    timeoutMs: step.timeoutMs ?? 30_000,
+    maxAttempts: 1,
+    dependsOnStepIds: dependencies,
   };
 }
 
 export function buildOapeflirPlannedWorkflow(
-  steps: readonly PlanStep[],
+  steps: readonly OapeflirPlanInput[],
   planId: string,
 ): PlannedWorkflow {
   const workflowDef: MinimalWorkflowDefinition = {

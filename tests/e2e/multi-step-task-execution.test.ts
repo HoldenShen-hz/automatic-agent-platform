@@ -42,6 +42,7 @@ function insertTaskWithExecution(
   workflowId: string,
   status: TaskStatus = "pending",
   executionStatus: ExecutionStatus = "executing",
+  sessionId: string = `${taskId}-session`,
 ): void {
   const now = nowIso();
   db.transaction(() => {
@@ -107,6 +108,15 @@ function insertTaskWithExecution(
       startedAt: now,
       updatedAt: now,
     });
+    store.insertSession({
+      id: sessionId,
+      taskId,
+      channel: "cli",
+      status: "open",
+      externalSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 }
 
@@ -154,9 +164,10 @@ test("E2E: multi-step task completes all steps and reaches terminal state", () =
   try {
     const taskId = newId("task");
     const executionId = newId("exec");
+    const sessionId = newId("sess");
     const traceId = "e2e-mstep-complete-trace";
 
-    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "linear_wf", "in_progress");
+    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "linear_wf", "in_progress", "executing", sessionId);
 
     // Advance through all steps
     const now = nowIso();
@@ -216,7 +227,7 @@ test("E2E: multi-step task completes all steps and reaches terminal state", () =
     // Transition task to done
     h.transitions.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "completed",
@@ -246,10 +257,11 @@ test("E2E: multi-step task fails mid-execution and task fails", () => {
   try {
     const taskId = newId("task");
     const executionId = newId("exec");
+    const sessionId = newId("sess");
     const traceId = "e2e-mstep-fail-trace";
     const now = nowIso();
 
-    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "fragile_wf", "in_progress");
+    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "fragile_wf", "in_progress", "executing", sessionId);
 
     // Step 1 fails
     h.db.transaction(() => {
@@ -280,7 +292,7 @@ test("E2E: multi-step task fails mid-execution and task fails", () => {
     // Transition task to failed
     h.transitions.transitionTaskTerminalState({
       taskId,
-      sessionId: newId("sess"),
+      sessionId,
       executionId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "failed",

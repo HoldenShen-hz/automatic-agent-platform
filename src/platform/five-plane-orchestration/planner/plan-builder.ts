@@ -115,16 +115,27 @@ export class PlanBuilder {
 
     // Convert steps to PlanNodes
     const graphSteps = normalizedSteps;
+    const outputOwnerByKey = new Map<string, string>();
+    for (const step of graphSteps) {
+      for (const output of step.outputs ?? []) {
+        outputOwnerByKey.set(output, step.stepId);
+      }
+    }
 
     const nodes: PlanNode[] = graphSteps.map((step, index) => {
       // step.inputs is Record<string, unknown>, access inputKeys property
       const inputsRecord = step.inputs as Record<string, unknown>;
       const inputKeysArray = Array.isArray(inputsRecord.inputKeys) ? inputsRecord.inputKeys as readonly string[] : [];
+      const inferredDependencies = step.dependencies.length > 0
+        ? [...step.dependencies]
+        : inputKeysArray
+            .map((key) => outputOwnerByKey.get(key))
+            .filter((dependency): dependency is string => dependency != null && dependency !== step.stepId);
       const hasSideEffects = (step.outputs ?? []).length > 0;
       return {
         nodeId: step.stepId,
         nodeType: this.inferNodeType(step.action),
-        inputRefs: step.dependencies.length > 0 ? [...step.dependencies] : [...inputKeysArray],
+        inputRefs: inferredDependencies.length > 0 ? inferredDependencies : [...inputKeysArray],
         outputSchemaRef: `output://${step.stepId}`,
         riskClass: input.assessment.risk,
         budgetIntent: {
@@ -146,7 +157,14 @@ export class PlanBuilder {
     const stepIdToNodeId = new Map(graphSteps.map((s) => [s.stepId, s.stepId]));
 
     for (const step of graphSteps) {
-      for (const dep of step.dependencies ?? []) {
+      const inputsRecord = step.inputs as Record<string, unknown>;
+      const inputKeysArray = Array.isArray(inputsRecord.inputKeys) ? inputsRecord.inputKeys as readonly string[] : [];
+      const dependencyIds = step.dependencies.length > 0
+        ? [...step.dependencies]
+        : inputKeysArray
+            .map((key) => outputOwnerByKey.get(key))
+            .filter((dependency): dependency is string => dependency != null && dependency !== step.stepId);
+      for (const dep of dependencyIds) {
         const depNodeId = stepIdToNodeId.get(dep);
         if (depNodeId) {
           edges.push({

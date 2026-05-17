@@ -77,7 +77,7 @@ test("golden: API routes have valid tags", () => {
   const allowedTags = new Set([
     "health", "meta", "metrics", "auth", "dashboard", "divisions",
     "gateway", "tasks", "approvals", "admin", "knowledge", "domains",
-    "plugins", "artifacts", "webhooks",
+    "plugins", "artifacts", "webhooks", "missions", "yono",
   ]);
 
   for (const [path, methods] of Object.entries(document.paths)) {

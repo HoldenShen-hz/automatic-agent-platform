@@ -7,6 +7,7 @@ steps:
     output_schema: schemas/minimal-output.json
     timeout_ms: 60000
     max_attempts: 1
+    compensation_model: idempotent_replay
   - step_id: draft_solution
     role_id: general_executor
     input_keys: [triage]
@@ -15,6 +16,7 @@ steps:
     timeout_ms: 180000
     max_attempts: 2
     depends_on: [intake_triage]
+    compensation_model: idempotent_replay
   - step_id: final_review
     role_id: workflow_planner
     input_keys: [draft]
@@ -23,3 +25,4 @@ steps:
     timeout_ms: 90000
     max_attempts: 1
     depends_on: [draft_solution]
+    compensation_model: idempotent_replay

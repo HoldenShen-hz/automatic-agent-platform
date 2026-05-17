@@ -470,7 +470,7 @@ test("E2E Approval: approval rejected prevents execution and fails task", async 
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "blocked",
+        status: "executing",
         inputRef: null,
         traceId,
         attempt: 1,
@@ -513,6 +513,9 @@ test("E2E Approval: approval rejected prevents execution and fails task", async 
       timeoutPolicy: "reject",
     });
 
+    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "blocked", traceId));
+    assert.equal(harness.store.getExecution(executionId)?.status, "blocked", "Execution should be blocked before rejection");
+
     // Reject the approval
     approvals.applyDecision({
       approvalId: approvalRequest.approvalId,
@@ -524,6 +527,11 @@ test("E2E Approval: approval rejected prevents execution and fails task", async 
     // Verify approval is rejected
     const approval = harness.store.getApproval(approvalRequest.approvalId);
     assert.equal(approval?.status, "rejected", "Approval should be rejected");
+    assert.equal(
+      harness.store.getExecution(executionId)?.status,
+      "cancelled",
+      "Execution should be auto-cancelled when approval is rejected",
+    );
 
     // Task should be transitioned to failed state via terminal state
     ts.transitionTaskTerminalState({
@@ -533,7 +541,7 @@ test("E2E Approval: approval rejected prevents execution and fails task", async 
       currentTaskStatus: "awaiting_decision",
       currentWorkflowStatus: "running",
       currentSessionStatus: "awaiting_user",
-      currentExecutionStatus: "blocked",
+      currentExecutionStatus: "cancelled",
       terminalStatus: "failed",
       taskOutputJson: JSON.stringify({ error: "approval.rejected" }),
       outputsJson: "{}",
@@ -550,7 +558,7 @@ test("E2E Approval: approval rejected prevents execution and fails task", async 
     assert.equal(task?.errorCode, "approval.rejected", "Task should have rejection error code");
 
     const exec = harness.store.getExecution(executionId);
-    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.status, "cancelled", "Execution should remain cancelled");
 
   } finally {
     harness.cleanup();

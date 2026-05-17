@@ -385,9 +385,9 @@ test("e2e: Dashboard projection service integration with websocket", () => {
   const wsServer = new DashboardWebSocketServer();
 
   // Register multiple clients
-  const client1 = wsServer.registerClient(["task:task1"], "user1", "tenant_e2e");
-  const client2 = wsServer.registerClient(["task:task2"], "user2", "tenant_e2e");
-  const client3 = wsServer.registerClient(["global"], "user3", "tenant_e2e");
+  const client1 = wsServer.registerClient([{ channel: "task", filterId: "task-task1" }], "user1", "tenant_e2e");
+  const client2 = wsServer.registerClient([{ channel: "task", filterId: "task-task2" }], "user2", "tenant_e2e");
+  const client3 = wsServer.registerClient([{ channel: "global" }], "user3", "tenant_e2e");
 
   assert.ok(client1.clientId);
   assert.ok(client2.clientId);
@@ -395,12 +395,12 @@ test("e2e: Dashboard projection service integration with websocket", () => {
 
   // Push delta for task1 - should only reach client1 and global subscribers
   const task1Delta = {
-    deltaId: "delta_task1",
-    timestamp: new Date().toISOString(),
-    changes: [{ changeType: "task_updated" as const, entityId: "task1", previousValue: null, newValue: null }],
-    affectedMetrics: ["task1_status"],
-    visibilityScope: "tenant" as const,
-    tenantId: "tenant_e2e",
+      deltaId: "delta_task1",
+      timestamp: new Date().toISOString(),
+      changes: [{ changeType: "task_updated" as const, entityId: "task-task1", previousValue: null, newValue: null }],
+      affectedMetrics: ["task1_status"],
+      visibilityScope: "tenant" as const,
+      tenantId: "tenant_e2e",
   };
 
   const sentCount = wsServer.pushDelta(task1Delta);

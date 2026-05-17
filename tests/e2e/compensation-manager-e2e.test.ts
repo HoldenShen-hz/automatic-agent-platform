@@ -360,14 +360,15 @@ test("E2E CompensationManager: derives reverse step for side effect", () => {
   assert.equal(plan.steps.length, 1);
   assert.equal(plan.steps[0]?.stepType, "reverse");
   assert.equal(plan.steps[0]?.targetRef, "db://table/row/123");
-  assert.equal(plan.steps[0]?.action, "reverse_database_insert");
+  assert.equal(plan.steps[0]?.action, "reverse_transaction");
 });
 
-test("E2E CompensationManager: uses idempotency key when no external ref", () => {
+test("E2E CompensationManager: prefers external ref over idempotency key when present", () => {
   const manager = new CompensationManager();
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-idem",
     effectKind: "external_api",
+    externalRef: "external-ref-123",
     idempotencyKey: "idem-key-123",
     riskClass: "medium",
   });
@@ -380,7 +381,7 @@ test("E2E CompensationManager: uses idempotency key when no external ref", () =>
 
   const plan = manager.planCompensation(sideEffect, context);
 
-  assert.equal(plan.steps[0]?.targetRef, "idem-key-123");
+  assert.equal(plan.steps[0]?.targetRef, "external-ref-123");
 });
 
 // ============================================================================

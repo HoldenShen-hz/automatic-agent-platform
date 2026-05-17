@@ -8,7 +8,7 @@ import { PmfValidationService } from "../../src/scale-ecosystem/intelligence/pmf
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { PMF_EVALUATED_AT, seedPmfValidationDataset } from "../helpers/pmf.js";
 
-test("E2E: connector framework enforces prod verification, defers degraded connectors, and fail-closes unsupported events", () => {
+test("E2E: connector framework enforces prod verification, defers degraded connectors, and fail-closes unsupported events", async () => {
   const connectors = new ConnectorFrameworkService();
 
   connectors.register({
@@ -61,7 +61,7 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     prodVerificationError = error;
   }
 
-  const degradedRun = connectors.execute({
+  const degradedRun = await connectors.execute({
     connectorId: "crm-sync-e2e",
     capability: "sync",
     payload: { contactId: "contact-1" },
@@ -72,7 +72,7 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     eventType: "crm.contact.updated",
     executedAt: "2026-04-24T14:05:00.000Z",
   });
-  const failedRun = connectors.execute({
+  const failedRun = await connectors.execute({
     connectorId: "ops-webhook-e2e",
     capability: "notify",
     payload: { incidentId: "incident-1" },
@@ -83,7 +83,7 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     eventType: "ops.incident.opened",
     executedAt: "2026-04-24T14:06:00.000Z",
   });
-  const unsupportedEventRun = connectors.execute({
+  const unsupportedEventRun = await connectors.execute({
     connectorId: "crm-sync-e2e",
     capability: "sync",
     payload: { contactId: "contact-2" },
