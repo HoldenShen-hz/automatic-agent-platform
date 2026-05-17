@@ -65,9 +65,6 @@ function mergeArrays(
     }
     const serverClock = serverMetadata?.vectorClock[extractIdentityValue(identity)];
     const localClock = localMetadata?.vectorClock[extractIdentityValue(identity)];
-    if (serverClock == null && localClock == null) {
-      continue;
-    }
     merged[existingIndex] = mergeValues(
       merged[existingIndex],
       value,

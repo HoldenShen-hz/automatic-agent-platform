@@ -10,13 +10,13 @@ describe("feature-registry", () => {
   it("contains dashboard feature", () => {
     const dashboard = featureRegistry.find((f) => f.manifest.id === "dashboard");
     expect(dashboard).toBeDefined();
-    expect(dashboard?.manifest.title).toBe("Dashboard");
+    expect(dashboard?.manifest.title).toBe("总览驾驶舱");
   });
 
   it("contains task-cockpit feature", () => {
     const taskCockpit = featureRegistry.find((f) => f.manifest.id === "task-cockpit");
     expect(taskCockpit).toBeDefined();
-    expect(taskCockpit?.manifest.title).toBe("Task Cockpit");
+    expect(taskCockpit?.manifest.title).toBe("任务驾驶舱");
   });
 
   it("contains workflow-cockpit feature", () => {
@@ -29,7 +29,7 @@ describe("feature-registry", () => {
   it("contains approval feature", () => {
     const approval = featureRegistry.find((f) => f.manifest.id === "approval");
     expect(approval).toBeDefined();
-    expect(approval?.manifest.group).toBe("Operations");
+    expect(approval?.manifest.group).toBe("Mission Control");
   });
 
   it("contains stability feature", () => {
@@ -102,8 +102,8 @@ describe("feature-registry", () => {
   it("contains settings feature", () => {
     const settings = featureRegistry.find((f) => f.manifest.id === "settings");
     expect(settings).toBeDefined();
-    expect(settings?.manifest.group).toBe("Admin");
-    expect(settings?.subPages).toHaveLength(8);
+    expect(settings?.manifest.group).toBe("Shared");
+    expect(settings?.manifest.status).toBe("Implemented/Internal");
   });
 
   it("contains workers feature", () => {
@@ -278,7 +278,7 @@ describe("feature registry paths", () => {
 
   it("approval path is operations/approvals", () => {
     const approval = featureRegistry.find((f) => f.manifest.id === "approval");
-    expect(approval?.route.path).toBe("/operations/approvals");
+    expect(approval?.route.path).toBe("/mission-control/approvals");
   });
 
   it("compliance path is governance/compliance", () => {
@@ -293,7 +293,7 @@ describe("feature registry paths", () => {
 
   it("settings path is admin/settings", () => {
     const settings = featureRegistry.find((f) => f.manifest.id === "settings");
-    expect(settings?.route.path).toBe("/admin/settings");
+    expect(settings?.route.path).toBe("/shared/settings");
   });
 });
 

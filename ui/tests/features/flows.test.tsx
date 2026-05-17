@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { UiRuntimeProvider } from "@aa/shared-state";
 import { ApprovalWebView } from "../../packages/features/approval/src/web";
 import { ConversationWebView } from "../../packages/features/conversation/src/web";
@@ -13,6 +13,10 @@ function renderWithRuntime(element: React.ReactElement) {
   return render(<UiRuntimeProvider>{element}</UiRuntimeProvider>);
 }
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("feature flows", () => {
   it("processes approval decisions end-to-end", async () => {
     renderWithRuntime(<ApprovalWebView />);
@@ -25,9 +29,9 @@ describe("feature flows", () => {
     renderWithRuntime(<TaskCockpitWebView />);
     fireEvent.click(await screen.findByRole("button", { name: /春季营销活动/i }));
     fireEvent.click(await screen.findByRole("button", { name: "Escalate" }));
-    expect(screen.getByText(/Escalated/)).toBeInTheDocument();
+    expect(await screen.findByText(/Escalated/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Take Over" }));
-    expect(screen.getByText(/Takeover/)).toBeInTheDocument();
+    expect(await screen.findByText(/Take Over/)).toBeInTheDocument();
   });
 
   it("supports pause and recover actions in workflow cockpit", async () => {

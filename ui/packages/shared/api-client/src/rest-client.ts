@@ -19,6 +19,7 @@ import type {
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
+  WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
 import { defaultMockApiShape, type MockApiShape } from "./mock-data";
@@ -98,6 +99,7 @@ export class MockTransport {
   private resolve(path: string, body?: unknown):
     | DashboardSnapshotDTO
     | readonly TaskDTO[]
+    | readonly WorkflowRunStepDTO[]
     | readonly WorkflowDTO[]
     | readonly ApprovalDTO[]
     | readonly IncidentDTO[]
@@ -123,6 +125,10 @@ export class MockTransport {
     }
     if (path.includes("/tasks")) {
       return this.data.tasks;
+    }
+    if (path.includes("/workflow-runs/")) {
+      const workflowRunId = path.split("/workflow-runs/")[1]?.split("/")[0] ?? "";
+      return this.data.workflowRunSteps[workflowRunId] ?? [];
     }
     if (path.includes("/workflows")) {
       return this.data.workflows;

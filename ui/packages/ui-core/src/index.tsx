@@ -42,13 +42,28 @@ export function createFeatureModule(config: {
   render?: () => ReactElement;
 }): FeatureModule {
   const platforms = config.platforms ?? ["web", "windows", "macos", "linux", "android", "ios"];
-  const Component = config.render ?? (() => (
+  const renderFeature = config.render ?? (() => (
     <FeatureScaffold title={config.title} summary={config.summary} status={config.status}>
       <p style={{ color: designTokens.color.text, margin: 0 }}>
         {config.kind === "planned" ? "This feature is wired through a contract seam and feature gate." : "This feature is connected to the shared UI baseline."}
       </p>
     </FeatureScaffold>
   ));
+  const Component = () => {
+    try {
+      return renderFeature();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return (
+        <FeatureScaffold title={config.title} summary={config.summary} status={config.status}>
+          <div role="alert">
+            <strong>组件渲染失败</strong>
+            <p style={{ marginBottom: 0 }}>{message}</p>
+          </div>
+        </FeatureScaffold>
+      );
+    }
+  };
 
   return {
     manifest: {

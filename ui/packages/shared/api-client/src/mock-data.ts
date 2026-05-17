@@ -19,12 +19,14 @@ import type {
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
+  WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
 
 export interface MockApiShape {
   readonly dashboard: DashboardSnapshotDTO;
   readonly tasks: readonly TaskDTO[];
+  readonly workflowRunSteps: Readonly<Record<string, readonly WorkflowRunStepDTO[]>>;
   readonly workflows: readonly WorkflowDTO[];
   readonly approvals: readonly ApprovalDTO[];
   readonly incidents: readonly IncidentDTO[];
@@ -66,6 +68,19 @@ export const defaultMockApiShape: MockApiShape = {
     { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
     { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
   ],
+  workflowRunSteps: {
+    "task-1": [
+      { id: "task-1-step-1", title: "Collect demand signals", status: "completed", executor: "growth-ops", startedAt: "2026-04-23T15:00:00Z", completedAt: "2026-04-23T15:04:00Z" },
+      { id: "task-1-step-2", title: "Launch assets", status: "running", executor: "agent-growth-launcher", startedAt: "2026-04-23T15:05:00Z" },
+    ],
+    "task-2": [
+      { id: "task-2-step-1", title: "Evaluate risk envelope", status: "completed", executor: "quant-review", startedAt: "2026-04-23T15:10:00Z", completedAt: "2026-04-23T15:16:00Z" },
+      { id: "task-2-step-2", title: "Prepare approval packet", status: "running", executor: "agent-risk-sentinel", startedAt: "2026-04-23T15:16:30Z" },
+    ],
+    approval: [
+      { id: "approval-step-1", title: "Request operator review", status: "running", executor: "operator-console", startedAt: "2026-04-23T15:20:00Z" },
+    ],
+  },
   workflows: [
     {
       id: "workflow-1",

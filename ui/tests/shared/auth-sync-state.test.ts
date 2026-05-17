@@ -12,10 +12,13 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { createElement, type ReactElement } from "react";
 
 describe("shared auth/sync/state split modules", () => {
-  it("hydrates auth session and validates guard", () => {
+  it("fails closed on URL token callbacks and still validates explicit sessions and guard state", async () => {
     const tokenManager = new TokenManager();
     const authService = new AuthService(tokenManager);
-    const session = authService.handleSsoCallback(new URLSearchParams("access_token=a1&refresh_token=r1&locale=en-US"));
+    await expect(
+      authService.handleSsoCallback(new URLSearchParams("access_token=a1&refresh_token=r1&locale=en-US")),
+    ).rejects.toThrow(/auth.redirecting/);
+    const session = authService.login("a1", "r1", 3600);
     const guard = new SessionGuard(tokenManager);
 
     expect(session.accessToken).toBe("a1");
@@ -35,7 +38,7 @@ describe("shared auth/sync/state split modules", () => {
         },
       },
     );
-    coordinator.queueMutations([
+    await coordinator.queueMutations([
       { id: "m1", endpoint: "/api/v1/tasks", method: "POST", body: { ok: true }, createdAt: "2026-04-23T00:00:00.000Z" },
       { id: "m2", endpoint: "/api/v1/approvals", method: "PATCH", body: { status: "approved" }, createdAt: "2026-04-23T00:00:01.000Z" },
     ]);

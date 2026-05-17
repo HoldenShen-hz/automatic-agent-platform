@@ -2,6 +2,8 @@ import { createElement, useEffect, useMemo, useState, type PropsWithChildren, ty
 import type { ImplementationStatus } from "@aa/shared-types";
 import { createPanelStyle, designTokens } from "../design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "../layouts";
+export { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./extended";
+export { LayoutFrame, ThreePaneLayout } from "../layouts";
 
 export function StatusPill({ status }: { status: ImplementationStatus }): ReactElement {
   const background = status === "Planned" ? designTokens.color.planned : designTokens.color.accent;

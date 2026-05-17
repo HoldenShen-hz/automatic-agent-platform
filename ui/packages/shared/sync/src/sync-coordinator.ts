@@ -19,9 +19,9 @@ export class SyncCoordinator {
   }
 
   public async queueMutations(mutations: readonly OfflineMutation[]): Promise<void> {
-    for (const mutation of mutations) {
+    await Promise.all(mutations.map(async (mutation) => {
       await this.queue.enqueue(mutation);
-    }
+    }));
   }
 
   public hasPending(): boolean {

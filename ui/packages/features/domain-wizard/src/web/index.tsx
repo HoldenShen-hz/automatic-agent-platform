@@ -1,80 +1,124 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
-import { useDomainWizardVm } from "../hooks";
+import { FeatureScaffold } from "@aa/ui-core";
+import { useDomainWizardVm, type DataClassification, type DomainWizardStepId, type RiskLevel } from "../hooks";
+
+const stepHeadings: Record<DomainWizardStepId, string> = {
+  "domain-select": "Domain Select",
+  "risk-profile": "Risk Profile",
+  "capability-config": "Capability Config",
+  review: "Review",
+};
 
 export function DomainWizardWebView(): ReactElement {
   const vm = useDomainWizardVm();
+  const items = vm.items ?? vm.catalogItems ?? [];
+  const previewRows = vm.previewRows ?? [];
+
   return (
     <FeatureScaffold title="Domain Wizard" summary="领域接入向导和 DomainUIConfig 驱动页面。" status="Implemented/Internal">
-      <ol>
-        {vm.steps.map((step) => (
-          <li key={step.id}>
-            <strong>{step.title}</strong> - {step.status}
-          </li>
-        ))}
-      </ol>
-      <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
-        <label>
-          Domain name
-          <input value={vm.draft.displayName} onChange={(event) => vm.setField("displayName", event.target.value)} />
-        </label>
-        <label>
-          Owner
-          <input value={vm.draft.owner} onChange={(event) => vm.setField("owner", event.target.value)} />
-        </label>
-        <label>
-          Drill depth
-          <input
-            max={5}
-            min={1}
-            type="number"
-            value={vm.draft.drillDepth}
-            onChange={(event) => vm.setField("drillDepth", Number(event.target.value))}
-          />
-        </label>
-        <label>
-          Visibility
-          <select value={vm.draft.visibility} onChange={(event) => vm.setField("visibility", event.target.value as "private" | "shared" | "public")}>
-            <option value="private">private</option>
-            <option value="shared">shared</option>
-            <option value="public">public</option>
-          </select>
-        </label>
-        <label>
-          Summary
-          <textarea value={vm.draft.summary} onChange={(event) => vm.setField("summary", event.target.value)} />
-        </label>
+      <div style={{ display: "grid", gap: 16 }}>
+        <ol>
+          {vm.steps.map((step) => (
+            <li key={step.id}>
+              <button onClick={() => vm.setCurrentStep(step.id)} type="button">
+                {step.label}
+              </button>
+              <span>{` · ${step.description}`}</span>
+            </li>
+          ))}
+        </ol>
+
+        <section>
+          <h3>{stepHeadings[vm.currentStep]}</h3>
+          <div style={{ display: "grid", gap: 12 }}>
+            {items.map((item) => (
+              <button
+                key={item.title}
+                onClick={() => vm.setSelectedDomainId(item.title)}
+                style={{ textAlign: "left" }}
+                type="button"
+              >
+                <strong>{item.title}</strong>
+                <div>{item.description}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ display: "grid", gap: 12 }}>
+          <label>
+            Risk level
+            <select
+              onChange={(event) => vm.riskProfile.setRiskLevel(event.target.value as RiskLevel)}
+              value={vm.riskProfile.riskLevel}
+            >
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="critical">critical</option>
+            </select>
+          </label>
+          <label>
+            Data classification
+            <select
+              onChange={(event) => vm.riskProfile.setDataClassification(event.target.value as DataClassification)}
+              value={vm.riskProfile.dataClassification}
+            >
+              <option value="public">public</option>
+              <option value="internal">internal</option>
+              <option value="confidential">confidential</option>
+              <option value="restricted">restricted</option>
+            </select>
+          </label>
+          <label>
+            <input
+              checked={vm.riskProfile.hasExternalIntegration}
+              onChange={(event) => vm.riskProfile.setHasExternalIntegration(event.target.checked)}
+              type="checkbox"
+            />
+            External integrations enabled
+          </label>
+          <label>
+            Max concurrent tasks
+            <input
+              min={1}
+              onChange={(event) => vm.capabilityConfig.setMaxConcurrentTasks(Number(event.target.value))}
+              type="number"
+              value={vm.capabilityConfig.maxConcurrentTasks}
+            />
+          </label>
+          <label>
+            Allowed drill depth
+            <input
+              max={5}
+              min={1}
+              onChange={(event) => vm.capabilityConfig.setAllowedDrillDepth(Number(event.target.value))}
+              type="number"
+              value={vm.capabilityConfig.allowedDrillDepth}
+            />
+          </label>
+          <label>
+            <input
+              checked={vm.capabilityConfig.enableAutoRollback}
+              onChange={(event) => vm.capabilityConfig.setEnableAutoRollback(event.target.checked)}
+              type="checkbox"
+            />
+            Enable auto rollback
+          </label>
+        </section>
+
+        <section>
+          {previewRows.map((row) => (
+            <div key={row.key}>{`${row.key}: ${row.value}`}</div>
+          ))}
+        </section>
+
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">Back</button>
           <button disabled={!vm.canGoNext} onClick={vm.goNext} type="button">Next</button>
+          <button onClick={vm.submitConfig} type="button">Submit</button>
         </div>
       </div>
-      {vm.validationErrors.length > 0 ? (
-        <ul>
-          {vm.validationErrors.map((error) => (
-            <li key={error}>{error}</li>
-          ))}
-        </ul>
-      ) : null}
-      <FeatureWorkbenchPanel
-        items={vm.catalogItems}
-        rows={vm.previewRows}
-        actions={[
-          { id: "domain-open", label: "进入配置向导", tone: "accent" },
-          { id: "domain-validate", label: "校验显隐策略", tone: "neutral" },
-          { id: "domain-checklist", label: "生成接入清单", tone: "neutral" },
-          {
-            id: "domain-apply-template",
-            label: "套用选中域模板",
-            tone: "accent",
-            onTrigger: (item) => {
-              if (item != null) {
-                vm.loadTemplate(item.title);
-              }
-            },
-          },
-        ]}
-      />
     </FeatureScaffold>
   );
 }

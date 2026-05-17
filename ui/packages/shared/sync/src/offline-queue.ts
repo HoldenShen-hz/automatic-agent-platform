@@ -1,15 +1,38 @@
 import type { OfflineMutation, OfflineMutationStore } from "./types";
 
+const DEFAULT_MAX_CAPACITY = 100;
+
 export class OfflineQueue {
   private readonly queue: OfflineMutation[] = [];
+  private readonly stagedBeforeReady: OfflineMutation[] = [];
+  private ready = false;
   private readonly readyPromise: Promise<void>;
 
-  public constructor(private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore()) {
+  public constructor(
+    private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore(),
+    private readonly maxCapacity = DEFAULT_MAX_CAPACITY,
+  ) {
     this.readyPromise = this.store.readAll()
       .then((mutations) => {
         this.queue.push(...mutations);
+        this.trimToCapacity(this.queue);
+        this.ready = true;
+        if (this.stagedBeforeReady.length > 0) {
+          this.queue.push(...this.stagedBeforeReady);
+          this.stagedBeforeReady.length = 0;
+          this.trimToCapacity(this.queue);
+          return this.persistCurrentSnapshot();
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        this.ready = true;
+        if (this.stagedBeforeReady.length > 0) {
+          this.queue.push(...this.stagedBeforeReady);
+          this.stagedBeforeReady.length = 0;
+          this.trimToCapacity(this.queue);
+          return this.persistCurrentSnapshot();
+        }
+      });
   }
 
   public async whenReady(): Promise<void> {
@@ -17,13 +40,21 @@ export class OfflineQueue {
   }
 
   public async enqueue(mutation: OfflineMutation): Promise<void> {
+    if (!this.ready) {
+      this.stagedBeforeReady.push(mutation);
+      this.trimToCapacity(this.stagedBeforeReady);
+      await this.readyPromise;
+      return;
+    }
     this.queue.push(mutation);
+    this.trimToCapacity(this.queue);
     await this.persist();
   }
 
   public drain(): OfflineMutation[] {
     const drained = [...this.queue];
     this.queue.length = 0;
+    this.stagedBeforeReady.length = 0;
     void this.persist();
     return drained;
   }
@@ -36,18 +67,38 @@ export class OfflineQueue {
     return this.queue.length;
   }
 
+  public capacity(): number {
+    return this.maxCapacity;
+  }
+
+  public isFull(): boolean {
+    return this.size() >= this.maxCapacity;
+  }
+
   public isEmpty(): boolean {
     return this.queue.length === 0;
   }
 
   public async replace(mutations: readonly OfflineMutation[]): Promise<void> {
+    await this.readyPromise;
     this.queue.length = 0;
     this.queue.push(...mutations);
+    this.trimToCapacity(this.queue);
     await this.persist();
+  }
+
+  private trimToCapacity(target: OfflineMutation[]): void {
+    while (target.length > this.maxCapacity) {
+      target.shift();
+    }
   }
 
   private async persist(): Promise<void> {
     await this.readyPromise;
+    await this.persistCurrentSnapshot();
+  }
+
+  private async persistCurrentSnapshot(): Promise<void> {
     await this.store.writeAll([...this.queue]);
   }
 }
