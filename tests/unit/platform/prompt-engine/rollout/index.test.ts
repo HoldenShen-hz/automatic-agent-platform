@@ -289,7 +289,7 @@ test("PromptRolloutService createRollout sets status to canary_5 when guardrail 
   });
 
   assert.equal(record.status, "canary_5");
-  assert.equal(record.guardrailSummary, "rollout_guardrail_passed");
+  assert.equal(record.guardrailSummary, "suggest_mode_guardrail_passed");
 });
 
 test("PromptRolloutService createRollout stores rollout in internal map", () => {

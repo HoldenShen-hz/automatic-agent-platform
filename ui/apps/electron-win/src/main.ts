@@ -1,14 +1,18 @@
-import electron from "electron";
 import type { BrowserWindow } from "electron";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const { app, BrowserWindow, Notification, globalShortcut, shell } = electron;
+const require = createRequire(import.meta.url);
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const rendererHtmlPath = join(currentDir, "../dist/index.html");
 const preloadScriptPath = join(currentDir, "preload.js");
 const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
+
+function getElectronRuntime(): typeof import("electron") {
+  return require("electron") as typeof import("electron");
+}
 
 export const electronGlobalShortcuts = [
   "CommandOrControl+K",
@@ -75,6 +79,7 @@ export function isShellCommandAllowed(command: string): boolean {
 }
 
 export function createMainWindow(): BrowserWindow {
+  const { BrowserWindow, shell } = getElectronRuntime();
   const mainWindow = new BrowserWindow(createBrowserWindowOptions());
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
@@ -94,6 +99,7 @@ export function openSecondaryWindow(routePath: string): BrowserWindow {
 }
 
 export function registerGlobalShortcuts(mainWindow?: BrowserWindow): void {
+  const { globalShortcut } = getElectronRuntime();
   globalShortcut.register("CommandOrControl+K", () => {
     mainWindow?.webContents.send("command-palette:open");
   });
@@ -106,6 +112,7 @@ export function registerGlobalShortcuts(mainWindow?: BrowserWindow): void {
 }
 
 export function configureWindowsDesktopIntegrations(): void {
+  const { app } = getElectronRuntime();
   app.setUserTasks([
     {
       program: process.execPath,
@@ -123,6 +130,7 @@ export function configureWindowsDesktopIntegrations(): void {
 }
 
 export function showPlatformNotification(title: string, body: string): boolean {
+  const { Notification } = getElectronRuntime();
   if (!Notification.isSupported()) {
     return false;
   }
@@ -132,6 +140,7 @@ export function showPlatformNotification(title: string, body: string): boolean {
 }
 
 export async function bootstrapElectronShell(): Promise<void> {
+  const { app } = getElectronRuntime();
   await app.whenReady();
   const mainWindow = createMainWindow();
   registerGlobalShortcuts(mainWindow);

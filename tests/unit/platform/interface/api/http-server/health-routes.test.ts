@@ -101,7 +101,10 @@ test("GET /v1/openapi.json returns OpenAPI document", async () => {
   };
   const routes = createHealthRoutes(deps);
   const openapiRoute = routes.find((r) => r.pathname === "/v1/openapi.json")!;
-  const ctx = createMockContext();
+  const ctx = {
+    ...createMockContext(),
+    principal: { actorId: "operator-1" } as never,
+  };
   const response = await openapiRoute.handler(ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);

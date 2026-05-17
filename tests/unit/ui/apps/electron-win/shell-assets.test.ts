@@ -26,7 +26,7 @@ test("electron shell html defines a restrictive CSP meta tag", () => {
 });
 
 test("electron shell package declares runtime and signing build metadata", () => {
-  assert.equal(packageJson.devDependencies?.electron, "^35.3.0");
+  assert.equal(packageJson.devDependencies?.electron, "^42.1.0");
   assert.equal(packageJson.devDependencies?.["electron-updater"], "^6.6.2");
   assert.equal(packageJson.build?.win?.verifyUpdateCodeSignature, true);
   assert.equal(packageJson.build?.win?.signAndEditExecutable, true);

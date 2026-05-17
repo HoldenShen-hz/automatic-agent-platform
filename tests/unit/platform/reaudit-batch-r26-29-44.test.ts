@@ -78,7 +78,7 @@ test("R26-29 attention queues prioritize severity before recency across dashboar
 
 test("R26-30 canonical awaiting_hitl is the only HITL wait status spelling left in harness runtime", () => {
   const harnessSource = readFileSync(
-    "src/platform/five-plane-orchestration/harness/index.ts",
+    "src/platform/five-plane-orchestration/harness/harness-state-manager.ts",
     "utf8",
   );
   assert.match(harnessSource, /awaiting_hitl_requires_request/);

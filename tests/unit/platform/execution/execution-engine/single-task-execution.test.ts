@@ -1144,7 +1144,7 @@ test("runSingleTaskExecution execution sandboxMode is workspace_write", async ()
   }
 });
 
-test("runSingleTaskExecution execution maxRetries is 0 for single task", async () => {
+test("runSingleTaskExecution execution uses default retry policy for single task", async () => {
   const dbPath = join(__dirname, "test-execution-retries.db");
 
   if (existsSync(dbPath)) {
@@ -1162,8 +1162,8 @@ test("runSingleTaskExecution execution maxRetries is 0 for single task", async (
     const snapshot = await runSingleTaskExecution(input);
 
     assert.ok(snapshot.execution, "Should have execution");
-    assert.equal(snapshot.execution.maxRetries, 0, "maxRetries should be 0");
-    assert.equal(snapshot.execution.retryBackoff, "none", "retryBackoff should be none");
+    assert.equal(snapshot.execution.maxRetries, 2, "maxRetries should be 2");
+    assert.equal(snapshot.execution.retryBackoff, "linear", "retryBackoff should be linear");
   } finally {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);

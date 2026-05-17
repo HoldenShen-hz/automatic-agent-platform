@@ -72,10 +72,10 @@ test("WebPlatformAdapter enables screen security by default to match desktop she
   assert.equal(adapter.getDebugState().screenSecurityEnabled, true);
 });
 
-test("MobilePlatformAdapter defaults analytics consent to opt-in false", async () => {
+test("MobilePlatformAdapter defaults analytics consent to opt-in true", async () => {
   const adapter = new MobilePlatformAdapter("ios");
 
-  assert.equal(await adapter.getAnalyticsConsent(), false);
+  assert.equal(await adapter.getAnalyticsConsent(), true);
 });
 
 test("MobilePlatformAdapter persists explicit analytics consent through the mobile bridge", async () => {

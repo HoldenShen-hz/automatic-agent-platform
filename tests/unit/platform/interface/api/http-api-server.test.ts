@@ -1598,6 +1598,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
       url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "gzip",
+        "x-api-key": "test-operator-key",
       },
     });
 
@@ -1653,6 +1654,7 @@ test("network responses compress large JSON payloads with brotli when preferred"
       url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "br, gzip",
+        "x-api-key": "test-operator-key",
       },
     });
 
@@ -1747,6 +1749,9 @@ test("GET /v1/openapi.json returns OpenAPI document", async () => {
     const response = await server.inject({
       method: "GET",
       url: "/v1/openapi.json",
+      headers: {
+        "x-api-key": "test-operator-key",
+      },
     });
 
     assert.equal(response.statusCode, 200);

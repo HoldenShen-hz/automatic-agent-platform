@@ -61,6 +61,7 @@ export type {
   DelegationManagerOptions,
   ExpirationScanResult,
 } from "./delegation-manager-support.js";
+export { createDelegationManager } from "./delegation-manager-factory.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Manager Service

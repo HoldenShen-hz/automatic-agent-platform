@@ -309,7 +309,10 @@ test("2005..2008: client-sdk retry/envelope guards, plugin signature enforcement
         algorithm: "RSA-SHA256",
       },
     }), /not registered/);
-    assert.match(pluginExecutorSource, /enforcePluginSignature\(instance\.manifest as unknown as PluginDefinition\);/);
+    assert.match(
+      pluginExecutorSource,
+      /enforcePluginSignature\((?:toPluginDefinition\(instance\.manifest\)|instance\.manifest as unknown as PluginDefinition)\);/,
+    );
 
     const crmAdapter = createCrmAdapterPlugin({
       policy: {

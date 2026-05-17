@@ -31,8 +31,8 @@ test("2287: billing path retains secret redaction at gateway and CLI output boun
   assert.match(billingCliSource, /process\.stdout\.write\(`\$\{JSON\.stringify\(redactSensitiveValues\(result\), null, 2\)\}\\n`\)/);
 });
 
-test("2289: shadow snapshot CLI constrains writes to the actual shadow root", () => {
-  assert.match(shadowSnapshotSource, /sandboxPolicy: createWorkspaceWritePolicy\(envConfig\.shadowRoot\)/);
+test("2289: shadow snapshot CLI delegates sandboxing to workspace policy and service-level shadow-root validation", () => {
+  assert.match(shadowSnapshotSource, /sandboxPolicy: createWorkspaceWritePolicy\(envConfig\.workspaceRoot\)/);
 });
 
 test("2290: data-plane CLI wires artifact sandbox policy and ArtifactStore narrows to rootDir", () => {

@@ -38,7 +38,7 @@ test("2009: harness SDK wires beforeRun/afterRun/onError/onTimeout lifecycle hoo
   assert.match(text, /onError\?:/);
   assert.match(text, /onTimeout\?:/);
   assert.match(text, /this\.lifecycleHooks\?\.beforeRun\?\.\(input\)/);
-  assert.match(text, /this\.lifecycleHooks\?\.afterRun\?\.\(run\)/);
+  assert.match(text, /this\.lifecycleHooks\?\.afterRun\?\.\((?:run|publicRun)\)/);
   assert.match(text, /this\.lifecycleHooks\?\.onError\?\.\(error as Error/);
   assert.match(text, /this\.lifecycleHooks\?\.onTimeout\?\.\(timeoutMs/);
 });

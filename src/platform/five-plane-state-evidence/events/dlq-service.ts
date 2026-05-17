@@ -322,12 +322,12 @@ export class DlqService {
       timestamp: now,
       details: { retryCount: record.retryCount, maxRetries: record.maxRetries },
       previousStatus: record.status,
-      newStatus: "discarded",
+      newStatus: "pending",
     };
 
     const updated: ExtendedDeadLetterRecord = {
       ...record,
-      status: "discarded",
+      status: "pending",
       retryExhaustedAt: now,
       nextRetryAt: null,
       updatedAt: now,

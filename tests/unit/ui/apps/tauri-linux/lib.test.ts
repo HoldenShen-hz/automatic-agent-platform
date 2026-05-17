@@ -25,7 +25,7 @@ const packageJson = JSON.parse(
 test("tauri linux manifest now carries update channel metadata", () => {
   assert.equal(tauriLinuxManifest.platform, "linux");
   assert.equal(tauriLinuxManifest.runtime, "tauri");
-  assert.equal(tauriLinuxManifest.supportsBackgroundAgent, true);
+  assert.equal(tauriLinuxManifest.supportsBackgroundAgent, false);
   assert.equal(tauriLinuxManifest.updateChannel, "stable");
 });
 

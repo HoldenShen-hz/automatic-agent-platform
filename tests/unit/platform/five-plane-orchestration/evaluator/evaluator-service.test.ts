@@ -127,8 +127,11 @@ test("evaluate with no signals returns passed=true for completed outcome", () =>
 
   assert.equal(result.passed, true);
   assert.equal(result.decision, "accept");
-  assert.equal(result.findings.length, 1);
-  assert.equal(result.findings[0]?.category, "risk");
+  assert.equal(result.findings.length, 4);
+  assert.deepEqual(
+    result.findings.map((finding) => finding.category),
+    ["deviation", "risk", "budget", "timing"],
+  );
 });
 
 test("evaluate with failure signals returns passed=false", () => {

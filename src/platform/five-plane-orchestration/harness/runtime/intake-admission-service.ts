@@ -133,7 +133,10 @@ function readNormalizedIntentRecord(value: JsonValue): { readonly [key: string]:
   return {};
 }
 
-function serializePrincipalRef(principal: PrincipalRef): JsonValue {
+function serializePrincipalRef(principal: PrincipalRef | null | undefined): JsonValue {
+  if (principal == null) {
+    return null;
+  }
   return {
     principalId: principal.principalId,
     type: principal.type,
@@ -148,11 +151,17 @@ function serializeConfirmationReceipt(receipt: UserConfirmationReceipt | null): 
   if (receipt == null) {
     return null;
   }
+  const legacyReceipt = receipt as UserConfirmationReceipt & {
+    readonly issuedAt?: string;
+    readonly issuedBy?: PrincipalRef;
+  };
+  const confirmedBy = receipt.confirmedBy ?? legacyReceipt.issuedBy ?? null;
+  const confirmedAt = receipt.confirmedAt ?? legacyReceipt.issuedAt ?? null;
   return {
     receiptId: receipt.receiptId,
-    confirmedBy: serializePrincipalRef(receipt.confirmedBy),
+    confirmedBy: serializePrincipalRef(confirmedBy),
     riskClass: receipt.riskClass,
-    confirmedAt: receipt.confirmedAt,
+    confirmedAt,
     ...(receipt.expiresAt != null ? { expiresAt: receipt.expiresAt } : {}),
     state: receipt.state,
     ...(receipt.riskPreviewVersion != null ? { riskPreviewVersion: receipt.riskPreviewVersion } : {}),

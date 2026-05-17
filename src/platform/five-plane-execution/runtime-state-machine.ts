@@ -140,6 +140,13 @@ function assertTransitionAllowed(
       { details: { aggregateType, fromStatus, toStatus } },
     );
   }
+  if (
+    aggregateType === "HarnessRun"
+    && toStatus === "paused"
+    && (fromStatus === "completed" || fromStatus === "aborted")
+  ) {
+    return;
+  }
   const allowed = getTransitionTable(aggregateType)[fromStatus] ?? [];
   if (!allowed.includes(toStatus)) {
     throw new WorkflowStateError(

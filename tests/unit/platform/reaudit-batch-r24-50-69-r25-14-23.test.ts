@@ -195,10 +195,12 @@ test("reaudit batch: legacy state and transition contracts expose canonical cont
 
 test("reaudit batch: canonical runtime objects are exported and legacy execution-plan path is guarded", () => {
   const executableContracts = readRepoFile("src/platform/contracts/executable-contracts/index.ts");
+  const contractModels = readRepoFile("src/platform/contracts/executable-contracts/contract-models.ts");
   const executionPlan = readRepoFile("src/platform/contracts/execution-plan/index.ts");
 
+  assert.match(executableContracts, /export \* from "\.\/contract-models\.js";/);
   for (const iface of ["HarnessRun", "NodeRun", "NodeAttempt", "BudgetReservation", "SideEffectRecord"]) {
-    assert.match(executableContracts, new RegExp(`export interface ${iface}`));
+    assert.match(contractModels, new RegExp(`export interface ${iface}`));
   }
 
   assert.match(executionPlan, /type PlanGraphBundle/);
