@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 
 import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+import { GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH } from "../../../../src/platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
@@ -320,9 +321,18 @@ test("multi-step orchestration fails cleanly when semantic output validation sti
     const result = await runMultiStepOrchestration({
       dbPath: join(workspace, "multi-step-invalid-output.db"),
       title: "Multi-step invalid output",
-      request: "Analyze the task, draft a solution, and review the final output.",
+      request: `oapeflir://plan ${JSON.stringify([
+        {
+          stepId: "invalid_summary_step",
+          dependencies: [],
+          outputs: ["invalid_summary_output"],
+          timeout: 30_000,
+          retryPolicy: { maxRetries: 0 },
+          outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
+        },
+      ])}`,
       stepOutputOverrides: {
-        intake_triage: {
+        invalid_summary_step: {
           summary: "",
         },
       },

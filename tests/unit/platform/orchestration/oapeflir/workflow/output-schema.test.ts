@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   parseWorkflowOutputSchema,
+  populateMissingRequiredWorkflowStepOutput,
   validateWorkflowStepOutput,
   type WorkflowOutputSchemaDefinition,
 } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/workflow/output-schema.js";
@@ -253,4 +254,38 @@ test("validateWorkflowStepOutput accepts supported non-string property types", (
   assert.equal(schema.properties.count?.type, "number");
   assert.equal(schema.properties.meta?.type, "object");
   assert.deepEqual(schema.properties.tags, { type: "array", itemType: "string" });
+});
+
+test("populateMissingRequiredWorkflowStepOutput backfills required fields using schema defaults", () => {
+  const schemaPath = "divisions/legal/schemas/legal-output.json";
+  const result = populateMissingRequiredWorkflowStepOutput(
+    {
+      stepId: "collect_authorities",
+      outputSchemaPath: schemaPath,
+    },
+    {
+      summary: "Collected relevant legal authorities.",
+      result: "Prepared the authority set for downstream review.",
+    },
+  );
+
+  assert.equal(result.summary, "Collected relevant legal authorities.");
+  assert.equal(result.result, "Prepared the authority set for downstream review.");
+  assert.equal(result.status, "success");
+});
+
+test("populateMissingRequiredWorkflowStepOutput fills typed required fields for non-minimal schemas", () => {
+  const result = populateMissingRequiredWorkflowStepOutput(
+    {
+      stepId: "plan_run",
+      outputSchemaPath: "divisions/operations/schemas/ops-output.json",
+    },
+    {
+      summary: "Planned the operations run.",
+    },
+  );
+
+  assert.equal(result.summary, "Planned the operations run.");
+  assert.equal(result.taskType, "plan_run");
+  assert.equal(result.completed, true);
 });

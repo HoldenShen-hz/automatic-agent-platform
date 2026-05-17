@@ -7,6 +7,10 @@ import {
 } from "./authoritative-task-store-delegating-base.js";
 
 export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends AuthoritativeTaskStoreDelegatingBase {
+  private isIsoTimestamp(value: unknown): value is string {
+    return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value);
+  }
+
   public override insertTask(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["insertTask"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["insertTask"]> {
     return this.delegateLegacy("insertTask", "task", "insertTask", ...args);
   }
@@ -16,10 +20,53 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
   }
 
   public override listTasks(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listTasks"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listTasks"]> {
+    if (
+      args.length === 1
+      && typeof args[0] === "object"
+      && args[0] !== null
+      && !Array.isArray(args[0])
+    ) {
+      const filter = args[0] as {
+        limit?: number;
+        tenantId?: string | null;
+        status?: string;
+        cursor?: string | null;
+      };
+      const tasks = this.task.listTasks(filter.limit, filter.tenantId ?? null, filter.cursor ?? null);
+      return (
+        filter.status == null
+          ? tasks
+          : tasks.filter((task) => task.status === filter.status)
+      ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["listTasks"]>;
+    }
     return this.delegateLegacy("listTasks", "task", "listTasks", ...args);
   }
 
   public override updateTaskStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]> {
+    if (
+      args.length >= 4
+      && typeof args[0] === "string"
+      && typeof args[1] === "string"
+      && typeof args[2] === "string"
+      && this.isIsoTimestamp(args[3])
+      && !this.isIsoTimestamp(args[2])
+    ) {
+      const legacyArgs = args as unknown as [
+        string,
+        string,
+        string,
+        string,
+        (string | null | undefined)?,
+        (string | null | undefined)?,
+      ];
+      return this.task.updateTaskStatus(
+        legacyArgs[0],
+        legacyArgs[2],
+        legacyArgs[3],
+        legacyArgs[4] ?? null,
+        legacyArgs[5] ?? null,
+      ) as ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskStatus"]>;
+    }
     return this.delegateLegacy("updateTaskStatus", "task", "updateTaskStatus", ...args);
   }
 
@@ -61,6 +108,10 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
 
   public override updateWorkflowState(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateWorkflowState"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateWorkflowState"]> {
     return this.delegateLegacy("updateWorkflowState", "workflow", "updateWorkflowState", ...args);
+  }
+
+  public override updateWorkflowStateCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateWorkflowStateCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateWorkflowStateCas"]> {
+    return this.delegateLegacy("updateWorkflowStateCas", "workflow", "updateWorkflowStateCas", ...args);
   }
 
   public override updateWorkflowRecoveryState(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateWorkflowRecoveryState"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateWorkflowRecoveryState"]> {

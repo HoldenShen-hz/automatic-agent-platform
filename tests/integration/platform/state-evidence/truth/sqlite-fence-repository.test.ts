@@ -6,6 +6,7 @@ import { FencingTokenService } from "../../../../../src/platform/five-plane-stat
 test("sqlite-backed fencing services share fence state across instances", () => {
   const service1 = new FencingTokenService("node-1");
   const service2 = new FencingTokenService("node-2");
+  service1.clearAllFences();
 
   const fence = service1.acquireFence("exec-shared", "exclusive");
   assert.ok(fence != null, "first node should acquire fence");
@@ -16,11 +17,13 @@ test("sqlite-backed fencing services share fence state across instances", () => 
   assert.equal(service1.releaseFence("exec-shared"), true);
   const reacquired = service2.acquireFence("exec-shared", "exclusive");
   assert.ok(reacquired != null, "second node should acquire after persisted release");
+  assert.equal(service2.releaseFence("exec-shared"), true);
 });
 
 test("sqlite-backed fencing services share active fence counts", () => {
   const service1 = new FencingTokenService("node-1");
   const service2 = new FencingTokenService("node-2");
+  service1.clearAllFences();
 
   service1.acquireFence("exec-a", "exclusive");
   service2.acquireFence("exec-b", "shared");

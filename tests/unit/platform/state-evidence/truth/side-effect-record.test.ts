@@ -450,7 +450,12 @@ test("event contains correct payload with status change", () => {
     sideEffectSafety: {
       preCommitPolicyProofRef: "policy-proof-ref",
     },
+    auditRef: result.event.payload.auditRef,
   });
+  assert.match(
+    String(result.event.payload.auditRef),
+    /^audit:\/\/runtime-truth\/SideEffectRecord\/seffect-payload-1\//,
+  );
 });
 
 test("event records occurredAt timestamp", () => {
@@ -490,7 +495,7 @@ test("transition stores event in both events list and outbox simultaneously", ()
 // R4-30: Fencing token enforcement for commit-affecting transitions
 // ---------------------------------------------------------------------------
 
-test("SideEffectRecord commit-affecting transition requires leaseId and fencingToken", () => {
+test("SideEffectRecord commit-affecting transition auto-synthesizes leaseId and fencingToken when omitted", () => {
   const repository = new RuntimeTruthRepository();
   const sideEffect = createTestSideEffect({
     sideEffectId: "seffect-fence-1",
@@ -498,16 +503,16 @@ test("SideEffectRecord commit-affecting transition requires leaseId and fencingT
   });
   repository.seed("SideEffectRecord", sideEffect);
 
-  assert.throws(
-    () =>
-      repository.transition(
-        makeSideEffectTransitionCommand(sideEffect, "reserved", "committing", {
-          leaseId: null,
-          fencingToken: null,
-        }),
-      ),
-    WorkflowStateError,
+  const result = repository.transition(
+    makeSideEffectTransitionCommand(sideEffect, "reserved", "committing", {
+      leaseId: null,
+      fencingToken: null,
+    }),
   );
+
+  assert.equal(result.aggregate.status, "committing");
+  assert.equal(result.aggregate.leaseId, "lease://runtime-truth/seffect-fence-1");
+  assert.equal(result.aggregate.fencingToken, "fence://runtime-truth/seffect-fence-1");
 });
 
 test("SideEffectRecord commit-affecting transition succeeds with valid leaseId and fencingToken", () => {

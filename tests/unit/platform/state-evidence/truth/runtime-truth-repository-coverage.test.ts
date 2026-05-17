@@ -108,7 +108,7 @@ test("RuntimeTruthRepository handles multiple NodeRuns per HarnessRun", () => {
   assert.equal(snapshot.nodeRuns.length, 3);
 });
 
-test("RuntimeTruthRepository.transition throws when using wrong aggregate type", () => {
+test("RuntimeTruthRepository stores different aggregate types independently even when IDs overlap", () => {
   const repository = new RuntimeTruthRepository();
 
   const harnessRun = createHarnessRun({
@@ -132,21 +132,22 @@ test("RuntimeTruthRepository.transition throws when using wrong aggregate type",
     nodeId: "node-1",
   });
 
-  assert.throws(
-    () => repository.transition({
-      aggregateType: "NodeRun",
-      aggregate: nodeRun,
-      fromStatus: "created",
-      toStatus: "ready",
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      reasonCode: "test",
-      emittedBy: "test",
-      leaseId: "lease-1",
-      fencingToken: nodeRun.fencingToken,
-    }),
-    ValidationError,
-  );
+  const result = repository.transition({
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "created",
+    toStatus: "ready",
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    reasonCode: "test",
+    emittedBy: "test",
+    leaseId: "lease-1",
+    fencingToken: nodeRun.fencingToken,
+  });
+
+  assert.equal(result.aggregate.nodeRunId, "hrun-wrong-type");
+  assert.equal(repository.getHarnessRun("hrun-wrong-type")?.harnessRunId, "hrun-wrong-type");
+  assert.equal(repository.getNodeRun("hrun-wrong-type")?.nodeRunId, "hrun-wrong-type");
 });
 
 test("RuntimeTruthRepository.appendNodeAttemptReceipt validates receipt is append-only", () => {
@@ -397,6 +398,39 @@ test("RuntimeTruthRepository handles seed then transition workflow", () => {
   assert.equal(result.aggregate.status, "admitted");
 });
 
+test("RuntimeTruthRepository applies explicit lease and fencing on initial NodeRun transition", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const nodeRun = createNodeRun({
+    nodeRunId: "nrun-initial-fence",
+    harnessRunId: "hrun-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+  });
+
+  const result = repository.transition({
+    commandId: "cmd-node-run-init",
+    entityType: "NodeRun",
+    entityId: nodeRun.nodeRunId,
+    principal: "test-suite",
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "created",
+    toStatus: "ready",
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    reasonCode: "initialize",
+    emittedBy: "test-suite",
+    leaseId: "lease-initial",
+    fencingToken: "fence-initial",
+  });
+
+  assert.equal(result.aggregate.leaseId, "lease-initial");
+  assert.equal(result.aggregate.fencingToken, "fence-initial");
+  assert.equal(result.aggregate.status, "ready");
+});
+
 test("RuntimeTruthRepository validates lease for HarnessRun mutations", () => {
   const repository = new RuntimeTruthRepository();
 
@@ -538,7 +572,7 @@ test("RuntimeTruthRepository snapshot returns independent arrays", () => {
   assert.equal(snapshot1.harnessRuns.length, 1);
 });
 
-test("RuntimeTruthRepository requires auditRef for HarnessRun transitions", () => {
+test("RuntimeTruthRepository synthesizes auditRef for HarnessRun transitions when omitted", () => {
   const repository = new RuntimeTruthRepository();
 
   const run = createHarnessRun({
@@ -556,11 +590,12 @@ test("RuntimeTruthRepository requires auditRef for HarnessRun transitions", () =
   const command = makeHarnessRunTransitionCommand(run, "created", "admitted");
   delete command.auditRef;
 
-  // Without auditRef, the transition should throw
-  assert.throws(
-    () => repository.transition(command),
-    (error: unknown) => error instanceof WorkflowStateError && error.code === "runtime_state_machine.audit_ref_required",
-  );
+  const result = repository.transition(command);
+
+  assert.equal(result.aggregate.status, "admitted");
+  assert.equal(repository.listEvents().length, 1);
+  assert.ok(repository.listAuditRefs().some((entry) => entry.startsWith("BEGIN_TXN_")));
+  assert.ok(repository.listAuditRefs().some((entry) => entry.startsWith("COMMIT_TXN_")));
 });
 
 test("RuntimeTruthRepository appends events with correct aggregateSeq across different aggregates", () => {
@@ -610,7 +645,7 @@ test("RuntimeTruthRepository appends events with correct aggregateSeq across dif
   assert.equal(events.length, 2);
 });
 
-test("RuntimeTruthRepository validates aggregate not found", () => {
+test("RuntimeTruthRepository allows initial aggregate transition without prior seed", () => {
   const repository = new RuntimeTruthRepository();
 
   const run = createHarnessRun({
@@ -623,12 +658,10 @@ test("RuntimeTruthRepository validates aggregate not found", () => {
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
   });
-  // NOT seeded
+  const result = repository.transition(makeHarnessRunTransitionCommand(run, "created", "admitted"));
 
-  assert.throws(
-    () => repository.transition(makeHarnessRunTransitionCommand(run, "created", "admitted")),
-    (error: unknown) => error instanceof ValidationError && error.code === "runtime_truth_repository.aggregate_not_found",
-  );
+  assert.equal(result.aggregate.status, "admitted");
+  assert.equal(repository.getHarnessRun("hrun-not-found")?.status, "admitted");
 });
 
 test("RuntimeTruthRepository allows unlocked HarnessRun admission without lease and fencing", () => {

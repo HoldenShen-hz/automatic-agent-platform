@@ -36,6 +36,22 @@ function resolveDbPath(): string {
   return join(sqliteDir, "multi-step-demo.db");
 }
 
+function toJsonSafe<T>(value: T): T {
+  const seen = new WeakSet<object>();
+  return JSON.parse(
+    JSON.stringify(value, (_key, currentValue) => {
+      if (typeof currentValue !== "object" || currentValue === null) {
+        return currentValue;
+      }
+      if (seen.has(currentValue)) {
+        return "[Circular]";
+      }
+      seen.add(currentValue);
+      return currentValue;
+    }),
+  ) as T;
+}
+
 /**
  * Main entry point for the multi-step orchestration demo CLI.
  *
@@ -53,7 +69,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(`${JSON.stringify(
     {
-      routing: result.routing,
+      routing: toJsonSafe(result.routing),
       plannedSteps: result.plannedWorkflow.executionSteps.map((step) => ({
         stepId: step.stepId,
         roleId: step.roleId,
@@ -63,7 +79,7 @@ async function main(): Promise<void> {
         id: result.snapshot.task.id,
         status: result.snapshot.task.status,
       },
-      workflow: result.snapshot.workflow,
+      workflow: toJsonSafe(result.snapshot.workflow),
       stepOutputs: result.snapshot.stepOutputs.map((step) => ({
         nodeRunId: step.nodeRunId,
         stepId: step.stepId,

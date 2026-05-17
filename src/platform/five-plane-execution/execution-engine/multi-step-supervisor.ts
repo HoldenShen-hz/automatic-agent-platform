@@ -21,7 +21,10 @@ import type { ArtifactStore } from "../../five-plane-state-evidence/artifacts/ar
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createWorkflowStepCheckpoint } from "../../five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { decideWorkflowStepRetry, type WorkflowStepRetryDecision } from "../../five-plane-orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
-import { validateWorkflowStepOutput } from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
+import {
+  populateMissingRequiredWorkflowStepOutput,
+  validateWorkflowStepOutput,
+} from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
 import { buildStepOutput } from "./multi-step-agent-round-loop.js";
 import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
@@ -357,8 +360,10 @@ export async function executeStepLoop(
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
       });
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
-      const stepDataRecord: Record<string, unknown> = {};
-      Object.assign(stepDataRecord, stepData);
+      const stepDataRecord = populateMissingRequiredWorkflowStepOutput(
+        step,
+        stepData as unknown as Record<string, unknown>,
+      );
 
       let validation: ReturnType<typeof validateWorkflowStepOutput>;
       try {

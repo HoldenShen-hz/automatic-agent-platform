@@ -12,6 +12,8 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import type { SqliteConnection } from "../truth/sqlite/query-helper.js";
+import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 
 /**
  * Failure categories for DLQ entries
@@ -136,6 +138,16 @@ export class DlqService {
   // In-memory cache for when repository is not available
   private readonly records = new Map<string, ExtendedDeadLetterRecord>();
 
+  public constructor(repository?: DlqRepository | null, conn?: SqliteConnection) {
+    if (repository != null) {
+      this.setRepository(repository);
+      return;
+    }
+    if (conn != null) {
+      this.setRepository(new SqliteDlqRepository(conn));
+    }
+  }
+
   /**
    * Sets the DLQ repository for persistence.
    * When set, operations will use the repository instead of in-memory storage.
@@ -192,7 +204,7 @@ export class DlqService {
       createdAt: now,
       updatedAt: now,
       originalTimestamp: input.originalTimestamp ?? null,
-      firstFailedAt: now,
+      firstFailedAt: input.originalTimestamp ?? now,
       lastFailedAt: now,
       lastAttemptAt: null,
       failureCategory: input.failureCategory ?? null,
@@ -379,6 +391,37 @@ export class DlqService {
       ...record,
       reason,
       updatedAt: now,
+    };
+    this.updateRecord(updated);
+    return updated;
+  }
+
+  public linkIncident(
+    deadLetterId: string,
+    incidentId: string,
+    operatorId?: string,
+  ): ExtendedDeadLetterRecord {
+    const record = this.getRequired(deadLetterId);
+    const now = nowIso();
+
+    const actionLog: OperatorActionRecord = {
+      actionId: newId("oplog"),
+      operatorId: operatorId ?? "system",
+      action: "investigation_started",
+      timestamp: now,
+      details: {
+        previousIncidentId: record.linkedIncidentId,
+        linkedIncidentId: incidentId,
+      },
+      previousStatus: record.status,
+      newStatus: null,
+    };
+
+    const updated: ExtendedDeadLetterRecord = {
+      ...record,
+      linkedIncidentId: incidentId,
+      updatedAt: now,
+      operatorActionLog: [...record.operatorActionLog, actionLog],
     };
     this.updateRecord(updated);
     return updated;

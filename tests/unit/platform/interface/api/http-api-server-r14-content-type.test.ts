@@ -97,7 +97,6 @@ function createMinimalServer(): HttpApiServer {
 
 test("HttpApiServer returns 415 for write request with unsupported content type", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -118,7 +117,6 @@ test("HttpApiServer returns 415 for write request with unsupported content type"
 
 test("HttpApiServer accepts application/json content type and reaches route handler", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({

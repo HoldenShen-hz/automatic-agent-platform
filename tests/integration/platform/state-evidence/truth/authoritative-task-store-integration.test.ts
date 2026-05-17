@@ -38,7 +38,11 @@ function createTestTaskInput(overrides: Partial<{
   };
 }
 
-function createTestExecutionInput(taskId: string, executionId: string): Parameters<ReturnType<typeof createIntegrationContext>["store"]["insertExecution"]>[0] {
+function createTestExecutionInput(
+  taskId: string,
+  executionId: string,
+  overrides: Partial<Parameters<ReturnType<typeof createIntegrationContext>["store"]["insertExecution"]>[0]> = {},
+): Parameters<ReturnType<typeof createIntegrationContext>["store"]["insertExecution"]>[0] {
   return {
     id: executionId,
     taskId,
@@ -65,6 +69,7 @@ function createTestExecutionInput(taskId: string, executionId: string): Paramete
     finishedAt: null,
     createdAt: now,
     updatedAt: now,
+    ...overrides,
   };
 }
 
@@ -129,9 +134,9 @@ test("task with multiple executions tracks history correctly", () => {
 
     // Create multiple executions (simulating retries)
     ctx.db.transaction(() => {
-      for (const execId of executionIds) {
-        ctx.store.insertExecution(createTestExecutionInput(taskId, execId));
-      }
+      executionIds.forEach((execId, index) => {
+        ctx.store.insertExecution(createTestExecutionInput(taskId, execId, { attempt: index + 1 }));
+      });
     });
 
     // Verify all executions exist
@@ -275,7 +280,7 @@ test("concurrent workflow updates with CAS version check", () => {
     let affected = ctx.db.transaction(() => {
       return ctx.store.updateWorkflowStateCas(
         taskId,
-        1, // expected version
+        0, // current step index before first advance
         "running",
         "running",
         1,
@@ -289,7 +294,7 @@ test("concurrent workflow updates with CAS version check", () => {
     affected = ctx.db.transaction(() => {
       return ctx.store.updateWorkflowStateCas(
         taskId,
-        1, // stale version
+        0, // stale step index
         "running",
         "running",
         2,

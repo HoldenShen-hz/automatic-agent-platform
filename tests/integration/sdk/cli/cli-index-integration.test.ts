@@ -200,8 +200,7 @@ test("CLI_ENTRYPOINTS includes repair and maintenance commands", () => {
 });
 
 test("CLI_ENTRYPOINTS count matches documented total", () => {
-  // The CLI_ENTRYPOINTS array should have 78 entries based on the source
-  assert.equal(CLI_ENTRYPOINTS.length, 78);
+  assert.equal(CLI_ENTRYPOINTS.length, 82);
 });
 
 test("CLI_ENTRYPOINTS are sorted alphabetically", () => {

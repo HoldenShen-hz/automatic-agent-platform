@@ -71,6 +71,7 @@ export class FencingTokenService {
   private static readonly activeFences = new Map<string, FenceInfo>();
   private static readonly FENCING_TOKEN_SEPARATOR = "::";
   private static readonly globalTokenCounter = new Int32Array(new SharedArrayBuffer(4));
+  private static readonly DEFAULT_FENCE_TTL_MS = 5 * 60_000;
 
   // Exposed as a getter for test visibility; the authoritative counter is process-wide.
   public get tokenCounter(): number {
@@ -214,7 +215,7 @@ export class FencingTokenService {
       fenceToken,
       ownerNodeId: this.nodeId,
       acquiredAt: new Date(),
-      expiresAt: null,
+      expiresAt: new Date(Date.now() + FencingTokenService.DEFAULT_FENCE_TTL_MS),
     };
 
     FencingTokenService.activeFences.set(

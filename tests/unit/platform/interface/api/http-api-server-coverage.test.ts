@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer as createNetServer } from "node:net";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "node:http";
 import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
@@ -121,6 +122,18 @@ class NoOpApiDelegationService implements ApiDelegationService {
   }
 }
 
+async function canBindLocalSockets(): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const probe = createNetServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(0, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
+    });
+  });
+}
+
+const networkPathTest = (await canBindLocalSockets()) ? test : test.skip;
+
 function createMockPrometheusMetricsExporter() {
   return {
     export: () => "# HELP http_requests_total Total HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total 1",
@@ -149,7 +162,7 @@ function createMinimalServer(): HttpApiServer {
   });
 }
 
-test("HttpApiServer start and stop lifecycle", async () => {
+networkPathTest("HttpApiServer start and stop lifecycle", async () => {
   const server = createMinimalServer();
 
   const { host, port } = await server.start();
@@ -161,7 +174,6 @@ test("HttpApiServer start and stop lifecycle", async () => {
 
 test("HttpApiServer inject handles GET /healthz", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -180,7 +192,6 @@ test("HttpApiServer inject handles GET /healthz", async () => {
 
 test("HttpApiServer inject handles OPTIONS preflight request", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -201,7 +212,6 @@ test("HttpApiServer inject handles OPTIONS preflight request", async () => {
 
 test("HttpApiServer inject rejects JSON write requests with unsupported content type", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -223,7 +233,6 @@ test("HttpApiServer inject rejects JSON write requests with unsupported content 
 
 test("HttpApiServer inject handles non-existent route", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -240,7 +249,6 @@ test("HttpApiServer inject handles non-existent route", async () => {
 
 test("HttpApiServer inject handles request body larger than limit", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const largeBody = JSON.stringify({ data: "x".repeat(1_100_000) });
@@ -262,7 +270,6 @@ test("HttpApiServer inject handles request body larger than limit", async () => 
 
 test("HttpApiServer broadcastTaskEvent does not throw when WebSocket bridge is disabled", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const event = {
@@ -281,7 +288,6 @@ test("HttpApiServer broadcastTaskEvent does not throw when WebSocket bridge is d
 
 test("HttpApiServer sets security headers on responses", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -300,7 +306,6 @@ test("HttpApiServer sets security headers on responses", async () => {
 
 test("HttpApiServer inject handles POST with JSON body", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -323,7 +328,6 @@ test("HttpApiServer inject handles POST with JSON body", async () => {
 
 test("HttpApiServer inject returns 400 for malformed JSON", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -341,7 +345,7 @@ test("HttpApiServer inject returns 400 for malformed JSON", async () => {
   }
 });
 
-test("HttpApiServer WebSocket bridge initialization when enabled", async () => {
+networkPathTest("HttpApiServer WebSocket bridge initialization when enabled", async () => {
   const server = new HttpApiServer({
     approvalService: new NoOpApprovalService(),
     inspectService: new NoOpInspectService(),
@@ -369,7 +373,6 @@ test("HttpApiServer WebSocket bridge initialization when enabled", async () => {
 
 test("HttpApiServer inject handles request with accept-encoding gzip", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({
@@ -388,7 +391,6 @@ test("HttpApiServer inject handles request with accept-encoding gzip", async () 
 
 test("HttpApiServer inject records Prometheus metrics", async () => {
   const server = createMinimalServer();
-  await server.start();
 
   try {
     const response = await server.inject({

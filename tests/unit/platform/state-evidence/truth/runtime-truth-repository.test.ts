@@ -192,7 +192,7 @@ test("transition rolls back state when invalid transition is attempted", () => {
   assert.equal(repository.listEvents().length, 0);
 });
 
-test("transition throws when aggregate not found in repository", () => {
+test("transition allows initial aggregate transition without prior seed", () => {
   const repository = new RuntimeTruthRepository();
   const run = createHarnessRun({
     harnessRunId: "hrun-1",
@@ -204,15 +204,13 @@ test("transition throws when aggregate not found in repository", () => {
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
   });
-  // Note: run is NOT seeded
 
-  assert.throws(
-    () =>
-      repository.transition(
-        makeHarnessRunTransitionCommand(run, "created", "admitted"),
-      ),
-    ValidationError,
+  const result = repository.transition(
+    makeHarnessRunTransitionCommand(run, "created", "admitted"),
   );
+
+  assert.equal(result.aggregate.status, "admitted");
+  assert.equal(repository.getHarnessRun("hrun-1")?.status, "admitted");
 });
 
 test("transition increments aggregateSeq for each event on same aggregate", () => {

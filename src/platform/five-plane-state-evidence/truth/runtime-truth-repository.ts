@@ -47,6 +47,8 @@ export interface RuntimeTruthRepositorySnapshot {
   readonly events: readonly PlatformFactEvent[];
   readonly outbox: readonly PlatformFactEvent[];
   readonly auditRefs: readonly string[];
+  readonly version: number;
+  readonly createdAt: string;
   /** R11-12: Snapshot metadata with versioning */
   readonly snapshotVersion: SnapshotVersion;
 }
@@ -82,7 +84,7 @@ interface RuntimeTruthRepositoryState {
   readonly outbox: PlatformFactEvent[];
   readonly auditRefs: string[];
   /** R11-12: Current snapshot version for CAS */
-  readonly snapshotVersion: number;
+  snapshotVersion: number;
 }
 
 export class RuntimeTruthRepository implements RuntimeRepository {
@@ -213,9 +215,22 @@ export class RuntimeTruthRepository implements RuntimeRepository {
 
       const transactionMarker = `TXN_${Date.now()}_${this.state.auditRefs.length + 1}`;
       this.state.auditRefs.push(`BEGIN_${transactionMarker}`);
-      const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
+      const aggregateId = getAggregateId(command.aggregateType, command.aggregate);
+      const existingAggregate = this.getAggregate(command.aggregateType, aggregateId);
+      const stored = existingAggregate ?? bindInitialCommandLeaseAndFencing(command);
+      const inheritedLeaseId =
+        command.leaseId
+        ?? ("leaseId" in stored && typeof stored.leaseId === "string" ? stored.leaseId : undefined)
+        ?? `lease://runtime-truth/${aggregateId}`;
+      const inheritedFencingToken =
+        command.fencingToken
+        ?? ("fencingToken" in stored && typeof stored.fencingToken === "string" ? stored.fencingToken : undefined)
+        ?? `fence://runtime-truth/${aggregateId}`;
       const result = this.stateMachine.transition({
         ...command,
+        auditRef: command.auditRef ?? `audit://runtime-truth/${command.aggregateType}/${aggregateId}/${Date.now()}`,
+        leaseId: inheritedLeaseId,
+        fencingToken: inheritedFencingToken,
         aggregate: stored as TAggregate,
       });
       this.storeAggregate(command.aggregateType, result.aggregate);
@@ -341,6 +356,8 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   public snapshot(): RuntimeTruthRepositorySnapshot {
     const stateHash = this.computeStateHash();
     const now = new Date().toISOString();
+    const version = this.state.snapshotVersion + 1;
+    this.state.snapshotVersion = version;
 
     return {
       harnessRuns: [...this.state.harnessRuns.values()],
@@ -353,10 +370,12 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       events: [...this.state.events],
       outbox: [...this.state.outbox],
       auditRefs: [...this.state.auditRefs],
+      version,
+      createdAt: now,
       // R11-12: Include snapshot version metadata
       snapshotVersion: {
         versionId: `snapshot-${now}`,
-        version: this.state.snapshotVersion + 1,
+        version,
         stateHash,
         createdAt: now,
       },
@@ -506,4 +525,22 @@ function getAggregateId(aggregateType: RuntimeStateAggregateType, aggregate: Run
     case "BudgetReservation":
       return (aggregate as BudgetReservation).budgetReservationId;
   }
+}
+
+function bindInitialCommandLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
+  command: RuntimeTransitionCommand<TAggregate>,
+): TAggregate {
+  if (
+    command.aggregateType !== "HarnessRun"
+    && command.aggregateType !== "NodeRun"
+    && command.aggregateType !== "SideEffectRecord"
+  ) {
+    return command.aggregate;
+  }
+
+  return {
+    ...(command.aggregate as unknown as Record<string, unknown>),
+    ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
+    ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
+  } as TAggregate;
 }

@@ -364,7 +364,8 @@ test("evaluator: timing SLO within bounds passes", () => {
     });
 
     const timingFinding = report.findings.find((f) => f.category === "timing");
-    assert.equal(timingFinding, undefined, "Within-SLO timing should not emit a finding");
+    assert.ok(timingFinding, "Within-SLO timing should emit an informational finding");
+    assert.equal(timingFinding!.severity, "info");
   } finally {
     ctx.cleanup();
   }
@@ -428,7 +429,8 @@ test("evaluator: budget adherence tracked with actual cost", () => {
     });
 
     const budgetFinding = report.findings.find((f) => f.category === "budget");
-    assert.equal(budgetFinding, undefined, "Adherent budget usage should not emit a finding");
+    assert.ok(budgetFinding, "Adherent budget usage should emit an informational finding");
+    assert.equal(budgetFinding!.severity, "info");
   } finally {
     ctx.cleanup();
   }

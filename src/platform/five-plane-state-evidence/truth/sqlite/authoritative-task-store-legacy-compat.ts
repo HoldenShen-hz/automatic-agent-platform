@@ -53,6 +53,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract insertWorkflowState(...args: RepoMethodArgs<WorkflowRepository, "insertWorkflowState">): RepoMethodResult<WorkflowRepository, "insertWorkflowState">;
   public abstract insertStepOutput(...args: RepoMethodArgs<WorkflowRepository, "insertStepOutput">): RepoMethodResult<WorkflowRepository, "insertStepOutput">;
   public abstract updateWorkflowState(...args: RepoMethodArgs<WorkflowRepository, "updateWorkflowState">): RepoMethodResult<WorkflowRepository, "updateWorkflowState">;
+  public abstract updateWorkflowStateCas(...args: RepoMethodArgs<WorkflowRepository, "updateWorkflowStateCas">): RepoMethodResult<WorkflowRepository, "updateWorkflowStateCas">;
   public abstract updateWorkflowRecoveryState(...args: RepoMethodArgs<WorkflowRepository, "updateWorkflowRecoveryState">): RepoMethodResult<WorkflowRepository, "updateWorkflowRecoveryState">;
   public abstract insertExecution(...args: RepoMethodArgs<ExecutionRepository, "insertExecution">): RepoMethodResult<ExecutionRepository, "insertExecution">;
   public abstract insertExecutionPrecheck(...args: RepoMethodArgs<ExecutionRepository, "insertExecutionPrecheck">): RepoMethodResult<ExecutionRepository, "insertExecutionPrecheck">;

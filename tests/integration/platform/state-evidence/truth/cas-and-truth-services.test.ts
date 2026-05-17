@@ -329,6 +329,7 @@ test("FencingTokenService: getFenceInfo returns correct info", () => {
 
 test("FencingTokenService: clearAllFences removes all fences", () => {
   const service = new FencingTokenService("node-1");
+  service.clearAllFences();
 
   const executionId1 = "11111111-1111-1111-1111-111111111111";
   const executionId2 = "22222222-2222-2222-2222-222222222222";
@@ -684,6 +685,62 @@ test("Truth repository: cost events append-only tracking", () => {
     ];
 
     ctx.db.transaction(() => {
+      ctx.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        tenantId: null,
+        title: "Cost test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0.05,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+      ctx.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "open",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      ctx.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "pending",
+        inputRef: null,
+        traceId: `trace-${executionId}`,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
       for (const cost of costs) {
         ctx.store.insertCostEvent({
           id: cost.id,

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
+import { createServer as createNetServer } from "node:net";
 import { WebSocket } from "ws";
 import { WebSocketBridge, type TaskWebSocketEvent, type WebSocketMessageType } from "../../../../../src/platform/five-plane-interface/channel-gateway/websocket-bridge.js";
 
@@ -10,11 +11,23 @@ class MockApiAuthService {
   }
 }
 
+async function canBindLocalSockets(): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const probe = createNetServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(0, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
+    });
+  });
+}
+
+const networkPathTest = (await canBindLocalSockets()) ? test : test.skip;
+
 function createMockServer() {
   return createServer();
 }
 
-test("WebSocketBridge registers client on connection", (t) => {
+networkPathTest("WebSocketBridge registers client on connection", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -37,7 +50,7 @@ test("WebSocketBridge registers client on connection", (t) => {
   });
 });
 
-test("WebSocketBridge rejects connection without token", (t) => {
+networkPathTest("WebSocketBridge rejects connection without token", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -61,7 +74,7 @@ test("WebSocketBridge rejects connection without token", (t) => {
   });
 });
 
-test("WebSocketBridge ignores JWT passed via query string and still rejects the connection", (t) => {
+networkPathTest("WebSocketBridge ignores JWT passed via query string and still rejects the connection", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -85,7 +98,7 @@ test("WebSocketBridge ignores JWT passed via query string and still rejects the 
   });
 });
 
-test("WebSocketBridge handles ping/pong", (t) => {
+networkPathTest("WebSocketBridge handles ping/pong", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -113,7 +126,7 @@ test("WebSocketBridge handles ping/pong", (t) => {
   });
 });
 
-test("WebSocketBridge handles subscribe/unsubscribe", (t) => {
+networkPathTest("WebSocketBridge handles subscribe/unsubscribe", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -152,7 +165,7 @@ test("WebSocketBridge handles subscribe/unsubscribe", (t) => {
   });
 });
 
-test("WebSocketBridge broadcasts to task subscribers", (t) => {
+networkPathTest("WebSocketBridge broadcasts to task subscribers", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -191,7 +204,7 @@ test("WebSocketBridge broadcasts to task subscribers", (t) => {
   });
 });
 
-test("WebSocketBridge tracks slow consumers", (t) => {
+networkPathTest("WebSocketBridge tracks slow consumers", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -233,7 +246,7 @@ test("WebSocketBridge tracks slow consumers", (t) => {
   });
 });
 
-test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
+networkPathTest("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -263,7 +276,7 @@ test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
   });
 });
 
-test("WebSocketBridge replays missed task updates from last_event_id on reconnect", (t) => {
+networkPathTest("WebSocketBridge replays missed task updates from last_event_id on reconnect", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -318,7 +331,7 @@ test("WebSocketBridge replays missed task updates from last_event_id on reconnec
   });
 });
 
-test("WebSocketBridge emits stream_gap when last_event_id is no longer replayable", (t) => {
+networkPathTest("WebSocketBridge emits stream_gap when last_event_id is no longer replayable", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -355,7 +368,7 @@ test("WebSocketBridge emits stream_gap when last_event_id is no longer replayabl
   });
 });
 
-test("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
+networkPathTest("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -384,7 +397,7 @@ test("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
   });
 });
 
-test("WebSocketBridge rejects connections above configured cap", (t) => {
+networkPathTest("WebSocketBridge rejects connections above configured cap", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { maxConnections: 1 });
@@ -414,7 +427,7 @@ test("WebSocketBridge rejects connections above configured cap", (t) => {
   });
 });
 
-test("WebSocketBridge enforces global subscription cap and exposes metrics", (t) => {
+networkPathTest("WebSocketBridge enforces global subscription cap and exposes metrics", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { maxTotalSubscriptions: 1 });
@@ -446,7 +459,7 @@ test("WebSocketBridge enforces global subscription cap and exposes metrics", (t)
   });
 });
 
-test("WebSocketBridge clears pending acknowledgements on disconnect", async () => {
+networkPathTest("WebSocketBridge clears pending acknowledgements on disconnect", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
 
@@ -478,7 +491,7 @@ test("WebSocketBridge clears pending acknowledgements on disconnect", async () =
   server.close();
 });
 
-test("WebSocketBridge evicts task event history by task count and per-task count", async () => {
+networkPathTest("WebSocketBridge evicts task event history by task count and per-task count", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, {
     maxTaskEventHistoryTasks: 2,
@@ -507,7 +520,7 @@ test("WebSocketBridge evicts task event history by task count and per-task count
   server.close();
 });
 
-test("WebSocketBridge closes idle clients during heartbeat sweep", async () => {
+networkPathTest("WebSocketBridge closes idle clients during heartbeat sweep", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, { idleTimeoutMs: 1 });
   let closeCode: number | undefined;
@@ -543,7 +556,7 @@ test("WebSocketBridge closes idle clients during heartbeat sweep", async () => {
   server.close();
 });
 
-test("WebSocketBridge removes listeners and subscriptions on disconnect", async () => {
+networkPathTest("WebSocketBridge removes listeners and subscriptions on disconnect", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
   const removedEvents: string[] = [];
@@ -586,7 +599,7 @@ test("WebSocketBridge removes listeners and subscriptions on disconnect", async 
   server.close();
 });
 
-test("WebSocketBridge close resolves even when a client does not finish shutdown", async () => {
+networkPathTest("WebSocketBridge close resolves even when a client does not finish shutdown", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
   const originalSetTimeout = globalThis.setTimeout;
@@ -625,7 +638,7 @@ test("WebSocketBridge close resolves even when a client does not finish shutdown
   }
 });
 
-test("WebSocketBridge broadcasts to all connected clients", (t) => {
+networkPathTest("WebSocketBridge broadcasts to all connected clients", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -657,7 +670,7 @@ test("WebSocketBridge broadcasts to all connected clients", (t) => {
   });
 });
 
-test("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
+networkPathTest("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
@@ -700,7 +713,7 @@ test("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
   });
 });
 
-test("WebSocketMessageType - stream_gap message type", () => {
+networkPathTest("WebSocketMessageType - stream_gap message type", () => {
   const msg: WebSocketMessageType = {
     type: "stream_gap",
     taskId: "task-123",
@@ -715,7 +728,7 @@ test("WebSocketMessageType - stream_gap message type", () => {
   assert.equal(msg.reason, "missed_events");
 });
 
-test("WebSocketMessageType - backpressure_warning message type", () => {
+networkPathTest("WebSocketMessageType - backpressure_warning message type", () => {
   const msg: WebSocketMessageType = {
     type: "backpressure_warning",
     taskId: "task-123",
@@ -728,7 +741,7 @@ test("WebSocketMessageType - backpressure_warning message type", () => {
   assert.equal(msg.reason, "slow_consumer");
 });
 
-test("WebSocketMessageType - ack message type", () => {
+networkPathTest("WebSocketMessageType - ack message type", () => {
   const msg: WebSocketMessageType = {
     type: "ack",
     sequenceNum: 42,
@@ -739,7 +752,7 @@ test("WebSocketMessageType - ack message type", () => {
   assert.equal(msg.delivered, true);
 });
 
-test("WebSocketBridge handles invalid JSON gracefully", (t) => {
+networkPathTest("WebSocketBridge handles invalid JSON gracefully", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);

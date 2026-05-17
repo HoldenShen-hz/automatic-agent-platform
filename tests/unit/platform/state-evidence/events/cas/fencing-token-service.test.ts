@@ -12,6 +12,7 @@ describe("FencingTokenService", () => {
 
   beforeEach(() => {
     service = new FencingTokenService("test-node");
+    service.clearAllFences();
   });
 
   afterEach(() => {
@@ -136,7 +137,8 @@ describe("FencingTokenService", () => {
       assert.strictEqual(result.ownerNodeId, "test-node");
       assert.ok(result.fenceToken.length > 0);
       assert.ok(result.acquiredAt instanceof Date);
-      assert.strictEqual(result.expiresAt, null);
+      assert.ok(result.expiresAt instanceof Date);
+      assert.ok(result.expiresAt.getTime() > result.acquiredAt.getTime());
     });
 
     it("should acquire an exclusive fence successfully", () => {
