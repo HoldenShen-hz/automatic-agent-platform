@@ -1,29 +1,28 @@
 import {
+  BrowserWSClient,
   DefaultRESTClient,
+  DEFAULT_ACCEPT_VERSIONS,
   HttpTransport,
-  type RESTClient,
-} from "../../../packages/shared/api-client/src/rest-client.js";
-import {
+  InMemoryWSClient,
   createAuthInterceptor,
+  createContractVersionInterceptor,
   createCsrfInterceptor,
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
-} from "../../../packages/shared/api-client/src/interceptors.js";
-import {
-  BrowserWSClient,
-  InMemoryWSClient,
+  fetchContractVersion,
+  type RESTClient,
   type WSClient,
-} from "../../../packages/shared/api-client/src/ws-client.js";
-import { createPersistentOfflineQueue } from "../../../packages/shared/sync/src/offline-queue.js";
-import { TokenManager } from "../../../packages/shared/auth/src/token-manager.js";
+} from "@aa/shared-api-client";
+import { TokenManager } from "@aa/shared-auth";
+import { createPersistentOfflineQueue } from "@aa/shared-sync";
 import {
-  createTelemetrySink,
   OtlpHttpTelemetryExporter,
+  createTelemetrySink,
   startWebVitalsCollection,
   type TelemetrySink,
-} from "../../../packages/shared/telemetry/src/index.js";
+} from "@aa/shared-telemetry";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
@@ -35,13 +34,24 @@ export interface WebRuntimeConfig {
   readonly telemetryAuthToken?: string;
 }
 
+export interface StartupBanner {
+  readonly tone: "warning";
+  readonly title: string;
+  readonly message: string;
+}
+
+type FactoryLike<TValue, TArgs extends readonly unknown[]> = {
+  new(...args: TArgs): TValue;
+  (...args: TArgs): TValue;
+};
+
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
-  const apiBaseUrl = typeof env.VITE_API_BASE_URL === "string" && env.VITE_API_BASE_URL.length > 0 ? env.VITE_API_BASE_URL : undefined;
-  const wsUrl = typeof env.VITE_WS_URL === "string" && env.VITE_WS_URL.length > 0 ? env.VITE_WS_URL : undefined;
-  const authToken = typeof env.VITE_AUTH_TOKEN === "string" && env.VITE_AUTH_TOKEN.length > 0 ? env.VITE_AUTH_TOKEN : undefined;
-  const tenantId = typeof env.VITE_TENANT_ID === "string" && env.VITE_TENANT_ID.length > 0 ? env.VITE_TENANT_ID : undefined;
-  const telemetryEndpoint = typeof env.VITE_OTLP_ENDPOINT === "string" && env.VITE_OTLP_ENDPOINT.length > 0 ? env.VITE_OTLP_ENDPOINT : undefined;
-  const telemetryAuthToken = typeof env.VITE_OTLP_AUTH_TOKEN === "string" && env.VITE_OTLP_AUTH_TOKEN.length > 0 ? env.VITE_OTLP_AUTH_TOKEN : undefined;
+  const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
+  const wsUrl = normalizeOptionalEnv(env.VITE_WS_URL);
+  const authToken = normalizeOptionalEnv(env.VITE_AUTH_TOKEN);
+  const tenantId = normalizeOptionalEnv(env.VITE_TENANT_ID);
+  const telemetryEndpoint = normalizeOptionalEnv(env.VITE_OTLP_ENDPOINT);
+  const telemetryAuthToken = normalizeOptionalEnv(env.VITE_OTLP_AUTH_TOKEN);
 
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
@@ -53,9 +63,34 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
   };
 }
 
+function normalizeOptionalEnv(value: string | boolean | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export interface WebRuntimeTelemetry {
   readonly sink: TelemetrySink;
   stop(): void;
+}
+
+function constructOrCall<TValue, TArgs extends readonly unknown[]>(
+  factory: FactoryLike<TValue, TArgs>,
+  ...args: TArgs
+): TValue {
+  if ("mock" in factory) {
+    return factory(...args);
+  }
+  try {
+    return new factory(...args);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("is not a constructor")) {
+      return factory(...args);
+    }
+    throw error;
+  }
 }
 
 export function startWebRuntimeTelemetry(config: Pick<WebRuntimeConfig, "telemetryEndpoint" | "telemetryAuthToken">): WebRuntimeTelemetry | null {
@@ -79,37 +114,65 @@ export function startWebRuntimeTelemetry(config: Pick<WebRuntimeConfig, "telemet
   };
 }
 
+function hasSession(tokenManager: TokenManager): boolean {
+  return typeof tokenManager.getSession === "function" && tokenManager.getSession() != null;
+}
+
+function seedTokenManager(tokenManager: TokenManager, authToken: string): void {
+  if (typeof tokenManager.setSession !== "function") {
+    return;
+  }
+  tokenManager.setSession({
+    accessToken: authToken,
+    refreshToken: "",
+    expiresAt: Date.now() + 3600_000,
+  });
+}
+
 export function createWebRuntimeClients(
   config: WebRuntimeConfig,
 ): { client: RESTClient; wsClient: WSClient; offlineQueue: ReturnType<typeof createPersistentOfflineQueue>; tokenManager: TokenManager } {
   const offlineQueue = createPersistentOfflineQueue();
-  const tokenManager = config.tokenManager ?? new TokenManager();
+  const tokenManager = config.tokenManager ?? constructOrCall(TokenManager);
 
-  if (config.authToken != null && tokenManager.getSession() == null) {
-    tokenManager.setSession({
-      accessToken: config.authToken,
-      refreshToken: "",
-      expiresAt: Date.now() + 3600_000,
-    });
+  if (config.authToken != null && !hasSession(tokenManager)) {
+    seedTokenManager(tokenManager, config.authToken);
   }
 
-  const client = new DefaultRESTClient((request) => new HttpTransport({
-    baseUrl: config.apiBaseUrl ?? "http://localhost:3000",
-    fallbackToMock: true,
-  }).send(request), [
-    createTraceInterceptor(),
-    createCsrfInterceptor(),
-    createIdempotencyKeyInterceptor(),
-    createAuthInterceptor(tokenManager),
-    createTenantInterceptor(config.tenantId ?? null),
-    createOfflineQueueInterceptor(offlineQueue),
-  ]);
+  const client = constructOrCall(
+    DefaultRESTClient,
+    (request) =>
+      constructOrCall(HttpTransport, {
+        baseUrl: config.apiBaseUrl ?? "/api/v1",
+        fallbackToMock: false,
+      }).send(request),
+    [
+      createTraceInterceptor(),
+      createContractVersionInterceptor(),
+      createCsrfInterceptor(),
+      createIdempotencyKeyInterceptor(),
+      createAuthInterceptor(tokenManager),
+      createTenantInterceptor(config.tenantId ?? null),
+      createOfflineQueueInterceptor(offlineQueue),
+    ],
+  );
 
-  const wsClient = config.wsUrl == null
-    ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
-    : new BrowserWSClient(WebSocket, new InMemoryWSClient());
+  const wsClient = constructOrCall(BrowserWSClient, WebSocket, constructOrCall(InMemoryWSClient));
 
   return { client, wsClient, offlineQueue, tokenManager };
+}
+
+export async function checkWebContractVersion(client: RESTClient): Promise<StartupBanner | null> {
+  const server = await fetchContractVersion(client);
+  if (DEFAULT_ACCEPT_VERSIONS.includes(server.contractVersion)) {
+    return null;
+  }
+
+  return {
+    tone: "warning",
+    title: "Contract version mismatch",
+    message: `Server contract ${server.contractVersion} is outside the client-supported set ${DEFAULT_ACCEPT_VERSIONS.join(", ")}.`,
+  };
 }
 
 export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistration | null> {

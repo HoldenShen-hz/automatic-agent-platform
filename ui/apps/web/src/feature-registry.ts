@@ -1,42 +1,38 @@
-import { lazy } from "react";
-
-// Eager-loaded: root (/) and login are required for initial render
 import dashboard from "@aa/feature-dashboard";
-
-// All other features use React.lazy for code splitting per §4.4.1
-const taskCockpit = lazy(() => import("@aa/feature-task-cockpit"));
-const workflowCockpit = lazy(() => import("@aa/feature-workflow-cockpit"));
-const approval = lazy(() => import("@aa/feature-approval"));
-const stability = lazy(() => import("@aa/feature-stability"));
-const takeover = lazy(() => import("@aa/feature-takeover"));
-const alerts = lazy(() => import("@aa/feature-alerts"));
-const dispatch = lazy(() => import("@aa/feature-dispatch"));
-const inspect = lazy(() => import("@aa/feature-inspect"));
-const health = lazy(() => import("@aa/feature-health"));
-const incidents = lazy(() => import("@aa/feature-incidents"));
-const compliance = lazy(() => import("@aa/feature-compliance"));
-const policy = lazy(() => import("@aa/feature-policy"));
-const audit = lazy(() => import("@aa/feature-audit"));
-const conversation = lazy(() => import("@aa/feature-conversation"));
-const hitl = lazy(() => import("@aa/feature-hitl"));
-const domainWizard = lazy(() => import("@aa/feature-domain-wizard"));
-const settings = lazy(() => import("@aa/feature-settings"));
-const workers = lazy(() => import("@aa/feature-workers"));
-const queues = lazy(() => import("@aa/feature-queues"));
-const workflowBuilder = lazy(() => import("@aa/feature-workflow-builder"));
-const workflowDebugger = lazy(() => import("@aa/feature-workflow-debugger"));
-const agentManager = lazy(() => import("@aa/feature-agent-manager"));
-const explainability = lazy(() => import("@aa/feature-explainability"));
-const costCenter = lazy(() => import("@aa/feature-cost-center"));
-const marketplace = lazy(() => import("@aa/feature-marketplace"));
-const analytics = lazy(() => import("@aa/feature-analytics"));
+import taskCockpit from "@aa/feature-task-cockpit";
+import workflowCockpit from "@aa/feature-workflow-cockpit";
+import approval from "@aa/feature-approval";
+import stability from "@aa/feature-stability";
+import takeover from "@aa/feature-takeover";
+import alerts from "@aa/feature-alerts";
+import dispatch from "@aa/feature-dispatch";
+import inspect from "@aa/feature-inspect";
+import health from "@aa/feature-health";
+import incidents from "@aa/feature-incidents";
+import compliance from "@aa/feature-compliance";
+import policy from "@aa/feature-policy";
+import audit from "@aa/feature-audit";
+import conversation from "@aa/feature-conversation";
+import hitl from "@aa/feature-hitl";
+import domainWizard from "@aa/feature-domain-wizard";
+import settings from "@aa/feature-settings";
+import workers from "@aa/feature-workers";
+import queues from "@aa/feature-queues";
+import workflowBuilder from "@aa/feature-workflow-builder";
+import workflowDebugger from "@aa/feature-workflow-debugger";
+import agentManager from "@aa/feature-agent-manager";
+import explainability from "@aa/feature-explainability";
+import costCenter from "@aa/feature-cost-center";
+import marketplace from "@aa/feature-marketplace";
+import analytics from "@aa/feature-analytics";
+import type { FeatureModule } from "@aa/ui-core";
 
 export const missionControlFeatureContracts = [
   { id: "alerts", path: "/mission-control/alerts", permission: "platform_sre" },
   { id: "conversation", group: "Mission Control", path: "/mission-control/conversation" },
 ] as const;
 
-export const featureRegistry = [
+export const featureRegistry: readonly FeatureModule[] = [
   dashboard,
   taskCockpit,
   workflowCockpit,
@@ -64,4 +60,4 @@ export const featureRegistry = [
   costCenter,
   marketplace,
   analytics,
-] as const;
+];

@@ -40,6 +40,11 @@ export interface WebAppShellProps {
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
   readonly authContext?: AuthContext;
+  readonly startupBanner?: {
+    readonly tone: "warning";
+    readonly title: string;
+    readonly message: string;
+  };
 }
 
 function AppRouter(
@@ -188,7 +193,17 @@ function GuardedFeatureRoute(
 }
 
 function AppFrame(
-  { features, authContext, phase }: { features: readonly WebFeatureModule[]; authContext: FeatureGuardContext; phase: ShellLifecyclePhase },
+  {
+    features,
+    authContext,
+    phase,
+    startupBanner,
+  }: {
+    features: readonly WebFeatureModule[];
+    authContext: FeatureGuardContext;
+    phase: ShellLifecyclePhase;
+    startupBanner?: WebAppShellProps["startupBanner"];
+  },
 ): ReactElement {
   const systemStatus = useSystemStatus();
   const groupedFeatures = Object.entries(
@@ -233,6 +248,21 @@ function AppFrame(
         </nav>
       </aside>
       <main style={{ padding: 24 }}>
+        {startupBanner == null ? null : (
+          <section
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: 16,
+              borderRadius: 12,
+              border: `1px solid ${designTokens.color.accent}`,
+              background: "#12201a",
+            }}
+          >
+            <strong>{startupBanner.title}</strong>
+            <p style={{ marginBottom: 0 }}>{startupBanner.message}</p>
+          </section>
+        )}
         <SystemStatusBar status={systemStatus} />
         {(phase === "render" || phase === "idle") ? (
           <Routes>
@@ -256,7 +286,9 @@ function AppFrame(
   );
 }
 
-export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
+export function WebAppShell(
+  { features, client, wsClient, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
+): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
@@ -292,7 +324,12 @@ export function WebAppShell({ features, client, wsClient, router = "browser", in
     <PlatformAdapterProvider adapter={adapter}>
       <UiRuntimeProvider {...runtimeProps}>
         <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
-          <AppFrame authContext={effectiveAuthContext} features={features as readonly WebFeatureModule[]} phase={phase} />
+          <AppFrame
+            authContext={effectiveAuthContext}
+            features={features as readonly WebFeatureModule[]}
+            phase={phase}
+            startupBanner={startupBanner}
+          />
         </AppRouter>
       </UiRuntimeProvider>
     </PlatformAdapterProvider>

@@ -3,7 +3,9 @@ import { render, screen, cleanup } from "@testing-library/react";
 import type { ReactElement } from "react";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { WebAppShell } from "../../web/src/app-shell";
+import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
+import { createWebRuntimeClients, createWebRuntimeConfig } from "../../../apps/web/src/runtime";
+import { WebAppShell } from "../../../apps/web/src/app-shell";
 import type { FeatureModule } from "@aa/ui-core";
 
 // Integration tests for UI components across apps
@@ -50,20 +52,6 @@ vi.mock("@aa/shared-domain", () => ({
   })),
 }));
 
-// Mock web runtime
-vi.mock("../../web/src/runtime", () => ({
-  createWebRuntimeConfig: vi.fn().mockImplementation((env) => ({
-    apiBaseUrl: env.VITE_API_BASE_URL || undefined,
-    wsUrl: env.VITE_WS_URL || undefined,
-  })),
-  createWebRuntimeClients: vi.fn().mockImplementation(() => ({
-    client: {},
-    wsClient: {},
-    offlineQueue: { enqueue: vi.fn(), dequeue: vi.fn(), flush: vi.fn() },
-  })),
-  registerWebServiceWorker: vi.fn().mockResolvedValue(null),
-}));
-
 const createMockFeature = (overrides = {}): FeatureModule =>
   ({
     manifest: {
@@ -102,13 +90,12 @@ describe("UI integration: web app-shell with auth context", () => {
     };
 
     render(
-      <MemoryRouter initialEntries={["/test"]}>
-        <WebAppShell
-          features={[createMockFeature()]}
-          router="memory"
-          authContext={authContext}
-        />
-      </MemoryRouter>,
+      <WebAppShell
+        features={[createMockFeature()]}
+        router="memory"
+        initialEntries={["/test"]}
+        authContext={authContext}
+      />,
     );
 
     expect(screen.getByTestId("test-component")).toBeInTheDocument();
@@ -116,7 +103,6 @@ describe("UI integration: web app-shell with auth context", () => {
   });
 
   it("denies access for insufficient permissions", () => {
-    const { createRouteGuardChain } = require("@aa/shared-domain");
     createRouteGuardChain.mockReturnValueOnce({
       evaluate: () => ({ allowed: false, reason: "Insufficient permissions" }),
     });
@@ -129,17 +115,16 @@ describe("UI integration: web app-shell with auth context", () => {
     };
 
     render(
-      <MemoryRouter initialEntries={["/test"]}>
-        <WebAppShell
-          features={[
-            createMockFeature({
-              route: { path: "/test", featureId: "test", group: "Test", title: "Test", permission: "admin", platforms: ["web"], codeSplit: false },
-            }),
-          ]}
-          router="memory"
-          authContext={authContext}
-        />
-      </MemoryRouter>,
+      <WebAppShell
+        features={[
+          createMockFeature({
+            route: { path: "/test", featureId: "test", group: "Test", title: "Test", permission: "admin", platforms: ["web"], codeSplit: false },
+          }),
+        ]}
+        router="memory"
+        initialEntries={["/test"]}
+        authContext={authContext}
+      />,
     );
 
     expect(screen.getByText("Access denied")).toBeInTheDocument();
@@ -167,11 +152,7 @@ describe("UI integration: navigation flow", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/mission-control/dashboard"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/mission-control/dashboard"]} />);
 
     expect(screen.getByText("Mission Control")).toBeInTheDocument();
     expect(screen.getByText("Operations")).toBeInTheDocument();
@@ -186,11 +167,7 @@ describe("UI integration: navigation flow", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/mission-control/dashboard"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/mission-control/dashboard"]} />);
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
   });
@@ -203,11 +180,7 @@ describe("UI integration: navigation flow", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/mission-control/dashboard"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/mission-control/dashboard"]} />);
 
     const activeLink = screen.getByRole("link", { name: "Dashboard" });
     expect(activeLink).toHaveAttribute("aria-current", "page");
@@ -220,11 +193,7 @@ describe("UI integration: system status display", () => {
   });
 
   it("renders system status bar with WS and offline status", () => {
-    render(
-      <MemoryRouter>
-        <WebAppShell features={[createMockFeature()]} />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={[createMockFeature()]} router="memory" initialEntries={["/"]} />);
 
     expect(screen.getByTestId("system-status-bar")).toBeInTheDocument();
     expect(screen.getByText(/WS: connected/)).toBeInTheDocument();
@@ -248,11 +217,7 @@ describe("UI integration: error boundary behavior", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/test"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/test"]} />);
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(screen.getByText("Integration test error")).toBeInTheDocument();
@@ -269,11 +234,7 @@ describe("UI integration: error boundary behavior", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/test"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/test"]} />);
 
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Report Issue" })).toBeInTheDocument();
@@ -282,7 +243,6 @@ describe("UI integration: error boundary behavior", () => {
 
 describe("UI integration: runtime configuration flow", () => {
   it("web runtime creates config from environment", () => {
-    const { createWebRuntimeConfig } = require("../../web/src/runtime");
     const config = createWebRuntimeConfig({
       VITE_API_BASE_URL: "https://api.test.com",
       VITE_WS_URL: "wss://ws.test.com",
@@ -292,7 +252,6 @@ describe("UI integration: runtime configuration flow", () => {
   });
 
   it("web runtime creates clients from config", () => {
-    const { createWebRuntimeClients } = require("../../web/src/runtime");
     const clients = createWebRuntimeClients({});
     expect(clients.client).toBeDefined();
     expect(clients.wsClient).toBeDefined();
@@ -326,11 +285,7 @@ describe("UI integration: multi-platform feature rendering", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/mission-control/workflows"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/mission-control/workflows"]} />);
 
     expect(screen.getByText("Workflows")).toBeInTheDocument();
   });
@@ -343,11 +298,7 @@ describe("UI integration: multi-platform feature rendering", () => {
       }),
     ];
 
-    render(
-      <MemoryRouter initialEntries={["/extended/workflow-builder"]}>
-        <WebAppShell features={mockFeatures} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/extended/workflow-builder"]} />);
 
     // Planned features should still render
     expect(screen.getByText("Workflow Builder")).toBeInTheDocument();
@@ -369,11 +320,7 @@ describe("UI integration: catch-all route behavior", () => {
       route: { path: "/mission-control/tasks", featureId: "tasks", group: "Mission Control", title: "Tasks", permission: "authenticated", platforms: ["web"], codeSplit: false },
     });
 
-    render(
-      <MemoryRouter initialEntries={["/some/unknown/route"]}>
-        <WebAppShell features={[firstFeature, secondFeature]} router="memory" />
-      </MemoryRouter>,
-    );
+    render(<WebAppShell features={[firstFeature, secondFeature]} router="memory" initialEntries={["/some/unknown/route"]} />);
 
     // Should fall back to first feature
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
@@ -386,8 +333,6 @@ describe("UI integration: guard chain with tenant context", () => {
   });
 
   it("uses tenantId from authContext for guard evaluation", () => {
-    const { createFeatureGuardContext } = require("@aa/shared-domain");
-
     const authContext = {
       userId: "tenant-admin",
       permissions: ["admin"],
@@ -396,13 +341,12 @@ describe("UI integration: guard chain with tenant context", () => {
     };
 
     render(
-      <MemoryRouter initialEntries={["/test"]}>
-        <WebAppShell
-          features={[createMockFeature()]}
-          router="memory"
-          authContext={authContext}
-        />
-      </MemoryRouter>,
+      <WebAppShell
+        features={[createMockFeature()]}
+        router="memory"
+        initialEntries={["/test"]}
+        authContext={authContext}
+      />,
     );
 
     expect(createFeatureGuardContext).toHaveBeenCalledWith(

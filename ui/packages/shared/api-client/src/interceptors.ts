@@ -41,11 +41,27 @@ export class DynamicTokenRequiredError extends Error {
   }
 }
 
+export const DEFAULT_ACCEPT_VERSIONS = ["2026-04-01", "2026-01-01"] as const;
+
 export function createTraceInterceptor(): RestClientInterceptor {
   return {
     onRequest(request) {
       request.headers.set("x-request-id", crypto.randomUUID());
       return request;
+    },
+  };
+}
+
+export function createContractVersionInterceptor(
+  versions: readonly string[] = DEFAULT_ACCEPT_VERSIONS,
+): RestClientInterceptor {
+  return {
+    onRequest(request) {
+      request.headers.set("Accept-Version", versions.join(","));
+      return request;
+    },
+    onResponse(response) {
+      return response;
     },
   };
 }
@@ -152,10 +168,10 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
   };
 }
 
-export function createCsrfInterceptor(): RestClientInterceptor {
+export function createCsrfInterceptor(explicitToken?: string | null): RestClientInterceptor {
   return {
     onRequest(request) {
-      const token = readCsrfToken();
+      const token = explicitToken ?? readCsrfToken();
       if (request.method !== "GET" && token != null) {
         request.headers.set("x-csrf-token", token);
       }
@@ -221,6 +237,9 @@ export function createRetryInterceptor(
   const maxRetries = options.maxRetries ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 100;
   return {
+    onResponse(response) {
+      return response;
+    },
     async intercept(request, next) {
       let lastError: unknown;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
@@ -246,8 +265,9 @@ export interface DedupeInterceptorOptions {
 export function createDedupeInterceptor(
   options: DedupeInterceptorOptions = {},
 ): RestClientInterceptor {
-  const methods = new Set(options.methods ?? ["GET"]);
+  const methods = new Set(options.methods ?? ["POST", "PUT", "PATCH", "DELETE"]);
   const inflight = new Map<string, Promise<RestClientResponse<unknown>>>();
+  const observed = new Set<string>();
 
   function buildKey(request: RestClientRequest): string {
     return JSON.stringify({
@@ -258,6 +278,24 @@ export function createDedupeInterceptor(
   }
 
   return {
+    onRequest(request) {
+      if (!methods.has(request.method)) {
+        return request;
+      }
+      const key = `${request.method}:${request.path}:${JSON.stringify(request.body ?? null)}`;
+      if (observed.has(key)) {
+        return {
+          ...request,
+          dedupeKey: key,
+        } as RestClientRequest & { dedupeKey: string };
+      }
+      observed.add(key);
+      return request;
+    },
+    onResponse(response) {
+      observed.clear();
+      return response;
+    },
     async intercept(request, next) {
       if (!methods.has(request.method)) {
         return next(request);

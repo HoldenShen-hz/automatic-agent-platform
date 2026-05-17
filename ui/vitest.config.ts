@@ -1,9 +1,15 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      "react-native": fileURLToPath(new URL("./apps/web/src/react-native-web-stub.tsx", import.meta.url)),
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
