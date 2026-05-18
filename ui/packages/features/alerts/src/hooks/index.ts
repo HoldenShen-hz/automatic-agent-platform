@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createRESTClient } from "@aa/shared-api-client";
-import { useAuthState, useIncidentsQuery, useMutation, useWsClient } from "@aa/shared-state";
+import { useAuthState, useIncidentsQuery, useMutation, useRestClient, useWsClient } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
 
-const restClient = createRESTClient();
 const ALERTS_REQUIRED_PERMISSION = "platform_sre";
 
 export interface AlertHistoryEntry {
@@ -115,6 +113,7 @@ export const mapAlertsToVm = buildAlertsVm;
 
 export function useAlertsVm(): AlertsVm {
   const auth = useAuthState();
+  const client = useRestClient();
   const wsClient = useWsClient();
   const [filters] = useState<AlertsVm["filters"]>({
     severity: "all",
@@ -130,22 +129,22 @@ export function useAlertsVm(): AlertsVm {
   const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
 
   const { mutate: acknowledgeMutate, status: acknowledgeStatus } = useMutation({
-    client: restClient,
+    client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/acknowledge`,
   });
   const { mutate: dismissMutate, status: dismissStatus } = useMutation({
-    client: restClient,
+    client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/dismiss`,
   });
   const { mutate: snoozeMutate, status: snoozeStatus } = useMutation({
-    client: restClient,
+    client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/snooze`,
   });
   const { mutate: escalateMutate, status: escalateStatus } = useMutation({
-    client: restClient,
+    client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/escalate`,
   });

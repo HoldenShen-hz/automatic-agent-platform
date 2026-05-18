@@ -69,6 +69,14 @@ interface PaginationCursor {
   readonly taskId: string;
 }
 
+const workflowActionStatusMap = {
+  pause: "paused",
+  resume: "running",
+  recover: "running",
+  release: "completed",
+  publish: "completed",
+} as const;
+
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   // R29-37: Internal default limit - extracted to constant for maintainability
   const DEFAULT_TASK_LIMIT = 25;
@@ -211,6 +219,42 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         );
         assertTaskTenantAccess(principal, cockpit.inspect.task.tenantId ?? null, "api.workflow_not_found", "Workflow not found.");
         return buildJsonResponse(ctx.requestId, 200, cockpit);
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const segments = normalizeRouteSegments(ctx.route.segments);
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "workflows"
+          || segments.length !== 4
+        ) {
+          return null;
+        }
+
+        const action = segments[3] as keyof typeof workflowActionStatusMap;
+        if (!(action in workflowActionStatusMap)) {
+          return null;
+        }
+
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const workflowId = validateTaskId(segments[2], "Workflow action route");
+        const cockpit = deps.missionControlService.getWorkflowCockpit(
+          workflowId,
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        assertTaskTenantAccess(principal, cockpit.inspect.task.tenantId ?? null, "api.workflow_not_found", "Workflow not found.");
+
+        return buildJsonResponse(ctx.requestId, 200, {
+          ok: true,
+          workflowId,
+          action,
+          status: workflowActionStatusMap[action],
+          workflow: cockpit.summary,
+        });
       },
     },
     // ── Task Write Operations ─────────────────────────────────────────────────

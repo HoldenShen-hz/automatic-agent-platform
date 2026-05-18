@@ -29,9 +29,10 @@ describe("feature flows", () => {
     renderWithRuntime(<TaskCockpitWebView />);
     fireEvent.click(await screen.findByRole("button", { name: /春季营销活动/i }));
     fireEvent.click(await screen.findByRole("button", { name: "Escalate" }));
-    expect(await screen.findByText(/Escalated/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "L5 Timeline" }));
+    expect(await screen.findByText(/Escalated · 春季营销活动/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Take Over" }));
-    expect(await screen.findByText(/Take Over/)).toBeInTheDocument();
+    expect(await screen.findByText(/Take Over · 春季营销活动/)).toBeInTheDocument();
   });
 
   it("supports pause and recover actions in workflow cockpit", async () => {
@@ -67,15 +68,17 @@ describe("feature flows", () => {
   it("advances the domain wizard only after required fields are complete", async () => {
     renderWithRuntime(<DomainWizardWebView />);
 
-    expect(await screen.findByText(/Display name must contain at least 3 characters/i)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Domain name"), { target: { value: "Fraud Ops" } });
-    fireEvent.change(screen.getByLabelText("Owner"), { target: { value: "platform-sre" } });
+    expect(await screen.findByText("Select a domain before continuing.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", { name: /Marketing/i }));
+    expect(screen.getByText("Domain: marketing")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
-    expect(screen.getByText("Policy")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Summary"), { target: { value: "Policy preview for fraud operations onboarding." } });
+    expect(screen.getByText("Risk Profile")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Risk level"), { target: { value: "high" } });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Preview")).toBeInTheDocument();
+    expect(screen.getByText("Capability Config")).toBeInTheDocument();
   });
 
   it("creates and resolves governance exceptions from the governance overview", async () => {

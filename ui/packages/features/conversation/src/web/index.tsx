@@ -1,4 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
+import { useWsClient } from "@aa/shared-state";
 import { CodeBlock, FeatureScaffold, FileAttachment, KeyValueTable } from "@aa/ui-core";
 import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useConversationVm } from "../hooks";
@@ -12,7 +13,8 @@ function renderMessageContent(content: string): ReactElement {
 }
 
 export function ConversationWebView(): ReactElement {
-  const vm = useConversationVm();
+  const wsClient = useWsClient();
+  const vm = useConversationVm(wsClient);
   const copy = translateFeatureCopy("conversation");
 
   function handleFileAttach(event: ChangeEvent<HTMLInputElement>): void {

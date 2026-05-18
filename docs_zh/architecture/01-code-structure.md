@@ -1,11 +1,11 @@
 # 新平台代码文件结构设计文档
 
-> **文档版本**：v1.2
-> **文档状态**：Active（续修）
+> **文档版本**：v1.3
+> **文档状态**：Active（代码结构复核后校准）
 > **关联文档**：《企业级 Agent 平台总体技术架构设计文档》v2.7 §35 推荐代码目录
 > **关联文档**：《老系统→新平台移植评估文档》v1.1
 > **设计日期**：2026-04-19
-> **最后续修**：2026-05-17（第二轮续修，修正五平面深层子模块计数、interaction/org-governance/scale-ecosystem/ops-maturity 目录膨胀统计、domains 从 51 校准为 40）
+> **最后续修**：2026-05-18（第三轮结构 review，补齐 UI Monorepo、Mission/Yono、测试专项目录、src/testing/benchmarks 与当前代码统计）
 
 ---
 
@@ -15,7 +15,23 @@
 
 1. 新平台的 `src/` 目录如何组织？每个目录放什么？
 2. 老系统（`src/core/` 42 个模块）的代码搬到新平台的哪个目录？
-3. 新平台需要全新创建的 24 个模块放在哪里？
+3. 新平台需要全新创建的模块、Mission/Yono、跨平台 UI 与专项测试放在哪里？
+
+### 1.1 本次代码结构 Review 结论（2026-05-18）
+
+本次 review 基于当前工作区目录实测，重点检查 `src/`、`ui/`、`tests/`、`config/`、`deploy/`、`scripts/` 与本文档的一致性。结论如下：
+
+| 结论项 | 当前代码事实 | 文档处理 |
+| ------ | ------------ | -------- |
+| 后端七层主干 | `src/platform`、`domains`、`interaction`、`org-governance`、`scale-ecosystem`、`ops-maturity` 均存在且为权威实现位置 | 保持七层结构，更新统计和新增目录说明 |
+| 五平面实现 | `five-plane-*` 五个目录完整，且新增 mission、outbox、side-effect-ledger、reconciliation、degradation 等子域 | 在 platform 说明中补齐新增子域 |
+| Legacy core | `src/core` 仅剩 runtime 兼容入口，不应承载新增能力 | 保留兼容层定位，继续禁止新增业务能力进入 core |
+| Mission | `src/platform/contracts/mission` 与 `src/platform/five-plane-control-plane/mission` 已成为长期目标治理入口 | 新增 Mission 目录职责和依赖规则 |
+| Yono Business | `src/domains/yono` 已作为业务域实例存在 | 在 domains 章节标为业务域实例，不归入域框架基础设施 |
+| 跨平台 UI | `ui/` Monorepo 已存在，包含 apps、packages、tools、tests | 新增 UI 顶层目录章节与依赖边界 |
+| 测试结构 | `tests/unit`、`integration`、`e2e`、`golden`、`performance`、`invariants`、`leaks` 等均存在 | 更新测试目录说明，补齐 invariants/leaks |
+| 运行配置与部署 | `config/`、`deploy/` 已覆盖环境、域、风险、安全、Helm、Terraform、Prometheus、Chaos、runbooks | 在顶层总览和运维目录说明中补齐 |
+| 文档风险 | 大量统计仍可能随代码快速变化而过期 | 统计表改为“结构快照”，要求后续脚本生成 |
 
 ---
 
@@ -50,7 +66,11 @@ new-platform/
 │   ├── plugins/            # 跨层：插件生态
 │   ├── sdk/                # 跨层：SDK 与开发者体验
 │   ├── apps/               # 应用入口（API server / Console / Workers）
+│   ├── testing/            # 测试基础设施与公共测试契约
+│   ├── benchmarks/         # 基准测试入口与性能样例
+│   ├── core/               # Legacy 兼容重导出层，禁止新增业务能力
 │   └── index.ts            # 平台入口
+├── ui/                     # 跨平台 UI Monorepo（Web / Electron / Tauri / Mobile）
 ├── tests/                  # 测试（镜像 src/ 结构）
 ├── config/                 # 版本化配置
 ├── divisions/              # Division 定义（迁移后适配 DomainDescriptor）
@@ -61,6 +81,26 @@ new-platform/
 └── [顶层配置文件]           # package.json / tsconfig.json / eslint.config.js / Dockerfile / ...
 ```
 
+### 3.0.1 顶层目录职责边界（当前权威）
+
+| 顶层目录 | 代码事实 | 职责边界 | 禁止事项 |
+| -------- | -------- | -------- | -------- |
+| `src/platform/` | 后端平台核心，当前最大代码区 | 五平面、契约、共享基础设施、模型网关、Prompt/Eval、合规、稳定性 | 不得依赖 `interaction/`、`domains/` 业务实例或 UI |
+| `src/domains/` | 域框架 + 域实例 | 领域 descriptor、risk/eval/workflow/tool 配置、Yono 等业务域 | 不得放平台 runtime、HTTP API、worker 实现 |
+| `src/interaction/` | 智能交互层 | NL gateway、goal decomposer、dashboard、proactive、UX/autonomy | 不得绕过 platform contracts 直接写 truth store |
+| `src/org-governance/` | 组织治理层 | 组织模型、审批路由、SSO/SCIM、合规边界、委托治理 | 不得承载通用 IAM 基础设施，基础 IAM 属于 control-plane |
+| `src/scale-ecosystem/` | 规模化与生态层 | Marketplace、billing、SLA、多区域、feedback、runtime-services | 不得替代 P4/P5 的事实写入链路 |
+| `src/ops-maturity/` | 运营成熟度层 | Chaos、debugger、capacity、compliance report、edge、explainability | 不得成为主执行链路的唯一依赖 |
+| `src/plugins/` | 插件生态 | 插件 manifest、运行时适配、市场接入 | 不得绕过 sandbox 与 capability |
+| `src/sdk/` | 开发者体验 | CLI、SDK、pack/plugin 工具 | 不得导入内部非 public API |
+| `src/apps/` | 后端应用入口 | API、console backend、workers bootstrap | 不得沉淀业务逻辑，只做组合与启动 |
+| `src/testing/` | 测试公共设施 | 测试 helper、fixture、invariant 支撑 | 不得被生产代码依赖 |
+| `src/benchmarks/` | 性能样例入口 | 性能/容量基准辅助代码 | 不得进入 runtime 主链 |
+| `ui/` | 前端 monorepo | Web/桌面/移动 UI、共享前端 SDK、feature packages、UI tests | 不得直接 import 后端 `src/*` 内部实现 |
+| `tests/` | 后端测试 | unit/integration/e2e/golden/performance/invariants/leaks | 不得依赖生产环境真实凭证 |
+| `config/` | 版本化配置 | environments、domains、risk、security、runtime、providers | 不得放 secret 明文 |
+| `deploy/` | 部署与运维资产 | Helm、Terraform、Prometheus、Grafana、Chaos、runbooks、scripts | 不得作为业务逻辑来源 |
+
 ### 3.1 老系统 vs 新平台顶层对比
 
 | 老系统 | 新平台 | 变化说明 |
@@ -68,6 +108,9 @@ new-platform/
 | `src/core/` (42 个扁平模块) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | 扁平 core/ 拆分为按七层架构组织的 6 个顶层目录 |
 | `src/cli/` (78 个脚本) | `src/sdk/cli/` | CLI 归入 SDK 层 |
 | `src/gateway/` (13 文件) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway 归入 P1 Interface，NL gateway 归入 Layer 4 |
+| 无独立前端工程 | `ui/` | 新增跨平台 UI Monorepo，承载 Web/桌面/移动端 |
+| 无专项测试基础设施 | `src/testing/` + `tests/invariants/` + `tests/leaks/` | 新增测试基础设施、不变量与泄漏测试 |
+| 无基准入口 | `src/benchmarks/` + `tests/performance/` | 新增性能/容量基准入口 |
 | `src/plugins/` (20 文件) | `src/plugins/` | 保持独立，结构不变 |
 | `src/index.ts` | `src/index.ts` | 保持 |
 
@@ -139,7 +182,9 @@ new-platform/
 
 > **五平面命名约定**：实际代码中五个平面分别对应 `five-plane-interface/`、`five-plane-control-plane/`、`five-plane-orchestration/`、`five-plane-execution/`、`five-plane-state-evidence/` 五個带 `five-plane-` 前缀的目录，与文档中简称 `interface/`、`control-plane/` 等等价。两种命名均为有效入口，源码和配置中无歧义。
 
-**补充说明（2026-05-17 续修）**：以下独立模块亦属于 platform/ 但不属于五平面之一：`agent-delegation/`、`architecture/`、`cost-management/`、`ops-maturity/`、`prompt-registry/`、`remote-coordination/`、`stability/`、`structure/`。
+**补充说明（2026-05-18 续修）**：以下独立模块亦属于 platform/ 但不属于五平面之一：`agent-delegation/`、`architecture/`、`compliance/`、`contracts/`、`cost-management/`、`model-gateway/`、`ops-maturity/`、`prompt-engine/`、`prompt-registry/`、`remote-coordination/`、`shared/`、`stability/`、`structure/`。其中 `contracts/` 与 `shared/` 是平面间依赖的合法落点。
+
+**Mission 结构说明（2026-05-18）**：Mission 是长期目标与治理上下文根对象，契约位于 `platform/contracts/mission/`，生命周期、解析、治理、预算、handoff 等控制能力位于 `platform/five-plane-control-plane/mission/`。执行平面只能消费 missionRef / missionSnapshotRef，不得把 Mission 当作可执行对象。
 
 ```
 src/platform/
@@ -177,6 +222,13 @@ src/platform/
 │
 ├── five-plane-control-plane/          # P2 控制平面 ── §24 配置 / §11 安全 / §21 审批
 │   ├── tenant/             #   租户管理
+│   │   └── index.ts
+│   ├── mission/            #   Mission 长期目标治理（生命周期/解析/预算/LiveGuard/Handoff）
+│   │   ├── mission-lifecycle-service.ts
+│   │   ├── mission-resolver.ts
+│   │   ├── mission-governance-service.ts
+│   │   ├── mission-budget-service.ts
+│   │   ├── mission-live-guard.ts
 │   │   └── index.ts
 │   ├── iam/                #   身份与访问管理（← core/security/）
 │   │   ├── sandbox-policy.ts
@@ -462,6 +514,9 @@ src/platform/
 │   ├── resource/           #   资源追踪（← core/resource/）
 │   │   ├── process-tracker.ts
 │   │   └── index.ts
+│   ├── hibernation/        #   长运行工作流休眠/唤醒
+│   ├── queue-metrics/      #   队列指标与积压观测
+│   ├── oapeflir/           #   执行侧 OAPEFLIR 桥接/运行记录
 │   └── startup/            #   启动与预检
 │       ├── startup-preflight.ts
 │       ├── startup-consistency-checker.ts
@@ -517,6 +572,10 @@ src/platform/
 │   │   └── index.ts
 │   ├── projections/        #   投影视图
 │   │   └── index.ts
+│   ├── outbox/             #   可靠发布 Outbox
+│   ├── side-effect-ledger/ #   外部副作用台账
+│   ├── reconciliation/     #   状态/投影/外部写入对账
+│   ├── compaction/         #   历史事件/上下文压缩
 │   ├── artifacts/          #   Artifact 管理（← core/artifacts/）
 │   │   ├── artifact-store.ts
 │   │   ├── artifact-model.ts
@@ -587,6 +646,7 @@ src/platform/
 │   │   └── index.ts
 │   ├── fallback/           #   Provider 故障切换
 │   │   └── index.ts
+│   ├── degradation/        #   模型/Provider 降级策略
 │   └── messages/           #   消息模型（← core/messages/）
 │       ├── token-estimator.ts
 │       ├── message-parts.ts
@@ -637,6 +697,16 @@ src/platform/
 │   ├── execution-plan/     #   执行计划（§5.5）
 │   │   └── index.ts
 │   ├── execution-receipt/  #   执行回执（§5.6）
+│   │   └── index.ts
+│   ├── mission/            #   Mission 契约（record/membership/snapshot/budget/error/event）
+│   │   └── index.ts
+│   ├── evidence-record/    #   证据记录契约
+│   │   └── index.ts
+│   ├── executable-contracts/ # 可执行契约与 PlanGraph 绑定
+│   │   └── index.ts
+│   ├── projection-update/  #   投影更新契约
+│   │   └── index.ts
+│   ├── prompt-bundle/      #   Prompt Bundle 契约
 │   │   └── index.ts
 │   ├── state-command/      #   状态命令（§5.7）
 │   │   └── index.ts
@@ -731,21 +801,23 @@ src/platform/
         └── index.ts
 ```
 
-### 4.1 platform/ 统计
+### 4.1 platform/ 统计快照（2026-05-18）
 
-| 子目录 | 架构定位 | 迁移来源文件数 | 新建文件数 |
-|--------|---------|-------------|-----------|
-| `interface/` | P1 接口平面 | ~43（api 30 + gateway 13） | ~5 |
-| `control-plane/` | P2 控制平面 | ~72（config 27 + security 19 + approvals 3 + ops 19 + deployment 2 + compliance 2） | ~8 |
-| `orchestration/` | P3 编排平面 | ~64（agent-loop 14 + planning 9 + orchestration 3 + workflow 4 + learning 14 + improvement 11 + runtime/HITL 2 + runtime/orchestration 7） | ~3 |
-| `execution/` | P4 执行平面 | ~155（runtime 80 + tools 36 + locking 8 + queue 6 + resource 2 + reliability 8 + 启动 3） | ~5 |
-| `state-evidence/` | P5 状态与证据 | ~157（storage 101 + events 8 + artifacts 13 + memory 16 + knowledge 10 + 拆分 repo 21） | ~8 |
-| `model-gateway/` | AI 运营 | ~12（providers 10 + messages 2） | ~5 |
-| `prompt-engine/` | AI 运营 | ~6（evaluation 6） | ~5 |
-| `compliance/` | AI 运营 | 0 | ~6 |
-| `contracts/` | 跨平面 | ~26（types 21 + errors 1 + constants 2 + results 2） | ~8 |
-| `shared/` | 跨层共享 | ~73（utils 2 + lifecycle 3 + cache 12 + observability 36 + stability 31） | 0 |
-| **合计** | | **~608** | **~53** |
+| 子目录 | 架构定位 | 当前 TS 文件数 | 说明 |
+|--------|---------|---------------|------|
+| `five-plane-interface/` | P1 接口平面 | 90 | API、channel gateway、console、scheduler、webhook |
+| `five-plane-control-plane/` | P2 控制平面 | 140 | IAM、approval、config、incident、mission、risk、rollout |
+| `five-plane-orchestration/` | P3 编排平面 | 188 | Harness、OAPEFLIR、planner、routing、HITL、learn、rollout |
+| `five-plane-execution/` | P4 执行平面 | 230 | dispatcher、lease、worker、engine、queue、tool、recovery |
+| `five-plane-state-evidence/` | P5 状态与证据 | 250 | truth、events、outbox、dlq、memory、knowledge、audit、ledger |
+| `shared/` | 跨平面共享 | 130 | cache、observability、events、lifecycle、stability、context |
+| `contracts/` | 跨平面契约 | 60 | request、plan、state、mission、evidence、prompt、projection |
+| `model-gateway/` | AI 运营 | 28 | provider、router、fallback、degradation、cost、messages |
+| `prompt-engine/` | AI 运营 | 26 | registry、renderer、rollout、eval |
+| `compliance/` | AI 运营 | 12 | erasure、encryption、data residency、lineage |
+| `stability/` | 稳定性/可靠性 | 48 | reliability 与稳定性演练补充 |
+| 其他 platform 独立模块 | 横切/辅助 | 22 | architecture、agent-delegation、remote-coordination、structure 等 |
+| **合计** | | **1,224** | 当前 `src/platform/**/*.ts` 快照 |
 
 ---
 
@@ -753,7 +825,7 @@ src/platform/
 
 `domains/` 对应架构 Layer 3（§37-§38），分为"域框架基础设施"和"域实例"两层。
 
-> **实际域实例数量（2026-05-17 续修）**：`src/domains/` 下当前共有 **51 个目录**，包含 10 个框架基础设施目录（registry、risk-profile、knowledge-schema、eval-framework、prompt-library、recipes、interaction-policy、governance、business-pack、canonical-meta-model）和 **40+ 个垂直域实例**（academic-research、advertising、agriculture、coding、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、operations、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations、yono 等）。文档的早期版本仅记录 10 个目录，当前已大幅扩展。
+> **实际域实例数量（2026-05-18 续修）**：`src/domains/` 下当前包含域框架基础设施、领域公共服务和 30+ 个垂直域实例。框架基础设施包括 `registry`、`risk-profile`、`knowledge-schema`、`eval-framework`、`prompt-library`、`recipes`、`interaction-policy`、`governance`、`business-pack`、`canonical-meta-model`；垂直域实例包括 `academic-research`、`advertising`、`agriculture`、`coding`、`financial-services`、`finance-accounting`、`healthcare`、`legal`、`quant-trading`、`yono` 等。`yono` 是 Yono Business 业务域实例，不能归入框架基础设施。
 
 ```
 src/domains/
@@ -798,7 +870,9 @@ src/domains/
 │   └── index.ts
 ├── operations/             # 运维域实例
 │   └── index.ts
-├── [40+ 垂直域实例]         # academic-research、advertising、agriculture、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations、yono 等
+├── yono/                   # Yono Business 业务域实例
+│   └── index.ts
+├── [30+ 垂直域实例]         # academic-research、advertising、agriculture、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations 等
 └── [框架与公共服务]         # domain-baseline-catalog.ts、domain-baseline-seeds.ts、domain-descriptor-orchestration-service.ts、domain-eval-framework-service.ts、domain-knowledge-schema-service.ts、domain-module-helper.ts、domain-recipe-service.ts、domain-risk-profile-service.ts、domain-specs.ts、domain-task-design-service.ts、domains-bootstrap.ts
 ```
 
@@ -808,7 +882,7 @@ src/domains/
 
 `interaction/` 对应架构 Layer 4（§39-§44），全部为**新建模块**（老系统完全缺失）。
 
-> **实际子模块（2026-05-17 续修）**：文档 §6 记录 6 个子目录，实际代码含 13 个含深层的子目录（autonomy、dashboard、goal-decomposer、nl-gateway、proactive-agent、ux 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+> **实际子模块（2026-05-18 续修）**：文档 §6 记录 6 个子目录，实际代码含 13 个含深层的子目录（autonomy、dashboard、goal-decomposer、nl-gateway、proactive-agent、ux 各有深层子模块），已全部反映在下方树状图和第十三节统计表中。
 
 ```
 src/interaction/
@@ -868,7 +942,7 @@ src/interaction/
 
 `org-governance/` 对应架构 Layer 5（§46-§51），除 `org-model/` 从 `core/hr/` 迁入少量代码外，其余为**新建模块**。
 
-> **实际子模块（2026-05-17 续修）**：文档 §7 记录 7 个子目录，实际代码含 24 个含深层的子目录（approval-routing、compliance-engine、delegated-governance、knowledge-boundary、org-model、org-routing、sso-scim 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+> **实际子模块（2026-05-18 续修）**：文档 §7 记录 7 个子目录，实际代码含 24 个含深层的子目录（approval-routing、compliance-engine、delegated-governance、knowledge-boundary、org-model、org-routing、sso-scim 各有深层子模块），已全部反映在下方树状图和第十三节统计表中。
 
 ```
 src/org-governance/
@@ -927,9 +1001,9 @@ src/org-governance/
 
 `scale-ecosystem/` 对应架构 Layer 6（§52-§57）。`feedback-loop/` 从 `core/feedback/` 迁入，`marketplace/` 从 `core/product/` 部分迁入，其余为**新建模块**。
 
-> **实际子模块（2026-05-17 续修）**：文档 §8 记录 6 个顶层子目录，实际代码含 46 个含深层的子目录（billing、capacity-planning、cost-attribution、enterprise、federation、feedback-loop、integration、intelligence、marketplace、multi-region、operations、resource-manager、runtime-services、sla、sla-engine、tenant-platform 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+> **实际子模块（2026-05-18 续修）**：文档 §8 记录 6 个顶层子目录，实际代码含 46 个含深层的子目录（billing、capacity-planning、cost-attribution、enterprise、federation、feedback-loop、integration、intelligence、marketplace、multi-region、operations、resource-manager、runtime-services、sla、sla-engine、tenant-platform 各有深层子模块），已全部反映在下方树状图和第十三节统计表中。
 
-> **额外子模块（2026-05-17 续修）**：顶层模块数量已从 6 个扩展到 16 个（billing、capacity-planning、cost-attribution、enterprise、federation、intelligence、operations、runtime-services、sla、tenant-platform 等 10 个新增），已纳入第十二节统计。
+> **额外子模块（2026-05-18 续修）**：顶层模块数量已从 6 个扩展到 16 个（billing、capacity-planning、cost-attribution、enterprise、federation、intelligence、operations、runtime-services、sla、tenant-platform 等 10 个新增），已纳入第十三节统计。
 
 ```
 src/scale-ecosystem/
@@ -1009,9 +1083,9 @@ src/scale-ecosystem/
 
 `ops-maturity/` 对应架构 Layer 7（§59-§70）。`drift-detection/` 从 `core/evolution/` 迁入，其余为**新建模块**。
 
-> **实际子模块（2026-05-17 续修）**：文档 §9 记录 11 个顶层子目录，实际代码含 66 个含深层的子目录（agent-lifecycle、capacity-planner、chaos、compliance-reporter、cost-optimizer、drift-detection、edge-runtime、emergency、explainability、improvement、learning、monitoring、multimodal、platform-ops-agent、version-management、workflow-debugger 各有深层子模块），已全部反映在下方树状图和第十二节统计表中。
+> **实际子模块（2026-05-18 续修）**：文档 §9 记录 11 个顶层子目录，实际代码含 66 个含深层的子目录（agent-lifecycle、capacity-planner、chaos、compliance-reporter、cost-optimizer、drift-detection、edge-runtime、emergency、explainability、improvement、learning、monitoring、multimodal、platform-ops-agent、version-management、workflow-debugger 各有深层子模块），已全部反映在下方树状图和第十三节统计表中。
 
-> **额外子模块（2026-05-17 续修）**：顶层模块数量已从 11 个扩展到 16 个（learning、monitoring 等新增），已纳入第十二节统计。
+> **额外子模块（2026-05-18 续修）**：顶层模块数量已从 11 个扩展到 16 个（learning、monitoring 等新增），已纳入第十三节统计。
 
 ```
 src/ops-maturity/
@@ -1167,7 +1241,7 @@ src/plugins/
 
 ### 10.2 sdk/ — SDK 与开发者体验（§22）
 
-> **额外子模块（2026-05-17 续修）**：除文档所示 4 个模块外，实际代码还包含 `admin-sdk/`、`harness-sdk/`、`workbench/` 三个额外模块，已纳入第十二节统计。
+> **额外子模块（2026-05-18 续修）**：除文档所示 4 个模块外，实际代码还包含 `admin-sdk/`、`harness-sdk/`、`workbench/` 三个额外模块，已纳入第十三节统计。
 
 ```
 src/sdk/
@@ -1243,11 +1317,102 @@ new-platform/
 
 ---
 
-## 十一、tests/ — 测试目录结构
+## 十一、ui/ — 跨平台 UI Monorepo
+
+`ui/` 是当前仓库内的前端子工程，不迁入后端 `src/`。它通过 API-first、DTO → VM → Props、PlatformAdapter 和 feature gate 与后端交互。UI 代码不得直接 import 后端 `src/platform/*` 内部实现；只能依赖生成的契约、OpenAPI/schema、前端 shared API client 或 mock/contract seam。
+
+```
+ui/
+├── apps/
+│   ├── web/                # React + Vite Web SPA，可运行主入口
+│   ├── electron-win/       # Windows Electron shell
+│   ├── tauri-macos/        # macOS Tauri shell
+│   ├── tauri-linux/        # Linux Tauri shell
+│   └── mobile/             # React Native mobile shell
+├── packages/
+│   ├── shared/
+│   │   ├── api-client/     # REST/WS client、endpoint binding
+│   │   ├── auth/           # token/session/auth callback
+│   │   ├── state/          # Query/store/offline persistence
+│   │   ├── sync/           # offline queue/conflict resolver
+│   │   ├── domain/         # DomainUIConfig、权限、字段脱敏
+│   │   ├── platform/       # PlatformAdapter contract + adapters
+│   │   ├── telemetry/      # 前端 telemetry
+│   │   ├── i18n/           # locale/catalog
+│   │   ├── nl-client/      # NL interaction client
+│   │   └── types/          # 前端公共类型
+│   ├── ui-core/            # Web/桌面设计系统、业务组件、charts、layout、theme
+│   ├── ui-mobile/          # 移动端组件、native module seam、navigation
+│   ├── features/           # 业务 feature packages，统一 web/mobile/hooks 拆分
+│   │   ├── dashboard/
+│   │   ├── task-cockpit/
+│   │   ├── workflow-cockpit/
+│   │   ├── approval/
+│   │   ├── hitl/
+│   │   ├── settings/
+│   │   ├── domain-wizard/
+│   │   ├── stability/
+│   │   ├── takeover/
+│   │   ├── alerts/
+│   │   ├── dispatch/
+│   │   ├── inspect/
+│   │   ├── health/
+│   │   ├── incidents/
+│   │   ├── conversation/
+│   │   ├── feature-flags/
+│   │   ├── agent-manager/
+│   │   ├── workflow-builder/
+│   │   ├── workflow-debugger/
+│   │   ├── explainability/
+│   │   ├── cost-center/
+│   │   ├── marketplace/
+│   │   ├── analytics/
+│   │   └── governance-compliance/
+│   └── storybook/          # 组件文档与 visual review
+├── tools/
+│   ├── codegen/            # 从后端契约/OpenAPI/schema 生成前端类型和 endpoint binding
+│   ├── mock-server/        # Planned endpoint / WS event typed mock
+│   └── e2e/                # UI E2E tooling
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── features/
+│   ├── apps/
+│   ├── a11y/
+│   ├── playwright/
+│   └── docs/
+└── docs/                   # UI ADR / Storybook 文档
+```
+
+### 11.1 UI Feature 目录规则
+
+每个 `ui/packages/features/<feature>/src/` 必须保持同一拆分：
+
+```
+src/
+├── web/                    # Web/desktop 渲染入口
+├── mobile/                 # Mobile 渲染入口
+├── hooks/                  # Query/VM hooks，只返回 ViewModel
+├── route.ts                # route registration
+├── permissions.ts          # feature guard / visibility
+├── mapper.ts               # DTO → VM
+└── index.ts                # public exports
+```
+
+规则：
+
+- 组件不直接消费后端 DTO，必须经过 mapper 转为 VM。
+- Planned 后端能力必须使用 feature gate + typed mock + 降级 banner。
+- Platform-specific 能力只能通过 PlatformAdapter 注入，禁止在 feature 内直接调用 Electron/Tauri/RN API。
+- UI tests 属于 `ui/tests/*` 或 `tests/unit/ui` / `tests/integration/ui`，不得混入后端 runtime 测试。
+
+---
+
+## 十二、tests/ — 测试目录结构
 
 测试目录**镜像 `src/` 结构**，每个源码目录在 tests/ 下有对应的测试目录。
 
-> **实际测试子目录（2026-05-17 续修）**：实际 `tests/` 还包含 `performance/`（性能基准测试）、`invariants/`（不变量测试）、`leaks/`（内存泄漏测试），以及 `golden/`（快照测试）、`fixtures/`（测试夹具）。文档所列为主要目录，未逐项列出所有专项测试目录。
+> **实际测试子目录（2026-05-18 续修）**：实际 `tests/` 包含 `unit/`、`integration/`、`e2e/`、`golden/`、`performance/`、`invariants/`、`leaks/`、`fixtures/`、`helpers/` 等专项目录；UI 也有独立 `ui/tests/`。测试目录不再只是简单镜像源码，还承担架构不变量、内存泄漏、部署、文档和 UI 验收。
 
 ```
 tests/
@@ -1371,7 +1536,7 @@ tests/
 │   ├── cli-help-text.test.ts
 │   └── snapshots/
 │
-├── e2e/                    # 端到端测试（← 改造迁移 10 文件）
+├── e2e/                    # 端到端测试
 │   ├── task-lifecycle.test.ts
 │   ├── multi-step-workflow.test.ts
 │   ├── lease-recovery.test.ts
@@ -1383,7 +1548,11 @@ tests/
 │   ├── streaming-response.test.ts
 │   └── approval-event-flow.test.ts
 │
-├── performance/            # 性能测试（← 直接迁移 6 文件）
+├── performance/            # 性能测试与容量基准
+├── invariants/             # 架构不变量测试
+├── leaks/                  # 内存/句柄泄漏测试
+├── unit/ui/                # UI 单元测试镜像
+├── integration/ui/         # UI 集成测试镜像
 │
 └── fixtures/               # 测试夹具（← 改造迁移）
     └── migration/
@@ -1391,48 +1560,48 @@ tests/
 
 ---
 
-## 十二、统计汇总
+## 十三、统计汇总
 
-### 12.1 目录统计（2026-05-17 第二轮续修）
+### 13.1 目录统计快照（2026-05-18 第三轮结构 review）
 
-| 顶层目录 | 架构层 | 实际直接子目录数 | 含深层子目录总数 | 状态 |
-|----------|--------|-----------------|----------------|------|
-| `platform/` | Layer 1-2 | 19（5 five-plane-* + 14 独立模块） | 含 130+ 深层子模块 | 五平面完整，其余模块补充说明见 §4 |
-| `five-plane-control-plane/` | P2 | 14 | 44（含深层） | 完整 |
-| `five-plane-execution/` | P4 | 17 | 含深层子模块 | 完整 |
-| `five-plane-interface/` | P1 | 9 | 17（含深层） | 完整 |
-| `five-plane-orchestration/` | P3 | 11 | 29（含深层） | 完整 |
-| `five-plane-state-evidence/` | P5 | 12 | 20（含深层） | 完整 |
-| `domains/` | Layer 3 | 40 | 含 21 个根级服务文件 | **扩展显著**（文档曾记 10 个，当前 40 个域实例目录） |
-| `interaction/` | Layer 4 | 12（含深层子模块） | 13（含深层） | **扩展**（文档记 6 个，当前 12 个顶层子目录） |
-| `org-governance/` | Layer 5 | 23（含深层子模块） | 24（含深层） | **扩展显著**（文档记 7 个，当前 23 个子目录） |
-| `scale-ecosystem/` | Layer 6 | 45（含深层子模块） | 46（含深层） | **扩展显著**（文档记 6 个，当前 45 个子目录） |
-| `ops-maturity/` | Layer 7 | 65（含深层子模块） | 66（含深层） | **扩展显著**（文档记 11 个，当前 65 个子目录） |
-| `plugins/` | 跨层 | 5 | - | 与文档一致 |
-| `sdk/` | 跨层 | 7 | 含 CLI 下 70+ 个脚本 | 与文档一致（已续修） |
-| `apps/` | 入口 | 3 | - | 与文档一致 |
-| `core/` | 兼容层 | 1（runtime/） | - | 与文档一致 |
-| `testing/` | 测试基础设施 | 含 helpers, fixtures, invariants, leaks 等 | - | 与文档一致 |
-| `benchmarks/` | 性能基准 | 空目录 | - | 与文档一致 |
+> 说明：以下数字是当前工作区快照，用于结构 review，不作为长期人工维护的精确指标。后续应由脚本生成并同步到本文档，避免随代码增长过期。
 
-> **五平面子模块计数说明（2026-05-17 续修）**：
+| 顶层目录 | 架构层 | 当前 TS/TSX 文件数 | 结构状态 | 备注 |
+|----------|--------|-------------------|----------|------|
+| `src/platform/` | Layer 1-2 | 1,224 | 权威核心区 | 五平面 + contracts/shared/model-gateway/prompt/compliance |
+| `src/domains/` | Layer 3 | 96 | 已扩展 | 含 canonical meta-model、业务域实例与 `yono/` |
+| `src/interaction/` | Layer 4 | 52 | 已扩展 | NL、goal、dashboard、autonomy、UX |
+| `src/org-governance/` | Layer 5 | 52 | 已扩展 | org model、approval routing、SSO/SCIM、compliance |
+| `src/scale-ecosystem/` | Layer 6 | 148 | 已扩展 | marketplace、billing、SLA、多区域、runtime-services |
+| `src/ops-maturity/` | Layer 7 | 121 | 已扩展 | chaos、debugger、capacity、edge、explainability |
+| `src/plugins/` | 跨层 | 25 | 稳定 | 插件生态 |
+| `src/sdk/` | 跨层 | 104 | 已扩展 | CLI、SDK、pack/plugin、harness/admin/workbench |
+| `src/apps/` | 入口 | 4 | 稳定 | API/console/workers |
+| `src/core/` | Legacy 兼容 | 8 | 兼容层 | 禁止新增业务能力 |
+| `src/testing/` | 测试基础设施 | 1 | 稳定 | 生产代码不得依赖 |
+| `src/benchmarks/` | 性能基准 | 1 | 稳定 | 基准入口 |
+| `ui/` | UI Monorepo | 330 | 新增权威区 | apps/packages/tools/tests |
+| `tests/` | 后端测试 | 6,000+ | 已扩展 | unit/integration/e2e/golden/performance/invariants/leaks |
+
+> **五平面子模块计数说明（2026-05-18 续修）**：
 > - `five-plane-control-plane/`：approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + 深层 threat-model、runbook-executor 等 → 合计 44 个含深层的目录
 > - `five-plane-execution/`：budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 个直接子目录
 > - `five-plane-interface/`：api, channel-gateway, console, console-backend, ingress, scheduler, webhook 等 → 17 个含深层的目录
 > - `five-plane-orchestration/`：agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing 等 → 29 个含深层的目录
 > - `five-plane-state-evidence/`：artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth 等 → 20 个含深层的目录
 
-### 12.2 与老系统对比
+### 13.2 与老系统对比
 
 | 指标 | 老系统 | 新平台 | 变化 |
 |------|--------|--------|------|
-| 顶层 src/ 目录数 | 4（core/cli/gateway/plugins） | 9（platform/.../sdk/apps/plugins） | +5 |
-| 二级目录数 | 43（core/ 下扁平） | 61（按七层分布） | +18 |
+| 顶层 src/ 目录数 | 4（core/cli/gateway/plugins） | 12（platform/domains/interaction/org/scale/ops/plugins/sdk/apps/core/testing/benchmarks） | +8 |
+| 前端工程 | 无独立 monorepo | `ui/` Monorepo | 新增六平台 UI 基线 |
+| 二级目录数 | 43（core/ 下扁平） | 100+（按七层、五平面、UI packages 分布） | 显著增加但边界更清晰 |
 | 最大单目录文件数 | 101（core/storage/）| ~40（拆分后最大目录） | -60% |
 | 最大单模块行数 | 30,348（core/runtime/）| ~5,000（拆分为 12 BC） | -83% |
 | 循环依赖风险 | 高（42 模块扁平） | 低（层级依赖 + 契约解耦） | 显著改善 |
 
-### 12.3 依赖方向规则
+### 13.3 依赖方向规则
 
 ```
 Layer 7  ops-maturity/     ──→ 可依赖 Layer 1-6
@@ -1441,7 +1610,19 @@ Layer 5  org-governance/   ──→ 可依赖 Layer 1-4
 Layer 4  interaction/      ──→ 可依赖 Layer 1-3
 Layer 3  domains/          ──→ 可依赖 Layer 1-2
 Layer 1-2 platform/        ──→ 仅依赖 platform/contracts/ 和 platform/shared/
-跨层     plugins/sdk/apps/ ──→ 可依赖任意层（通过 interface 注入）
+跨层     plugins/sdk/apps/ ──→ 可依赖任意层（通过 public interface 注入）
+前端     ui/                ──→ 仅依赖 public API/OpenAPI/schema/codegen/mock seam
+测试     tests/             ──→ 可依赖被测 public API；架构守护测试可扫描源码
 ```
 
 **禁止**：下层依赖上层（如 platform/ 不得 import interaction/）。同层模块间通过事件总线或 platform/contracts/ 解耦。
+
+### 13.4 当前结构风险与后续完善项
+
+| 风险 | 说明 | 建议 |
+| ---- | ---- | ---- |
+| 人工统计易过期 | 目录和文件数量增长很快，人工表格容易失真 | 用 `scripts/ci/audit-codebase-inventory.mjs` 或新增结构盘点脚本生成 |
+| 双入口命名并存 | `five-plane-*` 是权威源码目录，历史文档仍偶见 interface/control-plane 简称 | 新文档统一写 `five-plane-*`，简称只作为解释 |
+| UI 与后端边界需持续守护 | UI 规模已较大，若直接 import 后端内部实现会破坏分层 | 增加 contract test 禁止 `ui/**` import `src/**` 内部路径 |
+| Mission/Yono 后续会继续扩展 | Mission 与 Yono 已进入代码结构，但业务/治理能力还会增长 | 新增子目录时同步更新本文件对应章节 |
+| `src/core/` 仍存在 | 作为兼容层合理，但容易被误用 | CI 守护新增业务代码不得进入 `src/core/` |

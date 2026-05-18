@@ -6,7 +6,7 @@ describe("ui architecture phase alignment", () => {
   it("captures the repo baseline for phase 1-4 in the architecture doc", () => {
     const root = process.cwd();
     const doc = readFileSync(
-      join(root, "docs_zh/architecture/05-cross-platform-ui-architecture.md"),
+      join(root, "../docs_zh/architecture/05-cross-platform-ui-architecture.md"),
       "utf8",
     );
 

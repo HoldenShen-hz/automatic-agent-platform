@@ -237,8 +237,8 @@ describe("reaudit batch R26-45 to R26-54", () => {
     expect(retryResult.attempts).toBe(2);
 
     attempts = 0;
-    const first = client.get<{ ok: boolean; attempts: number }>("/dedupe");
-    const second = client.get<{ ok: boolean; attempts: number }>("/dedupe");
+    const first = client.post<{ ok: boolean; attempts: number }>("/dedupe", { action: "dedupe" });
+    const second = client.post<{ ok: boolean; attempts: number }>("/dedupe", { action: "dedupe" });
     await vi.runAllTimersAsync();
     const [firstResult, secondResult] = await Promise.all([first, second]);
     expect(firstResult.attempts).toBe(1);

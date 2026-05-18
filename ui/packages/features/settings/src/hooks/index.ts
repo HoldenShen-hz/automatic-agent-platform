@@ -4,14 +4,14 @@ import {
   useFeatureFlagsQuery,
   useModelsQuery,
   usePreferencesQuery,
+  useRestClient,
   useRolesQuery,
   useTenantsQuery,
   useWebhooksQuery,
 } from "@aa/shared-state";
-import { createRESTClient, updatePreferences } from "@aa/shared-api-client";
+import { updatePreferences } from "@aa/shared-api-client";
 import { getSharedTranslationService, translateMessage } from "@aa/shared-i18n";
 
-const restClient = createRESTClient();
 const translationService = getSharedTranslationService();
 
 export interface SettingsVm {
@@ -33,6 +33,7 @@ export interface SettingsVm {
 }
 
 export function useSettingsVm(): SettingsVm {
+  const client = useRestClient();
   const preferences = usePreferencesQuery().data;
   const roles = useRolesQuery().data ?? [];
   const flags = useFeatureFlagsQuery().data ?? [];
@@ -64,7 +65,6 @@ export function useSettingsVm(): SettingsVm {
 
   const save = useCallback(async () => {
     setSaveState("saving");
-    const client = restClient;
     const etag = (preferences as { etag?: string }).etag;
     try {
       await updatePreferences(client, { theme: draftTheme, locale: draftLocale }, etag);
@@ -80,7 +80,7 @@ export function useSettingsVm(): SettingsVm {
       setSaveState("error");
       throw err;
     }
-  }, [draftLocale, draftTheme, preferences]);
+  }, [client, draftLocale, draftTheme, preferences]);
 
   return {
     loading: preferences == null,

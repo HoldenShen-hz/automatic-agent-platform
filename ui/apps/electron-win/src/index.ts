@@ -10,14 +10,14 @@ export interface DesktopShellManifest {
   readonly updateChannel: "stable" | "beta";
 }
 
-export const electronWinManifest: DesktopShellManifest = {
+export const electronWinManifest: DesktopShellManifest = Object.freeze({
   platform: "windows",
   runtime: "electron",
   secureScreen: true,
   supportsTray: true,
   supportsGlobalShortcuts: true,
   updateChannel: "stable",
-};
+});
 
 export function createElectronWinAdapter(base: PlatformAdapter): PlatformAdapter {
   return { ...base, platform: "windows" };

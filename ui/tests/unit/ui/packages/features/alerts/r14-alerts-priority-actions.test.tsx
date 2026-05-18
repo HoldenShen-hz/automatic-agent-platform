@@ -4,26 +4,10 @@
  *
  * These tests verify the alerts feature implements the contract requirements.
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import React from "react";
-
-// Mock the dependencies before importing the module under test
-vi.mock("@aa/shared-state", () => ({
-  useIncidentsQuery: vi.fn(),
-  useMutation: vi.fn(() => ({
-    mutate: vi.fn(),
-    status: "idle",
-  })),
-  useWsClient: vi.fn(),
-}));
-
-vi.mock("@aa/shared-api-client", () => ({
-  createRESTClient: vi.fn(() => ({})),
-}));
+import { describe, expect, it, vi } from "vitest";
 
 // Import after mocks are set up
-import { buildAlertsVm } from "../../../../../packages/features/alerts/src/hooks/index";
+import { buildAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
 import type { IncidentDTO } from "@aa/shared-types";
 
 const mockActions = {

@@ -230,13 +230,32 @@ function resolvePath(template: string, params: Record<string, string>): string {
   return Object.entries(params).reduce((resolved, [key, value]) => resolved.replace(`:${key}`, value), template);
 }
 
+function unwrapCollectionResponse<T>(
+  response: readonly T[] | Record<string, unknown>,
+  keys: readonly string[],
+): readonly T[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  for (const key of keys) {
+    const value = response[key];
+    if (Array.isArray(value)) {
+      return value as readonly T[];
+    }
+  }
+
+  return [];
+}
+
 export async function fetchDashboardSnapshot(client: RESTClient): Promise<DashboardSnapshotDTO> {
   return client.get<DashboardSnapshotDTO>(endpointCatalog.dashboardSnapshot.path);
 }
 
 export async function fetchTasks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TaskDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly TaskDTO[]>(`${endpointCatalog.tasks.path}${queryString}`);
+  const response = await client.get<readonly TaskDTO[] | { tasks: readonly TaskDTO[] }>(`${endpointCatalog.tasks.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["tasks"]);
 }
 
 export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -253,7 +272,8 @@ export async function deleteTask(client: RESTClient, taskId: string): Promise<{ 
 
 export async function fetchWorkflows(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkflowDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly WorkflowDTO[]>(`${endpointCatalog.workflows.path}${queryString}`);
+  const response = await client.get<readonly WorkflowDTO[] | { workflows: readonly WorkflowDTO[] }>(`${endpointCatalog.workflows.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["workflows"]);
 }
 
 export async function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -298,7 +318,8 @@ export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: s
 
 export async function fetchApprovals(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ApprovalDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly ApprovalDTO[]>(`${endpointCatalog.approvals.path}${queryString}`);
+  const response = await client.get<readonly ApprovalDTO[] | { approvals: readonly ApprovalDTO[] }>(`${endpointCatalog.approvals.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["approvals"]);
 }
 
 export async function approveApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
@@ -356,12 +377,14 @@ export async function fetchIncidents(client: RESTClient, queryParams?: ListQuery
 
 export async function fetchWorkers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkerDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly WorkerDTO[]>(`${endpointCatalog.workers.path}${queryString}`);
+  const response = await client.get<readonly WorkerDTO[] | { workers: readonly WorkerDTO[] }>(`${endpointCatalog.workers.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["workers"]);
 }
 
 export async function fetchQueues(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly QueueDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly QueueDTO[]>(`${endpointCatalog.queues.path}${queryString}`);
+  const response = await client.get<readonly QueueDTO[] | { queues: readonly QueueDTO[] }>(`${endpointCatalog.queues.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["queues"]);
 }
 
 export async function fetchAgents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AgentDTO[]> {

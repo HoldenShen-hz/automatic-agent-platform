@@ -105,6 +105,18 @@ export interface AdminConfigUpdatePayload {
   tenantId?: string;
 }
 
+interface UserPreferenceState {
+  locale: string;
+  theme: "light" | "dark" | "high-contrast";
+  defaultDashboardLayout: string[];
+}
+
+let userPreferenceState: UserPreferenceState = {
+  locale: "zh-CN",
+  theme: "dark",
+  defaultDashboardLayout: ["overview", "tasks", "approvals"],
+};
+
 // ─── Route Deps ─────────────────────────────────────────────────────────────
 
 export interface AdminRouteDeps {
@@ -385,6 +397,60 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           workers: panel.workers,
           total: panel.workers.length,
         });
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/queues",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin queues list");
+        const panel = deps.missionControlService.getStabilityPanel(readLimit(ctx.request, 50));
+        return buildJsonResponse(ctx.requestId, 200, {
+          queues: [
+            {
+              id: "default",
+              ready: panel.queuedTaskCount,
+              inFlight: panel.workers.filter((worker) => worker.status === "busy").length,
+              retries: 0,
+              dlq: 0,
+            },
+          ],
+          total: 1,
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/preferences",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        return buildJsonResponse(ctx.requestId, 200, userPreferenceState);
+      },
+    },
+    {
+      method: "PUT",
+      pathname: "/v1/preferences",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, (input) =>
+          input != null && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {},
+        );
+
+        userPreferenceState = {
+          locale: typeof payload.locale === "string" && payload.locale.trim().length > 0
+            ? payload.locale
+            : userPreferenceState.locale,
+          theme:
+            payload.theme === "light" || payload.theme === "dark" || payload.theme === "high-contrast"
+              ? payload.theme
+              : userPreferenceState.theme,
+          defaultDashboardLayout: Array.isArray(payload.defaultDashboardLayout)
+            ? payload.defaultDashboardLayout.filter((item): item is string => typeof item === "string" && item.length > 0)
+            : userPreferenceState.defaultDashboardLayout,
+        };
+
+        return buildJsonResponse(ctx.requestId, 200, userPreferenceState);
       },
     },
     // POST /v1/admin/config - Update configuration

@@ -15,8 +15,10 @@ const mocks = vi.hoisted(() => {
     createAuthInterceptor: vi.fn(() => (request: unknown) => request),
     createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
     createCsrfInterceptor: vi.fn(() => (request: unknown) => request),
+    createDedupeInterceptor: vi.fn(() => (request: unknown) => request),
     createIdempotencyKeyInterceptor: vi.fn(() => (request: unknown) => request),
     createOfflineQueueInterceptor: vi.fn(() => (request: unknown) => request),
+    createRetryInterceptor: vi.fn(() => (request: unknown) => request),
     createTenantInterceptor: vi.fn(() => (request: unknown) => request),
     createTraceInterceptor: vi.fn(() => (request: unknown) => request),
     createPersistentOfflineQueue: vi.fn(() => ({
@@ -37,8 +39,10 @@ vi.mock("@aa/shared-api-client", () => ({
   createAuthInterceptor: mocks.createAuthInterceptor,
   createContractVersionInterceptor: mocks.createContractVersionInterceptor,
   createCsrfInterceptor: mocks.createCsrfInterceptor,
+  createDedupeInterceptor: mocks.createDedupeInterceptor,
   createIdempotencyKeyInterceptor: mocks.createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor: mocks.createOfflineQueueInterceptor,
+  createRetryInterceptor: mocks.createRetryInterceptor,
   createTenantInterceptor: mocks.createTenantInterceptor,
   createTraceInterceptor: mocks.createTraceInterceptor,
 }));

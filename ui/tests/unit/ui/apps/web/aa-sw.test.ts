@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
+import { it } from "vitest";
 
 type ListenerMap = Record<string, (event: any) => void>;
 
@@ -54,7 +54,7 @@ function loadServiceWorker(overrides: {
   return listeners;
 }
 
-test("service worker install pre-caches app shell and offline fallback", async () => {
+it("service worker install pre-caches app shell and offline fallback", async () => {
   const cachedAssets: string[][] = [];
   const listeners = loadServiceWorker({
     caches: {
@@ -77,7 +77,7 @@ test("service worker install pre-caches app shell and offline fallback", async (
   assert.deepEqual(cachedAssets.map((assets) => [...assets]), [["/", "/offline"]]);
 });
 
-test("service worker activate removes stale aa-ui caches and keeps current version", async () => {
+it("service worker activate removes stale aa-ui caches and keeps current version", async () => {
   const deletedCaches: string[] = [];
   const listeners = loadServiceWorker({
     caches: {
@@ -100,7 +100,7 @@ test("service worker activate removes stale aa-ui caches and keeps current versi
   assert.deepEqual(deletedCaches, ["aa-ui-runtime-v0"]);
 });
 
-test("service worker fetch normalizes cache keys by stripping query strings", async () => {
+it("service worker fetch normalizes cache keys by stripping query strings", async () => {
   const matchedKeys: string[] = [];
   const storedKeys: string[] = [];
   const listeners = loadServiceWorker({
@@ -131,7 +131,7 @@ test("service worker fetch normalizes cache keys by stripping query strings", as
   assert.deepEqual(storedKeys, ["https://example.com/assets/app.js"]);
 });
 
-test("service worker bypasses caching for API GET requests", () => {
+it("service worker bypasses caching for API GET requests", () => {
   let respondWithCalled = false;
   let cacheOpened = false;
   const listeners = loadServiceWorker({
@@ -157,7 +157,7 @@ test("service worker bypasses caching for API GET requests", () => {
   assert.equal(cacheOpened, false);
 });
 
-test("service worker sync replays offline queue and deletes successfully synced mutations", async () => {
+it("service worker sync replays offline queue and deletes successfully synced mutations", async () => {
   const deletedIds: string[] = [];
   const fetchCalls: Array<{ endpoint: string; method: string; body: string | null }> = [];
   const db = {

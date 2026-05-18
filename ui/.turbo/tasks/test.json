@@ -3,17 +3,8 @@
   "command": [
     "vitest",
     "run",
-    "tests/features/registry.test.ts",
-    "tests/docs/route-map.test.ts",
-    "tests/apps/web.test.tsx",
-    "tests/reaudit-r24-ui-source-review.test.ts",
-    "tests/shared/ui-core-mobile.test.tsx",
-    "tests/unit/ui/apps/electron-win/main.test.ts",
-    "tests/unit/ui/apps/mobile/metro-config.test.ts",
-    "tests/unit/ui/apps/web/build-config.test.ts",
-    "tests/features/structure.test.ts",
-    "tests/shared/reaudit-r24-ui-foundations.test.tsx"
+    "tests/unit/ui/tools/mock-server-routing.test.ts"
   ],
-  "startedAt": "2026-05-17T16:52:01.329Z",
-  "completedAt": "2026-05-17T16:52:04.259Z"
+  "startedAt": "2026-05-18T02:08:30.049Z",
+  "completedAt": "2026-05-18T02:08:30.562Z"
 }

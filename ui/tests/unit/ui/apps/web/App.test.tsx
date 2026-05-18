@@ -18,6 +18,40 @@ vi.mock("./runtime", () => ({
 // Mock ui-core
 vi.mock("@aa/ui-core", () => ({
   applyResolvedTheme: vi.fn(),
+  createFeatureModule: vi.fn((config: {
+    id: string;
+    title: string;
+    group: string;
+    path: string;
+    permission: string;
+    status: string;
+    kind?: "implemented" | "planned";
+    platforms?: readonly string[];
+    render?: () => ReactElement;
+  }) => ({
+    manifest: {
+      id: config.id,
+      title: config.title,
+      group: config.group,
+      path: config.path,
+      permission: config.permission,
+      status: config.status,
+      kind: config.kind ?? "implemented",
+      platforms: config.platforms ?? ["web"],
+      summary: `${config.title} summary`,
+      apiLayer: "C",
+    },
+    route: {
+      path: config.path,
+      featureId: config.id,
+      group: config.group,
+      title: config.title,
+      permission: config.permission,
+      platforms: config.platforms ?? ["web"],
+      codeSplit: true,
+    },
+    Component: config.render ?? (() => null),
+  })),
   SystemStatusBar: () => null,
   designTokens: {
     color: {

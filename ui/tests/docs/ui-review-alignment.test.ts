@@ -12,9 +12,9 @@ describe("ui review alignment", () => {
 
     expect(review).toContain("UIR0-UIR6");
     expect(review).toContain("TS/TSX 文件总数");
-    expect(review).toContain("206");
+    expect(review).toContain("330");
     expect(review).toContain("对外注册的 feature 路由");
-    expect(review).toContain("27");
+    expect(review).toContain("29");
     expect(review).toContain("npm test");
     expect(review).toContain("8.1 GAP 整改状态回写");
     expect(review).toContain("已完成闭环");

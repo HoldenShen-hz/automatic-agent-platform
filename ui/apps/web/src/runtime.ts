@@ -1,5 +1,6 @@
 import {
   BrowserWSClient,
+  createDedupeInterceptor,
   DefaultRESTClient,
   DEFAULT_ACCEPT_VERSIONS,
   HttpTransport,
@@ -9,6 +10,7 @@ import {
   createCsrfInterceptor,
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
+  createRetryInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
   fetchContractVersion,
@@ -148,6 +150,8 @@ export function createWebRuntimeClients(
       }).send(request),
     [
       createTraceInterceptor(),
+      createRetryInterceptor(),
+      createDedupeInterceptor(),
       createContractVersionInterceptor(),
       createCsrfInterceptor(),
       createIdempotencyKeyInterceptor(),

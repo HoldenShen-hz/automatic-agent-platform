@@ -4,7 +4,7 @@ import {
   createElectronWinAdapter,
   createElectronWinDefaultAdapter,
   type DesktopShellManifest,
-} from "./index";
+} from "../../../../../apps/electron-win/src/index";
 import type { PlatformAdapter } from "@aa/shared-types";
 
 describe("electronWinManifest", () => {

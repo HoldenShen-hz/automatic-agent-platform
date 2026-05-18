@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClient = { patch: vi.fn() };
 const mockUpdatePreferences = vi.fn(async () => ({ ok: true }));
-const mockSetThemeMode = vi.fn();
 let preferencesData = {
   theme: "dark",
   locale: "zh-CN",
@@ -20,7 +19,6 @@ vi.mock("@aa/shared-state", () => ({
   useDomainConfigsQuery: () => ({ data: [{ displayName: "Coding", owner: "platform", defaultDrillDepth: 3 }] }),
   useTenantsQuery: () => ({ data: [{ name: "Tenant A", status: "active", domains: ["coding"] }] }),
   useWebhooksQuery: () => ({ data: [{ targetUrl: "https://example.test/webhook", eventCount: 5, enabled: true }] }),
-  useThemeState: () => ({ setThemeMode: mockSetThemeMode }),
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
@@ -69,7 +67,6 @@ describe("useSettingsVm", () => {
       { theme: "light", locale: "zh-CN" },
       "etag-1",
     );
-    expect(mockSetThemeMode).toHaveBeenCalledWith("light");
 
     preferencesData = {
       theme: "high-contrast",

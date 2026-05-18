@@ -5,6 +5,8 @@ import React from "react";
 import {
   createAuthInterceptor,
   createTenantInterceptor,
+  createDedupeInterceptor,
+  createRetryInterceptor,
   DEFAULT_ACCEPT_VERSIONS,
   fetchContractVersion,
 } from "@aa/shared-api-client";
@@ -143,8 +145,10 @@ vi.mock("@aa/shared-api-client", () => ({
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
   createCsrfInterceptor: vi.fn(() => (request: unknown) => request),
+  createDedupeInterceptor: vi.fn(() => (request: unknown) => request),
   createIdempotencyKeyInterceptor: vi.fn(() => (request: unknown) => request),
   createOfflineQueueInterceptor: vi.fn(() => (request: unknown) => request),
+  createRetryInterceptor: vi.fn(() => (request: unknown) => request),
   createTenantInterceptor: vi.fn(() => (request: unknown) => request),
   createTraceInterceptor: vi.fn(() => (request: unknown) => request),
 }));

@@ -13,6 +13,7 @@ export function DomainWizardWebView(): ReactElement {
   const vm = useDomainWizardVm();
   const items = vm.items ?? vm.catalogItems ?? [];
   const previewRows = vm.previewRows ?? [];
+  const validationErrors = vm.validationErrors ?? [];
 
   return (
     <FeatureScaffold title="Domain Wizard" summary="领域接入向导和 DomainUIConfig 驱动页面。" status="Implemented/Internal">
@@ -112,6 +113,14 @@ export function DomainWizardWebView(): ReactElement {
             <div key={row.key}>{`${row.key}: ${row.value}`}</div>
           ))}
         </section>
+
+        {validationErrors.length > 0 ? (
+          <section aria-label="Validation errors">
+            {validationErrors.map((error) => (
+              <div key={error}>{error}</div>
+            ))}
+          </section>
+        ) : null}
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">Back</button>

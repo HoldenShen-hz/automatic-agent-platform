@@ -150,6 +150,15 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const [executionReady, setExecutionReady] = useState(persisted?.executionReady ?? false);
   const [isStreaming, setIsStreaming] = useState(persisted?.isStreaming ?? false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const unsubscribeStatusRef = useRef<(() => void) | null>(null);
+  const stateRef = useRef<PersistedConversationState>({
+    messages: persisted?.messages ?? [],
+    attachments: persisted?.attachments ?? [],
+    status: persisted?.status ?? "idle",
+    planReady: persisted?.planReady ?? false,
+    executionReady: persisted?.executionReady ?? false,
+    isStreaming: persisted?.isStreaming ?? false,
+  });
   const client = getSharedConversationClient(persisted);
 
   const syncFromClient = useCallback((overrides?: Partial<PersistedConversationState>) => {
@@ -173,14 +182,23 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
           : [],
         status: typeof (client as { getStatus?: () => ConversationVm["status"]; }).getStatus === "function"
           ? (client as { getStatus: () => ConversationVm["status"]; }).getStatus()
-          : status,
+          : stateRef.current.status,
       };
 
-    const nextMessages = snapshot.messages != null ? mapConversationMessages(snapshot.messages) : messages;
-    const nextStatus = snapshot.status ?? status;
-    const nextPlanReady = snapshot.planReady ?? planReady;
-    const nextExecutionReady = snapshot.executionReady ?? executionReady;
-    const nextIsStreaming = snapshot.isStreaming ?? isStreaming;
+    const currentState = stateRef.current;
+    const nextMessages = snapshot.messages != null ? mapConversationMessages(snapshot.messages) : currentState.messages;
+    const nextStatus = snapshot.status ?? currentState.status;
+    const nextPlanReady = snapshot.planReady ?? currentState.planReady;
+    const nextExecutionReady = snapshot.executionReady ?? currentState.executionReady;
+    const nextIsStreaming = snapshot.isStreaming ?? currentState.isStreaming;
+    const nextState: PersistedConversationState = {
+      messages: nextMessages,
+      attachments: currentState.attachments,
+      status: overrides?.status ?? nextStatus,
+      planReady: overrides?.planReady ?? nextPlanReady,
+      executionReady: overrides?.executionReady ?? nextExecutionReady,
+      isStreaming: overrides?.isStreaming ?? nextIsStreaming,
+    };
 
     setMessages(nextMessages);
     setStatus(nextStatus);
@@ -188,15 +206,9 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     setExecutionReady(nextExecutionReady);
     setIsStreaming(nextIsStreaming);
 
-    persistState({
-      messages: nextMessages,
-      attachments,
-      status: overrides?.status ?? nextStatus,
-      planReady: overrides?.planReady ?? nextPlanReady,
-      executionReady: overrides?.executionReady ?? nextExecutionReady,
-      isStreaming: overrides?.isStreaming ?? nextIsStreaming,
-    });
-  }, [attachments, client, executionReady, isStreaming, messages, planReady, status]);
+    stateRef.current = nextState;
+    persistState(nextState);
+  }, [client]);
 
   useEffect(() => {
     const unsubscribeClient = subscribeConversationClient((snapshot) => {
@@ -221,19 +233,15 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   }, [syncFromClient]);
 
   const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
-    const current = conversationVmQueryClient.getQueryData<PersistedConversationState>(conversationVmQueryKey) ?? {
-      messages,
-      attachments,
-      status,
-      planReady,
-      executionReady,
-      isStreaming,
-    };
-    persistState(updater(current));
-  }, [attachments, executionReady, isStreaming, messages, planReady, status]);
+    const nextState = updater(stateRef.current);
+    stateRef.current = nextState;
+    persistState(nextState);
+  }, []);
 
   useEffect(() => {
-    persistState({ messages, attachments, status, planReady, executionReady, isStreaming });
+    const nextState = { messages, attachments, status, planReady, executionReady, isStreaming };
+    stateRef.current = nextState;
+    persistState(nextState);
   }, [attachments, executionReady, isStreaming, messages, planReady, status]);
 
   useEffect(() => {
@@ -294,7 +302,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
         }));
       }
     });
-    wsClient.onStatusChange((wsStatus) => {
+    unsubscribeStatusRef.current = wsClient.onStatusChange((wsStatus) => {
       setStatus(wsStatus === "connected" ? "connected" : "disconnected");
       if (wsStatus !== "connected") {
         setIsStreaming(false);
@@ -307,6 +315,10 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     });
     return () => {
       unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+      unsubscribeStatusRef.current?.();
+      unsubscribeStatusRef.current = null;
+      disposeSharedConversationClient();
     };
   }, [syncPersistedSnapshot, wsClient]);
 
@@ -389,6 +401,9 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
 
   const disconnect = useCallback(() => {
     unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+    unsubscribeStatusRef.current?.();
+    unsubscribeStatusRef.current = null;
     disposeSharedConversationClient();
     wsClient?.disconnect();
   }, [wsClient]);

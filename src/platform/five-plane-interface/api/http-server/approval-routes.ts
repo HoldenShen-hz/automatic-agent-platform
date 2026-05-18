@@ -38,6 +38,16 @@ export interface ApprovalRouteDeps {
   inspectService: InspectService;
 }
 
+type ApprovalActionAlias =
+  | "approve"
+  | "reject"
+  | "delegate"
+  | "request-context"
+  | "edit"
+  | "escalate"
+  | "defer"
+  | "text-input";
+
 const MAX_APPROVAL_ID_LENGTH = 128;
 const APPROVAL_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -105,6 +115,59 @@ function getAuthorizedApprovalView(
     }
     throw error;
   }
+}
+
+function handleApprovalActionAlias(
+  deps: ApprovalRouteDeps,
+  requestId: string,
+  principal: ApiPrincipal,
+  actorId: string,
+  approvalId: string,
+  action: ApprovalActionAlias,
+  body: Record<string, unknown>,
+) {
+  getAuthorizedApprovalView(deps, principal, actorId, approvalId);
+
+  if (action === "approve") {
+    deps.approvalService.applyDecision({
+      approvalId,
+      decisionType: "confirmed",
+      confirmed: true,
+      respondedBy: actorId,
+      respondedAt: new Date().toISOString(),
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+  if (action === "reject") {
+    deps.approvalService.applyDecision({
+      approvalId,
+      decisionType: "rejected",
+      respondedBy: actorId,
+      respondedAt: new Date().toISOString(),
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+  if (action === "text-input") {
+    const input = typeof body.input === "string" && body.input.trim().length > 0
+      ? body.input.trim()
+      : JSON.stringify(body);
+    deps.approvalService.applyDecision({
+      approvalId,
+      decisionType: "text_input",
+      inputText: input,
+      respondedBy: actorId,
+      respondedAt: new Date().toISOString(),
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  return buildJsonResponse(requestId, 200, {
+    ok: true,
+    approvalId,
+    action,
+    body,
+    approval: deps.inspectService.getApprovalInspectView(approvalId),
+  });
 }
 
 export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[] {
@@ -196,6 +259,51 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         deps.approvalService.applyDecision(decision);
         const approval = deps.inspectService.getApprovalInspectView(approvalId);
         return buildJsonResponse(ctx.requestId, 200, approval);
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "approvals"
+          || segments.length !== 4
+        ) {
+          return null;
+        }
+        const action = segments[3] as ApprovalActionAlias;
+        if (![
+          "approve",
+          "reject",
+          "delegate",
+          "request-context",
+          "edit",
+          "escalate",
+          "defer",
+          "text-input",
+        ].includes(action)) {
+          return null;
+        }
+
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const actorId = principal.actorId;
+        const approvalId = validateApprovalId(segments[2]);
+        const body = readValidatedJsonBody(ctx.request.body, (input) =>
+          input != null && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {},
+        );
+
+        return handleApprovalActionAlias(
+          deps,
+          ctx.requestId,
+          principal,
+          actorId,
+          approvalId,
+          action,
+          body,
+        );
       },
     },
   ];

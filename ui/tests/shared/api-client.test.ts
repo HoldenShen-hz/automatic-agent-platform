@@ -21,8 +21,10 @@ import {
   fetchPackVersions,
   fetchPlugins,
   fetchPrompts,
+  fetchApprovals,
   fetchSystemConfig,
   fetchTasks,
+  fetchWorkers,
   fetchWorkflowRunSteps,
   fetchWorkflows,
   mapEventToQuery,
@@ -44,6 +46,29 @@ describe("shared api-client", () => {
     expect(tasks.length).toBeGreaterThan(0);
     expect(workflows.length).toBeGreaterThan(0);
     expect(agents.length).toBeGreaterThan(0);
+  });
+
+  it("unwraps src-style collection envelopes for list endpoints", async () => {
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      if (request.path.includes("/tasks")) {
+        return { status: 200, data: { tasks: [{ id: "task-1", title: "Task", status: "queued", currentStep: "intake", domainId: "platform" }] } as T };
+      }
+      if (request.path.includes("/workflows")) {
+        return { status: 200, data: { workflows: [{ id: "wf-1", title: "Workflow", status: "running", currentStage: "execute", owner: "ops", steps: [] }] } as T };
+      }
+      if (request.path.includes("/approvals")) {
+        return { status: 200, data: { approvals: [{ approvalId: "approval-1", taskId: "task-1", riskLevel: "medium", reasonSummary: "review" }] } as T };
+      }
+      if (request.path.includes("/admin/workers")) {
+        return { status: 200, data: { workers: [{ id: "worker-1", status: "idle", queue: "default", heartbeatLagMs: 0 }] } as T };
+      }
+      return { status: 200, data: { queues: [{ id: "default", ready: 1, inFlight: 0, retries: 0, dlq: 0 }] } as T };
+    });
+
+    await expect(fetchTasks(client)).resolves.toHaveLength(1);
+    await expect(fetchWorkflows(client)).resolves.toHaveLength(1);
+    await expect(fetchApprovals(client)).resolves.toHaveLength(1);
+    await expect(fetchWorkers(client)).resolves.toHaveLength(1);
   });
 
   it("adds request ids through the trace interceptor", async () => {
