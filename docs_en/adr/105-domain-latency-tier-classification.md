@@ -1,17 +1,17 @@
-# ADR-105: Domain Latency Tier Classification
+# ADR-105 Domain Latency Tier Classification
 
 ---
 
 ## OAPEFLIR Association
 
 - **Observe**: Collect domain latency / SLA requirements
-- **Assess**: Classify as ultra-low latency, real-time, near-real-time, batch processing
+- **Assess**: Classify as ultra-low latency, real-time, near-real-time, batch
 - **Plan**: Allocate resources and scheduling strategy
-- **Execute**: Run by latency tier
+- **Execute**: Run per latency tier
 - **Feedback**: Monitor breach and congestion
 - **Learn**: Optimize resource pool allocation
 - **Improve**: Adjust domain-level SLA
-- **Release**: Latency tier enters domain release gate
+- **Release**: latency tier enters domain release gate
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-Different domains have vastly different latency requirements; unified scheduling strategy leads to resource waste or SLA failure.
+Different domains have very different latency requirements; unified scheduling strategy leads to resource waste or SLA failure.
 
 ## Decision
 

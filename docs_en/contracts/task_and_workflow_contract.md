@@ -234,7 +234,7 @@ Supplementary notes:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-22: This document originally wrote `PlanDTO` and `WorkflowState.current_stage` as authoritative handover/authoritative state of execution main chain. Root cause: early workflow contract tried to simultaneously carry orchestration truth and UI/cognitive view, causing plan handoff and stage view to mix in one object. Fix: This version converges authoritative handover to `PlanGraphBundle`, and explicitly demotes `WorkflowState.current_stage_view` to a projection field.
 - T-18: Original `WorkflowStep` / `StepOutput` used `step_id` as semantic primary key (legacy workflow step remnant), but v4.3 execution truth uses `node_run_id`. Fix: §6 clarifies `node_run_id` is the step's unique primary key, linked to `NodeRun` truth; §7 `StepOutput` association fields have converged to `node_run_id / harness_run_id / attempt_id`. Old `step_id` only preserved as legacy projection trace field.

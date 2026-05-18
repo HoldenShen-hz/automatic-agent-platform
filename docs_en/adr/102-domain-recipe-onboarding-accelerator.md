@@ -1,17 +1,17 @@
-# ADR-102: Domain Recipe As Onboarding Accelerator
+# ADR-102 Domain Recipe As Onboarding Accelerator
 
 ---
 
 ## OAPEFLIR Association
 
 - **Observe**: Collect domain patterns and onboarding requirements
-- **Assess**: Select most suitable recipe archetype
+- **Assess**: Select the most suitable recipe archetype
 - **Plan**: Initialize domain workflow and prompt with recipe
 - **Execute**: Quickly generate baseline implementation
-- **Feedback**: Collect recipe adaptation effect
+- **Feedback**: Collect recipe adaptation effectiveness
 - **Learn**: Iterate archetype template
 - **Improve**: Shorten new domain onboarding cycle
-- **Release**: Recipe becomes onboarding baseline
+- **Release**: recipe becomes onboarding baseline
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Blank slate onboarding causes new domains to repeatedly invent workflows, prompts, and governance structures.
+Blank-slate onboarding causes new domains to reinvent workflows, prompts, and governance structures.
 
 ## Decision
 
 - New domains must start from standard `DomainRecipe` prototype
-- Recipe serves as workflow/tool/prompt/eval baseline generator
+- recipe as workflow/tool/prompt/eval baseline generator
 
 ## Consequences
 
-- 24-domain baseline can quickly land on a unified model
+- 24-domain baseline can be quickly landed with unified model

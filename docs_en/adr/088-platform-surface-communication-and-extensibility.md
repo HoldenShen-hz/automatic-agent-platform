@@ -8,24 +8,24 @@ Accepted
 
 2026-04-20
 
-## Context
+## Background
 
-[`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) `§6`, `§7`, `§8`, `§22`, `§30` define API, service communication, extensibility, SDK/DX, and Business Pack / Plugin governance. These chapters were previously scattered across API, event bus, plugin SPI, and tool/skill/plugin contracts, but lacked a unified ADR explaining why these boundaries must be governed as platform surface capabilities.
+[`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) `§6`, `§7`, `§8`, `§22`, `§30` define API, service communication, extensibility, SDK/DX, Business Pack/Plugin governance. These chapters were previously scattered across API, event bus, plugin SPI, tool/skill/plugin contracts, but lacked a unified ADR explaining why these boundaries must be governed as platform surface capabilities.
 
 ## Decision
 
-Platform surface capabilities are uniformly governed by the following boundaries:
+Platform surface capabilities are governed by the following boundaries:
 
-- External requests must first enter Interface Plane via API / Gateway / Webhook / Scheduler, not directly enter execution layer.
-- Inter-plane communication must prioritize contract-based envelopes, typed events, and outbox/DLQ mechanisms; implicit shared state is not allowed.
-- Extension capabilities must enter the platform via Plugin SPI, Tool / Skill / Plugin contracts, and Business Pack lifecycle.
-- SDK / DX only provides controlled access capabilities, not shortcuts bypassing policy, approval, sandbox, or budget.
-- Business Packs must declare domain, capability, risk, tool bundle, and API compatibility, and are constrained by the same extension governance.
+- External requests must first enter Interface Plane via API/Gateway/Webhook/Scheduler, not directly enter execution layer.
+- Inter-plane communication must prioritize contractual envelope, typed event, outbox/DLQ mechanism, no implicit shared state allowed.
+- Extension capabilities must enter the platform via Plugin SPI, Tool/Skill/Plugin contracts, Business Pack lifecycle.
+- SDK/DX only provides controlled access capabilities, does not provide shortcuts bypassing policy, approval, sandbox, budget.
+- Business Pack must declare domain, capability, risk, tool bundle, API compatibility, and is subject to the same extension governance.
 
 ## Trade-offs
 
-- Do not create a separate ADR for each API or SDK action, avoiding architecture decision fragmentation.
-- Do not write extension runtime implementation details into ADR; fields, states, and failure semantics go into contracts.
+- Do not create a separate ADR for each API or SDK action, to avoid architecture decision fragmentation.
+- Do not write extension runtime implementation details into ADR; fields, states, failure semantics go into contracts.
 - Do not allow "internal SDK privileged paths"; all extensions must go through unified authorization, audit, and release boundaries.
 
 ## Impact
@@ -51,20 +51,20 @@ Corresponding implementation boundaries:
 - `src/plugins/*`
 - `src/scale-ecosystem/marketplace/*`
 
-## Testing Requirements
+## Test Requirements
 
-- Contract tests: API / event / gateway envelopes must not bypass contracts.
-- Integration tests: Event bus, plugin lifecycle, and marketplace install/publish flows must be able to run across boundaries.
-- Denial tests: Extensions without authentication, authorization, verification, or declared capability must not enter production execution chain.
+- contract tests: API/event/gateway envelope must not bypass contract.
+- integration tests: event bus, plugin lifecycle, marketplace install/publish flow must be able to run across boundaries.
+- denial tests: extensions without authentication, authorization, verification, or undeclared capability must not enter production execution chain.
 
 ## Alternatives
 
-1. **Create a separate ADR for each API/SDK action**: Avoids architecture decision fragmentation but leads to ADR inflation and difficult consistency maintenance.
-2. **Write extension runtime implementation details into ADR**: More comprehensive information but makes ADRs bloated, and implementation changes require ADR updates.
-3. **Allow "internal SDK privileged paths"**: Lowers development threshold but breaks platform boundaries and increases security risk.
-4. **Adopt this decision**: Unify governance of platform surface, balancing extensibility and security.
+1. **Create a separate ADR for each API/SDK action**: Avoids architecture decision fragmentation, but leads to ADR quantity inflation, difficult to maintain consistency.
+2. **Write extension runtime implementation details into ADR**: More comprehensive, but ADR becomes bloated, and implementation changes require ADR updates.
+3. **Allow "internal SDK privileged paths"**: Reduces development threshold, but breaks platform boundaries, increases security risk.
+4. **Adopt this decision**: Unified governance of platform surface, balancing extensibility and security.
 
-## Cross-References
+## Cross References
 
 - [ADR-066 Plugin SPI Framework](./066-plugin-spi-framework.md)
 - [ADR-089 AI Operations Governance and Quality](./089-ai-operations-governance-and-quality.md)

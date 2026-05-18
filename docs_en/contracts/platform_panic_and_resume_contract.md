@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines global circuit breaking, propagation mechanisms, recovery protocols, and drill requirements for `§60`.
+This contract defines global circuit breaking, propagation mechanism, recovery protocol, and drill requirements as specified in `§60`.
 
 ## 2. Canonical Objects
 
@@ -21,7 +21,7 @@ This contract defines global circuit breaking, propagation mechanisms, recovery 
 - `issued_at`
 - `freeze_modes`
 - `allow_list?`
-- `expires_at?`
+- `expires_at`
 
 `scope` canonical enum:
 
@@ -53,22 +53,21 @@ Rules:
 ## 4. Rules
 
 - Panic must be applicable at multiple levels: `platform / region / tenant / domain / run / node`.
-- After panic takes effect, new high-risk executions must be blocked.
-- Recovery must go through an explicit `ResumePlan`; implicit restart must not be used to clear the state.
-- Resume for high-risk scopes must not be cleared by a plan with single person, no role verification, or no revalidation.
+- After panic takes effect, new high-risk execution must be blocked.
+- Resume must go through explicit `ResumePlan` and must not be lifted by implicit restart.
+- High-risk scope resume must not be lifted by a single person, without role verification, or without a revalidation plan.
 
 ## 5. Test Requirements
 
 - unit: scope match, propagation, resume validation
 - integration: panic -> execution block -> resume
-- contract: no unaudited automatic recovery during panic period
-
+- contract: no unaudited automatic recovery during panic
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-26: This document previously limited panic scope to `platform / tenant / org / domain / workflow` and described `ResumePlan` as a shell with no mandatory human confirmation. Root cause: early circuit-breaking contracts were viewed from a business workflow perspective and did not evolve along with runtime scope and emergency governance mechanisms. Fix: the main text now converges scope to `platform / region / tenant / domain / run / node`, and requires `ResumePlan` to explicitly reference dual-person approval and compatibility review.
+- T-26: This document originally kept panic scope at `platform / tenant / org / domain / workflow` and wrote `ResumePlan` as an empty shell without mandatory human confirmation. Root cause: early circuit-breaking contract was from a business workflow perspective and did not upgrade along with runtime scope and emergency governance mechanisms. Fix: The body now converges scope to `platform / region / tenant / domain / run / node` and requires `ResumePlan` to explicitly reference two-person approval and compatibility review.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

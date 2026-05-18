@@ -1,6 +1,6 @@
 # Test Exclusion Audit
 
-`tsconfig.json` `exclude` may contain historically unstable tests, type cycles, build performance avoidance, or E2E/integration tests that should not participate in compilation. You cannot judge test failure by just "exclude is long", items must be classified one by one.
+`tsconfig.json` `exclude` may contain historically unstable tests, type cycles, build performance workarounds, or E2E/integration tests that should not participate in compilation. You cannot simply judge test failures by "exclude is too long"; each entry must be categorized.
 
 ## Audit Command
 
@@ -8,19 +8,19 @@
 node scripts/ci/audit-test-exclusions.mjs
 ```
 
-Output includes:
+Output contains:
 
 - `totalExcludeEntries`: total tsconfig exclude count.
 - `testExcludeEntries`: count of excludes matching test/e2e/integration/golden.
-- `testExcludes`: list of specific exclusion items.
+- `testExcludes`: list of specific exclude entries.
 
 ## Classification Rules
 
-- Build scope exclude: does not mean tests do not run, only means not participating in main TypeScript compilation.
-- Historical failure exclude: must have named tests or fix plans.
-- E2E/integration exclude: should be covered by independent runner or CI job.
-- Golden exclude: should be covered by golden targeted tests.
+- Build-scope excludes: do not mean tests don't run; only that they don't participate in the main TypeScript compilation.
+- Historical failure excludes: must have named tests or a fix plan.
+- E2E/integration excludes: should be covered by an independent runner or CI job.
+- Golden excludes: should be covered by golden-directed tests.
 
 ## Review Requirements
 
-"Tests still failing" in the issue list can only be closed by named test results; "coverage governance" can be closed by audit scripts and independent runner plans.
+"Tests still failing" in the issue table can only be closed by named test results; "coverage governance" can be closed by audit scripts and independent runner plans.

@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Conclusions must be bound to source, citation, and confidence level.
+- Conclusions must be bound to sources, citations, and confidence levels.
 - Factual statements must be traceable to evidence.
-- Outbound reports must pass quality gate.
+- Outbound reports must pass quality gates.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide source verification, citation check, report review, and quality assessment evidence.
+- Source verification, citation check, report review, and quality assessment evidence must be provided before GA.

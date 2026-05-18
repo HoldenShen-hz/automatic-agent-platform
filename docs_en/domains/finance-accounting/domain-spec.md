@@ -12,8 +12,8 @@
 
 - Segregation of duties must be enforced: creator must not equal approver.
 - Accounting entries, reports, and payment actions must be auditable.
-- Agent must not bypass SOX internal controls and human approval.
+- Agents must not bypass SOX internal controls and human approval.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide SoD, audit sampling, payment approval, and financial report consistency evidence.
+- SoD, audit sampling, payment approval, and financial statement consistency evidence must be provided before GA.

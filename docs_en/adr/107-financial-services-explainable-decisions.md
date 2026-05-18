@@ -1,10 +1,10 @@
-# ADR-107: Financial Services Explainable Decisions
+# ADR-107 Financial Services Explainable Decisions
 
 ---
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect customer, rules, features, and evidence
+- **Observe**: Collect customers, rules, features, and evidence
 - **Assess**: Form financial decisions and rejection reasons
 - **Plan**: Generate explanation payload
 - **Execute**: Output explainable results
@@ -20,13 +20,13 @@
 
 ## Context
 
-Automated decisions in financial services domain must meet explainable and fair lending requirements.
+Automated decisions in financial services domain must meet explainability and fair lending requirements.
 
 ## Decision
 
-- Adverse decisions must carry structured explanation
+- Adverse decisions must be accompanied by structured explanation
 - Explanation must be traceable to evidence and rules
 
 ## Consequences
 
-- `financial-services` domain output not only carries results, but also reasons
+- `financial-services` domain output no longer just contains results, but must also carry rationale

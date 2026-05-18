@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -285,8 +285,8 @@ At minimum should cover the following verification:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-56: This document originally wrote repository methods like `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` as canonical interfaces directly operating on the `executions` table. The root cause was that the runtime persistence contract stayed at the old execution-centric repository model and did not migrate along with v4.3's truth state machine boundary to transition-backed writes. Fix: The main text now changes to `TransitionRepositoryAdapter` driving, making it clear that all truth state changes must first pass through `RuntimeStateMachine.transition(command)`. Old `markExecution*` is only allowed inside legacy compatibility adapter.
+- T-56: This document originally wrote repository methods like `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` as direct operations on `executions` table canonical interface. Root cause: runtime persistence contract stayed at old execution-centric repository model, did not migrate along with v4.3 truth state machine boundary to transition-backed writes. Fix: Body now changed to `TransitionRepositoryAdapter` driven, clarifying all truth state changes must first go through `RuntimeStateMachine.transition(command)`, old `markExecution*` only allowed inside legacy compatibility adapter.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

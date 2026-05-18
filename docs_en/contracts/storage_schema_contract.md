@@ -760,7 +760,7 @@ CREATE TABLE IF NOT EXISTS memories (
 CREATE TABLE IF NOT EXISTS tool_result_files (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  execution_id NULL REFERENCES executions(id) ON DELETE SET NULL,
+  execution_id TEXT NULL REFERENCES executions(id) ON DELETE SET NULL,
   tool_name TEXT NOT NULL,
   artifact_id TEXT NOT NULL,
   file_path TEXT NOT NULL,
@@ -798,10 +798,6 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 - When migrating to PostgreSQL, primary key, unique constraints, foreign keys, and timestamp semantics must remain consistent; SQLite shortcuts must not be brought into PG fact sources.
 - Complete artifact index table should at minimum split: artifact main record, artifact version, artifact access log.
 - Heartbeat snapshots may be retained compressed by window, but latest snapshots and windows related to incidents must not be compressed.
-- High-risk/critical risk without confirmation must reject generating `RequestEnvelope`.
-- Same `idempotencyKey + requestHash` duplicate submission must not create multiple `HarnessRun`.
-- `TaskDraft` must not be consumed by P4 dispatch.
-- Old `/api/v1/tasks` compatibility entry must project to v4.3 intake chain.
 
 
 ## v4.3 Architecture Remediation

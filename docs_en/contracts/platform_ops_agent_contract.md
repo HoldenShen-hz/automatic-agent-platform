@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the platform self-operations Agent, directory, and security guardrails for `§69`.
+This contract defines the platform self-ops Agent, catalog, and security guardrails as specified in `§69`.
 
 ## 2. Canonical Objects
 
@@ -27,16 +27,17 @@ This contract defines the platform self-operations Agent, directory, and securit
 - `observe_only`
 - `suggest_only`
 - `supervised_execution`
-- `trusted_automation`
+- `guarded_automation`
 
 ## 5. Rules
 
-- Self-operations Agent must not bypass panic, budget, policy, or rollout.
-- All operations actions must first form an `OpsActionProposal`.
-- High-impact operations actions require human approval by default.
+- Self-ops Agent must not bypass panic, budget, policy, and rollout.
+- Self-ops Agent default rollout guard is `no_rollout`; unapproved proposals must not enter release or canary.
+- All ops actions must first form `OpsActionProposal`.
+- High-impact ops actions require human approval by default.
 
 ## 6. Test Requirements
 
 - unit: proposal validation, guardrail checks, maturity gating
 - integration: health monitor -> proposal -> approval / execute
-- contract: unapproved high-risk operations actions must not take effect automatically
+- contract: unapproved high-risk ops actions must not take effect automatically

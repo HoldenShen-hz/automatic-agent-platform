@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the registry, renderer, version, rollout, and evaluation boundaries for `src/platform/prompt-engine/`.
+This contract defines the registry, renderer, version, rollout, and evaluation boundaries of `src/platform/prompt-engine/`.
 
 Related documents:
 
@@ -10,7 +10,7 @@ Related documents:
 - `quality_engineering_and_chaos_testing_contract.md`
 - `domain_descriptor_and_onboarding_contract.md`
 
-## 2. Prompt Definition Object
+## 2. Prompt Definition Objects
 
 ```typescript
 interface PromptDefinition {
@@ -64,11 +64,11 @@ interface PromptRenderResult {
 
 Rules:
 
-- Renderer must return `resolvedVersion`; returning only the final string is prohibited.
-- Changes to `fixedPrefixHash` must trigger cache invalidation and regression evaluation.
+- Renderer must return `resolvedVersion` and must not only return the final string.
+- `fixedPrefixHash` change must trigger cache invalidation and regression evaluation.
 - `preview` must not write to production rollout or evidence state.
 
-## 5. Rollout and Evaluation
+## 5. Rollout And Evaluation
 
 ```typescript
 interface PromptReleaseDecision {
@@ -83,12 +83,12 @@ interface PromptReleaseDecision {
 
 Rules:
 
-- Prompt rollout must include evaluation evidence or an explicit exemption reason.
-- Domain-specific prompts must align with compatible versions of the `domain descriptor`.
-- Rollback must reference the previous stable version, not a temporary string patch.
+- Prompt rollout must be accompanied by evaluation evidence or explicit exemption reason.
+- Domain-specific prompts must align with the compatible version of `domain descriptor`.
+- Rollback must reference the last stable version instead of a temporary string patch.
 
-## 6. Testing Requirements
+## 6. Test Requirements
 
-- Unit: prompt registration, version resolution, render output, and hash stability.
-- Integration: prompt rollout drives cache invalidation, eval evidence, and domain compatibility checks.
-- Contract: registry / renderer / rollout output object fields are stable and do not drift based on the caller.
+- unit: prompt registration, version resolution, render output, and hash stability.
+- integration: prompt rollout drives cache invalidation, eval evidence, and domain compatibility checks.
+- contract: registry / renderer / rollout output object fields are stable and do not drift due to different callers.

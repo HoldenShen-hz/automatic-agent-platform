@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Unresolved after 3 turns must escalate to human agent.
-- Agent must not make compensation, refund, or legal commitments beyond authorization.
+- Unresolved issues after 3 rounds must be escalated to human agents.
+- Agents must not make unauthorized refunds, compensation, or legal commitments.
 - User commitments and knowledge sources must be auditable.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide escalation to human, FCR, AHT, knowledge citation, and commitment audit evidence.
+- Transfer to human, FCR, AHT, knowledge citations, and commitment audit evidence must be provided before GA.

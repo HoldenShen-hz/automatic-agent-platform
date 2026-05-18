@@ -2,11 +2,11 @@
 
 ## 1. Scope
 
-Defines the default security baseline: identity, network, secrets, log redaction, and dependency constraints.
+Defines default security baseline: identity, network, secrets, log masking, and dependency constraints.
 
 ## 2. Baseline Rules
 
 - All write requests must carry identity, idempotency, and audit context.
-- Secrets are only permitted via secret provider/bridge and must never be written to disk in plaintext.
-- External network, external commands, and high-risk side effects are denied by default.
-- Logs and metrics must distinguish between user-facing and internal-plane sensitive fields.
+- Secrets only allowed through secret provider/bridge, must not be written to disk in plaintext.
+- Default deny external network, external commands, and high-risk side effects.
+- Logs and metrics must distinguish user-facing vs internal plane sensitive fields.

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Defines boundaries for knowledge entry collection, validation, publishing, retirement, and retraining.
+Defines the boundaries of knowledge entry collection, validation, publication, retirement, and retraining.
 
 ## 2. Core Objects
 

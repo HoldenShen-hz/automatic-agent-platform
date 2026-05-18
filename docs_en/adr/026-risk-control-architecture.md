@@ -5,11 +5,11 @@
 
 ## Context
 
-Agent, as a high-risk automated execution unit, must perform risk assessment before and after execution to prevent dangerous operations from causing business losses.
+As a high-risk automated execution unit, Agent must perform risk assessment before and after execution to prevent dangerous operations from causing business losses.
 
 ## Decision
 
-### 9-Factor Weighted Scoring Algorithm (§10.2 canonical)
+### 8-Factor Weighted Scoring Algorithm (§10.2 canonical)
 
 | Factor | Weight | Description |
 |--------|--------|-------------|
@@ -36,7 +36,7 @@ risk_score = (
   blastRadius*2 +
   historicalFailureRate*2 +
   evidenceConfidence*1
-) / 22
+) / 20
 ```
 
 ### 4-Level Risk Mapping (§10.2 canonical)
@@ -50,7 +50,7 @@ risk_score = (
 
 ### Configuration
 
-- `config/risk/default.json` fully defines the 9 factors and thresholds
+- `config/risk/default.json` fully defines the 8 factors and thresholds
 - RiskEvaluationEngine implements score calculation
 
 ## Consequences
@@ -77,4 +77,4 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- A-18: This ADR originally retained a 6-factor model with `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence`. The root cause was that the risk ADR reused an early step-centric scoring draft and did not upgrade alongside the main architecture to incorporate autonomous mode, tenant impact scope, and evidence sufficiency into the unified risk assessment. Fix: The main text now converges to the 9-factor canonical model, with weights and formula synchronized accordingly.
+- A-18: This ADR originally retained a 6-factor model with `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence`. The root cause was that the risk ADR reused an early step-centric scoring draft and did not upgrade alongside the main architecture to incorporate autonomous mode, tenant impact scope, and evidence sufficiency into the unified risk assessment. Fix: The main text now converges to the 8-factor canonical model, with weights and formula synchronized accordingly.

@@ -14,8 +14,8 @@ Enterprise-class Agent platforms must have comprehensive stability mechanisms to
 | Layer | Mechanism | Threshold/Strategy |
 |-------|-----------|-------------------|
 | L1 Isolation | Tenant failure rate >30% auto-isolation | AutoStopLossService |
-| L2 Rate Limiting & Backpressure | 4-level queue_lag threshold | Backpressure controlled in dispatcher |
-| L3 Timeout & Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
+| L2 Rate Limiting Backpressure | 4-level queue_lag threshold | Backpressure controlled in dispatcher |
+| L3 Timeout Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
 | L4 Circuit Breaker | 50% failure rate/60s → open → 30s half-open | CircuitBreaker |
 | L5 Degradation Mode | 8 runtime modes | PolicyMode enum |
 | L6 Recovery | 6 recovery workers | RuntimeRecoveryService, etc. |

@@ -12,7 +12,7 @@ Related documents:
 
 ## 2. Naming Boundaries
 
-- External product narrative can use CEO / VP / Lead
+- External product narrative may use CEO / VP / Lead
 - Internal code prioritizes neutral engineering objects:
   - `Router`
   - `Planner`
@@ -20,7 +20,7 @@ Related documents:
   - `WorkflowExecutor`
   - `DecisionManager`
 
-### 2.1 Document Canonical Writing
+### 2.1 Document Canonical Form
 
 In main documents, contracts, ADRs, and guides, control layer objects are uniformly written as:
 
@@ -32,12 +32,23 @@ In main documents, contracts, ADRs, and guides, control layer objects are unifor
 Rules:
 
 - Protocols, schemas, state machines, and event registries use canonical id.
-- Narrative aliases are only used for product expression, diagrams, and external explanations.
-- `CEO / VP / Lead` are not allowed to be written directly as scheduling primary keys, schema enums, or permission object ids.
+- Narrative aliases are only for product expression, diagrams, and external documentation.
+- `CEO / VP / Lead` must not be used directly as scheduling primary keys, schema enums, or permission object ids.
 
-### 2.3 OAPEFLIR and Extended Object Canonical Writing
+### 2.2 Naming Format
 
-The following objects should use canonical engineering naming in contracts / schemas / APIs / events:
+- role / agent id: `snake_case`
+- event type: `<domain>.<action>`
+- DB table: plural `snake_case`
+- config key: namespaced stable key
+- env var: `UPPER_SNAKE_CASE`
+- stage id: `snake_case`
+- memory layer: `L1` ~ `L6`
+- typed ref: `PascalCaseRef`
+
+### 2.3 OAPEFLIR And Extended Object Canonical Form
+
+The following objects should use canonical engineering naming in contracts / schema / API / events:
 
 - `observe_hub`
 - `assess_hub`
@@ -51,20 +62,9 @@ The following objects should use canonical engineering naming in contracts / sch
 - `plugin_spi_registry`
 - `domain_registry`
 
-### 2.2 Naming Format
-
-- role / agent id: `snake_case`
-- event type: `<domain>.<action>`
-- DB table: plural `snake_case`
-- config key: namespaced stable key
-- env var: `UPPER_SNAKE_CASE`
-- stage id: `snake_case`
-- memory layer: `L1` ~ `L6`
-- typed ref: `PascalCaseRef`
-
 ## 3. `ActorModel`
 
-Unified audit subjects include at minimum:
+Unified audit subjects must include at minimum:
 
 - `user`
 - `agent`
@@ -75,7 +75,7 @@ Unified audit subjects include at minimum:
 
 ## 4. `ChannelCapabilityMatrix`
 
-Minimum abstraction for channel capabilities:
+Minimum channel capability abstraction:
 
 - `text`
 - `button`
@@ -86,7 +86,7 @@ Minimum abstraction for channel capabilities:
 
 ## 5. `RuntimeEnvironmentCapabilityProfile`
 
-Minimum abstraction for runtime environment capabilities:
+Minimum runtime environment capability abstraction:
 
 - `local`
 - `docker`
@@ -96,7 +96,7 @@ Minimum abstraction for runtime environment capabilities:
 
 ## 6. `ResourceLease`
 
-Direction for future unified resource abstraction includes at minimum:
+Future unified resource abstraction direction must include at minimum:
 
 - token budget
 - file lock
@@ -107,4 +107,4 @@ Direction for future unified resource abstraction includes at minimum:
 
 ## 7. Closure Conclusion
 
-After tightening naming boundaries, product narrative and engineering implementation will not hijack each other; and actor, channel, environment, and resource these several groups of abstractions are the real common foundation for subsequent extensibility.
+After tightening naming boundaries, product narrative and engineering implementation will not hold each other hostage; and actor, channel, environment, and resource abstractions are the true common foundation for future extensibility.

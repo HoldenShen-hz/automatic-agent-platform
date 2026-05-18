@@ -10,29 +10,29 @@ Accepted
 
 ## Context
 
-OAPEFLIR in v4.3 is a controlled cognition and governance framework, not a second execution runtime. In historical events, `oapeflir.*` simultaneously expressed stage semantics, runtime facts, and diagnostic views, which prevents truth projector from determining which events can change authoritative state.
+OAPEFLIR in v4.3 is a controlled cognition and governance framework, not a second execution runtime. In historical events, `oapeflir.*` has simultaneously expressed phase semantics, runtime facts, and diagnostic views, which prevents truth projector from determining which events can change authoritative state.
 
 ## Decision
 
 1. `platform.*` events are the sole truth fact event namespace.
 2. `oapeflir.view.*` and `oapeflir.rationale.*` only express StageRationale, TraceProjection, Audit View, and explanation views.
 3. Truth projector, recovery scanner, budget projector, and side-effect projector can only consume `platform.*`.
-4. OAPEFLIR view projector can consume `platform.*` and derive `oapeflir.view.*`, but must not reverse-drive `HarnessRun`, `NodeRun`, `Budget`, or `SideEffect` truth.
-5. Legacy event adapter if receiving historical `oapeflir.*` events must mark `derivedFromEventId`, `projectionOnly=true`, and compatibility source, and must not impersonate platform fact.
+4. OAPEFLIR view projector can consume `platform.*` and derive `oapeflir.view.*`, but must not inversely drive `HarnessRun`, `NodeRun`, `Budget`, or `SideEffect` truth.
+5. Legacy event adapter if receiving historical `oapeflir.*` events must label `derivedFromEventId`, `projectionOnly=true`, and compatibility source, and must not masquerade as platform fact.
 
 ## Event Hierarchy
 
-| Layer | namespace | Purpose | Can Drive Truth |
+| Level | namespace | Purpose | Can Drive Truth |
 | --- | --- | --- | --- |
-| Platform fact | `platform.*` | Status progression, budget, approval, side effect, audit fact | Yes |
+| Platform fact | `platform.*` | State transition, budget, approval, side effect, audit fact | Yes |
 | OAPEFLIR view | `oapeflir.view.*` | Stage view, explanation timeline, diagnostic projection | No |
-| OAPEFLIR rationale | `oapeflir.rationale.*` | Cognition rationale, evaluation explanation, learning release notes | No |
+| OAPEFLIR rationale | `oapeflir.rationale.*` | Cognitive rationale, evaluation explanation, learning release notes | No |
 | Legacy event | Historical `task.*` / `workflow.*` / `oapeflir.*` | Compatibility read or migration input | No, unless explicitly adapter-converted to platform fact |
 
 ## Consequences
 
-- New event consumer test: Truth consumer does not consume `oapeflir.view.*`.
-- Event registry must register producer, consumer, replay, and projection semantics.
+- New event consumer test: truth consumer does not consume `oapeflir.view.*`.
+- Event registry must登记 producer, consumer, replay, and projection semantics.
 - Trace Replay uses platform facts as default audit capability; Re-execution Replay output can only enter isolated evidence namespace.
 
 ## Related Documents

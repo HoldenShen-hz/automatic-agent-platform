@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,7 +21,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines the hierarchical model, token budget, promotion, decay, revocation, freshness, and permission linkage rules for the memory system.
 
-Related documents:
+Related Documents:
 
 - `perception_contract.md` (Observe compatible file)
 - `perception_intelligence_plane_contract.md` (Observe/Assess compatible file)
@@ -29,34 +29,34 @@ Related documents:
 - `data_classification_and_prompt_handling_contract.md`
 - `tenant_and_organization_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-- Enable the memory system to not only store but also govern, expire, demote, revoke, and isolate by layer.
-- Make memory quality evaluable, not just looking at hit rate.
+- Make the memory system not only store, but also govern by hierarchy, expire, demote, revoke, and isolate.
+- Make memory quality evaluable, rather than just looking at hit rate.
 - Prevent cross-tenant, cross-project, and cross-role memory contamination.
 
 ## 3. Six-Layer Memory Model
 
-Memory canonical is divided into six layers `L1-L6`:
+Memory canonical is divided into `L1-L6` six layers:
 
 | Layer | Scope | Typical Content | Budget Characteristics |
 | --- | --- | --- | --- |
-| `L1` | turn / transient | Current turn temporary context, tool return summary | Smallest and most frequently replaced |
+| `L1` | turn / transient | Current turn temporary context, tool return summaries | Smallest and highest frequency replacement |
 | `L2` | task | Current task working memory, short-term plan clues | Small budget, can expire quickly |
 | `L3` | session | Session-level stable facts, local preferences | Small to medium budget |
 | `L4` | project | Project conventions, repository structure, long-term work patterns | Medium budget |
-| `L5` | org / curated | Audited organizational experience, best practices | Governed, higher retention priority |
-| `L6` | evolution | Long-term knowledge absorbed by learn/improve/promote | No fixed capacity limit, but must be auditable |
+| `L5` | org / curated | Reviewed organizational experience, best practices | Governed, higher retention priority |
+| `L6` | evolution | Long-term knowledge absorbed via learn/improve/promote | No fixed capacity ceiling, but must be auditable |
 
 Rules:
 
 - `L1-L4` allow more aggressive decay and pruning.
-- `L5-L6` have higher entry barriers and must go through classification, trust, and promotion rules.
-- `L6` has no fixed capacity limit but cannot be exempt from freshness, revocation, and lineage constraints.
+- `L5-L6` have higher entry thresholds and must go through classification, trust, and promotion rules.
+- `L6` has no fixed capacity ceiling but cannot exempt from freshness, revocation, and lineage constraints.
 
 ## 4. Token Budget and Injection Boundaries
 
-Each layer must declare at minimum:
+Each layer declares at minimum:
 
 - `token_budget`
 - `eviction_threshold`
@@ -65,15 +65,15 @@ Each layer must declare at minimum:
 
 Constraints:
 
-- Memory cannot be blindly injected by "recency" alone; it must first go through relevance retrieval.
-- `L5-L6` are not directly fully injected by default; they are injected on-demand through retrieval and explainability results.
-- During compaction, prioritize preserving memories directly related to current task / workflow / feedback / learning.
+- Memory must not be directly and blindly injected into the model by "recency" alone; must first go through relevance retrieval.
+- `L5-L6` default to not directly inject in full quantity; can only be injected on-demand via retrieval and explainability results.
+- During compaction, memory directly related to current task / workflow / feedback / learning should be preferentially preserved.
 
 ## 5. Freshness and Decay
 
-### 5.1 Freshness States
+### 5.1 Freshness State
 
-Each memory entry must have at least one of the following freshness states:
+Each memory entry has at least one of the following freshness states:
 
 - `fresh`
 - `aging`
@@ -85,18 +85,18 @@ Each memory entry must have at least one of the following freshness states:
 
 At minimum support:
 
-- TTL or time-window expiration
+- TTL or time window expiration
 - Confidence degradation
-- Conflicting memory merging
+- Conflicting memory merge
 - Erroneous memory revocation
 - External source isolation
-- Freshness degradation
+- Freshness demotion
 
 Rules:
 
-- `stale` does not equal immediate deletion; lineage can be preserved at reduced priority.
-- `revoked` memory must not enter the model context again.
-- If external source memory trust tier degrades, retrieval priority should be synchronously lowered.
+- `stale` does not equal immediate deletion; can be demoted and retained with lineage.
+- `revoked` memory must not enter model context.
+- If external source memory trust tier decreases, retrieval priority should be lowered at minimum.
 
 ## 6. Promotion Rules
 
@@ -108,13 +108,13 @@ Default promotion path:
 
 Constraints:
 
-- Cannot bypass `L5` to write ungoverned content directly to `L6`.
-- `L5-L6` promotion must preserve source `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
-- `FeedbackSignal / LearningObject / ImprovementCandidate` can serve as promotion basis but cannot replace governance checks.
+- Bypassing `L5` to write ungoverned content to `L6` is not allowed.
+- `L5-L6` promotion must retain source `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
+- `FeedbackSignal / LearningObject / ImprovementCandidate` can be used as promotion basis but must not replace governance checks.
 
 ### 6.2 Pre-Promotion Checks
 
-Before entering `L5-L6`, at minimum check:
+Before entering `L5-L6`, check at minimum:
 
 - tenant / workspace / role scope
 - data classification
@@ -150,14 +150,14 @@ interface MemoryEntry {
 
 ## 8. Retrieval and Experience Reuse
 
-- Long-term memory and experience cache should not be directly injected by "recency"; they must first go through relevance retrieval.
-- Current phase allows `FTS5 / keyword recall`, with `embedding / rerank` to be added later.
-- `MemoryRetrievalRecord` must record at minimum: query, matched entries, reason, injected / not_injected, quality outcome, target layer.
-- `ExperienceRecord` must support at minimum: perfect match cache, similar experience retrieval, few-shot injection provenance.
+- Long-term memory and experience cache must not be directly injected into the model by "recency"; must first go through relevance retrieval.
+- Current phase allows using `FTS5 / keyword recall`; `embedding / rerank` can be added later.
+- `MemoryRetrievalRecord` records at minimum: query, matched entries, reason, injected / not_injected, quality outcome, target layer.
+- `ExperienceRecord` supports at minimum: perfect match cache, similar experience retrieval, few-shot injection provenance.
 
 ## 9. Quality Metrics
 
-Must be able to record and analyze:
+Must be recordable and analyzable:
 
 - `hit_rate`
 - `post_hit_usefulness`
@@ -169,7 +169,7 @@ Must be able to record and analyze:
 
 ## 10. Permission Linkage
 
-Memory access must be constrained by the following boundaries simultaneously:
+Memory access must simultaneously be constrained by the following boundaries:
 
 - tenant
 - workspace / project
@@ -179,13 +179,13 @@ Memory access must be constrained by the following boundaries simultaneously:
 
 Supplementary rules:
 
-- `restricted` data must not enter `L5-L6` by default.
-- Learning objects or high-layer memory containing confidential information must be deidentified before entering the governance chain.
-- Providers can only supply memory content and retrieval results; they cannot bypass permission boundaries.
+- `restricted` data defaults to not entering `L5-L6`.
+- Learning objects or high-layer memory containing confidential information must be de-identified before entering the governance chain.
+- Providers can only provide memory content and retrieval results and must not bypass permission boundaries.
 
 ## 11. Memory Provider Lifecycle Interface
 
-If the system supports pluggable memory backend, the provider seam must define at minimum:
+If the system supports pluggable memory backend, the provider seam defines at minimum:
 
 - `initialize`
 - `system_prompt_block`
@@ -196,19 +196,19 @@ If the system supports pluggable memory backend, the provider seam must define a
 
 Rules:
 
-- `prefetch` should prioritize serving the next round of injection; it is recommended to form an asynchronous recall loop with `queue_prefetch`.
+- `prefetch` should prioritize serving the next round injection, recommended to form an async recall closed loop with `queue_prefetch`.
 - The authoritative / additive relationship between built-in memory and external memory backend must be clear and auditable.
-- If a provider hook fails, it should default to "do not inject additional memory"; it must not break main task execution.
+- If a provider hook fails, should default to "not injecting additional memory" and must not disrupt primary task execution.
 
-## 12. Conclusion
+## 12. Closure Conclusion
 
-Industrial-grade memory systems cannot default to "stored and always trusted".
+Industrial-grade memory system cannot default to "once stored, always trusted".
 
 It must have:
 
-- Six-layer memory with token budget governance
+- Six-layer memory and token budget governance
 - Freshness tracking and decay
-- Inter-layer promotion and revocation
+- Cross-layer promotion and revocation
 - Quality evaluation
 - Scope isolation
-- Pre-injection permission checks
+- Pre-injection permission check

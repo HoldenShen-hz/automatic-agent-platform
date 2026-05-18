@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines industrial-grade SLI/SLO/SLA, alert levels, and runbook directory.
+This contract defines industrial-grade SLI/SLO/SLA, alert classification, and runbook directory.
 
-It answers the question: what counts as "production available", when does alerting need to happen, and when something happens on call, what should the person on duty look at, do, and how to limit damage.
+It answers the questions: what counts as "production ready", when to alert, and what on-call personnel should see, do, and how to mitigate when something happens.
 
 Related documents:
 
@@ -12,15 +12,15 @@ Related documents:
 - `debug_inspect_health_backpressure_contract.md`
 - `enterprise_operations_plane_contract.md`
 
-## 2. SLI Layering
+## 2. SLI Layers
 
 | Layer | SLI Examples |
 | --- | --- |
-| OAPEFLIR Layer | loop convergence rate, feedback positive rate, rollout success rate |
-| System Layer | API availability, event loop latency, DB writability |
-| Platform Layer | task success rate, startup latency, recovery success rate |
-| Interaction Layer | approval availability, streaming first-byte latency |
-| Cost Layer | budget estimation error, token metering delay |
+| OAPEFLIR layer | loop convergence rate, feedback positive rate, rollout success rate |
+| System layer | API availability, event loop latency, DB writability |
+| Platform layer | task success rate, startup latency, recovery success rate |
+| Interaction layer | approval availability, streaming first-packet latency |
+| Cost layer | budget estimation error, token metering latency |
 
 ## 3. Minimum SLO Set
 
@@ -36,29 +36,29 @@ Related documents:
 
 Rules:
 
-- Before production declaration, each SLO must have calculation formula, data source, and alert threshold.
-- Targets without observability formula must not be written as external SLA.
+- Before any production declaration, each SLO must have calculation口径, data source, and alert threshold.
+- Targets without observable口径 must not be written as external SLA.
 
 ## 4. Alert Classification
 
 | Level | Description | Typical Examples |
 | --- | --- | --- |
 | `P0` | Platform core unavailable | New tasks cannot execute, authoritative DB not writable |
-| `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain broadly failed |
-| `P2` | Single division or local capability significant degradation | Certain division failure rate surged |
-| `P3` | Local anomaly or capacity warning | Queue latency rising, cost drift high |
+| `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain largely ineffective |
+| `P2` | Single division or local capability significantly degraded |某 division failure rate spiked |
+| `P3` | Local anomaly or capacity warning | Queue latency rising, cost drift elevated |
 
-## 5. Alert Must Include
+## 5. Alerts Must Include
 
-- Trigger metric and threshold
+- Triggering metric and threshold
 - Impact scope
 - First discovery time
 - Recommended runbook
-- Whether automatic damage control action has been executed
+- Whether auto-mitigation action has been executed
 
 ## 6. Runbook Directory
 
-At minimum should have the following runbooks:
+Must have at minimum the following runbooks:
 
 - `worker_mass_disconnect`
 - `provider_429_or_5xx_spike`
@@ -84,16 +84,16 @@ flowchart TD
     G --> H["Page Oncall / Create Incident"]
 ```
 
-## 8. Automatic Damage Control Boundaries
+## 8. Auto-Mitigation Boundaries
 
-Allowed to automatically execute:
+Allowed to auto-execute:
 
 - admission control tightening
 - provider traffic switching
 - queue rate limiting
-- specific tenant / division rate limiting
+-某 tenant / division throttling
 
-Prohibited from automatically executing:
+Prohibited from auto-execute:
 
 - Unauthorized large-scale destructive rollback
 - Cross-tenant data-level operations
@@ -103,21 +103,21 @@ Prohibited from automatically executing:
 
 Phase 1a / 1b must freeze at minimum:
 
-- SLI name and formula
+- SLI name and口径
 - P0-P3 classification
-- Basic runbook inventory
+- Basic runbook checklist
 
-Before entering production must complete:
+Must complete before entering production:
 
 - Threshold finalization
 - On-call contact and escalation path
 - Drill records
 
-## 10. Conclusion
+## 10. Closure Conclusion
 
-Industrial-grade operations is not "lots of logs", but:
+Industrial-grade operations is not "lots of logs", but rather:
 
-- Have clear SLO
-- Have actionable alerts
-- Have runbooks
-- Have automatic damage control boundaries
+- Clear SLO
+- Actionable alerts
+- Runbooks
+- Auto-mitigation boundaries

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Define multi-region truth/event/artifact replication topology and failure behavior.
+Defines topology and failure behavior for multi-region truth/event/artifact replication.
 
 ## 2. Core Objects
 
@@ -19,6 +19,6 @@ interface MultiRegionReplicationPolicy {
 
 ## 3. Constraints
 
-- Write paths must declare whether they are synchronous quorum or asynchronous eventually consistent.
-- On failover, the switchover epoch and incomplete replication window must be recorded.
-- Residency-restricted data must not be replicated to unauthorized regions.
+- Write path must declare whether it is synchronous quorum or asynchronous eventual consistency.
+- During failover, must record switch epoch and incomplete replication window.
+- Data with residency constraints must not be replicated to unauthorized regions.

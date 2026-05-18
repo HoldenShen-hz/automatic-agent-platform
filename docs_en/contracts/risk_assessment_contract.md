@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Defines the shared risk assessment object for admission, planning, routing, and side-effect domains.
+Defines risk assessment objects shared by admission, planning, routing, and side-effect.
 
 ## 2. Core Objects
 
@@ -20,6 +20,6 @@ interface RiskAssessment {
 
 ## 3. Constraints
 
-- Risk assessments must be linkable to the evidence chain at the run/node level.
-- high/critical must have explicit mitigation or HITL constraints.
-- Risk levels must not exist only at the UI copy layer.
+- Risk assessment must be traceable to ground truth chain at run/node level.
+- high/critical must explicitly have mitigation or HITL constraints.
+- Risk class must not exist only at UI text layer.

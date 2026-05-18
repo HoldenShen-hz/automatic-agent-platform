@@ -1,15 +1,15 @@
 # Runtime Execution Contract
 
-> **v4.3 Compatibility Note**: This file is preserved as historical runtime execution semantics documentation. v4.3 new execution main chain uses `HarnessRun`, `PlanGraphBundle`, `NodeRun`, `NodeAttempt`, and `NodeAttemptReceipt` as canonical contracts. See [harness-run-contract.md](./harness-run-contract.md), [plan-graph-patch-contract.md](./plan-graph-patch-contract.md), and [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md).
+> **v4.3 Compatibility Note**: This file is retained as historical runtime execution semantics documentation. v4.3 new execution main chain uses `HarnessRun`, `PlanGraphBundle`, `NodeRun`, `NodeAttempt`, and `NodeAttemptReceipt` as canonical contracts. See [harness-run-contract.md](./harness-run-contract.md), [plan-graph-patch-contract.md](./plan-graph-patch-contract.md), and [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md).
 
-> **OAPEFLIR Related**: This contract defines the runtime execution layer of OAPEFLIR Execute Hub, corresponding to ADR-016.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines the runtime execution layer for OAPEFLIR Execute Hub, corresponding to ADR-016.
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 
 This contract defines the minimum authoritative model for Phase 1a runtime execution layer, including execution envelope, precheck, resource guardrails, retry, heartbeat, blocking, and dead-letter semantics.
 
-The question it answers is not "what is the task status", but "how is a `NodeRun / NodeAttempt` under a `HarnessRun` caught, checked, executed, recovered, and terminated in runtime".
+It answers not "what is task status" but "how is a `NodeRun / NodeAttempt` under a `HarnessRun` received, checked, executed, recovered, and terminated in runtime".
 
 Related documents:
 
@@ -36,7 +36,7 @@ Related documents:
 | `node_run_id` | `string` | Current NodeRun |
 | `attempt_id` | `string` | Current NodeAttempt |
 | `task_id` | `string?` | Compatible query entry; not truth primary key |
-| `workflow_id` | `string?` | Legacy workflow projection reference; must not be used as truth primary key |
+| `workflow_id` | `string?` | Legacy workflow projection reference; must not be truth primary key |
 | `agent_id` | `string` | Execution subject |
 | `role_id` | `string?` | Assumed role |
 | `run_kind` | `node_execution \| tool_call \| hitl_resume \| replay \| evaluator \| compensation \| release_gate` | Execution type |
@@ -51,17 +51,17 @@ Related documents:
 | `trace_id` | `string` | Trace ID |
 | `attempt_no` | `integer` | Attempt number, starting from 1 |
 | `timeout_ms` | `integer` | Maximum runtime duration |
-| `budget_usd_limit` | `number?` | Budget cap |
-| `requires_approval` | `boolean` | Whether approval is required before proceeding |
-| `created_at` | `timestamp` | Creation timestamp |
+| `budget_usd_limit` | `number?` | Budget limit |
+| `requires_approval` | `boolean` | Whether approval required to continue |
+| `created_at` | `timestamp` | Creation time |
 
 Constraints:
 
-- `attempt_id` must correspond one-to-one with a single explicit `NodeAttempt`.
-- The lineage of `harness_run_id`, `node_run_id`, and `attempt_id` must not be replaced or rewritten by the projection layer.
-- `attempt_no` can only increment, not overwrite old attempts.
-- Phase 1a allows envelope to exist in a combination of DB + in-memory runtime state, but field semantics must be stable.
-- `stage_view_ref` can only associate with view / rationale, and must not serve as a state machine advancement condition.
+- `attempt_id` must uniquely correspond to one明确的 `NodeAttempt`.
+- Lineage of `harness_run_id`, `node_run_id`, `attempt_id` must not be replaced or rewritten by projection layer.
+- `attempt_no` can only increment, cannot overwrite old attempts.
+- Ring 1 allows envelope to exist in DB + in-memory runtime state combination, but field semantics must be stable.
+- `stage_view_ref` can only associate view / rationale, must not be used as state machine advancement condition.
 
 ## 4. run_kind Enum
 
@@ -73,22 +73,22 @@ Constraints:
 - `compensation`: Compensation path execution for confirmed side effects.
 - `release_gate`: Controlled release / canary / rollback related execution.
 
-Phase 1a does not introduce more complex `job_class` / `job_tier` systems, avoiding premature platformization.
+Phase 1a does not introduce more complex `job_class` / `job_tier` system, avoiding premature platformization.
 
 ## 5. Precheck Contract
 
-Between `created -> prechecking -> executing`, the runtime must complete at minimum the following checks:
+Between `created -> prechecking -> executing`, runtime must complete at minimum the following checks:
 
 - Input exists and is parseable.
 - Current `HarnessRun` / `NodeRun` is not in terminal state.
 - Budget, permissions, and required approval conditions are met.
-- Working directory, sandbox policy, and tool whitelist are resolved.
-- Timeout, retry policy, and trace_id are bound.
-- `plan_graph_bundle_id` / `graph_version` binding to `node_run_id` exists and has not drifted.
-- `attempt_id` lineage, lease / fencing token, and recovery policy are valid.
-- If `knowledge_namespace` is declared, the namespace must exist and the current environment allows access.
-- If `domain_id` or `strategy_version` is declared, it must resolve to a registered configuration or candidate version.
-- `evaluator` / `compensation` / `release_gate` must not skip preceding evidence dependencies.
+- Runtime directory, sandbox strategy, and tool whitelist are resolved.
+- timeout, retry policy, trace_id are bound.
+- `plan_graph_bundle_id` / `graph_version` binding with `node_run_id` exists and has not drifted.
+- `attempt_id` lineage, lease / fencing token, and recovery strategy are legal.
+- If `knowledge_namespace` is declared, its namespace must exist and current environment allows access.
+- If `domain_id` or `strategy_version` is declared, must be resolvable to registered configuration or candidate version.
+- `evaluator` / `compensation` / `release_gate` must not skip upstream evidence dependencies.
 
 `ExecutionPrecheckResult` minimum fields:
 
@@ -104,17 +104,17 @@ Between `created -> prechecking -> executing`, the runtime must complete at mini
 
 Behavioral constraints:
 
-- When precheck fails, it must enter `blocked` or `failed`, and must not silently skip checks and execute directly.
+- When precheck fails, must enter `blocked` or `failed`, cannot silently skip check and directly execute.
 - No fallback may bypass budget, approval, and security boundaries.
-- `stage_view_ref` or `workflow_id` must not be used instead of `NodeRun` truth for legality judgment.
+- Must not use `stage_view_ref` or `workflow_id` to replace `NodeRun` truth for legality judgment.
 
 ## 6. Runtime Guardrail
 
-`RuntimeGuardrail` includes at minimum:
+`RuntimeGuardrail` must include at minimum:
 
 - `timeout_ms`
 - `max_retries`
-- `retry_backoff` (`none | fixed | exponential`)
+- `retry_backoff` (`none \| fixed \| exponential`)
 - `sandbox_mode`
 - `allowed_tools`
 - `allowed_paths?`
@@ -123,8 +123,8 @@ Behavioral constraints:
 
 Phase 1a rules:
 
-- Default: every run must have a timeout.
-- Default: every run must have `max_retries`, even if the value is `0`.
+- Default: every run must have timeout.
+- Default: every run must have `max_retries`, even if value is `0`.
 - High-risk actions requiring approval must not execute side effect steps before approval.
 
 ## 7. Retry Policy
@@ -144,7 +144,7 @@ Phase 1a minimum semantics:
 - `rate_limited`
 - `temporary_io_error`
 
-Can be considered retryable by default; the following are not automatically retried:
+Can default to retryable; the following default to not auto-retryable:
 
 - `approval_required`
 - `permission_denied`
@@ -153,10 +153,10 @@ Can be considered retryable by default; the following are not automatically retr
 
 Supplementary rules:
 
-- If provider returns `retry-after-ms`, `retry-after`, or equivalent header, provider indication should be respected first, rather than blindly retrying according to local backoff curve.
-- If `retry-after` is an HTTP date, it should be converted to relative wait time and constrained by `max_delay_ms` upper limit.
-- When provider explicitly returns `is_retryable = false`, authentication failure, capability not supported, or context overflow, automatic retry must not be entered.
-- Retry state should distinguish between `transient_retryable`, `provider_throttled`, `permanent_provider_error` to avoid UI and recovery strategy confusion.
+- If provider returns `retry-after-ms`, `retry-after`, or equivalent header, should prioritize respecting provider indication rather than blindly following local backoff curve.
+- If `retry-after` is an HTTP date, should convert to relative wait time and be constrained by `max_delay_ms` upper limit.
+- When provider explicitly returns `is_retryable = false`, authentication failure, capability not supported, or context overflow, must not enter auto-retry.
+- Retry state should distinguish `transient_retryable`, `provider_throttled`, `permanent_provider_error` to avoid UI and recovery strategy confusion.
 
 ## 8. Heartbeat and Runtime Liveness
 
@@ -175,15 +175,15 @@ Supplementary rules:
 Phase 1a recommended rules:
 
 - Long-running steps should send heartbeat regularly.
-- Heartbeat is used for liveness and monitoring by default, not as authoritative business fact source.
-- High-frequency heartbeat does not require every message to be written to persistent layer; can be aggregated, sampled for database write, or only retain latest snapshot.
-- The final truth of an attempt must be persisted via `NodeAttemptReceipt`; heartbeat cannot replace receipt.
+- Heartbeat defaults to liveness and monitoring, not authoritative business fact source.
+- High-frequency heartbeat does not require every message to be written to persistent layer; can aggregate and sample to DB or retain only latest snapshot.
+- Attempt's final truth must be persisted via `NodeAttemptReceipt`; heartbeat cannot replace receipt.
 
 ## 9. Blocking, Approval, and Recovery
 
-- If precheck determines external approval is needed, the run should enter `blocked`, and the task enters `awaiting_decision`.
+- If precheck determines external approval is needed, run should enter `blocked`, task enters `awaiting_decision`.
 - `hitl_resume` type execution must reference original `node_run_id` / `attempt_id` or its lineage.
-- Before resuming execution, a minimal precheck must be redone; cannot directly continue from old in-memory state.
+- Before resuming execution, must redo minimal precheck, cannot continue directly from old in-memory state.
 
 ## 10. Dead Letter Semantics
 
@@ -209,8 +209,8 @@ Phase 1a recommended reason codes:
 
 Rules:
 
-- Dead-letter is a run failure classification, not automatically equal to overall task permanent failure.
-- After entering dead-letter, the last `attempt_id`, error code, and attempt count must be traceable.
+- Dead-letter is run failure classification, does not automatically equal task overall permanent failure.
+- After entering dead-letter, must be able to trace to last `attempt_id`, error code, and attempt count.
 
 ## 11. Execution Evidence and Audit Binding
 
@@ -238,12 +238,12 @@ Rules:
 
 Rules:
 
-- Before each execution enters terminal state, a minimal evidence packet must first be deposited.
-- Evidence packet does not replace logs, but it is the stable handle for subsequent inspect, recovery, and audit.
-- `partial` must be explicitly marked and not mixed with `success`.
-- If execution is blocked by policy or approval, corresponding evidence should still be deposited to avoid "no execution, no evidence".
-- `stage_view_ref` / `loop_iteration_view` are only view layer references and must not replace `NodeAttemptReceipt` result semantics.
-- When feedback / learn / improve / release related projections end, at least one closed-loop reference field must be written or `no_artifact_generated` reason must be explicitly stated.
+- Before every execution enters terminal state, must first precipitate a minimum evidence packet.
+- Evidence packet does not replace logs, but it is a stable anchor for subsequent inspect, recovery, and audit.
+- `partial` must be explicitly marked, cannot be mixed with `success`.
+- If execution is blocked by policy or approval, should also leave corresponding evidence, avoiding "no execution, no evidence".
+- `stage_view_ref` / `loop_iteration_view` are view layer references only, must not replace `NodeAttemptReceipt` result semantics.
+- When projection related to `feedback` / `learn` / `improve` / `release` ends, must at minimum write one closed-loop reference field or explicitly state `no_artifact_generated` reason.
 
 ## 12. Relationship with State Machine
 
@@ -253,20 +253,20 @@ Rules:
 
 ## 13. Failure Semantics
 
-- After runtime crash recovery, at minimum it should be able to identify which `NodeAttempt` is in progress without `NodeAttemptReceipt`.
+- After runtime crash recovery, should at minimum be able to identify which `NodeAttempt`s are in progress without `NodeAttemptReceipt`.
 - Runs with incomplete precheck cannot be considered as actually executed.
 - Retry and manual recovery must preserve lineage, not overwrite old records.
 
 ## 14. Supplementary Rules
 
-- When Phase 1b begins introducing lease, handover, and multi-worker semantics, execution attempt and fencing token must remain monotonically increasing.
-- Resource isolation must be subdivided at minimum: token budget, wall-clock timeout, worker class, sandbox quota.
+- When Phase 1b begins introducing lease, handover, and multi-worker semantics, execution attempt and fencing token must maintain monotonic increment.
+- Resource isolation at minimum细分: token budget, wall-clock timeout, worker class, sandbox quota.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-15: This document originally wrote `ExecutionEnvelope.stage`, `execution_id`, and `workflow` semantics as runtime primary keys. The root cause was that the old execution model treated OAPEFLIR stages as part of the execution state machine, causing view fields to be mixed into the actual execution package. Fix: The main text now converges the execution subject to `harness_run_id / node_run_id / attempt_id / plan_graph_bundle_id / graph_version`, and demotes `stage_view_ref` to read-only explanation reference.
+- T-15: This document originally wrote `ExecutionEnvelope.stage`, old execution identity fields, and `workflow` semantics as runtime primary keys. Root cause: old execution model treated OAPEFLIR stages as part of execution state machine, causing view fields to mix into real execution envelope. Fix: Body now converges execution subject to `harness_run_id / node_run_id / attempt_id / plan_graph_bundle_id / graph_version`, and demotes `stage_view_ref` to read-only explanatory reference.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

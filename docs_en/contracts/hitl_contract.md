@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Defines the Human-in-the-Loop request, decision, and recovery closed loop.
+Defines Human-in-the-Loop requests, decisions, and recovery closed loop.
 
 ## 2. Core Objects
 
@@ -19,6 +19,6 @@ interface HitlDecisionRequest {
 
 ## 3. Constraints
 
-- High/critical risk actions must be traceable to an HITL decision or an explicit policy exemption.
-- All HITL results must be written back to truth events with audit references.
-- After takeover ends, the system must explicitly resume canonical runtime state.
+- High/critical risk actions must be traceable to HITL decisions or explicit policy exemptions.
+- All HITL results must write back fact events and audit references.
+- After takeover ends, canonical runtime state must be explicitly restored.

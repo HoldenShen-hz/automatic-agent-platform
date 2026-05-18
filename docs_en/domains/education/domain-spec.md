@@ -1,4 +1,4 @@
-# Education Domain Spec
+# Education and Training Domain Spec
 
 | Field | Value |
 | --- | --- |
@@ -6,7 +6,7 @@
 | implementation_module | `src/domains/education/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | Teaching Lead / Minors Data Protection Lead |
+| accountable_role | Education Lead / Minors Data Protection Lead |
 
 ## Hard Constraints
 
@@ -16,4 +16,4 @@
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide guardian consent, data minimization, content safety, and human review evidence.
+- Guardian consent, data minimization, content safety, and human review evidence must be provided before GA.

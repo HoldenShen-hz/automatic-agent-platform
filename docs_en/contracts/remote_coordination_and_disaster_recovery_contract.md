@@ -2,9 +2,9 @@
 
 ---
 
-## OAPEFLIR Relevance
+## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines file consistency, remote execution observability, and cross-site disaster recovery boundaries for Bridge / Worker remote coordination scenarios.
+This contract defines file consistency, remote execution observability, and cross-region disaster recovery boundaries for Bridge/Worker remote coordination scenarios.
 
 Related documents:
 
@@ -30,20 +30,20 @@ Related documents:
 
 ## 2. Goals
 
-- Make remote workers not just "able to connect", but have consistency and recoverability.
-- Make cross-region coordination, worker disconnection, and sync breaks have formal recovery paths.
-- Establish a source of truth for future coordinator clusters and region-level failover.
+- Make remote workers not just "connectable" but具备 consistency and recoverability.
+- Establish formal recovery paths for cross-region coordination, worker disconnection, and sync breaks.
+- Establish ground truth for future coordinator clusters and region-level failover.
 
 ## 3. Remote File Consistency
 
 Must define at minimum:
 
 - Conflict detection
-- Incremental validation
+- Incremental checksum
 - Hash reconciliation
-- Sync recovery after session disconnection
+- Sync recovery after session disconnect
 - Large file sync rate limiting
-- Blocking execution rules after sync failure
+- Blocking execution rule after sync failure
 
 ## 4. Remote Execution Observability
 
@@ -62,7 +62,7 @@ Should also support at minimum:
 - last acknowledged stream offset
 - session consistency check result after reconnect
 
-Remote session status must distinguish at minimum:
+Remote session state must distinguish at minimum:
 
 - `connecting`
 - `connected`
@@ -78,18 +78,18 @@ Mature industrial platforms should progressively support:
 - Region-level failover
 - Worker cross-region reassignment
 - Metadata store primary/secondary switch
-- Queue / lease repair
+- queue / lease repair
 
-## 6. Key Invariants
+## 6. Critical Invariants
 
 - After remote worker disconnection, old leases must not continue writing back to authoritative state.
 - File sync status must be verifiable, must not rely solely on "looked successful last time".
-- After region-level switch, control plane must be able to determine which executions need rebuilding and which only need reconnecting.
-- When sync hash inconsistency, repo version inconsistency, or lease ownership inconsistency occurs, execution must not continue by default.
-- After bridge credential refresh, new epoch / session generation must override old transport's write permissions.
+- After region-level switch, control plane must be able to determine which executions need rebuild and which only need reconnect.
+- When sync hash inconsistent, repo version inconsistent, or lease ownership inconsistent, must not continue execution by default.
+- After bridge credential refresh, new epoch / session generation must overwrite old transport's write permissions.
 - Remote stream recovery should continue from acknowledged offset, not default to full replay.
-- `viewer_only` sessions can consume logs and status, but must not send interrupts, approvals, dispatch, or write back to authoritative state.
-- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers to avoid misjudging short-term jitter as final failure.
+- `viewer_only` sessions can consume logs and state but must not send interrupts, approvals, dispatch, or write back to authoritative state.
+- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers, avoiding misjudging short-term jitter as final failure.
 
 ## 7. Topology Diagram
 
@@ -103,14 +103,14 @@ flowchart LR
 
 ## 8. Closure Conclusion
 
-After remote coordination enters industrial-grade, the focus is no longer "can it dispatch" but:
+After remote coordination enters industrial grade, the focus is no longer "whether dispatch is possible" but rather:
 
 - Whether files and state are consistent
-- Whether workers are safely reclaimable after disconnection
-- Whether region failure is controllable for switchover
-- Whether inconsistency can be timely blocked, rebuilt, and given clear recovery paths
+- Whether workers are safely recoverable after disconnection
+- Whether region failures are controllable
+- Whether inconsistencies can be timely blocked, rebuilt, and given clear recovery paths
 
 Supplementary notes:
 
-- Currently only borrowing universal patterns from remote bridging such as token refresh, 401 recovery, and offset continuation.
-- Not directly writing external system's proprietary session / bridge protocols as this system's source of truth.
+- Currently only borrowing general patterns from remote bridging such as token refresh, 401 recovery, offset continuation.
+- Not writing external system's proprietary session/bridge protocol as this system's ground truth.

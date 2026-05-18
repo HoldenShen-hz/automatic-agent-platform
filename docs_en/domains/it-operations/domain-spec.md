@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Automatic fix blast radius limited to single node or single service.
+- Auto-repair blast radius is limited to single node or single service.
 - Cross-service, cross-region, or production write operations require human approval.
-- Diagnosis, fix, rollback, and post-mortem must retain evidence.
+- Diagnosis, repair, rollback, and post-mortem must preserve evidence.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide blast-radius guard, MTTR metrics, rollback drill, and human approval evidence.
+- Blast-radius guard, MTTR metrics, rollback drill, and human approval evidence must be provided before GA.

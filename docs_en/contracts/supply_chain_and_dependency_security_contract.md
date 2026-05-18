@@ -28,7 +28,7 @@ Related documents:
 - `enterprise_secret_management_contract.md`
 - `sandbox_and_auth_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 - Reduce supply chain risks introduced by third-party dependencies, plugins, and external execution units.
 - Unify rules for installation, updates, signing, scanning, and isolation levels.
@@ -118,7 +118,7 @@ It must simultaneously answer:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-49: This document originally only covered "scan at import time" and coarse-grained trust level. Root cause: supply chain contract remained at pre-installation verification perspective, did not make plugin trust roots, signing key rotation, revocation/advisory, and tenant impact scope into continuous governance objects. Fix: This version adds `PluginTrustStore`, and writes trust root, signing key rotation, revocation list, security advisory, quarantine, tenant impact as required capabilities.
 

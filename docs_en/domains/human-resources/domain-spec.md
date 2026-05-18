@@ -11,9 +11,9 @@
 ## Hard Constraints
 
 - Recruitment, promotion, and performance automation must pass bias audit.
-- AIR must be greater than or equal to 0.8; automated decisions are not allowed if threshold is not met.
+- AIR must be greater than or equal to 0.8; automated decisions are not allowed if not met.
 - Candidate and employee data must be minimally collected and auditable.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide bias audit, human review, data minimization, and appeals process evidence.
+- Bias audit, human review, data minimization, and appeal process evidence must be provided before GA.

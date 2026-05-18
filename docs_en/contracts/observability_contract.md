@@ -1,12 +1,12 @@
 # Observability Contract
 
-> **OAPEFLIR Related**: This contract defines observability for OAPEFLIR 8 stages, corresponding to ADR-016.
+> **OAPEFLIR Related**: This contract defines OAPEFLIR 8-stage observability, corresponding to ADR-016.
 > **Updated**: 2026-04-17
 
 ## 1. Scope
 
 This contract defines minimum specifications for logs, metrics, traces, debug information, and PII protection.
-For more detailed inspect, healthz, and backpressure rules, refer to the drill-down document `debug_inspect_health_backpressure_contract.md`.
+More detailed inspect, healthz, and backpressure rules are authoritative in the drill-down document `debug_inspect_health_backpressure_contract.md`.
 
 ## 2. Key Objects
 
@@ -36,7 +36,7 @@ For more detailed inspect, healthz, and backpressure rules, refer to the drill-d
 
 ### 4.1 `RuntimeMetricsSummary`
 
-The system should support generating runtime metrics summaries covering the following dimensions:
+The system should support generating runtime metrics summary covering the following dimensions:
 
 | Dimension | Key Metrics |
 | --- | --- |
@@ -49,7 +49,7 @@ The system should support generating runtime metrics summaries covering the foll
 | `eventMetrics` | total / tier1Count / tier2Count / tier3Count / pendingTier1AckCount / failedTier1AckCount |
 | `runtimeMetrics` | status / degradationMode / queueGovernance / workerHealth / findings |
 | `oapeflirViewMetrics` | loopCount / completedLoopCount / failedLoopCount / averageLoopDurationMs / convergenceRate |
-| `stageViewMetrics` | observe / assess / plan / execute / feedback / learn / improve / release count / duration / failure / timeout |
+| `stageViewMetrics` | count / duration / failure / timeout for observe / assess / plan / execute / feedback / learn / improve / release |
 | `feedbackMetrics` | receivedCount / classifiedCount / consumedCount / positiveCount / negativeCount / correctionCount |
 | `learningMetrics` | objectCreatedCount / validatedCount / promotedCount / rejectedCount |
 | `improvementMetrics` | candidateProposedCount / acceptedCount / rejectedCount / guardrailBlockedCount |
@@ -61,11 +61,11 @@ Rules:
 - Cost metrics must differentiate between all-task average and successful-task average.
 - Recovery metrics must cover the complete chain from recovery events (`recovery:*`) to final HarnessRun success rate.
 - Numeric precision is uniformly rounded to four decimal places.
-- `oapeflirViewMetrics` and `stageViewMetrics` may only serve as view / trace / rationale metrics and must not be treated as runtime truth primary health metrics or state machine gate inputs.
+- `oapeflirViewMetrics` and `stageViewMetrics` may only serve as view / trace / rationale metrics and must not be used as runtime truth primary health indicators or state machine gate inputs.
 
-### 4.2 Traditional Core Metrics (Summary)
+### 4.2 Legacy Core Metrics (Summary)
 
-The following summarized metric names remain valid as simplified projection views of `RuntimeMetricsSummary` dimensions:
+The following summary metric names remain valid as simplified projection views of `RuntimeMetricsSummary` dimensions:
 
 - Task success rate (taskMetrics.successRate)
 - Workflow recovery rate (projection from `recoveryMetrics.successRate`)
@@ -76,7 +76,7 @@ The following summarized metric names remain valid as simplified projection view
 
 ### 4.3 OAPEFLIR Loop Observability
 
-Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observability chain by loop iteration and stage:
+Phase 1-4 OAPEFLIR closed loop must be able to restore minimum observability chain by loop iteration and stage:
 
 `observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release`
 
@@ -85,7 +85,7 @@ Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observabi
 | Field | Type | Description |
 | --- | --- | --- |
 | `harness_run_id` | `string` | Associated run truth |
-| `loop_iteration` | `integer` | Which round of OAPEFLIR, starting from 1 |
+| `loop_iteration` | `integer` | OAPEFLIR round number, starting from 1 |
 | `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | Current stage |
 | `status` | `pending \| active \| completed \| skipped \| failed \| timed_out` | Stage status |
 | `duration_ms` | `number?` | Stage duration |
@@ -98,7 +98,7 @@ Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observabi
 | Field | Type | Description |
 | --- | --- | --- |
 | `harness_run_id` | `string` | Associated run truth |
-| `loop_iteration` | `integer` | Which round of OAPEFLIR |
+| `loop_iteration` | `integer` | OAPEFLIR round number |
 | `trace_id` | `string` | Primary trace |
 | `started_at` | `timestamp` | This round start time |
 | `completed_at` | `timestamp?` | This round end time |
@@ -118,37 +118,37 @@ Phase 1-4 OAPEFLIR closed loop must be able to reconstruct the minimum observabi
 | `signal_id` | `string?` | Feedback signal |
 | `kind` | `satisfaction \| correction \| quality_metric \| failure_signal` | Feedback type |
 | `sentiment` | `positive \| neutral \| negative` | Sentiment/quality tendency |
-| `stage` | `string?` | Triggering stage |
+| `stage` | `string?` | Trigger stage |
 | `consumed_by` | `feedback \| learn \| improve \| release` | Consumer |
 | `sampled_at` | `timestamp` | Sample time |
 
 Rules:
 
 - Metric naming uniformly uses `oapeflir_<stage>_<metric>_<unit?>` style, e.g., `oapeflir_feedback_signal_count`.
-- `stage` field must come from canonical OAPEFLIR stages and must not be replaced by synonyms created by individual modules.
-- Improve / Release metrics must be traceable to guardrail, approval, and release evidence, and must not only record final success or failure.
-- Knowledge / Memory related metrics belong to M2 extension dimension; if not enabled in current deployment, must explicitly return not_enabled / zero rather than fabricate samples.
+- The `stage` field must come from canonical OAPEFLIR stages and must not be synonyms created by individual modules.
+- Improve / Release metrics must be traceable to guardrail, approval, and release evidence, not just final success or failure.
+- Knowledge / Memory related metrics belong to M2 extension dimensions; if not enabled in current deployment, must explicitly return not_enabled / zero instead of fabricating samples.
 
-## 5. Behavioral Constraints
+## 5. Behavior Constraints
 
-- Tier 1 events and key state changes must be traceable.
+- Tier 1 events and key state changes must be trackable.
 - Logs are structured by default.
-- Must support desensitization or truncation when user-sensitive information is involved.
-- Debug switches must not leak highly sensitive content by default.
-- Health / inspect / backpressure status semantics should be unified and not defined differently at different entry points.
+- Must support desensitization or trimming when user-sensitive information is involved.
+- Debug flags must not leak high-sensitivity content by default.
+- Health / inspect / backpressure state semantics should be unified and not separately defined at different entry points.
 
 ## 6. Supplementary Rules
 
 - Metric naming uniformly uses `<domain>_<metric>_<unit?>` style.
-- Traces support head-based sampling by default; critical failure paths are forcibly retained.
-- Log retention at minimum distinguishes: runtime logs, audit logs, debug logs, with different retention periods for different categories.
+- Traces support head-based sampling by default, critical failure paths are forcibly preserved.
+- Log retention must at minimum differentiate: run logs, audit logs, debug logs, with different retention periods for different categories.
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-47: This document originally placed `oapeflirMetrics.convergenceRate` directly in the top-level canonical dimension of `RuntimeMetricsSummary`. Root cause: observability contract confused runtime truth health metrics with cognitive/explanatory view metrics. Fix: The main text now converges the primary dimensions to `harnessRunMetrics / nodeRunMetrics / attemptMetrics`, and explicitly demotes OAPEFLIR metrics to view-only metrics like `oapeflirViewMetrics / stageViewMetrics`.
-- T-22 (observability): The original `LogEvent` field list already includes `harness_run_id` (required) and `node_run_id?` / `attempt_id?` (optional), satisfying architecture `§25.8` budget correlation key requirements. R2-22 stated "missing harness_run_id/node_run_id" which was an audit misjudgment; this document `§3` is already correctly aligned and requires no modification.
+- T-47: This document originally placed `oapeflirMetrics.convergenceRate` directly in the top-level canonical dimension of `RuntimeMetricsSummary`. Root cause: the observability contract confused runtime truth health metrics with cognitive/explanatory view metrics. Fix: The body now converges primary dimensions to `harnessRunMetrics / nodeRunMetrics / attemptMetrics` and explicitly demotes OAPEFLIR metrics to view-only metrics like `oapeflirViewMetrics / stageViewMetrics`.
+- T-22 (observability): The original `LogEvent` field list already includes `harness_run_id` (required) and `node_run_id?` / `attempt_id?` (optional), satisfying architecture §25.8 budget correlation key requirements. R2-22 states that "missing harness_run_id/node_run_id" was an audit misjudgment; §3 of this document is already correctly aligned and requires no modification.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

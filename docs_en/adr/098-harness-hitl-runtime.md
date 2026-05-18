@@ -1,4 +1,4 @@
-# ADR-098: Harness HITL Runtime
+# ADR-098 Harness HITL Runtime
 
 ---
 
@@ -9,9 +9,9 @@
 - **Plan**: Form HITL request and resume boundary
 - **Execute**: Pause run and wait for human input
 - **Feedback**: Record human decision and responsibility chain
-- **Learn**: Summarize high-frequency HITL trigger reasons
+- **Learn**: Aggregate high-frequency HITL trigger reasons
 - **Improve**: Optimize automation boundary
-- **Release**: HITL is runtime primitive, not a bypass mechanism
+- **Release**: HITL is a runtime primitive, not a bypass mechanism
 
 ---
 
@@ -20,12 +20,12 @@
 
 ## Context
 
-Architecture documentation requires HITL to become a Harness native step type, not just temporarily escalate in exception scenarios.
+The architecture document requires HITL to be a native step type of Harness, not just a temporary escalation in exception scenarios.
 
 ## Decision
 
-- HITL serves as a Harness native runtime step
-- When `NodeRun` enters `awaiting_hitl`, there must be formal request and evidence refs
+- HITL as a native runtime step of Harness
+- When `NodeRun` enters `awaiting_hitl`, there must be a formal request and evidence refs
 - Any human resolution must write audit and timeline
 
 ## Consequences
@@ -34,4 +34,4 @@ Architecture documentation requires HITL to become a Harness native step type, n
 
 ## v4.3 ADR Remediation
 
-- A-26: This ADR originally used `waiting_hitl`. Root cause: Early naming followed old harness draft and did not unify with canonical `NodeRun.status` enumeration to `awaiting_hitl`. Fix: The text now changes to `NodeRun -> awaiting_hitl`.
+- A-26: This ADR originally used `waiting_hitl`; the root cause was early naming followed old harness draft and did not unify with canonical `NodeRun.status` enum to `awaiting_hitl`. Fix: The body now uses `NodeRun -> awaiting_hitl`.

@@ -81,7 +81,7 @@ Multi-tenant security does not end with adding `tenant_id` to tables. The execut
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
 - T-51: This document originally only had qualitative isolation rules. The root cause was that the tenant isolation contract emphasized boundary principles but did not elevate shared worker risk to an enforceable automatic trigger. Fix: The main text now includes an automatic isolation trigger, requiring automatic isolation and fail-closed when `failure_rate > 30%` and `min_sample_size` is reached.
 

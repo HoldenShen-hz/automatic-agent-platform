@@ -1,27 +1,27 @@
-# ADR-079 Feedback Hub and Seven-Class Signal Preprocessing
+# ADR-079 Feedback Hub and Seven Signal Preprocessing Types
 
 - Status: Accepted
 - Decision Date: 2026-04-17
 - Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
-## Context
+## Background
 
-The `DualChannelStepOutput` emitted by the OAPEFLIR Execute phase needs to be collected and processed by the Feedback Hub, then converted into LearningSignal. The Feedback Hub serves as the critical bridge between the primary chain (O→A→P→E) and the secondary chain (F→L→I→R).
+The `DualChannelStepOutput` from the OAPEFLIR Execute stage needs to be collected by the Feedback Hub, processed, and converted into LearningSignal. The Feedback Hub is the critical bridge between the main chain (O→A→P→E) and the secondary chain (F→L→I→R).
 
-The design must support 7 feedback source types, implement signal deduplication, correlation, and filtering preprocessing, and decouple from the Learn Hub via DurableEventBus.
+The design requires supporting 7 feedback source types, implementing signal deduplication, correlation, and filtering preprocessing, with decoupled integration to the Learn Hub via DurableEventBus.
 
-## Decision
+## Decisions
 
-### 1. Seven Feedback Source Types
+### 1. Seven Feedback Sources
 
-| Feedback Source | Description | Signal Type |
-|----------------|-------------|-------------|
-| `execution_outcome` | Execution result (success/failure/partial success) | `execution_success` / `execution_failure` |
+| Feedback Source | Description | Signal Types |
+|----------------|-------------|---------------|
+| `execution_outcome` | Execution result (success/failure/partial) | `execution_success` / `execution_failure` |
 | `tool_call` | Tool call result | `tool_success` / `tool_failure` |
 | `resource_usage` | Resource consumption (token/time/memory) | `resource_high` / `resource_normal` |
 | `context_drift` | Context drift detection | `drift_detected` / `drift_corrected` |
-| `user_feedback` | Explicit user feedback | `user_correction` / `user_rejection` |
-| `system_signal` | System-level signals (health checks, circuit breaking) | `system_degraded` / `system_recovered` |
+| `user_feedback` | User explicit feedback | `user_correction` / `user_rejection` |
+| `system_signal` | System-level signals (health check, circuit breaker) | `system_degraded` / `system_recovered` |
 | `time_budget` | Time budget consumption | `time_warning` / `time_exceeded` |
 
 ### 2. FeedbackSignal Interface
@@ -79,7 +79,7 @@ interface Feedback {
 
 ## v4.3 ADR Remediation
 
-- A-67: This ADR originally used `executionId` as the Feedback/Signal primary chain key, root cause being that the feedback hub was modeled under the old execution semantics and subsequently did not update the signal chain to `NodeAttemptReceipt`. Fix: The main text now anchors signals to `harnessRunId / nodeRunId / receiptId`.
+- A-67: This ADR originally used `executionId` as the Feedback/Signal primary chain key. The root cause was that the feedback hub was modeled under old execution semantics and the signal chain was not updated to `NodeAttemptReceipt`. Fix: The main text now anchors the signal to `harnessRunId / nodeRunId / receiptId`.
 
 ### 4. SignalPreprocessor
 
@@ -101,7 +101,7 @@ interface SignalPreprocessor {
 interface ProcessedSignals {
   highPriority: FeedbackSignal[];    // Forward directly to Learn
   mediumPriority: FeedbackSignal[];  // Accumulate then forward
-  lowPriority: FeedbackSignal[];     // Log only
+  lowPriority: FeedbackSignal[];    // Log only
   learningSignals: LearningSignal[];
 }
 ```
@@ -146,9 +146,9 @@ interface FeedbackCollector {
 
 | Event | Tier | Description |
 |-------|------|-------------|
-| `feedback:collected` | Tier 1 | Feedback has been collected (requires ack) |
-| `feedback:learning_signal` | Tier 1 | LearningSignal has been generated (requires ack) |
-| `feedback:processed` | Tier 2 | Signal has been processed (ack optional) |
+| `feedback:collected` | Tier 1 | Feedback collected (requires ack) |
+| `feedback:learning_signal` | Tier 1 | LearningSignal generated (requires ack) |
+| `feedback:processed` | Tier 2 | Signals processed (ack optional) |
 
 ```typescript
 // domain-event-feedback-consumer.ts subscription flow
@@ -161,12 +161,12 @@ eventBus.subscribe('execution:completed', async (event) => {
 
 ## Alternatives
 
-### Option A: Polling-Based Signal Collection
+### Option A: Polling-based signal collection
 
-Pros: Simple to implement.
-Cons: High latency, resource intensive.
+Pros: Simple implementation.
+Cons: High latency, high resource consumption.
 
-### Option B: Event-Driven + Active Collection (Selected)
+### Option B: Event-driven + active collection (Selected)
 
 Pros: Low latency, strong signal correlation capability.
 Cons: Requires DurableEventBus support.
@@ -176,9 +176,9 @@ Cons: Requires DurableEventBus support.
 - `feedback-collector.ts` (41 lines) handles signal collection.
 - `signal-preprocessor.ts` (239 lines) handles deduplication/correlation/filtering.
 - `domain-event-feedback-consumer.ts` (206 lines) subscribes to execution events.
-- `feedback-model.ts` (42 lines) defines the Feedback interface.
+- `feedback-model.ts` (42 lines) defines Feedback interface.
 - `types/feedback-signal.ts` (25 lines) defines FeedbackSignal.
-- Event subscriptions require DurableEventBus support (Tier 1 reliable delivery).
+- Event subscription requires DurableEventBus support (Tier 1 reliable delivery).
 
 ## Cross References
 
@@ -189,7 +189,7 @@ Cons: Requires DurableEventBus support.
 ## Source Sections
 
 - `§7` Feedback Hub Design
-- `§7.1` Seven Feedback Source Types
+- `§7.1` Seven Feedback Sources
 - `§7.2-7.4` FeedbackSignal / LearningSignal Interfaces
 - `§7.5` Signal Preprocessing
 - `§7.7-7.8` Event Definition and DurableEventBus Integration

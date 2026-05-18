@@ -269,13 +269,13 @@ Industrial-grade systems must have both layers simultaneously to avoid duplicate
 | --- | --- |
 | `execution_id` | Legacy queue / repository field; v4.3 canonical object should map to `node_run_id` |
 | `attempt` | Legacy attempt sequence number; v4.3 canonical object should map to `attempt_id` / `NodeAttempt` |
-| `task lease` | Only preserves narrative semantics; authoritative object is `NodeRun` lease |
+| `task lease` | Only preserves narrative semantics; authoritative object is `NodeRun` lease
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-6: Uses deprecated term execution_id, architecture v4.0 unified to node_run_id. Root cause: this document沿用了 v3 execution-centric queue/lease terminology, but did not migrate along with `HarnessRun` / `NodeRun` authoritative object migration. Fix: `LeaseGrant`, `QueueDispatchRecord`, `LeaseAuditRecord`, `LeaseReconciliationRecord` and requeue semantics all converge to `node_run_id` / `attempt_id`; `execution_id` only preserved as legacy mapping note.
+- T-6: Uses deprecated term execution_id, architecture v4.0 unified to node_run_id. Root cause: this document followed v3 execution-centric queue/lease terminology, but did not migrate along with `HarnessRun` / `NodeRun` authoritative object migration. Fix: `LeaseGrant`, `QueueDispatchRecord`, `LeaseAuditRecord`, `LeaseReconciliationRecord` and requeue semantics all converge to `node_run_id` / `attempt_id`; `execution_id` only preserved as legacy mapping note.
 
 Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

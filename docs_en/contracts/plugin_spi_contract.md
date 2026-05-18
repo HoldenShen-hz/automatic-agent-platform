@@ -1,11 +1,11 @@
 # Plugin SPI Contract
 
-> **OAPEFLIR Related**: This contract defines the Plugin SPI interface system for the OAPEFLIR Domain Registry, corresponding to ADR-066.
+> **OAPEFLIR Related**: This contract defines the OAPEFLIR Domain Registry Plugin SPI interface system, corresponding to ADR-066.
 > **Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the Service Provider Interface (SPI) for the Plugin system, including four types of OAPEFLIR Domain Plugin types and PluginSpiRegistry lifecycle management.
+This contract defines the Service Provider Interface (SPI) for the Plugin system, including four types of OAPEFLIR Domain Plugin and PluginSpiRegistry lifecycle management.
 
 Related documents:
 - `tool_skill_plugin_contract.md`: Tool/Skill/Plugin relationships.
@@ -45,7 +45,7 @@ interface RetrievalRequest {
   namespace?: string;
   domainId?: string | null;
   limit?: number;
-  retrievalLevel?: 'quick' | 'standard' | 'deep';  // Corresponds to Knowledge Plane Level 3 queries
+  retrievalLevel?: 'quick' | 'standard' | 'deep';  // Corresponds to Knowledge Plane 3-level query
 }
 ```
 
@@ -105,7 +105,7 @@ interface DomainPlannerPlugin {
   readonly pluginType: "planner";
   readonly domainId: string;
 
-  // Generate plans for specific domain
+  // Generate plan for specific domain
   plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
   // Lifecycle
@@ -165,14 +165,14 @@ interface PresentedOutput {
 ## 3. ExternalAdapterPlugin (8 Adapter Types)
 
 | Adapter | Purpose | Implementation Status |
-|---------|---------|----------------------|
+|--------|------|---------|
 | `github` | GitHub API integration (issues/PRs/code search) | Implemented (github-adapter.ts, 120 lines) |
 | `jira` | Jira ticket management | Not implemented |
 | `notion` | Notion document/database integration | Not implemented |
 | `figma` | Figma design file preview | Not implemented |
 | `unity` | Unity Cloud Build integration | Not implemented |
 | `obs` | OBS live streaming control | Not implemented |
-| `ad-platforms` | Advertising platform data integration | Not implemented |
+| `ad-platforms` | Ad platform data integration | Not implemented |
 | `crm` | CRM system customer/interaction data | Not implemented |
 
 ## 4. PluginSpiRegistry Lifecycle State Machine
@@ -196,7 +196,7 @@ class PluginSpiRegistry {
   // Invoke single plugin
   async invoke(pluginId: string, method: string, args: unknown[]): Promise<unknown>;
 
-  // Batch execution (fan-out)
+  // Batch execute (fan-out)
   async invokeAll(type: PluginType, method: string, args: unknown[]): Promise<unknown[]>;
 
   // Suspend plugin
@@ -237,7 +237,7 @@ const PluginDescriptorSchema = z.object({
 ## 6. Builtin Plugin Inventory
 
 | pluginId | Type | Domain | Status | Description |
-|----------|------|--------|--------|-------------|
+|----------|------|--------|------|------|
 | `plugin.core.basic-evaluator` | validator | — | Pending | Basic evaluation (correctness/completeness/efficiency/safety) |
 | `plugin.core.basic-planner` | planner | — | Pending | Basic planning strategy retrieval |
 | `plugin.builtin.coding-retriever` | retriever | coding | Pending | Codebase semantic retrieval |
@@ -247,7 +247,7 @@ const PluginDescriptorSchema = z.object({
 ## 7. OAPEFLIR Stage Integration
 
 | OAPEFLIR Stage | Plugin Role |
-|----------------|-------------|
+|--------------|-----------|
 | Observe | DomainRetrieverPlugin retrieves contextual knowledge |
 | Assess | DomainValidatorPlugin validates pre-execution conditions |
 | Plan | DomainPlannerPlugin generates domain-specific `PlanGraphBundle` |
@@ -255,23 +255,23 @@ const PluginDescriptorSchema = z.object({
 | Feedback | DomainRetrieverPlugin collects feedback signals |
 | Learn | — |
 | Improve | — |
-| Release | DomainPresenterPlugin formats release reports |
+| Release | DomainPresenterPlugin formats release report |
 
 ## 8. Constraints
 
-- Plugin lifecycle hooks are uniformly named `onLoad / onActivate / onDeactivate / onUnload`.
-- Plugins must execute in isolated processes (`plugin-runtime-host.ts`).
-- Communication between Plugin and host uses the serialization protocol in `plugin-runtime-protocol.ts`.
-- Do not trust Plugin returned data: all return values must be validated against schema.
-- Plugin timeout: `timeoutMs` defaults to 30s, with three-level timeout handling (warn → kill → dead-letter).
-- Hook failures must not escalate privileges; default degradation is to disable that SPI instance or block loading.
-- SPI can only consume capabilities and settings declared in the manifest; no runtime privilege escalation allowed.
+- Plugin lifecycle hook names are unified as `onLoad / onActivate / onDeactivate / onUnload`.
+- Plugins must execute in independent processes (`plugin-runtime-host.ts`).
+- Communication between Plugin and host is through the serialization protocol of `plugin-runtime-protocol.ts`.
+- Do not trust plugin returned data: all return values must be validated by schema.
+- Plugin timeout: `timeoutMs` defaults to 30s, three-level timeout handling (warn → kill → dead-letter).
+- Hook failure must not escalate privileges; default degrade to disable that SPI instance or block loading.
+- SPI may only consume capabilities and settings declared in the manifest and must not expand privileges at runtime.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-38: This document originally had `DomainPlannerPlugin.plan()` return a generalized `Plan`, and continued using `Rollout` in the OAPEFLIR integration table. The root cause was that the Plugin SPI still used the early "linear plan + rollout" interface draft and had not been upgraded synchronously with the v4.3 `PlanGraphBundle` handoff and `Release` stage naming. Fix: The main text now converges planner output to `PlanGraphBundle`, aligns validation context and output validation to `harnessRunId / nodeRunId / attemptId / NodeAttemptReceipt`, and the stage table is reverted to `Release`.
+- T-38: This document originally let `DomainPlannerPlugin.plan()` return a generalized `Plan`, and the OAPEFLIR integration table continued to use `Rollout`. Root cause: Plugin SPI still followed the early "linear plan + rollout" interface draft and did not sync with v4.3's `PlanGraphBundle` handoff and `Release` stage naming. Fix: The body now converges planner output to `PlanGraphBundle`, validation context and output validation align to `harnessRunId / nodeRunId / attemptId / NodeAttemptReceipt`, and the stage table is changed back to `Release`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

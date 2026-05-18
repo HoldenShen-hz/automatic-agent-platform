@@ -11,9 +11,9 @@
 ## Hard Constraints
 
 - AI-generated art assets must pass known IP similarity detection.
-- Code, resources, and gameplay suggestions must retain source and license evidence.
-- Must pass safety and copyright checks before launch.
+- Code, resources, and gameplay suggestions must preserve source and license evidence.
+- Pre-launch must pass security and copyright checks.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide IP similarity, asset authorization, testing, and human review evidence.
+- IP similarity, asset authorization, testing, and human review evidence must be provided before GA.

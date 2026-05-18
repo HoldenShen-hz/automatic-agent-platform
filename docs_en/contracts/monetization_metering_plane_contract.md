@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
+This contract participates in the following phases of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,22 +19,22 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the commercial metering plane of the end platform, including usage metering, quota enforcement, entitlement evaluation, budget truth, settlement read model, and plan catalog.
+This contract defines the commercialization metering plane for the ultimate platform, including usage metering, quota enforcement, entitlement evaluation, budget truth, settlement read model, and plan catalog.
 
-It extends `billing_and_tenant_contract.md` and `cost_and_budget_contract.md` to answer "how the platform connects usage, permissions, quotas, and billing into a closed loop".
+It extends `billing_and_tenant_contract.md` and `cost_and_budget_contract.md` to answer "how the platform closes the loop connecting usage, entitlements, quotas, and billing".
 
-## 2. Objectives
+## 2. Goals
 
-- Elevate metering and quotas from static fields to formal platform capabilities.
-- Enable runtime, API, and workspace permissions to all consume entitlement decisions.
-- Establish a unified budget and settlement foundation for Pro and Enterprise pricing models.
-- Enable usage, quota, billing, and tenant/organization models to interconnect.
+- Elevate metering and quota from static fields to formal platform capabilities.
+- Allow runtime, API, and workspace permissions to consume entitlement decisions.
+- Establish a unified budget and settlement foundation for Pro and Enterprise billing models.
+- Enable usage, quota, billing, and tenant / organization models to connect.
 
-## 3. Non-Objectives
+## 3. Non-Goals
 
-- This contract does not specify payment channel or tax product selection.
+- This contract does not mandate payment channel or tax product selection.
 - This contract does not define market pricing strategy itself.
-- This contract does not replace per-execution budget guard definitions.
+- This contract does not replace single execution budget guard definitions.
 
 ## 4. Core Components
 
@@ -60,7 +60,7 @@ flowchart LR
     J --> K["InvoiceBoundaryAdapter"]
 ```
 
-## 5. Canonical Objects
+## 5. Core Objects
 
 - `UsageEvent`
 - `EntitlementDecision`
@@ -69,17 +69,17 @@ flowchart LR
 - `PlanEntitlement`
 - `BillingPeriod`
 
-Note:
+Notes:
 
 - `BudgetLedger / BudgetReservation / BudgetSettlement` are runtime truth; frozen definitions are in `budget-ledger-contract.md`.
-- `SettlementReadModel / SettlementReadEntry` are derived read models for invoicing, reconciliation, and commercial reporting, and must not reversely serve as budget truth.
+- `SettlementReadModel / SettlementReadEntry` are derived read models for invoices, reconciliation, and commercial reporting, and must not reverse-act as budget truth.
 
 ## 6. `UsageEvent` Minimum Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `usage_id` | `string` | Usage event ID |
-| `subject_id` | `string` | Subject that generated the usage |
+| `subject_id` | `string` | Subject that generated usage |
 | `workspace_id?` | `string` | Associated workspace |
 | `tenant_id?` | `string` | Associated tenant |
 | `harness_run_id?` | `string` | Associated run primary chain truth |
@@ -94,8 +94,8 @@ Note:
 
 Rules:
 
-- `harness_run_id / node_run_id` are v4.3 runtime truth alignment fields; `task_id / execution_id` are only allowed as projections, legacy query keys, or migration input retention.
-- `source` indicates which type of entry point or execution source the usage came from; `cost_source` indicates which type of settlement basis ultimately drives the cost. The two must not be mixed.
+- `harness_run_id / node_run_id` are v4.3 runtime truth alignment fields; `task_id / execution_id` are allowed only as projections, legacy query keys, or migration inputs retained.
+- `source` indicates which type of entry point or execution source the usage came from; `cost_source` indicates which type of settlement basis ultimately drives the cost; the two must not be mixed.
 
 ## 7. `PlanEntitlement` Minimum Fields
 
@@ -125,9 +125,9 @@ Examples:
 
 Rules:
 
-- Entitlement judgment must be makeable before runtime execution.
-- `degrade` is used for capability degradation, not complete denial.
-- `warn` may only be used in soft threshold scenarios that do not affect security and billing correctness.
+- Entitlement decision must be available before runtime execution.
+- `degrade` is for capability degradation, not complete rejection.
+- `warn` can only be used for soft threshold scenarios that do not affect security and billing correctness.
 
 ## 9. `QuotaCounter`, `BudgetLedger`, and `SettlementReadEntry`
 
@@ -145,7 +145,7 @@ Rules:
 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`:
 
 - Truth contract directly reuses `budget-ledger-contract.md`
-- This document does not redefine another parallel ledger truth DTO
+- This document does not define another set of parallel ledger truth DTOs
 
 `SettlementReadEntry` minimum fields:
 
@@ -160,14 +160,14 @@ Rules:
 
 Rules:
 
-- Quota counter serves real-time limits.
-- `BudgetLedger` is responsible for pre-execution budget truth and settlement facts and must not rely on temporary in-memory cumulative results.
-- `SettlementReadEntry` serves billing display, invoice boundaries, and reconciliation reports.
-- Usage events, quota counters, budget settlements, and settlement read entries must be reconcilable against each other and must not rely solely on final aggregated results.
+- Quota counter serves real-time limiting.
+- `BudgetLedger` is responsible for pre-execution budget truth and settlement facts and must not rely on temporary in-memory accumulated results.
+- `SettlementReadEntry` serves billing display, invoice boundary, and reconciliation reports.
+- Usage event, quota counter, budget settlement, and settlement read entry must be reconcilable between each other and must not rely solely on final aggregate results.
 
 ## 10. Metering Granularity
 
-Starting from Phase 3, at minimum support:
+From Phase 3, support at minimum:
 
 - token / model usage
 - execution time
@@ -178,14 +178,14 @@ Starting from Phase 3, at minimum support:
 
 ## 11. Typical Decision Path
 
-1. User or system initiates an action.
+1. User or system initiates action.
 2. Runtime / API first requests `EntitlementEvaluator`.
-3. Evaluator reads plan entitlement, quota counter, tenant/org affiliation.
+3. Evaluator reads plan entitlement, quota counter, and tenant/org ownership.
 4. Returns `allow / deny / degrade / warn`.
 5. After action execution, `UsageIngestionPipeline` writes back usage event.
 6. Periodic or near-real-time aggregation enters quota, budget settlement, and settlement read model.
 
-### 11.1 Commercial Closed Loop Flowchart
+### 11.1 Commercialization Closed-Loop Flow Diagram
 
 ```mermaid
 flowchart TD
@@ -218,11 +218,11 @@ flowchart LR
 
 ## 12. Quota Enforcement Rules
 
-- When quota is exceeded, there must be unified `deny / degrade / warn` semantics.
+- Quota exceeding must have unified `deny / degrade / warn` semantics.
 - High-cost or high-risk capabilities prioritize hard deny.
-- Experience-oriented capabilities may use degrade, such as reducing concurrency or delaying execution.
-- Quota judgment results should be traceable to plan entitlement and current counter.
-- Entitlement decisions must not rely solely on stale cache; if the authoritative counter is unavailable, should prioritize fail-closed or conservative degrade.
+- Experience capabilities can use degrade, such as reducing concurrency or delaying execution.
+- Quota decision results should be traceable to plan entitlement and current counter.
+- Entitlement decisions must not rely solely on stale cache; if authoritative counter is unavailable, should prioritize fail-closed or conservative degrade.
 - Commercial metering must not bypass `BudgetLedger / BudgetReservation / BudgetSettlement` truth to directly write invoice ledger fields.
 
 ## 13. Tenant / Organization Relationship
@@ -233,45 +233,44 @@ flowchart LR
 
 ## 14. Relationship with Existing Documents
 
-- `billing_and_tenant_contract.md` is the main model baseline.
-- `cost_and_budget_contract.md` is the per-execution budget baseline.
+- `billing_and_tenant_contract.md` is the primary model baseline.
+- `cost_and_budget_contract.md` is the single execution budget baseline.
 - `budget-ledger-contract.md` freezes `BudgetLedger / BudgetReservation / BudgetSettlement` as runtime truth.
-- `tenant_and_organization_contract.md` defines attribution boundaries.
-- This contract defines the complete platform layer for product billing, quotas, budget truth derived settlement read models.
+- `tenant_and_organization_contract.md` defines ownership boundaries.
+- This contract defines the complete platform layer for product billing, quota, budget truth, and settlement derived read model.
 
 ## 15. Failure Mode
 
-Key risks to prevent:
+Key points to guard against:
 
 - Action executed successfully but usage not written back.
 - Settlement read model delay or replay failure causing billing display inconsistency.
-- Quota counter lag causing overdraw execution.
-- Tenant attribution errors during organization aggregation.
+- Quota counter lag causing overdraft execution.
+- Tenant ownership errors during organization aggregation.
 
 Handling principles:
 
-- High-cost actions should conservatively deny rather than execute without metering.
+- High-cost actions should prefer conservative deny over metered execution.
 - Usage pipeline, budget settlement projector, and settlement read model pipeline must have compensation paths.
-- Entitlement decisions prioritize authoritative counters rather than cached guess values.
-- If action has been executed but usage not written back, system must be able to reconcile through reconciliation tasks rather than silently losing metering.
+- Entitlement decisions prioritize authoritative counter, not cached speculative values.
+- If action has been executed but usage not written back, the system must be able to reconcile via reconciliation tasks, not silently lose metering.
 
 ## 16. Phased Introduction
 
 - Phase 3: Pro usage metering + entitlement + quota enforcement.
-- Phase 4: Enterprise ledger, organization settlement, audit, and invoice boundaries.
+- Phase 4: Enterprise ledger, organizational settlement, audit, and invoice boundary.
 
 ## 17. Closure Conclusion
 
-The core of the monetization plane is not "post-hoc billing" but forming a closed loop between runtime, permissions, quotas, budget truth, and settlement read models before and after execution.
+The core of the monetization plane is not "post-hoc billing", but forming a closed loop before and after execution among runtime, entitlements, quotas, budget truth, and settlement read model.
 
-Any future billing capability that cannot connect to usage, entitlement, and `BudgetLedger / BudgetReservation / BudgetSettlement` three chains should not be considered a formal commercial capability.
-
+Subsequent any billing capability that cannot integrate with usage, entitlement, and `BudgetLedger / BudgetReservation / BudgetSettlement` three chains should not be considered formal commercialization capability.
 
 ## v4.3 Architecture Remediation
 
 The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-35: This document originally wrote `BillingLedger / LedgerEntry` as core objects of the commercial metering plane. Root cause: old copy mixed invoice/report read models and pre-execution budget truth into the same layer, and did not refactor synchronously after introducing `BudgetLedger / BudgetReservation / BudgetSettlement` in v4.3. Fix: The main text now explicitly states that budget truth reuses `budget-ledger-contract.md`, and `SettlementReadModel / SettlementReadEntry` are retained only as derived billing read models.
-- T-55: This document's original `UsageEvent.source` remained at four entry point enumerations: `runtime / api / gateway / admin`. Root cause: that section followed the early API entry point perspective and did not expand with tool execution, model calls, and side effect settlement accessing the unified cost attribution model. Fix: The main text now supplements `tool / model / side_effect` sources and adds a separate `cost_source` enumeration to carry `provider_invoice / internal_compute / human_review / storage / egress`.
+- T-35: This document originally wrote `BillingLedger / LedgerEntry` as the core object of the commercialization metering plane. The root cause was that the old version's copy mixed invoice/report read models and pre-execution budget truth into one layer, without synchronizing and restructuring after v4.3 introduced `BudgetLedger / BudgetReservation / BudgetSettlement`. Fix: The body now explicitly clarifies that budget truth reuses `budget-ledger-contract.md`, and `SettlementReadModel / SettlementReadEntry` are retained only as derived billing read models.
+- T-55: The original `UsageEvent.source` in this document still停留在 `runtime / api / gateway / admin` four-type entry enum. The root cause was that paragraph followed the early API entry perspective and did not expand with the unified cost attribution model as tool execution, model calls, and side-effect settlement were integrated. Fix: The body now supplements `tool / model / side_effect` source and adds independent `cost_source` enum to carry `provider_invoice / internal_compute / human_review / storage / egress`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

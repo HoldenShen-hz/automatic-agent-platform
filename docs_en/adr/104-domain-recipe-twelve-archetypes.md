@@ -1,17 +1,17 @@
-# ADR-104: Domain Recipe Twelve Archetypes
+# ADR-104 Domain Recipe Twelve Archetypes
 
 ---
 
 ## OAPEFLIR Association
 
-- **Observe**: Summarize 24 domain workflow patterns
-- **Assess**: Merge into archetypes
+- **Observe**: Aggregate 24-domain workflow patterns
+- **Assess**: Consolidate into archetypes
 - **Plan**: Generate baseline recipe for archetype
 - **Execute**: Drive domain baseline creation
-- **Feedback**: Validate archetype adaptation rate
+- **Feedback**: Validate archetype adoption rate
 - **Learn**: Update archetype classification
 - **Improve**: Reduce specialization cost
-- **Release**: Archetype becomes domain onboarding baseline asset
+- **Release**: archetype becomes domain onboarding baseline asset
 
 ---
 
@@ -20,11 +20,11 @@
 
 ## Context
 
-The original recipe prototype was too few to cover 24 vertical business domains.
+Original recipe prototypes were too few to cover 24 vertical business domains.
 
 ## Decision
 
-`DomainRecipe` expands to twelve archetypes, covering CRUD, Analytics, Creative, Realtime, Trading, Compliance, Research, Adversarial, Moderation, Logistics, Conversational, and IncidentOps.
+`DomainRecipe` expanded to twelve archetypes, covering CRUD, Analytics, Creative, Realtime, Trading, Compliance, Research, Adversarial, Moderation, Logistics, Conversational, IncidentOps.
 
 ## Consequences
 

@@ -11,5 +11,5 @@ Defines the lifecycle and recovery semantics of `HarnessRun` from admission to t
 ## 3. Constraints
 
 - All state transitions must go through `RuntimeStateMachine`.
-- `HarnessRun` is the sole authoritative run truth; any workflow/session is merely a projection.
+- `HarnessRun` is the sole authoritative run truth; any workflow/session is only a projection.
 - Replanning must preserve historical `PlanGraphBundle`, expressed via patch/new version.

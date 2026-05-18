@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Define prompt versioning, tenant isolation, release, and rollback boundaries.
+Defines versioning, tenant isolation, release, and rollback boundaries for prompts.
 
 ## 2. Core Objects
 
@@ -20,5 +20,5 @@ interface PromptVersion {
 ## 3. Constraints
 
 - Prompts must explicitly carry `tenantId`.
-- Releases and rollbacks must include audit evidence and effective scope.
-- When referencing prompts at runtime, the version must be recorded rather than just the logical name.
+- Both release and rollback must carry audit evidence and effective scope.
+- When referencing a prompt at runtime, the version must be recorded, not just the logical name.

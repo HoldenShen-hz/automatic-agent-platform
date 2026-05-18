@@ -1,4 +1,4 @@
-# Coding Domain Spec
+# Software Development Domain Spec
 
 | Field | Value |
 | --- | --- |
@@ -12,8 +12,8 @@
 
 - Code changes must have diff, test, and rollback evidence.
 - Execution commands must be constrained by sandbox, file root, and approval policies.
-- Security-related changes must add denial-path regression.
+- Security-related changes must add denial-path regression tests.
 
 ## Acceptance Criteria
 
-- Prior to GA, must provide code review, test results, security scan, and change audit evidence.
+- Code review, test results, security scan, and change audit evidence must be provided before GA.

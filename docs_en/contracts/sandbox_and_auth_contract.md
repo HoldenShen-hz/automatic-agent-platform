@@ -1,7 +1,7 @@
 # Sandbox And Auth Contract
 
-> **OAPEFLIR Related**: This contract defines the security boundary of OAPEFLIR Execute Hub, corresponding to ADR-016.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines security boundaries for OAPEFLIR Execute Hub, corresponding to ADR-016.
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 
@@ -74,8 +74,17 @@ Rules:
 - Path judgment must be based on `realpath`, cannot just look at original string path.
 - Default deny follows symlinks not explicitly allowed.
 - `AuthSession` only solves identity, does not automatically grant execution permission; execution capability still needs joint decision through Policy Engine and sandbox.
+- OAuth authorization code flow defaults to requiring PKCE, preventing public client from leaking code.
+- Virtual path mapping must be explicit whitelist mapping, does not allow arbitrary path projection to host.
+- Warm pool can only reuse base image or controlled sandbox, must not reuse execution environment with task residual state.
+- Different tasks must not reuse sandbox instance with residual files, residual environment variables, residual secrets, or residual sockets.
+- Authentication tokens, temporary credentials, and worker-level credentials must not enter artifact, memory, event payload, or debug dump.
+- Minimum command execution sandbox and browser / GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
+- If browser sandbox needs Chromium, Xvfb or equivalent graphics dependencies, should be treated as independent capability profile, and enter separate readiness and cost evaluation.
+- If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
+- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout这类 execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
 
-## 5A. Remote Worker Registration and Challenge Authentication
+### 5A. Remote Worker Registration and Challenge Authentication
 
 ### 5A.1 Two-Phase Registration Flow
 
@@ -97,14 +106,14 @@ Remote worker registration uses challenge-response mode:
 
 ### 5A.2 Rules
 
-- Challenge token is returned only once during issue phase; thereafter only hash is stored.
+- Challenge token is returned only once during issue phase, thereafter only hash is stored.
 - Same challenge cannot be completed twice (one-time consumption).
 - Expired challenge automatically becomes invalid.
 - Filtered capabilities must be recorded in `rejectedCapabilities` for audit.
 - Challenge does not replace runtime sandbox and policy, only solves worker identity and initial capability declaration.
 - Worker-declared `sandboxMode` is only a capability claim; whether a run can use that mode still depends on Policy Engine and dispatch-time constraints.
 
-## 5B. Remote Session Authority Guard
+### 5B. Remote Session Authority Guard
 
 ### 5B.1 Semantics
 
@@ -125,18 +134,6 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - Blocking reason must be written to dispatch decision trace's `reasonCode`.
 - Session guard does not modify any state, purely read-only judgment.
 
-## 6. Supplementary Rules
-
-- OAuth authorization code flow defaults to requiring PKCE, preventing public client from leaking code.
-- Virtual path mapping must be explicit whitelist mapping, does not allow arbitrary path projection to host.
-- Warm pool can only reuse base image or controlled sandbox, must not reuse execution environment with task residual state.
-- Different tasks must not reuse sandbox instance with residual files, residual environment variables, residual secrets, or residual sockets.
-- Authentication tokens, temporary credentials, and worker-level credentials must not enter artifact, memory, event payload, or debug dump.
-- Minimum command execution sandbox and browser / GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
-- If browser sandbox needs Chromium, Xvfb or equivalent graphics dependencies, should be treated as independent capability profile, and enter separate readiness and cost evaluation.
-- If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
-- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout these execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
-
 ### 6A. Canonical Sandbox Mode Matrix
 
 | mode | filesystem | network | execution profile | typical use |
@@ -155,8 +152,8 @@ Rules:
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-16: This document originally continued using `standard / hardened / strict` three-tier isolation levels. The root cause was that early security design was layered by "implementation strength", but later the main architecture changed to defining four-tier canonical sandbox mode by "writability + egress + exec governance surface". After the old worker registration and execution contract did not migrate together. Fix: This main text now converges `SandboxPolicy.mode` to `read_only / workspace_write / scoped_external_access / restricted_exec`; the old three tiers are only retained as deprecated aliases.
+- T-16: This document originally continued to use `standard / hardened / strict` three-tier isolation levels. Root cause: early security design stratified by "implementation strength", later main architecture changed to defining four canonical sandbox modes by "writability + egress + exec governance surface", but old worker registration and execution contract did not migrate together. Fix: Body now converges `SandboxPolicy.mode` to `read_only / workspace_write / scoped_external_access / restricted_exec`, old three tiers only retained as deprecated alias.
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

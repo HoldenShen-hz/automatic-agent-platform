@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the organizational model, dynamic approval, and department-level compliance inheritance for `§46-§47` and `§49`.
+This contract defines the organization model, dynamic approval, and department-level compliance inheritance as specified in `§46-§47` and `§49`.
 
 ## 2. Canonical Objects
 
@@ -24,8 +24,8 @@ This contract defines the organizational model, dynamic approval, and department
 
 Rules:
 
-- The org tree must be acyclic.
-- Seat / user nodes can only be attached under team or department.
+- Organization tree must be acyclic.
+- Seat / user nodes may only be attached under team or department.
 
 ## 4. Dynamic Approval Routing
 
@@ -38,7 +38,7 @@ Rules:
 - `escalation_rule_id?`
 - `delegation_applied`
 
-Routing input must include at least:
+Routing input must include at minimum:
 
 - requester
 - org node
@@ -46,14 +46,14 @@ Routing input must include at least:
 - amount / impact
 - resource scope
 
-## 5. Inheritance and Override
+## 5. Inheritance And Override
 
 - Approval limits and compliance policies inherit downward by default.
-- Only within the boundaries permitted by their superior can subordinates tighten or partially override.
-- Relaxing restrictions requires authorization from the superior.
+- Lower levels may only tighten or partially override within boundaries allowed by upper level.
+- Relaxing restrictions requires upper-level authorization.
 
 ## 6. Test Requirements
 
-- unit: org tree, routing matching, limit matrix
-- integration: approval requests cross-org routing and escalation
-- contract: high-risk requests with no org affiliation must not be auto-routed to approved
+- unit: organization tree, route matching, limit matrix
+- integration: approval request cross-organization routing and escalation
+- contract: high-risk requests without organization affiliation must not auto-route to approved

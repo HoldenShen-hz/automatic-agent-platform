@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines resource quotas, priority preemption, and fair scheduling for `§53`.
+This contract defines resource quotas, priority preemption, and fair scheduling as per `§53`.
 
 ## 2. Canonical Objects
 
@@ -23,11 +23,11 @@ This contract defines resource quotas, priority preemption, and fair scheduling 
 
 ## 4. Scheduling Rules
 
-- Scheduling must consider at least five dimensions: tenant / org / domain / sla_tier / priority.
+- Scheduling must consider at least five dimensions: `tenant / org / domain / sla_tier / priority`.
 - Preemption must output `PreemptionDecision` and record the preempted object and reason.
 - Fair scheduling must explicitly expose starvation protection and age weighting.
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: quota match, preemption scoring, fair queue ordering
 - integration: high-priority task preempts low-priority task

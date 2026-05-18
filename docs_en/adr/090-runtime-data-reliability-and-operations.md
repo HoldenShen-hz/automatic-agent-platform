@@ -8,25 +8,25 @@ Accepted
 
 2026-04-20
 
-## Context
+## Background
 
-`§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event/projection/DLQ, knowledge/memory/artifact, HA, deployment, and roadmap. These chapters together constitute the production operation foundation, but past ADRs were mostly recorded by single-point technical selection, lacking a unified decision for long-term operation.
+`§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event/projection/DLQ, knowledge/memory/artifact, HA, deployment, and roadmap. These chapters together constitute the production operation foundation, but past ADRs mostly recorded single-point technical selections, lacking a unified decision for long-term operation.
 
 ## Decision
 
 Platform runtime and data reliability adopt the following unified principles:
 
-- Long-running tasks must have hibernation, wake, TTL, lease/fencing, recovery, and manual takeover capabilities.
-- Configuration must be layered, versioned, staged, and auditable; runtime scattered configuration is not allowed.
-- Truth table, event log, projection, artifact, and audit are different projections of the same State & Evidence Plane.
-- Projection must be rebuildable; DLQ must be diagnosable, replayable, and upgradable to incident.
-- HA, backup, restore, and deployment promotion must align with readiness/promote criteria contracts.
-- Roadmap and success criteria are part of architecture governance, not temporary TODOs mixed into contracts.
+- Long-running tasks must have sleep, wake, TTL, lease/fencing, recovery, and human takeover capabilities.
+- Configuration must be layered, versioned, staged, auditable, no runtime scattering allowed.
+- Truth table, event log, projection, artifact, audit are different projections of the same State & Evidence Plane.
+- Projection must be rebuildable; DLQ must be diagnosable, replayable, upgradable to incident.
+- HA, backup, restore, deployment promotion must align with readiness/promote criteria contract.
+- Roadmap and success criteria are part of architecture governance, cannot be mixed as temporary TODOs into contract.
 
 ## Trade-offs
 
 - Do not treat projection as authoritative state.
-- Do not rely on logs alone to recover critical workflows.
+- Do not allow key workflows to recover purely from logs.
 - Do not allow deployment and configuration changes to bypass release/readiness/promote criteria.
 
 ## Impact
@@ -57,8 +57,8 @@ Corresponding implementation boundaries:
 - `src/platform/five-plane-control-plane/config-center/*`
 - `config/*`
 
-## Testing Requirements
+## Test Requirements
 
-- Unit tests: State transition, lease/fencing, config resolution, projection rebuild.
-- Integration tests: Long-running workflow, DLQ replay, startup recovery, release readiness.
-- Contract tests: Executions or deployments without lease, evidence, or readiness must not enter production chain.
+- unit tests: state transition, lease/fencing, config resolution, projection rebuild.
+- integration tests: long-running workflow, DLQ replay, startup recovery, release readiness.
+- contract tests: execution or deployment without lease, evidence, readiness must not enter production chain.

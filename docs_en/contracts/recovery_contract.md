@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Defines the runtime recovery worker, recovery cadence, and recovery report objects.
+Defines run recovery workers, recovery cadence, and recovery report objects.
 
 ## 2. Core Objects
 
@@ -26,5 +26,5 @@ interface RecoveryReport {
 ## 3. Constraints
 
 - Recovery actions must record cadence and reports.
-- Recovery must not implicitly advance terminal-state runs/nodes.
-- Reports must carry run/node correlation keys rather than legacy execution IDs alone.
+- Recovery must not implicitly advance terminal run/node state.
+- Reports must carry run/node association keys rather than just legacy execution ID.

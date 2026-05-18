@@ -1,28 +1,28 @@
-# ADR-085: Organization Governance And Knowledge Boundary
+# ADR-085 Organization Governance And Knowledge Boundary
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Relationship
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Organization structure, identity, knowledge boundary, and compliance signal collection
 - **Assess**: Approval chain, knowledge sharing, governance delegation, and compliance matching
-- **Plan**: Organization routing, inheritance / override, controlled sharing strategy
+- **Plan**: Organization routing, inheritance/override, controlled sharing strategy
 - **Execute**: SSO, SCIM, approval routing, knowledge isolation, governance console
-- **Feedback**: Approval timeout, access denial, sharing post-mortem
+- **Feedback**: Approval timeout, access denial, sharing review
 - **Learn**: Organization governance rules and boundary strategy optimization
 - **Improve**: Department-level compliance and governance configuration continuous evolution
-- **Release**: Organization governance changes staged rollout
+- **Release**: Organization governance change staged rollout
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
-v2.7 `§46-§51` introduces the organization governance layer. The current repository has:
+v2.7 `§46-§51` introduces the organization governance layer. The current repository already has:
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`
@@ -30,11 +30,11 @@ v2.7 `§46-§51` introduces the organization governance layer. The current repos
 - `src/org-governance/knowledge-boundary`
 - `src/org-governance/delegated-governance`
 
-But most directories are still empty shells with missing unified decisions.
+But most directories are still empty barrel stubs, lacking unified decisions.
 
-## Decision
+## Decisions
 
-### 1. Organization node is the common root object for governance, approval, knowledge, and compliance
+### 1. Organization Node is the Common Root Object for Governance, Approval, Knowledge, and Compliance
 
 Organization model must support at minimum:
 
@@ -44,29 +44,29 @@ Organization model must support at minimum:
 - team
 - seat / user
 
-### 2. Approval, compliance, and knowledge boundary all follow "inheritance first, explicit override"
+### 2. Approval, Compliance, and Knowledge Boundary All Follow "Inheritance First, Explicit Override"
 
-Default rules are inherited from upper-level nodes;
-Lower-level nodes can only override within authorized scope.
+Default rules are inherited from parent nodes;
+Child nodes can only override within authorized scope.
 
-### 3. SSO / SCIM is only responsible for identity sync, not directly granting business permissions
+### 3. SSO / SCIM is Only Responsible for Identity Sync, Does Not Directly Grant Business Permissions
 
-Identity access and governance authorization are separated to avoid directory system privilege escalation.
+Identity access and governance authorization are separated to avoid directory systems directly bypassing permissions.
 
-### 4. Knowledge sharing must explicitly declare boundaries and audit
+### 4. Knowledge Sharing Must Explicitly Declare Boundaries and Audit
 
-Cross-department knowledge access must carry:
+Cross-department knowledge access must include:
 
 - sharing policy
 - purpose
 - approver / policy source
 - access log
 
-### 5. Governance delegation must be revocable, auditable, and scope-limited
+### 5. Governance Delegation Must Be Revocable, Auditable, and Scope-Limited
 
 Governance delegation is not a permanent transfer, but a controlled authorization with scope, TTL, and revoke.
 
 ## Consequences
 
 - Organization governance layer will become the unified upper boundary for `tenant / division / policy / knowledge`
-- Subsequent implementation prioritizes supplementing contracts and state machine tests for organization model, approval routing, and knowledge boundary
+- Subsequent implementation prioritizes organization model, approval routing, and knowledge boundary contract and state machine testing

@@ -1,14 +1,14 @@
 # Knowledge SPI Contract
 
-> **OAPEFLIR Relevance**: This contract defines the SPI interfaces for the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines the SPI interface for the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
+> **Update Date**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the Service Provider Interface (SPI) for the Knowledge Plane, including the KIP 5-stage pipeline, three index types, and three-level query normalization interfaces.
+This contract defines the Service Provider Interface (SPI) for the Knowledge Plane, including the KIP 5-stage pipeline, three indexing types, and three-level query normalized interfaces.
 
-Related documents:
-- `artifact_store_contract.md`: Boundaries between Knowledge and Artifact.
+Related Documents:
+- `artifact_store_contract.md`: Boundary between Knowledge and Artifact.
 - [ADR-078 Knowledge Plane Architecture](../adr/078-knowledge-plane-architecture.md)
 
 ## 2. KIP 5-Stage Pipeline
@@ -16,16 +16,16 @@ Related documents:
 ```
 Intake → Extraction → Archive → Index → Query
   ↓        ↓           ↓         ↓       ↓
-Raw Doc  Semantic    Cold      Three   Three
-         Extraction  Storage   Indexes Queries
+Raw Doc  Semantic   Cold Store  3 Index  3-Level
+         Extraction            Types    Query
 ```
 
 | Stage | Component | Responsibility |
-|-------|-----------|----------------|
+|------|------|------|
 | Intake | `KnowledgeIngestionPipeline` | Receives raw documents, format validation |
 | Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
 | Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
-| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index types maintenance |
+| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index maintenance |
 | Query | `KnowledgeQueryService` | Quick/Standard/Deep three-level query |
 
 ## 3. Core Interfaces
@@ -138,10 +138,10 @@ interface ASTIndex {
 ## 5. KnowledgeQueryService Three-Level Query SPI
 
 | Level | Response Time Target | Retrieval Scope |
-|-------|---------------------|-----------------|
-| `quick` | <100ms P99 | Keyword index only (L1 cache) |
-| `standard` | <500ms P99 | Keyword + semantic vector hybrid |
-| `deep` | <2000ms | All indexes + cross-namespace |
+|------|------------|---------|
+| `quick` | <100ms P99 | Keywords only (L1 cache) |
+| `standard` | <500ms P99 | Keywords + semantic vector hybrid |
+| `deep` | <2000ms | All indexes + cross namespace |
 
 ```typescript
 enum QueryLevel {
@@ -191,16 +191,16 @@ interface RetrievalHit {
 
 ## 6. 4-Level Trust Model
 
-| Trust Level | Source | Usage |
-|-------------|--------|-------|
-| `verified` | Human-reviewed content | Production decisions |
-| `reviewed` | LearningObjectValidator verified | Improvement candidates |
-| `inferred` | System-inferred | Suggestions/references |
+| Trust Level | Source | Purpose |
+|---------|------|------|
+| `verified` | Manually reviewed content | Production decisions |
+| `reviewed` | LearningObjectValidator verification | Improvement candidates |
+| `inferred` | System inference | Suggestions/reference |
 | `untrusted` | Unverified source | Display only |
 
 ## 7. Learn→Knowledge Integration
 
-LearningObject is injected into the knowledge plane through `KnowledgePromotionService`:
+LearningObject injects into the knowledge plane via `KnowledgePromotionService`:
 
 ```typescript
 interface KnowledgePromotionService {
@@ -240,5 +240,5 @@ FailurePatternMiner.mine()
 - **Standard Mode**: Must not execute graph traversal or AST queries.
 - **Deep Mode**: Must include semantic similarity ranking topK=30, optional graph expansion.
 - **Namespace Isolation**: Cross-namespace queries must be authorized through KnowledgeAccessControl.
-- **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef links.
-- **Trust Level Propagation**: trustLevel must be determined at intake time, no demotion allowed.
+- **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef link.
+- **Trust Level Propagation**: trustLevel must be determined at intake and must not be demoted.

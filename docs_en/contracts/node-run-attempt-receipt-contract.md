@@ -4,7 +4,7 @@
 
 ## 1. Scope
 
-`NodeRun` is the executable instance of `PlanNode`; `NodeAttempt` represents a single attempt of retry/redrive; `NodeAttemptReceipt` is the structured receipt after worker, LLM, tool, HITL, or subgraph execution.
+`NodeRun` is the executable instance of `PlanNode`; `NodeAttempt` expresses a single attempt of retry/redrive; `NodeAttemptReceipt` is a structured receipt after worker, LLM, tool, HITL, or subgraph execution.
 
 ## 2. NodeRun Minimum Fields
 
@@ -72,7 +72,7 @@ Terminal states: `succeeded`, `failed`, `skipped`, `cancelled`, `dependency_fail
 Rules:
 
 - Retries must not create new `NodeRun` unless `GraphPatch` explicitly appends new nodes.
-- Each attempt must be replayable with input snapshot, version lock, and constraint bundle.
+- Each attempt must support replay of input snapshot, version lock, and constraint bundle.
 - Redrive must append lineage and must not overwrite old attempt.
 
 ## 4. NodeAttemptReceipt
@@ -97,11 +97,11 @@ Minimum fields:
 | `durationMs` | `number?` | This attempt duration |
 | `producedAt` | `timestamp` | Production time |
 
-## 5. Advancement Rules
+## 5. Progression Rules
 
-- `NodeRun` status advancement only through `RuntimeStateMachine.transition(command)`.
+- `NodeRun` status progression must only go through `RuntimeStateMachine.transition(command)`.
 - Worker writeback must validate lease and fencing token.
-- `NodeAttemptReceipt` is append-only; must not update old receipt to express new result.
+- `NodeAttemptReceipt` is append-only; old receipts must not be updated to express new results.
 - `retry_wait` must have `wakeAt`, `retryPolicyRef`, `attemptId`, and backoff reason.
 
 ## 6. Legacy / Deprecated Mapping
@@ -111,20 +111,20 @@ Minimum fields:
 | `WorkflowStep` | Semantic step; expanded to `PlanNode` / `NodeRun` before execution |
 | `ExecutionReceipt` | Deprecated alias; new receipts use `NodeAttemptReceipt` |
 | `nodeAttemptReceiptId` | Deprecated storage-shaped key; canonical API field uses `receiptId` |
-| `StepOutput` | May serve as projection or output artifact, not execution receipt authority |
+| `StepOutput` | May serve as projection or output artifact, not authoritative execution receipt |
 
 ## 7. Test Requirements
 
 - Terminal states cannot transition out.
 - Writeback with incorrect fencing token must be rejected.
-- Retry only appends `NodeAttempt` and `AttemptLineage`, does not overwrite receipt.
+- Retry only appends `NodeAttempt` and `AttemptLineage`, does not overwrite receipts.
 - GraphPatch must not rewrite existing receipt semantics.
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-46: This document originally wrote the receipt primary key as `nodeAttemptReceiptId` and omitted `harnessRunId / planGraphBundleId / graphVersion / durationMs`. Root cause: contract directly followed underlying storage naming habits and exposed table-shaped field names, without maintaining the canonical API shape of v4.3 executable contracts. Fix: The main text now converges the primary key to `receiptId` and supplements the runtime chain lineage and duration fields.
+- T-46: This document originally wrote the receipt primary key as `nodeAttemptReceiptId` and omitted `harnessRunId / planGraphBundleId / graphVersion / durationMs`. Root cause: the contract directly exposed table-shaped field names following underlying storage naming habits, without maintaining the canonical API shape of the v4.3 executable contract. Fix: The body now uniformly converges the primary key to `receiptId` and adds the run chain lineage and duration fields.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -1,7 +1,7 @@
 # Release Rollout And Rollback Contract
 
-> **OAPEFLIR Relevance**: This contract defines the OAPEFLIR Improve Hub's controlled release and rollback mechanism, corresponding to ADR-075 and ADR-018.
-> **Last Updated**: 2026-04-17
+> **OAPEFLIR Related**: This contract defines controlled release and rollback mechanisms for OAPEFLIR Improve Hub, corresponding to ADR-075 and ADR-018.
+> **Updated**: 2026-04-17
 
 ## 1. Scope
 
@@ -12,7 +12,7 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_operations_plane_contract.md`
-- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Controlled Rollout Release](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 2. Goals
@@ -37,16 +37,16 @@ Related documents:
 
 ### 4.1 Six-Level Controlled Release (L0-L5)
 
-Corresponding to ADR-075 §1:
+Corresponds to ADR-075 §1:
 
 | Level | Name | Traffic | AI Autonomy | Human Approval |
-|-------|------|---------|-------------|----------------|
-| L0 | `off` | 0% | No operational authority, recording only | — |
-| L1 | `evaluate_0` | 0% (recording only) | Candidate evaluation / evidence validation | — |
-| L2 | `canary_5` | 5% | Parameter adjustment, strategy selection | critical/high require approval |
-| L3 | `partial_25` | 25% | Configuration suggestions | all require approval |
-| L4 | `stable_75` | 75% | Execute configuration changes | all must be approved |
-| L5 | `stable_100` | 100% | Fully autonomous (constrained by guardrail) | Exception escalation only |
+| --- | --- | --- | --- | --- |
+| L0 | `off` | 0% | No operation authority, recording only | — |
+| L1 | `evaluate_0` | 0% (recording only) | candidate evaluation / evidence validation | — |
+| L2 | `canary_5` | 5% | parameter adjustment, strategy selection | required for critical/high |
+| L3 | `partial_25` | 25% | configuration change suggestions | required for all |
+| L4 | `stable_75` | 75% | execute configuration changes | required for all |
+| L5 | `stable_100` | 100% | fully autonomous (constrained by guardrails) | exception escalation only |
 
 ### 4.2 Rollout State Machine
 
@@ -69,13 +69,13 @@ stable_75 (L4) ←→ auto_rollback
       ↓
 stable_100 (L5)
       ↓
-released (continuous M days without issues)
+released (sustained M days without issues)
 ```
 
-### 4.3 Release Modes (Supplementary)
+### 4.3 Release Modes (supplementary)
 
 | Mode | Use Case |
-|------|----------|
+| --- | --- |
 | `blue_green` | Main chain major version, need quick full-group switch |
 | `canary` | Small traffic validation |
 | `tenant_gray` | Designated tenant or division phased canary |
@@ -83,21 +83,21 @@ released (continuous M days without issues)
 
 ### 4.4 Auto-Rollback Conditions
 
-Corresponding to ADR-075 §3.2:
+Corresponds to ADR-075 §3.2:
 
-| Metric | Threshold | Window | Triggered Action |
-|--------|-----------|--------|------------------|
-| Error Rate | > 1% | 5 minutes | L4→L3 |
-| P99 Latency | > 500ms | 5 minutes | L4→L3 |
-| Success Rate | < 99% | 5 minutes | L4→L3 |
-| Continuous Failure | > 10 times | 10 minutes | Direct rollback to L1 |
-| Resource Exhaustion | Memory > 90% | 1 minute | Direct rollback to L1 |
+| Metric | Threshold | Window | Trigger Action |
+|------|------|------|---------|
+| Error rate | > 1% | 5 minutes | L4→L3 |
+| P99 latency | > 500ms | 5 minutes | L4→L3 |
+| Success rate | < 99% | 5 minutes | L4→L3 |
+| Continuous failures | > 10 | 10 minutes | direct rollback L1 |
+| Resource exhaustion | Memory > 90% | 1 minute | direct rollback L1 |
 
 ### 4.5 State Constraints
 
-- `evaluate_0` (L1): Candidate evaluation and evidence validation, must not directly override user-visible results.
+- `evaluate_0` (L1): Candidate evaluation and evidence validation; must not directly overwrite user-visible results.
 - `canary_5` (L2) / `partial_25` (L3) / `stable_75` (L4): Must pass metrics gate to upgrade.
-- `stable_100` (L5): Full traffic, fully autonomous (constrained by guardrail).
+- `stable_100` (L5): Full traffic, fully autonomous (constrained by guardrails).
 - `auto_rollback`: Automatic or manual rollback.
 
 ## 5. OAPEFLIR Secondary Chain Integration
@@ -110,7 +110,8 @@ LearningObject(validated/promoted)
     → RolloutRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
-**Required Conditions** (R4-EVIDENCE constraint):
+**Mandatory conditions** (R4-EVIDENCE constraint):
+
 - LearningObject without evidence chain must not enter rollout.
 - Candidate not passing guardrail can only stay in candidate_created state, must not enter `evaluation_enabled`.
 - `evaluation_enabled` runtime should record guardrail reason codes for explainability and audit.
@@ -161,7 +162,7 @@ interface RolloutMetrics {
 ## 8. Rollback Rules
 
 - Code rollback must be faster than data repair.
-- Prompt / policy / feature flag should support independent rollback.
+- prompt / policy / feature flag should support independent rollback.
 - Schema rollback if irreversible, must declare in advance and prepare compensating migration.
 - Rollback action must produce logs, audit, and incident records.
 - If local workspace file modification is involved, allow using shadow snapshot / shadow git repo outside workspace as step-level undo / redo basis; but must not leak git state into user workspace.
@@ -202,15 +203,15 @@ Not allowed:
 
 ## 12. Autonomy Boundary
 
-Corresponding to governance/autonomy_boundary_policy.md:
+Corresponds to governance/autonomy_boundary_policy.md:
 
 | Level | AI Autonomy | Human Approval Required |
-|-------|-------------|------------------------|
-| L0-L1 | Fully autonomous (recording only) | Not required |
-| L2 | Parameter adjustment, strategy selection | Required for critical/high |
-| L3 | Configuration change suggestions | Required for all |
-| L4 | Execute configuration changes | Must for all |
-| L5 | Fully autonomous (constrained by guardrail) | Exception escalation only |
+|------|------------|------------|
+| L0-L1 | fully autonomous (recording only) | not required |
+| L2 | parameter adjustment, strategy selection | required for critical/high |
+| L3 | configuration change suggestions | required for all |
+| L4 | execute configuration changes | required for all |
+| L5 | fully autonomous (constrained by guardrails) | exception escalation only |
 
 ## 13. Closure Conclusion
 

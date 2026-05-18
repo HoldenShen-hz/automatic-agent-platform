@@ -70,7 +70,7 @@ If cost governance only stops at the task total, it can easily get out of contro
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
 - T-48: This document originally wrote token budget as pure allocation dimension list. Root cause: documentation only covered prompt/token planning side, did not write how these budget slices land into frozen `BudgetReservation` truth state machine into the contract. Fix: This version adds binding rules with `BudgetReservation`, clarifying fine-grained token budget is only a reservation slicing strategy, actual consumption must obey `reserved -> settled -> released` lifecycle.
 
