@@ -82,6 +82,14 @@
 | `worker:lease_released_after_writeback` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `takeover:session_opened` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | ��议 |
+| `takeover:acknowledged` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:completed` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:timeout` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:escalated` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:cancelled` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:request_enqueued` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:request_processed` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `takeover:ack_expired` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
 | `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建��� |
 | `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建�� |
 | `recovery:dead_lettered` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |

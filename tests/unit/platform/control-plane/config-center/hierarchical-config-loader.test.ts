@@ -113,6 +113,16 @@ test("HierarchicalConfigLoader.loadConfig deep merges nested objects", () => {
   });
 });
 
+test("HierarchicalConfigLoader.loadConfig returns detached source config snapshots", () => {
+  const loader = new HierarchicalConfigLoader();
+  const tenantConfig = { nested: { timeout: 1000 } };
+
+  const result = loader.loadConfig({}, { "tenant-1": tenantConfig }, {}, {}, "tenant-1");
+  (result.sources[1]!.config.nested as Record<string, unknown>).timeout = 5000;
+
+  assert.equal((tenantConfig.nested as Record<string, unknown>).timeout, 1000);
+});
+
 test("HierarchicalConfigLoader.loadConfig without active tenant uses platform only", () => {
   const loader = new HierarchicalConfigLoader();
   const platformConfig = { timeout: 30000 };

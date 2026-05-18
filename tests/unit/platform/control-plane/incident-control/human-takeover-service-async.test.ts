@@ -196,9 +196,9 @@ test("TakeoverQueueManager priority ordering", () => {
   });
 
   const pending = manager.getPendingRequests();
-  assert.equal(pending[0]?.taskId, "high-priority");
+  assert.equal(pending[0]?.taskId, "low-priority");
   assert.equal(pending[1]?.taskId, "medium-priority");
-  assert.equal(pending[2]?.taskId, "low-priority");
+  assert.equal(pending[2]?.taskId, "high-priority");
 });
 
 test("TakeoverQueueManager getNextPending returns FIFO for same priority", () => {

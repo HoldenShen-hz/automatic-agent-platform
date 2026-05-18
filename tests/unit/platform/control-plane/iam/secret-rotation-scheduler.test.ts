@@ -176,6 +176,20 @@ test("startDailyRotationScheduler returns timer that can be stopped", () => {
   }
 });
 
+test("stopDailyRotationSchedulers clears internally tracked timers", () => {
+  const harness = createHarness("aa-secret-rotation-scheduler-stop-all-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    const timer = service.startDailyRotationScheduler(60_000);
+    assert.equal(timer.hasRef(), false);
+    service.stopDailyRotationSchedulers();
+    assert.equal(timer.hasRef(), false);
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
 test("startDailyRotationScheduler uses 90-day default cadence", () => {
   const harness = createHarness("aa-secret-rotation-scheduler-90day-");
   try {

@@ -35,6 +35,17 @@ class RecordingRunner {
   }
 }
 
+class StdoutPreferredRunner extends RecordingRunner {
+  public override run(request: DeploymentCommandRequest): DeploymentCommandResult {
+    const result = super.run(request);
+    return {
+      ...result,
+      stdout: "Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-system/actions/runs/730000123",
+      stderr: "attacker controlled text https://github.com/automatic-agent/automatic-agent-system/actions/runs/999999999",
+    };
+  }
+}
+
 function seedReadyEnvironment(store: AuthoritativeTaskStore, environment: "test" | "staging" | "pre-prod" | "prod", verifiedAt: string): void {
   const componentTypes = environment === "test"
     ? (["provider", "sandbox"] as const)
@@ -203,6 +214,57 @@ test("deployment execution service executes publish and deploy via injected runn
     const promotionHistory = harness.store.listEnvironmentPromotionHistoryRecords({ targetEnvironment: "prod", limit: 5 });
     assert.equal(promotionHistory[0]?.decisionStatus, "executed");
     assert.equal(promotionHistory[0]?.deploymentExecutionId, exported.report.executionId);
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("deployment execution service extracts workflow receipt from stdout only", async () => {
+  const harness = createHarness("aa-deployment-execution-stdout-only-");
+  try {
+    const verifiedAt = nowIso();
+    seedReadyEnvironment(harness.store, "test", verifiedAt);
+    seedReadyEnvironment(harness.store, "staging", verifiedAt);
+    seedReadyEnvironment(harness.store, "pre-prod", verifiedAt);
+    seedReadyEnvironment(harness.store, "prod", verifiedAt);
+    for (const environmentId of ["staging", "pre-prod", "prod"] as const) {
+      upsertTenantForEnvironment(harness.store, environmentId);
+      harness.store.upsertDeploymentBindingRecord({
+        bindingId: `binding-${environmentId}`,
+        tenantId: `tenant-${environmentId}`,
+        environmentId,
+        deploymentMode: "private_cloud",
+        region: "cn-shanghai-1",
+        networkBoundary: `vpc-${environmentId}`,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    }
+
+    const service = new DeploymentExecutionService(harness.store, {
+      repoRootDir: REPO_ROOT,
+      artifactStoreOptions: { rootDir: join(harness.workspace, "artifacts") },
+      secretProvider: new EnvSecretProvider({
+        env: {
+          AA_SECRET_SYSTEM_REGISTRY_GHCR_PROD: "registry-token-123456",
+          AA_SECRET_SYSTEM_DEPLOY_KUBECONFIG_PROD: "deploy-token-abcdef",
+        },
+      }),
+      commandRunner: new StdoutPreferredRunner() as any,
+    });
+
+    const exported = await service.exportReport({
+      environment: "prod",
+      version: "7.8.9",
+      commitSha: "abcdef0123456789",
+      rolloutStrategy: "blue_green",
+      execute: true,
+      taskId: "deployment_execution_task",
+    });
+
+    assert.equal(exported.report.publishWorkflowRunId, "730000123");
+    assert.equal(exported.report.publishWorkflowRunUrl?.endsWith("/730000123"), true);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

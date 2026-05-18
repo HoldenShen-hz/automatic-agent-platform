@@ -112,6 +112,7 @@ const SECRET_REF_PATTERN = /^secret:\/\/([a-z0-9._/-]+)$/i;
 export function maskSecretValue(value: string): string {
   const normalized = value.trim();
   if (normalized.length <= 8) {
+    // For short secrets (tokens, OTPs, PINs), mask entirely to avoid plaintext disclosure
     return "*".repeat(Math.max(4, normalized.length));
   }
   if (normalized.length <= 12) {

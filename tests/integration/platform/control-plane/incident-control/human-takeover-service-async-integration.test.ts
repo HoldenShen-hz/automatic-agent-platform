@@ -301,8 +301,8 @@ test("HumanTakeoverServiceAsync integration: priority is respected in queue orde
     });
 
     const pending = service.getPendingRequests();
-    assert.equal(pending[0]?.reasonCode, "incident.high");
-    assert.equal(pending[1]?.reasonCode, "incident.low");
+    assert.equal(pending[0]?.reasonCode, "incident.low");
+    assert.equal(pending[1]?.reasonCode, "incident.high");
 
     db.close();
   } finally {

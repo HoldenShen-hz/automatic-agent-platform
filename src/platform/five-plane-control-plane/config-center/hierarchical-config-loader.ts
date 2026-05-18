@@ -109,7 +109,7 @@ export class HierarchicalConfigLoader {
     const platformSource: HierarchyConfigSource = {
       layer: "platform",
       sourceId: null,
-      config: platformConfig,
+      config: cloneConfig(platformConfig),
       version: this.computeVersion(platformConfig),
       updatedAt: now,
     };
@@ -120,7 +120,7 @@ export class HierarchicalConfigLoader {
       const tenantSource: HierarchyConfigSource = {
         layer: "tenant",
         sourceId: activeTenantId,
-        config: tenantConfigs[activeTenantId],
+        config: cloneConfig(tenantConfigs[activeTenantId]!),
         version: this.computeVersion(tenantConfigs[activeTenantId]),
         updatedAt: now,
       };
@@ -132,7 +132,7 @@ export class HierarchicalConfigLoader {
       const packSource: HierarchyConfigSource = {
         layer: "pack",
         sourceId: activePackId,
-        config: packConfigs[activePackId],
+        config: cloneConfig(packConfigs[activePackId]!),
         version: this.computeVersion(packConfigs[activePackId]),
         updatedAt: now,
       };
@@ -144,7 +144,7 @@ export class HierarchicalConfigLoader {
       const taskTypeSource: HierarchyConfigSource = {
         layer: "task_type",
         sourceId: activeTaskTypeId,
-        config: taskTypeConfigs[activeTaskTypeId],
+        config: cloneConfig(taskTypeConfigs[activeTaskTypeId]!),
         version: this.computeVersion(taskTypeConfigs[activeTaskTypeId]),
         updatedAt: now,
       };
@@ -156,7 +156,7 @@ export class HierarchicalConfigLoader {
       const environmentSource: HierarchyConfigSource = {
         layer: "environment",
         sourceId: activeEnvironmentId,
-        config: environmentConfigs[activeEnvironmentId],
+        config: cloneConfig(environmentConfigs[activeEnvironmentId]!),
         version: this.computeVersion(environmentConfigs[activeEnvironmentId]),
         updatedAt: now,
       };
@@ -168,7 +168,7 @@ export class HierarchicalConfigLoader {
       const runtimeSource: HierarchyConfigSource = {
         layer: "runtime",
         sourceId: activeRuntimeId,
-        config: runtimeConfigs[activeRuntimeId],
+        config: cloneConfig(runtimeConfigs[activeRuntimeId]!),
         version: this.computeVersion(runtimeConfigs[activeRuntimeId]),
         updatedAt: now,
       };
@@ -303,4 +303,24 @@ export class HierarchicalConfigLoader {
 
     return diffs;
   }
+}
+
+function cloneConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const cloned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    if (value != null && typeof value === "object" && !Array.isArray(value)) {
+      cloned[key] = cloneConfig(value as Record<string, unknown>);
+      continue;
+    }
+    if (Array.isArray(value)) {
+      cloned[key] = value.map((item) => (
+        item != null && typeof item === "object" && !Array.isArray(item)
+          ? cloneConfig(item as Record<string, unknown>)
+          : item
+      ));
+      continue;
+    }
+    cloned[key] = value;
+  }
+  return cloned;
 }

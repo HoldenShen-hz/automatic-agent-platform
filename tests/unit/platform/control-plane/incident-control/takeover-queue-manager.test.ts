@@ -97,8 +97,8 @@ test("enqueue respects custom priority", () => {
   });
 
   const pending = manager.getPendingRequests();
-  assert.equal(pending[0]?.taskId, "task-high"); // Higher priority first
-  assert.equal(pending[1]?.taskId, "task-low");
+  assert.equal(pending[0]?.taskId, "task-low"); // Larger numeric priority now wins
+  assert.equal(pending[1]?.taskId, "task-high");
 });
 
 test("enqueue throws when queue is full", () => {
@@ -255,6 +255,7 @@ test("cancel removes pending request", () => {
 
   assert.equal(cancelled, true);
   assert.equal(manager.getQueueDepth(), 0);
+  assert.equal(emitter.events.at(-1)?.event, "takeover:cancelled");
 });
 
 test("cancel returns false for unknown request", () => {

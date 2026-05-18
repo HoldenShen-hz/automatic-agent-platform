@@ -54,6 +54,24 @@ test("ConfigLoader.loadConfig loads from multiple sources", async () => {
   assert.equal(config.unique2, "value2");
 });
 
+test("ConfigLoader.loadConfig deep merges nested objects across sources", async () => {
+  const loader = new ConfigLoader({ enableCache: false });
+
+  loader.addSource({
+    name: "default",
+    priority: ConfigSourcePriority.DEFAULT,
+    load: async () => ({ nested: { retries: 3, timeout: 1000 } }),
+  });
+  loader.addSource({
+    name: "override",
+    priority: ConfigSourcePriority.ENVIRONMENT,
+    load: async () => ({ nested: { timeout: 5000 } }),
+  });
+
+  const config = await loader.loadConfig();
+  assert.deepEqual(config.nested, { retries: 3, timeout: 5000 });
+});
+
 test("ConfigLoader.loadFromEnv maps environment variables", () => {
   const loader = new ConfigLoader();
   const env = {
@@ -114,6 +132,30 @@ test("ConfigLoader.addSource sorts sources by priority", () => {
   // Sources should be sorted: default (0) < file (40) < env (50) < remote (60)
   const config = loader.loadConfig();
   assert.ok(true); // If we get here without error, sorting works
+});
+
+test("ConfigLoader.addSource clears stale cache when source order changes", async () => {
+  const loader = new ConfigLoader({ enableCache: true });
+  let defaultValue = "default";
+
+  loader.addSource({
+    name: "default",
+    priority: ConfigSourcePriority.DEFAULT,
+    load: async () => ({ key: defaultValue }),
+  });
+
+  const initial = await loader.loadConfig();
+  assert.equal(initial.key, "default");
+
+  defaultValue = "updated";
+  loader.addSource({
+    name: "override",
+    priority: ConfigSourcePriority.ENVIRONMENT,
+    load: async () => ({ key: "override" }),
+  });
+
+  const reloaded = await loader.loadConfig();
+  assert.equal(reloaded.key, "override");
 });
 
 test("ConfigLoader.clearCache removes all cached entries", async () => {
@@ -212,6 +254,18 @@ test("EnvironmentConfigSource loads prefixed env vars", async () => {
   assert.equal(config.testVar, "test_value");
   assert.equal(config.nestedKey, "nested_value");
   assert.equal(config.OTHER_VAR, undefined); // No prefix
+});
+
+test("EnvironmentConfigSource treats env keys case-insensitively", async () => {
+  const source = new EnvironmentConfigSource("AA_", {
+    aa_mixed_case_flag: "true",
+    Aa_Another_Value: "42",
+  } as NodeJS.ProcessEnv);
+
+  const config = await source.load();
+
+  assert.equal(config.mixedCaseFlag, "true");
+  assert.equal(config.anotherValue, "42");
 });
 
 test("EnvironmentConfigSource converts snake_case to camelCase", async () => {

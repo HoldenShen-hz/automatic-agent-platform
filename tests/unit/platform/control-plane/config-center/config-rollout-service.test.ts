@@ -179,8 +179,8 @@ test("promoteRollout from FULL remains at FULL terminal stage", () => {
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
   service.promoteRollout(rollout.rolloutId);
   service.promoteRollout(rollout.rolloutId);
-  service.promoteRollout(rollout.rolloutId);
-  assert.equal(rollout.stage.phase, RolloutPhase.FULL);
+  const full = service.promoteRollout(rollout.rolloutId);
+  assert.equal(full?.stage.phase, RolloutPhase.FULL);
 
   const promoted = service.promoteRollout(rollout.rolloutId);
 
@@ -265,6 +265,19 @@ test("autoProgressRollouts does not auto-progress terminal full stage", () => {
   assert.equal(progressed, 0);
 });
 
+test("autoProgressRollouts blocks promotion when no health snapshot is available", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
+  rollout.updatedAt = new Date(Date.now() - rollout.stage.minDurationMs - 1000).toISOString();
+
+  const progressed = service.autoProgressRollouts();
+  const current = service.getActiveRollout("runtime.timeout", "platform", null);
+
+  assert.equal(progressed, 0);
+  assert.equal(current?.stage.phase, RolloutPhase.CANARY_5);
+  assert.equal(current?.lastHealthCheckPassed, false);
+});
+
 test("cleanupRollouts removes old completed rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
@@ -282,10 +295,10 @@ test("cleanupRollouts removes old completed rollouts", () => {
 test("cleanupRollouts removes old cancelled rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
-  service.cancelRollout(rollout.rolloutId);
+  const cancelled = service.cancelRollout(rollout.rolloutId)!;
 
   // Manually set updatedAt to old
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
+  cancelled.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
 
   const cleaned = service.cleanupRollouts(86400000);
 
@@ -330,7 +343,7 @@ test("autoProgressRollouts respects health gates before promoting rollout", () =
   });
 
   assert.equal(blocked, 0);
-  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
+  assert.equal(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.CANARY_5);
 
   const progressed = service.autoProgressRollouts({
     [rollout.rolloutId]: {
@@ -341,7 +354,52 @@ test("autoProgressRollouts respects health gates before promoting rollout", () =
   });
 
   assert.equal(progressed, 1);
-  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_25);
+  assert.equal(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.CANARY_25);
+});
+
+test("autoProgressRollouts honors per-rollout health gate overrides", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout(
+    "runtime.timeout",
+    "platform",
+    null,
+    100,
+    undefined,
+    { maxErrorRate: 0.1 },
+  );
+  rollout.updatedAt = new Date(Date.now() - rollout.stage.minDurationMs - 1000).toISOString();
+
+  const progressed = service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.08,
+      latencyRegression: 0.05,
+      incidentRate: 0.0,
+    },
+  });
+
+  assert.equal(progressed, 1);
+  assert.equal(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.CANARY_25);
+});
+
+test("promoteRollout does not mutate active rollout if persistence fails", () => {
+  let saves = 0;
+  const store = {
+    save() {
+      saves++;
+      if (saves > 1) {
+        throw new Error("persist failed");
+      }
+    },
+    loadAll() {
+      return [];
+    },
+    delete() {},
+  };
+  const service = new ConfigRolloutService({ store });
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
+
+  assert.throws(() => service.promoteRollout(rollout.rolloutId), /persist failed/);
+  assert.equal(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.CANARY_5);
 });
 
 test("startRollout accepts metadata", () => {

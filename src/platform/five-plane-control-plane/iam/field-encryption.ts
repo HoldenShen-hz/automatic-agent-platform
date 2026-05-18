@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -11,8 +11,8 @@ const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEY_LENGTH = 32;
 const PBKDF2_DIGEST = "sha256";
 const SALT_LENGTH = 16;
+const MIN_PASSPHRASE_BYTES = 16;
 const ENVELOPE_VERSION = "fe1";
-const KEY_ID_HEX_LENGTH = 16;
 const FIELD_ENCRYPTION_KEY_ENV = "AA_FIELD_ENCRYPTION_KEY";
 
 /**
@@ -26,7 +26,7 @@ function deriveKeyWithPbkdf2(password: Buffer, salt: Buffer): Buffer {
 
 function normalizeKeyInput(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
-  const minimumLength = Buffer.isBuffer(key) ? 16 : 8;
+  const minimumLength = Buffer.isBuffer(key) ? 16 : MIN_PASSPHRASE_BYTES;
   if (buffer.length < minimumLength) {
     throw new ValidationError("security.encryption_key_too_weak", "security.encryption_key_too_weak");
   }
@@ -41,10 +41,6 @@ export function loadFieldEncryptionKeyFromEnv(env: NodeJS.ProcessEnv = process.e
   return normalizeKeyInput(value.trim());
 }
 
-function buildKeyId(key: Buffer): string {
-  return createHash("sha256").update(key).digest("hex").slice(0, KEY_ID_HEX_LENGTH);
-}
-
 function decodeBase64Payload(value: string): Buffer {
   try {
     return Buffer.from(value, "base64");
@@ -55,25 +51,23 @@ function decodeBase64Payload(value: string): Buffer {
 
 function parseEnvelope(ciphertext: string): { salt: Buffer; iv: Buffer; tag: Buffer; encrypted: Buffer } {
   if (!ciphertext.includes(":")) {
-    const legacyData = decodeBase64Payload(ciphertext);
-    if (legacyData.length < IV_BYTES + AUTH_TAG_BYTES) {
-      throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
-    }
-    return {
-      salt: Buffer.alloc(0),
-      iv: legacyData.subarray(0, IV_BYTES),
-      tag: legacyData.subarray(IV_BYTES, IV_BYTES + AUTH_TAG_BYTES),
-      encrypted: legacyData.subarray(IV_BYTES + AUTH_TAG_BYTES),
-    };
-  }
-
-  const parts = ciphertext.split(":");
-  if (parts.length !== 3) {
     throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
   }
 
-  const [version, keyId, payload] = parts as [string, string, string];
-  if (version !== ENVELOPE_VERSION || keyId.length === 0 || payload.length === 0) {
+  const parts = ciphertext.split(":");
+  if (parts.length !== 2 && parts.length !== 3) {
+    throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
+  }
+
+  const [version, middle, last] = parts;
+  const payload = parts.length === 2 ? middle : last;
+  const legacyKeyId = parts.length === 3 ? (middle ?? "") : "";
+  if (
+    version !== ENVELOPE_VERSION ||
+    payload == null ||
+    payload.length === 0 ||
+    (parts.length === 3 && legacyKeyId.length > 0)
+  ) {
     throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
   }
 
@@ -107,7 +101,7 @@ export function encryptField(plaintext: string, key: Buffer | string): string {
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   const payload = Buffer.concat([salt, iv, tag, encrypted]).toString("base64");
-  return `${ENVELOPE_VERSION}:${buildKeyId(normalizedKey)}:${payload}`;
+  return `${ENVELOPE_VERSION}:${payload}`;
 }
 
 export function decryptField(ciphertext: string, key: Buffer | string): string {

@@ -417,19 +417,18 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
    */
   private calculatePeriodEnd(start: string, period: BudgetPolicy["period"]): string {
     const startDate = new Date(start);
+    const year = startDate.getUTCFullYear();
+    const month = startDate.getUTCMonth();
+    const day = startDate.getUTCDate();
     switch (period) {
       case "monthly":
-        startDate.setMonth(startDate.getMonth() + 1);
-        break;
+        return new Date(Date.UTC(year, month + 1, day, 0, 0, 0, 0)).toISOString();
       case "weekly":
-        startDate.setDate(startDate.getDate() + 7);
-        break;
+        return new Date(Date.UTC(year, month, day + 7, 0, 0, 0, 0)).toISOString();
       case "per_run":
         // per_run resets at the end of the current day
-        startDate.setDate(startDate.getDate() + 1);
-        break;
+        return new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0)).toISOString();
     }
-    return startDate.toISOString();
   }
 
   /**

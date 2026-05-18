@@ -47,6 +47,12 @@ export interface AuthorizationContext {
   readonly pluginTrusted?: boolean;
   readonly requiresTenantScope?: boolean;
   readonly manualTakeoverActive?: boolean;
+  /** Original principal when performing on-behalf-of/impersonation */
+  readonly originalPrincipal?: {
+    readonly type: PlatformPrincipalType;
+    readonly roles: readonly PlatformRole[];
+    readonly tenantId?: string | null;
+  };
 }
 
 export interface PrincipalAccessProfile {
@@ -249,15 +255,36 @@ export function evaluateAuthorizationContext(input: {
 }): AuthorizationContextDecision {
   const context = input.context;
 
-  if (context?.requiresTenantScope === true && (context.tenantId == null || context.tenantId.length === 0)) {
-    return {
-      allowed: false,
-      requiresApproval: false,
-      reasonCode: "policy.context_tenant_scope_required",
-      matchedRuleRefs: ["context.tenant_scope_required"],
-      constraints: { tenantScopeRequired: true },
-      explainSummary: "Context-aware authorization requires a tenant scope for this action.",
-    };
+  // N-0075: Tenant validation for impersonation/on-behalf-of
+  if (context?.requiresTenantScope === true) {
+    if (context.tenantId == null || context.tenantId.length === 0) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reasonCode: "policy.context_tenant_scope_required",
+        matchedRuleRefs: ["context.tenant_scope_required"],
+        constraints: { tenantScopeRequired: true },
+        explainSummary: "Context-aware authorization requires a tenant scope for this action.",
+      };
+    }
+    // Validate principal's tenant matches context tenant when both are present
+    // This prevents impersonation across tenant boundaries
+    if (context.originalPrincipal?.tenantId != null && context.originalPrincipal.tenantId.length > 0) {
+      if (context.originalPrincipal.tenantId !== context.tenantId) {
+        return {
+          allowed: false,
+          requiresApproval: false,
+          reasonCode: "policy.context_tenant_mismatch",
+          matchedRuleRefs: ["context.tenant_mismatch"],
+          constraints: {
+            tenantScopeRequired: true,
+            requestedTenant: context.tenantId,
+            originalTenant: context.originalPrincipal.tenantId,
+          },
+          explainSummary: "On-behalf-of authorization failed: original principal tenant does not match target tenant.",
+        };
+      }
+    }
   }
 
   if (

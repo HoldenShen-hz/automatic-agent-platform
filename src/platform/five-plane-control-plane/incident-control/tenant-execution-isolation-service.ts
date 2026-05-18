@@ -322,14 +322,17 @@ export class TenantExecutionIsolationService {
     const quota = this.getQuota(tenantId, quotaKind);
     if (!quota) return null;
 
-    const windowStart = new Date(Date.now() - quota.windowSeconds * 1000).toISOString();
+    const now = Date.now();
+    const windowStartMs = Math.floor(now / (quota.windowSeconds * 1000)) * (quota.windowSeconds * 1000);
+    const windowStart = new Date(windowStartMs).toISOString();
     const samples = this.db.connection
       .prepare(`SELECT SUM(sample_value) as total FROM quota_usage_samples WHERE tenant_id = ? AND quota_kind = ? AND recorded_at >= ?`)
       .get(tenantId, quotaKind, windowStart) as RawRow | undefined;
 
     const currentValue = Number(samples?.total ?? 0);
     const percentUsed = quota.limitValue > 0 ? (currentValue / quota.limitValue) * 100 : 0;
-    const resetAt = new Date(Date.now() + quota.windowSeconds * 1000).toISOString();
+    const windowEndMs = windowStartMs + (quota.windowSeconds * 1000);
+    const resetAt = new Date(windowEndMs).toISOString();
 
     let status: QuotaUsage["status"];
     if (percentUsed >= 100) status = "exceeded";

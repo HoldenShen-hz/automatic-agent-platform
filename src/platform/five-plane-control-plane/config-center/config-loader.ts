@@ -79,6 +79,7 @@ export class ConfigLoader {
     this.sources.push(source);
     // Sort by priority
     this.sources.sort((a, b) => a.priority - b.priority);
+    this.clearCache();
   }
 
   /**
@@ -103,7 +104,7 @@ export class ConfigLoader {
       }
 
       // Merge with priority (later sources override earlier)
-      Object.assign(merged, sourceConfig);
+      mergeConfigValues(merged, sourceConfig);
     }
 
     return merged;
@@ -190,12 +191,20 @@ export class EnvironmentConfigSource implements ConfigSource {
 
   public async load(): Promise<Record<string, unknown>> {
     const config: Record<string, unknown> = {};
+    const normalizedEnv = new Map<string, string>();
 
     for (const [key, value] of Object.entries(this.env)) {
-      if (key.startsWith(this.prefix) && value != null) {
+      if (value != null) {
+        normalizedEnv.set(key.toUpperCase(), value);
+      }
+    }
+
+    const normalizedPrefix = this.prefix.toUpperCase();
+    for (const [key, value] of normalizedEnv) {
+      if (key.startsWith(normalizedPrefix)) {
         // Remove prefix and convert to camelCase
         const configKey = key
-          .slice(this.prefix.length)
+          .slice(normalizedPrefix.length)
           .toLowerCase()
           .replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
         config[configKey] = value;
@@ -221,5 +230,22 @@ export class DefaultConfigSource implements ConfigSource {
 
   public async load(): Promise<Record<string, unknown>> {
     return { ...this.defaults };
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeConfigValues(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): void {
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(target[key])) {
+      mergeConfigValues(target[key] as Record<string, unknown>, value);
+      continue;
+    }
+    target[key] = isPlainObject(value) ? { ...value } : value;
   }
 }

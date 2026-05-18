@@ -7,6 +7,8 @@
  * Also emits config.changed events to the event bus when configs are updated.
  */
 
+import { createHash } from "node:crypto";
+
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { MS_PER_DAY } from "../../contracts/constants/time.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -111,6 +113,10 @@ export interface ConfigRolloutStore {
   delete(rolloutId: string): void;
 }
 
+function toFiniteThreshold(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 /**
  * Service for managing configuration rollout with canary support.
  *
@@ -167,6 +173,7 @@ export class ConfigRolloutService {
     sourceId: string | null = null,
     targetPercentage: number = 100,
     metadata?: Record<string, unknown>,
+    healthGates?: Record<string, unknown>,
   ): ConfigRollout {
     const rolloutId = newId("rollout");
     const now = nowIso();
@@ -184,6 +191,7 @@ export class ConfigRolloutService {
       targetPercentage,
       currentPercentage: startStage.percentage,
       metadata,
+      ...(healthGates !== undefined ? { healthGates } : {}),
     };
 
     this.activeRollouts.set(rolloutId, rollout);
@@ -304,14 +312,18 @@ export class ConfigRolloutService {
     }
 
     const nextStage = this.stages[currentIndex + 1]!;
-    rollout.stage = nextStage;
-    rollout.currentPercentage = nextStage.percentage;
-    rollout.updatedAt = nowIso();
+    const updatedRollout: ConfigRollout = {
+      ...rollout,
+      stage: nextStage,
+      currentPercentage: nextStage.percentage,
+      updatedAt: nowIso(),
+    };
 
-    this.persistRollout(rollout);
-    this.emitRolloutEvent("config.rollout.promoted", rollout);
+    this.persistRollout(updatedRollout);
+    this.activeRollouts.set(rolloutId, updatedRollout);
+    this.emitRolloutEvent("config.rollout.promoted", updatedRollout);
 
-    return rollout;
+    return updatedRollout;
   }
 
   /**
@@ -326,18 +338,23 @@ export class ConfigRolloutService {
       return null;
     }
 
-    rollout.stage = this.stages.find((s) => s.phase === RolloutPhase.CANCELLED) ?? {
+    const cancelledStage = this.stages.find((s) => s.phase === RolloutPhase.CANCELLED) ?? {
       phase: RolloutPhase.CANCELLED,
       percentage: 0,
       minDurationMs: 0,
       autoProgress: false,
     };
-    rollout.updatedAt = nowIso();
+    const updatedRollout: ConfigRollout = {
+      ...rollout,
+      stage: cancelledStage,
+      updatedAt: nowIso(),
+    };
 
-    this.persistRollout(rollout);
-    this.emitRolloutEvent("config.rollout.cancelled", rollout);
+    this.persistRollout(updatedRollout);
+    this.activeRollouts.set(rolloutId, updatedRollout);
+    this.emitRolloutEvent("config.rollout.cancelled", updatedRollout);
 
-    return rollout;
+    return updatedRollout;
   }
 
   /**
@@ -366,15 +383,35 @@ export class ConfigRolloutService {
       }
 
       const elapsedMs = now - new Date(rollout.updatedAt).getTime();
-      if (elapsedMs >= rollout.stage.minDurationMs && this.passesHealthGate(healthSnapshots[rollout.rolloutId])) {
-        const nextStage = this.stages[currentIndex + 1]!;
-        rollout.stage = nextStage;
-        rollout.currentPercentage = nextStage.percentage;
-        rollout.updatedAt = nowIso();
-        this.persistRollout(rollout);
-        this.emitRolloutEvent("config.rollout.auto_progressed", rollout);
-        progressCount++;
+      const snapshot = healthSnapshots[rollout.rolloutId];
+      const healthEvaluation = this.evaluateHealthGate(rollout, snapshot);
+      const updatedRollout: ConfigRollout = {
+        ...rollout,
+        lastHealthCheckAt: nowIso(),
+        lastHealthCheckPassed: healthEvaluation.passed,
+        lastObservedErrorRate: snapshot?.errorRate ?? null,
+        lastObservedLatencyRegression: snapshot?.latencyRegression ?? null,
+        lastObservedIncidentRate: snapshot?.incidentRate ?? null,
+        lastHealthCheckReasons: healthEvaluation.reasons,
+      };
+
+      if (elapsedMs < rollout.stage.minDurationMs || !healthEvaluation.passed) {
+        this.persistRollout(updatedRollout);
+        this.activeRollouts.set(rollout.rolloutId, updatedRollout);
+        continue;
       }
+
+      const nextStage = this.stages[currentIndex + 1]!;
+      const promotedRollout: ConfigRollout = {
+        ...updatedRollout,
+        stage: nextStage,
+        currentPercentage: nextStage.percentage,
+        updatedAt: nowIso(),
+      };
+      this.persistRollout(promotedRollout);
+      this.activeRollouts.set(rollout.rolloutId, promotedRollout);
+      this.emitRolloutEvent("config.rollout.auto_progressed", promotedRollout);
+      progressCount++;
     }
 
     return progressCount;
@@ -438,13 +475,9 @@ export class ConfigRolloutService {
    * Uses a simple deterministic algorithm for consistent percentage assignment.
    */
   private hashToPercentage(hashValue: string): number {
-    let hash = 0;
-    for (let i = 0; i < hashValue.length; i++) {
-      const char = hashValue.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash % 100);
+    const digest = createHash("sha256").update(hashValue).digest();
+    const bucket = digest.readUInt32BE(0);
+    return Math.floor((bucket / 0x1_0000_0000) * 100);
   }
 
   private resolveInitialStage(targetPercentage: number): RolloutStage {
@@ -470,15 +503,33 @@ export class ConfigRolloutService {
     return progressiveStages.find((stage) => stage.percentage >= targetPercentage) ?? progressiveStages.at(-1)!;
   }
 
-  private passesHealthGate(snapshot: RolloutHealthSnapshot | undefined): boolean {
+  private evaluateHealthGate(
+    rollout: ConfigRollout,
+    snapshot: RolloutHealthSnapshot | undefined,
+  ): { passed: boolean; reasons: readonly string[] } {
     if (snapshot == null) {
-      return true;
+      return { passed: false, reasons: ["missing_health_snapshot"] };
     }
-    return (
-      snapshot.errorRate <= this.healthThresholds.maxErrorRate &&
-      snapshot.latencyRegression <= this.healthThresholds.maxLatencyRegression &&
-      snapshot.incidentRate <= this.healthThresholds.maxIncidentRate
-    );
+
+    const thresholds = {
+      maxErrorRate: toFiniteThreshold(rollout.healthGates?.["maxErrorRate"], this.healthThresholds.maxErrorRate),
+      maxLatencyRegression: toFiniteThreshold(rollout.healthGates?.["maxLatencyRegression"], this.healthThresholds.maxLatencyRegression),
+      maxIncidentRate: toFiniteThreshold(rollout.healthGates?.["maxIncidentRate"], this.healthThresholds.maxIncidentRate),
+    };
+    const reasons: string[] = [];
+    if (snapshot.errorRate > thresholds.maxErrorRate) {
+      reasons.push("error_rate_exceeded");
+    }
+    if (snapshot.latencyRegression > thresholds.maxLatencyRegression) {
+      reasons.push("latency_regression_exceeded");
+    }
+    if (snapshot.incidentRate > thresholds.maxIncidentRate) {
+      reasons.push("incident_rate_exceeded");
+    }
+    return {
+      passed: reasons.length === 0,
+      reasons,
+    };
   }
 
   private persistRollout(rollout: ConfigRollout): void {

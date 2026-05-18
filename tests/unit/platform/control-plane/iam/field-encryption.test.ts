@@ -19,3 +19,8 @@ test("field encryption accepts raw 32-byte keys", () => {
 test("field encryption rejects malformed payload", () => {
   assert.throws(() => decryptField("abc", "valid-16-byte-key-!!"), /security\.invalid_encrypted_payload/);
 });
+
+test("field encryption rejects legacy payloads without version delimiter", () => {
+  const legacyPayload = Buffer.from("legacy-ciphertext", "utf8").toString("base64");
+  assert.throws(() => decryptField(legacyPayload, "valid-16-byte-key-!!"), /security\.invalid_encrypted_payload/);
+});

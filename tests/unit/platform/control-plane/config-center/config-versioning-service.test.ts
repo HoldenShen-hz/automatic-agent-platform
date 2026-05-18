@@ -184,6 +184,18 @@ test("ConfigVersioningService.rollback creates new version with old content", ()
   assert.strictEqual(rollbackVersion!.createdBy, "admin");
 });
 
+test("ConfigVersioningService.rollback rejects incompatible schema versions", () => {
+  const service = new ConfigVersioningService();
+
+  const legacy = service.createVersion("runtime.timeout", "platform", null, { schemaVersion: "v1", value: 1000 }, "user", "v1");
+  service.createVersion("runtime.timeout", "platform", null, { schemaVersion: "v2", value: 2000 }, "user", "v2");
+
+  assert.throws(
+    () => service.rollback(legacy.versionId, "admin", "rollback"),
+    /config\.rollback_incompatible_schema_version/,
+  );
+});
+
 test("ConfigVersioningService.rollback returns null for non-existent version", () => {
   const service = new ConfigVersioningService();
 
@@ -199,6 +211,17 @@ test("ConfigVersioningService.getVersionContent returns content for version", ()
   const content = service.getVersionContent(created.versionId);
 
   assert.deepStrictEqual(content, { value: 1000 });
+});
+
+test("ConfigVersioningService.getVersionContent returns a detached clone", () => {
+  const service = new ConfigVersioningService();
+  const created = service.createVersion("runtime.timeout", "platform", null, {
+    nested: { value: 1000 },
+  }, "user", "test");
+  const content = service.getVersionContent(created.versionId)!;
+  (content.nested as Record<string, unknown>).value = 2000;
+
+  assert.deepStrictEqual(service.getVersionContent(created.versionId), { nested: { value: 1000 } });
 });
 
 test("ConfigVersioningService.getVersionContent returns null for non-existent version", () => {

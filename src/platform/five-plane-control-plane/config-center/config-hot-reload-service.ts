@@ -8,6 +8,9 @@
  * - Supports both push and pull reload mechanisms
  */
 
+import { watch, type FSWatcher } from "node:fs";
+import { stat } from "node:fs/promises";
+
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
@@ -102,6 +105,9 @@ export class ConfigHotReloadService {
 
   /** Watched config files */
   private readonly watchedFiles = new Set<string>();
+  private readonly nativeWatchers = new Map<string, FSWatcher>();
+  private readonly fileReloadsInFlight = new Set<string>();
+  private readonly eventBusConsumerId = "config_hot_reload_service";
 
   private _initialized = false;
 
@@ -125,7 +131,7 @@ export class ConfigHotReloadService {
     if (this.eventBus) {
       try {
         await this.eventBus.subscribe(
-          "config.changed",
+          this.eventBusConsumerId,
           async (event) => {
             const payload = JSON.parse(event.payloadJson) as { layer: string; sourceId: string | null; previousVersion: string; newVersion: string; [key: string]: unknown };
             await this.handleConfigChangedEvent(payload);
@@ -255,6 +261,8 @@ export class ConfigHotReloadService {
    */
   public watchFile(filePath: string): void {
     this.watchedFiles.add(filePath);
+    void this.initializeWatchedFileVersion(filePath);
+    this.startNativeWatcher(filePath);
   }
 
   /**
@@ -264,6 +272,7 @@ export class ConfigHotReloadService {
    */
   public unwatchFile(filePath: string): void {
     this.watchedFiles.delete(filePath);
+    this.stopNativeWatcher(filePath);
   }
 
   /**
@@ -274,6 +283,13 @@ export class ConfigHotReloadService {
       clearInterval(this.fileWatcherHandle);
       this.fileWatcherHandle = null;
     }
+    if (this.eventBus) {
+      this.eventBus.unsubscribe(this.eventBusConsumerId);
+    }
+    for (const watcher of this.nativeWatchers.values()) {
+      watcher.close();
+    }
+    this.nativeWatchers.clear();
     this.subscriptions.clear();
     this._initialized = false;
   }
@@ -383,46 +399,28 @@ export class ConfigHotReloadService {
     this.fileWatcherHandle = setInterval(async () => {
       await this.checkFileChanges();
     }, this.fileWatcherIntervalMs);
+    this.fileWatcherHandle.unref?.();
   }
 
   /**
    * Checks for file changes in watched files.
    */
   private async checkFileChanges(): Promise<void> {
-    // This is a simplified implementation.
-    // In production, this would use fs.watch or a proper file watching mechanism.
     for (const filePath of this.watchedFiles) {
-      try {
-        // Placeholder for actual file change detection
-        // In production: use fs.stat with mtime comparison
-        const currentVersion = await this.getFileVersion(filePath);
-        const storedVersion = this.configVersions.get(`file:${filePath}`);
-
-        if (storedVersion && currentVersion !== storedVersion) {
-          // File changed, trigger reload
-          this.configVersions.set(`file:${filePath}`, currentVersion);
-          // Note: In production, would read the file and pass the new content
-          await this.triggerReload(
-            filePath,
-            "platform",
-            null,
-            {},
-            "file_watcher",
-            "medium",
-          );
-        }
-      } catch {
-        // File might not exist yet or be inaccessible
-      }
+      await this.checkSingleFileChange(filePath, "file_watcher");
     }
   }
 
   /**
    * Gets the version of a file based on modification time.
    */
-  private async getFileVersion(filePath: string): Promise<string> {
-    // Simplified: in production, use fs.stat to get mtime
-    return `${filePath}:${Date.now()}`;
+  private async getFileVersion(filePath: string): Promise<string | null> {
+    try {
+      const fileStat = await stat(filePath);
+      return `${filePath}:${fileStat.size}:${fileStat.mtimeMs}`;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -437,5 +435,82 @@ export class ConfigHotReloadService {
       hash = hash & hash;
     }
     return Math.abs(hash).toString(16);
+  }
+
+  private async initializeWatchedFileVersion(filePath: string): Promise<void> {
+    const version = await this.getFileVersion(filePath);
+    if (version != null) {
+      this.configVersions.set(this.buildWatchedFileKey(filePath), version);
+    }
+  }
+
+  private async checkSingleFileChange(
+    filePath: string,
+    source: ConfigChangeSource,
+  ): Promise<void> {
+    const versionKey = this.buildWatchedFileKey(filePath);
+    const currentVersion = await this.getFileVersion(filePath);
+    const storedVersion = this.configVersions.get(versionKey);
+
+    if (currentVersion == null) {
+      this.configVersions.delete(versionKey);
+      return;
+    }
+
+    if (storedVersion == null) {
+      this.configVersions.set(versionKey, currentVersion);
+      return;
+    }
+
+    if (storedVersion === currentVersion) {
+      return;
+    }
+
+    this.configVersions.set(versionKey, currentVersion);
+    await this.triggerReload(
+      filePath,
+      "platform",
+      null,
+      {},
+      source,
+      "medium",
+    );
+  }
+
+  private startNativeWatcher(filePath: string): void {
+    if (this.nativeWatchers.has(filePath)) {
+      return;
+    }
+    try {
+      const watcher = watch(filePath, { persistent: false }, () => {
+        void this.queueFileReload(filePath);
+      });
+      watcher.unref?.();
+      this.nativeWatchers.set(filePath, watcher);
+    } catch {
+      // Polling remains as the fallback path when the file does not yet exist.
+    }
+  }
+
+  private stopNativeWatcher(filePath: string): void {
+    const watcher = this.nativeWatchers.get(filePath);
+    watcher?.close();
+    this.nativeWatchers.delete(filePath);
+  }
+
+  private async queueFileReload(filePath: string): Promise<void> {
+    if (this.fileReloadsInFlight.has(filePath)) {
+      return;
+    }
+    this.fileReloadsInFlight.add(filePath);
+    try {
+      await this.checkSingleFileChange(filePath, "file_watcher");
+    } finally {
+      this.fileReloadsInFlight.delete(filePath);
+    }
+  }
+
+  private buildWatchedFileKey(filePath: string): string {
+    return `file:${filePath}`;
   }
 }

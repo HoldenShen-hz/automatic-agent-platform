@@ -4,6 +4,8 @@
  */
 
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
   ConfigHotReloadService,
@@ -12,6 +14,20 @@ import {
   type ConfigChangeSeverity,
   type ConfigChangeSource,
 } from "../../../../../src/platform/five-plane-control-plane/config-center/config-hot-reload-service.js";
+import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+
+class MockEventBus {
+  public readonly subscribed = new Set<string>();
+  public readonly unsubscribed = new Set<string>();
+
+  public subscribe(consumerId: string): void {
+    this.subscribed.add(consumerId);
+  }
+
+  public unsubscribe(consumerId: string): void {
+    this.unsubscribed.add(consumerId);
+  }
+}
 
 // ============================================================================
 // ConfigHotReloadService Creation Tests
@@ -82,6 +98,20 @@ test("unsubscribe does not error for non-existent subscription", async () => {
   await service.initialize();
 
   service.unsubscribe("non-existent-id");
+});
+
+test("shutdown unsubscribes event bus consumer", async () => {
+  const eventBus = new MockEventBus();
+  const service = new ConfigHotReloadService({
+    eventBus: eventBus as unknown as import("../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js").DurableEventBus,
+    enableFileWatcher: false,
+  });
+
+  await service.initialize();
+  service.shutdown();
+
+  assert.ok(eventBus.subscribed.has("config_hot_reload_service"));
+  assert.ok(eventBus.unsubscribed.has("config_hot_reload_service"));
 });
 
 // ============================================================================
@@ -237,6 +267,32 @@ test("triggerReload computes version for new config", async () => {
 
   await service.triggerReload("test.config", "platform", null, { key: "value2" });
   assert.notEqual(receivedChanges[1]!.previousVersion, receivedChanges[1]!.newVersion);
+});
+
+test("watchFile does not trigger reload when file version is unchanged", async () => {
+  const workspace = createTempWorkspace("aa-config-hot-reload-version-");
+  try {
+    const service = new ConfigHotReloadService({ enableFileWatcher: false });
+    await service.initialize();
+    const filePath = join(workspace, "runtime.json");
+    writeFileSync(filePath, "{\"enabled\":true}\n");
+    service.watchFile(filePath);
+    await (service as any).initializeWatchedFileVersion(filePath);
+
+    const receivedChanges: ConfigChangeEvent[] = [];
+    service.subscribe("watcher", [filePath], ["platform"], async (change) => {
+      receivedChanges.push(change);
+    });
+
+    await (service as any).checkFileChanges();
+    assert.equal(receivedChanges.length, 0);
+
+    writeFileSync(filePath, "{\"enabled\":false}\n");
+    await (service as any).checkFileChanges();
+    assert.equal(receivedChanges.length, 1);
+  } finally {
+    cleanupPath(workspace);
+  }
 });
 
 // ============================================================================

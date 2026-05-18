@@ -754,6 +754,13 @@ export class SecretManagementService {
     return rotationInterval;
   }
 
+  public stopDailyRotationSchedulers(): void {
+    for (const timer of this.activeRotationSchedulers) {
+      clearInterval(timer);
+      this.activeRotationSchedulers.delete(timer);
+    }
+  }
+
   /**
    * Issues a time-limited lease for a secret.
    */

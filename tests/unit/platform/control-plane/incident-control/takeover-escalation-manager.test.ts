@@ -205,6 +205,16 @@ test("extendAcknowledgment uses custom extension time", () => {
   assert.ok(result.expiresAt);
 });
 
+test("extendAcknowledgment preserves the tracked taskId for later renewal handling", () => {
+  const manager = createManager();
+
+  manager.startSessionTracking("session-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  manager.extendAcknowledgment("session-1", 1000);
+
+  assert.equal((manager as any).sessionTaskIds.get("session-1"), "task-1");
+});
+
 test("extendAcknowledgment throws for unknown session", () => {
   const manager = createManager();
 

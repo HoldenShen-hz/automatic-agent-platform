@@ -12,10 +12,9 @@
  * - Rollback to previous versions
  */
 
-import { createHash } from "node:crypto";
-
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError } from "../../contracts/errors.js";
 import {
   diffObjects,
   sha256,
@@ -23,7 +22,7 @@ import {
   type ConfigDiffEntry,
 } from "./config-governance-support.js";
 import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
-import { queryAllOrEmpty, queryOne, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
+import { queryAllOrEmpty, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
 
 /**
  * Represents a configuration version snapshot.
@@ -306,12 +305,13 @@ export class ConfigVersioningService {
    */
   private setSnapshots(key: string, snapshots: ConfigVersionSnapshot[]): void {
     if (this.useDurableStorage) {
-      // Delete existing and re-insert (simplified approach)
       if (this.sqliteDb) {
-        execute(this.sqliteDb, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
-        for (const snapshot of snapshots) {
-          this.saveSnapshotToDb(key, snapshot);
-        }
+        this.runDurableWriteTransaction(() => {
+          execute(this.sqliteDb!, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
+          for (const snapshot of snapshots) {
+            this.saveSnapshotToDb(key, snapshot);
+          }
+        });
       }
     } else {
       this.snapshots.set(key, snapshots);
@@ -334,10 +334,12 @@ export class ConfigVersioningService {
   private setRollbackPoints(key: string, points: ConfigRollbackPoint[]): void {
     if (this.useDurableStorage) {
       if (this.sqliteDb) {
-        execute(this.sqliteDb, `DELETE FROM config_rollback_points WHERE key = ?`, key);
-        for (const point of points) {
-          this.saveRollbackPointToDb(key, point);
-        }
+        this.runDurableWriteTransaction(() => {
+          execute(this.sqliteDb!, `DELETE FROM config_rollback_points WHERE key = ?`, key);
+          for (const point of points) {
+            this.saveRollbackPointToDb(key, point);
+          }
+        });
       }
     } else {
       this.rollbackPoints.set(key, points);
@@ -375,7 +377,7 @@ export class ConfigVersioningService {
       configPath,
       layer,
       sourceId,
-      content,
+      content: cloneConfigContent(content),
       contentHash: sha256(stableStringify(content)),
       createdAt: nowIso(),
       createdBy,
@@ -587,13 +589,19 @@ export class ConfigVersioningService {
     if (!targetVersion) {
       return null;
     }
+    const currentVersion = this.getCurrentVersion(
+      targetVersion.configPath,
+      targetVersion.layer,
+      targetVersion.sourceId,
+    );
+    this.assertRollbackCompatibility(currentVersion, targetVersion);
 
     // Create a new version with the old content
     const rollbackVersion = this.createVersion(
       targetVersion.configPath,
       targetVersion.layer,
       targetVersion.sourceId,
-      { ...targetVersion.content }, // Deep clone
+      cloneConfigContent(targetVersion.content),
       createdBy,
       reason ?? `Rolled back to version ${versionId}`,
     );
@@ -611,7 +619,7 @@ export class ConfigVersioningService {
    */
   public getVersionContent(versionId: string): Record<string, unknown> | null {
     const version = this.getVersion(versionId);
-    return version ? { ...version.content } : null;
+    return version ? cloneConfigContent(version.content) : null;
   }
 
   /**
@@ -691,7 +699,9 @@ export class ConfigVersioningService {
     if (countPrunedByAge === versions.length) {
       // All versions pruned - delete from storage
       if (this.useDurableStorage && this.sqliteDb) {
-        execute(this.sqliteDb, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
+        this.runDurableWriteTransaction(() => {
+          execute(this.sqliteDb!, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
+        });
       } else {
         this.snapshots.delete(key);
       }
@@ -700,6 +710,42 @@ export class ConfigVersioningService {
 
     this.setSnapshots(key, retainedVersions);
     return totalPruned;
+  }
+
+  private runDurableWriteTransaction(operation: () => void): void {
+    if (!this.sqliteDb) {
+      operation();
+      return;
+    }
+    this.sqliteDb.exec("BEGIN IMMEDIATE");
+    try {
+      operation();
+      this.sqliteDb.exec("COMMIT");
+    } catch (error) {
+      this.sqliteDb.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  private assertRollbackCompatibility(
+    currentVersion: ConfigVersionSnapshot | null,
+    targetVersion: ConfigVersionSnapshot,
+  ): void {
+    if (currentVersion == null) {
+      return;
+    }
+    const currentSchemaVersion = readSchemaVersion(currentVersion.content);
+    const targetSchemaVersion = readSchemaVersion(targetVersion.content);
+    if (
+      currentSchemaVersion != null &&
+      targetSchemaVersion != null &&
+      currentSchemaVersion !== targetSchemaVersion
+    ) {
+      throw new ValidationError(
+        "config.rollback_incompatible_schema_version",
+        "config.rollback_incompatible_schema_version",
+      );
+    }
   }
 
   /**
@@ -746,4 +792,13 @@ export class ConfigVersioningService {
       },
     });
   }
+}
+
+function cloneConfigContent(content: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(content)) as Record<string, unknown>;
+}
+
+function readSchemaVersion(content: Record<string, unknown>): string | null {
+  const schemaVersion = content["schemaVersion"] ?? content["schema_version"];
+  return typeof schemaVersion === "string" && schemaVersion.length > 0 ? schemaVersion : null;
 }

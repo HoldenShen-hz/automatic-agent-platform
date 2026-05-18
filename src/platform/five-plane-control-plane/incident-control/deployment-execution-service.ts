@@ -166,19 +166,35 @@ class LocalDeploymentCommandRunner implements DeploymentCommandRunner {
       cwd: request.cwd,
       stdio: ["ignore", "pipe", "pipe"] as const,
     });
-    const stdout = await new Promise<string>((resolve) => {
+    const stdoutPromise = new Promise<string>((resolve) => {
       let data = "";
       child.stdout?.on("data", (chunk) => { data += chunk; });
       child.stdout?.on("end", () => resolve(data));
     });
-    const stderr = await new Promise<string>((resolve) => {
+    const stderrPromise = new Promise<string>((resolve) => {
       let data = "";
       child.stderr?.on("data", (chunk) => { data += chunk; });
       child.stderr?.on("end", () => resolve(data));
     });
-    const exitCode = await new Promise<number>((resolve) => {
-      child.on("close", (code) => resolve(code ?? 1));
+    const exitCodePromise = new Promise<number>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(new ToolExecutionError(
+          "deployment_execution.command_timeout",
+          "deployment_execution.command_timeout",
+        ));
+      }, 300_000);
+      timeout.unref?.();
+      child.on("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+      child.on("close", (code) => {
+        clearTimeout(timeout);
+        resolve(code ?? 1);
+      });
     });
+    const [stdout, stderr, exitCode] = await Promise.all([stdoutPromise, stderrPromise, exitCodePromise]);
     return {
       step: request.step,
       command: request.command,
@@ -402,7 +418,7 @@ export class DeploymentExecutionService {
         ({
           runId: publishWorkflowRunId,
           runUrl: publishWorkflowRunUrl,
-        } = extractWorkflowDispatchReceipt([publishResult.stdout, publishResult.stderr].filter(Boolean).join("\n")));
+        } = extractWorkflowDispatchReceipt(publishResult.stdout));
 
         // Fail fast if publish fails
         if (publishResult.exitCode !== 0) {
@@ -451,7 +467,7 @@ export class DeploymentExecutionService {
         ({
           runId: deployWorkflowRunId,
           runUrl: deployWorkflowRunUrl,
-        } = extractWorkflowDispatchReceipt([deployResult.stdout, deployResult.stderr].filter(Boolean).join("\n")));
+        } = extractWorkflowDispatchReceipt(deployResult.stdout));
 
         // Fail fast if deploy fails
         if (deployResult.exitCode !== 0) {

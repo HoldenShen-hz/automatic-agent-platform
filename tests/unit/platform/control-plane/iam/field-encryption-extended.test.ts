@@ -40,7 +40,7 @@ test("encryptField produces non-base64-plaintext output", () => {
   assert.notEqual(ciphertext, "data");
   assert.equal(parts[0], "fe1");
   assert.ok(parts[1]!.length > 0);
-  assert.ok(Buffer.from(parts[2]!, "base64").length > 0);
+  assert.ok(Buffer.from(parts[1]!, "base64").length > 0);
 });
 
 test("different encryptions of same plaintext produce different ciphertext", () => {
@@ -102,6 +102,13 @@ test("rejects key shorter than 16 bytes", () => {
   // Keys must be at least 16 bytes (128 bits) to provide sufficient entropy
   assert.throws(
     () => encryptField("secret", "short"),
+    /security\.encryption_key_too_weak/,
+  );
+});
+
+test("rejects string passphrase shorter than 16 bytes", () => {
+  assert.throws(
+    () => encryptField("secret", "123456789012345"),
     /security\.encryption_key_too_weak/,
   );
 });
@@ -193,10 +200,10 @@ test("rejects payload with invalid version marker", () => {
   );
 });
 
-test("rejects payload with missing key id", () => {
+test("rejects payload with unexpected legacy key id segment", () => {
   const key = PASSPHRASE;
   const parts = encryptField("data", key).split(":");
-  const tampered = `fe1::${parts[2]}`; // Empty key ID
+  const tampered = `fe1:legacy-key-id:${parts[1]}`;
 
   assert.throws(
     () => decryptField(tampered, key),

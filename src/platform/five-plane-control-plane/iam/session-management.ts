@@ -57,6 +57,8 @@ export interface Session {
   readonly createdAt: number;
   readonly lastAccessedAt: number;
   readonly metadata: Readonly<Record<string, unknown>>;
+  readonly clientIp: string | null;
+  readonly userAgent: string | null;
 }
 
 export interface SessionValidationResult {
@@ -173,6 +175,8 @@ export function createSession(input: {
   principalId: string;
   principalType: string;
   metadata?: Record<string, unknown>;
+  clientIp?: string | null;
+  userAgent?: string | null;
 }): Session {
   assertInMemorySessionStoreAllowed();
   pruneSessionStore();
@@ -214,6 +218,8 @@ export function createSession(input: {
     createdAt: now,
     lastAccessedAt: now,
     metadata: Object.freeze(input.metadata ?? {}),
+    clientIp: input.clientIp ?? null,
+    userAgent: input.userAgent ?? null,
   };
 
   const entry: SessionEntry = {
@@ -276,7 +282,7 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
  * Refresh tokens with rotation.
  * §11.2: refresh_token rotation with 24h TTL, old token invalidated.
  */
-export function refreshSession(refreshTokenString: string): Session {
+export function refreshSession(refreshTokenString: string, clientIp?: string | null, userAgent?: string | null): Session {
   pruneSessionStore();
   const tokenId = refreshTokenString;
   let sessionId = refreshTokenIndex.get(tokenId);
@@ -347,6 +353,8 @@ export function refreshSession(refreshTokenString: string): Session {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
     lastAccessedAt: now,
+    clientIp: clientIp ?? session.clientIp,
+    userAgent: userAgent ?? session.userAgent,
   };
 
   const newEntry: SessionEntry = {

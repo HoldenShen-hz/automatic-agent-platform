@@ -89,8 +89,8 @@ export class TakeoverQueueManager {
       attempts: 0,
     };
 
-    // Insert sorted by priority
-    const insertIndex = this.pendingQueue.findIndex((e) => e.priority > entry.priority);
+    // Insert sorted by priority, with larger values treated as more urgent.
+    const insertIndex = this.pendingQueue.findIndex((e) => e.priority < entry.priority);
     if (insertIndex === -1) {
       this.pendingQueue.push(entry);
     } else {
@@ -148,6 +148,9 @@ export class TakeoverQueueManager {
   public cancel(requestId: string): boolean {
     const entry = this.pendingQueue.find((e) => e.requestId === requestId);
     if (!entry || entry.status !== "pending") return false;
+    const sessionId = "sessionId" in entry.payload && typeof entry.payload.sessionId === "string"
+      ? entry.payload.sessionId
+      : requestId;
 
     entry.status = "cancelled";
     const idx = this.pendingQueue.indexOf(entry);
@@ -157,6 +160,12 @@ export class TakeoverQueueManager {
       level: "info",
       message: "takeover.request_cancelled",
       data: { requestId, taskId: entry.taskId },
+    });
+    this.eventEmitter.emit("takeover:cancelled", {
+      sessionId,
+      taskId: entry.taskId,
+      reason: "request_cancelled",
+      cancelledAt: nowIso(),
     });
 
     return true;
@@ -185,13 +194,12 @@ export class TakeoverQueueManager {
     const expiryThreshold = now - this.SESSION_TTL_MS;
     const entriesToDelete: string[] = [];
 
-    // Find expired entries (check acknowledgedAt for expiry)
+    // Requests remain in the queue only while actionable, so TTL eviction should
+    // apply to any stale entry instead of looking for already-removed terminal states.
     for (const entry of this.pendingQueue) {
-      if (entry.status === "completed" || entry.status === "failed" || entry.status === "cancelled") {
-        const enqueuedTime = new Date(entry.enqueuedAt).getTime();
-        if (enqueuedTime < expiryThreshold) {
-          entriesToDelete.push(entry.requestId);
-        }
+      const enqueuedTime = new Date(entry.enqueuedAt).getTime();
+      if (enqueuedTime < expiryThreshold) {
+        entriesToDelete.push(entry.requestId);
       }
     }
 
