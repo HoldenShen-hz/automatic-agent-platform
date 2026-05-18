@@ -61,14 +61,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createApprovalRoutes returns 4 routes", () => {
+test("createApprovalRoutes returns 5 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     approvalService: createMockApprovalService(),
     inspectService: createMockInspectService(),
   };
   const routes = createApprovalRoutes(deps);
-  assert.equal(routes.length, 4);
+  assert.equal(routes.length, 5);
 });
 
 test("GET /approvals returns approval list", async () => {
@@ -157,6 +157,25 @@ test("POST /v1/approvals/:id/decision applies decision with correct actor", asyn
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
+});
+
+test("POST /v1/approvals/:id/approve maps alias action to approval decision", async () => {
+  let appliedDecisionType: string | null = null;
+  const deps = {
+    authService: createMockAuthService(),
+    approvalService: {
+      applyDecision: (decision: { decisionType: string }) => {
+        appliedDecisionType = decision.decisionType;
+      },
+    } as unknown as ApprovalService,
+    inspectService: createMockInspectService(),
+  };
+  const routes = createApprovalRoutes(deps);
+  const ctx = createMockContext("/v1/approvals/appr-2/approve", ["v1", "approvals", "appr-2", "approve"], {}, JSON.stringify({}), "POST");
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.equal(appliedDecisionType, "confirmed");
 });
 
 test("POST /v1/approvals/:id/decision validates decision payload", async () => {

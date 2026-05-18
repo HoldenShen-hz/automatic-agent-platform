@@ -25,9 +25,7 @@ function authHeaders() {
 }
 
 async function invokeRoute(routes: RouteDefinition[], body: Record<string, unknown>) {
-  const route = routes.find((candidate) => candidate.method === "POST" && candidate.segments === true);
-  assert.ok(route);
-  return route.handler({
+  const ctx = {
     requestId: "req_task_mission",
     principal: null,
     route: { pathname: "/v1/tasks", segments: ["v1", "tasks"] },
@@ -37,7 +35,28 @@ async function invokeRoute(routes: RouteDefinition[], body: Record<string, unkno
       headers: authHeaders(),
       body: JSON.stringify(body),
     },
-  });
+  } as const;
+
+  for (const route of routes) {
+    if (route.method !== "POST") {
+      continue;
+    }
+    if (route.pathname !== null) {
+      if (route.pathname === ctx.route.pathname) {
+        return route.handler(ctx);
+      }
+      continue;
+    }
+    if (!route.segments) {
+      continue;
+    }
+    const response = await route.handler(ctx);
+    if (response !== null) {
+      return response;
+    }
+  }
+
+  assert.fail("No matching POST /v1/tasks route found");
 }
 
 test("POST /v1/tasks binds task creation to explicit Mission snapshot when repository is configured", async () => {

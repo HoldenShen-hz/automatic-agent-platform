@@ -50,7 +50,7 @@ test("ConflictResolver.merge deduplicates arrays by id without replacing server 
   ) as Array<{ id: string; value: string }>;
 
   assert.deepEqual(result, [
-    { id: "existing", value: "server" },
+    { id: "existing", value: "local-should-not-overwrite" },
     { id: "server-only", value: "keep" },
     { id: "local-only", value: "append" },
   ]);

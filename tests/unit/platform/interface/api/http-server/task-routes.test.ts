@@ -100,14 +100,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createTaskRoutes returns 9 routes", () => {
+test("createTaskRoutes returns 10 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  assert.equal(routes.length, 9);
+  assert.equal(routes.length, 10);
 });
 
 test("GET /v1/tasks returns task list", async () => {
@@ -250,6 +250,29 @@ test("GET /v1/workflows/:id returns workflow cockpit", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("wf-1"));
+});
+
+test("POST /v1/workflows/:id/pause returns workflow action response", async () => {
+  const deps = {
+    authService: {
+      requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "api_key", tenantId: null }),
+    } as unknown as ApiAuthService,
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = {
+    requestId: "req-123",
+    request: { method: "POST", url: "/api/v1/workflows/task-1/pause", headers: {}, body: null } as never,
+    route: { pathname: "/api/v1/workflows/task-1/pause", segments: ["api", "v1", "workflows", "task-1", "pause"] },
+    principal: null,
+  } satisfies RouteContext;
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.data.action, "pause");
+  assert.equal(body.data.status, "paused");
 });
 
 test("GET /v1/tasks returns task list", async () => {

@@ -120,7 +120,10 @@ test("createAdminRoutes returns all registered admin routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 25);
+  assert.equal(routes.length, 28);
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "PUT"));
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -213,6 +216,55 @@ test("GET /v1/admin/control-plane/load-balancing throws 503 when service unavail
     assert.ok(err instanceof Error);
     assert.match(err.message, /not configured/);
   }
+});
+
+test("GET /v1/admin/queues returns queue summary", async () => {
+  const deps = {
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  };
+  const routes = createAdminRoutes(deps);
+  const ctx = createMockContext("/v1/admin/queues", ["v1", "admin", "queues"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("queues"));
+});
+
+test("GET and PUT /v1/preferences round-trip preference state", async () => {
+  const deps = {
+    authService: createMockAuthService(["operator"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  };
+  const routes = createAdminRoutes(deps);
+
+  const getResponse = await callRoute(routes, createMockContext("/v1/preferences", ["v1", "preferences"]));
+  if (!getResponse) throw new Error("Handler returned null");
+  assert.equal(getResponse.statusCode, 200);
+  assert.ok(getResponse.body.includes("defaultDashboardLayout"));
+
+  const putResponse = await callRoute(
+    routes,
+    {
+      requestId: "req-123",
+      request: {
+        method: "PUT",
+        url: "/v1/preferences",
+        headers: {},
+        body: JSON.stringify({ locale: "en-US", theme: "light", defaultDashboardLayout: ["tasks", "queues"] }),
+      } as never,
+      route: { pathname: "/v1/preferences", segments: ["v1", "preferences"] },
+      principal: null,
+    },
+  );
+  if (!putResponse) throw new Error("Handler returned null");
+  assert.equal(putResponse.statusCode, 200);
+  const putBody = JSON.parse(putResponse.body);
+  assert.equal(putBody.data.locale, "en-US");
+  assert.equal(putBody.data.theme, "light");
+  assert.deepEqual(putBody.data.defaultDashboardLayout, ["tasks", "queues"]);
 });
 
 test("POST /v1/admin/control-plane/load-balancing/select selects coordinator", async () => {

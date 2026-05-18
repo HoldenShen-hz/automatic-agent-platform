@@ -98,6 +98,19 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     [drillDownSteps, selectedStepId],
   );
 
+  const updateSelected = useCallback((body: Partial<TaskDTO>) => {
+    if (selectedTask == null) {
+      return null;
+    }
+
+    const previousTasks = visibleTasks;
+    const nextTasks = visibleTasks.map((task) => task.id === selectedTask.id ? { ...task, ...body } : task);
+    setOptimisticTasks(nextTasks);
+    return () => {
+      setOptimisticTasks(previousTasks);
+    };
+  }, [selectedTask, visibleTasks]);
+
   const runTaskMutation = useCallback(async (
     body: Partial<TaskDTO>,
     title: string,
@@ -107,22 +120,23 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       return;
     }
 
-    const previousTasks = visibleTasks;
-    const nextTasks = visibleTasks.map((task) => task.id === selectedTask.id ? { ...task, ...body } : task);
-    setOptimisticTasks(nextTasks);
+    const rollback = updateSelected(body);
+    if (rollback == null) {
+      return;
+    }
     setTimelineItems((current) => [{ title, description }, ...current]);
     setPendingOperations((current) => current + 1);
 
     try {
       await updateTask(client, selectedTask.id, body);
     } catch (error) {
-      setOptimisticTasks(previousTasks);
+      rollback?.();
       setTimelineItems((current) => current.filter((item, index) => index !== 0));
       throw error;
     } finally {
       setPendingOperations((current) => Math.max(0, current - 1));
     }
-  }, [client, selectedTask, visibleTasks]);
+  }, [client, selectedTask, updateSelected]);
 
   const fetchTaskDrillDown = useCallback(async (taskId: string) => {
     const steps = await fetchWorkflowRunSteps(client, taskId);

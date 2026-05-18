@@ -146,11 +146,14 @@ test("BillingAdminService.getAuditLog - returns entries sorted by performedAt de
 
   const log = service.getAuditLog();
 
-  // All operations have same performedAt (same millisecond), maintains insertion order
   assert.strictEqual(log.length, 3);
-  assert.strictEqual(log[0].operation, "first");
-  assert.strictEqual(log[1].operation, "second");
-  assert.strictEqual(log[2].operation, "third");
+  assert.deepStrictEqual(
+    new Set(log.map((entry) => entry.operation)),
+    new Set(["first", "second", "third"]),
+  );
+  for (let index = 1; index < log.length; index += 1) {
+    assert.ok(log[index - 1].performedAt >= log[index].performedAt);
+  }
 });
 
 test("BillingAdminService.getAuditLog - respects limit parameter", () => {

@@ -3899,6 +3899,25 @@ Yono Business 作为业务域加入系统后，不能只验证配置文件存在
 | P2-3 | Flaky governance | repeat-run、隔离区、skip 审计、失败样例自动回灌 |
 | P2-4 | Test inventory dashboard | 源目录、测试层、覆盖率、变异分数、缺口 ID 可视化 |
 
+### 37.4 本轮新增自动化守护测试项
+
+为避免 v4.1 补充章停留在人工清单，本轮新增 `tests/unit/quality/full-coverage-test-manual-gaps.test.ts` 作为手册落地守护测试。该测试不替代各专项测试本身，而是验证手册中的每个测试缺口都有可定位的运行时代码证据和自动化测试证据。
+
+同时新增 `tests/unit/quality/full-coverage-real-paths.test.ts` 与 `tests/unit/quality/full-coverage-operational-real-paths.test.ts`，直接执行 Mission、Yono Business、Prompt Guard、Budget Guard、Startup Env Schema、Prometheus Exporter、Fixture Redactor、Chaos Scheduler、Supply-chain Audit Script、部署/DR/告警资产等生产模块或真实仓库配置，作为 Part V 的最小可执行产品级与运营级覆盖基线。
+
+| 守护对象 | 自动化断言 |
+| -------- | ---------- |
+| `T-GAP-01` 至 `T-GAP-20` | 手册必须完整列出 20 个缺口，且每个缺口必须映射到至少一组真实 runtime artifact 与 automated test artifact |
+| `GA-01` 至 `GA-15` | 正式交互准入项必须完整保留，不允许在文档整理时被误删 |
+| P0/P1/P2 补全路线 | `P0-1`、`P0-7`、`P1-1`、`P1-6`、`P2-4` 等关键路线必须继续存在 |
+| 测试命令入口 | `test:unit`、`test:integration`、`test:e2e`、`test:golden`、`test:performance`、`test:leaks`、`test:invariants`、`coverage:gate`、`test:mutation` 必须存在 |
+| 覆盖率基线 | `.coverage-baseline.json` 必须包含 numeric global/minimum metrics，并纳入 `src/` 目录级基线 |
+| 真实性检查 | 每个缺口对应的测试证据必须包含可执行 `test()`/`it()` 与断言；`tests/` 和 `ui/tests/` 不允许出现未登记的 `.skip`；UI feature 必须保持 `web/`、`mobile/`、`hooks/` 三入口 |
+| Property/Fuzz 基线 | Cursor pagination 等公共 parser 必须有 deterministic fuzz / schema drift 测试，覆盖未知字段、错类型、负数、浮点和数组 payload |
+| 真实路径基线 | Mission resolution/live guard/budget、Yono market-to-dispute、Prompt injection/canary leakage、Budget cascade/cost attribution、startup config fail-close、Prometheus exporter、privacy redaction、Chaos rollback、supply-chain audit、deploy/DR/alert assets 必须有直接调用生产代码或真实仓库配置的测试 |
+
+后续新增测试类型时，必须同步更新本守护测试中的 evidence mapping；如果某个缺口仍没有自动化证据，应在本文件中明确标注为 residual risk，而不是把它写成已覆盖。
+
 ## 38. 新增测试进入门禁规则
 
 任何新增功能进入 `main` 前，除 v4.0 Checklist 外，必须回答以下问题：

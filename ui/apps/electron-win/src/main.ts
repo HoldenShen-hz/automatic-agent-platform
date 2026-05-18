@@ -1,6 +1,9 @@
-import { app, BrowserWindow, globalShortcut, Notification, shell, type BrowserWindow as BrowserWindowHandle } from "electron";
+import * as electron from "electron";
+import type { BrowserWindow as BrowserWindowHandle } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+const { app, BrowserWindow, globalShortcut, Notification, shell } = electron;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const rendererHtmlPath = join(currentDir, "../dist/index.html");

@@ -271,3 +271,56 @@ test("parseCursor returns undefined for invalid base64", () => {
 test("parseCursor returns undefined for empty string", () => {
   assert.equal(parseCursor(""), undefined);
 });
+
+test("parseCursor rejects malformed or schema-drifting payloads", () => {
+  const invalidPayloads: unknown[] = [
+    null,
+    [],
+    "cursor",
+    42,
+    { cursor: 123 },
+    { cursor: "cursor", limit: -1 },
+    { cursor: "cursor", limit: 1.5 },
+    { cursor: "cursor", limit: "50" },
+    { cursor: "cursor", offset: 10 },
+    { cursor: "cursor", limit: 10, extra: true },
+  ];
+
+  for (const payload of invalidPayloads) {
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
+    assert.equal(parseCursor(encoded), undefined, `payload should be rejected: ${JSON.stringify(payload)}`);
+  }
+});
+
+test("parseCursor deterministic fuzz preserves valid cursor pagination only", () => {
+  const validSeeds = [
+    {},
+    { cursor: "cursor_001" },
+    { limit: 0 },
+    { cursor: "cursor_002", limit: 1 },
+    { cursor: "unicode_游标", limit: 500 },
+    { cursor: "x".repeat(128), limit: Number.MAX_SAFE_INTEGER },
+  ];
+
+  for (const seed of validSeeds) {
+    const encoded = encodeCursor(seed);
+    assert.deepEqual(parseCursor(encoded), seed);
+  }
+
+  const invalidSeeds = Array.from({ length: 64 }, (_, index) => {
+    const modulo = index % 8;
+    if (modulo === 0) return { cursor: index };
+    if (modulo === 1) return { limit: -index - 1 };
+    if (modulo === 2) return { limit: index + 0.25 };
+    if (modulo === 3) return { cursor: `cursor_${index}`, page: index };
+    if (modulo === 4) return { cursor: null };
+    if (modulo === 5) return [index, `cursor_${index}`];
+    if (modulo === 6) return { cursor: `cursor_${index}`, limit: Number.NaN };
+    return `cursor_${index}`;
+  });
+
+  for (const seed of invalidSeeds) {
+    const encoded = Buffer.from(JSON.stringify(seed)).toString("base64");
+    assert.equal(parseCursor(encoded), undefined, `fuzz seed should be rejected: ${JSON.stringify(seed)}`);
+  }
+});

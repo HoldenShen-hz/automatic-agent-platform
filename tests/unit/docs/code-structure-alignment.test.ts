@@ -24,20 +24,26 @@ function extractDocumentedSourceDirectories(documentPath: string): string[] {
   const directories = new Set<string>();
 
   let inCodeBlock = false;
+  let skipCurrentCodeBlock = false;
   let baseDirectory = "";
   let stack: string[] = [];
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     if (line.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
+      if (inCodeBlock) {
+        const previousContext = lines.slice(Math.max(0, index - 3), index).join("\n");
+        skipCurrentCodeBlock = previousContext.includes("ui/packages/features/<feature>/src/");
+      }
       if (!inCodeBlock) {
+        skipCurrentCodeBlock = false;
         baseDirectory = "";
         stack = [];
       }
       continue;
     }
 
-    if (!inCodeBlock) {
+    if (!inCodeBlock || skipCurrentCodeBlock) {
       continue;
     }
 

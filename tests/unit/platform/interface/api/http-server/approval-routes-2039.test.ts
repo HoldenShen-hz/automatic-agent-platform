@@ -287,14 +287,14 @@ test("ISSUE #2039: applyDecision is not called when authorization fails", async 
 
 // ── Existing behavior tests (to ensure we don't break anything) ───────────────
 
-test("createApprovalRoutes returns 4 routes", () => {
+test("createApprovalRoutes returns 5 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     approvalService: createMockApprovalService(),
     inspectService: createMockInspectService(),
   };
   const routes = createApprovalRoutes(deps);
-  assert.equal(routes.length, 4);
+  assert.equal(routes.length, 5);
 });
 
 test("GET /approvals returns approval list", async () => {

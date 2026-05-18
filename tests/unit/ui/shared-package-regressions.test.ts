@@ -162,5 +162,5 @@ test("UiRuntimeProvider no longer hardcodes demo WS endpoints or synthetic auth 
   assert.equal(source.includes('router.connect("ws://local/ui", "demo-token")'), false);
   assert.equal(source.includes('accessToken: "ui-runtime-access"'), false);
   assert.equal(source.includes('refreshToken: "ui-runtime-refresh"'), false);
-  assert.equal(source.includes("if (wsUrl != null && wsToken != null && wsToken.length > 0)"), true);
+  assert.equal(source.includes("if (wsUrl != null && accessToken != null && accessToken.length > 0)"), true);
 });

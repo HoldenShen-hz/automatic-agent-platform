@@ -13,18 +13,10 @@ export class OfflineQueue {
     private readonly maxCapacity = DEFAULT_MAX_CAPACITY,
   ) {
     this.readyPromise = this.store.readAll()
+      .catch(() => [])
       .then((mutations) => {
         this.queue.push(...mutations);
         this.trimToCapacity(this.queue);
-        this.ready = true;
-        if (this.stagedBeforeReady.length > 0) {
-          this.queue.push(...this.stagedBeforeReady);
-          this.stagedBeforeReady.length = 0;
-          this.trimToCapacity(this.queue);
-          return this.persistCurrentSnapshot();
-        }
-      })
-      .catch(() => {
         this.ready = true;
         if (this.stagedBeforeReady.length > 0) {
           this.queue.push(...this.stagedBeforeReady);
