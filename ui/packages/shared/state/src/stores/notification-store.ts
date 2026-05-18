@@ -57,10 +57,14 @@ export function createNotificationStore() {
             if (notification == null || notification.read) {
               return;
             }
-            notification.read = true;
+            const nextNotification: Notification = {
+              ...notification,
+              read: true,
+            };
+            draft.notifications = draft.notifications.map((entry) => entry.id === id ? nextNotification : entry);
             draft.notificationLookup = {
               ...draft.notificationLookup,
-              [id]: notification,
+              [id]: nextNotification,
             };
             draft.unreadCount = Math.max(0, draft.unreadCount - 1);
           });

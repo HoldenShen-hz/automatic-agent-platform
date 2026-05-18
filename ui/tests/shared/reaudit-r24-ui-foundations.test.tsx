@@ -66,6 +66,6 @@ describe("R24 UI foundations", () => {
     const responsivePane = [...container.querySelectorAll("div")].find((element) =>
       element.textContent?.includes("LeftCenterRight") && element.getAttribute("style")?.includes("align-items: start"),
     );
-    expect(responsivePane?.getAttribute("style")).toContain("grid-template-columns: 1fr");
+    expect(responsivePane?.getAttribute("style")).toContain("grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))");
   });
 });

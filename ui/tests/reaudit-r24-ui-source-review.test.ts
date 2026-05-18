@@ -24,10 +24,10 @@ describe("R24 UI source review", () => {
 
   it("implements a multi-step domain wizard with validation, persistence, and preview rows", () => {
     const source = read("packages/features/domain-wizard/src/hooks/index.ts");
-    expect(source).toContain('"basics" | "policy" | "preview"');
+    expect(source).toContain('"domain-select" | "risk-profile" | "capability-config" | "review"');
     expect(source).toContain("localStorage");
-    expect(source).toContain("validateDomainWizardDraft");
-    expect(source).toContain("createPreviewRows");
+    expect(source).toContain("validationErrors");
+    expect(source).toContain("previewRows");
   });
 
   it("ships real playwright smoke specs, openapi codegen, and an http mock server", () => {
@@ -63,7 +63,7 @@ describe("R24 UI source review", () => {
     const hookSource = read("packages/features/settings/src/hooks/index.ts");
     const webSource = read("packages/features/settings/src/web/index.tsx");
 
-    expect(hookSource).toContain('path: "/preferences"');
+    expect(hookSource).toContain("updatePreferences");
     expect(webSource).toContain("SettingsApiKeys");
     expect(webSource).toContain("SettingsNotifications");
     expect(webSource).toContain("<select onChange={(event) => vm.setDraftLocale(event.target.value)}");

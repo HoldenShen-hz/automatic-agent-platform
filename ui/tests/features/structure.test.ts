@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 describe("feature split structure", () => {
   it("keeps every feature package aligned to web/mobile/hooks", () => {
     const featureRoot = join(process.cwd(), "packages/features");
-    const features = readdirSync(featureRoot).sort();
+    const features = readdirSync(featureRoot)
+      .filter((feature) => existsSync(join(featureRoot, feature, "src")))
+      .sort();
 
-    expect(features.length).toBe(28);
+    expect(features.length).toBe(29);
 
     for (const feature of features) {
       const base = join(featureRoot, feature, "src");

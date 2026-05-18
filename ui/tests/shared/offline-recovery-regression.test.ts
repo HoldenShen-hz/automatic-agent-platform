@@ -18,7 +18,15 @@ describe("offline recovery sync flow", () => {
     const recoveredQueue = createPersistentOfflineQueue(store);
     await recoveredQueue.whenReady();
 
-    const coordinator = new SyncCoordinator(recoveredQueue);
+    const coordinator = new SyncCoordinator(
+      recoveredQueue,
+      undefined,
+      {
+        async dispatch() {
+          return undefined;
+        },
+      },
+    );
     coordinator.queueMutation({
       id: "queued-after-restart",
       endpoint: "/api/v1/tasks/task-1",
@@ -36,7 +44,7 @@ describe("offline recovery sync flow", () => {
       "merge",
     )).toEqual({ version: 2, title: "local" });
 
-    const flushed = coordinator.flush("2026-05-01T00:05:00.000Z");
+    const flushed = await coordinator.flush("2026-05-01T00:05:00.000Z");
     expect(flushed.flushedAt).toBe("2026-05-01T00:05:00.000Z");
     expect(flushed.mutations.map((mutation) => mutation.id)).toEqual([
       "queued-before-restart",

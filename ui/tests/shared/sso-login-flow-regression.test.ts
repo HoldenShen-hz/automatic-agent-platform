@@ -4,7 +4,7 @@ import { AuthService, TokenManager } from "@aa/shared-auth";
 import { createWebRuntimeClients } from "../../apps/web/src/runtime";
 
 describe("sso login flow", () => {
-  it("hydrates a callback session, forwards bearer auth through the runtime, and refreshes expiring tokens", async () => {
+  it("fails closed on url token callbacks, forwards bearer auth through the runtime, and refreshes expiring tokens", async () => {
     const tokenManager = new TokenManager({
       refreshFn: async (refreshToken) => ({
         accessToken: `${refreshToken}-refreshed`,
@@ -13,9 +13,10 @@ describe("sso login flow", () => {
       }),
     });
     const authService = new AuthService(tokenManager);
-    const session = authService.handleSsoCallback(
-      new URLSearchParams("access_token=access-1&refresh_token=refresh-1&locale=en-US"),
-    );
+    await expect(
+      authService.handleSsoCallback(new URLSearchParams("access_token=access-1&refresh_token=refresh-1&locale=en-US")),
+    ).rejects.toThrow(/auth.redirecting/);
+    const session = authService.login("access-1", "refresh-1", 3600);
 
     expect(session.accessToken).toBe("access-1");
     expect(authService.isAuthenticated()).toBe(true);

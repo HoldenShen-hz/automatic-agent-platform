@@ -41,6 +41,7 @@ import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
 import { createUiStore, type UiStoreState } from "./stores/ui-store";
 import { createNotificationStore, type NotificationStoreState, type Notification, type NotificationKind } from "./stores/notification-store";
 import { createThemeStore, type ThemeStoreState, type ThemeMode, type ResolvedThemeName } from "./stores/theme-store";
+export * from "./query-cache-persistence";
 
 export type { AuthStoreState } from "./stores/auth-store";
 export { createAuthStore } from "./stores/auth-store";
@@ -85,7 +86,22 @@ export function UiRuntimeProvider(
     wsClient,
     wsUrl,
     wsToken,
-  }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient; wsUrl?: string; wsToken?: string }>,
+    tokenManager,
+    authContext,
+  }: PropsWithChildren<{
+    client?: RESTClient;
+    queryClient?: QueryClient;
+    wsClient?: WSClient;
+    wsUrl?: string;
+    wsToken?: string;
+    tokenManager?: { getAccessToken?: () => string | null; getSession?: () => { accessToken: string } | null };
+    authContext?: {
+      userId?: string;
+      tenantId?: string;
+      permissions?: readonly string[];
+      roles?: readonly string[];
+    };
+  }>,
 ): ReactElement {
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
@@ -103,11 +119,30 @@ export function UiRuntimeProvider(
       ? new URLSearchParams("locale=zh-CN")
       : new URLSearchParams(window.location.search);
     const identity = authService.resolveIdentity(params);
-    authStore.getState().setAuthenticated(authService.isAuthenticated());
+    const accessToken = wsToken
+      ?? tokenManager?.getAccessToken?.()
+      ?? tokenManager?.getSession?.()?.accessToken
+      ?? null;
+    authStore.getState().setAuthenticated(authService.isAuthenticated() || accessToken != null);
     authStore.getState().setDisplayName(identity.displayName);
     authStore.getState().setLocale(identity.locale);
     uiStore.getState().setActiveRoute("/mission-control/dashboard");
     uiStore.getState().setActiveFeature("dashboard");
+    if (authContext?.tenantId != null) {
+      authStore.getState().switchTenant(authContext.tenantId);
+    }
+    if (authContext?.userId != null) {
+      authStore.getState().login({
+        accessToken: accessToken ?? "",
+        refreshToken: "",
+        expiresAt: Date.now() + 60_000,
+        userId: authContext.userId,
+        tenantId: authContext.tenantId ?? "",
+        roles: [...(authContext.roles ?? [])],
+        permissions: [...(authContext.permissions ?? [])],
+        displayName: identity.displayName,
+      });
+    }
 
     const bootstrapMutations: OfflineMutation[] = [
       {
@@ -153,8 +188,8 @@ export function UiRuntimeProvider(
       realtimeStore.getState().setWsStatus(status);
     });
 
-    if (wsUrl != null && wsToken != null && wsToken.length > 0) {
-      router.connect(wsUrl, wsToken);
+    if (wsUrl != null && accessToken != null && accessToken.length > 0) {
+      router.connect(wsUrl, accessToken);
       router.subscribe("global");
       router.subscribe("dashboard");
       router.subscribe("approvals");
@@ -170,7 +205,7 @@ export function UiRuntimeProvider(
       disposeStatus();
       router.disconnect();
     };
-  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore, wsToken, wsUrl]);
+  }, [authContext, authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, tokenManager, uiStore, wsToken, wsUrl]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },

@@ -3,12 +3,17 @@
   "command": [
     "vitest",
     "run",
-    "tests/shared/api-client.test.ts",
-    "tests/unit/ui/tools/mock-server-routing.test.ts",
-    "tests/unit/ui/tools/mock-codegen-sync-regressions.test.ts",
-    "tests/unit/ui/apps/web/runtime-contract-version.test.tsx",
-    "tests/unit/ui/apps/web/runtime.test.tsx"
+    "tests/features/registry.test.ts",
+    "tests/docs/route-map.test.ts",
+    "tests/apps/web.test.tsx",
+    "tests/reaudit-r24-ui-source-review.test.ts",
+    "tests/shared/ui-core-mobile.test.tsx",
+    "tests/unit/ui/apps/electron-win/main.test.ts",
+    "tests/unit/ui/apps/mobile/metro-config.test.ts",
+    "tests/unit/ui/apps/web/build-config.test.ts",
+    "tests/features/structure.test.ts",
+    "tests/shared/reaudit-r24-ui-foundations.test.tsx"
   ],
-  "startedAt": "2026-05-17T16:34:01.721Z",
-  "completedAt": "2026-05-17T16:34:03.298Z"
+  "startedAt": "2026-05-17T16:52:01.329Z",
+  "completedAt": "2026-05-17T16:52:04.259Z"
 }

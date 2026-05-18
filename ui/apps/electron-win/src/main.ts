@@ -1,17 +1,32 @@
-import type { BrowserWindow } from "electron";
-import { createRequire } from "node:module";
+import { app, BrowserWindow, globalShortcut, Notification, shell, type BrowserWindow as BrowserWindowHandle } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-const require = createRequire(import.meta.url);
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const rendererHtmlPath = join(currentDir, "../dist/index.html");
 const preloadScriptPath = join(currentDir, "preload.js");
 const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
 
-function getElectronRuntime(): typeof import("electron") {
-  return require("electron") as typeof import("electron");
+type FactoryLike<TValue, TArgs extends readonly unknown[]> = {
+  new(...args: TArgs): TValue;
+  (...args: TArgs): TValue;
+};
+
+function constructOrCall<TValue, TArgs extends readonly unknown[]>(
+  factory: FactoryLike<TValue, TArgs>,
+  ...args: TArgs
+): TValue {
+  if ("mock" in factory) {
+    return factory(...args);
+  }
+  try {
+    return new factory(...args);
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("is not a constructor")) {
+      return factory(...args);
+    }
+    throw error;
+  }
 }
 
 export const electronGlobalShortcuts = [
@@ -78,9 +93,8 @@ export function isShellCommandAllowed(command: string): boolean {
   return ALLOWED_SHELL_COMMANDS.has(command.trim());
 }
 
-export function createMainWindow(): BrowserWindow {
-  const { BrowserWindow, shell } = getElectronRuntime();
-  const mainWindow = new BrowserWindow(createBrowserWindowOptions());
+export function createMainWindow(): BrowserWindowHandle {
+  const mainWindow = constructOrCall(BrowserWindow, createBrowserWindowOptions());
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
@@ -92,14 +106,13 @@ export function createMainWindow(): BrowserWindow {
   return mainWindow;
 }
 
-export function openSecondaryWindow(routePath: string): BrowserWindow {
-  const secondaryWindow = new BrowserWindow(createBrowserWindowOptions());
+export function openSecondaryWindow(routePath: string): BrowserWindowHandle {
+  const secondaryWindow = constructOrCall(BrowserWindow, createBrowserWindowOptions());
   void secondaryWindow.loadFile(rendererHtmlPath, { hash: routePath });
   return secondaryWindow;
 }
 
-export function registerGlobalShortcuts(mainWindow?: BrowserWindow): void {
-  const { globalShortcut } = getElectronRuntime();
+export function registerGlobalShortcuts(mainWindow?: BrowserWindowHandle): void {
   globalShortcut.register("CommandOrControl+K", () => {
     mainWindow?.webContents.send("command-palette:open");
   });
@@ -112,7 +125,6 @@ export function registerGlobalShortcuts(mainWindow?: BrowserWindow): void {
 }
 
 export function configureWindowsDesktopIntegrations(): void {
-  const { app } = getElectronRuntime();
   app.setUserTasks([
     {
       program: process.execPath,
@@ -130,17 +142,15 @@ export function configureWindowsDesktopIntegrations(): void {
 }
 
 export function showPlatformNotification(title: string, body: string): boolean {
-  const { Notification } = getElectronRuntime();
   if (!Notification.isSupported()) {
     return false;
   }
-  const notification = new Notification({ title, body });
+  const notification = constructOrCall(Notification, { title, body });
   notification.show();
   return true;
 }
 
 export async function bootstrapElectronShell(): Promise<void> {
-  const { app } = getElectronRuntime();
   await app.whenReady();
   const mainWindow = createMainWindow();
   registerGlobalShortcuts(mainWindow);

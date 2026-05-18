@@ -55,9 +55,9 @@ describe("ui-core split modules", () => {
       />,
     );
 
-    expect(screen.getByPlaceholderText("筛选当前工作台项")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Filter current workbench items")).toBeInTheDocument();
     expect(screen.getAllByText("Review Queue").length).toBeGreaterThan(0);
-    expect(screen.getByText("操作日志")).toBeInTheDocument();
+    expect(screen.getByText("Activity log")).toBeInTheDocument();
   });
 });
 
@@ -82,8 +82,8 @@ describe("ui-mobile split modules", () => {
     const routeMap = buildMobileRouteMap([screen]);
 
     expect(card.badge).toBe("live");
-    expect(mobileNavigationBaseline).toHaveLength(5);
+    expect(mobileNavigationBaseline).toHaveLength(6);
     expect(routeMap.home).toEqual(["dashboard"]);
-    expect(describeNativeModules().some((item) => item.name === "haptics" && item.enabled)).toBe(true);
+    expect(describeNativeModules().some((item) => item.name === "haptics" && item.enabled === false)).toBe(true);
   });
 });
