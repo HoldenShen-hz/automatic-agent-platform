@@ -57,3 +57,4 @@ src/platform/state-evidence
 tests/**/artifacts/
 tests/golden/snapshots/
 tests/fixtures/migration/snapshots/
+session-replay
