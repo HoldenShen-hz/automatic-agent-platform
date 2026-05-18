@@ -30,7 +30,6 @@ import type {
 export type CostEstimate = CostEstimateContract;
 export type CostEstimationConfig = CostEstimationConfigContract;
 export type CostEstimationServicePort = CostEstimationServicePortContract;
-export { CostEstimationService } from "../../scale-ecosystem/billing/cost-estimation-service.js";
 
 export const CostEstimate = Symbol.for("automatic_agent.cost_management.CostEstimate");
 export const CostEstimationConfig = Symbol.for("automatic_agent.cost_management.CostEstimationConfig");

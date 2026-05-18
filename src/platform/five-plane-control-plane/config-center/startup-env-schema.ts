@@ -17,30 +17,38 @@ const logger = new StructuredLogger({ retentionLimit: 200 });
 // Primitive parsers matching the existing manual parsing in runtime-env.ts
 // ---------------------------------------------------------------------------
 
-const NonEmptyString = z.string().min(1, "must be non-empty");
-const PositiveInteger = z.string().refine(
+function normalizeStringInput(value: unknown): unknown {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+const NonEmptyString = z.preprocess(normalizeStringInput, z.string().min(1, "must be non-empty"));
+const UrlString = z.preprocess(normalizeStringInput, z.string().url());
+const PositiveInteger = z.preprocess(normalizeStringInput, z.string()).refine(
   (v) => {
     const n = Number.parseInt(v, 10);
     return Number.isFinite(n) && n > 0;
   },
   { message: "must be a positive integer" },
 );
-const NonNegativeInteger = z.string().refine(
+const NonNegativeInteger = z.preprocess(normalizeStringInput, z.string()).refine(
   (v) => {
     const n = Number.parseInt(v, 10);
     return Number.isFinite(n) && n >= 0;
   },
   { message: "must be a non-negative integer" },
 );
-const PositivePort = z.string().refine(
+const PositivePort = z.preprocess(normalizeStringInput, z.string()).refine(
   (v) => {
     const n = Number.parseInt(v, 10);
     return Number.isInteger(n) && n >= 1 && n <= 65535;
   },
   { message: "must be a port number between 1 and 65535" },
 );
-const EnvironmentName = z.enum(["dev", "test", "staging", "pre-prod", "prod", "development", "production"]);
-const BooleanString = z.enum(["1", "true", "yes", "on", "0", "false", "no", "off"]);
+const EnvironmentName = z.preprocess(normalizeStringInput, z.enum(["dev", "test", "staging", "pre-prod", "prod", "development", "production"]));
+const BooleanString = z.preprocess(
+  (value) => typeof value === "string" ? value.trim().toLowerCase() : value,
+  z.enum(["1", "true", "yes", "on", "0", "false", "no", "off"]),
+);
 const StorageDriver = z.enum(["sqlite", "postgres"]);
 const LogLevel = z.enum(["trace", "debug", "info", "warn", "error", "fatal"]);
 
@@ -207,7 +215,7 @@ export const OtelEnabledSchema = BooleanString.optional();
  * Schema for AA_OTEL_ENDPOINT — OTLP exporter endpoint URL.
  * Required when AA_OTEL_ENABLED is true.
  */
-export const OtelEndpointSchema = NonEmptyString.url().optional();
+export const OtelEndpointSchema = UrlString.optional();
 
 /**
  * Schema for AA_OTEL_SERVICE_NAME — logical service name for OTEL.
@@ -239,7 +247,7 @@ export const ExpectedGovernanceVersionSchema = NonEmptyString.nullable();
  * Schema for AA_PLUGIN_REGISTRY_URL — plugin registry endpoint.
  * Optional: defaults to built-in plugin catalog.
  */
-export const PluginRegistryUrlSchema = NonEmptyString.url().optional();
+export const PluginRegistryUrlSchema = UrlString.optional();
 
 /**
  * Schema for AA_PLUGIN_ALLOW_UNVERIFIED — allow loading plugins without signature verification.
@@ -383,7 +391,19 @@ export const StartupEnvSchema = z.object({
       message: "must be set when AA_STORAGE_DRIVER=postgres",
     });
   }
-  if (value.AA_PLUGIN_ALLOW_NETWORK_EGRESS != null && !value.AA_PLUGIN_SANDBOX_ROOT) {
+  if (value.AA_STORAGE_DRIVER === "postgres" && value.AA_STORAGE_POSTGRES_DSN && value.AA_PG_DSN && value.AA_STORAGE_POSTGRES_DSN !== value.AA_PG_DSN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AA_STORAGE_POSTGRES_DSN"],
+      message: "must match AA_PG_DSN when both variables are configured",
+    });
+  }
+  const pluginEgressEnabled =
+    value.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "1"
+    || value.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "true"
+    || value.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "yes"
+    || value.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "on";
+  if (pluginEgressEnabled && !value.AA_PLUGIN_SANDBOX_ROOT) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["AA_PLUGIN_SANDBOX_ROOT"],
@@ -496,12 +516,16 @@ export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): vo
   const lines = [
     "FATAL: Startup environment validation failed.",
     "",
-    ...result.errors.map((e) => `  ${e.key}: ${e.message}`),
+    ...result.errors.map((e) => `  ${e.key}: invalid`),
     "",
     "Fix the environment variables above and restart the process.",
     "See: docs_zh/operations/environment-variables.md",
   ];
 
-  logger.error(lines.join("\n"));
+  logger.error("startup_env.validation_failed", {
+    errors: result.errors,
+    messageLines: lines,
+    docsPath: "docs_zh/operations/environment-variables.md",
+  });
   process.exit(1);
 }

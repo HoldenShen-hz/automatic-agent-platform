@@ -65,8 +65,8 @@ export class TranslationService {
     }
     const catalog = await loader();
     this.register(catalog, {
-      direction: this.directions.get(locale),
-      nativeLabel: this.nativeLabels.get(locale),
+      ...(this.directions.has(locale) ? { direction: this.directions.get(locale)! } : {}),
+      ...(this.nativeLabels.has(locale) ? { nativeLabel: this.nativeLabels.get(locale)! } : {}),
     });
     return catalog;
   }
@@ -99,7 +99,7 @@ export class TranslationService {
       .map((locale) => ({
         locale,
         direction: this.getDirection(locale),
-        nativeLabel: this.nativeLabels.get(locale),
+        ...(this.nativeLabels.has(locale) ? { nativeLabel: this.nativeLabels.get(locale)! } : {}),
       }));
   }
 
@@ -207,7 +207,7 @@ export function translateFeatureCopy(featureId: string): FeatureTranslationCopy 
   const defaultTitle = featureId
     .split("-")
     .filter((part) => part.length > 0)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
   const defaultSummary = `${defaultTitle || "Feature"} workspace`;
   const title = translateMessage(`ui.feature.${featureId}.title`);

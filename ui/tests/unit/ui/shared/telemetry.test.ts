@@ -286,8 +286,8 @@ describe("InMemoryTelemetryExporter", () => {
 describe("OtlpHttpTelemetryExporter", () => {
   it("formats events correctly", async () => {
     let capturedBody: any = null;
-    const mockFetch = async (_url: string, init: RequestInit) => {
-      capturedBody = JSON.parse(init.body as string);
+    const mockFetch: typeof fetch = async (_input, init) => {
+      capturedBody = JSON.parse((init?.body as string | undefined) ?? "{}");
       return new Response("{}", { status: 200 });
     };
 

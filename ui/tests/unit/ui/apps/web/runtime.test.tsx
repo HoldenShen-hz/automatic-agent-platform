@@ -21,6 +21,11 @@ import {
 } from "../../../../../apps/web/src/runtime";
 import { featureRegistry } from "../../../../../apps/web/src/feature-registry";
 
+const mockedCreateAuthInterceptor = vi.mocked(createAuthInterceptor);
+const mockedCreateTenantInterceptor = vi.mocked(createTenantInterceptor);
+const mockedFetchContractVersion = vi.mocked(fetchContractVersion);
+const mockedCreateRouteGuardChain = vi.mocked(createRouteGuardChain);
+
 vi.mock("../../../../../apps/web/src/feature-registry", () => ({
   missionControlFeatureContracts: [
     { id: "alerts", path: "/mission-control/alerts", permission: "platform_sre" },
@@ -223,7 +228,7 @@ describe("web runtime clients creation", () => {
   });
 
   it("uses TokenManager when provided in config", () => {
-    createAuthInterceptor.mockClear();
+    mockedCreateAuthInterceptor.mockClear();
     const mockTokenManager = {
       getToken: vi.fn(() => "test-token"),
       refreshToken: vi.fn(),
@@ -235,27 +240,26 @@ describe("web runtime clients creation", () => {
     });
     expect(result.client).toBeDefined();
     expect(result.tokenManager).toBe(mockTokenManager);
-    expect(createAuthInterceptor).toHaveBeenCalledWith(mockTokenManager);
+    expect(mockedCreateAuthInterceptor).toHaveBeenCalledWith(mockTokenManager);
   });
 
   it("passes tenantId to createWebRuntimeClients", () => {
-    createTenantInterceptor.mockClear();
+    mockedCreateTenantInterceptor.mockClear();
     const config = createWebRuntimeConfig({});
     const result = createWebRuntimeClients({
       ...config,
       tenantId: "tenant-123",
     });
     expect(result.client).toBeDefined();
-    expect(createTenantInterceptor).toHaveBeenCalledWith("tenant-123");
+    expect(mockedCreateTenantInterceptor).toHaveBeenCalledWith("tenant-123");
   });
 });
 
 describe("contract version startup checks", () => {
   it("returns a startup banner when the server contract is outside the client-supported set", async () => {
-    fetchContractVersion.mockResolvedValueOnce({
+    mockedFetchContractVersion.mockResolvedValueOnce({
       contractVersion: "v2",
       minServerVersion: "v2",
-      supportedVersions: ["v2"],
     });
 
     await expect(checkWebContractVersion({} as never)).resolves.toEqual({
@@ -309,7 +313,7 @@ describe("web app-shell guard behavior", () => {
   });
 
   it("renders access denied when guard rejects", () => {
-    createRouteGuardChain.mockReturnValueOnce({
+    mockedCreateRouteGuardChain.mockReturnValueOnce({
       evaluate: () => ({ allowed: false, reason: "Insufficient permissions" }),
     });
 

@@ -11,7 +11,7 @@ describe("R24 UI foundations", () => {
   it("lazy loads locale bundles, emits locale changes, and applies rtl document direction", async () => {
     const service = createDefaultTranslationService();
     const listener = vi.fn();
-    const documentRef = { documentElement: { lang: "", dir: "" } };
+    const documentRef = { documentElement: { lang: "", dir: "" } } as Pick<Document, "documentElement">;
     service.subscribe(listener);
 
     expect(service.translate("ui.notifications.pending", "zh-CN", "en-US", { count: 0 })).toBe("没有待处理项");

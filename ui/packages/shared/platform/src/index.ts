@@ -1,16 +1,16 @@
 import type { PlatformId } from "@aa/shared-types";
-import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter";
-import { ElectronPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter";
-import { MobilePlatformAdapter } from "./mobile-platform-adapter";
-import { WebPlatformAdapter } from "./web-platform-adapter";
+import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter.js";
+import { ElectronPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter.js";
+import { MobilePlatformAdapter } from "./mobile-platform-adapter.js";
+import { WebPlatformAdapter } from "./web-platform-adapter.js";
 
-export type { PlatformAdapterFactoryOptions } from "./base-platform-adapter";
-export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./base-platform-adapter";
-export type { ElectronBridge, MobileBridge, ShellResult, SpawnedProcessHandle, TauriBridge } from "./bridge-types";
-export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter";
-export { MobilePlatformAdapter } from "./mobile-platform-adapter";
-export { PlatformAdapterProvider, usePlatformAdapter } from "./provider";
-export { WebPlatformAdapter } from "./web-platform-adapter";
+export type { PlatformAdapterFactoryOptions } from "./base-platform-adapter.js";
+export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./base-platform-adapter.js";
+export type { ElectronBridge, MobileBridge, ShellResult, SpawnedProcessHandle, TauriBridge } from "./bridge-types.js";
+export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter.js";
+export { MobilePlatformAdapter } from "./mobile-platform-adapter.js";
+export { PlatformAdapterProvider, usePlatformAdapter } from "./provider.js";
+export { WebPlatformAdapter } from "./web-platform-adapter.js";
 
 export function createPlatformAdapter(options: PlatformAdapterFactoryOptions): DefaultPlatformAdapter {
   switch (options.platform) {

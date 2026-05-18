@@ -11,7 +11,7 @@ interface MobileBridgeLike {
   readonly writeSecureValue?: (key: string, value: string) => Promise<void>;
   readonly deleteSecureValue?: (key: string) => Promise<void>;
   readonly openDeepLink?: (url: string) => Promise<void>;
-  readonly vibrate?: () => Promise<void>;
+  readonly vibrate?: (pattern: readonly number[]) => Promise<void>;
   readonly enableScreenSecurity?: () => Promise<void>;
   readonly registerPushToken?: () => Promise<string>;
   readonly authenticateBiometric?: () => Promise<boolean>;
@@ -40,6 +40,11 @@ const BRIDGE_METHODS = {
 } as const;
 
 const NATIVE_MODULE_NAME = "AAMobileBridge";
+const mobileGlobals = globalThis as typeof globalThis & {
+  __AA_MOBILE__?: MobileBridgeLike;
+  __turboModuleProxy?: (name: string) => MobileBridgeLike | null | undefined;
+  NativeModules?: Record<string, unknown>;
+};
 
 export const nativeModulesBaseline = [
   { name: "push", requiresBridge: true },
@@ -54,19 +59,19 @@ export const nativeModulesBaseline = [
 ] as const;
 
 function getLegacyBridge(): MobileBridgeLike | null {
-  const bridge = globalThis.__AA_MOBILE__;
+  const bridge = mobileGlobals.__AA_MOBILE__;
   return bridge == null ? null : bridge;
 }
 
 function getTurboBridge(): MobileBridgeLike | null {
-  const turboProxy = globalThis.__turboModuleProxy as
+  const turboProxy = mobileGlobals.__turboModuleProxy as
     | ((name: string) => MobileBridgeLike | null | undefined)
     | undefined;
   return turboProxy?.(NATIVE_MODULE_NAME) ?? null;
 }
 
 function getNativeModulesBridge(): MobileBridgeLike | null {
-  const nativeModules = globalThis.NativeModules as Record<string, unknown> | null | undefined;
+  const nativeModules = mobileGlobals.NativeModules as Record<string, unknown> | null | undefined;
   const bridge = nativeModules?.[NATIVE_MODULE_NAME];
   return bridge != null && typeof bridge === "object" ? bridge as MobileBridgeLike : null;
 }

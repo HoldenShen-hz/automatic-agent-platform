@@ -1,4 +1,4 @@
-import type { OfflineMutation, OfflineMutationStore } from "./types";
+import type { OfflineMutation, OfflineMutationStore } from "./types.js";
 
 const DEFAULT_MAX_CAPACITY = 100;
 
@@ -105,7 +105,7 @@ export function createMemoryOfflineMutationStore(initial: readonly OfflineMutati
     async readAll() {
       return [...snapshot];
     },
-    async writeAll(mutations) {
+    async writeAll(mutations: readonly OfflineMutation[]) {
       snapshot = [...mutations];
     },
   };
@@ -123,7 +123,7 @@ export function createIndexedDbOfflineMutationStore(
       }
       return readSnapshot(db, storeName);
     },
-    async writeAll(mutations) {
+    async writeAll(mutations: readonly OfflineMutation[]) {
       const db = await openDatabase(databaseName, storeName);
       if (db == null) {
         return;

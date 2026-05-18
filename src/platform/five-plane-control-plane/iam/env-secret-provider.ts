@@ -111,8 +111,11 @@ const SECRET_REF_PATTERN = /^secret:\/\/([a-z0-9._/-]+)$/i;
  */
 export function maskSecretValue(value: string): string {
   const normalized = value.trim();
-  if (normalized.length <= 4) {
+  if (normalized.length <= 8) {
     return "*".repeat(Math.max(4, normalized.length));
+  }
+  if (normalized.length <= 12) {
+    return `${"*".repeat(Math.max(6, normalized.length - 2))}${normalized.slice(-2)}`;
   }
   return `${"*".repeat(Math.min(8, normalized.length - 4))}${normalized.slice(-4)}`;
 }
@@ -213,11 +216,10 @@ export class EnvSecretProvider implements ManagedSecretProvider {
     const value = typeof rawValue === "string" && rawValue.trim().length > 0 ? rawValue.trim() : null;
     if (value == null) {
       throw new ValidationError(
-        `secret.missing_value:${metadata.secretRef}:${metadata.envName}`,
-        `secret.missing_value:${metadata.secretRef}:${metadata.envName}`,
+        "secret.missing_value",
+        "secret.missing_value",
         {
           source: "provider",
-          details: { secretRef: metadata.secretRef, envName: metadata.envName },
         },
       );
     }
@@ -240,9 +242,8 @@ export class EnvSecretProvider implements ManagedSecretProvider {
     const rawValue = this.env[envName];
     const value = typeof rawValue === "string" && rawValue.trim().length > 0 ? rawValue.trim() : null;
     if (value == null) {
-      throw new ValidationError(`secret.missing_value:${normalized}:${envName}`, `secret.missing_value:${normalized}:${envName}`, {
+      throw new ValidationError("secret.missing_value", "secret.missing_value", {
         source: "provider",
-        details: { secretRef: normalized, envName },
       });
     }
     return value;

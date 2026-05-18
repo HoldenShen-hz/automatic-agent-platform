@@ -26,6 +26,7 @@ export interface FeatureModule {
   readonly manifest: PlatformFeatureManifest;
   readonly route: AppRoute;
   readonly Component: () => ReactElement;
+  readonly subPages?: readonly unknown[];
 }
 
 export function createFeatureModule(config: {

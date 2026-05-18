@@ -1,4 +1,4 @@
-import type { ConflictMetadata, ConflictResolutionStrategy } from "./types";
+import type { ConflictMetadata, ConflictResolutionStrategy } from "./types.js";
 
 export class ConflictResolver {
   public resolve<T>(

@@ -25,6 +25,7 @@ export const TASK_STATUSES = [
  * Workflow lifecycle states.
  *
  * State transitions:
+ * - created → running/failed/cancelled (workflow materialized and admitted)
  * - running → paused/completed/failed/cancelling (workflow in progress)
  * - paused → resuming/failed/cancelled (waiting for resources or approval)
  * - resuming → running/failed/cancelled (resuming from pause)
@@ -32,6 +33,7 @@ export const TASK_STATUSES = [
  * - cancelling → cancelled (graceful cancellation in progress)
  */
 export const WORKFLOW_STATUSES = [
+  "created",
   "running",
   "paused",
   "resuming",
@@ -62,7 +64,7 @@ export const SESSION_STATUSES = [
 ] as const;
 
 /**
- * Execution lifecycle states (13 states per §45.13).
+ * Execution lifecycle states (15 states per §45.13).
  *
  * State transitions:
  * - created → prechecking/cancelled/failed (execution initialized)
@@ -78,7 +80,7 @@ export const SESSION_STATUSES = [
  * - timed_out → recovering/cancelled/failed (execution timeout triggered)
  * - succeeded/failed/cancelled/superseded are terminal states
  *
- * R9-04 fix: Added 5 missing states: queued, dispatching, paused, recovering, timed_out, resuming, ready
+ * R9-04 fix: Added canonical states queued, dispatching, paused, recovering, timed_out, resuming, ready.
  */
 export const EXECUTION_STATUSES = [
   "created",

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { describeNativeModules } from "../../packages/ui-mobile/src/native-modules";
+import { mobileGlobals } from "../helpers/mobile-bridge";
 
 describe("ui-mobile native modules", () => {
   it("marks bridge-backed modules unavailable when no mobile bridge is present", () => {
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
 
     const modules = describeNativeModules();
     const secureStorage = modules.find((item) => item.name === "secureStorage");
@@ -30,13 +31,18 @@ describe("ui-mobile native modules", () => {
   });
 
   it("detects bridge-backed capabilities from the mobile bridge", () => {
-    globalThis.__AA_MOBILE__ = {
+    mobileGlobals().__AA_MOBILE__ = {
       readSecureValue: async () => "token",
       writeSecureValue: async () => undefined,
       deleteSecureValue: async () => undefined,
+      copyToClipboard: async () => undefined,
       openDeepLink: async () => undefined,
       vibrate: async () => undefined,
+      getAnalyticsConsent: async () => true,
+      setAnalyticsConsent: async () => undefined,
       enableScreenSecurity: async () => undefined,
+      onForeground: () => () => undefined,
+      onBackground: () => () => undefined,
       registerPushToken: async () => "token",
       authenticateBiometric: async () => true,
       openOfflineDatabase: async () => undefined,
@@ -54,6 +60,6 @@ describe("ui-mobile native modules", () => {
     expect(modules.find((item) => item.name === "gestures")?.enabled).toBe(true);
     expect(modules.find((item) => item.name === "widgets")?.enabled).toBe(true);
 
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 });

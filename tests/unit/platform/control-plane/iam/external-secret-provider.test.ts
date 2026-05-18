@@ -221,3 +221,37 @@ test("external secret provider can issue provider-backed short-lived leases", as
   assert.equal(lease?.issuedBy, "vault.dynamic.release");
   assert.equal(lease?.envName, "vault://lease/release/prod/registry");
 });
+
+test("external secret provider refreshSecret invalidates cached file entries", async () => {
+  const workspace = createTempWorkspace("aa-external-secret-provider-refresh-");
+  const filePath = join(workspace, "vault-secrets.json");
+
+  try {
+    createFile(filePath, JSON.stringify({
+      "secret://system/registry/ghcr/prod": {
+        value: "vault-registry-token-111111",
+        locator: "vault://kv/release/prod/registry",
+      },
+    }));
+
+    const provider = new ExternalSecretProvider({
+      providerKind: "vault",
+      env: { AA_VAULT_SECRETS_FILE: filePath },
+    });
+
+    const first = await provider.requireSecret("secret://system/registry/ghcr/prod");
+    createFile(filePath, JSON.stringify({
+      "secret://system/registry/ghcr/prod": {
+        value: "vault-registry-token-222222",
+        locator: "vault://kv/release/prod/registry",
+      },
+    }));
+    provider.invalidateCache();
+    const second = await provider.requireSecret("secret://system/registry/ghcr/prod");
+
+    assert.equal(first.value, "vault-registry-token-111111");
+    assert.equal(second.value, "vault-registry-token-222222");
+  } finally {
+    cleanupPath(workspace);
+  }
+});

@@ -5,7 +5,7 @@
  * Implements MFA challenge/enrollment/verification flow.
  */
 
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 
 // ============================================================================
@@ -83,11 +83,17 @@ interface MfaCredentialEntry {
   credential: MfaCredential;
   verificationFailures: number;
   lockedUntil: number | null;
+  totpSecret: string | null;
+  usedTotpCounters: Set<number>;
 }
 
 const principalCredentials = new Map<string, MfaCredentialEntry[]>();
 const enrollmentSessions = new Map<string, MfaEnrollmentSession>();
 const verificationChallenges = new Map<string, MfaVerificationChallenge>();
+const challengeCreationTimestamps = new Map<string, number[]>();
+const MFA_ALLOWED_CLOCK_SKEW_WINDOWS = [-1, 0, 1] as const;
+const MFA_CHALLENGE_RATE_LIMIT_WINDOW_MS = 60_000;
+const MFA_CHALLENGE_RATE_LIMIT_MAX_REQUESTS = 5;
 
 // ============================================================================
 // Token Generation
@@ -122,6 +128,71 @@ function generateTotpCode(secret: string, timestamp: number = Date.now()): strin
     (hash[offset + 3]! & 0xff);
   const otp = binary % 10 ** MFA_CODE_LENGTH;
   return otp.toString().padStart(MFA_CODE_LENGTH, "0");
+}
+
+function getTotpCounter(timestamp: number = Date.now()): number {
+  return Math.floor(timestamp / 30000);
+}
+
+function safeCompareCode(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function pruneExpiredMfaState(now: number = Date.now()): void {
+  for (const [enrollmentId, session] of enrollmentSessions.entries()) {
+    if (session.expiresAt <= now || session.status === "completed" || session.status === "expired") {
+      enrollmentSessions.delete(enrollmentId);
+    }
+  }
+  for (const [challengeId, challenge] of verificationChallenges.entries()) {
+    if (challenge.expiresAt <= now) {
+      verificationChallenges.delete(challengeId);
+    }
+  }
+  for (const [key, timestamps] of challengeCreationTimestamps.entries()) {
+    const next = timestamps.filter((timestamp) => timestamp > now - MFA_CHALLENGE_RATE_LIMIT_WINDOW_MS);
+    if (next.length === 0) {
+      challengeCreationTimestamps.delete(key);
+      continue;
+    }
+    challengeCreationTimestamps.set(key, next);
+  }
+}
+
+function assertChallengeRateLimit(principalId: string, method: MfaMethod, now: number): void {
+  const key = `${principalId}:${method}`;
+  const recent = (challengeCreationTimestamps.get(key) ?? []).filter((timestamp) => timestamp > now - MFA_CHALLENGE_RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= MFA_CHALLENGE_RATE_LIMIT_MAX_REQUESTS) {
+    challengeCreationTimestamps.set(key, recent);
+    throw new ValidationError("mfa.challenge_rate_limited", "mfa.challenge_rate_limited");
+  }
+  recent.push(now);
+  challengeCreationTimestamps.set(key, recent);
+}
+
+function resolveTotpMatch(secret: string, code: string, timestamp: number = Date.now()): number | null {
+  for (const offset of MFA_ALLOWED_CLOCK_SKEW_WINDOWS) {
+    const candidateTimestamp = timestamp + offset * 30_000;
+    const expectedCode = generateTotpCode(secret, candidateTimestamp);
+    if (safeCompareCode(expectedCode, code)) {
+      return getTotpCounter(candidateTimestamp);
+    }
+  }
+  return null;
+}
+
+function sanitizeCredential(credential: MfaCredential): MfaCredential {
+  return {
+    ...credential,
+    metadata: Object.freeze({
+      ...credential.metadata,
+    }),
+  };
 }
 
 // ============================================================================
@@ -167,6 +238,7 @@ export function startMfaEnrollment(input: {
   principalId: string;
   method: MfaMethod;
 }): MfaEnrollmentSession {
+  pruneExpiredMfaState();
   if (!DEFAULT_MFA_POLICY.allowedMethods.includes(input.method)) {
     throw new ValidationError("mfa.method_not_allowed", "mfa.method_not_allowed");
   }
@@ -202,6 +274,7 @@ export function completeMfaEnrollment(input: {
   enrollmentId: string;
   verificationCode: string;
 }): MfaCredential {
+  pruneExpiredMfaState();
   const session = enrollmentSessions.get(input.enrollmentId);
   if (!session) {
     throw new ValidationError("mfa.enrollment_not_found", "mfa.enrollment_not_found");
@@ -217,8 +290,15 @@ export function completeMfaEnrollment(input: {
   }
 
   // Verify the TOTP code
-  const expectedCode = generateTotpCode(session.secret);
-  if (expectedCode !== input.verificationCode) {
+  const existingCredential = principalCredentials
+    .get(session.principalId)
+    ?.find((entry) => entry.credential.method === session.method && entry.credential.status !== "disabled");
+  if (existingCredential) {
+    throw new ValidationError("mfa.credential_already_exists", "mfa.credential_already_exists");
+  }
+
+  const matchedCounter = resolveTotpMatch(session.secret, input.verificationCode);
+  if (matchedCounter == null) {
     throw new ValidationError("mfa.invalid_code", "mfa.invalid_code");
   }
 
@@ -232,7 +312,6 @@ export function completeMfaEnrollment(input: {
     lastUsedAt: now,
     metadata: Object.freeze({
       enrollmentId: session.enrollmentId,
-      secret: session.secret,
     }),
   };
 
@@ -240,7 +319,13 @@ export function completeMfaEnrollment(input: {
   if (!principalCredentials.has(session.principalId)) {
     principalCredentials.set(session.principalId, []);
   }
-  principalCredentials.get(session.principalId)?.push({ credential, verificationFailures: 0, lockedUntil: null });
+  principalCredentials.get(session.principalId)?.push({
+    credential,
+    verificationFailures: 0,
+    lockedUntil: null,
+    totpSecret: session.secret,
+    usedTotpCounters: new Set([matchedCounter]),
+  });
 
   // Update enrollment session
   const completedSession: MfaEnrollmentSession = { ...session, status: "completed" };
@@ -253,7 +338,8 @@ export function completeMfaEnrollment(input: {
  * Get MFA credentials for a principal.
  */
 export function getMfaCredentials(principalId: string): readonly MfaCredential[] {
-  return principalCredentials.get(principalId)?.map((e) => e.credential) ?? [];
+  pruneExpiredMfaState();
+  return principalCredentials.get(principalId)?.map((e) => sanitizeCredential(e.credential)) ?? [];
 }
 
 /**
@@ -279,6 +365,8 @@ export function createMfaChallenge(input: {
   method: MfaMethod;
   challengeType: MfaChallengeType;
 }): MfaVerificationChallenge {
+  const now = Date.now();
+  pruneExpiredMfaState(now);
   const credentials = principalCredentials.get(input.principalId);
   const credential = credentials?.find((e) => e.credential.method === input.method && e.credential.status === "active");
 
@@ -286,21 +374,18 @@ export function createMfaChallenge(input: {
     throw new ValidationError("mfa.credential_not_found", "mfa.credential_not_found");
   }
 
-  const now = Date.now();
-
   // Check if locked
   if (credential.lockedUntil !== null && credential.lockedUntil > now) {
     throw new ValidationError("mfa.account_locked", "mfa.account_locked");
   }
+  if (credential.lockedUntil !== null && credential.lockedUntil <= now) {
+    credential.lockedUntil = null;
+    credential.verificationFailures = 0;
+  }
+
+  assertChallengeRateLimit(input.principalId, input.method, now);
 
   const challengeId = generateChallengeId();
-  let code: string | null = null;
-
-  if (input.method === "totp") {
-    // Generate code to be sent (in production, this goes through notification channel)
-    code = generateTotpCode(credential.credential.metadata["secret"] as string);
-  }
-  // For sms/email, code would be sent through notification service
 
   const challenge: MfaVerificationChallenge = {
     challengeId,
@@ -324,6 +409,7 @@ export function verifyMfaChallenge(input: {
   challengeId: string;
   code: string;
 }): MfaVerificationResult {
+  pruneExpiredMfaState();
   const challenge = verificationChallenges.get(input.challengeId);
   if (!challenge) {
     throw new ValidationError("mfa.challenge_not_found", "mfa.challenge_not_found");
@@ -355,13 +441,15 @@ export function verifyMfaChallenge(input: {
       lockoutExpiresAt: entry.lockedUntil,
     };
   }
+  if (entry.lockedUntil !== null && entry.lockedUntil <= now) {
+    entry.lockedUntil = null;
+    entry.verificationFailures = 0;
+  }
 
   // For TOTP, verify the code
-  const expectedCode = generateTotpCode(
-    entry.credential.metadata["secret"] as string,
-  );
-
-  if (expectedCode !== input.code) {
+  const secret = entry.totpSecret;
+  const matchedCounter = secret == null ? null : resolveTotpMatch(secret, input.code, now);
+  if (matchedCounter == null || entry.usedTotpCounters.has(matchedCounter)) {
     entry.verificationFailures++;
 
     if (entry.verificationFailures >= DEFAULT_MFA_POLICY.maxVerificationAttempts) {
@@ -384,6 +472,12 @@ export function verifyMfaChallenge(input: {
 
   // Success - reset failures and update last used
   entry.verificationFailures = 0;
+  entry.usedTotpCounters.add(matchedCounter);
+  for (const counter of Array.from(entry.usedTotpCounters)) {
+    if (counter < getTotpCounter(now) - 1) {
+      entry.usedTotpCounters.delete(counter);
+    }
+  }
   entry.credential = {
     ...entry.credential,
     lastUsedAt: now,
@@ -414,6 +508,7 @@ export interface MfaVerificationResult {
  * §48: MFA disable for enterprise SCIM integration.
  */
 export function disableMfa(input: { principalId: string; method: MfaMethod }): void {
+  pruneExpiredMfaState();
   const credentials = principalCredentials.get(input.principalId);
   if (!credentials) {
     throw new ValidationError("mfa.credential_not_found", "mfa.credential_not_found");

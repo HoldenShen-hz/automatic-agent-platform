@@ -11,7 +11,7 @@ function detectPlatform(): "android" | "ios" {
 
 export function MobileApp(): ReactElement {
   const adapter = createMobilePlatformAdapter(detectPlatform());
-  const bridgeReady = typeof globalThis.__AA_MOBILE__ !== "undefined";
+  const bridgeReady = typeof (globalThis as typeof globalThis & { __AA_MOBILE__?: unknown }).__AA_MOBILE__ !== "undefined";
   const [activeTabId, setActiveTabId] = useState(mobileNavigation.rootTabNavigator.initialRouteId);
   const [activeSettingsRouteId, setActiveSettingsRouteId] = useState(mobileNavigation.settingsStack.initialRouteId);
   const [activeModalId, setActiveModalId] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function MobileApp(): ReactElement {
               key={route.id}
               title={route.title}
               subtitle={route.path}
-              rightText={route.id === activeSettingsRouteId ? "Active" : undefined}
+              {...(route.id === activeSettingsRouteId ? { rightText: "Active" } : {})}
               onPress={() => setActiveSettingsRouteId(route.id)}
             />
           ))}

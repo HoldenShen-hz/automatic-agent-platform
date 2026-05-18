@@ -13,7 +13,10 @@ import {
   type RestClientResponse,
 } from "@aa/shared-api-client";
 
-function createMockRequest(method: "GET" | "POST" = "GET", extraHeaders: Record<string, string> = {}): RestClientRequest {
+function createMockRequest(
+  method: RestClientRequest["method"] = "GET",
+  extraHeaders: Record<string, string> = {},
+): RestClientRequest {
   const headers = new Headers(extraHeaders);
   return {
     path: "/api/v1/test",

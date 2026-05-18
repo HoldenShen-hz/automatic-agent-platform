@@ -2,9 +2,8 @@
   "task": "test",
   "command": [
     "vitest",
-    "run",
-    "tests/unit/ui/tools/mock-server-routing.test.ts"
+    "run"
   ],
-  "startedAt": "2026-05-18T02:08:30.049Z",
-  "completedAt": "2026-05-18T02:08:30.562Z"
+  "startedAt": "2026-05-18T07:46:07.333Z",
+  "completedAt": "2026-05-18T07:46:34.738Z"
 }

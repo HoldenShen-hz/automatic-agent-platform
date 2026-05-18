@@ -20,6 +20,7 @@ const TASK_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
 };
 
 const WORKFLOW_TRANSITIONS: Record<WorkflowStatus, readonly WorkflowStatus[]> = {
+  created: ["running", "failed", "cancelled"],
   running: ["paused", "completed", "failed", "cancelling", "cancelled"],
   paused: ["resuming", "failed", "cancelled"],
   resuming: ["running", "failed", "cancelled"],

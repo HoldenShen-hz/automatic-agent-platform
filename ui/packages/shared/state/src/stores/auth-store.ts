@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
+type AuthStoreDraft = {
+  -readonly [K in keyof AuthStoreState]:
+    AuthStoreState[K] extends readonly (infer U)[] ? U[]
+      : AuthStoreState[K];
+};
+
 export interface AuthSession {
   readonly accessToken: string;
   readonly refreshToken: string;
@@ -56,13 +62,13 @@ export function createAuthStore() {
       (set) => ({
         ...DEFAULT_AUTH_STATE,
         beginAuthentication() {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.authStatus = "authenticating";
             draft.authenticated = false;
           });
         },
         login(session) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             const roleLookup = Object.fromEntries(session.roles.map((role) => [role, true])) as Record<string, true>;
             const permissionLookup = Object.fromEntries(session.permissions.map((permission) => [permission, true])) as Record<string, true>;
             draft.authenticated = true;
@@ -80,30 +86,30 @@ export function createAuthStore() {
           });
         },
         logout() {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             Object.assign(draft, DEFAULT_AUTH_STATE);
           });
         },
         beginRefresh() {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             if (draft.accessToken.length > 0) {
               draft.authStatus = "refreshing";
             }
           });
         },
         expireSession() {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.authenticated = false;
             draft.authStatus = "expired";
           });
         },
         switchTenant(tenantId) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.tenantId = tenantId;
           });
         },
         updateTokens(accessToken, refreshToken, expiresAt) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.accessToken = accessToken;
             draft.refreshToken = refreshToken;
             if (expiresAt != null) {
@@ -114,18 +120,18 @@ export function createAuthStore() {
           });
         },
         setAuthenticated(authenticated) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.authenticated = authenticated;
             draft.authStatus = authenticated ? "authenticated" : "unauthenticated";
           });
         },
         setLocale(locale) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.locale = locale;
           });
         },
         setDisplayName(displayName) {
-          set((draft) => {
+          set((draft: AuthStoreDraft) => {
             draft.displayName = displayName;
           });
         },

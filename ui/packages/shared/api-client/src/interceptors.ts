@@ -2,7 +2,7 @@ import type { OfflineQueue } from "@aa/shared-sync";
 
 export interface RestClientRequest {
   readonly path: string;
-  readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  readonly method: string;
   readonly headers: Headers;
   readonly body?: unknown;
 }
@@ -23,7 +23,7 @@ export interface RestClientInterceptor {
 
 export interface TokenResolver {
   getAccessToken?(): string | null;
-  getAccessTokenWithRefresh?(): Promise<string | null>;
+  getAccessTokenWithRefresh?(): Promise<unknown>;
   getToken?(): string | null;
   shouldRefresh?(now?: number): boolean;
   handleUnauthorized?(): Promise<void> | void;
@@ -189,12 +189,21 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
   return {
     onRequest(request) {
       if (request.method !== "GET" && typeof navigator !== "undefined" && navigator.onLine === false) {
+        const tenantId = request.headers.get("x-tenant-id") ?? "default-tenant";
+        const principalId = request.headers.get("x-principal-id") ?? "ui-operator";
         queue.enqueue({
           id: crypto.randomUUID(),
           endpoint: request.path,
-          method: request.method,
+          method: request.method as "POST" | "PUT" | "PATCH" | "DELETE",
           body: request.body,
           createdAt: new Date().toISOString(),
+          tenantId,
+          traceId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+          principal: {
+            principalId,
+            tenantId,
+            roles: ["operator"],
+          },
         });
         throw new OfflineQueueRequestQueuedError();
       }

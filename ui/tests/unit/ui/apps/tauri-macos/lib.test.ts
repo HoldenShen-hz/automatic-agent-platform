@@ -86,14 +86,14 @@ describe("DesktopShellManifest interface structure", () => {
 
 describe("createTauriMacosAdapter", () => {
   it("creates adapter with macos platform", () => {
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard: vi.fn(),
       openDeepLink: vi.fn(),
       getDebugState: () => ({ platform: "unknown" }),
       onForeground: vi.fn(() => () => undefined),
       onBackground: vi.fn(() => () => undefined),
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createTauriMacosAdapter(baseAdapter);
     expect(adapter.platform).toBe("macos");
@@ -106,14 +106,14 @@ describe("createTauriMacosAdapter", () => {
     const onBackground = vi.fn(() => () => undefined);
     const getDebugState = () => ({ platform: "macos" });
 
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard,
       openDeepLink,
       onForeground,
       onBackground,
       getDebugState,
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createTauriMacosAdapter(baseAdapter);
     expect(adapter.copyToClipboard).toBe(copyToClipboard);

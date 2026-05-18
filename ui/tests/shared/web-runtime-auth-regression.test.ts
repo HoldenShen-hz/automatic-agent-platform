@@ -78,7 +78,9 @@ describe("web runtime auth regression", () => {
 
     expect(result.tokenManager).toBe(providedTokenManager);
     expect(mocks.createAuthInterceptor).toHaveBeenCalledWith(providedTokenManager);
-    expect(mocks.createAuthInterceptor.mock.calls[0]?.[0]).not.toBe("ui-runtime-access");
+    expect(mocks.createAuthInterceptor.mock.calls).toHaveLength(1);
+    const lastAuthCall = mocks.createAuthInterceptor.mock.calls[0] as unknown[];
+    expect(lastAuthCall[0]).not.toBe("ui-runtime-access");
     expect(mocks.createTenantInterceptor).toHaveBeenCalledWith("tenant-123");
   });
 
@@ -88,6 +90,8 @@ describe("web runtime auth regression", () => {
     expect(mocks.TokenManager).toHaveBeenCalledTimes(1);
     expect(result.tokenManager).toBe(mocks.createdTokenManager);
     expect(mocks.createAuthInterceptor).toHaveBeenCalledWith(mocks.createdTokenManager);
-    expect(mocks.createAuthInterceptor.mock.calls[0]?.[0]).not.toBe("ui-runtime-access");
+    expect(mocks.createAuthInterceptor.mock.calls).toHaveLength(1);
+    const lastAuthCall = mocks.createAuthInterceptor.mock.calls[0] as unknown[];
+    expect(lastAuthCall[0]).not.toBe("ui-runtime-access");
   });
 });

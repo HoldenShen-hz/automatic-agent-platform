@@ -134,6 +134,7 @@ test("createOperationalDirective creates resume directive", () => {
 test("createOperationalDirective creates kill directive", () => {
   const directive = createOperationalDirective({
     type: "kill",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     reason: "critical failure",
     params: { force: true },
@@ -146,6 +147,7 @@ test("createOperationalDirective creates kill directive", () => {
 test("createOperationalDirective creates mode_switch directive", () => {
   const directive = createOperationalDirective({
     type: "mode_switch",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     reason: "switch to safe mode",
     params: { targetMode: "safe" },
@@ -172,6 +174,7 @@ test("createOperationalDirective rejects empty type", () => {
     () =>
       createOperationalDirective({
         type: "" as OperationalDirectiveType,
+        scope: { tenantId: "tenant-1" },
         issuedBy: minimalIssuedBy,
         reason: "test",
       }),
@@ -184,6 +187,7 @@ test("createOperationalDirective rejects whitespace-only type", () => {
     () =>
       createOperationalDirective({
         type: "   " as OperationalDirectiveType,
+        scope: { tenantId: "tenant-1" },
         issuedBy: minimalIssuedBy,
         reason: "test",
       }),
@@ -194,6 +198,7 @@ test("createOperationalDirective rejects whitespace-only type", () => {
 test("createDecisionDirective creates approve directive", () => {
   const directive = createDecisionDirective({
     type: "approve",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-123",
     payload: { approved: true },
@@ -209,6 +214,7 @@ test("createDecisionDirective creates approve directive", () => {
 test("createDecisionDirective creates deny directive", () => {
   const directive = createDecisionDirective({
     type: "deny",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-456",
     payload: { denied: true, reason: "policy violation" },
@@ -223,6 +229,7 @@ test("createDecisionDirective creates deny directive", () => {
 test("createDecisionDirective creates override directive", () => {
   const directive = createDecisionDirective({
     type: "override",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-789",
     payload: { overrideReason: "business need" },
@@ -235,6 +242,7 @@ test("createDecisionDirective creates override directive", () => {
 test("createDecisionDirective creates patch directive", () => {
   const directive = createDecisionDirective({
     type: "patch",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-patch",
     payload: { field: "priority", value: "high" },
@@ -247,6 +255,7 @@ test("createDecisionDirective creates patch directive", () => {
 test("createDecisionDirective creates takeover directive", () => {
   const directive = createDecisionDirective({
     type: "takeover",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-takeover",
     payload: {},
@@ -259,6 +268,7 @@ test("createDecisionDirective creates takeover directive", () => {
 test("createDecisionDirective creates expire_approval directive", () => {
   const directive = createDecisionDirective({
     type: "expire_approval",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "approval-123",
     payload: { expiredAt: "2026-04-28T00:00:00.000Z" },
@@ -273,6 +283,7 @@ test("createDecisionDirective rejects empty type", () => {
     () =>
       createDecisionDirective({
         type: "" as DecisionDirectiveType,
+        scope: { tenantId: "tenant-1" },
         issuedBy: minimalIssuedBy,
         targetRef: "task-123",
         payload: {},
@@ -287,6 +298,7 @@ test("createDecisionDirective rejects empty targetRef", () => {
     () =>
       createDecisionDirective({
         type: "approve",
+        scope: { tenantId: "tenant-1" },
         issuedBy: minimalIssuedBy,
         targetRef: "",
         payload: {},
@@ -299,6 +311,7 @@ test("createDecisionDirective rejects empty targetRef", () => {
 test("createDecisionDirective accepts optional expiresAt", () => {
   const directive = createDecisionDirective({
     type: "approve",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-123",
     payload: {},
@@ -312,6 +325,7 @@ test("createDecisionDirective accepts optional expiresAt", () => {
 test("createDecisionDirective defaults riskAcknowledged to false", () => {
   const directive = createDecisionDirective({
     type: "approve",
+    scope: { tenantId: "tenant-1" },
     issuedBy: minimalIssuedBy,
     targetRef: "task-123",
     payload: {},

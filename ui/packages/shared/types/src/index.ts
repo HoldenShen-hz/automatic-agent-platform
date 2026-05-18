@@ -3,11 +3,12 @@ export type ImplementationStatus =
   | "Implemented/Contracted"
   | "Implemented/Internal"
   | "Implemented/Partial"
-  | "Planned";
+  | "Planned"
+  | (string & {});
 
-export type PlatformId = "web" | "windows" | "macos" | "linux" | "android" | "ios";
-export type FeatureGroup = "Mission Control" | "Operations" | "Governance" | "Admin" | "Extended" | "Shared";
-export type FeatureKind = "implemented" | "planned";
+export type PlatformId = "web" | "windows" | "macos" | "linux" | "android" | "ios" | (string & {});
+export type FeatureGroup = "Mission Control" | "Operations" | "Governance" | "Admin" | "Extended" | "Shared" | (string & {});
+export type FeatureKind = "implemented" | "planned" | (string & {});
 export type DrillDepth = 1 | 2 | 3 | 4 | 5;
 
 export interface PlatformAdapter {
@@ -29,6 +30,7 @@ export interface PlatformAdapter {
   getAnalyticsConsent(): Promise<boolean>;
   setAnalyticsConsent(enabled: boolean): Promise<void>;
   enableScreenSecurity(enabled: boolean): Promise<void>;
+  getDebugState(): unknown;
 }
 
 export interface PlatformAdapterCapabilityView {
@@ -90,7 +92,7 @@ export interface RouteGuardResult {
 }
 
 export interface RouteGuardChain {
-  readonly id: string;
+  readonly id?: string;
   readonly evaluate: (context: FeatureGuardContext) => RouteGuardResult;
 }
 
@@ -134,13 +136,13 @@ export interface PlatformFeatureManifest {
   readonly id: string;
   readonly title: string;
   readonly group: FeatureGroup;
-  readonly path: string;
+  readonly path?: string;
   readonly status: ImplementationStatus;
   readonly kind: FeatureKind;
-  readonly platforms: readonly PlatformId[];
-  readonly permission: string;
-  readonly apiLayer: ApiLayer;
-  readonly summary: string;
+  readonly platforms?: readonly PlatformId[];
+  readonly permission?: string;
+  readonly apiLayer?: ApiLayer;
+  readonly summary?: string;
 }
 
 export interface DashboardSnapshotDTO {

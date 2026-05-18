@@ -48,9 +48,7 @@ describe("R14-33: Priority sorted queue", () => {
     const vm = buildAlertsVm(incidents, mockFilters, [], "idle", 0, mockActions);
 
     // R14-33: critical first (highest severity), then high incidents sorted newest-first
-    expect(vm.incidents[0].id).toBe("critical");
-    expect(vm.incidents[1].id).toBe("new-high");
-    expect(vm.incidents[2].id).toBe("old-high");
+    expect(vm.incidents.map((incident) => incident.id)).toEqual(["critical", "new-high", "old-high"]);
   });
 
   it("items array reflects the same sorted order as incidents", () => {
@@ -61,8 +59,7 @@ describe("R14-33: Priority sorted queue", () => {
 
     const vm = buildAlertsVm(incidents, mockFilters, [], "idle", 0, mockActions);
 
-    expect(vm.items[0].id).toBe("critical");
-    expect(vm.items[1].id).toBe("low");
+    expect(vm.items.map((item) => item.id)).toEqual(["critical", "low"]);
   });
 
   it("handles unknown severity values by placing them last", () => {
@@ -73,8 +70,7 @@ describe("R14-33: Priority sorted queue", () => {
 
     const vm = buildAlertsVm(incidents, mockFilters, [], "idle", 0, mockActions);
 
-    expect(vm.incidents[0].id).toBe("critical");
-    expect(vm.incidents[1].id).toBe("unknown");
+    expect(vm.incidents.map((incident) => incident.id)).toEqual(["critical", "unknown"]);
   });
 });
 

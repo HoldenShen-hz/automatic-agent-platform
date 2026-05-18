@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
+type RealtimeStoreDraft = {
+  -readonly [K in keyof RealtimeStoreState]:
+    RealtimeStoreState[K] extends readonly (infer U)[] ? U[]
+      : RealtimeStoreState[K];
+};
+
 export interface RealtimeStoreState {
   readonly wsStatus: string;
   readonly panicActivated: boolean;
@@ -42,27 +48,27 @@ export function createRealtimeStore() {
         incidentCount: 0,
         criticalIncidentCount: 0,
         setWsStatus(wsStatus) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.wsStatus = wsStatus;
           });
         },
         triggerPanic() {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.panicActivated = true;
           });
         },
         setOfflineQueueSize(offlineQueueSize) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.offlineQueueSize = offlineQueueSize;
           });
         },
         setSyncStatus(syncStatus) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.syncStatus = syncStatus;
           });
         },
         subscribe(channel) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             if (draft.subscriptionLookup[channel] !== true) {
               draft.activeSubscriptions = [...draft.activeSubscriptions, channel];
               draft.subscriptionLookup = {
@@ -73,7 +79,7 @@ export function createRealtimeStore() {
           });
         },
         unsubscribe(channel) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.activeSubscriptions = draft.activeSubscriptions.filter((entry) => entry !== channel);
             const nextLookup = { ...draft.subscriptionLookup };
             delete nextLookup[channel];
@@ -81,18 +87,18 @@ export function createRealtimeStore() {
           });
         },
         setPendingApprovalCount(pendingApprovalCount) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.pendingApprovalCount = pendingApprovalCount;
           });
         },
         setIncidentCounts(incidentCount, criticalIncidentCount = 0) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.incidentCount = incidentCount;
             draft.criticalIncidentCount = criticalIncidentCount;
           });
         },
         addActiveIncident(incidentId) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             if (draft.activeIncidentLookup[incidentId] !== true) {
               draft.activeIncidents = [...draft.activeIncidents, incidentId];
               draft.activeIncidentLookup = {
@@ -103,7 +109,7 @@ export function createRealtimeStore() {
           });
         },
         removeActiveIncident(incidentId) {
-          set((draft) => {
+          set((draft: RealtimeStoreDraft) => {
             draft.activeIncidents = draft.activeIncidents.filter((entry) => entry !== incidentId);
             const nextLookup = { ...draft.activeIncidentLookup };
             delete nextLookup[incidentId];

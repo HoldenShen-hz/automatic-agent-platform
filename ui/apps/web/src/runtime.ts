@@ -42,10 +42,8 @@ export interface StartupBanner {
   readonly message: string;
 }
 
-type FactoryLike<TValue, TArgs extends readonly unknown[]> = {
-  new(...args: TArgs): TValue;
-  (...args: TArgs): TValue;
-};
+type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArgs) => TValue;
+type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
 
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
@@ -79,17 +77,18 @@ export interface WebRuntimeTelemetry {
 }
 
 function constructOrCall<TValue, TArgs extends readonly unknown[]>(
-  factory: FactoryLike<TValue, TArgs>,
+  factory: Constructable<TValue, TArgs> | CallableFactory<TValue, TArgs>,
   ...args: TArgs
 ): TValue {
+  const callableFactory = factory as CallableFactory<TValue, TArgs>;
   if ("mock" in factory) {
-    return factory(...args);
+    return callableFactory(...args);
   }
   try {
-    return new factory(...args);
+    return new (factory as Constructable<TValue, TArgs>)(...args);
   } catch (error) {
     if (error instanceof TypeError && error.message.includes("is not a constructor")) {
-      return factory(...args);
+      return callableFactory(...args);
     }
     throw error;
   }
@@ -168,7 +167,7 @@ export function createWebRuntimeClients(
 
 export async function checkWebContractVersion(client: RESTClient): Promise<StartupBanner | null> {
   const server = await fetchContractVersion(client);
-  if (DEFAULT_ACCEPT_VERSIONS.includes(server.contractVersion)) {
+  if ((DEFAULT_ACCEPT_VERSIONS as readonly string[]).includes(server.contractVersion)) {
     return null;
   }
 
@@ -183,5 +182,6 @@ export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistrat
   if (typeof window === "undefined" || "serviceWorker" in navigator === false) {
     return null;
   }
-  return navigator.serviceWorker.register(`${import.meta.env.BASE_URL}aa-sw.js`);
+  const baseUrl = (import.meta as ImportMeta & { readonly env?: { readonly BASE_URL?: string } }).env?.BASE_URL ?? "/";
+  return navigator.serviceWorker.register(`${baseUrl}aa-sw.js`);
 }

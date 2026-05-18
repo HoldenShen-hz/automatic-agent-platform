@@ -67,7 +67,7 @@ it("service worker install pre-caches app shell and offline fallback", async () 
   });
 
   let installPromise: Promise<unknown> | undefined;
-  listeners.install({
+  listeners.install?.({
     waitUntil(promise: Promise<unknown>) {
       installPromise = promise;
     },
@@ -90,7 +90,7 @@ it("service worker activate removes stale aa-ui caches and keeps current version
   });
 
   let activatePromise: Promise<unknown> | undefined;
-  listeners.activate({
+  listeners.activate?.({
     waitUntil(promise: Promise<unknown>) {
       activatePromise = promise;
     },
@@ -119,7 +119,7 @@ it("service worker fetch normalizes cache keys by stripping query strings", asyn
   });
 
   let responsePromise: Promise<Response> | undefined;
-  listeners.fetch({
+  listeners.fetch?.({
     request: new Request("https://example.com/assets/app.js?v=123", { method: "GET" }),
     respondWith(promise: Promise<Response>) {
       responsePromise = promise;
@@ -146,7 +146,7 @@ it("service worker bypasses caching for API GET requests", () => {
     },
   });
 
-  listeners.fetch({
+  listeners.fetch?.({
     request: new Request("https://example.com/api/v1/tasks", { method: "GET" }),
     respondWith() {
       respondWithCalled = true;
@@ -222,7 +222,7 @@ it("service worker sync replays offline queue and deletes successfully synced mu
   const listeners = loadServiceWorker({
     indexedDB,
     fetch: async (input, init) => {
-      const endpoint = typeof input === "string" ? input : input.url;
+      const endpoint = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       fetchCalls.push({
         endpoint,
         method: init?.method ?? "GET",
@@ -233,7 +233,7 @@ it("service worker sync replays offline queue and deletes successfully synced mu
   });
 
   let syncPromise: Promise<unknown> | undefined;
-  listeners.sync({
+  listeners.sync?.({
     tag: "aa-sync-offline",
     waitUntil(promise: Promise<unknown>) {
       syncPromise = promise;

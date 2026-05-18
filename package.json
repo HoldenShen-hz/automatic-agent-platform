@@ -34,7 +34,7 @@
   "scripts": {
     "build": "node --enable-source-maps scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
     "build:test": "AA_PRESERVE_DIST=0 node --enable-source-maps scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && npm --prefix ui run typecheck",
     "ci:baseline": "npm run typecheck && npm test && AA_VALIDATION_ITERATIONS=2 npm run validate:stable",
     "start": "node --enable-source-maps dist/src/index.js",
     "doctor": "npm run build && node --enable-source-maps dist/src/sdk/cli/doctor.js",

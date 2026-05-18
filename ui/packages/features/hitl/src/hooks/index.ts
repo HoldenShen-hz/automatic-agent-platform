@@ -48,10 +48,10 @@ function toHitlItems(approvals: readonly ApprovalDTO[]): readonly HitlItem[] {
       type: "approval",
       title: approval.taskId,
       description: `${approval.riskLevel} · ${approval.reasonSummary}`,
-      deadline: approval.deadline,
-      escalationTarget: approval.escalationTarget,
-      secondsRemaining,
-    };
+      ...(approval.deadline == null ? {} : { deadline: approval.deadline }),
+      ...(approval.escalationTarget == null ? {} : { escalationTarget: approval.escalationTarget }),
+      ...(secondsRemaining == null ? {} : { secondsRemaining }),
+    } satisfies HitlItem;
   });
 }
 

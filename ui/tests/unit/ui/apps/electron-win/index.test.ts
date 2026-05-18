@@ -119,14 +119,14 @@ describe("DesktopShellManifest interface structure", () => {
 
 describe("createElectronWinAdapter", () => {
   it("creates adapter with windows platform", () => {
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard: vi.fn(),
       openDeepLink: vi.fn(),
       getDebugState: () => ({ platform: "unknown" }),
       onForeground: vi.fn(() => () => undefined),
       onBackground: vi.fn(() => () => undefined),
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createElectronWinAdapter(baseAdapter);
     expect(adapter.platform).toBe("windows");
@@ -139,14 +139,14 @@ describe("createElectronWinAdapter", () => {
     const onBackground = vi.fn(() => () => undefined);
     const getDebugState = () => ({ platform: "windows" });
 
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard,
       openDeepLink,
       onForeground,
       onBackground,
       getDebugState,
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createElectronWinAdapter(baseAdapter);
     expect(adapter.copyToClipboard).toBe(copyToClipboard);
@@ -206,14 +206,14 @@ describe("manifest immutability", () => {
 
 describe("adapter factory functions", () => {
   it("createElectronWinAdapter preserves platform override", () => {
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "linux",
       copyToClipboard: vi.fn(),
       openDeepLink: vi.fn(),
       getDebugState: () => ({ platform: "linux" }),
       onForeground: vi.fn(() => () => undefined),
       onBackground: vi.fn(() => () => undefined),
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createElectronWinAdapter(baseAdapter);
     expect(adapter.platform).toBe("windows");

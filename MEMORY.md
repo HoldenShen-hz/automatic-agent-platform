@@ -11,7 +11,7 @@ This file is a lightweight engineering memory for the current repository layout.
 
 ## Current Architectural Notes
 
-- Canonical multi-step orchestration lives in `src/platform/execution/execution-engine/`.
+- Canonical multi-step orchestration lives in `src/platform/five-plane-execution/execution-engine/`.
 - `src/core/runtime/` is retained only as a re-export compatibility surface.
 - ADR and contract completeness should be checked from:
   - `docs_zh/adr/README.md`

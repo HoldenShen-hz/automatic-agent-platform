@@ -119,24 +119,28 @@ export class ConfigHotReloadService {
     if (this._initialized) {
       return;
     }
+    this._initialized = true;
 
     // Subscribe to config.changed events from event bus
     if (this.eventBus) {
-      await this.eventBus.subscribe(
-        "config.changed",
-        async (event) => {
-          const payload = JSON.parse(event.payloadJson) as { layer: string; sourceId: string | null; previousVersion: string; newVersion: string; [key: string]: unknown };
-          await this.handleConfigChangedEvent(payload);
-        },
-      );
+      try {
+        await this.eventBus.subscribe(
+          "config.changed",
+          async (event) => {
+            const payload = JSON.parse(event.payloadJson) as { layer: string; sourceId: string | null; previousVersion: string; newVersion: string; [key: string]: unknown };
+            await this.handleConfigChangedEvent(payload);
+          },
+        );
+      } catch (error) {
+        this._initialized = false;
+        throw error;
+      }
     }
 
     // Start file watcher if enabled
     if (this.enableFileWatcher) {
       this.startFileWatcher();
     }
-
-    this._initialized = true;
   }
 
   /**

@@ -1,6 +1,13 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
 import type { HitlItem } from "../hooks";
 
+type HitlMobileCard = ReturnType<typeof createMobileFeatureCard> & {
+  readonly id: string;
+  onApprove(): Promise<void>;
+  onReject(): Promise<void>;
+  onResume(): Promise<void>;
+};
+
 export function createHitlMobileCards(
   items: readonly HitlItem[] = [],
   handlers?: {
@@ -8,35 +15,40 @@ export function createHitlMobileCards(
     onReject?(id: string): Promise<void> | void;
     onResume?(id: string): Promise<void> | void;
   },
-) {
-  return items.slice(0, 5).flatMap((item) => {
+) : readonly HitlMobileCard[] {
+  const cards: HitlMobileCard[] = [];
+  for (const item of items.slice(0, 5)) {
     if (item.type === "approval") {
-      return [
-        {
-          id: `${item.id}:approve`,
-          ...createMobileFeatureCard(item.title, item.description, "approve"),
-          async onApprove() {
-            await handlers?.onApprove?.(item.id);
-          },
+      cards.push({
+        id: `${item.id}:approve`,
+        ...createMobileFeatureCard(item.title, item.description, "approve"),
+        async onApprove() {
+          await handlers?.onApprove?.(item.id);
         },
-        {
-          id: `${item.id}:reject`,
-          ...createMobileFeatureCard(item.title, item.description, "reject"),
-          async onReject() {
-            await handlers?.onReject?.(item.id);
-          },
+        async onReject() {},
+        async onResume() {},
+      });
+      cards.push({
+        id: `${item.id}:reject`,
+        ...createMobileFeatureCard(item.title, item.description, "reject"),
+        async onApprove() {},
+        async onReject() {
+          await handlers?.onReject?.(item.id);
         },
-      ];
+        async onResume() {},
+      });
+      continue;
     }
 
-    return [
-      {
-        id: `${item.id}:resume`,
-        ...createMobileFeatureCard(item.title, item.description, "resume"),
-        async onResume() {
-          await handlers?.onResume?.(item.id);
-        },
+    cards.push({
+      id: `${item.id}:resume`,
+      ...createMobileFeatureCard(item.title, item.description, "resume"),
+      async onApprove() {},
+      async onReject() {},
+      async onResume() {
+        await handlers?.onResume?.(item.id);
       },
-    ];
-  });
+    });
+  }
+  return cards;
 }

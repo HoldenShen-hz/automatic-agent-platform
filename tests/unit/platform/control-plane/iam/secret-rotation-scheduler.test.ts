@@ -238,7 +238,7 @@ test("requestDueRotations returns empty array when no secrets are due", () => {
       nextRotationDueAt: "2026-07-01T00:00:00.000Z",
     });
 
-    const events = service.requestDueRotations();
+    const events = service.requestDueRotations(undefined, "ops.rotation");
     assert.equal(events.length, 0);
   } finally {
     harness.db.close();

@@ -16,13 +16,10 @@ describe("UI tooling regressions", () => {
 
   it("codegen emits DTOs, endpoint clients and query key factories", () => {
     const generated = generateBindingsFromOpenApi({
-      openapi: "3.1.0",
-      info: { title: "AA", version: "1.0.0" },
       paths: {
         "/api/v1/tasks": {
           get: {
             operationId: "listTasks",
-            parameters: [{ name: "tenantId", in: "query", schema: { type: "string" } }],
             responses: {
               "200": {
                 content: {

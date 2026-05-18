@@ -4,9 +4,9 @@ import { createDesktopPlatformAdapter } from "@aa/shared-platform";
 export interface DesktopShellManifest {
   readonly platform: Extract<PlatformId, "windows">;
   readonly runtime: "electron";
-  readonly secureScreen: boolean;
-  readonly supportsTray: boolean;
-  readonly supportsGlobalShortcuts: boolean;
+  readonly secureScreen?: boolean;
+  readonly supportsTray?: boolean;
+  readonly supportsGlobalShortcuts?: boolean;
   readonly updateChannel: "stable" | "beta";
 }
 

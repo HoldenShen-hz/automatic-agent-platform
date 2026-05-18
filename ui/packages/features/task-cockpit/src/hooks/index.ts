@@ -44,7 +44,7 @@ function sanitizeInput(value: string | undefined, fallback: string): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
-function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; title: string; subtitle: string }[] {
+export function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; title: string; subtitle: string }[] {
   return tasks.map((task) => ({
     id: task.id,
     title: task.title,

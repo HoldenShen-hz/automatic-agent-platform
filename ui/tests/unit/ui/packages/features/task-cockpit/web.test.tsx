@@ -24,7 +24,7 @@ vi.mock("@aa/ui-core", () => ({
       <div>{right}</div>
     </div>
   ),
-}), { virtual: true });
+}));
 
 vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
   useTaskCockpitVm: () => ({

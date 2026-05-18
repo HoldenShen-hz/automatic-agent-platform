@@ -32,7 +32,7 @@
  * @see EnvSecretProvider for the interface this implements
  */
 
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { resolve, sep } from "node:path";
 
 import { ProviderError, ValidationError } from "../../contracts/errors.js";
@@ -120,7 +120,14 @@ function fileSecretsEnvName(providerKind: ExternalSecretProviderKind): string {
  * @throws ProviderError if path contains .. traversal
  */
 function validateFilePath(filePath: string, code: string): void {
-  if (filePath.includes("..")) {
+  if (filePath.includes("\0")) {
+    throw new ProviderError(code, code, {
+      details: { filePath },
+      retryable: false,
+    });
+  }
+  const segments = filePath.split(/[\\/]+/).filter((segment) => segment.length > 0);
+  if (segments.some((segment) => segment === "..")) {
     throw new ProviderError(code, code, {
       details: { filePath },
       retryable: false,
@@ -185,6 +192,37 @@ function verifySecurePath(filePath: string, code: string): void {
       if (errorCode && errorCode !== "ENOENT") {
         throw error;
       }
+    }
+  }
+}
+
+function securelyReadSecretsFile(filePath: string, code: string): string {
+  verifySecurePath(filePath, code);
+  let fd: number | null = null;
+  try {
+    const realPath = realpathSync(filePath);
+    verifySecurePath(realPath, code);
+    const expectedStat = statSync(realPath);
+    fd = openSync(realPath, "r");
+    const openedStat = fstatSync(fd);
+    if (openedStat.dev !== expectedStat.dev || openedStat.ino !== expectedStat.ino) {
+      throw new ProviderError(code, code, {
+        details: { filePath, reason: "file_changed_during_open" },
+        retryable: false,
+      });
+    }
+    return readFileSync(fd, "utf8");
+  } catch (error) {
+    if (error instanceof ProviderError || error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ProviderError(code, code, {
+      details: { filePath },
+      retryable: false,
+    });
+  } finally {
+    if (fd != null) {
+      closeSync(fd);
     }
   }
 }
@@ -305,6 +343,14 @@ function normalizeSecretRefAlias(key: string): string {
 export class ExternalSecretProvider {
   private readonly env: NodeJS.ProcessEnv;
   public readonly providerKind: ExternalSecretProviderKind;
+  private cachedSource:
+    | {
+        cacheKey: string;
+        sourceName: string;
+        filePath: string | null;
+        entries: Record<string, unknown>;
+      }
+    | null = null;
 
   public constructor(options: ExternalSecretProviderOptions) {
     this.env = options.env ?? process.env;
@@ -440,6 +486,10 @@ export class ExternalSecretProvider {
     return this.readConfiguredSecrets() != null;
   }
 
+  public invalidateCache(): void {
+    this.cachedSource = null;
+  }
+
   /**
    * Reads and parses the configured secrets source.
    * Checks file path first, then inline JSON.
@@ -457,21 +507,27 @@ export class ExternalSecretProvider {
 
     // Check for secrets file first
     if (filePath.length > 0) {
-      verifySecurePath(filePath, `secret.provider_config_invalid:${this.providerKind}:${filePath}`);
-      if (!existsSync(filePath)) {
-        throw new ProviderError(`secret.provider_config_invalid:${this.providerKind}:${filePath}`, `secret.provider_config_invalid:${this.providerKind}:${filePath}`, {
-          details: { providerKind: this.providerKind, filePath },
-          retryable: false,
-        });
-      }
       try {
+        const normalizedPath = realpathSync(filePath);
+        const fileStat = statSync(normalizedPath);
+        const cacheKey = `${this.providerKind}:file:${normalizedPath}:${fileStat.mtimeMs}:${fileStat.size}`;
+        if (this.cachedSource?.cacheKey === cacheKey) {
+          return this.cachedSource;
+        }
+        const parsed = normalizeRecord(
+          JSON.parse(securelyReadSecretsFile(filePath, `secret.provider_config_invalid:${this.providerKind}:${filePath}`)),
+          `secret.provider_config_invalid:${this.providerKind}:${filePath}`,
+        );
+        this.cachedSource = {
+          cacheKey,
+          sourceName: fileEnv,
+          filePath: normalizedPath,
+          entries: parsed,
+        };
         return {
           sourceName: fileEnv,
-          filePath,
-          entries: normalizeRecord(
-            JSON.parse(readFileSync(filePath, "utf8")),
-            `secret.provider_config_invalid:${this.providerKind}:${filePath}`,
-          ),
+          filePath: normalizedPath,
+          entries: parsed,
         };
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("secret.provider_config_invalid:")) {
@@ -488,13 +544,24 @@ export class ExternalSecretProvider {
     const inlineJson = this.env[inlineEnv]?.trim() || "";
     if (inlineJson.length > 0) {
       try {
+        const cacheKey = `${this.providerKind}:inline:${inlineJson}`;
+        if (this.cachedSource?.cacheKey === cacheKey) {
+          return this.cachedSource;
+        }
+        const parsed = normalizeRecord(
+          JSON.parse(inlineJson),
+          `secret.provider_config_invalid:${this.providerKind}:${inlineEnv}`,
+        );
+        this.cachedSource = {
+          cacheKey,
+          sourceName: inlineEnv,
+          filePath: null,
+          entries: parsed,
+        };
         return {
           sourceName: inlineEnv,
           filePath: null,
-          entries: normalizeRecord(
-            JSON.parse(inlineJson),
-            `secret.provider_config_invalid:${this.providerKind}:${inlineEnv}`,
-          ),
+          entries: parsed,
         };
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("secret.provider_config_invalid:")) {
@@ -531,6 +598,7 @@ export class ExternalSecretProviderAdapter implements ManagedSecretProvider {
   }
 
   public async refreshSecret(secretRef: string): Promise<SecretProviderMetadata> {
+    this.provider.invalidateCache();
     return this.provider.describeSecret(secretRef);
   }
 

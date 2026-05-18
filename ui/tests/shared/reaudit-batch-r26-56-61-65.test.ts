@@ -19,7 +19,7 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
     const staticInterceptor = createAuthInterceptor("static-token");
     await expect(staticInterceptor.onRequest?.(createRequest())).rejects.toBeInstanceOf(DynamicTokenRequiredError);
 
-    let resolveRefresh = null;
+    let resolveRefresh!: (token: string) => void;
     const resolver = {
       getAccessToken() {
         return "stale-token";
@@ -27,7 +27,7 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
       shouldRefresh() {
         return true;
       },
-      getAccessTokenWithRefresh: vi.fn(() => new Promise((resolvePromise) => {
+      getAccessTokenWithRefresh: vi.fn(() => new Promise<string>((resolvePromise) => {
         resolveRefresh = resolvePromise;
       })),
       handleUnauthorized: vi.fn(async () => undefined),
@@ -35,7 +35,7 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
     const interceptor = createAuthInterceptor(resolver);
     const pendingFirst = interceptor.onRequest?.(createRequest());
     const pendingSecond = interceptor.onRequest?.(createRequest());
-    resolveRefresh?.("fresh-token");
+    resolveRefresh("fresh-token");
 
     const [firstResolved, secondResolved] = await Promise.all([pendingFirst, pendingSecond]);
     expect(resolver.getAccessTokenWithRefresh).toHaveBeenCalledTimes(1);
@@ -45,7 +45,11 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
 
     let attempts = 0;
     expect(typeof interceptor.intercept).toBe("function");
-    const response = await interceptor.intercept(
+    const intercept = interceptor.intercept;
+    if (intercept == null) {
+      throw new Error("expected interceptor.intercept to be defined");
+    }
+    const response = await intercept(
       createRequest(),
       async (request) => {
         attempts += 1;

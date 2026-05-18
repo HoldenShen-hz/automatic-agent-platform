@@ -1,14 +1,17 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { WorkflowDTO } from "@aa/shared-types";
 
-const mockClient = { post: vi.fn() };
-const mockPauseWorkflow = vi.fn(async () => ({ ok: true }));
-const mockCancelWorkflow = vi.fn(async () => ({ ok: true }));
-const mockResumeWorkflow = vi.fn(async () => ({ ok: true }));
-const mockRecoverWorkflow = vi.fn(async () => ({ ok: true }));
-const mockReleaseWorkflow = vi.fn(async () => ({ ok: true }));
-const mockInvalidateQueries = vi.fn(async () => undefined);
-let workflowData = [
+const mocks = vi.hoisted(() => ({
+  mockClient: { post: vi.fn() },
+  mockPauseWorkflow: vi.fn(async () => ({ ok: true })),
+  mockCancelWorkflow: vi.fn(async () => ({ ok: true })),
+  mockResumeWorkflow: vi.fn(async () => ({ ok: true })),
+  mockRecoverWorkflow: vi.fn(async () => ({ ok: true })),
+  mockReleaseWorkflow: vi.fn(async () => ({ ok: true })),
+  mockInvalidateQueries: vi.fn(async () => undefined),
+}));
+let workflowData: readonly WorkflowDTO[] = [
   {
     id: "workflow-1",
     title: "Campaign Launch",
@@ -17,27 +20,27 @@ let workflowData = [
     owner: "growth-ops",
     steps: [{ id: "s1", title: "Plan", phase: "Plan", status: "completed" }],
   },
-] as const;
+];
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({
-    invalidateQueries: mockInvalidateQueries,
+    invalidateQueries: mocks.mockInvalidateQueries,
   }),
 }));
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
+  useRestClient: () => mocks.mockClient,
   useWorkflowsQuery: () => ({
     data: workflowData,
   }),
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  cancelWorkflow: (...args: unknown[]) => mockCancelWorkflow(...args),
-  pauseWorkflow: (...args: unknown[]) => mockPauseWorkflow(...args),
-  resumeWorkflow: (...args: unknown[]) => mockResumeWorkflow(...args),
-  recoverWorkflow: (...args: unknown[]) => mockRecoverWorkflow(...args),
-  releaseWorkflow: (...args: unknown[]) => mockReleaseWorkflow(...args),
+  cancelWorkflow: mocks.mockCancelWorkflow,
+  pauseWorkflow: mocks.mockPauseWorkflow,
+  resumeWorkflow: mocks.mockResumeWorkflow,
+  recoverWorkflow: mocks.mockRecoverWorkflow,
+  releaseWorkflow: mocks.mockReleaseWorkflow,
 }));
 
 import { useWorkflowCockpitVm } from "../../../../../../packages/features/workflow-cockpit/src/hooks";
@@ -72,12 +75,12 @@ describe("useWorkflowCockpitVm", () => {
       await result.current.releaseWorkflow();
     });
 
-    expect(mockPauseWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
-    expect(mockCancelWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
-    expect(mockResumeWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
-    expect(mockRecoverWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
-    expect(mockReleaseWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workflows"] });
+    expect(mocks.mockPauseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
+    expect(mocks.mockCancelWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
+    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
+    expect(mocks.mockReleaseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
+    expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workflows"] });
 
     await waitFor(() => {
       expect(result.current.activityItems[0]?.title).toContain("Released");
@@ -91,11 +94,11 @@ describe("useWorkflowCockpitVm", () => {
 
     workflowData = [
       {
-        ...workflowData[0],
+        ...(workflowData[0] as WorkflowDTO),
         status: "paused",
         currentStage: "waiting_hitl",
       },
-    ] as const;
+    ];
     rerender();
 
     await waitFor(() => {

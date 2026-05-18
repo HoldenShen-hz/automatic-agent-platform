@@ -31,9 +31,9 @@ describe("createHitlMobileCards", () => {
 
     expect(cards).toHaveLength(3);
 
-    await cards[0]?.onApprove?.("ignored");
-    await cards[1]?.onReject?.("ignored");
-    await cards[2]?.onResume?.("ignored");
+    await cards[0]?.onApprove?.();
+    await cards[1]?.onReject?.();
+    await cards[2]?.onResume?.();
 
     expect(approve).toHaveBeenCalledWith("approval-1");
     expect(reject).toHaveBeenCalledWith("approval-1");

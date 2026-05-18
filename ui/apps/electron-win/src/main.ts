@@ -10,23 +10,22 @@ const rendererHtmlPath = join(currentDir, "../dist/index.html");
 const preloadScriptPath = join(currentDir, "preload.js");
 const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
 
-type FactoryLike<TValue, TArgs extends readonly unknown[]> = {
-  new(...args: TArgs): TValue;
-  (...args: TArgs): TValue;
-};
+type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArgs) => TValue;
+type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
 
 function constructOrCall<TValue, TArgs extends readonly unknown[]>(
-  factory: FactoryLike<TValue, TArgs>,
+  factory: Constructable<TValue, TArgs> | CallableFactory<TValue, TArgs>,
   ...args: TArgs
 ): TValue {
+  const callableFactory = factory as CallableFactory<TValue, TArgs>;
   if ("mock" in factory) {
-    return factory(...args);
+    return callableFactory(...args);
   }
   try {
-    return new factory(...args);
+    return new (factory as Constructable<TValue, TArgs>)(...args);
   } catch (error) {
     if (error instanceof TypeError && error.message.includes("is not a constructor")) {
-      return factory(...args);
+      return callableFactory(...args);
     }
     throw error;
   }
@@ -134,12 +133,16 @@ export function configureWindowsDesktopIntegrations(): void {
       arguments: "--open-dashboard",
       title: "Open Dashboard",
       description: "Jump directly into the operations dashboard",
+      iconPath: process.execPath,
+      iconIndex: 0,
     },
     {
       program: process.execPath,
       arguments: "--open-command-palette",
       title: "Open Command Palette",
       description: "Open the command palette from the taskbar",
+      iconPath: process.execPath,
+      iconIndex: 0,
     },
   ]);
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConflictResolver, SyncCoordinator, createMemoryOfflineMutationStore, OfflineQueue } from "@aa/shared-sync";
-import type { OfflineMutation } from "@aa/shared-sync";
-import type { SyncMutationDispatcher } from "../../../../../packages/shared/sync/src/sync-coordinator";
+import type { OfflineMutation, SyncMutationDispatcher } from "@aa/shared-sync";
 
 function createMutation(id: string): OfflineMutation {
   return {

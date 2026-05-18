@@ -176,6 +176,9 @@ export interface PolicyEngineOptions {
 
   /** R33-09: TTL for cached policy decisions in milliseconds (default: 5000) */
   decisionCacheTtlMs?: number;
+
+  /** Version string for the currently authoritative policy bundle */
+  policyVersion?: string;
 }
 
 /**

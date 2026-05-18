@@ -112,12 +112,6 @@ export {
 // DEPRECATED SECTION - these exports come AFTER canonical types to discourage use
 // -----------------------------------------------------------------------------
 
-/**
- * @deprecated Use RequestEnvelope from executable-contracts (canonical per §5.3).
- * This namespace is retained for backward compatibility only.
- */
-export * as requestEnvelopeContract from "./request-envelope/index.js";
-
 // =============================================================================
 // LEGACY_CONTRACT_NAMES - centralized enforcement (R4-11)
 // =============================================================================

@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import React from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 import { MobileApp } from "../../../../../apps/mobile/src/App";
+import { mobileGlobals } from "../../../../helpers/mobile-bridge";
 
 vi.mock("react-native", () => ({
   View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
@@ -54,7 +55,7 @@ const mockMobileBridge = {
 
 describe("MobileApp component", () => {
   beforeEach(() => {
-    globalThis.__AA_MOBILE__ = mockMobileBridge;
+    mobileGlobals().__AA_MOBILE__ = mockMobileBridge;
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
       value: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
@@ -63,7 +64,7 @@ describe("MobileApp component", () => {
 
   afterEach(() => {
     cleanup();
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 
   it("renders without crashing", () => {
@@ -82,7 +83,7 @@ describe("MobileApp component", () => {
   });
 
   it("shows native bridge not ready when global is undefined", () => {
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
     render(<MobileApp />);
     expect(screen.getByText(/Native bridge ready: false/)).toBeInTheDocument();
   });
@@ -111,7 +112,7 @@ describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
 
   afterEach(() => {
     cleanup();
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 
   it("detects android user agents and passes android to the adapter", () => {
@@ -129,18 +130,19 @@ describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
     render(<MobileApp />);
 
     const callArgs = (createMobilePlatformAdapter as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(callArgs[0]).toBe("ios");
+    expect(callArgs).toBeDefined();
+    expect(callArgs?.[0]).toBe("ios");
     expect(screen.getByText(/Platform: ios/)).toBeInTheDocument();
   });
 });
 
 describe("mobile platform adapter interface", () => {
   beforeEach(() => {
-    globalThis.__AA_MOBILE__ = mockMobileBridge;
+    mobileGlobals().__AA_MOBILE__ = mockMobileBridge;
   });
 
   afterEach(() => {
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 
   it("adapter has platform property", () => {

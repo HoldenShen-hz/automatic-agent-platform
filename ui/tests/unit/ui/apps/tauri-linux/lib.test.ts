@@ -55,14 +55,14 @@ describe("DesktopShellManifest interface structure for Linux", () => {
 
 describe("createTauriLinuxAdapter", () => {
   it("creates adapter with linux platform", () => {
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard: vi.fn(),
       openDeepLink: vi.fn(),
       getDebugState: () => ({ platform: "unknown" }),
       onForeground: vi.fn(() => () => undefined),
       onBackground: vi.fn(() => () => undefined),
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createTauriLinuxAdapter(baseAdapter);
     expect(adapter.platform).toBe("linux");
@@ -75,14 +75,14 @@ describe("createTauriLinuxAdapter", () => {
     const onBackground = vi.fn(() => () => undefined);
     const getDebugState = () => ({ platform: "linux" });
 
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "unknown",
       copyToClipboard,
       openDeepLink,
       onForeground,
       onBackground,
       getDebugState,
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createTauriLinuxAdapter(baseAdapter);
     expect(adapter.copyToClipboard).toBe(copyToClipboard);
@@ -119,14 +119,14 @@ describe("manifest immutability", () => {
 
 describe("adapter factory functions", () => {
   it("createTauriLinuxAdapter preserves platform override", () => {
-    const baseAdapter: PlatformAdapter = {
+    const baseAdapter = {
       platform: "windows",
       copyToClipboard: vi.fn(),
       openDeepLink: vi.fn(),
       getDebugState: () => ({ platform: "windows" }),
       onForeground: vi.fn(() => () => undefined),
       onBackground: vi.fn(() => () => undefined),
-    };
+    } as unknown as PlatformAdapter;
 
     const adapter = createTauriLinuxAdapter(baseAdapter);
     expect(adapter.platform).toBe("linux");

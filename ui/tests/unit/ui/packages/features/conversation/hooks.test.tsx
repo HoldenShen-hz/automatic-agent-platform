@@ -9,7 +9,7 @@ const conversationState = vi.hoisted(() => ({
 vi.mock("@aa/shared-nl-client", () => ({
   ConversationClient: class MockConversationClient {
     private snapshot;
-    private readonly onStateChange?: (snapshot: any) => void;
+    private readonly onStateChange: ((snapshot: any) => void) | undefined;
 
     constructor(options: { initialMessages?: any[]; onStateChange?: (snapshot: any) => void }) {
       this.onStateChange = options.onStateChange;

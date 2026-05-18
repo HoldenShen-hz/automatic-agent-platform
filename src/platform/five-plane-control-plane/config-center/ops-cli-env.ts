@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
+import { parseBoolean } from "./remaining-cli-env-support.js";
 import { readTrimmedEnv } from "./runtime-env.js";
 
 export interface DispatchReconcileCliEnvConfig {
@@ -133,7 +134,7 @@ export function loadReplayRecoveryCliEnv(env: NodeJS.ProcessEnv = process.env): 
 
 export function loadProfileHomeCliEnv(env: NodeJS.ProcessEnv = process.env): ProfileHomeCliEnvConfig {
   return {
-    create: readTrimmedEnv(env, "AA_PROFILE_HOME_CREATE") === "1",
+    create: parseBoolean(env, "AA_PROFILE_HOME_CREATE") ?? false,
   };
 }
 

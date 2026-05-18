@@ -18,7 +18,11 @@ type WorkerOutboundMessage =
   | { readonly type: "status"; readonly status: WSStatus }
   | { readonly type: "event"; readonly event: WorkerSocketEvent };
 
-declare const self: SharedWorkerGlobalScope & typeof globalThis;
+type SharedWorkerConnectEvent = MessageEvent & { readonly ports: readonly MessagePort[] };
+
+declare const self: typeof globalThis & {
+  onconnect: ((event: SharedWorkerConnectEvent) => void) | null;
+};
 
 const ports = new Set<MessagePort>();
 const subscribedChannels = new Set<string>();
@@ -182,7 +186,7 @@ function rememberEvent(event: WorkerSocketEvent): void {
   replayBufferByChannel.set(event.channel, nextBuffer);
 }
 
-self.onconnect = (connectionEvent) => {
+self.onconnect = (connectionEvent: SharedWorkerConnectEvent) => {
   const port = connectionEvent.ports[0];
   if (port == null) {
     return;

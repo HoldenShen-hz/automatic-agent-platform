@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
 import { MobileApp } from "../../apps/mobile/src/App";
+import { mobileGlobals } from "../helpers/mobile-bridge";
 
 vi.mock("react-native", () => ({
   View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
@@ -55,11 +56,11 @@ const mockMobileBridge = {
 
 describe("accessibility regression baseline", () => {
   afterEach(() => {
-    delete globalThis.__AA_MOBILE__;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 
   it("keeps native shell controls reachable by accessible names", () => {
-    globalThis.__AA_MOBILE__ = mockMobileBridge;
+    mobileGlobals().__AA_MOBILE__ = mockMobileBridge;
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
       value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",

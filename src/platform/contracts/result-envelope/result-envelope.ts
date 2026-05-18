@@ -13,9 +13,6 @@ import type {
   TaskRecord,
   WorkflowStateRecord,
 } from "../types/domain.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /** Overall status of a result envelope */
 export type ResultEnvelopeStatus = "success" | "partial" | "error";
@@ -346,8 +343,7 @@ function safeParseJson(raw: string | null): unknown | null {
   }
   try {
     return JSON.parse(raw) as unknown;
-  } catch (err) {
-    logger.debug("safeParseJson failed", { error: err });
+  } catch {
     return null;
   }
 }

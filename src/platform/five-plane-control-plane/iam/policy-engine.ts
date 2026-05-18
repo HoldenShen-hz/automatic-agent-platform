@@ -32,6 +32,7 @@
  */
 
 import type { ToolRiskLevel } from "../../five-plane-execution/tool-executor/tool-metadata.js";
+import { createHash, randomUUID } from "node:crypto";
 import { BudgetGuard, type BudgetGuardResult, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import type { UnifiedRuntimeMode } from "../../contracts/types/unified-runtime-mode.js";
 
@@ -163,14 +164,7 @@ export class PolicyEngine {
       costTemplatesHash,
     ].join("|");
 
-    // Simple hash function for fingerprint (not cryptographic)
-    let hash = 0;
-    for (let i = 0; i < fpStr.length; i++) {
-      const char = fpStr.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString(36);
+    return createHash("sha256").update(fpStr).digest("base64url");
   }
 
   /**
@@ -222,11 +216,16 @@ export class PolicyEngine {
    */
   private buildCacheKey(request: PolicyDecisionRequest): string {
     return [
+      this.getPolicyVersion(),
       request.taskId,
       request.subjectId,
+      request.metadata?.tenantId ?? "tenant:none",
+      request.metadata?.organizationId ?? "org:none",
       request.action,
       request.riskCategory,
       request.mode,
+      request.subjectRoles?.slice().sort().join(",") ?? "roles:none",
+      request.subjectCapabilities?.slice().sort().join(",") ?? "caps:none",
       request.estimatedCostUsd ?? 0,
       request.metadata?.currentTaskCostUsd ?? 0,
     ].join("|");
@@ -241,7 +240,7 @@ export class PolicyEngine {
     if (!auditService) return;
 
     const event: PolicyAuditEvent = {
-      id: result.auditRecord?.auditId ?? `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      id: result.auditRecord?.auditId ?? `audit_policy_${randomUUID()}`,
       timestamp: result.auditRecord?.evaluatedAt ?? new Date().toISOString(),
       decisionId: input.decisionId,
       taskId: input.taskId,
@@ -489,7 +488,7 @@ export class PolicyEngine {
     remediationHint?: string,
   ): PolicyDecisionResult {
     const evaluatedAt = new Date().toISOString();
-    const policyVersion = "authoritative.v1";
+    const policyVersion = this.getPolicyVersion();
     return {
       decision,
       reasonCode,
@@ -519,7 +518,7 @@ export class PolicyEngine {
         ...(remediationHint !== undefined && { remediationHint }),
       },
       auditRecord: {
-        auditId: `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        auditId: `audit_policy_${randomUUID()}`,
         decisionId: input.decisionId,
         policyBundleId: "policy_engine",
         policyVersion,
@@ -529,6 +528,10 @@ export class PolicyEngine {
         latencyMs: 0,
       },
     };
+  }
+
+  private getPolicyVersion(): string {
+    return this.options.policyVersion?.trim() || "authoritative.v1";
   }
 }
 

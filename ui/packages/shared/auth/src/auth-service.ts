@@ -1,5 +1,5 @@
-import { TokenManager } from "./token-manager";
-import type { AuthIdentity, AuthSession } from "./types";
+import { TokenManager } from "./token-manager.js";
+import type { AuthIdentity, AuthSession } from "./types.js";
 
 export interface AuthServiceOptions {
   readonly authorizationEndpoint?: string;
@@ -48,9 +48,15 @@ export class AuthService {
   }
 
   public resolveIdentity(params: URLSearchParams): AuthIdentity {
+    const roles = params.get("roles");
+    const permissions = params.get("permissions");
     return {
       locale: params.get("locale") ?? "zh-CN",
       displayName: params.get("display_name") ?? "Platform Operator",
+      userId: params.get("user_id") ?? "platform-operator",
+      tenantId: params.get("tenant_id") ?? "default-tenant",
+      roles: roles == null || roles.length === 0 ? ["operator"] : roles.split(",").map((role) => role.trim()).filter((role) => role.length > 0),
+      permissions: permissions == null || permissions.length === 0 ? [] : permissions.split(",").map((permission) => permission.trim()).filter((permission) => permission.length > 0),
     };
   }
 

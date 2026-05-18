@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { WebAppShell } from "../../../../../apps/web/src/app-shell";
 import { checkWebContractVersion } from "../../../../../apps/web/src/runtime";
 
+const mocks = vi.hoisted(() => ({
+  fetchContractVersion: vi.fn(),
+}));
+
 vi.mock("@aa/ui-core", () => ({
   applyResolvedTheme: vi.fn(),
   SystemStatusBar: () => <div data-testid="system-status-bar">status</div>,
@@ -37,8 +41,6 @@ vi.mock("@aa/shared-domain", () => ({
   })),
 }));
 
-const fetchContractVersion = vi.fn();
-
 vi.mock("@aa/shared-api-client", () => ({
   DEFAULT_ACCEPT_VERSIONS: ["2026-04-01", "2026-01-01"],
   BrowserWSClient: vi.fn(),
@@ -46,7 +48,7 @@ vi.mock("@aa/shared-api-client", () => ({
   HttpTransport: vi.fn(),
   InMemoryWSClient: vi.fn(),
   createRuntimeWSClient: vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn(), subscribe: vi.fn(), onStatusChange: vi.fn(), publish: vi.fn(), useSseFallback: vi.fn() })),
-  fetchContractVersion: (...args: unknown[]) => fetchContractVersion(...args),
+  fetchContractVersion: mocks.fetchContractVersion,
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
   createCsrfInterceptor: vi.fn(() => (request: unknown) => request),
@@ -71,7 +73,7 @@ vi.mock("@aa/shared-platform", () => ({
 
 describe("runtime contract version bootstrap", () => {
   it("returns a warning banner when server and client contract versions drift", async () => {
-    fetchContractVersion.mockResolvedValueOnce({
+    mocks.fetchContractVersion.mockResolvedValueOnce({
       contractVersion: "2027-01-01",
       minServerVersion: "2027-01-01",
       supportedVersions: ["2027-01-01"],

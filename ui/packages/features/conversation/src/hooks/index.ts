@@ -58,6 +58,23 @@ type ConversationClientSnapshot = {
 const conversationClientListeners = new Set<(snapshot: ConversationClientSnapshot) => void>();
 let sharedConversationClient: ConversationClient | null = null;
 
+function normalizeMessageRole(role: Message["role"] | undefined): Message["role"] {
+  return role ?? "assistant";
+}
+
+function createMessage(
+  role: Message["role"] | undefined,
+  content: string | undefined,
+  timestamp = new Date().toISOString(),
+): Message {
+  return {
+    id: crypto.randomUUID(),
+    role: normalizeMessageRole(role),
+    content: content ?? "",
+    timestamp,
+  };
+}
+
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
     return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`;
@@ -71,8 +88,8 @@ function formatSize(bytes: number): string {
 function mapConversationMessages(messages: readonly ConversationMessage[]): readonly Message[] {
   return messages.map((message, index) => ({
     id: message.id ?? `msg-${index + 1}`,
-    role: message.role,
-    content: message.content,
+    role: normalizeMessageRole(message.role),
+    content: message.content ?? "",
     timestamp: new Date().toISOString(),
   }));
 }
@@ -264,12 +281,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
           }
           const nextMessages = [
             ...current,
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              content: payload.delta,
-              timestamp,
-            },
+            createMessage("assistant", payload.delta, timestamp),
           ];
           syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages, isStreaming: true }));
           return nextMessages;
@@ -279,26 +291,22 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
         setMessages((current) => {
           const nextMessages = [
             ...current,
-            {
-              id: crypto.randomUUID(),
-              role: payload.role ?? "assistant",
-              content: payload.content,
-              timestamp: new Date().toISOString(),
-            },
+            createMessage(payload.role, payload.content),
           ];
           syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages }));
           return nextMessages;
         });
       }
       if (payload.status != null) {
-        setStatus(payload.status);
-        if (payload.status !== "running" && payload.status !== "connected") {
-          setIsStreaming(payload.status === "parsing" || payload.status === "building");
+        const nextStatus = payload.status;
+        setStatus(nextStatus);
+        if (nextStatus !== "running" && nextStatus !== "connected") {
+          setIsStreaming(nextStatus === "parsing" || nextStatus === "building");
         }
         syncPersistedSnapshot((snapshot) => ({
           ...snapshot,
-          status: payload.status,
-          isStreaming: payload.status === "parsing" || payload.status === "building",
+          status: nextStatus,
+          isStreaming: nextStatus === "parsing" || nextStatus === "building",
         }));
       }
     });
@@ -411,7 +419,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   return {
     messages,
     attachments,
-    status,
+    status: status ?? "idle",
     draft,
     planReady,
     executionReady,

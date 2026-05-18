@@ -81,9 +81,54 @@ class SecretResolutionRateLimiter {
   }
 }
 
+type RotationSchedulerPhase = "initial" | "interval";
+
+function sanitizeMetadataRecord(value: unknown): Record<string, unknown> {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const safe: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
+    safe[key] = entry;
+  }
+  return safe;
+}
+
+function parseRotationPolicyOrThrow(secretRef: string, raw: string): SecretRotationPolicy {
+  try {
+    return normalizeRotationPolicy(JSON.parse(raw) as SecretRotationPolicy);
+  } catch {
+    throw new ValidationError(`secret.invalid_rotation_policy:${secretRef}`, `secret.invalid_rotation_policy:${secretRef}`, {
+      source: "provider",
+      details: { secretRef },
+    });
+  }
+}
+
+function buildSchedulerSummary(events: readonly SecretRotationEventRecord[]): {
+  count: number;
+  secretRefsDigest: string[];
+  scopeRefsDigest: string[];
+} {
+  const secretRefsDigest = [...new Set(events.map((event) => event.secretRef))].sort().slice(0, 10);
+  const scopeRefsDigest = secretRefsDigest.map((secretRef) => {
+    const normalized = secretRef.replace(/^secret:\/\//, "");
+    return normalized.split("/").slice(0, -1).join("/") || normalized;
+  });
+  return {
+    count: events.length,
+    secretRefsDigest,
+    scopeRefsDigest,
+  };
+}
+
 export class SecretManagementService {
   private readonly providers: Record<SecretProviderKind, ManagedSecretProvider>;
   private readonly rateLimiter = new SecretResolutionRateLimiter();
+  private readonly activeRotationSchedulers = new Set<NodeJS.Timeout>();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -273,11 +318,17 @@ export class SecretManagementService {
     input: ResolveManagedSecretInput,
     authContext?: SecretAuthorizationContext,
   ): Promise<ManagedSecretResolution> {
-    // R12-21: Check rate limit before resolving secret
     const callerId = assertNonEmpty(input.requestedBy, "secret.invalid_requested_by");
-    if (!this.rateLimiter.check(callerId)) {
+    const rateLimitKey = authContext == null
+      ? callerId
+      : [
+          authContext.callerScopeType,
+          authContext.callerScopeRef,
+          callerId,
+        ].join(":");
+    if (!this.rateLimiter.check(rateLimitKey)) {
       throw new PolicyDeniedError("secret.rate_limited", "secret.rate_limited", {
-        details: { callerId, windowMs: 60_000, maxRequests: 100 },
+        details: { callerId: rateLimitKey, windowMs: 60_000, maxRequests: 100 },
       });
     }
 
@@ -317,8 +368,8 @@ export class SecretManagementService {
           retryable: false,
         });
       }
-      if (versionRecord.status === "disabled") {
-        throw new PolicyDeniedError(`secret.version_disabled:${registry.secretRef}:${versionToResolve}`, `secret.version_disabled:${registry.secretRef}:${versionToResolve}`, {
+      if (versionRecord.status !== "active") {
+        throw new PolicyDeniedError(`secret.version_unavailable:${registry.secretRef}:${versionToResolve}:${versionRecord.status}`, `secret.version_unavailable:${registry.secretRef}:${versionToResolve}:${versionRecord.status}`, {
           details: { secretRef: registry.secretRef, version: versionToResolve },
         });
       }
@@ -512,7 +563,7 @@ export class SecretManagementService {
           updatedAt: occurredAt,
         });
       } else if (event.status === "completed") {
-        const policy = JSON.parse(registry.rotationPolicyJson) as SecretRotationPolicy;
+        const policy = parseRotationPolicyOrThrow(registry.secretRef, registry.rotationPolicyJson);
 
         // Mark the new version as active
         if (event.nextVersion?.trim()) {
@@ -615,7 +666,9 @@ export class SecretManagementService {
         retryable: false,
       });
     }
-    const metadata = await provider.refreshSecret?.(registry.secretRef) ?? await provider.describeSecret(registry.secretRef);
+    const metadata = provider.refreshSecret == null
+      ? await provider.describeSecret(registry.secretRef)
+      : await provider.refreshSecret(registry.secretRef) ?? await provider.describeSecret(registry.secretRef);
     return {
       metadata: {
         ...(metadata ?? await provider.describeSecret(registry.secretRef)),
@@ -632,14 +685,15 @@ export class SecretManagementService {
   /**
    * Marks all due secrets as rotation-requested.
    */
-  public requestDueRotations(asOf: string = nowIso(), requestedBy: string = "system.rotation"): SecretRotationEventRecord[] {
+  public requestDueRotations(asOf: string = nowIso(), requestedBy: string): SecretRotationEventRecord[] {
+    const actor = assertNonEmpty(requestedBy, "secret.invalid_requested_by");
     const dueSecrets = this.listRotationDueSecrets(asOf);
     return dueSecrets.map((registry) => this.recordRotationEvent({
       secretRef: registry.secretRef,
       rotationMode: "scheduled",
       status: "requested",
       reasonCode: "secret.rotation_due",
-      requestedBy,
+      requestedBy: actor,
       previousVersion: registry.currentVersion,
       occurredAt: asOf,
     }));
@@ -655,41 +709,48 @@ export class SecretManagementService {
    * @param intervalMs - Check interval in milliseconds (default 24 hours)
    * @returns A timer handle that can be used to stop the scheduler
    */
-  public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timer {
-    const rotationInterval = setInterval(() => {
+  public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timeout {
+    const runRotationSweep = (phase: RotationSchedulerPhase, timer?: NodeJS.Timeout): void => {
       try {
         const asOf = nowIso();
-        const rotated = this.requestDueRotations(asOf);
+        const rotated = this.requestDueRotations(asOf, "system.rotation.scheduler");
         if (rotated.length > 0) {
-          logger.info(`secret.rotation.scheduled`, {
-            count: rotated.length,
+          const summary = buildSchedulerSummary(rotated);
+          logger.info(phase === "initial" ? "secret.rotation.scheduled_initial" : "secret.rotation.scheduled", {
+            ...summary,
             asOf,
             requestedBy: "system.rotation.scheduler",
           });
         }
       } catch (err) {
-        logger.error("secret.rotation.scheduler_error", {
-          err: err instanceof Error ? err.message : String(err),
+        if (timer != null) {
+          clearInterval(timer);
+          this.activeRotationSchedulers.delete(timer);
+        }
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error(phase === "initial" ? "secret.rotation.initial_check_error" : "secret.rotation.scheduler_error", {
+          err: errorMessage,
+          phase,
+          schedulerStopped: phase === "interval",
         });
+        if (phase === "initial") {
+          throw err;
+        }
       }
-    }, intervalMs);
+    };
 
-    // Run immediately on start
-    try {
-      const asOf = nowIso();
-      const rotated = this.requestDueRotations(asOf);
-      if (rotated.length > 0) {
-        logger.info(`secret.rotation.scheduled_initial`, {
-          count: rotated.length,
-          asOf,
-        });
-      }
-    } catch (err) {
-      logger.error("secret.rotation.initial_check_error", {
-        err: err instanceof Error ? err.message : String(err),
-      });
+    for (const timer of this.activeRotationSchedulers) {
+      clearInterval(timer);
+      this.activeRotationSchedulers.delete(timer);
     }
 
+    runRotationSweep("initial");
+
+    const rotationInterval = setInterval(() => {
+      runRotationSweep("interval", rotationInterval);
+    }, intervalMs);
+    rotationInterval.unref?.();
+    this.activeRotationSchedulers.add(rotationInterval);
     return rotationInterval;
   }
 
@@ -725,7 +786,7 @@ export class SecretManagementService {
 
     return this.db.transaction(() => {
       const issuedAt = nowIso();
-      const policy = JSON.parse(registry.rotationPolicyJson) as SecretRotationPolicy;
+      const policy = parseRotationPolicyOrThrow(registry.secretRef, registry.rotationPolicyJson);
       const explicitExpiresAt = input.expiresAt?.trim() || null;
       let expiresAt: string | null = providerIssuedLease?.expiresAt ?? explicitExpiresAt;
 
@@ -906,14 +967,19 @@ export class SecretManagementService {
     if (next == null) {
       return current;
     }
-    const parsed = current == null ? {} : (JSON.parse(current) as unknown);
-    const currentValue =
-      parsed != null && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : {};
+    let parsed: unknown = {};
+    if (current != null) {
+      try {
+        parsed = JSON.parse(current) as unknown;
+      } catch {
+        parsed = {};
+      }
+    }
+    const currentValue = sanitizeMetadataRecord(parsed);
+    const nextValue = sanitizeMetadataRecord(next);
     return JSON.stringify({
       ...currentValue,
-      ...next,
+      ...nextValue,
     });
   }
 }

@@ -857,7 +857,7 @@ test("secret management service requestDueRotations returns empty when no secret
       nextRotationDueAt: "2026-06-01T00:00:00.000Z",
     });
 
-    const events = service.requestDueRotations("2026-04-01T00:00:00.000Z");
+    const events = service.requestDueRotations("2026-04-01T00:00:00.000Z", "ops.rotation");
     assert.equal(events.length, 0);
   } finally {
     harness.db.close();

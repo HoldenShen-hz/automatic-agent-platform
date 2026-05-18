@@ -77,10 +77,10 @@ test("AppError.toJSON serializes all fields", () => {
   assert.equal(json.category, "validation");
   assert.equal(json.source, "gateway");
   assert.equal(json.traceId, "trace-abc");
-  assert.equal(json.task_id, "task-xyz");
   assert.equal(json.taskId, "task-xyz");
   assert.equal(json.statusCode, 400);
   assert.equal(json.retryable, false);
+  assert.equal("task_id" in json, false);
 });
 
 test("AppError.wrap preserves existing AppError", () => {
@@ -261,8 +261,8 @@ test("getErrorCode returns code from AppError", () => {
 });
 
 test("getErrorCode returns fallback for non-AppError", () => {
-  assert.equal(getErrorCode(new Error("plain")), "E0000");
-  assert.equal(getErrorCode("string"), "E0000");
+  assert.equal(getErrorCode(new Error("plain")), "unknown.unclassified");
+  assert.equal(getErrorCode("string"), "unknown.unclassified");
 });
 
 test("normalizeToAppError returns AppError unchanged", () => {

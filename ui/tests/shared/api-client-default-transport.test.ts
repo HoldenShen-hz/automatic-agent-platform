@@ -4,7 +4,7 @@ import { createRuntimeRESTClient } from "../../packages/shared/api-client/src/re
 
 describe("runtime REST client defaults", () => {
   it("prefers same-origin /api/v1 HTTP transport instead of mock fallback", async () => {
-    const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const requests: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
     const client = createRuntimeRESTClient({
       fetchImplementation: async (input, init) => {
         requests.push({ input, init });

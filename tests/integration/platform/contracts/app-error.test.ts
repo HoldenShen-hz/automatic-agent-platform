@@ -90,7 +90,7 @@ test("app-error: AppError.wrap preserves details from options", () => {
   assert.deepEqual(wrapped.internalDetails, { originalError: "test", custom: "detail" });
 });
 
-test("app-error: AppError.toJSON produces correct structure with camelCase and snake_case", () => {
+test("app-error: AppError.toJSON produces canonical camelCase structure", () => {
   const error = new AppError("JSON_TEST", "Test message", {
     category: "validation",
     source: "runtime",
@@ -109,14 +109,11 @@ test("app-error: AppError.toJSON produces correct structure with camelCase and s
   assert.equal(json.taskId, "task-xyz");
   assert.equal(json.statusCode, 400);
 
-  // snake_case fields (for compatibility)
-  assert.equal(json.trace_id, "trace-abc");
-  assert.equal(json.task_id, "task-xyz");
-  assert.equal(json.user_message, "Test message");
-
-  // Both message and userMessage should be present
   assert.equal(json.message, "Test message");
   assert.equal(json.userMessage, "Test message");
+  assert.equal("trace_id" in json, false);
+  assert.equal("task_id" in json, false);
+  assert.equal("user_message" in json, false);
 });
 
 test("app-error: ValidationError has correct defaults", () => {
@@ -233,9 +230,9 @@ test("app-error: getErrorCode extracts code from AppError", () => {
   assert.equal(getErrorCode(error), "EXTRACTED_CODE");
 
   const regularError = new Error("regular");
-  assert.equal(getErrorCode(regularError), "E0000");
-  assert.equal(getErrorCode(null), "E0000");
-  assert.equal(getErrorCode(undefined), "E0000");
+  assert.equal(getErrorCode(regularError), "unknown.unclassified");
+  assert.equal(getErrorCode(null), "unknown.unclassified");
+  assert.equal(getErrorCode(undefined), "unknown.unclassified");
 });
 
 test("app-error: normalizeToAppError preserves AppError instances", () => {

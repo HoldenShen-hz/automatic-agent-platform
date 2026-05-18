@@ -8,9 +8,11 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "types": ["vitest/globals"],
     "baseUrl": ".",
     "paths": {
       "@aa/shared-types": ["packages/shared/types/src/index.ts"],
@@ -55,7 +57,8 @@
       "@aa/feature-governance-compliance": ["packages/features/governance-compliance/src/index.tsx"],
       "@aa/mock-server": ["tools/mock-server/src/index.ts"],
       "@aa/codegen": ["tools/codegen/src/index.ts"],
-      "@aa/e2e": ["tools/e2e/src/index.ts"]
+      "@aa/e2e": ["tools/e2e/src/index.ts"],
+      "react-native": ["apps/web/src/react-native-web-stub.tsx"]
     }
   },
   "include": [

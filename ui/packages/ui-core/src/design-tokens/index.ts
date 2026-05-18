@@ -88,6 +88,7 @@ export interface SemanticDesignTokens {
     readonly surfaceHover: string;
     readonly surfaceSelected: string;
     readonly border: string;
+    readonly borderStrong: string;
     readonly accent: string;
     readonly text: string;
     readonly textSubtle: string;
@@ -238,6 +239,7 @@ export const semanticTokens: SemanticDesignTokens = {
     surfaceHover: "#e2e8f0",
     surfaceSelected: "#e8f7ee",
     border: primitiveTokens.color.slate200,
+    borderStrong: primitiveTokens.color.slate400,
     accent: primitiveTokens.color.emerald500,
     text: primitiveTokens.color.slate900,
     textSubtle: primitiveTokens.color.slate600,

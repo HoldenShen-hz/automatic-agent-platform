@@ -631,10 +631,11 @@ export function parseBoolean(env: NodeJS.ProcessEnv, name: string): boolean | un
   if (value == null) {
     return undefined;
   }
-  if (value === "true" || value === "1") {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
     return true;
   }
-  if (value === "false" || value === "0") {
+  if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
     return false;
   }
   return invalidEnv(name);

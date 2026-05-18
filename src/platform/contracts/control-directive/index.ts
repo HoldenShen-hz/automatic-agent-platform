@@ -1,6 +1,8 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
+const DEFAULT_DIRECTIVE_TTL_MS = 15 * 60 * 1000;
+
 /**
  * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
  * This type is retained for legacy adapter compatibility only.
@@ -58,6 +60,9 @@ export interface OperationalDirective<TParams extends Record<string, unknown> = 
   };
   readonly reason: string;
   readonly params: TParams;
+  readonly audience: readonly string[];
+  readonly nonce: string;
+  readonly signature: string;
   readonly createdAt: string;
   readonly expiresAt?: string;
 }
@@ -95,6 +100,9 @@ export interface DecisionDirective<TPayload = unknown> {
   readonly payload: TPayload;
   readonly reason: string;
   readonly riskAcknowledged: boolean;
+  readonly audience: readonly string[];
+  readonly nonce: string;
+  readonly signature: string;
   readonly createdAt: string;
   readonly expiresAt?: string;
 }
@@ -109,11 +117,17 @@ export function createOperationalDirective<TParams extends Record<string, unknow
   issuedBy: OperationalDirective["issuedBy"];
   reason: string;
   params?: TParams;
+  audience?: readonly string[];
+  nonce?: string;
+  signature?: string;
   operationalDirectiveId?: string;
   createdAt?: string;
   expiresAt?: string;
 }): OperationalDirective<TParams> {
   requireNonEmpty(input.type, "operational_directive.type_required");
+  validateDirectiveActor(input.issuedBy, "operational_directive");
+  validateDirectiveScope(input.scope ?? {}, "operational_directive");
+  requireNonEmpty(input.reason, "operational_directive.reason_required");
   return {
     operationalDirectiveId: input.operationalDirectiveId ?? newId("opdir"),
     type: input.type,
@@ -121,8 +135,11 @@ export function createOperationalDirective<TParams extends Record<string, unknow
     issuedBy: input.issuedBy,
     reason: input.reason,
     params: (input.params ?? {}) as TParams,
+    audience: normalizeAudience(input.audience, input.scope ?? {}),
+    nonce: input.nonce ?? newId("nonce"),
+    signature: input.signature ?? "unsigned.internal",
     createdAt: input.createdAt ?? nowIso(),
-    ...(input.expiresAt != null ? { expiresAt: input.expiresAt } : {}),
+    expiresAt: input.expiresAt ?? new Date(Date.now() + DEFAULT_DIRECTIVE_TTL_MS).toISOString(),
   };
 }
 
@@ -134,12 +151,18 @@ export function createDecisionDirective<TPayload = unknown>(input: {
   payload: TPayload;
   reason: string;
   riskAcknowledged?: boolean;
+  audience?: readonly string[];
+  nonce?: string;
+  signature?: string;
   decisionDirectiveId?: string;
   createdAt?: string;
   expiresAt?: string;
 }): DecisionDirective<TPayload> {
   requireNonEmpty(input.type, "decision_directive.type_required");
   requireNonEmpty(input.targetRef, "decision_directive.target_ref_required");
+  validateDirectiveActor(input.issuedBy, "decision_directive");
+  validateDirectiveScope(input.scope ?? {}, "decision_directive");
+  requireNonEmpty(input.reason, "decision_directive.reason_required");
   return {
     decisionDirectiveId: input.decisionDirectiveId ?? newId("decDir"),
     type: input.type,
@@ -149,8 +172,11 @@ export function createDecisionDirective<TPayload = unknown>(input: {
     payload: input.payload,
     reason: input.reason,
     riskAcknowledged: input.riskAcknowledged ?? false,
+    audience: normalizeAudience(input.audience, input.scope ?? {}),
+    nonce: input.nonce ?? newId("nonce"),
+    signature: input.signature ?? "unsigned.internal",
     createdAt: input.createdAt ?? nowIso(),
-    ...(input.expiresAt != null ? { expiresAt: input.expiresAt } : {}),
+    expiresAt: input.expiresAt ?? new Date(Date.now() + DEFAULT_DIRECTIVE_TTL_MS).toISOString(),
   };
 }
 
@@ -158,6 +184,42 @@ function requireNonEmpty(value: string, code: string): void {
   if (value.trim().length === 0) {
     throw new ValidationError(code, "Required string cannot be empty.");
   }
+}
+
+function validateDirectiveActor(
+  issuedBy: OperationalDirective["issuedBy"] | DecisionDirective["issuedBy"],
+  prefix: "operational_directive" | "decision_directive",
+): void {
+  requireNonEmpty(issuedBy.principalId, `${prefix}.principal_id_required`);
+  requireNonEmpty(issuedBy.tenantId, `${prefix}.tenant_id_required`);
+  if (issuedBy.roles.length === 0 || issuedBy.roles.every((role) => role.trim().length === 0)) {
+    throw new ValidationError(`${prefix}.roles_required`, "Directive issuer must carry at least one non-empty role.");
+  }
+}
+
+function validateDirectiveScope(
+  scope: OperationalDirectiveScope | DecisionDirectiveScope,
+  prefix: "operational_directive" | "decision_directive",
+): void {
+  if (scope.tenantId == null || scope.tenantId.trim().length === 0) {
+    throw new ValidationError(`${prefix}.scope_tenant_id_required`, "Directive scope must include tenantId.");
+  }
+}
+
+function normalizeAudience(
+  audience: readonly string[] | undefined,
+  scope: OperationalDirectiveScope | DecisionDirectiveScope,
+): readonly string[] {
+  if (audience != null && audience.length > 0) {
+    const values = audience.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+    if (values.length > 0) {
+      return Object.freeze(values);
+    }
+  }
+
+  const derived = [scope.harnessRunId, scope.nodeRunId, scope.tenantId]
+    .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+  return Object.freeze(derived.length > 0 ? derived : ["tenant-scope"]);
 }
 
 // =============================================================================

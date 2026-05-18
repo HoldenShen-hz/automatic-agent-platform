@@ -2,6 +2,12 @@ import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 import type { ThemeMode } from "./theme-store";
 
+type UiStoreDraft = {
+  -readonly [K in keyof UiStoreState]:
+    UiStoreState[K] extends readonly (infer U)[] ? U[]
+      : UiStoreState[K];
+};
+
 export interface UiStoreState {
   readonly activeRoute: string;
   readonly activeFeature: string;
@@ -29,32 +35,32 @@ export function createUiStore() {
         nlPanelOpen: false,
         themeMode: "system",
         setActiveRoute(activeRoute) {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.activeRoute = activeRoute;
           });
         },
         setActiveFeature(activeFeature) {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.activeFeature = activeFeature;
           });
         },
         toggleSidebar() {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.sidebarCollapsed = !draft.sidebarCollapsed;
           });
         },
         setCommandPaletteOpen(commandPaletteOpen) {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.commandPaletteOpen = commandPaletteOpen;
           });
         },
         setNlPanelOpen(nlPanelOpen) {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.nlPanelOpen = nlPanelOpen;
           });
         },
         setThemeMode(themeMode) {
-          set((draft) => {
+          set((draft: UiStoreDraft) => {
             draft.themeMode = themeMode;
           });
         },

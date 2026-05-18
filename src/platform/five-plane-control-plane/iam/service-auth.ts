@@ -6,8 +6,7 @@
  * Implements service identity, mTLS certificate management, and JWT service tokens.
  */
 
-import { randomBytes } from "node:crypto";
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 
 // ============================================================================
@@ -128,7 +127,14 @@ function generateSerialNumber(): string {
  * §11.2: Service token integrity via HMAC signature.
  */
 function signToken(token: ServiceToken, signingKey: Buffer): string {
-  const payload = `${token.tokenId}.${token.serviceId}.${token.expiresAt}.${token.audience}`;
+  const payload = [
+    token.tokenId,
+    token.serviceId,
+    token.issuedAt,
+    token.expiresAt,
+    token.audience,
+    token.capabilities.slice().sort().join(","),
+  ].join(".");
   return createHmac("sha256", signingKey).update(payload).digest("base64url");
 }
 
@@ -137,13 +143,10 @@ function signToken(token: ServiceToken, signingKey: Buffer): string {
  */
 function verifyTokenSignature(token: ServiceToken, signingKey: Buffer, signature: string): boolean {
   const expected = signToken(token, signingKey);
-  // Constant-time comparison to prevent timing attacks
-  if (signature.length !== expected.length) return false;
-  let result = 0;
-  for (let i = 0; i < signature.length; i++) {
-    result |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return result === 0;
+  const left = Buffer.from(signature, "utf8");
+  const right = Buffer.from(expected, "utf8");
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
 }
 
 // ============================================================================
@@ -300,6 +303,19 @@ export function issueServiceToken(input: {
   return token;
 }
 
+export function signIssuedServiceToken(tokenId: string): string {
+  const serviceId = tokenIndex.get(tokenId);
+  if (!serviceId) {
+    throw new ValidationError("token.not_found", "token.not_found");
+  }
+  const entry = serviceIdentities.get(serviceId);
+  const token = entry?.tokens.get(tokenId);
+  if (!entry || !token) {
+    throw new ValidationError("token.not_found", "token.not_found");
+  }
+  return signToken(token, entry.signingKey);
+}
+
 /**
  * Validate a service token.
  * §11.2: Token validation with expiry, audience, and capability checks.
@@ -330,23 +346,20 @@ export function validateServiceToken(input: {
     return { authenticated: false, serviceIdentity: null, token: null, reason: "token_expired" };
   }
 
-  // Check audience if specified (before signature for proper error ordering)
+  if (!verifyTokenSignature(token, entry.signingKey, input.signature)) {
+    return { authenticated: false, serviceIdentity: null, token: null, reason: "token_invalid" };
+  }
+
   if (input.audience && token.audience !== input.audience && token.audience !== "*") {
     return { authenticated: false, serviceIdentity: null, token: null, reason: "audience_mismatch" };
   }
 
-  // Check capabilities if specified (before signature for proper error ordering)
   if (input.requiredCapabilities) {
     const granted = new Set(token.capabilities);
     const hasAll = input.requiredCapabilities.every((cap) => granted.has(cap));
     if (!hasAll) {
       return { authenticated: false, serviceIdentity: null, token: null, reason: "capability_not_granted" };
     }
-  }
-
-  // Check signature (last, after other validations)
-  if (!verifyTokenSignature(token, entry.signingKey, input.signature)) {
-    return { authenticated: false, serviceIdentity: null, token: null, reason: "token_invalid" };
   }
 
   return {
@@ -490,7 +503,10 @@ export function extractServiceAuth(headers: {
   "x-service-token"?: string;
   "x-service-token-signature"?: string;
   "x-mtls-cert"?: string;
-}): ServiceAuthResult {
+}, options: {
+  audience?: string;
+  requiredCapabilities?: readonly string[];
+} = {}): ServiceAuthResult {
   // Check for mTLS certificate first
   if (headers["x-mtls-cert"]) {
     const cert = getMtlsCertificate(headers["x-mtls-cert"]);
@@ -512,6 +528,8 @@ export function extractServiceAuth(headers: {
     return validateServiceToken({
       tokenId: headers["x-service-token"],
       signature: headers["x-service-token-signature"],
+      ...(options.audience != null ? { audience: options.audience } : {}),
+      ...(options.requiredCapabilities != null ? { requiredCapabilities: options.requiredCapabilities } : {}),
     });
   }
 

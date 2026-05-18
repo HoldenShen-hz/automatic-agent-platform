@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
+type NotificationStoreDraft = {
+  -readonly [K in keyof NotificationStoreState]:
+    NotificationStoreState[K] extends readonly (infer U)[] ? U[]
+      : NotificationStoreState[K];
+};
+
 export type NotificationKind = "info" | "success" | "warning" | "error";
 
 export interface Notification {
@@ -42,7 +48,7 @@ export function createNotificationStore() {
             createdAt: new Date().toISOString(),
             read: false,
           };
-          set((draft) => {
+          set((draft: NotificationStoreDraft) => {
             draft.notifications = [newNotification, ...draft.notifications];
             draft.notificationLookup = {
               ...draft.notificationLookup,
@@ -52,7 +58,7 @@ export function createNotificationStore() {
           });
         },
         markRead(id) {
-          set((draft) => {
+          set((draft: NotificationStoreDraft) => {
             const notification = draft.notificationLookup[id];
             if (notification == null || notification.read) {
               return;
@@ -70,10 +76,11 @@ export function createNotificationStore() {
           });
         },
         markAllRead() {
-          set((draft) => {
-            for (const notification of draft.notifications) {
-              notification.read = true;
-            }
+          set((draft: NotificationStoreDraft) => {
+            draft.notifications = draft.notifications.map((notification) => ({
+              ...notification,
+              read: true,
+            }));
             draft.notificationLookup = Object.fromEntries(
               draft.notifications.map((notification) => [notification.id, notification]),
             );
@@ -81,7 +88,7 @@ export function createNotificationStore() {
           });
         },
         dismissNotification(id) {
-          set((draft) => {
+          set((draft: NotificationStoreDraft) => {
             const notification = draft.notificationLookup[id];
             draft.notifications = draft.notifications.filter((entry) => entry.id !== id);
             const nextLookup = { ...draft.notificationLookup };
@@ -93,7 +100,7 @@ export function createNotificationStore() {
           });
         },
         clearAll() {
-          set((draft) => {
+          set((draft: NotificationStoreDraft) => {
             draft.notifications = [];
             draft.notificationLookup = {};
             draft.unreadCount = 0;

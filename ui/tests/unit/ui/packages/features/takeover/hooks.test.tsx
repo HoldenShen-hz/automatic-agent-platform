@@ -3,12 +3,14 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockClient = { patch: vi.fn() };
-const mockSubscribe = vi.fn(() => () => undefined);
-const mockUpdateTask = vi.fn(async () => ({ ok: true }));
-const mockFetchWorkflowRunSteps = vi.fn(async () => [
-  { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-06T00:00:00.000Z", completedAt: "2026-05-06T00:01:00.000Z" },
-]);
+const mocks = vi.hoisted(() => ({
+  mockClient: { patch: vi.fn() },
+  mockSubscribe: vi.fn(() => () => undefined),
+  mockUpdateTask: vi.fn(async () => ({ ok: true })),
+  mockFetchWorkflowRunSteps: vi.fn(async () => [
+    { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-06T00:00:00.000Z", completedAt: "2026-05-06T00:01:00.000Z" },
+  ]),
+}));
 const taskData = [
   {
     id: "task-1",
@@ -21,14 +23,14 @@ const taskData = [
 ] as const;
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
-  useWsClient: () => ({ subscribe: mockSubscribe }),
+  useRestClient: () => mocks.mockClient,
+  useWsClient: () => ({ subscribe: mocks.mockSubscribe }),
   useTasksQuery: () => ({ data: taskData }),
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  updateTask: (...args: unknown[]) => mockUpdateTask(...args),
-  fetchWorkflowRunSteps: (...args: unknown[]) => mockFetchWorkflowRunSteps(...args),
+  updateTask: mocks.mockUpdateTask,
+  fetchWorkflowRunSteps: mocks.mockFetchWorkflowRunSteps,
 }));
 
 import { useTakeoverVm } from "../../../../../../packages/features/takeover/src/hooks";
@@ -46,8 +48,8 @@ describe("useTakeoverVm", () => {
       await result.current.claimOwnership("task-1", "platform-sre");
     });
 
-    expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { owner: "platform-sre", status: "running" });
-    expect(mockFetchWorkflowRunSteps).toHaveBeenCalledWith(mockClient, "workflow-run-1");
+    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { owner: "platform-sre", status: "running" });
+    expect(mocks.mockFetchWorkflowRunSteps).toHaveBeenCalledWith(mocks.mockClient, "workflow-run-1");
     expect(result.current.currentSnapshot?.taskId).toBe("task-1");
     expect(result.current.currentSnapshot?.steps).toHaveLength(1);
     expect(result.current.ownershipHistory[0]?.action).toBe("claim");
@@ -65,7 +67,7 @@ describe("useTakeoverVm", () => {
       await result.current.transferOwnership("task-1", "backup-sre", "handoff");
     });
 
-    expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", {
+    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", {
       owner: "backup-sre",
       status: "running",
       currentStep: "takeover-transfer:handoff",

@@ -6,6 +6,7 @@ import {
   createMobilePlatformAdapter,
   createWebPlatformAdapter,
 } from "@aa/shared-platform";
+import { mobileGlobals } from "../helpers/mobile-bridge";
 
 describe("shared platform adapter", () => {
   it("creates web adapter with clipboard and deeplink support", async () => {
@@ -83,16 +84,16 @@ describe("shared platform adapter", () => {
 
   it("uses the mobile native bridge when present", async () => {
     const calls: string[] = [];
-    globalThis.__AA_MOBILE__ = {
+    mobileGlobals().__AA_MOBILE__ = {
       async readSecureValue() { return "secret"; },
       async writeSecureValue() { calls.push("write"); },
       async deleteSecureValue() { calls.push("delete"); },
-      async copyToClipboard(text) { calls.push(`clipboard:${text}`); },
-      async openDeepLink(url) { calls.push(`deeplink:${url}`); },
-      async vibrate(pattern) { calls.push(`vibrate:${pattern.join("-")}`); },
+      async copyToClipboard(text: string) { calls.push(`clipboard:${text}`); },
+      async openDeepLink(url: string) { calls.push(`deeplink:${url}`); },
+      async vibrate(pattern: readonly number[]) { calls.push(`vibrate:${pattern.join("-")}`); },
       async getAnalyticsConsent() { return true; },
-      async setAnalyticsConsent(enabled) { calls.push(`consent:${String(enabled)}`); },
-      async enableScreenSecurity(enabled) { calls.push(`screen:${String(enabled)}`); },
+      async setAnalyticsConsent(enabled: boolean) { calls.push(`consent:${String(enabled)}`); },
+      async enableScreenSecurity(enabled: boolean) { calls.push(`screen:${String(enabled)}`); },
       onForeground() { return () => undefined; },
       onBackground() { return () => undefined; },
     };
@@ -102,7 +103,7 @@ describe("shared platform adapter", () => {
     await adapter.vibrate([1, 2, 3]);
     expect(calls).toContain("deeplink:aa://mobile");
     expect(calls).toContain("vibrate:1-2-3");
-    globalThis.__AA_MOBILE__ = undefined;
+    delete mobileGlobals().__AA_MOBILE__;
   });
 
   it("tracks background and foreground listeners", () => {

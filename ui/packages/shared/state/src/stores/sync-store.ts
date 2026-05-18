@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
+type SyncStoreDraft = {
+  -readonly [K in keyof SyncStoreState]:
+    SyncStoreState[K] extends readonly (infer U)[] ? U[]
+      : SyncStoreState[K];
+};
+
 export interface SyncConflict {
   readonly id: string;
   readonly endpoint: string;
@@ -43,13 +49,13 @@ export function createSyncStore() {
         conflictLookup: {},
         lastError: null,
         setPendingMutations(pendingMutations) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.pendingMutations = pendingMutations;
             draft.syncStatus = pendingMutations > 0 ? "queued" : draft.syncStatus;
           });
         },
         markFlushed(lastFlushedAt) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.pendingMutations = 0;
             draft.lastFlushedAt = lastFlushedAt;
             draft.syncStatus = "idle";
@@ -57,12 +63,12 @@ export function createSyncStore() {
           });
         },
         setStrategy(strategy) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.strategy = strategy;
           });
         },
         setOnline(online) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.online = online;
             if (!online) {
               draft.syncStatus = draft.pendingMutations > 0 ? "queued" : draft.syncStatus;
@@ -70,7 +76,7 @@ export function createSyncStore() {
           });
         },
         addConflict(conflict) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.conflicts = [...draft.conflicts, conflict];
             draft.conflictLookup = {
               ...draft.conflictLookup,
@@ -80,7 +86,7 @@ export function createSyncStore() {
           });
         },
         resolveConflict(conflictId, resolution) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.conflicts = draft.conflicts.filter((conflict) => conflict.id !== conflictId);
             const nextLookup = { ...draft.conflictLookup };
             delete nextLookup[conflictId];
@@ -94,13 +100,13 @@ export function createSyncStore() {
           });
         },
         markSyncError(lastError) {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.lastError = lastError;
             draft.syncStatus = "error";
           });
         },
         clearSyncError() {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.lastError = null;
             if (draft.syncStatus === "error") {
               draft.syncStatus = draft.pendingMutations > 0 ? "queued" : "idle";
@@ -108,7 +114,7 @@ export function createSyncStore() {
           });
         },
         retrySync() {
-          set((draft) => {
+          set((draft: SyncStoreDraft) => {
             draft.lastError = null;
             draft.syncStatus = "syncing";
           });

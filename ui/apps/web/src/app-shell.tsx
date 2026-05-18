@@ -27,9 +27,9 @@ export interface FeatureSubPage {
   readonly Component: () => ReactElement;
 }
 
-interface WebFeatureModule extends FeatureModule {
+type WebFeatureModule = Omit<FeatureModule, "subPages"> & {
   readonly subPages?: readonly FeatureSubPage[];
-}
+};
 
 type ShellLifecyclePhase = "boot" | "auth" | "load" | "render" | "idle";
 
@@ -326,7 +326,7 @@ export function WebAppShell(
         <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
           <AppFrame
             authContext={effectiveAuthContext}
-            features={features as readonly WebFeatureModule[]}
+            features={features as unknown as readonly WebFeatureModule[]}
             phase={phase}
             startupBanner={startupBanner}
           />

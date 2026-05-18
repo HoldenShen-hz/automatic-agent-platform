@@ -301,7 +301,7 @@ describe("feature registry summaries", () => {
   it("all features have summary descriptions", () => {
     featureRegistry.forEach((feature) => {
       expect(typeof feature.manifest.summary).toBe("string");
-      expect(feature.manifest.summary.length).toBeGreaterThan(0);
+      expect((feature.manifest.summary ?? "").length).toBeGreaterThan(0);
     });
   });
 });

@@ -115,11 +115,16 @@ function readJsonIfExists<T>(path: string): T | null {
   if (!existsSync(path)) {
     return null;
   }
-  return JSON.parse(readFileSync(path, "utf8")) as T;
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return null;
+  }
 }
 
-function defaultCommitSha(): string {
-  return "0123456789abcdef0123456789abcdef01234567";
+function resolveCommitSha(explicitCommitSha: string | undefined, env: NodeJS.ProcessEnv): string | null {
+  const candidate = explicitCommitSha?.trim() || env["AA_BUILD_COMMIT"]?.trim() || null;
+  return candidate != null && candidate.length > 0 ? candidate : null;
 }
 
 function summarizeError(error: unknown): string {
@@ -129,7 +134,9 @@ function summarizeError(error: unknown): string {
 function summarizeLatestReleaseExecution(
   records: ReleaseExecutionReportRecord[],
 ): AcceptanceReadinessReport["registryPublish"]["latestExecution"] {
-  const latest = records.find((record) => record.publishWorkflowRunId != null || record.publishWorkflowRunUrl != null) ?? null;
+  const latest = records
+    .filter((record) => record.publishWorkflowRunId != null || record.publishWorkflowRunUrl != null)
+    .sort((left, right) => Date.parse(right.exportedAt) - Date.parse(left.exportedAt))[0] ?? null;
   if (latest == null) {
     return null;
   }
@@ -144,7 +151,9 @@ function summarizeLatestReleaseExecution(
 function summarizeLatestDeploymentExecution(
   records: DeploymentExecutionReportRecord[],
 ): AcceptanceReadinessReport["multiEnvironmentDeployment"]["latestExecution"] {
-  const latest = records.find((record) => record.executionMode === "execute" && (record.deployWorkflowRunId != null || record.deployWorkflowRunUrl != null)) ?? null;
+  const latest = records
+    .filter((record) => record.executionMode === "execute" && (record.deployWorkflowRunId != null || record.deployWorkflowRunUrl != null))
+    .sort((left, right) => Date.parse(right.exportedAt) - Date.parse(left.exportedAt))[0] ?? null;
   if (latest == null) {
     return null;
   }
@@ -320,8 +329,8 @@ export class AcceptanceReadinessService {
       } satisfies AcceptanceReadinessEvidenceProfileSummary;
     });
 
-    const profile24h = profiles.find((profile) => profile.profileName === "24h")!;
-    const profile72h = profiles.find((profile) => profile.profileName === "72h")!;
+    const profile24h = profiles.find((profile) => profile.profileName === "24h") ?? profiles[0]!;
+    const profile72h = profiles.find((profile) => profile.profileName === "72h") ?? profiles[profiles.length - 1]!;
     const sequenceCompleted = sequenceState?.completed ?? profiles.every((profile) => profile.completed && profile.passed === true);
     const sequenceBlocked = sequenceState?.blocked ?? profiles.some((profile) => profile.completed && profile.passed === false);
     const evidencePresent = profile72h.passed === true;
@@ -433,6 +442,7 @@ export class AcceptanceReadinessService {
     let configuredEnvironments: EnvironmentName[] = [];
     let bundleReady = false;
     const blockers: string[] = [];
+    const commitSha = resolveCommitSha(input.commitSha, this.runtimeEnv);
 
     try {
       const configs = this.releasePipelineService.listEnvironmentConfigs();
@@ -440,11 +450,13 @@ export class AcceptanceReadinessService {
       const targetConfig = configs.find((item) => item.environment === targetEnvironment) ?? null;
       if (targetConfig == null) {
         blockers.push(`release_environment_missing:${targetEnvironment}`);
+      } else if (commitSha == null) {
+        blockers.push("build_commit_missing");
       } else {
         await this.releasePipelineService.buildBundle({
           environment: targetEnvironment,
           version: input.version ?? "0.0.0-readiness",
-          commitSha: input.commitSha ?? defaultCommitSha(),
+          commitSha,
           rolloutStrategy: input.rolloutStrategy ?? targetConfig.allowedRolloutStrategies[0] ?? "rolling",
           generatedAt: input.generatedAt ?? nowIso(),
         });
@@ -483,10 +495,10 @@ export class AcceptanceReadinessService {
       blockers,
       recommendedCommands: bundleReady
         ? [
-            `AA_RELEASE_ACTION=execute AA_RELEASE_ENVIRONMENT=${targetEnvironment} AA_RELEASE_VERSION=${input.version ?? "0.0.0-readiness"} AA_RELEASE_COMMIT_SHA=${input.commitSha ?? defaultCommitSha()} AA_RELEASE_ROLLOUT_STRATEGY=${input.rolloutStrategy ?? "rolling"} npm run release-pipeline`,
+            `AA_RELEASE_ACTION=execute AA_RELEASE_ENVIRONMENT=${targetEnvironment} AA_RELEASE_VERSION=${input.version ?? "0.0.0-readiness"}${commitSha == null ? "" : ` AA_RELEASE_COMMIT_SHA=${commitSha}`} AA_RELEASE_ROLLOUT_STRATEGY=${input.rolloutStrategy ?? "rolling"} npm run release-pipeline`,
           ]
         : [
-            `AA_RELEASE_ACTION=build AA_RELEASE_ENVIRONMENT=${targetEnvironment} AA_RELEASE_VERSION=0.0.0-readiness AA_RELEASE_COMMIT_SHA=${defaultCommitSha()} AA_RELEASE_ROLLOUT_STRATEGY=rolling npm run release-pipeline`,
+            `AA_RELEASE_ACTION=build AA_RELEASE_ENVIRONMENT=${targetEnvironment} AA_RELEASE_VERSION=0.0.0-readiness${commitSha == null ? "" : ` AA_RELEASE_COMMIT_SHA=${commitSha}`} AA_RELEASE_ROLLOUT_STRATEGY=rolling npm run release-pipeline`,
           ],
       targetEnvironment,
       configuredEnvironments,
@@ -501,6 +513,7 @@ export class AcceptanceReadinessService {
     let deploymentReport: EnvironmentDeploymentReport | null = null;
     const blockers: string[] = [];
     let effectiveRolloutStrategy = input.rolloutStrategy ?? "rolling";
+    const commitSha = resolveCommitSha(input.commitSha, this.runtimeEnv);
 
     try {
       const targetConfig = this.releasePipelineService
@@ -510,7 +523,7 @@ export class AcceptanceReadinessService {
       deploymentReport = await this.environmentDeploymentService.buildReport({
         targetEnvironment,
         version: input.version ?? "0.0.0-readiness",
-        commitSha: input.commitSha ?? defaultCommitSha(),
+        ...(commitSha == null ? {} : { commitSha }),
         rolloutStrategy: effectiveRolloutStrategy,
         generatedAt: input.generatedAt ?? nowIso(),
       });
@@ -550,11 +563,11 @@ export class AcceptanceReadinessService {
       blockers,
       recommendedCommands: systemPrepared
         ? [
-            `AA_DEPLOYMENT_ACTION=export AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=${input.version ?? "0.0.0-readiness"} AA_DEPLOYMENT_COMMIT_SHA=${input.commitSha ?? defaultCommitSha()} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run environment-deployment`,
-            `AA_DEPLOYMENT_EXECUTION_ACTION=export AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=${input.version ?? "0.0.0-readiness"} AA_DEPLOYMENT_COMMIT_SHA=${input.commitSha ?? defaultCommitSha()} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run deployment-execution`,
+            `AA_DEPLOYMENT_ACTION=export AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=${input.version ?? "0.0.0-readiness"}${commitSha == null ? "" : ` AA_DEPLOYMENT_COMMIT_SHA=${commitSha}`} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run environment-deployment`,
+            `AA_DEPLOYMENT_EXECUTION_ACTION=export AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=${input.version ?? "0.0.0-readiness"}${commitSha == null ? "" : ` AA_DEPLOYMENT_COMMIT_SHA=${commitSha}`} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run deployment-execution`,
           ]
         : [
-            `AA_DEPLOYMENT_ACTION=summary AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=0.0.0-readiness AA_DEPLOYMENT_COMMIT_SHA=${defaultCommitSha()} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run environment-deployment`,
+            `AA_DEPLOYMENT_ACTION=summary AA_DEPLOYMENT_TARGET_ENVIRONMENT=${targetEnvironment} AA_DEPLOYMENT_VERSION=0.0.0-readiness${commitSha == null ? "" : ` AA_DEPLOYMENT_COMMIT_SHA=${commitSha}`} AA_DEPLOYMENT_ROLLOUT_STRATEGY=${effectiveRolloutStrategy} AA_DB_PATH=$AA_DB_PATH npm run environment-deployment`,
           ],
       targetEnvironment,
       highestReadyEnvironment: deploymentReport?.highestReadyEnvironment ?? null,

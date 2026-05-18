@@ -8,9 +8,12 @@ type MutableDraft<T> =
         : T;
 
 type DraftUpdater<T> = (draft: MutableDraft<T>) => void;
-type StateUpdater<T> = (state: T) => T | Partial<T> | void;
+type StateUpdater<T> = (state: MutableDraft<T>) => T | Partial<T> | void;
 type DraftCapablePartial<T> = T | Partial<T> | DraftUpdater<T> | StateUpdater<T>;
-type DraftSetState<T> = (partial: DraftCapablePartial<T>, replace?: boolean) => void;
+type DraftSetState<T> = {
+  (partial: T | Partial<T>, replace?: boolean): void;
+  (partial: DraftUpdater<T> | StateUpdater<T>, replace?: boolean): void;
+};
 type DraftStateCreator<T> = (set: DraftSetState<T>, get: () => T, api: StoreApi<T>) => T;
 
 function cloneDraftValue<T>(value: T): T {
@@ -28,22 +31,22 @@ function cloneDraftValue<T>(value: T): T {
 }
 
 function withDraft<T>(initializer: DraftStateCreator<T>): StateCreator<T, [], []> {
-  return (set, get, api) => initializer(
-    ((partial: DraftCapablePartial<T>, replace?: boolean) => {
+  return (set, get, api) => {
+    const draftSet: DraftSetState<T> = (partial, replace) => {
+      const storeSet = set as StoreApi<T>["setState"];
       if (typeof partial !== "function") {
-        set(partial, replace);
+        (storeSet as (...args: unknown[]) => void)(partial, replace);
         return;
       }
 
-      set((currentState) => {
-        const draft = cloneDraftValue(currentState);
+      (storeSet as (...args: unknown[]) => void)((currentState: T) => {
+        const draft = cloneDraftValue(currentState) as MutableDraft<T>;
         const result = (partial as DraftUpdater<T> | StateUpdater<T>)(draft);
-        return result === undefined ? draft : result;
+        return (result === undefined ? draft : result) as T | Partial<T>;
       }, replace);
-    }) as typeof set,
-    get,
-    api,
-  );
+    };
+    return initializer(draftSet, get, api);
+  };
 }
 
 export function withPersistDevtoolsDraft<T>(
@@ -57,5 +60,5 @@ export function withPersistDevtoolsDraft<T>(
       name,
     }),
     { name },
-  );
+  ) as unknown as StateCreator<T, [], []>;
 }

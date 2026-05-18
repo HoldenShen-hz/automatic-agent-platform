@@ -1,14 +1,16 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const mockClient = { post: vi.fn() };
-const mockApproveApproval = vi.fn(async () => ({ ok: true }));
-const mockRejectApproval = vi.fn(async () => ({ ok: true }));
-const mockDelegateApproval = vi.fn(async () => ({ ok: true }));
-const mockRequestMoreContextApproval = vi.fn(async () => ({ ok: true }));
+const mocks = vi.hoisted(() => ({
+  mockClient: { post: vi.fn() },
+  mockApproveApproval: vi.fn(async () => ({ ok: true })),
+  mockRejectApproval: vi.fn(async () => ({ ok: true })),
+  mockDelegateApproval: vi.fn(async () => ({ ok: true })),
+  mockRequestMoreContextApproval: vi.fn(async () => ({ ok: true })),
+}));
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
+  useRestClient: () => mocks.mockClient,
   useApprovalsQuery: () => ({
     data: [
       {
@@ -28,10 +30,10 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  approveApproval: (...args: unknown[]) => mockApproveApproval(...args),
-  rejectApproval: (...args: unknown[]) => mockRejectApproval(...args),
-  delegateApproval: (...args: unknown[]) => mockDelegateApproval(...args),
-  requestMoreContextApproval: (...args: unknown[]) => mockRequestMoreContextApproval(...args),
+  approveApproval: mocks.mockApproveApproval,
+  rejectApproval: mocks.mockRejectApproval,
+  delegateApproval: mocks.mockDelegateApproval,
+  requestMoreContextApproval: mocks.mockRequestMoreContextApproval,
 }));
 
 import { useApprovalCenterVm } from "../../../../../../packages/features/approval/src/hooks/index";
@@ -48,7 +50,7 @@ describe("useApprovalCenterVm", () => {
       await result.current.approve();
     });
 
-    expect(mockApproveApproval).toHaveBeenCalledWith(mockClient, "approval-1");
+    expect(mocks.mockApproveApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
     await waitFor(() => {
       expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
     });
@@ -61,7 +63,7 @@ describe("useApprovalCenterVm", () => {
       await result.current.reject();
     });
 
-    expect(mockRejectApproval).toHaveBeenCalledWith(mockClient, "approval-1");
+    expect(mocks.mockRejectApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
     await waitFor(() => {
       expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
     });
@@ -74,7 +76,7 @@ describe("useApprovalCenterVm", () => {
       await result.current.requestMoreContext();
     });
 
-    expect(mockRequestMoreContextApproval).toHaveBeenCalledWith(mockClient, "approval-1");
+    expect(mocks.mockRequestMoreContextApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
     await waitFor(() => {
       expect(result.current.actionHistory[0]?.title).toContain("Requested Context");
     });
@@ -87,7 +89,7 @@ describe("useApprovalCenterVm", () => {
       await result.current.delegate("domain-admin");
     });
 
-    expect(mockDelegateApproval).toHaveBeenCalledWith(mockClient, "approval-1", "domain-admin");
+    expect(mocks.mockDelegateApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1", "domain-admin");
     await waitFor(() => {
       expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
       expect(result.current.selectedId).toBe("approval-2");
@@ -95,19 +97,13 @@ describe("useApprovalCenterVm", () => {
   });
 
   it("restores the approval queue when an optimistic approve call fails", async () => {
-    mockApproveApproval.mockRejectedValueOnce(new Error("approval-write-failed"));
+    mocks.mockApproveApproval.mockRejectedValueOnce(new Error("approval-write-failed"));
     const { result } = renderHook(() => useApprovalCenterVm());
 
-    let error: Error | null = null;
     await act(async () => {
-      try {
-        await result.current.approve();
-      } catch (err) {
-        error = err as Error;
-      }
+      await expect(result.current.approve()).rejects.toThrow(/approval-write-failed/);
     });
 
-    expect(error?.message).toMatch(/approval-write-failed/);
     expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1", "approval-2"]);
     expect(result.current.selectedId).toBe("approval-1");
   });

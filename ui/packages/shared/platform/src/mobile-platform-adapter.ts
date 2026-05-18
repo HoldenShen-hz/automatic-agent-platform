@@ -5,7 +5,7 @@ import type { MobileBridge } from "./bridge-types";
 export class MobilePlatformAdapter extends DefaultPlatformAdapter {
   public constructor(
     platform: Extract<PlatformId, "android" | "ios">,
-    private readonly bridge: MobileBridge | undefined = globalThis.__AA_MOBILE__,
+    private readonly bridge: MobileBridge | undefined = (globalThis as typeof globalThis & { __AA_MOBILE__?: MobileBridge }).__AA_MOBILE__,
   ) {
     super(platform, { analyticsConsentDefault: true });
   }

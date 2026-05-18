@@ -54,7 +54,7 @@ export interface DomainWizardVm {
 const STORAGE_KEY = "aa-domain-wizard-draft";
 const orderedSteps: readonly DomainWizardStepId[] = ["domain-select", "risk-profile", "capability-config", "review"];
 
-const stepDescriptors: readonly DomainWizardVm["steps"] = [
+const stepDescriptors: DomainWizardVm["steps"] = [
   { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
   { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
   { id: "capability-config", label: "能力配置", description: "配置并发任务和钻取深度" },

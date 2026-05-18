@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+// @ts-expect-error metro config is a JS module without a local declaration file
 import metroConfig from "../../../../../apps/mobile/metro.config.js";
 
 const typedMetroConfig = metroConfig as {

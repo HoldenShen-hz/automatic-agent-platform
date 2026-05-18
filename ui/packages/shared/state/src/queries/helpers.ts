@@ -35,8 +35,8 @@ export function createCursorInfiniteQuery<TItem>(
   options: CursorQueryOptions = {},
 ) {
   const normalizedOptions = {
-    pageSize: options.pageSize,
-    sort: options.sort,
+    ...(options.pageSize == null ? {} : { pageSize: options.pageSize }),
+    ...(options.sort == null ? {} : { sort: options.sort }),
     filter: options.filter ?? null,
   };
   return {
@@ -44,8 +44,8 @@ export function createCursorInfiniteQuery<TItem>(
     initialPageParam: null,
     queryFn: ({ pageParam }: { pageParam: string | null }) => queryFn({
       cursor: pageParam,
-      pageSize: normalizedOptions.pageSize,
-      sort: normalizedOptions.sort,
+      ...(normalizedOptions.pageSize == null ? {} : { pageSize: normalizedOptions.pageSize }),
+      ...(normalizedOptions.sort == null ? {} : { sort: normalizedOptions.sort }),
       filter: normalizedOptions.filter,
     }),
     getNextPageParam: (page: CursorPage<TItem>) => page.nextCursor,

@@ -7,7 +7,7 @@
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 
-export interface TenantRecord {
+export interface TenantPersistenceRecord {
   tenantId: string;
   displayName: string;
   status: string;
@@ -54,7 +54,7 @@ export class AsyncTenantRepository {
   // TENANTS
   // ================================
 
-  public async insertTenant(tenant: TenantRecord): Promise<void> {
+  public async insertTenant(tenant: TenantPersistenceRecord): Promise<void> {
     await this.conn.execute(
       `INSERT INTO tenants (
         tenant_id, display_name, status, billing_plan, sla_level,
@@ -104,8 +104,8 @@ export class AsyncTenantRepository {
     );
   }
 
-  public async getTenant(tenantId: string): Promise<TenantRecord | null> {
-    const result = await asyncQueryOne<TenantRecord>(
+  public async getTenant(tenantId: string): Promise<TenantPersistenceRecord | null> {
+    const result = await asyncQueryOne<TenantPersistenceRecord>(
       this.conn,
       `SELECT
         tenant_id AS "tenantId",
@@ -124,8 +124,8 @@ export class AsyncTenantRepository {
     return result ?? null;
   }
 
-  public async listTenantsByStatus(status: string): Promise<TenantRecord[]> {
-    return asyncQueryAll<TenantRecord>(
+  public async listTenantsByStatus(status: string): Promise<TenantPersistenceRecord[]> {
+    return asyncQueryAll<TenantPersistenceRecord>(
       this.conn,
       `SELECT
         tenant_id AS "tenantId",

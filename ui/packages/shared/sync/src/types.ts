@@ -4,9 +4,9 @@ export interface OfflineMutation {
   readonly method: "POST" | "PUT" | "PATCH" | "DELETE";
   readonly body: unknown;
   readonly createdAt: string;
-  readonly tenantId: string;
-  readonly traceId: string;
-  readonly principal: {
+  readonly tenantId?: string;
+  readonly traceId?: string;
+  readonly principal?: {
     readonly principalId: string;
     readonly tenantId: string;
     readonly roles: readonly string[];
@@ -28,7 +28,7 @@ export type ConflictResolutionStrategy = "server_wins" | "local_wins" | "merge";
 export interface SyncFlushResult {
   readonly succeeded: readonly OfflineMutation[];
   readonly failed: readonly OfflineMutation[];
-  readonly conflicts: readonly Array<{
+  readonly conflicts: ReadonlyArray<{
     readonly mutation: OfflineMutation;
     readonly serverValue: unknown;
   }>;

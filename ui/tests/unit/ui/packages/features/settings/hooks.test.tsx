@@ -1,8 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockClient = { patch: vi.fn() };
-const mockUpdatePreferences = vi.fn(async () => ({ ok: true }));
+const mocks = vi.hoisted(() => ({
+  mockClient: { patch: vi.fn() },
+  mockUpdatePreferences: vi.fn(async () => ({ ok: true })),
+}));
 let preferencesData = {
   theme: "dark",
   locale: "zh-CN",
@@ -11,7 +13,7 @@ let preferencesData = {
 };
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
+  useRestClient: () => mocks.mockClient,
   usePreferencesQuery: () => ({ data: preferencesData }),
   useRolesQuery: () => ({ data: [{ name: "admin", userCount: 2 }] }),
   useFeatureFlagsQuery: () => ({ data: [{ id: "flag-1", rolloutPercentage: 50 }] }),
@@ -22,7 +24,7 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
+  updatePreferences: mocks.mockUpdatePreferences,
 }));
 
 import { useSettingsVm } from "../../../../../../packages/features/settings/src/hooks";
@@ -41,7 +43,7 @@ describe("useSettingsVm", () => {
 
   it("keeps the saving state visible before flipping to saved and refreshes drafts from upstream preferences", async () => {
     const { result, rerender } = renderHook(() => useSettingsVm());
-    mockUpdatePreferences.mockImplementationOnce(
+    mocks.mockUpdatePreferences.mockImplementationOnce(
       () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 20)),
     );
 
@@ -62,8 +64,8 @@ describe("useSettingsVm", () => {
       expect(result.current.saveState).toBe("saved");
       expect(result.current.activityItems[0]?.title).toBe("Configuration saved");
     });
-    expect(mockUpdatePreferences).toHaveBeenCalledWith(
-      mockClient,
+    expect(mocks.mockUpdatePreferences).toHaveBeenCalledWith(
+      mocks.mockClient,
       { theme: "light", locale: "zh-CN" },
       "etag-1",
     );

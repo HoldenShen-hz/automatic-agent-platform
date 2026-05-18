@@ -1,6 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
+type ThemeStoreDraft = {
+  -readonly [K in keyof ThemeStoreState]:
+    ThemeStoreState[K] extends readonly (infer U)[] ? U[]
+      : ThemeStoreState[K];
+};
+
 export type ThemeMode = "light" | "dark" | "high-contrast" | "system";
 export type ResolvedThemeName = "light" | "dark" | "high-contrast";
 
@@ -37,7 +43,7 @@ export function createThemeStore() {
         resolvedThemeName: resolveThemeName("system"),
         resolvedColorScheme: resolveColorScheme("system"),
         setThemeMode(themeMode) {
-          set((draft) => {
+          set((draft: ThemeStoreDraft) => {
             draft.themeMode = themeMode;
             draft.resolvedThemeName = resolveThemeName(themeMode);
             draft.resolvedColorScheme = resolveColorScheme(themeMode);

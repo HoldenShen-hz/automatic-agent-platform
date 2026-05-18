@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}), { virtual: true });
+}));
 
 vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
   useDomainWizardVm: () => ({

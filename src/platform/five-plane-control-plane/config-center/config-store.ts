@@ -185,11 +185,26 @@ export class ConfigStore {
       throw new ValidationError("invalid_snapshot", "Snapshot is invalid or empty");
     }
 
+    const previousEntries = new Map(this.entries);
     this.entries.clear();
     for (const [key, entry] of Object.entries(snapshot.entries)) {
       this.entries.set(key, { ...entry });
     }
     this.version = snapshot.version;
+
+    const keys = new Set<string>([
+      ...previousEntries.keys(),
+      ...this.entries.keys(),
+    ]);
+    for (const key of keys) {
+      const oldValue = previousEntries.get(key)?.value;
+      const newValue = this.entries.get(key)?.value;
+      if (!areConfigValuesEqual(oldValue, newValue)) {
+        for (const listener of this.changeListeners) {
+          listener(key, oldValue, newValue);
+        }
+      }
+    }
   }
 
   /**

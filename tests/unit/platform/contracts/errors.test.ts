@@ -75,10 +75,10 @@ test("AppError.toJSON produces both camelCase and snake_case", () => {
 
   assert.equal(json.code, "JSON_CODE");
   assert.equal(json.userMessage, "JSON message");
-  assert.equal(json.user_message, "JSON message");
   assert.equal(json.category, "validation");
   assert.equal(json.traceId, null);
-  assert.equal(json.trace_id, null);
+  assert.equal("user_message" in json, false);
+  assert.equal("trace_id" in json, false);
 });
 
 test("AppError.wrap returns same instance for AppError", () => {
@@ -232,8 +232,8 @@ test("getErrorCode extracts code from AppError", () => {
 });
 
 test("getErrorCode returns fallback for non-AppError", () => {
-  assert.equal(getErrorCode(new Error("err")), "E0000");
-  assert.equal(getErrorCode("string"), "E0000");
+  assert.equal(getErrorCode(new Error("err")), "unknown.unclassified");
+  assert.equal(getErrorCode("string"), "unknown.unclassified");
 });
 
 test("normalizeToAppError returns same AppError", () => {

@@ -8,6 +8,8 @@
  * @see docs_zh/contracts/app_error_contract.md
  */
 
+let lastOccurredAtMs = 0;
+
 /**
  * Error category classification used for routing, monitoring, and response handling.
  * Categories indicate the domain layer where the error originated.
@@ -47,9 +49,16 @@ export type AppErrorSource =
 
 /**
  * Error code string for programmatic error identification.
- * Format varies by error class: AppError uses freeform codes, legacy errors use E-prefixed codes.
+ * Canonical codes must use a structured namespace (`domain.reason`, `domain:reason`,
+ * or `UPPER_SNAKE`) while legacy adapters may still emit E-prefixed codes.
  */
-export type ErrorCode = string;
+export type LegacyErrorCode = `E${string}`;
+export type DottedErrorCode = `${string}.${string}`;
+export type ColonErrorCode = `${string}:${string}`;
+export type SnakeErrorCode = `${string}_${string}` | Uppercase<string>;
+export type ErrorCode =
+  (LegacyErrorCode | DottedErrorCode | ColonErrorCode | SnakeErrorCode | string)
+  & { readonly __errorCodeBrand?: "ErrorCode" };
 
 /**
  * Options for constructing an AppError instance.
@@ -84,6 +93,8 @@ export interface ErrorOptions {
   occurredAt?: string;
   /** User-facing error message for UI display (default: same as message) */
   userMessage?: string;
+  /** Optional field name for validation / contract violations */
+  field?: string | null;
 }
 
 /**
@@ -121,6 +132,8 @@ export class AppError extends Error {
   public readonly occurredAt: string;
   /** HTTP status code for API responses */
   public readonly statusCode: number;
+  /** Optional field associated with the error */
+  public readonly field: string | null;
 
   /**
    * Creates an AppError with the given code and message.
@@ -143,8 +156,9 @@ export class AppError extends Error {
     this.nodeRunId = options.nodeRunId ?? null;
     this.executionId = options.executionId ?? null;
     this.causedBy = options.causedBy ?? null;
-    this.occurredAt = options.occurredAt ?? new Date().toISOString();
+    this.occurredAt = options.occurredAt ?? nextOccurredAtIso();
     this.statusCode = options.statusCode ?? 500;
+    this.field = options.field ?? null;
   }
 
   /**
@@ -164,8 +178,8 @@ export class AppError extends Error {
   /**
    * Serializes the error to a JSON-serializable object.
    *
-   * Purpose: Ensures consistent API error response format with both camelCase
-   * and snake_case variants for compatibility with different clients.
+   * Purpose: Ensures consistent API error response format without leaking
+   * internal-only structures such as raw details blobs or mixed naming styles.
    */
   public toJSON(): Record<string, unknown> {
     return {
@@ -174,28 +188,19 @@ export class AppError extends Error {
       errorCode: this.code,
       message: this.userMessage,
       userMessage: this.userMessage,
-      user_message: this.userMessage,
       category: this.category,
       retryable: this.retryable,
-      internalDetails: this.internalDetails,
-      internal_details: this.internalDetails,
       source: this.source,
       traceId: this.traceId,
-      trace_id: this.traceId,
       taskId: this.taskId,
-      task_id: this.taskId,
       harnessRunId: this.harnessRunId,
-      harness_run_id: this.harnessRunId,
       nodeRunId: this.nodeRunId,
-      node_run_id: this.nodeRunId,
       executionId: this.executionId,
-      execution_id: this.executionId,
       causedBy: this.causedBy,
-      caused_by: this.causedBy,
       occurredAt: this.occurredAt,
-      occurred_at: this.occurredAt,
       statusCode: this.statusCode,
-      cause: (this.cause as Error | undefined)?.message,
+      ...(this.field != null ? { field: this.field } : {}),
+      cause: serializeCause(this.cause),
     };
   }
 
@@ -222,6 +227,11 @@ export class AppError extends Error {
         originalError: originalMessage,
         ...(options.details ?? {}),
       },
+      ...(options.cause != null
+        ? { cause: options.cause }
+        : error instanceof Error
+          ? { cause: error }
+          : {}),
       causedBy: options.causedBy ?? (error instanceof Error ? error.name : null),
     });
   }
@@ -578,8 +588,12 @@ export class LeaderAuthorityError extends AppError {
  * Indicates distributed lock acquisition failures or lock conflicts.
  */
 export class LockingError extends StorageError {
-  public constructor(code: string, message: string, details?: Record<string, unknown>) {
-    super(`E7${code}`, message, { statusCode: 409, details, retryable: true });
+  public constructor(code: string, message: string, options?: ErrorOptions | Record<string, unknown>) {
+    super(`E7${code}`, message, {
+      ...normalizeLegacyErrorOptions(options),
+      statusCode: 409,
+      retryable: true,
+    });
     this.name = "LockingError";
   }
 }
@@ -589,8 +603,12 @@ export class LockingError extends StorageError {
  * Indicates failures in memory service or context management.
  */
 export class MemoryError extends InternalAppError {
-  public constructor(code: string, message: string, details?: Record<string, unknown>) {
-    super(`E8${code}`, message, { statusCode: 500, details, source: "runtime" });
+  public constructor(code: string, message: string, options?: ErrorOptions | Record<string, unknown>) {
+    super(`E8${code}`, message, {
+      ...normalizeLegacyErrorOptions(options),
+      statusCode: 500,
+      source: "runtime",
+    });
     this.name = "MemoryError";
   }
 }
@@ -600,8 +618,13 @@ export class MemoryError extends InternalAppError {
  * Indicates failures in core runtime execution engine.
  */
 export class RuntimeError extends InternalAppError {
-  public constructor(code: string, message: string, details?: Record<string, unknown>) {
-    super(`EC${code}`, message, { statusCode: 500, details, category: "runtime", source: "runtime" });
+  public constructor(code: string, message: string, options?: ErrorOptions | Record<string, unknown>) {
+    super(`EC${code}`, message, {
+      ...normalizeLegacyErrorOptions(options),
+      statusCode: 500,
+      category: "runtime",
+      source: "runtime",
+    });
     this.name = "RuntimeError";
   }
 }
@@ -641,7 +664,7 @@ export function getErrorCode(error: unknown): string {
   if (isAppError(error)) {
     return error.code;
   }
-  return "E0000";
+  return "unknown.unclassified";
 }
 
 /**
@@ -663,4 +686,31 @@ export function normalizeToAppError(
     return error;
   }
   return AppError.wrap(error, fallback.code, fallback.message, fallback.options);
+}
+
+function nextOccurredAtIso(): string {
+  const now = Date.now();
+  lastOccurredAtMs = now > lastOccurredAtMs ? now : lastOccurredAtMs + 1;
+  return new Date(lastOccurredAtMs).toISOString();
+}
+
+function serializeCause(cause: unknown): Record<string, unknown> | null {
+  if (!(cause instanceof Error)) {
+    return null;
+  }
+  return {
+    name: cause.name,
+    message: cause.message,
+    ...(cause instanceof AppError ? { code: cause.code } : {}),
+  };
+}
+
+function normalizeLegacyErrorOptions(options?: ErrorOptions | Record<string, unknown>): ErrorOptions {
+  if (options == null) {
+    return {};
+  }
+  if ("statusCode" in options || "retryable" in options || "details" in options || "cause" in options) {
+    return options as ErrorOptions;
+  }
+  return { details: options as Record<string, unknown> };
 }

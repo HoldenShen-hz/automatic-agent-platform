@@ -260,6 +260,7 @@ test("acceptance readiness service reflects the current todo conclusion with 72h
       secretManagementService: new SecretManagementService(harness.db, harness.store),
       runtimeEnv: {
         ...process.env,
+        AA_BUILD_COMMIT: "build-commit-123",
         AA_STORAGE_DRIVER: "postgres",
         AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
         AA_STORAGE_POSTGRES_DUAL_RUN: "true",
@@ -314,6 +315,7 @@ test("acceptance readiness service reflects blocked stable evidence when 24h pro
       secretManagementService: new SecretManagementService(harness.db, harness.store),
       runtimeEnv: {
         ...process.env,
+        AA_BUILD_COMMIT: "build-commit-123",
         AA_STORAGE_DRIVER: "sqlite",
       },
       observedStorageDriver: "sqlite",

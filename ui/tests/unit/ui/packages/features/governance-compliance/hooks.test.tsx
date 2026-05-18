@@ -1,32 +1,34 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockClient = { get: vi.fn(), patch: vi.fn(), post: vi.fn() };
-const mockFetchCompliancePolicies = vi.fn(async () => [
-  { id: "policy-1", name: "Prod Change Control", severity: "high" },
-]);
-const mockUpdateCompliancePolicy = vi.fn(async () => ({ ok: true }));
-const mockFetchAuditLogs = vi.fn(async () => [
-  { id: "audit-1", timestamp: "2026-05-06T00:00:00.000Z", actor: "platform-sre", action: "policy.update", resource: "policy-1", outcome: "success", metadata: {} },
-]);
-const mockSubmitException = vi
-  .fn()
-  .mockResolvedValueOnce({ id: "exc-1" })
-  .mockResolvedValueOnce({ id: "exc-2" });
-const mockApproveException = vi.fn(async () => ({ ok: true }));
-const mockRejectException = vi.fn(async () => ({ ok: true }));
+const mocks = vi.hoisted(() => ({
+  mockClient: { get: vi.fn(), patch: vi.fn(), post: vi.fn() },
+  mockFetchCompliancePolicies: vi.fn(async () => [
+    { id: "policy-1", name: "Prod Change Control", severity: "high" },
+  ]),
+  mockUpdateCompliancePolicy: vi.fn(async () => ({ ok: true })),
+  mockFetchAuditLogs: vi.fn(async () => [
+    { id: "audit-1", timestamp: "2026-05-06T00:00:00.000Z", actor: "platform-sre", action: "policy.update", resource: "policy-1", outcome: "success", metadata: {} },
+  ]),
+  mockSubmitException: vi
+    .fn()
+    .mockResolvedValueOnce({ id: "exc-1" })
+    .mockResolvedValueOnce({ id: "exc-2" }),
+  mockApproveException: vi.fn(async () => ({ ok: true })),
+  mockRejectException: vi.fn(async () => ({ ok: true })),
+}));
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
+  useRestClient: () => mocks.mockClient,
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  fetchCompliancePolicies: (...args: unknown[]) => mockFetchCompliancePolicies(...args),
-  updateCompliancePolicy: (...args: unknown[]) => mockUpdateCompliancePolicy(...args),
-  fetchAuditLogs: (...args: unknown[]) => mockFetchAuditLogs(...args),
-  submitException: (...args: unknown[]) => mockSubmitException(...args),
-  approveException: (...args: unknown[]) => mockApproveException(...args),
-  rejectException: (...args: unknown[]) => mockRejectException(...args),
+  fetchCompliancePolicies: mocks.mockFetchCompliancePolicies,
+  updateCompliancePolicy: mocks.mockUpdateCompliancePolicy,
+  fetchAuditLogs: mocks.mockFetchAuditLogs,
+  submitException: mocks.mockSubmitException,
+  approveException: mocks.mockApproveException,
+  rejectException: mocks.mockRejectException,
 }));
 
 import { useGovernanceComplianceVm } from "../../../../../../packages/features/governance-compliance/src/hooks";
@@ -51,8 +53,8 @@ describe("useGovernanceComplianceVm", () => {
       await result.current.rejectException("exc-2", "not justified");
     });
 
-    expect(mockApproveException).toHaveBeenCalledWith(mockClient, "exc-1");
-    expect(mockRejectException).toHaveBeenCalledWith(mockClient, "exc-2", "not justified");
+    expect(mocks.mockApproveException).toHaveBeenCalledWith(mocks.mockClient, "exc-1");
+    expect(mocks.mockRejectException).toHaveBeenCalledWith(mocks.mockClient, "exc-2", "not justified");
     expect(result.current.exceptionQueue[0]?.status).toBe("rejected");
   });
 });

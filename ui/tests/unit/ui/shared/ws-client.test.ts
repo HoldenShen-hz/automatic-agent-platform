@@ -8,6 +8,11 @@ import {
   type WSEventEnvelope,
 } from "@aa/shared-api-client";
 
+type BrowserWSClientDebugState = {
+  currentUrl: string | null;
+  currentToken: string | null;
+};
+
 class FakeSocket {
   public static readonly CONNECTING = 0;
   public static readonly OPEN = 1;
@@ -114,8 +119,9 @@ describe("BrowserWSClient", () => {
 
     client.connect("ws://example.com/ws?important=param", "my-secret-token");
 
-    expect(client.currentUrl).toBe("ws://example.com/ws?important=param");
-    expect(client.currentToken).toBe("my-secret-token");
+    const debugState = client as unknown as BrowserWSClientDebugState;
+    expect(debugState.currentUrl).toBe("ws://example.com/ws?important=param");
+    expect(debugState.currentToken).toBe("my-secret-token");
   });
 
   it("sends auth token in first message after connection, not in URL (Issue #2070)", async () => {
@@ -220,8 +226,9 @@ describe("BrowserWSClient", () => {
       setTimeout(() => {
         client.disconnect();
 
-        expect(client.currentUrl).toBeNull();
-        expect(client.currentToken).toBeNull();
+        const debugState = client as unknown as BrowserWSClientDebugState;
+        expect(debugState.currentUrl).toBeNull();
+        expect(debugState.currentToken).toBeNull();
 
         resolve();
       }, 10);

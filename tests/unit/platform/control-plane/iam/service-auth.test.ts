@@ -9,6 +9,7 @@ import {
   updateServiceIdentityStatus,
   rotateServiceKey,
   issueServiceToken,
+  signIssuedServiceToken,
   validateServiceToken,
   revokeServiceToken,
   revokeAllServiceTokens,
@@ -311,7 +312,7 @@ test("service-auth: validateServiceToken rejects audience mismatch", () => {
 
   const result = validateServiceToken({
     tokenId: token.tokenId,
-    signature: "", // dummy
+    signature: signIssuedServiceToken(token.tokenId),
     audience: "different-service",
   });
 
@@ -333,7 +334,7 @@ test("service-auth: validateServiceToken accepts wildcard audience", () => {
 
   const result = validateServiceToken({
     tokenId: token.tokenId,
-    signature: "", // dummy
+    signature: signIssuedServiceToken(token.tokenId),
     audience: "any-service",
   });
 
@@ -356,7 +357,7 @@ test("service-auth: validateServiceToken checks required capabilities", () => {
 
   const result = validateServiceToken({
     tokenId: token.tokenId,
-    signature: "",
+    signature: signIssuedServiceToken(token.tokenId),
     requiredCapabilities: ["read", "write"],
   });
 

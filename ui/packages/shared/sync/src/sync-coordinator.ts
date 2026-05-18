@@ -1,6 +1,6 @@
-import { ConflictResolver } from "./conflict-resolver";
-import { createPersistentOfflineQueue, OfflineQueue } from "./offline-queue";
-import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types";
+import { ConflictResolver } from "./conflict-resolver.js";
+import { createPersistentOfflineQueue, OfflineQueue } from "./offline-queue.js";
+import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types.js";
 
 export interface SyncMutationDispatcher {
   dispatch?(mutation: OfflineMutation): Promise<unknown>;
@@ -107,7 +107,7 @@ export class FetchSyncMutationDispatcher implements SyncMutationDispatcher {
       headers: {
         "content-type": "application/json",
       },
-      body: mutation.body == null ? undefined : JSON.stringify(mutation.body),
+      ...(mutation.body == null ? {} : { body: JSON.stringify(mutation.body) }),
     });
     if (!response.ok) {
       throw new Error(`sync.flush_failed:${response.status}`);

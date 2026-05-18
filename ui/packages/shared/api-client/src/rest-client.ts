@@ -22,8 +22,8 @@ import type {
   WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
-import { defaultMockApiShape, type MockApiShape } from "./mock-data";
-import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors";
+import { defaultMockApiShape, type MockApiShape } from "./mock-data.js";
+import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors.js";
 
 export interface TransportResponse<T> {
   readonly status: number;
@@ -400,9 +400,9 @@ export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>)
   const baseUrl = options?.baseUrl ?? "/api/v1";
   return new DefaultRESTClient((request) => new HttpTransport({
     baseUrl,
-    acceptVersion: options?.acceptVersion,
     ...(options?.headers == null ? {} : { headers: options.headers }),
     ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
+    ...(options?.acceptVersion == null ? {} : { acceptVersion: options.acceptVersion }),
     fallbackToMock: options?.fallbackToMock ?? false,
   }).send(request));
 }

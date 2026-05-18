@@ -222,22 +222,121 @@ test("verifyMfaChallenge verifies correct code", () => {
   completeMfaEnrollment({ enrollmentId: enrollment.enrollmentId, verificationCode: code });
 
   // Create and verify challenge
+  const baseTime = Date.now();
+  const originalDateNow = Date.now;
+  Date.now = () => baseTime + 31_000;
+
   const challenge = createMfaChallenge({
     principalId,
     method: "totp",
     challengeType: "login",
   });
 
-  // Use the generated code (the challenge generates its own code internally)
-  // For this test, we verify the structure of a successful verification
   const result = verifyMfaChallenge({
     challengeId: challenge.challengeId,
-    code: generateTotpCode(enrollment.secret), // Use same secret for verification
+    code: generateTotpCode(enrollment.secret, baseTime + 31_000),
   });
+
+  Date.now = originalDateNow;
 
   assert.equal(result.verified, true);
   assert.equal(result.status, "verified");
   assert.ok(result.attemptsRemaining > 0);
+});
+
+test("completeMfaEnrollment does not expose TOTP secret through credential metadata", () => {
+  const principalId = "user-secret-redaction-" + Date.now();
+  const enrollment = startMfaEnrollment({ principalId, method: "totp" });
+  const code = generateTotpCode(enrollment.secret);
+  const credential = completeMfaEnrollment({
+    enrollmentId: enrollment.enrollmentId,
+    verificationCode: code,
+  });
+
+  assert.equal(Object.hasOwn(credential.metadata, "secret"), false);
+  assert.equal(Object.hasOwn(getMfaCredentials(principalId)[0]?.metadata ?? {}, "secret"), false);
+});
+
+test("completeMfaEnrollment rejects duplicate active credential for same method", () => {
+  const principalId = "user-duplicate-enrollment-" + Date.now();
+  const firstEnrollment = startMfaEnrollment({ principalId, method: "totp" });
+  completeMfaEnrollment({
+    enrollmentId: firstEnrollment.enrollmentId,
+    verificationCode: generateTotpCode(firstEnrollment.secret),
+  });
+
+  const secondEnrollment = startMfaEnrollment({ principalId, method: "totp" });
+  assert.throws(
+    () => completeMfaEnrollment({
+      enrollmentId: secondEnrollment.enrollmentId,
+      verificationCode: generateTotpCode(secondEnrollment.secret),
+    }),
+    /mfa\.credential_already_exists/,
+  );
+});
+
+test("verifyMfaChallenge rejects replayed TOTP code across challenges", () => {
+  const principalId = "user-replay-protection-" + Date.now();
+  const baseTime = Date.now();
+  const originalDateNow = Date.now;
+  Date.now = () => baseTime;
+  const enrollment = startMfaEnrollment({ principalId, method: "totp" });
+  completeMfaEnrollment({
+    enrollmentId: enrollment.enrollmentId,
+    verificationCode: generateTotpCode(enrollment.secret, baseTime),
+  });
+
+  Date.now = () => baseTime + 31_000;
+  const firstChallenge = createMfaChallenge({
+    principalId,
+    method: "totp",
+    challengeType: "login",
+  });
+  const firstCode = generateTotpCode(enrollment.secret, baseTime + 31_000);
+  const firstResult = verifyMfaChallenge({
+    challengeId: firstChallenge.challengeId,
+    code: firstCode,
+  });
+  const secondChallenge = createMfaChallenge({
+    principalId,
+    method: "totp",
+    challengeType: "login",
+  });
+  const secondResult = verifyMfaChallenge({
+    challengeId: secondChallenge.challengeId,
+    code: firstCode,
+  });
+  Date.now = originalDateNow;
+
+  assert.equal(firstResult.verified, true);
+  assert.equal(secondResult.verified, false);
+  assert.equal(secondResult.status, "failed");
+});
+
+test("createMfaChallenge enforces per-principal rate limiting", () => {
+  const principalId = "user-rate-limit-" + Date.now();
+  const enrollment = startMfaEnrollment({ principalId, method: "totp" });
+  completeMfaEnrollment({
+    enrollmentId: enrollment.enrollmentId,
+    verificationCode: generateTotpCode(enrollment.secret),
+  });
+
+  for (let index = 0; index < 5; index++) {
+    createMfaChallenge({
+      principalId,
+      method: "totp",
+      challengeType: "login",
+    });
+  }
+
+  assert.throws(
+    () => createMfaChallenge({
+      principalId,
+      method: "totp",
+      challengeType: "login",
+    }),
+    /mfa\.challenge_rate_limited/,
+  );
 });
 
 test("verifyMfaChallenge fails with incorrect code", () => {

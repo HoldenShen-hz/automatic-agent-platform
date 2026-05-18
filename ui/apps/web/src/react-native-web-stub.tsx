@@ -1,15 +1,29 @@
 import type { ButtonHTMLAttributes, CSSProperties, PropsWithChildren, ReactElement } from "react";
 
-type StyleInput = CSSProperties | readonly CSSProperties[] | undefined;
+type NativeStyle = Record<string, unknown>;
+
+export type ViewStyle = NativeStyle;
+export type TextStyle = NativeStyle;
+type StyleValue = NativeStyle | false | undefined;
+type StyleInput = StyleValue | readonly StyleValue[];
+
+export interface TouchableOpacityProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
+  readonly style?: StyleInput;
+  readonly onPress?: () => void;
+  readonly activeOpacity?: number;
+}
 
 function mergeStyle(style: StyleInput): CSSProperties | undefined {
   if (style == null) {
     return undefined;
   }
   if (Array.isArray(style)) {
-    return style.reduce<CSSProperties>((merged, item) => ({ ...merged, ...item }), {});
+    return style.reduce<CSSProperties>((merged, item) => item == null || item === false ? merged : { ...merged, ...(item as CSSProperties) }, {});
   }
-  return style;
+  if (style === false) {
+    return undefined;
+  }
+  return style as CSSProperties;
 }
 
 export function View({ children, style }: PropsWithChildren<{ style?: StyleInput }>): ReactElement {
@@ -21,7 +35,7 @@ export function Text({ children, style }: PropsWithChildren<{ style?: StyleInput
 }
 
 export function TouchableOpacity(
-  { children, style, onPress, ...props }: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement> & { style?: StyleInput; onPress?: () => void }>,
+  { children, style, onPress, activeOpacity: _activeOpacity, ...props }: PropsWithChildren<TouchableOpacityProps>,
 ): ReactElement {
   return (
     <button
@@ -42,7 +56,7 @@ export function TouchableOpacity(
 }
 
 export const StyleSheet = {
-  create<T extends Record<string, CSSProperties>>(styles: T): T {
+  create<T extends Record<string, NativeStyle>>(styles: T): T {
     return styles;
   },
 };

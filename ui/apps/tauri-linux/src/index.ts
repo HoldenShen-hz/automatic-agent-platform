@@ -4,11 +4,11 @@ import { createDesktopPlatformAdapter } from "@aa/shared-platform";
 export interface DesktopShellManifest {
   readonly platform: Extract<PlatformId, "linux">;
   readonly runtime: "tauri";
-  readonly supportsBackgroundAgent: boolean;
-  readonly supportsNotifications: boolean;
-  readonly supportsSystemTray: boolean;
-  readonly supportsWaylandXdg: boolean;
-  readonly supportsThemeDetection: boolean;
+  readonly supportsBackgroundAgent?: boolean;
+  readonly supportsNotifications?: boolean;
+  readonly supportsSystemTray?: boolean;
+  readonly supportsWaylandXdg?: boolean;
+  readonly supportsThemeDetection?: boolean;
   readonly updateChannel: "stable" | "beta";
 }
 

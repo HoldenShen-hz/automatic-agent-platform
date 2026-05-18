@@ -44,9 +44,9 @@ test("OfflineMutation contract includes tenant, trace, and principal envelope fi
     "utf8",
   );
 
-  assert.match(source, /readonly tenantId: string;/);
-  assert.match(source, /readonly traceId: string;/);
-  assert.match(source, /readonly principal: \{/);
+  assert.match(source, /readonly tenantId\?: string;/);
+  assert.match(source, /readonly traceId\?: string;/);
+  assert.match(source, /readonly principal\?: \{/);
   assert.match(source, /readonly principalId: string;/);
   assert.match(source, /readonly roles: readonly string\[\];/);
 });

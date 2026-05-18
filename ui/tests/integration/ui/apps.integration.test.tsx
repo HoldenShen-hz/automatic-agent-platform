@@ -8,6 +8,8 @@ import { createWebRuntimeClients, createWebRuntimeConfig } from "../../../apps/w
 import { WebAppShell } from "../../../apps/web/src/app-shell";
 import type { FeatureModule } from "@aa/ui-core";
 
+const mockedCreateRouteGuardChain = vi.mocked(createRouteGuardChain);
+
 // Integration tests for UI components across apps
 // These tests verify cross-component integration and data flow
 
@@ -103,7 +105,7 @@ describe("UI integration: web app-shell with auth context", () => {
   });
 
   it("denies access for insufficient permissions", () => {
-    createRouteGuardChain.mockReturnValueOnce({
+    mockedCreateRouteGuardChain.mockReturnValueOnce({
       evaluate: () => ({ allowed: false, reason: "Insufficient permissions" }),
     });
 

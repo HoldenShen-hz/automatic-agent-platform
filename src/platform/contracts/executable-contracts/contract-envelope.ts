@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { newId, nowIso } from "../types/ids.js";
 import { CONTRACT_SCHEMA_VERSION } from "./contract-models.js";
@@ -67,12 +67,11 @@ export function verifyContractEnvelopeSignature<TPayload>(
       ? envelope.payload
       : JSON.stringify(envelope.payload);
     const signatureInput = `${envelope.schemaVersion}:${envelope.commandId}:${envelope.correlationId}:${envelope.timestamp}:${payloadString}`;
-    const expectedSignature = createHash("sha256")
+    const expectedSignature = createHmac("sha256", secretKey)
       .update(signatureInput)
-      .update(secretKey)
       .digest("hex");
 
-    if (!timingSafeEqual(envelope.signature, expectedSignature)) {
+    if (!timingSafeHexEqual(envelope.signature, expectedSignature)) {
       return {
         valid: false,
         error: "signature_invalid: ContractEnvelope signature verification failed",
@@ -101,9 +100,8 @@ export function signContractEnvelope<TPayload>(
     ? envelope.payload
     : JSON.stringify(envelope.payload);
   const signatureInput = `${envelope.schemaVersion}:${envelope.commandId}:${envelope.correlationId}:${envelope.timestamp}:${payloadString}`;
-  const signature = createHash("sha256")
+  const signature = createHmac("sha256", secretKey)
     .update(signatureInput)
-    .update(secretKey)
     .digest("hex");
 
   return {
@@ -112,13 +110,11 @@ export function signContractEnvelope<TPayload>(
   };
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
+function timingSafeHexEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) {
     return false;
   }
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
+  return timingSafeEqual(leftBuffer, rightBuffer);
 }

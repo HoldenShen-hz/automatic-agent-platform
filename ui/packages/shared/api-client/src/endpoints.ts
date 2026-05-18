@@ -237,9 +237,10 @@ function unwrapCollectionResponse<T>(
   if (Array.isArray(response)) {
     return response;
   }
+  const responseObject = response as Record<string, unknown>;
 
   for (const key of keys) {
-    const value = response[key];
+    const value = responseObject[key];
     if (Array.isArray(value)) {
       return value as readonly T[];
     }

@@ -98,6 +98,9 @@ describe("shared api-client runtime regressions", () => {
       await vi.runAllTimersAsync();
       const result = await settled;
       expect(result.ok).toBe(false);
+      if (result.ok) {
+        throw new Error("expected request to fail");
+      }
       expect(result.error).toBeInstanceOf(Error);
       expect((result.error as Error).message).toBe("rest.http_error:503");
     }
@@ -116,7 +119,7 @@ describe("shared api-client runtime regressions", () => {
       public static instances: FakeSocket[] = [];
       public readonly sent: string[] = [];
       public readonly url: string;
-      public readonly protocols?: string | string[];
+      public readonly protocols: string | string[] | undefined;
       public readyState = FakeSocket.OPEN;
       public onopen: (() => void) | null = null;
       public onmessage: ((event: { data: string }) => void) | null = null;
@@ -208,6 +211,9 @@ describe("shared api-client runtime regressions", () => {
         );
 
       expect(result.ok).toBe(false);
+      if (result.ok) {
+        throw new Error("expected request to fail");
+      }
       expect(result.error).toBeInstanceOf(RestHttpError);
       expect((result.error as RestHttpError).status).toBe(testCase.status);
       expect((result.error as RestHttpError).uiAction).toBe(testCase.expectedAction);
@@ -221,8 +227,8 @@ describe("shared api-client runtime regressions", () => {
       status: 200,
       data: { ok: true } as T,
     }));
-    const queue = { enqueue } as Parameters<typeof createOfflineQueueInterceptor>[0];
-    const client = new DefaultRESTClient(transport, [createOfflineQueueInterceptor(queue)]);
+    const queue = { enqueue } as unknown as Parameters<typeof createOfflineQueueInterceptor>[0];
+    const client = new DefaultRESTClient(transport as unknown as ConstructorParameters<typeof DefaultRESTClient>[0], [createOfflineQueueInterceptor(queue)]);
     const onlineDescriptor = Object.getOwnPropertyDescriptor(window.navigator, "onLine");
 
     Object.defineProperty(window.navigator, "onLine", {
@@ -235,7 +241,7 @@ describe("shared api-client runtime regressions", () => {
     expect(transport).not.toHaveBeenCalled();
 
     if (onlineDescriptor == null) {
-      delete (window.navigator as Navigator & { onLine?: boolean }).onLine;
+      Reflect.deleteProperty(window.navigator as unknown as Record<string, unknown>, "onLine");
     } else {
       Object.defineProperty(window.navigator, "onLine", onlineDescriptor);
     }

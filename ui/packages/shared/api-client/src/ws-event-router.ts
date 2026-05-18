@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { WSEventEnvelope, WSClient } from "./ws-client";
+import type { WSEventEnvelope, WSClient } from "./ws-client.js";
 
 export interface RoutedRealtimeEvent {
   readonly scope: "status" | "query" | "panic";

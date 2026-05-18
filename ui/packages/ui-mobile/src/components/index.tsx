@@ -22,7 +22,7 @@ export interface MobileFeatureCard {
 }
 
 export function createMobileScreenDescriptor(
-  manifest: { id: string; title: string },
+  manifest: { id: string; title: string; [key: string]: unknown },
   tab: MobileScreenDescriptor["tab"],
 ): MobileScreenDescriptor {
   return {
@@ -45,9 +45,14 @@ interface ButtonProps extends TouchableOpacityProps {
 export function Button({ variant = "primary", size = "medium", style, children, ...props }: ButtonProps): React.JSX.Element {
   const buttonStyles: ViewStyle[] = [styles.button, styles[`button_${variant}`], styles[`button_${size}`]];
   const textStyles: TextStyle[] = [styles.buttonText, styles[`buttonText_${variant}`], styles[`buttonText_${size}`]];
+  const resolvedButtonStyle = Array.isArray(style)
+    ? [...buttonStyles, ...style]
+    : style == null
+      ? buttonStyles
+      : [...buttonStyles, style];
 
   return (
-    <TouchableOpacity style={[buttonStyles, style]} {...props}>
+    <TouchableOpacity style={resolvedButtonStyle} {...props}>
       <Text style={textStyles}>{children}</Text>
     </TouchableOpacity>
   );

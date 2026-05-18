@@ -1,5 +1,6 @@
 import type { EnvironmentName } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { parseBoolean } from "./remaining-cli-env-support.js";
 import { readTrimmedEnv } from "./runtime-env.js";
 
 const RELEASE_ACTIONS = ["summary", "export", "execute", "list"] as const;
@@ -103,7 +104,7 @@ export function loadReleasePipelineCliEnv(env: NodeJS.ProcessEnv = process.env):
     action,
     dbPath: optionalEnv(env, "AA_DB_PATH"),
     runnerMode: readRunner(env),
-    triggerDeploy: readTrimmedEnv(env, "AA_RELEASE_TRIGGER_DEPLOY") === "true",
+    triggerDeploy: parseBoolean(env, "AA_RELEASE_TRIGGER_DEPLOY") ?? false,
     environment: readEnvironment(env, action),
     version: readVersionLikeEnv(env, action, "AA_RELEASE_VERSION"),
     commitSha: readVersionLikeEnv(env, action, "AA_RELEASE_COMMIT_SHA"),

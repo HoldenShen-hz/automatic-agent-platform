@@ -104,6 +104,33 @@ test("validateStartupEnv accepts boolean-like strings for AA_LOG_STDOUT", () => 
   }
 });
 
+test("validateStartupEnv trims whitespace-only strings and rejects empty effective values", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "   ",
+  });
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((e) => e.key === "AA_DB_PATH"));
+});
+
+test("validateStartupEnv does not require plugin sandbox root when egress is explicitly false", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_PLUGIN_ALLOW_NETWORK_EGRESS: "false",
+  });
+  assert.equal(result.success, true);
+});
+
+test("validateStartupEnv rejects conflicting postgres DSN aliases", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_STORAGE_DRIVER: "postgres",
+    AA_STORAGE_POSTGRES_DSN: "postgresql://db-a",
+    AA_PG_DSN: "postgresql://db-b",
+  });
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((e) => e.key === "AA_STORAGE_POSTGRES_DSN"));
+});
+
 test("validateStartupEnv fails for invalid AA_LOG_STDOUT", () => {
   const result = validateStartupEnv({
     AA_DB_PATH: "/tmp/db",

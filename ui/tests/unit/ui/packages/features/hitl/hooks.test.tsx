@@ -1,43 +1,45 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const mockClient = { post: vi.fn() };
-const mockWsClient = { subscribe: vi.fn(() => () => undefined) };
-const mockFetchApprovals = vi.fn(async () => ([
-  {
-    approvalId: "approval-1",
-    taskId: "task-1",
-    riskLevel: "high",
-    reasonSummary: "Patch required",
-  },
-  {
-    approvalId: "approval-2",
-    taskId: "task-2",
-    riskLevel: "medium",
-    reasonSummary: "Override required",
-  },
-]));
-const mockSubmitApprovalTextInput = vi.fn(async () => ({ ok: true }));
-const mockEditApproval = vi.fn(async () => ({ ok: true }));
-const mockEscalateApproval = vi.fn(async () => ({ ok: true }));
-const mockDeferApproval = vi.fn(async () => ({ ok: true }));
-const mockResumeWorkflow = vi.fn(async () => ({ ok: true }));
+const mocks = vi.hoisted(() => ({
+  mockClient: { post: vi.fn() },
+  mockWsClient: { subscribe: vi.fn(() => () => undefined) },
+  mockFetchApprovals: vi.fn(async () => ([
+    {
+      approvalId: "approval-1",
+      taskId: "task-1",
+      riskLevel: "high",
+      reasonSummary: "Patch required",
+    },
+    {
+      approvalId: "approval-2",
+      taskId: "task-2",
+      riskLevel: "medium",
+      reasonSummary: "Override required",
+    },
+  ])),
+  mockSubmitApprovalTextInput: vi.fn(async () => ({ ok: true })),
+  mockEditApproval: vi.fn(async () => ({ ok: true })),
+  mockEscalateApproval: vi.fn(async () => ({ ok: true })),
+  mockDeferApproval: vi.fn(async () => ({ ok: true })),
+  mockResumeWorkflow: vi.fn(async () => ({ ok: true })),
+}));
 
 vi.mock("@aa/shared-state", () => ({
-  useRestClient: () => mockClient,
-  useWsClient: () => mockWsClient,
+  useRestClient: () => mocks.mockClient,
+  useWsClient: () => mocks.mockWsClient,
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  fetchApprovals: (...args: unknown[]) => mockFetchApprovals(...args),
+  fetchApprovals: mocks.mockFetchApprovals,
   approveApproval: vi.fn(async () => ({ ok: true })),
   rejectApproval: vi.fn(async () => ({ ok: true })),
   delegateApproval: vi.fn(async () => ({ ok: true })),
-  resumeWorkflow: (...args: unknown[]) => mockResumeWorkflow(...args),
-  editApproval: (...args: unknown[]) => mockEditApproval(...args),
-  escalateApproval: (...args: unknown[]) => mockEscalateApproval(...args),
-  deferApproval: (...args: unknown[]) => mockDeferApproval(...args),
-  submitApprovalTextInput: (...args: unknown[]) => mockSubmitApprovalTextInput(...args),
+  resumeWorkflow: mocks.mockResumeWorkflow,
+  editApproval: mocks.mockEditApproval,
+  escalateApproval: mocks.mockEscalateApproval,
+  deferApproval: mocks.mockDeferApproval,
+  submitApprovalTextInput: mocks.mockSubmitApprovalTextInput,
 }));
 
 import { useHitlVm } from "../../../../../../packages/features/hitl/src/hooks";
@@ -58,8 +60,8 @@ describe("useHitlVm", () => {
       await result.current.patch("approval-1", { field: "value" });
     });
 
-    expect(mockSubmitApprovalTextInput).toHaveBeenCalledWith(
-      mockClient,
+    expect(mocks.mockSubmitApprovalTextInput).toHaveBeenCalledWith(
+      mocks.mockClient,
       "approval-1",
       JSON.stringify({ action: "patch", patch: { field: "value" } }),
     );
@@ -79,8 +81,8 @@ describe("useHitlVm", () => {
       await result.current.override("approval-2", { mode: "full" });
     });
 
-    expect(mockSubmitApprovalTextInput).toHaveBeenCalledWith(
-      mockClient,
+    expect(mocks.mockSubmitApprovalTextInput).toHaveBeenCalledWith(
+      mocks.mockClient,
       "approval-2",
       JSON.stringify({ action: "override", override: { mode: "full" } }),
     );
@@ -103,9 +105,9 @@ describe("useHitlVm", () => {
       await result.current.resume("workflow-1", "supervised");
     });
 
-    expect(mockEditApproval).toHaveBeenCalledWith(mockClient, "approval-1", { field: "owner", value: "ops" });
-    expect(mockEscalateApproval).toHaveBeenCalledWith(mockClient, "approval-2", "need higher authority");
-    expect(mockDeferApproval).toHaveBeenCalledWith(mockClient, "approval-1", "2026-05-07T12:00:00Z");
-    expect(mockResumeWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1", "supervised");
+    expect(mocks.mockEditApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1", { field: "owner", value: "ops" });
+    expect(mocks.mockEscalateApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-2", "need higher authority");
+    expect(mocks.mockDeferApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1", "2026-05-07T12:00:00Z");
+    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1", "supervised");
   });
 });

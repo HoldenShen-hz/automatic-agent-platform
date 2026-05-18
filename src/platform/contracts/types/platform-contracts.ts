@@ -18,7 +18,6 @@
 import { newId, nowIso } from "./ids.js";
 export { createProjectionUpdate } from "../projection-update/index.js";
 export type { ProjectionUpdate } from "../projection-update/index.js";
-export type RequestEnvelope<TPayload = unknown> = RequestEnvelopeLegacy<TPayload>;
 export type StateCommandType = "update_truth" | "append_event" | "write_checkpoint" | "store_artifact";
 
 // =============================================================================

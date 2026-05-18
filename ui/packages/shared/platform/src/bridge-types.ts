@@ -45,6 +45,11 @@ export interface MobileBridge {
   enableScreenSecurity(enabled: boolean): Promise<void>;
   onForeground(listener: () => void): () => void;
   onBackground(listener: () => void): () => void;
+  registerPushToken?(): Promise<string>;
+  authenticateBiometric?(): Promise<boolean>;
+  openOfflineDatabase?(name: string): Promise<void>;
+  performGestureFeedback?(gesture: string): Promise<void>;
+  refreshWidget?(widgetId: string): Promise<void>;
 }
 
 declare global {
@@ -53,7 +58,9 @@ declare global {
     __TAURI__?: TauriBridge;
   }
 
-  var __AA_MOBILE__: MobileBridge | undefined;
+  interface GlobalThis {
+    __AA_MOBILE__?: MobileBridge | undefined;
+  }
 }
 
 export {};

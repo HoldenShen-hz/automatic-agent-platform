@@ -24,7 +24,7 @@ vi.mock("@aa/ui-core", () => ({
       ))}
     </div>
   ),
-}), { virtual: true });
+}));
 
 vi.mock("../../../../../../packages/features/takeover/src/hooks", () => ({
   useTakeoverVm: () => ({
