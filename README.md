@@ -35,13 +35,24 @@ npm run test:secret-providers
 npm run package:stable
 ```
 
+Stable script overview:
+
+- `npm run package:stable` — package assembly and release artifact checks
+- `npm run validate:stable` — contract/config/runtime validation gate
+- `npm run migration:stable` — migration and persistence readiness gate
+- `npm run chaos:stable` — controlled chaos/recovery drill entry
+- `npm run concurrency:stable` — concurrency and queue pressure validation
+- `npm run db-queue-disconnect:stable` — DB/queue disconnect recovery validation
+
 ## Documentation
 
 - `docs_zh/architecture/00-platform-architecture.md` — v2.7 architecture source
 - `docs_zh/architecture/01-code-structure.md` — code structure design
-- `docs_zh/migration/00-migration-guideline.md` — migration rules
+- `docs_zh/migration/README.md` — migration rules and E2E workflow migration index
 - `docs_zh/adr/` — architectural decisions
 - `docs_zh/contracts/` — authoritative contracts
+- `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
+- `translate_docs.py` — legacy translation helper with maintenance notes in its module docstring
 - `docs_zh/analysis/00-architecture-coverage-matrix.md` — chapter-to-code coverage matrix
 - `docs_zh/analysis/01-codebase-vs-design-review.md` — current codebase review
 

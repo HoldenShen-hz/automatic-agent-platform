@@ -21,10 +21,10 @@ interface DriftDetector {
 }
 
 type DriftDetectorType =
-  | 'statistical_test'
-  | 'threshold_monitoring'
-  | 'sequence_comparison'
-  | 'sliding_window';
+  | "statistical_test"
+  | "threshold_monitoring"
+  | "sequence_comparison"
+  | "sliding_window";
 ```
 
 ## 4. `DriftDetectorConfig` 最小字段

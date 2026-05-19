@@ -113,17 +113,18 @@ test("DlqService discard transitions status and records reason", () => {
   assert.deepEqual(discarded.operatorActionLog[0]!.details, { discardReason: "poison_message" });
 });
 
-test("DlqService markRetryExhausted sets retryExhaustedAt and keeps status pending", () => {
+test("DlqService markRetryExhausted sets retryExhaustedAt and transitions to discarded", () => {
   const service = new DlqService();
   const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
   service.scheduleRetry(record.deadLetterId, 30_000);
 
   const exhausted = service.markRetryExhausted(record.deadLetterId, "operator_3");
 
-  assert.equal(exhausted.status, "pending");
+  assert.equal(exhausted.status, "discarded");
   assert.ok(exhausted.retryExhaustedAt !== null);
   assert.equal(exhausted.nextRetryAt, null);
   assert.equal(exhausted.operatorActionLog[0]!.action, "retry_exhausted");
+  assert.equal(exhausted.operatorActionLog[0]!.newStatus, "discarded");
 });
 
 // --- Retry ---
@@ -178,7 +179,7 @@ test("DlqService cancelRetry clears nextRetryAt and returns to pending", () => {
 
 // --- 3 retries then DLQ (retry exhaustion flow) ---
 
-test("DlqService after 3 retries and markRetryExhausted the record is in DLQ state", () => {
+test("DlqService after 3 retries and markRetryExhausted the record is discarded from retry flow", () => {
   const service = new DlqService();
   const record = service.enqueue({
     sourceEventId: "evt_retry_chain",
@@ -198,7 +199,7 @@ test("DlqService after 3 retries and markRetryExhausted the record is in DLQ sta
   // Exhaust retries
   const exhausted = service.markRetryExhausted(record.deadLetterId);
 
-  assert.equal(exhausted.status, "pending");
+  assert.equal(exhausted.status, "discarded");
   assert.equal(exhausted.retryCount, 3);
   assert.ok(exhausted.retryExhaustedAt !== null);
   assert.equal(exhausted.nextRetryAt, null);

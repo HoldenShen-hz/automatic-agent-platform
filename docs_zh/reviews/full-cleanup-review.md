@@ -44,7 +44,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
 **状态**: 全部过期 - 性能/日志测试产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
+rm -rf .tmp/
 ```
 
 ---
@@ -63,7 +63,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
 **状态**: 全部过期 - 测试产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
+rm -rf .test-db/
 ```
 
 ---
@@ -78,7 +78,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
 
 ```bash
 # 确认后执行:
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-artifacts/
+rm -rf .aa-tool-artifacts/
 ```
 
 ---
@@ -146,7 +146,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-a
 **状态**: 可安全删除 - 旧备份
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/tests/performance.bak/
+rm -rf tests/performance.bak/
 ```
 
 ---
@@ -171,7 +171,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/tests/perf
 **状态**: issue #2014 修复的重复构建产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/dist_issue2014/
+rm -rf dist_issue2014/
 ```
 
 ---
@@ -216,7 +216,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/dist_issue
 **状态**: 可安全删除
 
 ```bash
-find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_Store" -delete
+find . -name ".DS_Store" -delete
 ```
 
 ---
@@ -229,7 +229,7 @@ find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_S
 - `docs_zh/reviews/extract-issues.mjs` (JS 脚本, 不需要翻译)
 
 ### 仅在 docs_en/ 中的文件 (英文独有):
-- `docs_en/adr/109-v4.3-contract-freeze.md`
+- `docs_en/adr/109-contract-freeze.md`
 - `docs_en/architecture/v3.0-domain-research.md`
 - `docs_en/contracts/events_and_checkpoints_contract.md`
 - `docs_en/contracts/smtp_contract.md`

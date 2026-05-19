@@ -52,7 +52,7 @@ interface EdgeRuntime {
 |------|------|
 | last_write_wins | 最后写入胜出 |
 | server_wins | 服务端优先 |
-| merge | 合并冲突 |
+| merge | 仅用于 projection / 非关键统计对象的合并冲突 |
 | manual | 人工解决 |
 
 ## 后果
@@ -80,3 +80,4 @@ interface EdgeRuntime {
 ## v4.3 ADR Remediation
 
 - R3-60: 本 ADR 定义 `last_write_wins` 为冲突解决策略之一，与 §25.11 真相数据要求不矛盾。根因是边缘部署场景（工厂、门店等）的离线数据同步与中心化真相数据系统有不同的约束。修复：正文明确 `last_write_wins` 仅适用于边缘临时数据同步场景，不适用于需要保持真相一致性的核心状态数据；后者必须使用 `server_wins` 或 `merge` 策略。
+- `merge` 同样只允许用于 projection / 缓存 / 非权威统计对象；`truth / budget / side effect` 仍必须经过中心化 authoritative writer 与 fencing 保护。

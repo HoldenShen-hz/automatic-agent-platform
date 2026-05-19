@@ -39,20 +39,19 @@
 
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
-| `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
-| `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
-| `platform.harness.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
-| `platform.harness.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.harness_run.created` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
+| `platform.harness_run.status_changed` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
+| `platform.harness_run.completed` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
+| `platform.node_run.created` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
+| `platform.node_run.completed` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
+| `platform.harness_run.failed` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
 | `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
 | `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
 | `execution.succeeded` | `tier1` | runtime | transition service, observability | 是 | 是 |
 | `execution.failed` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
 | `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
-| `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
-| `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
-| `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
+| `oapeflir.view.run_lifecycle` | `tier2` | oapeflir loop service | oapeflir projection, inspect projection | 否 | 建议 |
 | `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
 | `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
@@ -61,14 +60,7 @@
 | `release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
 | `release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
 | `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
-| `loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
-| `gateway.message_received` | `tier2` | gateway adapter | runtime, observability | 否 | 建议 |
-| `gateway.message_sent` | `tier2` | gateway adapter | observability | 否 | 否 |
-| `tool.call_started` | `tier2` | tool executor | observability | 否 | 否 |
-| `tool.call_completed` | `tier2` | tool executor | observability, cost tracker | 否 | 建议 |
-| `supervisor.health_warning` | `tier2` | supervisor | observability, operator UI | 否 | 建议 |
 | `stream.chunk_emitted` | `tier3` | gateway streaming bridge | UI / channel client | 否 | 否 |
-| `heartbeat.sampled` | `tier3` | supervisor / runtime | observability | 否 | 否 |
 | `dispatch:ticket_created` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | ��议 |
 | `dispatch:decision_recorded` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |

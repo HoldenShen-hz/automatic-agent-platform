@@ -17,13 +17,16 @@ import {
   SQLITE_MIGRATION_LEDGER_SQL,
   getLatestSqliteMigrationVersion,
 } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SNAPSHOT_VERSIONS } from "./generate-snapshots.js";
 
 function isCompatibleFixtureSkip(message: string): boolean {
   return message.includes("duplicate column name") || message.includes("no such column: organization_id");
 }
 
 function getCompatibilitySkipBudget(): number {
-  return Math.max(5, Math.ceil(SQLITE_MIGRATIONS.length * 0.2));
+  // Keep this as an explicit ceiling for the current known legacy backfills.
+  // A percentage-based budget would hide newly introduced migration regressions.
+  return 6;
 }
 
 test("SQLite migrations array has contiguous versions from 1 to latest", () => {
@@ -216,7 +219,6 @@ test("migrations can be applied incrementally in order", () => {
 
 test("snapshot generation script can generate manifest structure", () => {
   // Verify the snapshot versions array is valid
-  const SNAPSHOT_VERSIONS = [1, 5, 10, 20, 30, 40];
   const latestVersion = getLatestSqliteMigrationVersion();
 
   for (const v of SNAPSHOT_VERSIONS) {
@@ -251,6 +253,6 @@ test("checked-in migration snapshot manifest references existing snapshot databa
   assert.ok(manifest.snapshots.length > 0, "manifest should contain at least one snapshot");
   for (const snapshot of manifest.snapshots) {
     assert.ok(snapshot.version > 0, "snapshot version should be positive");
-    assert.ok(existsSync(snapshot.path), `snapshot file should exist: ${snapshot.path}`);
+    assert.ok(existsSync(join(snapshotsDir, snapshot.path)), `snapshot file should exist: ${snapshot.path}`);
   }
 });

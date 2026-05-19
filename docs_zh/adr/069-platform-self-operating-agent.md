@@ -1,6 +1,6 @@
 # ADR-069 平台自运维 Agent 架构
 
-- 状态：Accepted
+- 状态：Partially Superseded by v4.3 control-plane and runtime authority ADRs
 - 决策日期：2026-04-20
 
 ## 背景
@@ -49,6 +49,8 @@ interface SelfOpsAgent {
 | 扩缩容 | 是 | 配置范围内可自动 |
 | 修改配置 | 是 | 否 |
 | 数据操作 | 是 | 否 |
+
+- 任何会修改运行时真相对象的动作，最终都必须下沉为 `OperationalDirective` 并经 `RuntimeStateMachine.transition(command)` 落地，SelfOpsAgent 不能直接写 truth state。
 
 ### 人工干预
 

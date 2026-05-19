@@ -89,6 +89,7 @@ interface ImprovementCandidate {
 type ImprovementCandidateStatus =
   | 'candidate_created'
   | 'under_review'
+  | 'quarantined'
   | 'approved'
   | 'rejected'
   | 'evaluation_enabled'
@@ -107,9 +108,11 @@ type ImprovementCandidateStatus =
                    人工拒绝
 candidate_created ──→ rejected
       ↑
-      │ 自动评估触发
+      │ 自动评估触发 / quarantine 解除
       │
 under_review ──→ approved
+      │
+      └────────→ quarantined
       ↑                  │
       │                  ↓
       │            evaluation_enabled (L1)
@@ -135,6 +138,7 @@ auto_rollback → rolled_back
 
 约束：
 - `candidate_created` 为初态，`rejected` / `rolled_back` 为终态
+- `quarantined` 表示候选因 guardrail、evidence 缺口或回归风险被临时冻结，解除前不得进入 rollout 级别。
 - `auto_rollback` 触发后只允许流转到 `rolled_back`，不允许直接恢复
 - `released` 后若发现严重问题，需走变更委员会流程方可回退
 ```

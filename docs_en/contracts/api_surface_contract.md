@@ -85,6 +85,11 @@ If the platform subsequently exposes an independent execution control plane, the
 - rollout / feedback / timeline interfaces should return explicit `not_enabled` or controlled `404` semantics if the current deployment does not have the corresponding capability enabled, rather than pretending to be a successful empty object.
 - knowledge / domain / plugin / artifact plane interfaces should return explicit `not_enabled` if the current deployment does not have the corresponding capability enabled, rather than silently returning an empty list.
 
+## v4.3 Contract Remediation
+
+- Contract-derived clients must use the shared `ApiResponse<T>` envelope rather than ad hoc `Promise<unknown>` signatures.
+- HTTP status semantics for `404 / 409 / 413 / 415 / 429` are frozen by the platform API helpers and must stay aligned with controller behavior.
+
 ## 5. Supplementary Rules
 
 ### 5.1 Authentication

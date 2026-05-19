@@ -17,7 +17,7 @@
 | Gate 1 | 开发完成 | ≥5 few-shot + eval ≥20 条 |
 | Gate 2 | 测试通过 | 覆盖率 ≥80% |
 | Gate 3 | 认证通过 | Prompt Injection 100% |
-| Gate 4 | 金丝雀发布 | CANARY_5 → CANARY_20 → CANARY_50 → CANARY_100 |
+| Gate 4 | 金丝雀发布 | canary_5 → partial_25 → stable_75 → stable_100 |
 
 ### Gate 1 详细要求
 
@@ -38,8 +38,8 @@
 ### Canary 发布配置
 
 ```typescript
-const CANARY_STAGES = [5, 20, 50, 100];  // 百分比
-const DEFAULT_CANARY_PERCENT = 10;         // 默认 10%
+const CANARY_STAGES = [5, 25, 75, 100];  // 百分比
+const DEFAULT_CANARY_PERCENT = 5;          // 默认 5%
 ```
 
 ### Drift Detection Rollout

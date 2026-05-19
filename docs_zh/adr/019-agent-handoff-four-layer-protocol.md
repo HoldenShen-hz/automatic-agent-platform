@@ -7,7 +7,7 @@
 
 Multi-agent 场景下，agent 之间需要传递执行上下文（状态、计划、摘要）。当前实现使用自然语言 `priorSummaries` 传递，缺少结构化序列化和 token budget 控制。
 
-§12 定义了四层 Handoff 模型，本 ADR 正式采用该模型。
+本文定义并采用四层 Handoff 模型，本 ADR 作为当前结构化交接协议基线。
 
 ## 决策
 

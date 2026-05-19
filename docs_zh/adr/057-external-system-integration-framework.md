@@ -55,6 +55,9 @@ interface ExternalAdapter {
 - 认证凭证管理
 - 流量控制
 - 审计日志
+- 所有外部副作用必须声明 `side_effect_policy`
+- 高风险写入必须生成 `SideEffectRecord`
+- 会改变运行时真相的补偿/重试，必须通过 `RuntimeStateMachine` 与 X1 Reliability 边界协调
 
 ## 后果
 

@@ -17,7 +17,7 @@
   - `Router`
   - `Planner`
   - `DivisionCoordinator`
-  - `WorkflowExecutor`
+  - `HarnessRuntime`
   - `DecisionManager`
 
 ### 2.1 文档 canonical 写法

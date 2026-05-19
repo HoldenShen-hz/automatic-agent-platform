@@ -23,11 +23,14 @@
 | `id` | `string` | 事件唯一 ID |
 | `type` | `string` | 事件类型 |
 | `tier` | `tier1 \| tier2 \| tier3` | 可靠性等级 |
-| `task_id` | `string?` | 关联任务 |
+| `harness_run_id` | `string?` | 关联运行 truth |
+| `node_run_id` | `string?` | 关联节点运行 truth |
+| `attempt_id` | `string?` | 关联节点尝试 truth |
 | `session_id` | `string?` | 关联会话 |
 | `loop_iteration` | `integer?` | OAPEFLIR 第几轮 |
 | `stage` | `string?` | 关联 OAPEFLIR stage |
 | `trace_id` | `string?` | 链路追踪 ID |
+| `derived_from_event_id` | `string?` | 派生来源事件 |
 | `payload` | `json` | 事件正文 |
 | `created_at` | `timestamp` | 创建时间 |
 

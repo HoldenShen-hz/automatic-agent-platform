@@ -14,7 +14,7 @@
 | 角色 | 说明 | 界面 |
 |------|------|------|
 | business_operator | 业务操作者 | 简化界面 |
-| team_lead | 团队负责人 | 管理视图 |
+| org_node_owner(team) | `OrgNodeType.team` 的团队负责人 | 管理视图 |
 | executive | 高管 | 报表视图 |
 | admin | 管理员 | 全功能界面 |
 

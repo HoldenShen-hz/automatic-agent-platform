@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§59-§69` 引入运营成熟度层。当前仓库已有：
+当前权威口径对应 `docs_zh/architecture/00-platform-architecture.md` 中 explainability、drift、debugger、edge 与 ops maturity 章节。当前仓库已有：
 
 - `src/ops-maturity/explainability`
 - `src/ops-maturity/emergency`
@@ -70,4 +70,3 @@ v2.7 `§59-§69` 引入运营成熟度层。当前仓库已有：
 
 - `ops-maturity` 将按统一 runtime 扩展层推进，而不是逐目录各自演化
 - 后续优先实现 explainability、panic、agent lifecycle、edge runtime、cost optimizer 的 contract 对齐
-

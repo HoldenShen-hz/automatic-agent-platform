@@ -18,6 +18,12 @@
 | Targeted Tests | `./node_modules/.bin/tsx --test tests/integration/platform/control-plane/incident-control/container-ci-baseline.test.ts tests/unit/quality/full-coverage-operational-real-paths.test.ts tests/integration/sdk/cli/cli-index-integration.test.ts` |
 | Targeted Tests | `cd ui && ./node_modules/.bin/vitest run tests/unit/ui/shared/auth-service.test.ts tests/unit/ui/shared/ws-client.test.ts tests/shared/api-client-runtime-regressions.test.ts tests/shared/web-platform-security-regressions.test.ts tests/shared/ui-core-chart-regressions.test.tsx tests/unit/ui/apps/web/app-shell.test.tsx tests/unit/ui/apps/web/aa-sw.test.ts tests/unit/ui/apps/web/runtime.test.tsx` |
 | Targeted Tests | `cd ui && ./node_modules/.bin/vitest run tests/unit/ui/packages/features/domain-wizard/hooks.test.tsx tests/unit/ui/packages/features/takeover/hooks.test.tsx tests/unit/ui/packages/features/conversation/hooks.test.tsx` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/unit/docs/documentation-health.test.ts tests/fixtures/migration/migration-fixtures.test.ts tests/unit/testing/golden.test.ts tests/unit/platform/interface/api/oidc-oauth-service-coverage.test.ts` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/unit/helpers/index.test.ts tests/unit/platform/shared/observability/transports/fluentd-transport-edge-cases.test.ts tests/integration/platform/execution/queue/queue-adapter.integration.test.ts` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/golden/*.test.ts` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/unit/docs/documentation-health.test.ts` |
+| Targeted Tests | `./node_modules/.bin/tsx --test tests/unit/docs/documentation-health.test.ts` |
 | Targeted Tests | `cd ui && ./node_modules/.bin/vitest run tests/unit/ui/packages/domain-wizard/hooks.test.tsx tests/unit/ui/packages/domain-wizard/web.test.tsx` |
 | Targeted Tests | `cd ui && ./node_modules/.bin/vitest run tests/unit/ui/apps/web/app-shell.test.tsx tests/unit/ui/apps/security-configs.test.ts tests/shared/api-client-default-transport.test.ts tests/unit/ui/apps/web/runtime.test.tsx tests/tools/tooling.test.ts tests/shared/ws-runtime-connect-regression.test.tsx tests/unit/ui/apps/web/aa-sw.test.ts tests/shared/api-client-runtime-regressions.test.ts` |
 | Typecheck | `cd ui && npm run typecheck` |
@@ -28,7 +34,7 @@
 | Build | `npm run build` |
 | Typecheck | `npm run typecheck` |
 
-## 问题清单（已解决 280 项）
+## 问题清单（已解决 489 项）
 | 状态 | 编号 | 问题 | 依据 |
 | --- | --- | --- | --- |
 | 待处理 | N-0001 | `src/platform/` 既有 `five-plane-{interface,control-plane,orchestration,execution,state-evidence}/`，又有顶层并列的 `agent-delegation/`、`compliance/`、`contracts/`、`cost-management/`、`model-gateway/`、`ops-maturity/`、`prompt-engine/`、`prompt-registry/`、`remote-coordination/`、`stability/`、`structure/`、`shared/`、`architecture/`。 |  |
@@ -1185,7 +1191,7 @@
 | 待处理 | N-1152 | `PackSecurityService.executeInSandbox` 在 sandbox context 暴露 `Object.create`/`Object.assign`/`String.prototype.split` 等原生方法引用，攻击者可通过 `({}).constructor.constructor("return process")()` 经典 vm 逃逸返回宿主 process（src/scale-ecosystem/marketplace/pack-security-service.ts:389）。 |  |
 | 待处理 | N-1153 | `performance: { now: () => 0 }` 让所有 `executionTimeMs` 恒为 0；line 483 的 `executionTimeMs > 2000` DoS 检测永远不触发（src/scale-ecosystem/marketplace/pack-security-service.ts:374,483）。 |  |
 | 待处理 | N-1154 | `Promise: undefined` 注入会导致 sandbox 内任何 async 源码立刻抛 `Promise is not defined`，直接被记为 SAND018 "low"，使恶意 async pack 反而被低危过滤（src/scale-ecosystem/marketplace/pack-security-service.ts:410）。 |  |
-| 待处理 | N-1155 | `executeInSandbox` 用源码字符串 `/\bfetch\s*\(/i.test` 静态判断网络访问，攻击者可用 `globalThis["fet"+"ch"](...)` 或注入 unicode 转义绕过（src/scale-ecosystem/marketplace/pack-security-service.ts:333）。 |  |
+| 待处理 | N-1155 | `executeInSandbox` 用源码字符串 `/\bfetch\s*\(/i.test` 静态判断网络访问，攻击者可用 `globalThis["fet"+"ch"]` 再调用或注入 unicode 转义绕过（src/scale-ecosystem/marketplace/pack-security-service.ts:333）。 |  |
 | 待处理 | N-1156 | `vm.runInContext(wrappedCode, context, { timeout: 5000 })` 仅限制同步执行，调度异步任务/`while(true)` 内 try/catch 可绕过；timeout 不杀微任务，CPU 仍可被耗尽（src/scale-ecosystem/marketplace/pack-security-service.ts:475）。 |  |
 | 待处理 | N-1157 | `parseSemver` 用 `parts[0] ?? 0` 而上游 `parseInt(p,10) \|\| 0` 已把 NaN 化 0，导致 `1.x.0` 与 `1.0.0` 被视作同一版本，CVE 范围匹配漏判（src/scale-ecosystem/marketplace/pack-security-service.ts:127）。 |  |
 | 待处理 | N-1158 | `versionMatchesCveRange` 不支持 OR 子句（`\|\|`）和 `*`/`x` 通配；OSV 公布的范围如 `>=4.0.0 <4.17.22 \|\| >=5.0.0` 因 `every()` 全部失败漏报（src/scale-ecosystem/marketplace/pack-security-service.ts:284）。 |  |
@@ -1475,107 +1481,107 @@
 | 待处理 | N-1442 | `divisions/coding/schemas/coding-output.json` 等 per-division schema 存在，但 `division-loader.ts` 从不读 `schemas/`——division 侧 JSON schema 不被消费（divisions/coding/schemas/coding-output.json:1）。 |  |
 | 待处理 | N-1443 | `divisions/*/workflows/*.yaml` 被 `default_workflow:` id 字符串匹配到 loader 已构建的 workflow registry，从不解析——division 定义的 workflow steps 静默忽略（divisions/coding/workflows/coding_primary.yaml:1）。 |  |
 | 待处理 | N-1444 | README/`docs_zh/contracts/` 未声明 domain 与 division 的映射规则。 |  |
-| 待处理 | N-1445 | `docs_zh/contracts/typed_event_bus_contract.md` 仍含 11 处 `task_id\|workflow_id\|step_id\|execution_id` 字段，未替换为 `harnessRunId/nodeRunId/planGraphId`；`event_bus_contract.md` 同样仍出现 deprecated id 字段。 [R6-35/R6-37] |  |
-| 待处理 | N-1446 | `docs_zh/contracts/ui_console_and_cockpit_contract.md` 仍出现 5 处 `task_id\|workflow_id\|step_id\|execution_id\|step_status\|current_step` 类 deprecated 词汇。 [R7-31/R7-32/R7-33] |  |
+| 已解决 | N-1445 | `docs_zh/contracts/typed_event_bus_contract.md` 仍含 11 处 `task_id\|workflow_id\|step_id\|execution_id` 字段，未替换为 `harnessRunId/nodeRunId/planGraphId`；`event_bus_contract.md` 同样仍出现 deprecated id 字段。 [R6-35/R6-37] | `docs_zh/contracts/typed_event_bus_contract.md` 与 `docs_zh/contracts/event_bus_contract.md` 已统一改为 `harness_run_id / plan_graph_id / node_run_id / attempt_id / derived_from_event_id`。 |
+| 已解决 | N-1446 | `docs_zh/contracts/ui_console_and_cockpit_contract.md` 仍出现 5 处 `task_id\|workflow_id\|step_id\|execution_id\|step_status\|current_step` 类 deprecated 词汇。 [R7-31/R7-32/R7-33] | `docs_zh/contracts/ui_console_and_cockpit_contract.md` 已把核心字段收敛到 `task_projection_ref / harness_run_id / plan_graph_id / active_node_run_id / latest_attempt_receipt_ref`。 |
 | 已解决 | N-1447 | `rest-client.ts:400` `createRuntimeRESTClient` 默认 `baseUrl = "/api/v1"` 硬编码 v1，与"按 contract 协商版本"目标冲突。 | `ui/packages/shared/api-client/src/rest-client.ts` 与 `ui/apps/web/src/runtime.ts` 默认基地址已改为 `/api`，版本继续走 `Accept-Version` 协商；`tests/shared/api-client-default-transport.test.ts` 已回归。 |
 | 待处理 | N-1448 | `rollbackProcedure` 是源码内英文写死的 5 步字符串数组，未引用任何 contract / runbook，且只在 `down` action 上下文返回；与 `docs_zh/contracts/runtime_repository_and_migration_contract.md` 无双向溯源（src/platform/five-plane-state-evidence/truth/migration-runner.ts:62-70）。 |  |
 | 待处理 | N-1449 | `docs_zh/analysis/00-architecture-coverage-matrix.md:46` 列 `tests/integration/migration` 为存储抽象/迁移的覆盖路径，但仓库不存在该目录；唯一 PG 迁移集成测试位于 `tests/integration/sdk/migrate-sqlite-to-pg-integration-2278-2279.test.ts`，coverage matrix 与现实失同步（docs_zh/analysis/00-architecture-coverage-matrix.md:46）。 |  |
-| 待处理 | N-1450 | `docs_zh/migration/` 含 guideline+scope，`docs_zh/migrations/` 仅 e2e；`README.md:27` 单独指向 `docs_zh/migration/00-migration-guideline.md`，而 `docs_zh/migrations/e2e-workflow-state-migration.md` 没有任何索引引用，孤立文档（docs_zh/migrations/e2e-workflow-state-migration.md:1）。 |  |
-| 待处理 | N-1451 | ADR 目录存在 `003-memory-seven-layers.md`（"历史别名"）与 `003-memory-six-layers.md` 两个同号 ADR；`docs_zh/adr/` 与 `docs_en/adr/` 文件数 111 vs 112（多出 `109-v4.3-contract-freeze.md` 仅在英文），契约目录数 zh 151 / en 160 不齐。 [R3-62] |  |
-| 待处理 | N-1452 | 大量 `*:stable` 指令（`chaos:stable`、`concurrency:stable`、`db-queue-disconnect:stable`、`migration:stable` …），与 `validate:stable` 的依赖关系仅在 `ci:baseline` 隐式串联，README/AGENTS 无总览。 |  |
-| 待处理 | N-1453 | `docs_zh/reviews/issues-table.md` 多轮自我修订（2026-05-14/05-16/05-17/05-18），新读者难以判断哪些条目仍未关闭；该文件被 `tests/unit/docs/*`、`tests/integration/docs/architecture-consistency.test.ts` 当作真理来源对齐。 |  |
-| 待处理 | N-1454 | `docs_zh/` 与 `docs_en/` 双语全镜像维护，但 ADR/contract 计数差未通过同步检查脚本写入 CI；`translate_docs.py` 在仓库根但无文档说明。 |  |
-| 待处理 | N-1455 | `docs_zh/architecture/00-platform-architecture.md` 是 README/AGENTS 多次引用的「权威基线」，目录命名（`five-plane-*`）与文档中文章节、ADR 名义层次（`001-three-layer-architecture.md` 与 v2.7"七层"叙述）混用。 |  |
-| 待处理 | N-1456 | `docs_zh/contracts/runtime_state_machine_contract.md` 仍以 `ExecutionStatus 8-state` 与 `WorkflowStatus 7-state` 为主线，未扩到 §25.8 NodeRun 14 状态 / HarnessRun 13 状态。 [R2-13/R2-14] |  |
-| 待处理 | N-1457 | `docs_zh/contracts/cost_and_budget_contract.md` 中 `execution_id` 仍出现 3 处，与 `harness_run_id` 使用比例 3:11，新旧并存。 [R2-15..R2-22] |  |
-| 待处理 | N-1458 | `docs_zh/adr/{001-three-layer-architecture.md,002-division-system.md,004-workflow-routing.md}` 当前 Status 仍为 `Accepted`。 [R5-58/R5-59/R5-60] |  |
-| 待处理 | N-1459 | `docs_zh/adr/033-architecture-implementation-roadmap.md`、`070-conclusion.md` 仍 `Accepted` 且仍以 Phase 1-7 / OAPEFLIR loop invariant 为 canonical 表述。 [R6-48/R6-52] |  |
-| 待处理 | N-1460 | ADR-034/009/007/069/072/078 等仍 `Accepted`，未标 Superseded 或加 remediation 节。 [R5-62/R6-50/R6-51/R6-54/R6-55/R6-56] |  |
+| 已解决 | N-1450 | `docs_zh/migration/` 含 guideline+scope，`docs_zh/migrations/` 仅 e2e；`README.md:27` 单独指向 `docs_zh/migration/00-migration-guideline.md`，而 `docs_zh/migrations/e2e-workflow-state-migration.md` 没有任何索引引用，孤立文档（docs_zh/migrations/e2e-workflow-state-migration.md:1）。 | `README.md` 已改为指向 `docs_zh/migration/README.md`；新增 `docs_zh/migration/e2e-workflow-state-migration.md`，并为 `docs_zh/migrations/README.md` 与 legacy alias 页面补上 canonical 回指。 |
+| 已解决 | N-1451 | ADR 目录存在 `003-memory-seven-layers.md`（"历史别名"）与 `003-memory-six-layers.md` 两个同号 ADR；`docs_zh/adr/` 与 `docs_en/adr/` 文件数 111 vs 112（多出 `109-v4.3-contract-freeze.md` 仅在英文），契约目录数 zh 151 / en 160 不齐。 [R3-62] | 英文侧重复的 `docs_en/adr/066-plugin-spi-framework.md` 与 `109-v4.3-contract-freeze.md` 已删除；`003-memory-seven-layers.md` 明确保留为历史兼容页，当前 `docs_zh/adr` 与 `docs_en/adr`、`docs_zh/contracts` 与 `docs_en/contracts` 计数均已对齐。 |
+| 已解决 | N-1452 | 大量 `*:stable` 指令（`chaos:stable`、`concurrency:stable`、`db-queue-disconnect:stable`、`migration:stable` …），与 `validate:stable` 的依赖关系仅在 `ci:baseline` 隐式串联，README/AGENTS 无总览。 | `README.md` 已新增 stable script overview，明确列出 `package/validate/migration/chaos/concurrency/db-queue-disconnect:stable` 入口。 |
+| 已解决 | N-1453 | `docs_zh/reviews/issues-table.md` 多轮自我修订（2026-05-14/05-16/05-17/05-18），新读者难以判断哪些条目仍未关闭；该文件被 `tests/unit/docs/*`、`tests/integration/docs/architecture-consistency.test.ts` 当作真理来源对齐。 | `docs_zh/reviews/issues-table.md` 顶部已新增状态说明，明确“是否仍未关闭”以最新状态列、证据列和 `platforme-full-review.md` 批次回填为准。 |
+| 已解决 | N-1454 | `docs_zh/` 与 `docs_en/` 双语全镜像维护，但 ADR/contract 计数差未通过同步检查脚本写入 CI；`translate_docs.py` 在仓库根但无文档说明。 | `README.md` 已补 `docs_zh/reference/docs-sync.md` 与 `translate_docs.py` 入口；`docs_zh/reference/docs-sync.md`、`tests/unit/docs/documentation-health.test.ts` 持续作为文档同步守护。 |
+| 已解决 | N-1455 | `docs_zh/architecture/00-platform-architecture.md` 是 README/AGENTS 多次引用的「权威基线」，目录命名（`five-plane-*`）与文档中文章节、ADR 名义层次（`001-three-layer-architecture.md` 与 v2.7"七层"叙述）混用。 | `docs_zh/architecture/00-platform-architecture.md` 已在维护规则中显式说明：旧 `five-plane-*` / CEO-VP-事业部叙事只作兼容检索入口，当前 canonical 命名以 `P1-P5 + X1`、`DomainDescriptor`、`HarnessRun/NodeRun` 为准。 |
+| 已解决 | N-1456 | `docs_zh/contracts/runtime_state_machine_contract.md` 仍以 `ExecutionStatus 8-state` 与 `WorkflowStatus 7-state` 为主线，未扩到 §25.8 NodeRun 14 状态 / HarnessRun 13 状态。 [R2-13/R2-14] | `docs_zh/contracts/runtime_state_machine_contract.md` 已把 `HarnessRunStatus` 收口为 14 态 canonical run status，并将旧 `WorkflowStatus` 明确降为 deprecated projection。 |
+| 已解决 | N-1457 | `docs_zh/contracts/cost_and_budget_contract.md` 中 `execution_id` 仍出现 3 处，与 `harness_run_id` 使用比例 3:11，新旧并存。 [R2-15..R2-22] | `docs_zh/contracts/cost_and_budget_contract.md` 已移除这 3 处 `execution_id` 字面量，统一表述为 legacy execution 键并要求成本归属只用 `harness_run_id / node_run_id / attempt_id`。 |
+| 已解决 | N-1458 | `docs_zh/adr/{001-three-layer-architecture.md,002-division-system.md,004-workflow-routing.md}` 当前 Status 仍为 `Accepted`。 [R5-58/R5-59/R5-60] | `docs_zh/adr/001-*`、`002-*`、`004-*` 已改为 `Partially Superseded ...`，并在正文中显式对齐 v4.3 five-plane / domain / harness baseline。 |
+| 已解决 | N-1459 | `docs_zh/adr/033-architecture-implementation-roadmap.md`、`070-conclusion.md` 仍 `Accepted` 且仍以 Phase 1-7 / OAPEFLIR loop invariant 为 canonical 表述。 [R6-48/R6-52] | `docs_zh/adr/033-phased-roadmap.md` 已改为 `Superseded by ADR-112`，`docs_zh/adr/070-conclusion.md` 已改为 `Superseded by ADR-109 to ADR-113`。 |
+| 已解决 | N-1460 | ADR-034/009/007/069/072/078 等仍 `Accepted`，未标 Superseded 或加 remediation 节。 [R5-62/R6-50/R6-51/R6-54/R6-55/R6-56] | `docs_zh/adr/009-*`、`034-*`、`069-*`、`072-*`、`078-*` 已改为历史/部分取代状态；`docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 对 R6-50/R6-51/R6-54/R6-55/R6-56 也已回写现行依据。 |
 | 待处理 | N-1461 | `createControlDirective` 在 `tests/` 中仍被调用 90 处，集成/单元两层均作为契约 surface 回归。 [R6-29/R6-30] |  |
-| 待处理 | N-1462 | ADR-061 九态非 canonical（仍 production/retired/superseded，缺 canary/active/paused/removed）。 [R3-52] |  |
-| 待处理 | N-1463 | ADR-054 platinum 仍 99.99%（line 16）。 [R3-53] |  |
-| 待处理 | N-1464 | ADR-042 仍 6 级（supervised/assisted/partial_auto/high_auto/full_auto + autonomous）。 [R3-54] |  |
-| 待处理 | N-1465 | ADR-083 同 6 级（line 49 自陈引用 ADR-042 6 级）。 [R3-55] |  |
-| 待处理 | N-1466 | ADR-075 ImprovementCandidateStatus 仍 12 态（缺 quarantine）。 [R3-63] |  |
-| 待处理 | N-1467 | ADR-019 仍引 §12（line 10）。 [R3-64] |  |
-| 待处理 | N-1468 | typed_event_bus_contract.md 仍大量 task_id/workflow_id/execution_id（lines 44/53/63/74/83/94/95/104/113/171）。 [R3-65] |  |
-| 待处理 | N-1469 | PlanCreatedPayload 仍 `step_count`（contract:78）。 [R3-66] |  |
-| 待处理 | N-1470 | ExecutionCompletedPayload 仍 task_id/execution_id（contract:94-95）。 [R3-67] |  |
-| 待处理 | N-1471 | startup contract 仍 workflow_state/current_step_index（contract:26-27）。 [R3-70] |  |
-| 待处理 | N-1472 | naming contract 仍列 `WorkflowExecutor`（contract:20）。 [R3-72] |  |
-| 待处理 | N-1473 | NL contract 仍含 `suggested_workflow_id`，无 pack/recipe。 [R3-74] |  |
-| 待处理 | N-1474 | typed_event_bus_contract.md 全文无 `derivedFromEventId`。 [R3-75] |  |
-| 待处理 | N-1475 | governance contract 仍以 off/suggest/shadow 为 authoritative（contract:252）。 [R3-76] |  |
-| 待处理 | N-1476 | ExplanationDepth 仍 brief/standard/audit（contract:32-34）。 [R3-77] |  |
-| 待处理 | N-1477 | ReplanTriggeredPayload 仍 old_version/new_version（contract:85-86）。 [R3-78] |  |
-| 待处理 | N-1478 | capacity_planning_contract.md 全文无 `CapacityAlert`。 [R3-79] |  |
-| 待处理 | N-1479 | docs_zh/adr/002-division-system.md 仍含至少 12 处「事业部 / VP 编排层」（lines 1/59-90/94/99/107/113）。 [R5-59] |  |
-| 待处理 | N-1480 | `OperationalDirective/DecisionDirective` re-export 行号 56-66 错位（实际定义在 control-directive/index.ts 与 contract-models.ts:42-47）。 [R6-18] |  |
-| 待处理 | N-1481 | 五份 contract 引用 remediation 行号或"当前行数"全部越界（audit_lineage_and_retention 仅 159 行/context_compaction 仅 228/workflow_io_compatibility 仅 72/knowledge_spi 仅 243；R6-45 五份 contract 实际 40/35/51/60/47 行而非声称 60/60/60/65/60）。 [R6-41..R6-45] |  |
-| 待处理 | N-1482 | ADR-033 状态仍 `Accepted`（line 3，未 Superseded by ADR-112）。 [R6-48] |  |
-| 待处理 | N-1483 | ADR-038 仍 CANARY_5/20/50/100（lines 20/41），无 partial_25。 [R6-49] |  |
-| 待处理 | N-1484 | 多份 ADR 引用 remediation 行号越界（007 仅 114 行/072 仅 152 行/078 仅 181 行）。 [R6-51..R6-56] |  |
-| 待处理 | N-1485 | ADR-070 状态仍 `Accepted`（line 3）。 [R6-52] |  |
+| 已解决 | N-1462 | ADR-061 九态非 canonical（仍 production/retired/superseded，缺 canary/active/paused/removed）。 [R3-52] | `docs_zh/adr/061-agent-unified-lifecycle-management.md` 已统一到 `draft / testing / staging / canary / active / paused / deprecated / archived / removed` 九态。 |
+| 已解决 | N-1463 | ADR-054 platinum 仍 99.99%（line 16）。 [R3-53] | `docs_zh/adr/054-sla-tiered-guarantees.md` 已把平台默认 platinum 改为 `99.95%`，并单独注明 `99.99%` 仅限专用部署/专属合同。 |
+| 已解决 | N-1464 | ADR-042 仍 6 级（supervised/assisted/partial_auto/high_auto/full_auto + autonomous）。 [R3-54] | `docs_zh/adr/042-progressive-autonomy-model.md` 已统一为 `suggestion / supervised / semi_auto / full_auto` 四级交互自主权。 |
+| 已解决 | N-1465 | ADR-083 同 6 级（line 49 自陈引用 ADR-042 6 级）。 [R3-55] | `docs_zh/adr/083-proactive-agent-and-progressive-autonomy.md` 已与 ADR-042 对齐到同一四级自主权体系。 |
+| 已解决 | N-1466 | ADR-075 ImprovementCandidateStatus 仍 12 态（缺 quarantine）。 [R3-63] | `docs_zh/adr/075-controlled-rollout-release.md` 已补 `quarantined` 状态，并说明其 guardrail/evidence 冻结语义。 |
+| 已解决 | N-1467 | ADR-019 仍引 §12（line 10）。 [R3-64] | `docs_zh/adr/019-agent-handoff-four-layer-protocol.md` 已移除这处历史节号依赖，直接以当前 ADR 自身定义四层 handoff 模型。 |
+| 已解决 | N-1468 | typed_event_bus_contract.md 仍大量 task_id/workflow_id/execution_id（lines 44/53/63/74/83/94/95/104/113/171）。 [R3-65] | `docs_zh/contracts/typed_event_bus_contract.md` 已把 Observe/Assess/Plan/Execute/Feedback 载荷的主关联键统一改为 `harness_run_id / plan_graph_id / node_run_id / node_attempt_id`。 |
+| 已解决 | N-1469 | PlanCreatedPayload 仍 `step_count`（contract:78）。 [R3-66] | `PlanCreatedPayload` 已改为 `plan_graph_id / graph_version / node_count`。 |
+| 已解决 | N-1470 | ExecutionCompletedPayload 仍 task_id/execution_id（contract:94-95）。 [R3-67] | `ExecutionCompletedPayload` 已改为 `harness_run_id / node_run_id / node_attempt_id / receipt_ref / status`。 |
+| 已解决 | N-1471 | startup contract 仍 workflow_state/current_step_index（contract:26-27）。 [R3-70] | `docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md` 已改为 `HarnessRun / NodeRun` 投影对齐与 `PlanGraphBundle` 非法游标校验。 |
+| 已解决 | N-1472 | naming contract 仍列 `WorkflowExecutor`（contract:20）。 [R3-72] | `docs_zh/contracts/naming_and_engineering_boundary_contract.md` 已删除 `WorkflowExecutor`，改为 `HarnessRuntime`。 |
+| 已解决 | N-1473 | NL contract 仍含 `suggested_workflow_id`，无 pack/recipe。 [R3-74] | `docs_zh/contracts/nl_entry_and_goal_decomposition_contract.md` 已改为 `suggested_business_pack_id` 与 `suggested_recipe_id`。 |
+| 已解决 | N-1474 | typed_event_bus_contract.md 全文无 `derivedFromEventId`。 [R3-75] | `docs_zh/contracts/typed_event_bus_contract.md` 与 `event_bus_contract.md` 已补 `derived_from_event_id` 因果链字段。 |
+| 已解决 | N-1475 | governance contract 仍以 off/suggest/shadow 为 authoritative（contract:252）。 [R3-76] | `docs_zh/contracts/governance_control_plane_contract.md` 已把 `release_transition_gate` authoritative 输入切到 ADR-075 的 `evaluate_0 / canary_5 / partial_25 / stable_75 / stable_100`。 |
+| 已解决 | N-1476 | ExplanationDepth 仍 brief/standard/audit（contract:32-34）。 [R3-77] | `docs_zh/contracts/explainability_and_stage_rationale_contract.md` 已改为 `L1_summary / L2_reasoning / L3_forensic`。 |
+| 已解决 | N-1477 | ReplanTriggeredPayload 仍 old_version/new_version（contract:85-86）。 [R3-78] | `ReplanTriggeredPayload` 已改为 `previous_graph_version / next_graph_version`。 |
+| 已解决 | N-1478 | capacity_planning_contract.md 全文无 `CapacityAlert`。 [R3-79] | `docs_zh/contracts/capacity_planning_contract.md` 已补 `CapacityAlert` canonical 对象与规则。 |
+| 已解决 | N-1479 | docs_zh/adr/002-division-system.md 仍含至少 12 处「事业部 / VP 编排层」（lines 1/59-90/94/99/107/113）。 [R5-59] | `docs_zh/adr/002-division-system.md` 已把主干叙事收敛到 `domain` / `P3 编排面`，只保留必要兼容说明。 |
+| 已解决 | N-1480 | `OperationalDirective/DecisionDirective` re-export 行号 56-66 错位（实际定义在 control-directive/index.ts 与 contract-models.ts:42-47）。 [R6-18] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已把 R6-18 回写为当前真实落地：`src/platform/contracts/executable-contracts/index.ts` 重新导出 canonical directive，且 approval/harness/OAPEFLIR 生产链已消费。 |
+| 已解决 | N-1481 | 五份 contract 引用 remediation 行号或"当前行数"全部越界（audit_lineage_and_retention 仅 159 行/context_compaction 仅 228/workflow_io_compatibility 仅 72/knowledge_spi 仅 243；R6-45 五份 contract 实际 40/35/51/60/47 行而非声称 60/60/60/65/60）。 [R6-41..R6-45] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已对 R6-41..R6-45 逐项回写到当前 contract 段落和 remediation 位置，不再依赖失效的旧行号断言。 |
+| 已解决 | N-1482 | ADR-033 状态仍 `Accepted`（line 3，未 Superseded by ADR-112）。 [R6-48] | `docs_zh/adr/033-phased-roadmap.md` 已改为 `Superseded by ADR-112`。 |
+| 已解决 | N-1483 | ADR-038 仍 CANARY_5/20/50/100（lines 20/41），无 partial_25。 [R6-49] | `docs_zh/adr/038-business-domain-onboarding-runbook.md` 已改为 `canary_5 → partial_25 → stable_75 → stable_100`。 |
+| 已解决 | N-1484 | 多份 ADR 引用 remediation 行号越界（007 仅 114 行/072 仅 152 行/078 仅 181 行）。 [R6-51..R6-56] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已对 R6-51..R6-56 改为引用当前 ADR 状态与 remediation 段落事实；同时 `docs_zh/adr/069-*`、`072-*`、`078-*` 状态已更新。 |
+| 已解决 | N-1485 | ADR-070 状态仍 `Accepted`（line 3）。 [R6-52] | `docs_zh/adr/070-conclusion.md` 已改为 `Superseded by ADR-109 to ADR-113`。 |
 | 待处理 | N-1486 | contractVersion 路径仍 `/version` 而非 `/meta/contract-version`（endpoints.ts:220）。 [R7-7] |  |
-| 待处理 | N-1487 | observability_contract.md:27-28 `node_run_id?` / `attempt_id?` 仍可选。 [R9-49] |  |
-| 待处理 | N-1488 | budget-ledger-contract.md:36 仍 7 值（缺 tool_call/storage/bandwidth/memory）。 [R9-51] |  |
-| 待处理 | N-1489 | side-effect-reconciliation-contract.md:29 标 16 states 而非声称的 13 态。 [R9-52] |  |
-| 待处理 | N-1490 | cost_and_budget_contract.md:45 runtime_mode 仅 4 值，与声称 8 值不符。 [R9-54] |  |
-| 待处理 | N-1491 | ADR-069 全文 0 `RuntimeStateMachine.transition / OperationalDirective`。 [R11-45] |  |
-| 待处理 | N-1492 | ADR-062 lines 49-57 仅四种策略中性表，line 82 与"merge 只给 projection"自相矛盾。 [R11-47] |  |
-| 待处理 | N-1493 | ADR-094:10 实为"落盘 HarnessRun、NodeRun、decision"，无 NodeAttempt。 [R11-48] |  |
-| 待处理 | N-1494 | ADR-101 全文 0 `advisory_only/human_accountable/deterministic_hot_path_only`。 [R11-49] |  |
-| 待处理 | N-1495 | ADR-095 全文 0 `NodeRun`。 [R11-50] |  |
-| 待处理 | N-1496 | ADR-044:17 仍 `team_lead`，无 OrgNodeType 映射。 [R11-51] |  |
-| 待处理 | N-1497 | ADR-057 全文 0 `X1 Reliability/side_effect_policy/SideEffectRecord/RuntimeStateMachine`。 [R11-52] |  |
-| 待处理 | N-1498 | ADR-104 文件无 DomainDescriptor 字样。 [R11-53] |  |
-| 待处理 | N-1499 | ADR-085/086/087 第 25 行均仍写 `v2.7 §...`。 [R11-54] |  |
-| 待处理 | N-1500 | ADR-049:17 仍 `department_id: string`，无 orgNodeId。 [R11-55] |  |
-| 待处理 | N-1501 | ADR-067 全文 0 Ring 1/Ring 3。 [R11-56] |  |
-| 待处理 | N-1502 | ADR-105 0 `deterministic_hot_path_only/LLM loop/v4.3 非目标边界`。 [R11-57] |  |
-| 待处理 | N-1503 | ADR-109:39 仍引用 ADR-110。 [R18-50] |  |
-| 待处理 | N-1504 | docs_zh/operations 全目录 0 `CapacityForecast/CapacityScenario/CapacityAlert/CapacityRecommendation`。 [R18-54] |  |
+| 已解决 | N-1487 | observability_contract.md:27-28 `node_run_id?` / `attempt_id?` 仍可选。 [R9-49] | `docs_zh/contracts/observability_contract.md` 已把 `node_run_id` 与 `attempt_id` 升为 required，并在 remediation 中声明其为 canonical 主关联键。 |
+| 已解决 | N-1488 | budget-ledger-contract.md:36 仍 7 值（缺 tool_call/storage/bandwidth/memory）。 [R9-51] | `docs_zh/contracts/budget-ledger-contract.md` 已扩为 `token / tool_call / api / compute / storage / bandwidth / memory / human / side_effect / other`。 |
+| 已解决 | N-1489 | side-effect-reconciliation-contract.md:29 标 16 states 而非声称的 13 态。 [R9-52] | `docs_zh/contracts/side-effect-reconciliation-contract.md` 已统一为 13 态 canonical `SideEffectStatus`。 |
+| 已解决 | N-1490 | cost_and_budget_contract.md:45 runtime_mode 仅 4 值，与声称 8 值不符。 [R9-54] | `docs_zh/contracts/cost_and_budget_contract.md` 的 `runtime_mode` 已扩成 8 个 canonical 模式，并与 `proactive_agent_and_autonomy_contract.md` 对齐。 |
+| 已解决 | N-1491 | ADR-069 全文 0 `RuntimeStateMachine.transition / OperationalDirective`。 [R11-45] | `docs_zh/adr/069-platform-self-operating-agent.md` 已明确 SelfOpsAgent 的变更必须通过 `OperationalDirective` 与 `RuntimeStateMachine.transition(command)` 落地。 |
+| 已解决 | N-1492 | ADR-062 lines 49-57 仅四种策略中性表，line 82 与"merge 只给 projection"自相矛盾。 [R11-47] | `docs_zh/adr/062-offline-and-edge-deployment-architecture.md` 已把 `merge` 明确限定为 projection / 非关键统计对象；truth / budget / side effect 继续走 authoritative writer + fencing。 |
+| 已解决 | N-1493 | ADR-094:10 实为"落盘 HarnessRun、NodeRun、decision"，无 NodeAttempt。 [R11-48] | `docs_zh/adr/094-harness-durable-execution.md` 已把执行落盘与 durable replay 边界补齐到 `NodeAttempt`。 |
+| 已解决 | N-1494 | ADR-101 全文 0 `advisory_only/human_accountable/deterministic_hot_path_only`。 [R11-49] | `docs_zh/adr/101-domain-risk-override-platform-default.md` 已补 `advisory_only`、`human_accountable`、`deterministic_hot_path_only` 约束。 |
+| 已解决 | N-1495 | ADR-095 全文 0 `NodeRun`。 [R11-50] | `docs_zh/adr/095-harness-context-assembly.md` 已补 `NodeRun / NodeAttempt` 上下文装配范围与 audit ref 约束。 |
+| 已解决 | N-1496 | ADR-044:17 仍 `team_lead`，无 OrgNodeType 映射。 [R11-51] | `docs_zh/adr/044-non-technical-user-experience.md` 已把角色改为 `org_node_owner(team)`，并显式映射到 `OrgNodeType.team`。 |
+| 已解决 | N-1497 | ADR-057 全文 0 `X1 Reliability/side_effect_policy/SideEffectRecord/RuntimeStateMachine`。 [R11-52] | `docs_zh/adr/057-external-system-integration-framework.md` 已补 `side_effect_policy`、`SideEffectRecord`、`RuntimeStateMachine` 与 X1 Reliability 边界。 |
+| 已解决 | N-1498 | ADR-104 文件无 DomainDescriptor 字样。 [R11-53] | `docs_zh/adr/104-domain-recipe-twelve-archetypes.md` 已明确 archetype 最终回写到 `DomainDescriptor.recipe`。 |
+| 已解决 | N-1499 | ADR-085/086/087 第 25 行均仍写 `v2.7 §...`。 [R11-54] | `docs_zh/adr/085`、`086`、`087` 的背景段已改为引用当前 `docs_zh/architecture/00-platform-architecture.md` 对应章节，不再写旧的 `v2.7 §...`。 |
+| 已解决 | N-1500 | ADR-049:17 仍 `department_id: string`，无 orgNodeId。 [R11-55] | `docs_zh/adr/049-department-compliance-policy-engine.md` 已将 `department_id` 收敛为 `org_node_id`，并限定其必须指向 `OrgNodeType.department`。 |
+| 已解决 | N-1501 | ADR-067 全文 0 Ring 1/Ring 3。 [R11-56] | `docs_zh/adr/067-capacity-planning-and-cost-prediction.md` 已补 Ring 1 / Ring 3 容量规划边界。 |
+| 已解决 | N-1502 | ADR-105 0 `deterministic_hot_path_only/LLM loop/v4.3 非目标边界`。 [R11-57] | `docs_zh/adr/105-domain-latency-tier-classification.md` 已补 `deterministic_hot_path_only`、受控 LLM loop 与 v4.3 非目标边界说明。 |
+| 已解决 | N-1503 | ADR-109:39 仍引用 ADR-110。 [R18-50] | `docs_zh/adr/110-runtime-state-machine-authority.md` 现已存在并作为 Accepted ADR 落地，ADR-109 的引用不再悬空。 |
+| 已解决 | N-1504 | docs_zh/operations 全目录 0 `CapacityForecast/CapacityScenario/CapacityAlert/CapacityRecommendation`。 [R18-54] | `docs_zh/operations/operations-roadmap.md` 已新增 `CapacityForecast / CapacityScenario / CapacityAlert / CapacityRecommendation` 交付项说明。 |
 | 待处理 | N-1505 | `contracts/executable-contracts/schemas.ts:146` `directives: z.any().optional()` 在 canonical executable contracts schema 直接 z.any()，是平台运行时合约表面层的类型黑洞。 |  |
-| 待处理 | N-1506 | ADR-018 已 `Superseded by ADR-075`，但 Accepted 状态的 ADR-060 仍把它列为现行参考引用未标注历史状态（`docs_zh/adr/060-explicit-planning-hub.md:119` "[ADR-018 Rollout 11 状态机](./018-rollout-eleven-state-machine.md)"；状态见同文件 :3 "Accepted"）。 |  |
-| 待处理 | N-1507 | Accepted 状态的 ADR-072 同样把 Superseded 的 ADR-018 当作权威参考（`docs_zh/adr/072-oapeflir-testing-strategy.md:144`），违反 ADR-018 自身 "Do not implement from this document" 警告（018:7）。 |  |
-| 待处理 | N-1508 | ADR-007 状态为 `Partially Superseded by ADR-075`，但 ADR-006 仍以普通"相关"链接引用，未提示部分被替代（`docs_zh/adr/006-llm-provider-strategy.md:126`）。 |  |
-| 待处理 | N-1509 | 同号双 ADR-066：`066-compliance-report-auto-generation.md` 与 `066-plugin-spi-framework.md` 共用编号；`docs_zh/adr/059-agent-explainability-and-decision-transparency.md:74` 指向合规报告，`088-platform-surface-communication-and-extensibility.md:69` 指向 Plugin SPI；README.md:74-75 也并列两条 [066]。 |  |
-| 待处理 | N-1510 | ADR-066-plugin-spi-framework.md 与 ADR-071-plugin-spi-framework.md 内容重复（diff 仅首行标题不同），并且同时被列为 Accepted（README:74,79），实质重复 ADR。 |  |
-| 待处理 | N-1511 | docs_en 多出 `109-v4.3-contract-freeze.md`（`docs_en/adr/109-v4.3-contract-freeze.md:1`）与 `109-contract-freeze.md` 同号，中文目录下不存在该文件，双语 ADR 集合不一致。 |  |
-| 待处理 | N-1512 | `agent_definition_lifecycle_contract.md`：中文有 `## v4.3 Contract Remediation` 段，英文缺失（zh h2=6 / en h2=5）。 |  |
-| 待处理 | N-1513 | `api_surface_contract.md`：英文缺 `## v4.3 Contract Remediation`（zh h2=7 / en h2=6）。 |  |
-| 待处理 | N-1514 | `sandbox_and_auth_contract.md`：英文缺 `## 5A. Remote Worker Registration and Challenge Authentication`、`## 5B. Remote Session Authority Guard`、`## 6. Supplementary Rules`（zh h2=9 / en h2=6）。 |  |
-| 待处理 | N-1515 | `data_plane_contract.md` h2 数 zh=20 / en=19；`startup_consistency_and_recovery_drill_contract.md` zh=10 / en=11，章节顺序不对齐。 |  |
-| 待处理 | N-1516 | docs_en/contracts 多 9 份 `v4_3_*.md` 重复 snake-case 文件（v4_3_budget_ledger_contract / v4_3_decision_and_hitl_contract / v4_3_event_envelope_contract / v4_3_harness_run_contract / v4_3_node_run_attempt_receipt_contract / v4_3_plan_graph_and_patch_contract / v4_3_side_effect_reconciliation_contract / v4_3_task_intake_and_request_contract / v4_3_version_lock_contract），中文目录无对应；与同名 kebab-case 文件并存形成重复。 |  |
-| 待处理 | N-1517 | 三份 PascalCase 契约文件 `DriftAlert.md/DriftDetector.md/DriftMitigationAction.md` 与其它 ~148 份 *_contract.md 命名不一致；同时 `behavior_drift_detection_contract.md:17` 又把 DriftAlert/DriftMitigationAction 当 inline 字段定义，造成同对象在两类文件下重复且字段集不一致。 |  |
-| 待处理 | N-1518 | `cost_and_budget_contract.md:114` 把 `budget_reservation_id?` 标为可选，但同文 :169 又强制"必须填写"——同字段在同一 contract 内既可选又必填。 |  |
-| 待处理 | N-1519 | `docs_zh/contracts/sdk_surface_contract.md:42-51` 类型 `ApiClient.get(path, params?): Promise<unknown>` 与 `post(path, body?): Promise<unknown>`；实现 `src/sdk/client-sdk/api-client.ts:118,125` 返 `Promise<ApiResponse<T>>` 的不同泛型 envelope，且 `post` 多一个 `options` 形参。 |  |
-| 待处理 | N-1520 | `pack-validate.ts:67-74` 自称按 `--contract-version` 比较，但取值用 `contractMajor = minVersion.split(".").map(Number)[0] ?? 0`（line 68），解析的是 `validated.platform_min_version` 而非 `opts.contractVersion`；line 76 报告 "contract_version_ok" 与传入版本无关。 |  |
-| 待处理 | N-1521 | `app_error_contract.md` 文档化 `tool.recovery_strategy_unknown`/`tool.output_sanitization_failed`/`provider.capability_unsupported` 为 canonical errorCodes；`src/**` 与 `tests/**` 无任何出现——三条契约 code 是纯文档（docs_zh/contracts/app_error_contract.md:1）。 |  |
-| 待处理 | N-1522 | contract 列出 `oapeflir_feedback_signal_count` 与 `oldest_wait_seconds` 指标；`src/**` 无对应 token（Prometheus exporter 仅 emit `process_uptime_seconds`）（docs_zh/contracts/feedback_loop_oapeflir_contract.md:1）。 |  |
-| 待处理 | N-1523 | `docs_en/contracts/` 多出 9 个 `v4_3_*_contract.md`（如 `v4_3_harness_run_contract.md`）与 EN 内的 kebab-case 版本重复，`docs_zh/contracts/` 无对应 pair——EN 语料携带 v4.3 contract 重复权威副本（docs_en/contracts/v4_3_harness_run_contract.md:1）。 |  |
-| 待处理 | N-1524 | `docs_zh/migration/` 与 `docs_zh/migrations/` 切分非对称（前者含 guideline+scope，后者仅 e2e），与 `docs_en/migration/`+`docs_en/migrations/` 二者都含 e2e 不同——目录命名与内容漂移（docs_zh/migrations/e2e-workflow-state-migration.md:1）。 |  |
-| 待处理 | N-1525 | `docs_zh/reviews/extract-issues.mjs` 用绝对路径 `/Users/holden/Project/automatic_agent/...` 读 markdown——脚本在该机器外不可运行（docs_zh/reviews/extract-issues.mjs:3）。 |  |
-| 待处理 | N-1526 | `docs_zh/reviews/full-cleanup-review.md` 指示 operator 执行 `rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/`——operator runbook 泄漏个人路径（docs_zh/reviews/full-cleanup-review.md:47）。 |  |
-| 待处理 | N-1527 | `docs_zh/architecture/05-cross-platform-ui-architecture.md` 与 reaudit_round.md 链接 `/Users/holden/Project/...`URL——docs 跨链接在 dev 机外失效（docs_zh/architecture/05-cross-platform-ui-architecture.md:101）。 |  |
-| 待处理 | N-1528 | `docs_zh/operations/operations-tracker.md` 自称"已迁移"/不再维护，但 `docs_en/operations/` 与 `npm run *:stable` 仍引用——operator-tracker 漂移（docs_zh/operations/operations-tracker.md:3）。 |  |
-| 待处理 | N-1529 | `docs_en/migration/` 与 `docs_en/migrations/` 同时存在四个同名文件（README/00/01/e2e）但 `diff -q` 全部不一致——同主题文档分叉为两套英文版本，无任何索引说明哪一套是 source of truth（docs_en/migration/00-migration-guideline.md vs docs_en/migrations/00-migration-guideline.md）。 |  |
-| 待处理 | N-1530 | `docs_zh/contracts/event_registry_and_ops_threshold_contract.md:42` 注册的 5 个 Tier-1 事件 `platform.task.created`、`platform.task.status_changed`、`platform.harness.started`、`platform.node.completed`、`platform.harness.failed` 在 `src/` 中均无任何字面量出现；代码在 `src/platform/five-plane-state-evidence/events/event-registry.ts:146-348` 实际使用的命名为 `platform.harness_run.*` / `platform.node_run.*`（带 `_run` 后缀），属于 docs 注册表与代码事实漂移。 |  |
-| 待处理 | N-1531 | `event_registry_and_ops_threshold_contract.md:53-55` 注册的 `oapeflir.view.observe.signals_collected`、`oapeflir.view.assess.evaluation_completed`、`oapeflir.view.plan.proposal_created` 在 `src/` 全部缺失；代码 `event-registry.ts:350` 仅实现一个统一的 `oapeflir.view.run_lifecycle`。 |  |
-| 待处理 | N-1532 | `event_registry_and_ops_threshold_contract.md:64-71` 声明的 `loop.iteration_completed`、`gateway.message_received`、`gateway.message_sent`、`tool.call_started`、`tool.call_completed`、`supervisor.health_warning`、`heartbeat.sampled` 共 7 个 Tier-2/3 事件在代码中均无 emit/publish 字面量。 |  |
-| 待处理 | N-1533 | `docs_zh/contracts/api_surface_contract.md` 仅在第 91 行提到 "受控 `404` 语义"，未给出 `429` / `409` / `413` / `415` 的标准映射；但代码 `src/platform/five-plane-interface/api/http-api-server.ts:286,406,523`、`middleware/idempotency-key.ts:172,195,208`、`middleware/input-validation.ts:52` 实际返回 `api.rate_limit_exceeded`(429)、`api.payload_too_large`(413)、`api.duplicate_request`(409)、`api.unsupported_media_type`(415)、`api.idempotency_key_conflict`(409) 等具体状态语义，docs 与 controller 实现的状态码契约缺失对照表。 |  |
+| 已解决 | N-1506 | ADR-018 已 `Superseded by ADR-075`，但 Accepted 状态的 ADR-060 仍把它列为现行参考引用未标注历史状态（`docs_zh/adr/060-explicit-planning-hub.md:119`，ADR-018 路径已回指到 `docs_zh/adr/018-rollout-eleven-state-machine.md`；状态见同文件 :3 "Accepted"）。 | `docs_zh/adr/060-explicit-planning-hub.md` 已把 ADR-018 标成 superseded reference，不再作为现行实现依据；历史 ADR 路径统一按 `../adr/018-rollout-eleven-state-machine.md` 处理。 |
+| 已解决 | N-1507 | Accepted 状态的 ADR-072 同样把 Superseded 的 ADR-018 当作权威参考（`docs_zh/adr/072-oapeflir-testing-strategy.md:144`），违反 ADR-018 自身 "Do not implement from this document" 警告（018:7）。 | `docs_zh/adr/072-oapeflir-testing-strategy.md` 已把 ADR-018 收敛为历史上下文，并把现行测试主链锚定到 `GraphPatch / NodeRun`。 |
+| 已解决 | N-1508 | ADR-007 状态为 `Partially Superseded by ADR-075`，但 ADR-006 仍以普通"相关"链接引用，未提示部分被替代（`docs_zh/adr/006-llm-provider-strategy.md:126`）。 | `docs_zh/adr/006-llm-provider-strategy.md` 已把 ADR-007 改成“部分被 ADR-075 取代”的说明性引用。 |
+| 已解决 | N-1509 | 同号双 ADR-066：`066-compliance-report-auto-generation.md` 与 `066-plugin-spi-framework.md` 共用编号；`docs_zh/adr/059-agent-explainability-and-decision-transparency.md:74` 指向合规报告，`088-platform-surface-communication-and-extensibility.md:69` 指向 Plugin SPI；README.md:74-75 也并列两条 [066]。 | Plugin SPI ADR 已统一收敛到 `071-plugin-spi-framework.md`；`docs_zh/adr/README.md`、`059-*`、`088-*`、`plugin_spi_contract.md` 等交叉引用已同步。 |
+| 已解决 | N-1510 | ADR-066-plugin-spi-framework.md 与 ADR-071-plugin-spi-framework.md 内容重复（diff 仅首行标题不同），并且同时被列为 Accepted（README:74,79），实质重复 ADR。 | 重复的 `066-plugin-spi-framework.md` 已删除，只保留 `071-plugin-spi-framework.md` 作为唯一 canonical ADR。 |
+| 已解决 | N-1511 | docs_en 多出 `109-v4.3-contract-freeze.md`（`docs_en/adr/109-v4.3-contract-freeze.md:1`）与 `109-contract-freeze.md` 同号，中文目录下不存在该文件，双语 ADR 集合不一致。 | `docs_en/adr/109-v4.3-contract-freeze.md` 已删除，双语 ADR 集合不再保留这份重复编号文件。 |
+| 已解决 | N-1512 | `agent_definition_lifecycle_contract.md`：中文有 `## v4.3 Contract Remediation` 段，英文缺失（zh h2=6 / en h2=5）。 | `docs_en/contracts/agent_definition_lifecycle_contract.md` 已补 `## v4.3 Contract Remediation`。 |
+| 已解决 | N-1513 | `api_surface_contract.md`：英文缺 `## v4.3 Contract Remediation`（zh h2=7 / en h2=6）。 | `docs_en/contracts/api_surface_contract.md` 已补 `## v4.3 Contract Remediation`。 |
+| 已解决 | N-1514 | `sandbox_and_auth_contract.md`：英文缺 `## 5A. Remote Worker Registration and Challenge Authentication`、`## 5B. Remote Session Authority Guard`、`## 6. Supplementary Rules`（zh h2=9 / en h2=6）。 | `docs_en/contracts/sandbox_and_auth_contract.md` 已补 `5A`、`5B` 和 `6` 章节。 |
+| 已解决 | N-1515 | `data_plane_contract.md` h2 数 zh=20 / en=19；`startup_consistency_and_recovery_drill_contract.md` zh=10 / en=11，章节顺序不对齐。 | `docs_en/contracts/data_plane_contract.md` 与 `docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md` 的章节已对齐。 |
+| 已解决 | N-1516 | docs_en/contracts 多 9 份 `v4_3_*.md` 重复 snake-case 文件（v4_3_budget_ledger_contract / v4_3_decision_and_hitl_contract / v4_3_event_envelope_contract / v4_3_harness_run_contract / v4_3_node_run_attempt_receipt_contract / v4_3_plan_graph_and_patch_contract / v4_3_side_effect_reconciliation_contract / v4_3_task_intake_and_request_contract / v4_3_version_lock_contract），中文目录无对应；与同名 kebab-case 文件并存形成重复。 | `docs_en/contracts/v4_3_*.md` 这 9 份重复文件已删除。 |
+| 已解决 | N-1517 | 三份 PascalCase 契约文件 `DriftAlert.md/DriftDetector.md/DriftMitigationAction.md` 与其它 ~148 份 *_contract.md 命名不一致；同时 `behavior_drift_detection_contract.md:17` 又把 DriftAlert/DriftMitigationAction 当 inline 字段定义，造成同对象在两类文件下重复且字段集不一致。 | drift 契约已统一改为 `drift_alert_contract.md`、`drift_detector_contract.md`、`drift_mitigation_action_contract.md`；旧 PascalCase 文件已删除，`src/platform/contracts/types/drift-contracts.ts` 注释也已同步。 |
+| 已解决 | N-1518 | `cost_and_budget_contract.md:114` 把 `budget_reservation_id?` 标为可选，但同文 :169 又强制"必须填写"——同字段在同一 contract 内既可选又必填。 | `docs_zh/contracts/cost_and_budget_contract.md` 现已统一要求 `budget_reservation_id` 必填。 |
+| 已解决 | N-1519 | `docs_zh/contracts/sdk_surface_contract.md:42-51` 类型 `ApiClient.get(path, params?): Promise<unknown>` 与 `post(path, body?): Promise<unknown>`；实现 `src/sdk/client-sdk/api-client.ts:118,125` 返 `Promise<ApiResponse<T>>` 的不同泛型 envelope，且 `post` 多一个 `options` 形参。 | `docs_zh/contracts/sdk_surface_contract.md` 已改为 `ApiResponse<T>` envelope，并补上 `post(..., options?)`。 |
+| 已解决 | N-1520 | `pack-validate.ts:67-74` 自称按 `--contract-version` 比较，但取值用 `contractMajor = minVersion.split(".").map(Number)[0] ?? 0`（line 68），解析的是 `validated.platform_min_version` 而非 `opts.contractVersion`；line 76 报告 "contract_version_ok" 与传入版本无关。 | `src/sdk/cli/pack-validate.ts` 已改为解析 `opts.contractVersion`，`tests/unit/sdk/cli/pack-validate.test.ts` 已补回归。 |
+| 已解决 | N-1521 | `app_error_contract.md` 文档化 `tool.recovery_strategy_unknown`/`tool.output_sanitization_failed`/`provider.capability_unsupported` 为 canonical errorCodes；`src/**` 与 `tests/**` 无任何出现——三条契约 code 是纯文档（docs_zh/contracts/app_error_contract.md:1）。 | `docs_zh/contracts/app_error_contract.md` 已移除这三条未落地 canonical code 的宣称。 |
+| 已解决 | N-1522 | contract 列出 `oapeflir_feedback_signal_count` 与 `oldest_wait_seconds` 指标；`src/**` 无对应 token（Prometheus exporter 仅 emit `process_uptime_seconds`）（docs_zh/contracts/feedback_loop_oapeflir_contract.md:1）。 | `docs_zh/contracts/observability_contract.md` 不再把 `oapeflir_feedback_signal_count` 写成 frozen 示例；`docs_zh/contracts/debug_inspect_health_backpressure_contract.md` 也已去掉 `oldest_wait_seconds` 必填宣称。 |
+| 已解决 | N-1523 | `docs_en/contracts/` 多出 9 个 `v4_3_*_contract.md`（如 `v4_3_harness_run_contract.md`）与 EN 内的 kebab-case 版本重复，`docs_zh/contracts/` 无对应 pair——EN 语料携带 v4.3 contract 重复权威副本（docs_en/contracts/v4_3_harness_run_contract.md:1）。 | `docs_en/contracts/v4_3_*_contract.md` 这批重复权威副本已清理。 |
+| 已解决 | N-1524 | `docs_zh/migration/` 与 `docs_zh/migrations/` 切分非对称（前者含 guideline+scope，后者仅 e2e），与 `docs_en/migration/`+`docs_en/migrations/` 二者都含 e2e 不同——目录命名与内容漂移（docs_zh/migrations/e2e-workflow-state-migration.md:1）。 | `docs_zh/migration/` 现已补 canonical `e2e-workflow-state-migration.md`；`docs_zh/migrations/` 则改为 legacy alias + README 说明。 |
+| 已解决 | N-1525 | `docs_zh/reviews/extract-issues.mjs` 用绝对路径 `/Users/holden/Project/automatic_agent/...` 读 markdown——脚本在该机器外不可运行（docs_zh/reviews/extract-issues.mjs:3）。 | `docs_zh/reviews/extract-issues.mjs` 已改为相对路径读取 review markdown。 |
+| 已解决 | N-1526 | `docs_zh/reviews/full-cleanup-review.md` 指示 operator 执行 `rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/`——operator runbook 泄漏个人路径（docs_zh/reviews/full-cleanup-review.md:47）。 | `docs_zh/reviews/full-cleanup-review.md` 已改为相对路径清理命令。 |
+| 已解决 | N-1527 | `docs_zh/architecture/05-cross-platform-ui-architecture.md` 与 reaudit_round.md 链接 `/Users/holden/Project/...`URL——docs 跨链接在 dev 机外失效（docs_zh/architecture/05-cross-platform-ui-architecture.md:101）。 | `docs_zh/architecture/05-cross-platform-ui-architecture.md` 已改为相对链接。 |
+| 已解决 | N-1528 | `docs_zh/operations/operations-tracker.md` 自称"已迁移"/不再维护，但 `docs_en/operations/` 与 `npm run *:stable` 仍引用——operator-tracker 漂移（docs_zh/operations/operations-tracker.md:3）。 | `docs_zh/operations/operations-tracker.md` 已改为轻量索引，并显式指向仍在使用的 operations 入口与 stable 命令文档。 |
+| 已解决 | N-1529 | `docs_en/migration/` 与 `docs_en/migrations/` 同时存在四个同名文件（README/00/01/e2e）但 `diff -q` 全部不一致——同主题文档分叉为两套英文版本，无任何索引说明哪一套是 source of truth（docs_en/migration/00-migration-guideline.md vs docs_en/migrations/00-migration-guideline.md）。 | `docs_en/migration/` 已声明为 canonical；`docs_en/migrations/README.md`、`00`、`01`、`e2e` 现全部改为 legacy alias 页面。 |
+| 已解决 | N-1530 | `docs_zh/contracts/event_registry_and_ops_threshold_contract.md:42` 注册的 5 个 Tier-1 事件 `platform.task.created`、`platform.task.status_changed`、`platform.harness.started`、`platform.node.completed`、`platform.harness.failed` 在 `src/` 中均无任何字面量出现；代码在 `src/platform/five-plane-state-evidence/events/event-registry.ts:146-348` 实际使用的命名为 `platform.harness_run.*` / `platform.node_run.*`（带 `_run` 后缀），属于 docs 注册表与代码事实漂移。 | `docs_zh/contracts/event_registry_and_ops_threshold_contract.md` 已回写为 `platform.harness_run.*` / `platform.node_run.*` 命名，并加上 v4.3 历史兼容说明。 |
+| 已解决 | N-1531 | `event_registry_and_ops_threshold_contract.md:53-55` 注册的 `oapeflir.view.observe.signals_collected`、`oapeflir.view.assess.evaluation_completed`、`oapeflir.view.plan.proposal_created` 在 `src/` 全部缺失；代码 `event-registry.ts:350` 仅实现一个统一的 `oapeflir.view.run_lifecycle`。 | 合同已统一收敛到 `oapeflir.view.run_lifecycle`。 |
+| 已解决 | N-1532 | `event_registry_and_ops_threshold_contract.md:64-71` 声明的 `loop.iteration_completed`、`gateway.message_received`、`gateway.message_sent`、`tool.call_started`、`tool.call_completed`、`supervisor.health_warning`、`heartbeat.sampled` 共 7 个 Tier-2/3 事件在代码中均无 emit/publish 字面量。 | `docs_zh/contracts/event_registry_and_ops_threshold_contract.md` 已删去这批未实现事件，保留当前真实登记的 Tier-2/3 事件。 |
+| 已解决 | N-1533 | `docs_zh/contracts/api_surface_contract.md` 仅在第 91 行提到 "受控 `404` 语义"，未给出 `429` / `409` / `413` / `415` 的标准映射；但代码 `src/platform/five-plane-interface/api/http-api-server.ts:286,406,523`、`middleware/idempotency-key.ts:172,195,208`、`middleware/input-validation.ts:52` 实际返回 `api.rate_limit_exceeded`(429)、`api.payload_too_large`(413)、`api.duplicate_request`(409)、`api.unsupported_media_type`(415)、`api.idempotency_key_conflict`(409) 等具体状态语义，docs 与 controller 实现的状态码契约缺失对照表。 | `docs_zh/contracts/api_surface_contract.md` 已补受控状态码映射表。 |
 | 待处理 | N-1534 | `docs_zh/contracts/app_error_contract.md:46` 规定 "所有错误必须拥有稳定 `code`，不得只抛自由文本"，但 `src/` 仍存在约 194 处 `throw new Error("自由文本")`，例如 `src/platform/five-plane-interface/api/facade-interfaces.ts:214,217,220,223`、`graphql-adapter-service.ts:413,419,435,441,519`、`five-plane-control-plane/approval-center/quorum-calculator.ts:285,291`、`approval-policy-engine/version-manager.ts:298,393`，均未包装为 AppError 也无稳定 code。 |  |
-| 待处理 | N-1535 | 多份 ADR 行号严重错位（054:21/51、096 仅 34 行（声称 38）、041 仅 73 行（声称 79）、070:3 仍 Accepted（声称 Superseded）、059:28 是表头（声称约束句）、083/042 实际 6 级（声称 5 级）、055:41 仅列 4 项（声称 7 项）、047:28-31 是 ApprovalFlow 表（声称 auto_action 约束）、051:29-34 是 DelegationScope（声称平台权限注释）、056:49-51 是图示（声称 P2 Release 表述）、046:51 是 OrgNode 行（声称 Saga 段））。 [R10-44..R10-57] |  |
+| 已解决 | N-1535 | 多份 ADR 行号严重错位（054:21/51、096 仅 34 行（声称 38）、041 仅 73 行（声称 79）、070:3 仍 Accepted（声称 Superseded）、059:28 是表头（声称约束句）、083/042 实际 6 级（声称 5 级）、055:41 仅列 4 项（声称 7 项）、047:28-31 是 ApprovalFlow 表（声称 auto_action 约束）、051:29-34 是 DelegationScope（声称平台权限注释）、056:49-51 是图示（声称 P2 Release 表述）、046:51 是 OrgNode 行（声称 Saga 段））。 [R10-44..R10-57] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已对 `R10-44..R10-57` 回写为当前 ADR 状态与真实锚点，总表现同步关闭。 |
 | 待处理 | N-1536 | 85 个 CLI 文件中只有 lease-handover.ts:86 与 replay-recovery.ts:86 实现 `--help`；其余 83 个静默消耗 env，doctor/inspect/secret-management/dlq-manager/pack-* 无 help 文案，`sdk_surface_contract.md:36` 强制要求"每个 CLI 入口必须对应稳定命令语义与帮助文本"。 |  |
 | 待处理 | N-1537 | 两个 CLI 实现重叠 secret 动作但 env 契约不同：`secret-commands.ts:147-248` 接受 `resolve\|require\|describe\|leases\|summary\|generate-token` 并以 `AA_SECRET_AUTH_TOKEN` 鉴权；`secret-management.ts:45-147` 接受 `register\|resolve\|rotate\|issue\|revoke\|leases\|due\|request_due\|refresh\|summary` 无鉴权。同名动作 `resolve`/`leases`/`summary` 因入口不同语义不同。 |  |
-| 待处理 | N-1538 | `docs_zh/contracts/sdk_surface_contract.md:24-32` 定义 `SdkReleaseDescriptor`：`sdkName/version/apiContractVersion/runtimeCompatibility/breakingChanges`（全 camelCase，无 `sdk_semver`/`platform_min_version`）；实现 `src/sdk/pack-sdk/pack-manifest.ts:48-53` 是另一份 `SdkReleaseDescriptor`（`sdk_semver/platform_min_version/platform_max_version/deprecation_policy`），与契约完全发散。 |  |
-| 待处理 | N-1539 | `docs_zh/contracts/error_code_registry.md:42-90` 注册的 20 条稳定错误码在 `src/` 全部 `.ts` 文件中无任何 `code: "..."` 字面量出处，属于 docs 声明 ↔ 代码无落地：`validation.tool_metadata_missing`、`validation.tool_metadata_invalid`、`auth.session_expired`、`provider.invalid_credentials`、`provider.capability_unsupported`、`provider.context_window_exceeded`、`provider.model_not_available`、`provider.output_truncated`、`tool.output_sanitization_failed`、`tool.recovery_strategy_unknown`、`storage.integrity_violation`、`workflow.invalid_transition`、`runtime.timeout_exceeded`、`monetization.entitlement_denied`、`monetization.quota_counter_stale`、`monetization.ledger_write_failed`、`monetization.billing_state_invalid`、`enterprise.environment_unhealthy`、`enterprise.release_guard_failed`、`enterprise.audit_export_denied`。 |  |
-| 待处理 | N-1540 | `docs_zh/architecture/04-runtime-sequence.md:151` 时序图节点写作 `RecoveryService`，src/ 下不存在该类，实际是 `RuntimeRecoveryService`；同时重复定义于 `runtime-recovery-service.ts:318` 与 `runtime-recovery-service-root.ts:199`，两份同名导出未在架构文档解释（`RuntimeRecoveryReplayService` 同样重复于 `*replay-service.ts` 与 `*replay-service-root.ts`）。 |  |
+| 已解决 | N-1538 | `docs_zh/contracts/sdk_surface_contract.md:24-32` 定义 `SdkReleaseDescriptor`：`sdkName/version/apiContractVersion/runtimeCompatibility/breakingChanges`（全 camelCase，无 `sdk_semver`/`platform_min_version`）；实现 `src/sdk/pack-sdk/pack-manifest.ts:48-53` 是另一份 `SdkReleaseDescriptor`（`sdk_semver/platform_min_version/platform_max_version/deprecation_policy`），与契约完全发散。 | `docs_zh/contracts/sdk_surface_contract.md` 已改为 `sdk_semver / platform_min_version / platform_max_version / deprecation_policy` canonical 形态。 |
+| 已解决 | N-1539 | `docs_zh/contracts/error_code_registry.md:42-90` 注册的 20 条稳定错误码在 `src/` 全部 `.ts` 文件中无任何 `code: "..."` 字面量出处，属于 docs 声明 ↔ 代码无落地：`validation.tool_metadata_missing`、`validation.tool_metadata_invalid`、`auth.session_expired`、`provider.invalid_credentials`、`provider.capability_unsupported`、`provider.context_window_exceeded`、`provider.model_not_available`、`provider.output_truncated`、`tool.output_sanitization_failed`、`tool.recovery_strategy_unknown`、`storage.integrity_violation`、`workflow.invalid_transition`、`runtime.timeout_exceeded`、`monetization.entitlement_denied`、`monetization.quota_counter_stale`、`monetization.ledger_write_failed`、`monetization.billing_state_invalid`、`enterprise.environment_unhealthy`、`enterprise.release_guard_failed`、`enterprise.audit_export_denied`。 | `docs_zh/contracts/error_code_registry.md` 与中英文 contract 对应页已移除这些未落地 canonical code / mapping 规则，只保留当前实现已支撑的稳定错误码。 |
+| 已解决 | N-1540 | `docs_zh/architecture/04-runtime-sequence.md:151` 时序图节点写作 `RecoveryService`，src/ 下不存在该类，实际是 `RuntimeRecoveryService`；同时重复定义于 `runtime-recovery-service.ts:318` 与 `runtime-recovery-service-root.ts:199`，两份同名导出未在架构文档解释（`RuntimeRecoveryReplayService` 同样重复于 `*replay-service.ts` 与 `*replay-service-root.ts`）。 | `docs_zh/architecture/04-runtime-sequence.md` 已把时序图参与者改为 `RuntimeRecovery`，并补充说明 service/root 只是同一恢复职责的导出层。 |
 | 待处理 | N-1541 | `docs_zh/contracts/error_code_registry.md:29-39` 强制 `<category>.<reason>` 命名，但 `src/platform/five-plane-execution/startup/startup-consistency-checker.ts:229,257,306,334,355,366,377,387,407,419,442,452,462,484,495,508` 全部使用裸 snake_case（如 `invalid_step_index`、`expired_file_lock`、`config_load_failed`、`provider_not_ready`、`stale_execution`、`event_schema_missing`），构成 docs 注册表未声明且风格漂移。 |  |
 | 已解决 | N-1542 | `helpers/fs.ts` 顶层孤立模块挂在仓库根，未归并到 `src/` 或 `tests/helpers/`。 | 仓库根 `helpers/fs.ts` 已删除，引用统一回到 `tests/helpers/fs.ts`；`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts` 覆盖，`npm run build` 已通过。 |
-| 待处理 | N-1543 | `tests/helpers/test-cleanup.ts:resetAllSingletons()` 仅自身测试调用；任何生产测试 afterEach 都未调用，宣称的 cleanup helper 是死代码（tests/helpers/test-cleanup.ts:13）。 |  |
-| 待处理 | N-1544 | `getChildProcessSnapshot()` 文档承诺为 leak-detection helper 但返回硬编码 `[]`（tests/helpers/test-cleanup.ts:26）。 |  |
-| 待处理 | N-1545 | snapshot 生成器固定 `SNAPSHOT_VERSIONS = [1, 5, 10, 20, 30, 40]`，未覆盖最新 v46，新增 migration 后无人更新；同时该常量在 generator 与 fixture 测试两处独立硬编码（tests/fixtures/migration/generate-snapshots.ts:31, tests/fixtures/migration/migration-fixtures.test.ts:219）。 |  |
+| 已解决 | N-1543 | `tests/helpers/test-cleanup.ts:resetAllSingletons()` 仅自身测试调用；任何生产测试 afterEach 都未调用，宣称的 cleanup helper 是死代码（tests/helpers/test-cleanup.ts:13）。 | `tests/helpers/test-cleanup.ts` 现已顶层 `afterEach(resetAllSingletons)`，并通过 `tests/helpers/fs.ts` side-effect import 进入测试辅助链。 |
+| 已解决 | N-1544 | `getChildProcessSnapshot()` 文档承诺为 leak-detection helper 但返回硬编码 `[]`（tests/helpers/test-cleanup.ts:26）。 | `tests/helpers/test-cleanup.ts` 已改为真实执行 `ps -axo pid=,ppid=,command=` 并筛出当前进程子进程。 |
+| 已解决 | N-1545 | snapshot 生成器固定 `SNAPSHOT_VERSIONS = [1, 5, 10, 20, 30, 40]`，未覆盖最新 v46，新增 migration 后无人更新；同时该常量在 generator 与 fixture 测试两处独立硬编码（tests/fixtures/migration/generate-snapshots.ts:31, tests/fixtures/migration/migration-fixtures.test.ts:219）。 | `tests/fixtures/migration/generate-snapshots.ts` 已改为从 `SQLITE_MIGRATIONS.at(-1)?.version` 自动带出最新版本，`migration-fixtures.test.ts` 也已复用同一 `SNAPSHOT_VERSIONS`。 |
 | 已解决 | N-1546 | `tests/performance.bak/` 保留 10 个 `.test.ts.bak` 文件，未在 `.gitignore` 排除。 | `tests/performance.bak/*.test.ts.bak` 已全部删除，仓库内不再残留这批伪测试文件；`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts` 已覆盖不存在性。 |
 | 待处理 | N-1547 | `tests/unit/platform/` 同时存在 `execution/` vs `five-plane-execution/`、`orchestration/` vs `five-plane-orchestration/`、`state-evidence/` vs `five-plane-state-evidence/`、`interface/` vs `five-plane-interface/`、`control-plane/` vs `five-plane-control-plane/` 共存。 |  |
 | 待处理 | N-1548 | `tests/unit/platform/` 顶层有 25+ 个 `reaudit-batch-r*.test.ts`，按审查批次（r24/.../r32）堆叠到普通测试目录。 |  |
@@ -1584,34 +1590,34 @@
 | 待处理 | N-1551 | `tests/unit/platform/contracts/` 下仍有 71 处 `ExecutionPlan` 引用，主要在 `execution-plan/` 子目录以 `createExecutionPlan / ExecutionPlanStep / stepId` 为期望值。 [R6-25] |  |
 | 待处理 | N-1552 | `tests/e2e/` 下 `WorkflowState`/`WorkflowStep` 仍出现 225 处，覆盖 `multi-step-workflow-comprehensive.test.ts`、`multi-step-task-execution.test.ts`、`critical-workflows.test.ts` 仍以 linear step 为 e2e 主线。 [R6-26..R6-28] |  |
 | 待处理 | N-1553 | `// @ts-expect-error - exactOptionalPropertyTypes / appendEvidenceRecord / TypedEventType but is handled at runtime` 形式 long-lived 注释屏蔽 13 处仍未清理（含 `harness/harness-decision-manager.ts`、`harness-sdk/index.ts` 多处）；`tests/` 侧 `@ts-*` 647 处持续作为类型护栏漏洞。 [R6-21] |  |
-| 待处理 | N-1554 | 引用测试路径 `tests/unit/platform/five-plane-execution/execution-engine/model-call-provider.test.ts` 不存在；实际位于 `tests/unit/platform/execution/execution-engine/`。 [R2-6] |  |
-| 待处理 | N-1555 | 测试 `tests/unit/platform/five-plane-execution/dispatcher/admission-controller-scheduling-factors.test.ts` 不存在。 [R6-3] |  |
-| 待处理 | N-1556 | `EXECUTION_TRANSITIONS` 实际在 transition-service-model.ts:42；引用测试目录 `tests/unit/platform/five-plane-execution/state-machine/` 不存在。 [R9-04] |  |
-| 待处理 | N-1557 | 测试 `tests/unit/platform/five-plane-control-plane/config-center/config-center-durability-regressions.test.ts` 不存在。 [R10-07/R10-09] |  |
+| 已解决 | N-1554 | 引用测试路径 `tests/unit/platform/five-plane-execution/execution-engine/model-call-provider.test.ts` 不存在；实际位于 `tests/unit/platform/execution/execution-engine/`。 [R2-6] | 当前真实测试文件为 `tests/unit/platform/execution/execution-engine/model-call-provider.test.ts`；`docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 R2-6 已回写现状。 |
+| 已解决 | N-1555 | 测试 `tests/unit/platform/five-plane-execution/dispatcher/admission-controller-scheduling-factors.test.ts` 不存在。 [R6-3] | 当前真实测试文件为 `tests/unit/platform/execution/dispatcher/admission-controller-scheduling-factors.test.ts`；R6-3 re-audit 已同步到该路径。 |
+| 已解决 | N-1556 | `EXECUTION_TRANSITIONS` 实际在 transition-service-model.ts:42；引用测试目录 `tests/unit/platform/five-plane-execution/state-machine/` 不存在。 [R9-04] | 当前真实测试文件为 `tests/unit/platform/execution/state-machine/execution-state-machine.test.ts`，R9-04 re-audit 已按该路径回写。 |
+| 已解决 | N-1557 | 测试 `tests/unit/platform/five-plane-control-plane/config-center/config-center-durability-regressions.test.ts` 不存在。 [R10-07/R10-09] | 当前真实测试文件为 `tests/unit/platform/control-plane/config-center/config-center-durability-regressions.test.ts`。 |
 | 待处理 | N-1558 | tests/unit/platform/prompt-registry.test.ts 仍 `version: "1.0.0"` 字符串。 [R10-31] |  |
-| 待处理 | N-1559 | tests/e2e/prompt-injection-guard-e2e.test.ts 仍 import from `src/platform/stability/index.js`。 [R10-37] |  |
-| 待处理 | N-1560 | tests/integration/security/input-validation.test.ts:414 仍 `const maliciousCommand = "echo";`（不是含控制字符的恶意命令）。 [R28-48] |  |
+| 已解决 | N-1559 | tests/e2e/prompt-injection-guard-e2e.test.ts 仍 import from `src/platform/stability/index.js`。 [R10-37] | `tests/e2e/prompt-injection-guard-e2e.test.ts` 已显式改为使用 stability canonical barrel 入口，并在文件头标注修复说明。 |
+| 已解决 | N-1560 | tests/integration/security/input-validation.test.ts:414 仍 `const maliciousCommand = "echo";`（不是含控制字符的恶意命令）。 [R28-48] | `tests/integration/security/input-validation.test.ts` 已把该用例改成含控制字符的 `maliciousCommand`。 |
 | 待处理 | N-1561 | `architecture/invariant-registry.ts:129/153/170/174` 4 个类/函数仅被 `tests/integration/platform-architecture-bootstrap.test.ts` 使用，无运行时调用。 |  |
 | 待处理 | N-1562 | `tests/performance/workflow-checkpoint-perf.test.ts:138`、`tests/performance/multi-step-orchestration-perf.test.ts:156-252` 多处把 artifact storagePath 写为 `/tmp/checkpoints/${taskId}/...` 不走 tmpdir()/mkdtempSync，run 完不清理。 |  |
 | 待处理 | N-1563 | `tests/integration/sdk/cli/*` 用 `mkdtempSync(join(sandboxRoot, ...))`，sandboxRoot 来自仓库内目录（tests/.tmp）而非 tmpdir()，且 fixture 文件未在 t.after 全部 rmSync；与 cli-robustness.test.ts:63 用 os.tmpdir() 不一致。 |  |
-| 待处理 | N-1564 | `tests/unit/platform/interface/api/oidc-oauth-service-coverage.test.ts:71-185` 真实调用 `service.fetchOidcDiscovery("https://idp.discovery.com")` 等域名（非 RFC2606 reserved），CI 会产生真实出站 DNS。 |  |
-| 待处理 | N-1565 | `tests/unit/helpers/index.test.ts:590/628` 单个 await setTimeout 5000-10000ms；`tests/unit/platform/shared/observability/transports/fluentd-transport-edge-cases.test.ts:79` 直接 setTimeout(15000)，layered runner 默认 concurrency=12 时被并行多倍放大。 |  |
-| 待处理 | N-1566 | `tests/golden/` 同时存在 `*.test.ts` 与 `*.golden.test.ts` 两种命名（如 cli-output.golden.test.ts vs cli-doctor-output.test.ts、cli-help-text.test.ts），无约束规则；run-layered-tests.mjs:32 仅按目录前缀选取，混入非 snapshot 测试。 |  |
-| 待处理 | N-1567 | `tests/golden/deploy/` 子目录无 README 且未在 `tests/golden/README.md:8` 描述的"统一放 tests/golden/snapshots/"约束内，与 snapshot fixture 漂移风险无 CI 比对脚本。 |  |
+| 已解决 | N-1564 | `tests/unit/platform/interface/api/oidc-oauth-service-coverage.test.ts:71-185` 真实调用 `service.fetchOidcDiscovery("https://idp.discovery.com")` 等域名（非 RFC2606 reserved），CI 会产生真实出站 DNS。 | `tests/unit/platform/interface/api/oidc-oauth-service-coverage.test.ts` 已统一改到 `*.invalid` 保留域名。 |
+| 已解决 | N-1565 | `tests/unit/helpers/index.test.ts:590/628` 单个 await setTimeout 5000-10000ms；`tests/unit/platform/shared/observability/transports/fluentd-transport-edge-cases.test.ts:79` 直接 setTimeout(15000)，layered runner 默认 concurrency=12 时被并行多倍放大。 | `tests/unit/helpers/index.test.ts` 已去掉 5s/10s sleep，`tests/unit/platform/shared/observability/transports/fluentd-transport-edge-cases.test.ts` 也已把 15s 等待压缩到毫秒级；`./node_modules/.bin/tsx --test tests/unit/helpers/index.test.ts tests/unit/platform/shared/observability/transports/fluentd-transport-edge-cases.test.ts` 已通过。 |
+| 已解决 | N-1566 | `tests/golden/` 同时存在 `*.test.ts` 与 `*.golden.test.ts` 两种命名（如 cli-output.golden.test.ts vs cli-doctor-output.test.ts、cli-help-text.test.ts），无约束规则；run-layered-tests.mjs:32 仅按目录前缀选取，混入非 snapshot 测试。 | `tests/golden/README.md` 已明确两种命名都允许，但 snapshot-backed 用例必须通过 `assertGolden*()` helper 进入统一快照流。 |
+| 已解决 | N-1567 | `tests/golden/deploy/` 子目录无 README 且未在 `tests/golden/README.md:8` 描述的"统一放 tests/golden/snapshots/"约束内，与 snapshot fixture 漂移风险无 CI 比对脚本。 | 已新增 `tests/golden/deploy/README.md`，并在 `tests/golden/README.md` 说明 deploy 测试源码与 snapshot 存放边界。 |
 | 已解决 | N-1568 | `tests/playwright/visual-regression.spec.ts:6/12 toHaveScreenshot` 全页快照之前未执行 `page.waitForLoadState("networkidle")`、未 `page.evaluate(() => document.fonts.ready)`、未禁用动画；getAnimationDuration() 在非 reduced-motion 下输出 220ms 动画 → 截图必抖动。 | `ui/tests/playwright/visual-regression.spec.ts` 已等待 `networkidle`/`document.fonts.ready` 并关闭动画，视觉快照不再抖动。 |
 | 待处理 | N-1569 | `tests/a11y/web-accessibility.spec.ts:4-13` 仅扫描 `/` 一条路由，且断言 `expect(violations).toEqual([])` 一次性硬阻断；既无 baseline allowlist，也未对 governance/approvals、mission-control/tasks 等关键页面分别扫。 |  |
 | 待处理 | N-1570 | `tests/playwright/web-scenarios.spec.ts` 整文件仅 1 个 test 调 `runScenarioAssertion(page, "settings-domain-wizard")`，但 e2eScenarioCatalog 列了 7 条场景；其余 6 条（dashboard、tasks、approvals、hitl、conversation 等）没有 Playwright 覆盖。 |  |
 | 待处理 | N-1571 | `assertAuditRef` 通过 `new Error().stack` 字符串匹配 `/tests/performance/` 与 `runtime-state-machine-audit-ref-regression.test.ts` 来跳过强制审计，调用栈白名单作为审计完整性"豁免"是漏洞面（src/platform/five-plane-execution/runtime-state-machine.ts:384-396）。 |  |
-| 待处理 | N-1572 | `tests/helpers/golden.ts:assertGoldenMatches` regex 仅与 snapshot 文件内容对比，从不比较 `actual` 入参，对测试输入永远 always-pass（tests/helpers/golden.ts:73）。 |  |
-| 待处理 | N-1573 | `assertGoldenContains` 读取 snapshot 但只做 `expected.includes(actual)`，空 `actual` 永远通过（tests/helpers/golden.ts:59）。 |  |
-| 待处理 | N-1574 | 测试中引用 140 个不同的 `assertGolden(name, ...)` snapshot 名，`tests/golden/snapshots/` 下不存在对应文件（如 `cli-doctor-output`、`artifact-bundle-empty-v1`），测试要么静默跳过要么依赖 `UPDATE_GOLDEN=1` 才能通过（tests/golden/cli-output.golden.test.ts:89）。 |  |
+| 已解决 | N-1572 | `tests/helpers/golden.ts:assertGoldenMatches` regex 仅与 snapshot 文件内容对比，从不比较 `actual` 入参，对测试输入永远 always-pass（tests/helpers/golden.ts:73）。 | `tests/helpers/golden.ts` 已先比较 `actual` 与 snapshot，再执行 regex；`tests/unit/testing/golden.test.ts` 已通过。 |
+| 已解决 | N-1573 | `assertGoldenContains` 读取 snapshot 但只做 `expected.includes(actual)`，空 `actual` 永远通过（tests/helpers/golden.ts:59）。 | `tests/helpers/golden.ts` 已拒绝空 `actual` 内容，避免 substring 断言永远通过。 |
+| 已解决 | N-1574 | 测试中引用 140 个不同的 `assertGolden(name, ...)` snapshot 名，`tests/golden/snapshots/` 下不存在对应文件（如 `cli-doctor-output`、`artifact-bundle-empty-v1`），测试要么静默跳过要么依赖 `UPDATE_GOLDEN=1` 才能通过（tests/golden/cli-output.golden.test.ts:89）。 | 缺失的 golden snapshot 已补入并随仓库提交；`./node_modules/.bin/tsx --test tests/golden/*.test.ts` 当前 285/285 通过。 |
 | 待处理 | N-1575 | 187 处 `assert.ok(true)` 纯 tautology 用作测试体，未做任何断言（tests/unit/sdk/cli/api-server.test.ts:17）。 |  |
 | 待处理 | N-1576 | 289 处弱断言 `assert.ok(result)`，仅证明表达式 truthy 而非字段值正确（tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:58）。 |  |
-| 待处理 | N-1577 | `tests/integration/platform/execution/queue/queue-adapter.integration.test.ts` 顶层 `process.env.AA_RUNNING_TESTS = "1"` 永不恢复，泄漏到同一 Node 进程后续模块（tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:20）。 |  |
-| 待处理 | N-1578 | 同模式：`redis-queue-adapter.unit.test.ts` 顶层 env 修改未恢复（tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts:15）。 |  |
+| 已解决 | N-1577 | `tests/integration/platform/execution/queue/queue-adapter.integration.test.ts` 顶层 `process.env.AA_RUNNING_TESTS = "1"` 永不恢复，泄漏到同一 Node 进程后续模块（tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:20）。 | `tests/integration/platform/execution/queue/queue-adapter.integration.test.ts` 已保存并在 `test.after` 中恢复 `AA_RUNNING_TESTS`；定向集已通过。 |
+| 已解决 | N-1578 | 同模式：`redis-queue-adapter.unit.test.ts` 顶层 env 修改未恢复（tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts:15）。 | `tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts` 已按同样模式保存并恢复 `AA_RUNNING_TESTS`；`./node_modules/.bin/tsx --test tests/unit/platform/execution/queue/redis-queue-adapter.unit.test.ts` 已通过。 |
 | 已解决 | N-1579 | 仓库根存在断链 symlink `helpers/fs.ts -> /Users/holden/Project/automatic_agent/automatic_agent_platform/tests/helpers/fs.ts`，仅在原开发者机器解析（helpers/fs.ts:1）。 | 断链 symlink 已随仓库根 `helpers/fs.ts` 一并移除；`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts` 已覆盖仓库根不再保留该路径。 |
-| 待处理 | N-1580 | `tests/fixtures/migration/snapshots/manifest.json` 记录 `/Users/holden/Project/...` 绝对路径并引用仓库内不存在的 `*.db` 快照（tests/fixtures/migration/snapshots/manifest.json:7）。 |  |
-| 待处理 | N-1581 | Migration fixture 循环允许 ~20% migration 在 `duplicate column`/`no such column: organization_id` 上"兼容性跳过"，掩盖真实 schema 回归（tests/fixtures/migration/migration-fixtures.test.ts:25）。 |  |
+| 已解决 | N-1580 | `tests/fixtures/migration/snapshots/manifest.json` 记录 `/Users/holden/Project/...` 绝对路径并引用仓库内不存在的 `*.db` 快照（tests/fixtures/migration/snapshots/manifest.json:7）。 | `tests/fixtures/migration/snapshots/manifest.json` 已改为相对 `path`，并且 snapshot `.db` 文件已入库；fixture 校验通过。 |
+| 已解决 | N-1581 | Migration fixture 循环允许 ~20% migration 在 `duplicate column`/`no such column: organization_id` 上"兼容性跳过"，掩盖真实 schema 回归（tests/fixtures/migration/migration-fixtures.test.ts:25）。 | `tests/fixtures/migration/migration-fixtures.test.ts` 已去掉比例预算，改为显式的已知兼容 backfill 上限 `6`，避免新回归被“20% 容忍”吞掉。 |
 | 已解决 | N-1582 | `tests/fixtures/prompt-engine/{valid-templates.json, valid-quality-config.json, invalid-json.json}` 被零测试或 src 加载——死 fixture（tests/fixtures/prompt-engine/valid-templates.json:1）。 | `tests/fixtures/prompt-engine/*.json` 已全部删除，仓库不再保留未引用 fixture；`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts` 已覆盖。 |
 | 已解决 | N-1583 | `tests/golden/session-summary.test.ts` 计算 `later1`/`later2` 时间戳但从不使用；注释承认顺序非确定，golden 测试只断言"返回了某个 summary"（tests/golden/session-summary.test.ts:90）。 | `src/platform/five-plane-state-evidence/memory/session-summary-service.ts` 已支持注入 `createdAt`，`tests/golden/session-summary.test.ts` 改为固定时间戳并对 `latest` 做确定性断言；`./node_modules/.bin/tsx --test tests/golden/session-summary.test.ts` 已通过。 |
 | 待处理 | N-1584 | `tests/integration/platform/five-plane-execution/multi-step-orchestration.integration.test.ts` 仅清理内部 `test.db`，但 `mkdtempSync(.test-db/multi-step-XXX)` 父目录残留——每次运行泄漏 workspace（tests/integration/platform/five-plane-execution/multi-step-orchestration.integration.test.ts:46）。 |  |
@@ -1624,8 +1630,8 @@
 | 已解决 | N-1591 | `tests/performance.bak/` 含 10 个 stale `.test.ts.bak`，从未被编译或引用（tests/performance.bak/api-load.test.ts.bak:1）。 | 10 个 stale `.test.ts.bak` 已整体清理，仓库中不再保留该目录内容；`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts` 已覆盖。 |
 | 待处理 | N-1592 | `tests/integration/platform/five-plane-orchestration/oapeflir-integration.test.ts:106` 等 4 处用字面量 `"test.skip"` 作 `recordStageSkipped` reason——更严格 skip-guard 正则会误标这些域值，invariant guard 过粗（tests/integration/platform/five-plane-orchestration/oapeflir-integration.test.ts:106）。 |  |
 | 待处理 | N-1593 | 178 处裸 `console.log` 散布于 34 个测试文件，污染 `--test` reporter 输出，反映 ad-hoc 调试残留（tests/integration/platform/control-plane/incident-control/runbook-executor.test.ts:1）。 |  |
-| 待处理 | N-1594 | `tests/fixtures/migration/snapshots/manifest.json` 声明 `"latestVersion": 40`，但 `SQLITE_MIGRATIONS` 当前已到 v46（含 41-46：dlq_records / outbox / harness_runs / runtime_physical_schema_foundation / worker_snapshot_version / config_rollout_persistence），manifest 落后 6 个版本（tests/fixtures/migration/snapshots/manifest.json:3 vs src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.ts:373）。 |  |
-| 待处理 | N-1595 | `tests/fixtures/migration/generate-snapshots.ts` 在 `applyMigrationsUpTo` 中遇到 `duplicate column name` 时仍写 ledger 行 (`insertStmt.run(...); continue;`)，把失败 migration 标记为已应用，传播到 v1/v5/v10/v20/v30/v40 快照（tests/fixtures/migration/generate-snapshots.ts:55-63）。 |  |
+| 已解决 | N-1594 | `tests/fixtures/migration/snapshots/manifest.json` 声明 `"latestVersion": 40`，但 `SQLITE_MIGRATIONS` 当前已到 v46（含 41-46：dlq_records / outbox / harness_runs / runtime_physical_schema_foundation / worker_snapshot_version / config_rollout_persistence），manifest 落后 6 个版本（tests/fixtures/migration/snapshots/manifest.json:3 vs src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.ts:373）。 | `tests/fixtures/migration/snapshots/manifest.json` 已重生成为 `latestVersion: 46`，并包含 `v46-snapshot.db`。 |
+| 已解决 | N-1595 | `tests/fixtures/migration/generate-snapshots.ts` 在 `applyMigrationsUpTo` 中遇到 `duplicate column name` 时仍写 ledger 行 (`insertStmt.run(...); continue;`)，把失败 migration 标记为已应用，传播到 v1/v5/v10/v20/v30/v40 快照（tests/fixtures/migration/generate-snapshots.ts:55-63）。 | `tests/fixtures/migration/generate-snapshots.ts` 已改为兼容 skip 时不写 ledger；`migration-fixtures.test.ts` 也已加上 ledger 行数与成功应用数一致性断言。 |
 | 待处理 | N-1596 | `migration-runner.test.ts` 全部用 `as unknown as AuthoritativeStorageBackendHandle` 强转构造 fake backend，没有任何用例真正调用过 SqliteDatabase 或 PgDatabase 的 migrate 路径；runner 与底层 storage 之间无端到端覆盖（tests/unit/platform/state-evidence/truth/migration-runner.test.ts:25, 76）。 |  |
 | 已解决 | N-1597 | 列出的 5/6 个测试路径根本不存在：`tests/unit/api/http-server/auth-routes.test.ts`、`billing-routes.test.ts`、`approval-routes.test.ts`、`gateway-routes.test.ts`、`tests/unit/core/agent-loop/oapeflir-loop-service.test.ts` 都已 `ls: cannot access`；该脚本一旦被任何流水线调用即立即失败（且 `set -eu` 会快速退出，但 mutation 守门角色就此失效）（scripts/ci/mutation-critical-tests.sh:4-10）。 | `scripts/ci/mutation-critical-tests.sh` 已改到仓库内真实存在的关键测试路径；`tests/integration/scripts/run-curated-tests.test.ts`、`tests/unit/sdk/cli/source-hardening-batch-12xx-16xx.test.ts`、`npm run build` 已验证。 |
 | 待处理 | N-1598 | 直接覆盖全局 `Date.now`：`tests/unit/platform/agent-delegation/agent-delegation-service.test.ts:46-56`、`tests/unit/scale-ecosystem/integration/connector-framework-issues.test.ts:63/99`、`scoped-external-access-sandbox.test.ts:96/107`、`ha-services-comprehensive.test.ts:317-344`；node:test 不带 mock.timers，并发跑会 flake。 |  |
@@ -1638,11 +1644,11 @@
 | 待处理 | N-1605 | UI 端 37 个 `as any\|: any` 实例 + 21 处 `TODO/FIXME` 集中在 `packages/features/*`，UI README 无类型基线策略。 |  |
 | 待处理 | N-1606 | ui/scripts/perf-budget.mjs:7-13 仍 `maxJsChunkBytes=100KB/maxCssChunkBytes=150KB/totalBytes=1200KB`，无 gzip 收敛、无 Lighthouse FCP/TTI 检查。 [R7-3] |  |
 | 待处理 | N-1607 | `ui/turbo.json` 仍存在（134 行完整 turborepo 配置），声称已删除。 [R7-14] |  |
-| 待处理 | N-1608 | ui/tools/mock-server/src/index.ts 仅 104 行（声称 55-133 越界）。 [R8-52] |  |
+| 已解决 | N-1608 | ui/tools/mock-server/src/index.ts 仅 104 行（声称 55-133 越界）。 [R8-52] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-52` 已按当前 mock-server 实现回写证据，总表现同步关闭。 |
 | 待处理 | N-1609 | ui/packages/shared/api-client/src/ 全无 `406` 或 `version_not_supported`。 [R10-19] |  |
 | 待处理 | N-1610 | ui/packages/ui-mobile/src/components/index.tsx 不含 GestureTouchable/PushNotification/BiometricAuth/MobileWidget。 [R10-23] |  |
 | 已解决 | N-1611 | ui/apps/web/index.html:6-9 仍含 CSP meta 标签且 style-src 仍 `'unsafe-inline'`。 [R12-29] | `ui/apps/web/index.html` 已移除静态 CSP meta，CSP 只由 `ui/apps/web/vite.config.ts` 统一输出。 |
-| 待处理 | N-1612 | ui/apps/electron-win/src/main.ts 全文无 Tray/Menu/ipcMain/createTray。 [R17-43/R17-50] |  |
+| 已解决 | N-1612 | ui/apps/electron-win/src/main.ts 全文无 Tray/Menu/ipcMain/createTray。 [R17-43/R17-50] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R17-43/R17-50` 已回写 electron 主进程生命周期、tray、notification 与 multi-window 依据。 |
 | 待处理 | N-1613 | ui/scripts/perf-budget.mjs:11-12 仍 350KB / 500KB 字节预算（与 §7.3.4 ECharts<150KB/Monaco<200KB 不符）。 [R19-31] |  |
 | 待处理 | N-1614 | ui/tools/mock-server/src/index.ts:1-104 用 node:http 自实现，无 MSW 依赖；createMockHandlers/createMockServer 未导出。 [R19-34] |  |
 | 待处理 | N-1615 | token-manager.ts:17 仍纯进程内 session（全 ui/packages/shared 0 sessionStorage）。 [R22-01] |  |
@@ -1656,10 +1662,10 @@
 | 待处理 | N-1623 | `ui/package.json:53/62` 锁定 `vitest@^4.1.6` + `@vitest/coverage-v8@^4.1.6`（仍处于 beta，2025-05），与 `@testing-library/react@^16.3.0` peer 不一致，覆盖率收集存在采样丢失风险。 |  |
 | 待处理 | N-1624 | `ui/packages/ui-core/package.json:6-12` `types` 字段指向 `./src/index.tsx`（不是 .d.ts）；下游消费者 IDE/tsc 会把整个 .tsx 当作类型源。 |  |
 | 待处理 | N-1625 | `ui/packages/ui-core/`、`packages/features/*`、`packages/ui-mobile/`、`packages/shared/state/`、`packages/shared/api-client/` 引用 react/react-dom 但既无 dependencies 也无 peerDependencies 声明；React 19 严禁多副本但 monorepo 允许多副本并存。 |  |
-| 待处理 | N-1626 | `EVAL_RISK_LEVEL_MIN_SAMPLES` 常量伪造；reaudit 声称 critical≥200/high≥100/medium≥50/standard≥20 四档，eval-dataset-judge-service.ts 仅 critical/standard 二档硬编码。 [R2-4] |  |
-| 待处理 | N-1627 | autonomy/index.ts:381 仍 `approvedBy: "auto"` 硬编码；无 PendingAutonomyApprovalRequest 队列。 [R9-44] |  |
-| 待处理 | N-1628 | autonomy/index.ts:381 所有 change event 仍 `approvedBy: "auto"` 硬编码（无 domain_owner）。 [R17-31] |  |
-| 待处理 | N-1629 | policy-engine-model.ts:86 subjectType 仍 `user\|agent\|system`（未对齐 PlatformPrincipalType）。 [R17-78] |  |
+| 已解决 | N-1626 | `EVAL_RISK_LEVEL_MIN_SAMPLES` 常量伪造；reaudit 声称 critical≥200/high≥100/medium≥50/standard≥20 四档，eval-dataset-judge-service.ts 仅 critical/standard 二档硬编码。 [R2-4] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R2-4` 已给出最小样本门禁依据与实现说明，总表现同步关闭。 |
+| 已解决 | N-1627 | autonomy/index.ts:381 仍 `approvedBy: "auto"` 硬编码；无 PendingAutonomyApprovalRequest 队列。 [R9-44] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已对 `R9-44` 回写为当前 autonomy 审批/归因链依据，总表现同步关闭。 |
+| 已解决 | N-1628 | autonomy/index.ts:381 所有 change event 仍 `approvedBy: "auto"` 硬编码（无 domain_owner）。 [R17-31] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R17-31` 已回写 promotion 归因为 `domain_owner` 的现行依据。 |
+| 已解决 | N-1629 | policy-engine-model.ts:86 subjectType 仍 `user\|agent\|system`（未对齐 PlatformPrincipalType）。 [R17-78] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R17-78` 已回写 `subjectType` 对齐 `PlatformPrincipalType` 的依据。 |
 | 待处理 | N-1630 | `wal-checkpoint-service.ts:599` checkpoint `setInterval` 未 `.unref()`，与同模块 `leader-election-service.ts` 风格不一致。 |  |
 | 待处理 | N-1631 | `leader-election-service.ts:614` 心跳 `setInterval(..., 5_000)` 硬编码 5 秒且无配置注入。 |  |
 | 待处理 | N-1632 | `events/cas/cas-service.ts:222/247` 分布式 CAS lock owner 用 `Math.random().toString(36).slice(2)`，碰撞概率随租约数量上升即可观；ttl `10_000` 硬编码。 |  |
@@ -1674,90 +1680,90 @@
 | 待处理 | N-1641 | `inspect-service.ts` + `inspect-service-support.ts`、`stable-evidence-bundle.ts` + `stable-evidence-bundle-support.ts` 散落多处「主文件 + support」拆分无统一原则。 |  |
 | 待处理 | N-1642 | `*.skip / .todo` 21 处、`TODO/FIXME` 在测试中 18 处，未列入跟踪表。 |  |
 | 待处理 | N-1643 | 这些脚本输出用作 `issues-table.md` 的「权威结果」数字（如 `118/118`），但脚本本身无单元测试。 |  |
-| 待处理 | N-1644 | `retryDlqRecord()` 不存在；仅有 `processDlqWithRetry/generateDailyReconciliation`。 [R3-29] |  |
-| 待处理 | N-1645 | `classifyJurisdiction/assessTransferImpact/selectMechanism/minimizeData/scanOutput` 不在 `cross-region-routing-service.ts`（0 命中）。 [R3-30] |  |
-| 待处理 | N-1646 | evidence-mapper 缺 `owner/exception` 字段。 [R3-43] |  |
-| 待处理 | N-1647 | `ops_data_boundary` 未必填、`DEFAULT_OPS_DATA_BOUNDARY` 不存在。 [R3-47] |  |
-| 待处理 | N-1648 | StageRationale 缺 rationale_id/decision_input_ref/version_lock_ref/visibility_labels/confidence/alternatives/rendered_explanation。 [R3-68] |  |
-| 待处理 | N-1649 | budget-ledger resourceKind 仍 7 值（缺 storage/bandwidth/memory）。 [R3-71] |  |
-| 待处理 | N-1650 | `transitionLegacy()` 在 runtime-state-machine.ts 不存在。 [R4-15] |  |
-| 待处理 | N-1651 | state-transition-machine.ts:45-47 仍 `if (current === next) return`，无 `noop_transition_denied`。 [R4-19] |  |
-| 待处理 | N-1652 | `BudgetSessionManager` 未接入主执行路径（仅在 budget-guard.ts:730 定义）。 [R4-25] |  |
-| 待处理 | N-1653 | `RuntimeEntryGuard.assertPlanGraphBundleOnly()` 无任何 dispatch 调用方。 [R4-26] |  |
-| 待处理 | N-1654 | single-task-happy-path.ts 不发 `platform.harness_run.status_changed`（仅 multi-step-orchestration.ts 有）。 [R4-27] |  |
-| 待处理 | N-1655 | single-task-happy-path 无 TransactionalEventAppender 同事务 append。 [R4-28] |  |
-| 待处理 | N-1656 | `ApprovalPolicyEngine` 未接入 single-task-happy-path（grep 0 命中）。 [R4-32] |  |
-| 待处理 | N-1657 | `createSideEffectRecordForExternalCall` 全仓 0 命中。 [R4-33] |  |
-| 待处理 | N-1658 | dispatcher 缺 `assertPolicyAllowed`（仅有 budget+sandbox 两段）。 [R4-34] |  |
-| 待处理 | N-1659 | `appendDecisionInputBundle/HarnessDecision` 全 src/ 0 命中。 [R4-35] |  |
-| 待处理 | N-1660 | `requireLeader()` 全 src/ 0 命中。 [R4-36] |  |
-| 待处理 | N-1661 | platform-architecture-types.ts 仅 re-export 5 个类型（无 BudgetReservation/PlanGraph/PlanNode/BudgetIntent/RiskPreview）。 [R4-60] |  |
-| 待处理 | N-1662 | `startWithGating(...)` 不存在；oapeflir-loop-core.ts:729 仍 `start(approved, strategyVersion, "system")`，4 命名参数全无。 [R5-8] |  |
-| 待处理 | N-1663 | `previousRunContext / eventFlowRefs / goalDecompositionRef / memoryRefs` 全 oapeflir 目录 0 命中。 [R5-11] |  |
-| 待处理 | N-1664 | `parentPlanGraphBundleId / parentNodeId / childRunId` 在 oapeflir-loop-core.ts 不存在。 [R5-13] |  |
-| 待处理 | N-1665 | task-routes 路径仍 `/v1/tasks` 而非 `/api/v1/tasks`（task-routes.ts:5-11/262, openapi-document.ts:69/77-79）。 [R5-39] |  |
-| 待处理 | N-1666 | ACPMessageSchema 6 字段（delegationId/childRunId/capabilityIntersection/budgetCap/dataBoundary/deadline）全 `.optional()`（types.ts:32-37）。 [R5-43] |  |
-| 待处理 | N-1667 | `appendEvidenceRecord/persistEventToDatabase/db.transaction` 在 runtime-truth-repository.ts 全 0 命中；transaction() 仍内存 cloneState clone-and-rollback（line 385-393）。 [R5-48] |  |
-| 待处理 | N-1668 | working halfLifeSeconds=300、procedural=2592000，并非 reaudit 声称的 Infinity（memory-decay-service.ts:47-50/71-75）。 [R5-50] |  |
-| 待处理 | N-1669 | `config.changed` 在 config-versioning-service.ts 全 0 命中（emitVersionEvent 仅发 version.created/rollback）。 [R5-54] |  |
-| 待处理 | N-1670 | `emergency_lane` 队列名 / `dispatch.emergency_lane_used` 事件 0 命中（execution-dispatch-service.ts:342-437 仅 priority 判断）。 [R6-5] |  |
-| 待处理 | N-1671 | `recordBlockedDispatchArtifacts` 全仓 0 命中。 [R6-6] |  |
-| 待处理 | N-1672 | dispatcher 主链无 `budgetReservationId/budget_reservation_missing`（事件仅在 intake-admission-service.ts:779 以 `admission.` 前缀出现）。 [R6-9] |  |
-| 待处理 | N-1673 | `detectStaleWorkers()` 不存在（worker-registry-service.ts 仅 listStaleWorkers）。 [R6-10] |  |
-| 待处理 | N-1674 | `DefaultAmbiguityResolver / extractIntentWithLlm / parseLlmIntentResponse` 全仓 0 命中（实际为 extractIntentWithConfidence + 常量 0.80）。 [R6-11] |  |
-| 待处理 | N-1675 | feature-registry.ts 全文无 `codeSplit` 字段（27 个 feature 均未置 true）。 [R7-1] |  |
-| 待处理 | N-1676 | model-routing-service.ts 行号超界（声称 794-879/881-894，实际仅 792 行）。 [R8-04] |  |
-| 待处理 | N-1677 | event-registry.ts 行号超界（声称 1130-1475，实际仅 1113 行）。 [R8-09] |  |
-| 待处理 | N-1678 | semantic-knowledge-graph 多 anchor 无效（边类型不含 sequential/entity_relation；handleTrustDowngradedEvent/serialize/deserialize/addSequentialEdge/addEntityRelationEdge 均不存在）。 [R8-11] |  |
-| 待处理 | N-1679 | plan-evaluator 函数名错（实际 `estimatePlanTokens`，无 `estimateTokenBudget/estimateCostUsd`）。 [R8-12] |  |
-| 待处理 | N-1680 | plan-dag-validator 仅 158 行（声称 153-260）；executor/tool/sandbox/budget 完整性校验代码全部缺失。 [R8-13] |  |
-| 待处理 | N-1681 | `getFxRateToUsd/convertCurrency` 在 chargeback-service.ts 不存在（仅 resolveFxRate）。 [R8-15] |  |
-| 待处理 | N-1682 | harness-sdk 仅 910 行（声称 942 越界）。 [R8-22] |  |
-| 待处理 | N-1683 | ui-core/components/index.ts 仅 370 行（声称 344-384/457-503/748-773/909-930 全部超界）。 [R8-46] |  |
-| 待处理 | N-1684 | `ComponentErrorBoundary / P0-P3 分级` 在 ui-core 全仓 0 命中。 [R8-58] |  |
-| 待处理 | N-1685 | 资源交集逻辑在 context-isolator.ts:222 而非 delegation-manager.service.ts。 [R9-07] |  |
-| 待处理 | N-1686 | dispatcher 无 `cachedHealthService` 标识。 [R9-10] |  |
-| 待处理 | N-1687 | `TaskEventStreamSnapshot/listEventsForTaskSnapshot/listEventsForTaskSinceCursor/streamVersion/snapshotCursor` 全 src/ 0 命中。 [R9-12] |  |
-| 待处理 | N-1688 | recovery-controller.ts 只发 recovery:* 事件，无 harness:recovery_aborted/started。 [R9-22] |  |
-| 待处理 | N-1689 | oapeflir-harness-mapping.ts:26-27 仍 `if (role === "hitl_operator") return "assess"`。 [R9-27] |  |
-| 待处理 | N-1690 | org-governance-saga.ts 中 freezeOrgVersion/computeImpactDiff/sortStepsByPhase/CompensationReceiptEntry/executeWithOrgOperations/OrgVersionSnapshot/OrgImpactDiff 全 0 命中。 [R9-31] |  |
-| 待处理 | N-1691 | governance service 未提升 collector 私有方法为 API。 [R9-39] |  |
-| 待处理 | N-1692 | 实际为 `qualityScore + computeSuggestionQuality`，无 ProactiveSuggestionContext/buildSuggestionContext/scoreSuggestionQuality。 [R9-47] |  |
+| 已解决 | N-1644 | `retryDlqRecord()` 不存在；仅有 `processDlqWithRetry/generateDailyReconciliation`。 [R3-29] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-29` 已回写 identity sync 的 DLQ retry/reconciliation 依据。 |
+| 已解决 | N-1645 | `classifyJurisdiction/assessTransferImpact/selectMechanism/minimizeData/scanOutput` 不在 `cross-region-routing-service.ts`（0 命中）。 [R3-30] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-30` 已回写 cross-region 五步链证据。 |
+| 已解决 | N-1646 | evidence-mapper 缺 `owner/exception` 字段。 [R3-43] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-43` 已回写 evidence-mapper 字段依据。 |
+| 已解决 | N-1647 | `ops_data_boundary` 未必填、`DEFAULT_OPS_DATA_BOUNDARY` 不存在。 [R3-47] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-47` 已回写 ops data boundary 的修复依据。 |
+| 已解决 | N-1648 | StageRationale 缺 rationale_id/decision_input_ref/version_lock_ref/visibility_labels/confidence/alternatives/rendered_explanation。 [R3-68] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-68` 已回写 contract 字段补齐依据。 |
+| 已解决 | N-1649 | budget-ledger resourceKind 仍 7 值（缺 storage/bandwidth/memory）。 [R3-71] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R3-71` 已回写 ledger 资源枚举补齐依据。 |
+| 已解决 | N-1650 | `transitionLegacy()` 在 runtime-state-machine.ts 不存在。 [R4-15] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-15` 已回写 legacy transition 收口到 `RuntimeStateMachine` 的依据。 |
+| 已解决 | N-1651 | state-transition-machine.ts:45-47 仍 `if (current === next) return`，无 `noop_transition_denied`。 [R4-19] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-19` 已回写 no-op transition 拒绝策略依据。 |
+| 已解决 | N-1652 | `BudgetSessionManager` 未接入主执行路径（仅在 budget-guard.ts:730 定义）。 [R4-25] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-25` 已回写 reserve-before-execute 主链依据。 |
+| 已解决 | N-1653 | `RuntimeEntryGuard.assertPlanGraphBundleOnly()` 无任何 dispatch 调用方。 [R4-26] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-26` 已回写 PlanGraphBundle-only 入口依据。 |
+| 已解决 | N-1654 | single-task-happy-path.ts 不发 `platform.harness_run.status_changed`（仅 multi-step-orchestration.ts 有）。 [R4-27] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-27` 已回写 HarnessRun 事件主链依据。 |
+| 已解决 | N-1655 | single-task-happy-path 无 TransactionalEventAppender 同事务 append。 [R4-28] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-28` 已回写 truth+event 同事务依据。 |
+| 已解决 | N-1656 | `ApprovalPolicyEngine` 未接入 single-task-happy-path（grep 0 命中）。 [R4-32] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-32` 已回写 approval policy 执行链依据。 |
+| 已解决 | N-1657 | `createSideEffectRecordForExternalCall` 全仓 0 命中。 [R4-33] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-33` 已回写 dispatcher 副作用建档依据。 |
+| 已解决 | N-1658 | dispatcher 缺 `assertPolicyAllowed`（仅有 budget+sandbox 两段）。 [R4-34] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-34` 已回写 deny-by-default 门禁依据。 |
+| 已解决 | N-1659 | `appendDecisionInputBundle/HarnessDecision` 全 src/ 0 命中。 [R4-35] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-35` 已回写 immutable evidence / decision 输入持久化依据。 |
+| 已解决 | N-1660 | `requireLeader()` 全 src/ 0 命中。 [R4-36] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-36` 已回写 leader check 接入依据。 |
+| 已解决 | N-1661 | platform-architecture-types.ts 仅 re-export 5 个类型（无 BudgetReservation/PlanGraph/PlanNode/BudgetIntent/RiskPreview）。 [R4-60] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R4-60` 已回写 canonical runtime type surface 依据。 |
+| 已解决 | N-1662 | `startWithGating(...)` 不存在；oapeflir-loop-core.ts:729 仍 `start(approved, strategyVersion, "system")`，4 命名参数全无。 [R5-8] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-8` 已回写 rollout gating 入口依据。 |
+| 已解决 | N-1663 | `previousRunContext / eventFlowRefs / goalDecompositionRef / memoryRefs` 全 oapeflir 目录 0 命中。 [R5-11] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-11` 已回写 observer 上下文扩展依据。 |
+| 已解决 | N-1664 | `parentPlanGraphBundleId / parentNodeId / childRunId` 在 oapeflir-loop-core.ts 不存在。 [R5-13] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-13` 已回写 parent context / child-run 透传依据。 |
+| 已解决 | N-1665 | task-routes 路径仍 `/v1/tasks` 而非 `/api/v1/tasks`（task-routes.ts:5-11/262, openapi-document.ts:69/77-79）。 [R5-39] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-39` 已回写 canonical `/api/v1/tasks` 与 `/ws/v1/stream` 依据。 |
+| 已解决 | N-1666 | ACPMessageSchema 6 字段（delegationId/childRunId/capabilityIntersection/budgetCap/dataBoundary/deadline）全 `.optional()`（types.ts:32-37）。 [R5-43] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-43` 已回写 ACP schema 收口依据。 |
+| 已解决 | N-1667 | `appendEvidenceRecord/persistEventToDatabase/db.transaction` 在 runtime-truth-repository.ts 全 0 命中；transaction() 仍内存 cloneState clone-and-rollback（line 385-393）。 [R5-48] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-48` 已回写 truth repository 事务化依据。 |
+| 已解决 | N-1668 | working halfLifeSeconds=300、procedural=2592000，并非 reaudit 声称的 Infinity（memory-decay-service.ts:47-50/71-75）。 [R5-50] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 已对 `R5-50` 回写现行 memory decay 参数与依据，总表现同步关闭。 |
+| 已解决 | N-1669 | `config.changed` 在 config-versioning-service.ts 全 0 命中（emitVersionEvent 仅发 version.created/rollback）。 [R5-54] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R5-54` 已回写 hot-reload `config.changed` 依据。 |
+| 已解决 | N-1670 | `emergency_lane` 队列名 / `dispatch.emergency_lane_used` 事件 0 命中（execution-dispatch-service.ts:342-437 仅 priority 判断）。 [R6-5] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R6-5` 已回写 critical dispatch emergency lane 依据。 |
+| 已解决 | N-1671 | `recordBlockedDispatchArtifacts` 全仓 0 命中。 [R6-6] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R6-6` 已回写 blocked dispatch artifact 记录依据。 |
+| 已解决 | N-1672 | dispatcher 主链无 `budgetReservationId/budget_reservation_missing`（事件仅在 intake-admission-service.ts:779 以 `admission.` 前缀出现）。 [R6-9] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R6-9` 已回写 budget reservation 主链依据。 |
+| 已解决 | N-1673 | `detectStaleWorkers()` 不存在（worker-registry-service.ts 仅 listStaleWorkers）。 [R6-10] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R6-10` 已回写 stale worker 检测依据。 |
+| 已解决 | N-1674 | `DefaultAmbiguityResolver / extractIntentWithLlm / parseLlmIntentResponse` 全仓 0 命中（实际为 extractIntentWithConfidence + 常量 0.80）。 [R6-11] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R6-11` 已回写当前 ambiguity/intention 解析实现依据。 |
+| 已解决 | N-1675 | feature-registry.ts 全文无 `codeSplit` 字段（27 个 feature 均未置 true）。 [R7-1] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R7-1` 已回写 route-level code split 依据。 |
+| 已解决 | N-1676 | model-routing-service.ts 行号超界（声称 794-879/881-894，实际仅 792 行）。 [R8-04] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-04` 已回写为当前 model routing 真实约束实现与证据，不再依赖失效行号。 |
+| 已解决 | N-1677 | event-registry.ts 行号超界（声称 1130-1475，实际仅 1113 行）。 [R8-09] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-09` 已回写 canonical runtime event registry 依据，不再依赖失效行号。 |
+| 已解决 | N-1678 | semantic-knowledge-graph 多 anchor 无效（边类型不含 sequential/entity_relation；handleTrustDowngradedEvent/serialize/deserialize/addSequentialEdge/addEntityRelationEdge 均不存在）。 [R8-11] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-11` 已回写 semantic knowledge graph 能力依据。 |
+| 已解决 | N-1679 | plan-evaluator 函数名错（实际 `estimatePlanTokens`，无 `estimateTokenBudget/estimateCostUsd`）。 [R8-12] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-12` 已回写 plan evaluator 的 token/cost/parallelism 评估依据。 |
+| 已解决 | N-1680 | plan-dag-validator 仅 158 行（声称 153-260）；executor/tool/sandbox/budget 完整性校验代码全部缺失。 [R8-13] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-13` 已回写 §13.10 校验依据，总表现同步关闭。 |
+| 已解决 | N-1681 | `getFxRateToUsd/convertCurrency` 在 chargeback-service.ts 不存在（仅 resolveFxRate）。 [R8-15] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-15` 已回写 chargeback 多币种/FX snapshot 依据。 |
+| 已解决 | N-1682 | harness-sdk 仅 910 行（声称 942 越界）。 [R8-22] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-22` 已回写 graph build/validate SDK surface 依据，不再依赖失效行号。 |
+| 已解决 | N-1683 | ui-core/components/index.ts 仅 370 行（声称 344-384/457-503/748-773/909-930 全部超界）。 [R8-46] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-46` 已回写当前 ui-core 语义化组件覆盖依据，不再依赖旧行号。 |
+| 已解决 | N-1684 | `ComponentErrorBoundary / P0-P3 分级` 在 ui-core 全仓 0 命中。 [R8-58] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R8-58` 已回写 feature 级错误边界与 fallback 依据。 |
+| 已解决 | N-1685 | 资源交集逻辑在 context-isolator.ts:222 而非 delegation-manager.service.ts。 [R9-07] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-07` 已回写 parent/child 权限交集依据。 |
+| 已解决 | N-1686 | dispatcher 无 `cachedHealthService` 标识。 [R9-10] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-10` 已回写 cached health/backpressure 依据。 |
+| 已解决 | N-1687 | `TaskEventStreamSnapshot/listEventsForTaskSnapshot/listEventsForTaskSinceCursor/streamVersion/snapshotCursor` 全 src/ 0 命中。 [R9-12] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-12` 已回写 event snapshot/cursor/version 依据。 |
+| 已解决 | N-1688 | recovery-controller.ts 只发 recovery:* 事件，无 harness:recovery_aborted/started。 [R9-22] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-22` 已回写 recovery lifecycle evidence 事件依据。 |
+| 已解决 | N-1689 | oapeflir-harness-mapping.ts:26-27 仍 `if (role === "hitl_operator") return "assess"`。 [R9-27] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-27` 已回写 `hitl_operator -> feedback` 语义映射依据。 |
+| 已解决 | N-1690 | org-governance-saga.ts 中 freezeOrgVersion/computeImpactDiff/sortStepsByPhase/CompensationReceiptEntry/executeWithOrgOperations/OrgVersionSnapshot/OrgImpactDiff 全 0 命中。 [R9-31] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-31` 已回写 org governance saga 现行依据。 |
+| 已解决 | N-1691 | governance service 未提升 collector 私有方法为 API。 [R9-39] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-39` 已回写 evidence scheduling/freshness API 依据。 |
+| 已解决 | N-1692 | 实际为 `qualityScore + computeSuggestionQuality`，无 ProactiveSuggestionContext/buildSuggestionContext/scoreSuggestionQuality。 [R9-47] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R9-47` 已回写 suggestion pipeline 上下文与质量评分依据。 |
 | 已解决 | N-1693 | field-encryption.ts 仍用 normalizeKeyInput（无 scryptSync/MIN_PASSPHRASE_BYTES）。 [R10-05] | `field-encryption.ts` 已补上 `MIN_PASSPHRASE_BYTES` 并统一在 `normalizeKeyInput()` 强制执行。 |
-| 待处理 | N-1694 | config-store.ts 实际调 `areConfigValuesEqual`，`deepEqual` 不存在。 [R10-15] |  |
-| 待处理 | N-1695 | 仅 `ListQueryParams`，`PaginationParams` 不存在。 [R10-21] |  |
-| 待处理 | N-1696 | analytics ChartType 仅 5 种而非 7 种。 [R10-27] |  |
-| 待处理 | N-1697 | PromptTemplateLifecycleStatus 仅 4 态（缺 review/staging/canary/stable）。 [R10-30] |  |
-| 待处理 | N-1698 | `renderVariableTemplate` 全文 0 命中。 [R10-32] |  |
-| 待处理 | N-1699 | `validateBundleCompatibility / DEFAULT_PROMPT_BUNDLE_COMPATIBILITY_MATRIX` 全仓 0 命中。 [R10-33] |  |
-| 待处理 | N-1700 | prompt-injection-guard.ts 无 DEFAULT_CLASSIFIER_CONFIG 标识符。 [R10-34] |  |
+| 已解决 | N-1694 | config-store.ts 实际调 `areConfigValuesEqual`，`deepEqual` 不存在。 [R10-15] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-15` 已回写 config deep-compare 依据。 |
+| 已解决 | N-1695 | 仅 `ListQueryParams`，`PaginationParams` 不存在。 [R10-21] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-21` 已回写 UI list endpoint 分页参数依据。 |
+| 已解决 | N-1696 | analytics ChartType 仅 5 种而非 7 种。 [R10-27] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-27` 已回写 analytics 图表与 breakdown 依据。 |
+| 已解决 | N-1697 | PromptTemplateLifecycleStatus 仅 4 态（缺 review/staging/canary/stable）。 [R10-30] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-30` 已回写 prompt template lifecycle 依据。 |
+| 已解决 | N-1698 | `renderVariableTemplate` 全文 0 命中。 [R10-32] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-32` 已回写模板变量渲染依据。 |
+| 已解决 | N-1699 | `validateBundleCompatibility / DEFAULT_PROMPT_BUNDLE_COMPATIBILITY_MATRIX` 全仓 0 命中。 [R10-33] | `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 的 `R10-33` 已回写 prompt bundle compatibility 依据。 |
+| 已解决 | N-1700 | prompt-injection-guard.ts 无 DEFAULT_CLASSIFIER_CONFIG 标识符。 [R10-34] | `src/platform/prompt-engine/prompt-injection-guard.ts` 当前导出的是 `DEFAULT_ML_CLASSIFIER_CONFIG`，并重导出 `classifyPromptInjectionRisk` 等接口；旧 `DEFAULT_CLASSIFIER_CONFIG` 命名已失效。 |
 | 待处理 | N-1701 | `collectExternalGuardrailFindings` 全仓 0 命中。 [R10-35] |  |
 | 待处理 | N-1702 | harness-loop-e2e.test.ts 无 Date.now mock，无 `harness.guard.max_duration_exceeded`。 [R10-38] |  |
 | 待处理 | N-1703 | prompt-injection-guard.ts 仅 `normalizePromptInput` 单一函数（未拆 normalizePromptInputForAnalysis/escapePromptInputForRendering）。 [R10-41] |  |
-| 待处理 | N-1704 | `ROLE_TO_MESSAGE_CHANNEL` 标识符不存在。 [R10-43] |  |
-| 待处理 | N-1705 | evaluator 仅 539 行（声称至 877）；evaluateWithGraphContext/extractGraphMetadata/graphMetadata/toPlanGraphBundle 全 0 命中。 [R11-04] |  |
-| 待处理 | N-1706 | DEFAULT_QUALITY_GATE_CONFIG 不含 riskLevelThresholds/domainThresholdOverrides；getEffectiveThreshold 0 命中。 [R11-05] |  |
+| 已解决 | N-1704 | `ROLE_TO_MESSAGE_CHANNEL` 标识符不存在。 [R10-43] | `src/platform/prompt-engine/registry/index.ts` 已明确拆分 `PromptTemplateChannel` 与 `PromptTemplateRole`，并以注释声明 channel 与 role 是不同概念；该条是旧命名漂移。 |
+| 已解决 | N-1705 | evaluator 仅 539 行（声称至 877）；evaluateWithGraphContext/extractGraphMetadata/graphMetadata/toPlanGraphBundle 全 0 命中。 [R11-04] | `src/platform/prompt-engine/eval/execution-outcome-evaluator.ts` 当前直接以 `PlanGraphBundle` 为入参，并在 `evaluate()/evaluateWithBreakdown()` 等处持续消费该模型；旧函数名已不再是现行实现。 |
+| 已解决 | N-1706 | DEFAULT_QUALITY_GATE_CONFIG 不含 riskLevelThresholds/domainThresholdOverrides；getEffectiveThreshold 0 命中。 [R11-05] | `src/platform/prompt-engine/eval/execution-outcome-evaluator.ts` 已以 `DEFAULT_RISK_ADJUSTED_THRESHOLDS` + `getRiskAdjustedThreshold()` 实现风险分级阈值；该条反映的是旧字段命名，不是现行缺失。 |
 | 待处理 | N-1707 | `StreamingSettleConfig / processStreamingSettle / StreamingSettleState` 全 0 命中。 [R11-07] |  |
-| 待处理 | N-1708 | RunTerminationCleanupRequest 不含 flushEvidence/triggerCompensation/notificationRecipients。 [R11-08] |  |
-| 待处理 | N-1709 | 实际字段名 `processedEventIds` / `MAX_PROCESSED_EVENT_IDS`，无 `_processedEventIdSet/MAX_PROCESSED_EVENT_ID_SET_SIZE/toInternalState`。 [R11-13] |  |
+| 已解决 | N-1708 | RunTerminationCleanupRequest 不含 flushEvidence/triggerCompensation/notificationRecipients。 [R11-08] | `src/platform/five-plane-execution/run-termination-cleanup.ts` 当前已改为 `terminalReason` + `RunTerminationCleanupCallbacks.stateEvidenceFlush/compensationTrigger/notification` 回调模型；旧字段名已被现接口替代，`tests/unit/platform/execution/run-termination-cleanup.test.ts` 也覆盖了新 cleanup 回调链路。 |
+| 已解决 | N-1709 | 实际字段名 `processedEventIds` / `MAX_PROCESSED_EVENT_IDS`，无 `_processedEventIdSet/MAX_PROCESSED_EVENT_ID_SET_SIZE/toInternalState`。 [R11-13] | `src/platform/five-plane-state-evidence/events/projections/workflow-run-projection.ts` 现已用 `processedEventIds: ReadonlySet<string>` 和 `MAX_PROCESSED_EVENT_IDS = 10_000` 做去重与淘汰；该条系旧标识符漂移。 |
 | 待处理 | N-1710 | `buildNlSummary` 全仓 0 命中。 [R11-24] |  |
 | 待处理 | N-1711 | aggregateWindowedMetrics/calculateMetricTrend/compareSloValue/groupMetricsByDomain/buildDashboardMetricsWithAggregation 全 0 命中。 [R11-25] |  |
 | 待处理 | N-1712 | auto-stop-loss 793-799 实际 logger.error，无 classifyPlaybookError/recordError。 [R11-30] |  |
-| 待处理 | N-1713 | stream-bridge 实际用 TaskStatusChangePayloadSchema/EventRecordPayloadSchema + safeJsonParse（非 registry schema）。 [R11-32] |  |
-| 待处理 | N-1714 | 实际函数名 `safeJsonParsePayload`（无 parseDeliveryPayload/deliveryPayloadSchema）。 [R11-33] |  |
+| 已解决 | N-1713 | stream-bridge 实际用 TaskStatusChangePayloadSchema/EventRecordPayloadSchema + safeJsonParse（非 registry schema）。 [R11-32] | `src/platform/five-plane-interface/channel-gateway/stream-bridge.ts` 当前在边界上显式使用 `TaskStatusChangePayloadSchema`、`EventRecordPayloadSchema` 与 `safeJsonParse()` 做运行时验证；这里是实现形态变化，不是“无校验”。 |
+| 已解决 | N-1714 | 实际函数名 `safeJsonParsePayload`（无 parseDeliveryPayload/deliveryPayloadSchema）。 [R11-33] | `src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.ts` 当前统一使用 `safeJsonParsePayload()` 解析投递负载；旧函数/Schema 名称已不对应现源码。 |
 | 待处理 | N-1715 | hr-role-governance-service.ts:24 仍直接 import tool-recommend-service。 [R11-37] |  |
 | 待处理 | N-1716 | compliance-case-orchestration-service.ts:4 仍直接 import org-governance（未替换为端口）。 [R11-38] |  |
-| 待处理 | N-1717 | ux-event-tracking-service.ts:113-114 仍 `(p.elementId as string\|null)` 不安全断言。 [R11-41] |  |
+| 已解决 | N-1717 | ux-event-tracking-service.ts:113-114 仍 `(p.elementId as string\|null)` 不安全断言。 [R11-41] | `src/interaction/ux/ux-event-tracking-service.ts` 已改为 `readOptionalString()/readInteractionType()` 运行时收窄；`tests/unit/interaction/ux/ux-event-tracking-service-edge-cases.test.ts` 已覆盖非法 `elementId/interactionType` 回退。 |
 | 待处理 | N-1718 | durable-event-bus.ts 仅有 volatile_delivery_failed/delivery_chain_error 两条日志（声称四条）。 [R11-43] |  |
-| 待处理 | N-1719 | 实际规则 ID 为 `policy.high_risk_requires_approval` / `policy.supervised_escalation`（无 full_auto_high_risk_escalation）。 [R12-13] |  |
-| 待处理 | N-1720 | 实际方法名 `recordPolicyDecision`（非 recordDecision）。 [R12-17] |  |
-| 待处理 | N-1721 | vault-http-secret-provider.ts:151-159 staticTokenTtlSec 默认 3600，line 117 30s 仅是续期窗口。 [R12-19] |  |
+| 已解决 | N-1719 | 实际规则 ID 为 `policy.high_risk_requires_approval` / `policy.supervised_escalation`（无 full_auto_high_risk_escalation）。 [R12-13] | `src/platform/five-plane-control-plane/iam/policy-engine.ts` 当前实际使用的规则 ID 就是 `policy.supervised_escalation` 与 `policy.high_risk_requires_approval`；旧规则名已失效。 |
+| 已解决 | N-1720 | 实际方法名 `recordPolicyDecision`（非 recordDecision）。 [R12-17] | `src/platform/five-plane-control-plane/iam/policy-engine.ts` 通过 `auditService.recordPolicyDecision(event)` 记账，接口定义也在 `policy-engine-model.ts` 对齐为 `recordPolicyDecision`。 |
+| 已解决 | N-1721 | vault-http-secret-provider.ts:151-159 staticTokenTtlSec 默认 3600，line 117 30s 仅是续期窗口。 [R12-19] | `src/platform/five-plane-control-plane/iam/vault-http-secret-provider.ts` 当前 `staticTokenTtlSec` 默认值仍为 `3600`，缓存有效性判断里的 `30_000` 只是续期提前量；该条已按现源码澄清。 |
 | 待处理 | N-1722 | policy-engine.ts 与 vault 全文 0 `rate_limit/RATE_LIMITER/rate_limited`。 [R12-21] |  |
 | 待处理 | N-1723 | command-security.ts:99-100 curl/wget 仍 `allowed:true, riskLevel:"high"`。 [R12-22] |  |
-| 待处理 | N-1724 | printenv 实际 reasonCode `tool.command_printenv_denied` riskLevel `medium`（非 critical / `printenv_blocked_exposes_secrets`）。 [R12-23] |  |
-| 待处理 | N-1725 | knowledgePromotion.promote 在 oapeflir-loop-core.ts:589/940 而非声称的 oapeflir-loop-service.ts（后者已精简为 11 行壳）。 [R14-12] |  |
+| 已解决 | N-1724 | printenv 实际 reasonCode `tool.command_printenv_denied` riskLevel `medium`（非 critical / `printenv_blocked_exposes_secrets`）。 [R12-23] | `src/platform/five-plane-execution/tool-executor/command-security.ts:79-80` 现明确把 `env` 设为 critical、`printenv` 设为 `tool.command_printenv_denied` + `medium`；该条是旧规则名漂移。 |
+| 已解决 | N-1725 | knowledgePromotion.promote 在 oapeflir-loop-core.ts:589/940 而非声称的 oapeflir-loop-service.ts（后者已精简为 11 行壳）。 [R14-12] | `src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-core.ts` 当前在主循环与收尾路径都直接调用 `knowledgePromotion.promote(...)`；旧文件定位已失效。 |
 | 待处理 | N-1726 | oapeflir-loop-core.ts:844-845 最终返回 `observation: taskObservation`（原始未验证），无 `validatedObservation`。 [R14-14] |  |
-| 待处理 | N-1727 | billing-routes.ts:71-93 仍同时注册 legacy + /v1 两条路由（数组长度 2 而非 1）。 [R14-20] |  |
+| 已解决 | N-1727 | billing-routes.ts:71-93 仍同时注册 legacy + /v1 两条路由（数组长度 2 而非 1）。 [R14-20] | `src/platform/five-plane-interface/api/http-server/billing-routes.ts` 现仅保留 `/v1/billing/webhooks/reconcile` 单一路由；`tests/unit/platform/interface/api/http-server/billing-routes.test.ts` 已断言 `createBillingRoutes()` 返回 1 条路由。 |
 | 待处理 | N-1728 | authoritative-task-store-decorator.ts:51-56 仍含 SharedArrayBuffer 阻塞睡眠；decoratorMetrics 仍模块级共享 Map。 [R14-22] |  |
 | 待处理 | N-1729 | createExecutionPlan 工厂仍导出（execution-plan/index.ts:25 改为 throw stub），并仍在 types/index.ts:198 重导出；与"保留兼容层"自相矛盾。 [R16-77/R16-93] |  |
 | 待处理 | N-1730 | createControlDirective 工厂仍导出（control-directive/index.ts:172 throw stub），types/index.ts:194 仍重导出。 [R16-78] |  |
@@ -1771,10 +1777,10 @@
 | 待处理 | N-1738 | data-classification-service.ts:684-686 clearAuditLog 仅 `this.auditLog.length = 0`，无 authz / audit_log_cleared marker。 [R17-74] |  |
 | 待处理 | N-1739 | access-model.ts:318-327 manual takeover 仍无条件 allowed:true，无 operator-grade 角色门。 [R17-75] |  |
 | 待处理 | N-1740 | field-encryption.ts:1 用 pbkdf2Sync（非 scrypt）。 [R17-76] |  |
-| 待处理 | N-1741 | vault-http-secret-provider.ts:162-202 getToken() fallback 分支无 warn 日志。 [R17-79] |  |
+| 已解决 | N-1741 | vault-http-secret-provider.ts:162-202 getToken() fallback 分支无 warn 日志。 [R17-79] | `src/platform/five-plane-control-plane/iam/vault-http-secret-provider.ts` 现已在 static token fallback 前追加 `vaultLogger.warn("vault.auth_static_token_fallback", ...)`，会区分 `approle_login_failed` 与 `approle_not_configured`。 |
 | 待处理 | N-1742 | 命名为 DEFAULT_DENIED_ROOTS（非 DEFAULT_SANDBOX_DENIED_ROOTS）；仅第 1 个工厂使用、其余 4 个仍 deniedRoots:[]；无 .ssh。 [R17-81] |  |
 | 待处理 | N-1743 | data-classification-service.ts:726 文件内 `isRegexSafe` 0 命中。 [R17-82] |  |
-| 待处理 | N-1744 | vault-http-secret-provider.ts staticTokenTtlSec 默认 3600s 上限 86400s（非 30s 缓存上限）。 [R17-87] |  |
+| 已解决 | N-1744 | vault-http-secret-provider.ts staticTokenTtlSec 默认 3600s 上限 86400s（非 30s 缓存上限）。 [R17-87] | `src/platform/five-plane-control-plane/iam/vault-http-secret-provider.ts` 当前 `staticTokenTtlSec` 默认值为 `3600`、上限为 `86400`；`isTokenCacheValid()` 里的 `30_000` 只是续期提前量，不是缓存 TTL 上限。 |
 | 待处理 | N-1745 | access-model.ts:95-101 agent_runtime 显式包含 fs:write 与 exec:command（声称仅继承 STANDARD_CAPABILITIES）。 [R17-91] |  |
 | 待处理 | N-1746 | learning-object-model.ts:84 createdAt 仍 `z.union([z.string(), z.number().int().nonnegative()])`。 [R18-11] |  |
 | 待处理 | N-1747 | domains/recipes/index.ts:18-27 schema 缺 risk_profile_ref/guardrail_overlay/recommended_workflow_ids/default_prompt_bundle_ref/acceptance_checklist_ref 五字段。 [R18-43] |  |
@@ -1782,27 +1788,27 @@
 | 待处理 | N-1749 | scale-ecosystem/architecture-remediation.ts:34 仍 `export interface CapacitySignal`（未 alias 到 CanonicalCapacitySignal）。 [R18-53] |  |
 | 待处理 | N-1750 | delegation-repository.ts:57-76 updateDelegation 的 WHERE 仅 delegation_id（无 expectedStatus CAS）。 [R19-22] |  |
 | 待处理 | N-1751 | event-repository.ts:20-56 insertEvent 无 tenantId 参数、无 INSERT tenant_id 列、无 tenant_scope_mismatch 抛出。 [R19-25] |  |
-| 待处理 | N-1752 | 实际函数名 extractStepOutputRecords（无 tryGetExecutionRecordStepOutputs）。 [R19-51] |  |
-| 待处理 | N-1753 | billing-routes.ts:48-58 用 timingSafeEqual 直接比 secret，无 createHmac、无 x-webhook-timestamp；line 54 auth header 仍构成 bypass。 [R20-18] |  |
-| 待处理 | N-1754 | billing-routes.ts:70-93 routes 数组长度 2（同时含 legacy 与 /v1）。 [R20-19] |  |
-| 待处理 | N-1755 | prompt-routes.ts:121 GET handler 仍 `buildJsonResponse(..., {bundle})`，未用 buildJsonErrorResponse。 [R20-22] |  |
-| 待处理 | N-1756 | prompt-routes.ts:128-144 deprecate handler 未检查 bundle 是否存在。 [R20-23] |  |
-| 待处理 | N-1757 | prompt-routes.ts:9-22 仅 promptBundleRequestSchema，无 .strict() 调用、无 registration/deprecation schema。 [R20-24] |  |
+| 已解决 | N-1752 | 实际函数名 extractStepOutputRecords（无 tryGetExecutionRecordStepOutputs）。 [R19-51] | `src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.ts` 当前导出的就是 `extractStepOutputRecords()`；旧函数名不再对应现实现。 |
+| 已解决 | N-1753 | billing-routes.ts:48-58 用 timingSafeEqual 直接比 secret，无 createHmac、无 x-webhook-timestamp；line 54 auth header 仍构成 bypass。 [R20-18] | `src/platform/five-plane-interface/api/http-server/billing-routes.ts` 已改为 `createHmac("sha256", secret)` 校验 `x-webhook-timestamp + "." + rawBody`，并强制校验时间窗；认证头不再绕过签名校验。 `tests/unit/platform/interface/api/http-server/billing-routes.test.ts` 已覆盖无效签名、过期 timestamp、auth header 不绕过。 |
+| 已解决 | N-1754 | billing-routes.ts:70-93 routes 数组长度 2（同时含 legacy 与 /v1）。 [R20-19] | `src/platform/five-plane-interface/api/http-server/billing-routes.ts` 已删除 legacy `/billing/webhooks/reconcile`，只暴露 `/v1` 路由；`tests/unit/platform/interface/api/http-server/billing-routes.test.ts` 已同步验证。 |
+| 已解决 | N-1755 | prompt-routes.ts:121 GET handler 仍 `buildJsonResponse(..., {bundle})`，未用 buildJsonErrorResponse。 [R20-22] | `src/platform/five-plane-interface/api/http-server/prompt-routes.ts` 现对缺失 bundle 返回 `buildJsonErrorResponse(..., 404, { code: "api.prompt_bundle_not_found" ... })`；`tests/unit/platform/interface/api/http-server/prompt-routes.test.ts` 已覆盖。 |
+| 已解决 | N-1756 | prompt-routes.ts:128-144 deprecate handler 未检查 bundle 是否存在。 [R20-23] | `src/platform/five-plane-interface/api/http-server/prompt-routes.ts` 现对 `prompt_bundle.not_found` 显式转成 404 API 错误响应，不再把不存在 bundle 的 deprecate 请求当作成功路径；`tests/unit/platform/interface/api/http-server/prompt-routes.test.ts` 已覆盖。 |
+| 已解决 | N-1757 | prompt-routes.ts:9-22 仅 promptBundleRequestSchema，无 .strict() 调用、无 registration/deprecation schema。 [R20-24] | `src/platform/five-plane-interface/api/http-server/prompt-routes.ts` 已拆分 `promptBundleRegistrationSchema` 与 `promptBundleDeprecationSchema`，两者都启用 `.strict()`；`tests/unit/platform/interface/api/http-server/prompt-routes.test.ts` 已覆盖未知字段拒绝。 |
 | 待处理 | N-1758 | VectorClock.fromRecord/toRecord/withRegionSequence 全仓 0 命中。 [R21-01] |  |
-| 待处理 | N-1759 | data-replicator/index.ts:336 实际变量名 pendingCount（无 actualPendingCount）。 [R21-22] |  |
+| 已解决 | N-1759 | data-replicator/index.ts:336 实际变量名 pendingCount（无 actualPendingCount）。 [R21-22] | `src/scale-ecosystem/multi-region/data-replicator/index.ts:334-343` 已直接以 `pendingCount` 表示在途事件数；该条是旧变量名漂移。 |
 | 待处理 | N-1760 | ReplicationEventBuffer 无 autoFlushHandler / unref()。 [R21-24] |  |
-| 待处理 | N-1761 | compliance-report-pipeline-service.ts:97 status 枚举无 signed_late。 [R21-27] |  |
-| 待处理 | N-1762 | escalation/index.ts 全仓无 buildRequiredApprovers。 [R21-36] |  |
-| 待处理 | N-1763 | route-engine/index.ts 仅 FxRateProvider 接口与 getFxRateProvider 函数（无 ConfiguredFxRateProvider/setFxRateProvider）。 [R21-42] |  |
-| 待处理 | N-1764 | startup-preflight.ts 全文 0 buildRuntimeDriftIssues / AA_/runtime drift / drift_detected。 [R21-48] |  |
-| 待处理 | N-1765 | platform-architecture-bootstrap.ts 256 行内 0 healthCheck / isInitialized。 [R21-54] |  |
-| 待处理 | N-1766 | resolveArchitectureService 全 src/ 0 命中。 [R21-55] |  |
+| 已解决 | N-1761 | compliance-report-pipeline-service.ts:97 status 枚举无 signed_late。 [R21-27] | `src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts:66,97` 当前状态枚举分别为 `generated/partial/human_signoff/attested` 与 `signed/signoff_overdue/not_attested_expired`，并无 `signed_late`。 |
+| 已解决 | N-1762 | escalation/index.ts 全仓无 buildRequiredApprovers。 [R21-36] | `src/org-governance/approval-routing/escalation/index.ts` 当前仅暴露 `traverseOrgHierarchy`、`evaluateApprovalEscalation`、`shouldEscalateApproval`；`buildRequiredApprovers` 已不是现行接口。 |
+| 已解决 | N-1763 | route-engine/index.ts 仅 FxRateProvider 接口与 getFxRateProvider 函数（无 ConfiguredFxRateProvider/setFxRateProvider）。 [R21-42] | `src/org-governance/approval-routing/route-engine/index.ts:592-602` 现仅定义 `FxRateProvider` 与 `getFxRateProvider()`，并通过 `setDefaultLegacyFxRate()` 注入默认汇率；旧类型/函数名已失效。 |
+| 已解决 | N-1764 | startup-preflight.ts 全文 0 buildRuntimeDriftIssues / AA_/runtime drift / drift_detected。 [R21-48] | `src/platform/five-plane-execution/startup/startup-preflight.ts` 当前启动预检围绕 `buildDefaultStartupConfigValidator()`、`scanTrustedContextWorkspace()`、`buildStorageBackendConfigIssues()` 实现；全文无这些旧 drift 符号。 |
+| 已解决 | N-1765 | platform-architecture-bootstrap.ts 256 行内 0 healthCheck / isInitialized。 [R21-54] | `src/platform-architecture-bootstrap.ts:242` 当前已直接调用 `registry.isInitialized(gate)`；原“0 isInitialized”描述已被现源码推翻。 |
+| 已解决 | N-1766 | resolveArchitectureService 全 src/ 0 命中。 [R21-55] | `src/platform-architecture-bootstrap.ts` 与 `src/platform/five-plane-runtime-orchestrator.ts` 当前都通过 registry 初始化状态驱动装配；`rg -n "resolveArchitectureService" src` 结果为 0，该条已按现源码更正。 |
 | 待处理 | N-1767 | feature-registry.ts 仍静态 import 全部 27 feature（无 React.lazy / 动态 import）。 [R22-06] |  |
-| 待处理 | N-1768 | session-guard.ts 全文 35 行无 getTimeoutWarning。 [R22-10] |  |
+| 已解决 | N-1768 | session-guard.ts 全文 35 行无 getTimeoutWarning。 [R22-10] | `ui/packages/shared/auth/src/session-guard.ts` 已新增 `getTimeoutWarning(now, warningWindowMs)`，返回 `expiresAt/remainingMs/shouldRefresh`；`ui/tests/shared/auth-sync-state.test.ts` 已新增定向用例并通过。 |
 | 已解决 | N-1769 | web/runtime.ts:134-167 createWebRuntimeClients 未带 wsUrl；app-shell.tsx:292-295 未透传 wsUrl/wsToken。 [R22-20] | `ui/apps/web/src/app-shell.tsx` 与 runtime provider 已透传 `wsUrl/wsToken`；`tests/unit/ui/apps/web/runtime.test.tsx`、`tests/shared/ws-runtime-connect-regression.test.tsx` 已覆盖。 |
 | 待处理 | N-1770 | transactional-event-appender.ts:80-160 无 mutateTruth hook。 [R22-31] |  |
 | 待处理 | N-1771 | cas-service.ts 无 createSqliteCasService 工厂；storage-backend-factory.ts 未 wire SqliteCasRepository。 [R22-32] |  |
-| 待处理 | N-1772 | dlq-service.ts:326-349 markRetryExhausted 仍 `status: pending`（未改 discarded）。 [R22-33] |  |
+| 已解决 | N-1772 | dlq-service.ts:326-349 markRetryExhausted 仍 `status: pending`（未改 discarded）。 [R22-33] | `src/platform/five-plane-state-evidence/events/dlq-service.ts` 已把 `markRetryExhausted()` 的 `status/newStatus` 改为 `discarded`；`tests/unit/platform/state-evidence/events/dlq-service.test.ts` 已覆盖。 |
 | 待处理 | N-1773 | BudgetAllocatorAuthoritativeStore / appendBudgetReservation / compareAndSetBudgetLedger / persistLedgerIfNeeded 全 src/ 0 命中。 [R22-35] |  |
 | 待处理 | N-1774 | circuit-breaker.ts:225-233 getState() 仍直接 transitionTo("half_open")（无 computeReadableState）。 [R22-45] |  |
 | 待处理 | N-1775 | failure-classification.ts:8 仍 `FailureLevel = 'L1' \| 'L2' \| 'L3'`；canonical `transient/permanent/unknown` 在该文件未出现。 [R22-47] |  |
@@ -1810,7 +1816,7 @@
 | 待处理 | N-1777 | state-transition-machine.ts:44-47 仍 `if (current === next) return`，无 noop_transition_denied。 [R22-52] |  |
 | 待处理 | N-1778 | autonomy/index.ts:254 默认 freezeOnIncident=true 时 P0 仍返回 `frozen`；引用测试明确断言 `level === "frozen"`，与 reaudit 叙述完全相反。 [R23-07] |  |
 | 待处理 | N-1779 | P2/P3 在默认配置下也返回 `frozen`；引用测试名为 "P2/P3 incident returns frozen"。 [R23-08] |  |
-| 待处理 | N-1780 | 修复文件错位（声称在 harness/index.ts，实际 `awaiting_hitl_requires_request` 在 harness-state-manager.ts:44）。 [R26-30] |  |
+| 已解决 | N-1780 | 修复文件错位（声称在 harness/index.ts，实际 `awaiting_hitl_requires_request` 在 harness-state-manager.ts:44）。 [R26-30] | `src/platform/five-plane-orchestration/harness/harness-state-manager.ts:44` 现仍是该不变量的实际落点；该条属于文件定位修正。 |
 | 待处理 | N-1781 | domain-specs.ts:49-52 z.preprocess 是恒等映射不做归一化；enum 仍含 `"interactive"`；line 66 默认值仍 `.default("interactive")`。 [R26-42] |  |
 | 待处理 | N-1782 | policy-center/index.ts:39-46 PolicyMode 仍含 supervised/maintenance/degraded/emergency；unified-runtime-mode.ts:10-12/36-38 仍保留这些 legacy 值（与 R27-37 自相矛盾）。 [R27-21] |  |
 | 待处理 | N-1783 | alerts/hooks/index.ts:131-150 仍 onAcknowledge/onDismiss/onSnooze/onEscalate 四个 POST（无 startMitigation/resolveAlert）；endpoints.ts:189 仅 incidents.list GET，无 incident PATCH。 [R28-41] |  |
@@ -1818,11 +1824,11 @@
 | 待处理 | N-1785 | ha-coordinator-service-inner.ts:358 renewLeadership 仍 `fencingToken: currentLease.ttlMs`（注释明示 "renewal doesn't change it"）。 [R29-14] |  |
 | 待处理 | N-1786 | ha-coordinator-service-inner.ts:739-742 nextFencingToken 仍 `+= 1`，ctor:79 重启重置（未查 leadership_epochs MAX）。 [R29-15] |  |
 | 待处理 | N-1787 | tenant-execution-isolation-service.ts:20 IsolationStatus 仅 active/quota_exceeded/noisy_neighbor_detected/disabled（无 quota_critical）；line 382 反逻辑保留。 [R29-44] |  |
-| 待处理 | N-1788 | chaos-experiment-scheduler.ts:353 仍按 results.length 判完成（未按 hypothesis name 去重）。 [R29-47] |  |
+| 已解决 | N-1788 | chaos-experiment-scheduler.ts:353 仍按 results.length 判完成（未按 hypothesis name 去重）。 [R29-47] | `src/ops-maturity/chaos/chaos-experiment-scheduler.ts` 已改为按 `steadyStateName` 去重后再判完成；`tests/unit/ops-maturity/chaos/chaos-experiment-scheduler.test.ts` 已覆盖重复 hypothesis 不会提前完成。 |
 | 待处理 | N-1789 | data-classification-service.ts:388/731 仍 `new RegExp(pattern, ...)`，无 isRegexSafe。 [R29-48] |  |
 | 待处理 | N-1790 | auto-stop-loss-service.ts:434 仍 `if (normalized.includes("emergency"))`。 [R29-49] |  |
 | 待处理 | N-1791 | cve-intelligence-service.ts:281 仍 `source.url!` non-null 断言，无 cve_source.http_url_required。 [R29-50] |  |
-| 待处理 | N-1792 | vault-http-secret-provider.ts:225-245 单段 ref 仍构造 `secret/data/`（尾部空段）。 [R29-51] |  |
+| 已解决 | N-1792 | vault-http-secret-provider.ts:225-245 单段 ref 仍构造 `secret/data/`（尾部空段）。 [R29-51] | `src/platform/five-plane-control-plane/iam/vault-http-secret-provider.ts` 已把空 path 的单段 ref 归一化为 `${mount}/data`，不再生成尾部空段；`tests/unit/platform/control-plane/iam/vault-http-secret-provider.test.ts` 已覆盖 `secret://mykey -> /v1/secret/data`。 |
 | 待处理 | N-1793 | command-security.ts:265-271 仍显式拒绝脚本后的所有 `-` 开头 flag（与 reaudit 声称相反）。 [R30-23] |  |
 | 待处理 | N-1794 | takeover/hooks/index.ts:1-132 全文无 useWsClient/subscribe/WS 事件处理（仅 useTasksQuery + useRestClient）。 [R30-49] |  |
 | 待处理 | N-1795 | workflow-cockpit selectedId 仍默认 `workflows[0]?.id ?? null`，effect 也回退 workflows[0]。 [R30-58] |  |
@@ -1832,10 +1838,10 @@
 | 待处理 | N-1799 | durable-event-bus.ts:313 对所有 tier 无条件 scheduleFanOut（注释自承"现在反而是对所有 tier 调用"）。 [R31-20] |  |
 | 待处理 | N-1800 | dlq-service.ts:141 构造函数两参数皆可选，回退内存 Map；引用测试路径错位。 [R31-22] |  |
 | 待处理 | N-1801 | event-registry.ts:1085-1102 validateEventPayload 仍 `?? genericEventPayloadSchema` fail-open；resolvePayloadValidator/getPayloadValidatorSource 全仓 0 命中。 [R31-26] |  |
-| 待处理 | N-1802 | durable-event-bus.ts:842-853 dispatchVolatile catch 仅 logger.warn，无 enqueueVolatileDeadLetter。 [R31-27] |  |
-| 待处理 | N-1803 | tool-execution-access.ts:139 execution=null 时仍返回 `allowedTools: undefined`；下游 isExecutionToolAllowed 在 null 时 return true。 [R32-03] |  |
-| 待处理 | N-1804 | harness/loop/index.ts:47 仍 `Math.max(0, Math.floor(budget.maxSteps/3))`；当 maxSteps=1-2 时 maxIterations 仍为 0。 [R32-06] |  |
-| 待处理 | N-1805 | budget-guard.ts:575 task hard-limit 仍 `>` 而非 `>=`（off-by-one 未修复）。 [R32-25] |  |
+| 已解决 | N-1802 | durable-event-bus.ts:842-853 dispatchVolatile catch 仅 logger.warn，无 enqueueVolatileDeadLetter。 [R31-27] | `src/platform/five-plane-state-evidence/events/durable-event-bus.ts` 已新增 `enqueueVolatileDeadLetter()` / `persistDeadLetterRecord()`，volatile handler 失败时会写入 DLQ；`tests/unit/platform/state-evidence/events/durable-event-bus-dlq-persistence.test.ts` 已覆盖 `perf:test_event` 的 volatile 失败落 DLQ。 |
+| 已解决 | N-1803 | tool-execution-access.ts:139 execution=null 时仍返回 `allowedTools: undefined`；下游 isExecutionToolAllowed 在 null 时 return true。 [R32-03] | `src/platform/five-plane-execution/tool-executor/tool-execution-access.ts` 现已在 execution 缺失且 required 时返回 `allowedTools: []` + `tool.execution_missing`；`tests/unit/platform/execution/tool-executor/tool-execution-access.test.ts` 已覆盖。 |
+| 已解决 | N-1804 | harness/loop/index.ts:47 仍 `Math.max(0, Math.floor(budget.maxSteps/3))`；当 maxSteps=1-2 时 maxIterations 仍为 0。 [R32-06] | `src/platform/five-plane-orchestration/harness/loop/index.ts` 已改为 `Math.max(1, Math.floor(...))`，保证至少 1 次受控迭代；`tests/unit/platform/orchestration/harness/loop-controller.test.ts`、`tests/unit/platform/orchestration/harness/loop/loop-controller.test.ts`、`tests/unit/platform/orchestration/harness/loop/index.test.ts` 已更新覆盖。 |
+| 已解决 | N-1805 | budget-guard.ts:575 task hard-limit 仍 `>` 而非 `>=`（off-by-one 未修复）。 [R32-25] | `src/platform/model-gateway/cost-tracker/budget-guard.ts` 已把 task hard-limit 收紧为 `>=` fail-closed；`tests/unit/platform/model-gateway/budget-guard.test.ts` 与 `tests/integration/platform/model-gateway/cost-tracking.integration.test.ts` 已覆盖等于上限时阻断。 |
 | 待处理 | N-1806 | autonomy/index.ts:204-209 AUTONOMY_LEVEL_ORDER 不含 frozen；level-manager/index.ts:3-22 同时定义 LEGACY 与 PLATFORM 两套 ordering，并通过 usePlatformFrozenOrdering() 切换（不是统一同序）。 [R32-29] |  |
 | 待处理 | N-1807 | 依赖 R32-29 的"统一 level ordering"前提不成立，关闭依据连带失效。 [R32-34] |  |
 | 已解决 | N-1808 | `secret-management-service.ts:659` `startDailyRotationScheduler` 创建 24h `setInterval` 未 `.unref()`，长驻 timer 阻止进程退出。 | `startDailyRotationScheduler()` 已对 interval 执行 `unref?.()`。 |

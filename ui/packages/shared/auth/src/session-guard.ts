@@ -3,6 +3,12 @@ import type { AuthSession } from "./types";
 import { createFeatureGuardContext, createRouteGuardChain, type RouteGuardChainOptions } from "@aa/shared-domain";
 import type { RouteGuardResult } from "@aa/shared-types";
 
+export interface SessionTimeoutWarning {
+  readonly expiresAt: number;
+  readonly remainingMs: number;
+  readonly shouldRefresh: boolean;
+}
+
 export class SessionGuard {
   public constructor(private readonly tokenManager: TokenManager = new TokenManager()) {}
 
@@ -16,6 +22,22 @@ export class SessionGuard {
 
   public isAuthenticated(now = Date.now()): boolean {
     return this.tokenManager.hasActiveSession(now);
+  }
+
+  public getTimeoutWarning(now = Date.now(), warningWindowMs = 5 * 60_000): SessionTimeoutWarning | null {
+    const session = this.tokenManager.getSession();
+    if (session == null || this.tokenManager.isExpired(now)) {
+      return null;
+    }
+    const remainingMs = session.expiresAt - now;
+    if (remainingMs > warningWindowMs) {
+      return null;
+    }
+    return {
+      expiresAt: session.expiresAt,
+      remainingMs,
+      shouldRefresh: this.tokenManager.shouldRefresh(now),
+    };
   }
 
   public requireRouteAccess(

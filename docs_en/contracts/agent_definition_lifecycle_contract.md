@@ -45,3 +45,8 @@ This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and composite 
 - unit: agent lifecycle, version snapshot integrity
 - integration: agent rollout / rollback / retirement
 - contract: retired agents must not be bound to new tasks
+
+## v4.3 Contract Remediation
+
+- The canonical runtime handoff remains `PlanGraphBundle -> NodeAttemptReceipt`; agent lifecycle documents must not reintroduce linear `ExecutionPlan` / `ExecutionReceipt` terms.
+- Rollout bindings should only describe release governance and version ownership; execution truth remains in `HarnessRun` / `NodeRun`.

@@ -221,6 +221,37 @@ test("VaultHttpSecretProvider.requireSecret returns secret value when found", as
   }
 });
 
+test("VaultHttpSecretProvider.requireSecret does not append trailing slash for single-segment refs", async () => {
+  const mockFetch = async (url: string, _init?: any) => {
+    assert.ok(url.endsWith("/v1/secret/data"), `Expected single-segment ref to map to /v1/secret/data, got: ${url}`);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          data: { mykey: "secret-value" },
+          metadata: { created_time: "2024-01-01T00:00:00Z", destroyed: false, version: 1 },
+        },
+      }),
+    };
+  };
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch as any;
+
+  try {
+    const provider = createProvider(createMockEnv({
+      AA_VAULT_ADDR: "https://vault.internal:8200",
+      AA_VAULT_TOKEN: "test-token",
+    }));
+
+    const result = await provider.requireSecret("secret://mykey");
+    assert.equal(result.value, "secret-value");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("VaultHttpSecretProvider.isAvailable returns false when not configured", async () => {
   const provider = createProvider(createMockEnv({}));
 
@@ -496,7 +527,7 @@ test("VaultHttpSecretProvider.requireSecret returns correct scope for nested sec
 test("VaultHttpSecretProvider handles custom Vault mount point", async () => {
   const mockFetch = async (url: string, _init?: any) => {
     // Should request from custom mount point
-    assert.ok(url.includes("/v1/secrets/data/"), `Expected custom mount path, got: ${url}`);
+    assert.ok(url.includes("/v1/secrets/data"), `Expected custom mount path, got: ${url}`);
     return {
       ok: true,
       status: 200,

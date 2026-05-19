@@ -13,12 +13,10 @@
 
 | 等级 | 名称 | 权限 |
 |------|------|------|
-| 0 | supervised | 完全人工监督 |
-| 1 | assisted | 辅助建议 |
-| 2 | partial_auto | 部分自动化 |
-| 3 | high_auto | 高度自动化 |
-| 4 | full_auto | 完全自动化 |
-| 5 | autonomous | 自主决策（仅在高成熟度域可用） |
+| L1 | suggestion | 只生成建议，不自动执行 |
+| L2 | supervised | 允许受控执行，但需要人工确认或强监管 |
+| L3 | semi_auto | 允许低风险自动执行，高风险仍需升级 |
+| L4 | full_auto | 允许在显式边界内自动执行 |
 
 交互自主权枚举需保留 `suggestion` 与 `frozen` 两端：`suggestion` 表示只给建议、不自动执行；`frozen` 表示因风险、panic 或治理策略冻结交互推进。该枚举只描述 interaction autonomy，不等同于 `UnifiedRuntimeMode`。
 
@@ -72,4 +70,4 @@
 ## v4.3 ADR Remediation
 
 - A-34: 本 ADR 原先把 level 4 `full_auto` 写成”完全自动化”，根因是渐进式自主权 ADR 把自治等级误写成无限授权梯子，没有跟高危域风险覆盖规则绑定。修复：正文现明确高危域默认不得 `full_auto`，除非有显式 `DomainRiskSpec / DomainRiskProfile` 允许。
-- R3-54: 本 ADR 定义 6 级自治（0-5），与 §42.1 要求的 4 级不直接对应。根因是自主权模型经历了从 4 级到 6 级的演进。修复：正文明确声明 6 级体系（0 supervised, 1 assisted, 2 partial_auto, 3 high_auto, 4 full_auto, 5 autonomous）为 canonical，§42.1 的 4 级指代不同维度（如风险等级），两者不存在矛盾。
+- R3-54: 本 ADR 曾同时保留 6 级自治实验命名和 §42.1 的 4 级对外交付模型，导致契约与产品表达冲突。修复：正文现统一到 `suggestion / supervised / semi_auto / full_auto` 四级交互自主权；更细粒度的运行时限制继续由 `RuntimeModeEnvelope` 承载。

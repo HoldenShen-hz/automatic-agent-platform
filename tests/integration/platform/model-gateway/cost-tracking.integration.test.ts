@@ -380,8 +380,9 @@ test("Cost tracking: Multi-tenant isolation in chargeback", () => {
     nextEstimatedCostUsd: 10,
   });
 
-  // 40 + 10 = 50, which equals maxTaskCostUsd of 50, so allowed = true (not exceeded)
-  assert.equal(tenant2Result.allowed, true);
+  // 40 + 10 = 50, which equals maxTaskCostUsd of 50, so the task limit must fail closed.
+  assert.equal(tenant2Result.allowed, false);
+  assert.equal(tenant2Result.reasonCode, "budget.task_limit_exceeded");
 
   // Cost reports
   const costReports: MockCostReport[] = [

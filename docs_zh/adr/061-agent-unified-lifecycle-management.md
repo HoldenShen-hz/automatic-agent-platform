@@ -36,24 +36,24 @@ interface AgentComponent {
 | 状态 | 说明 |
 |------|------|
 | draft | 草稿 |
-| requirements_locked | 需求锁定 |
 | testing | 测试中 |
 | staging | 预发布 |
-| production | 生产 |
-| deprecated | 废弃 |
-| retired | 退役 |
+| canary | 金丝雀放量中 |
+| active | 当前活跃版本 |
+| paused | 暂停推进 |
+| deprecated | 已废弃 |
 | archived | 归档 |
-| superseded | 已取代（终态） |
+| removed | 已移除（终态） |
 
 约束：
-- 状态流转顺序：draft → requirements_locked → testing → staging → production → deprecated → retired → archived → superseded
-- requirements_locked 后不再接受轻率需求变更，需走变更委员会流程
-- archived 状态保留审计历史，不可逆回活跃态
-- superseded 为终态，表示被新版本完全取代
+- 状态流转顺序：draft → testing → staging → canary → active → paused → deprecated → archived → removed
+- `canary` 与 `active` 分别对应受控放量和默认活跃版本，不再使用 `production / retired / superseded` 混合表达。
+- archived 状态保留审计历史，不可逆回活跃态。
+- removed 为终态，表示运行面与投影面都已完成清理。
 
 ## v4.3 ADR Remediation
 
-- R3-52: 本 ADR 原先定义 8 态生命周期（draft/requirements_locked/testing/staging/production/deprecated/retired/archived），根因是生命周期 ADR 遗漏了 superseded 终态。修复：正文现增加 superseded 终态，形成 9 态完整状态机，与 §61.3 架构要求对齐。
+- R3-52: 本 ADR 曾沿用 `requirements_locked / production / retired / superseded` 这组历史词汇，未与 §61.3 的 rollout lifecycle 对齐。修复：正文现统一到 `draft / testing / staging / canary / active / paused / deprecated / archived / removed` 九态生命周期。
 
 - Semantic versioning (major.minor.patch)
 - 版本兼容性检查

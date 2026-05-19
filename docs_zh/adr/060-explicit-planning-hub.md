@@ -116,7 +116,7 @@ Execute 层通过此接口接收 Plan，不得绕过。
 ## 交叉引用
 
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
-- [ADR-018 Rollout 11 状态机](./018-rollout-eleven-state-machine.md)
+- [ADR-075 六级受控发布与 Rollout 状态机](./075-controlled-rollout-release.md)（ADR-018 仅保留历史迁移背景）
 - [ADR-072 测试策略](./072-oapeflir-testing-strategy.md)
 
 ## 来源章节

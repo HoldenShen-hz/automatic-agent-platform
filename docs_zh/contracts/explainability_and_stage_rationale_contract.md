@@ -29,9 +29,9 @@
 
 `ExplanationDepth` 固定为：
 
-- `brief`
-- `standard`
-- `audit`
+- `L1_summary`
+- `L2_reasoning`
+- `L3_forensic`
 
 规则：
 

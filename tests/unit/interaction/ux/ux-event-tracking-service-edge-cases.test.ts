@@ -72,6 +72,19 @@ test("UxEventTrackingService handles empty metadata", () => {
   assert.deepEqual(event.metadata, {});
 });
 
+test("UxEventTrackingService ignores non-string elementId and invalid interactionType", () => {
+  const service = new UxEventTrackingService();
+
+  const event = service.trackEvent("ux:button_click", {
+    userId: "user_invalid_fields",
+    elementId: 42,
+    interactionType: "unexpected",
+  });
+
+  assert.equal(event.elementId, null);
+  assert.equal(event.interactionType, "click");
+});
+
 test("UxEventTrackingService handles unicode in metadata values", () => {
   const service = new UxEventTrackingService();
 

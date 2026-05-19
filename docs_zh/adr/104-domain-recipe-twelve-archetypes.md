@@ -26,6 +26,8 @@
 
 `DomainRecipe` 扩展为十二种 archetype，覆盖 CRUD、Analytics、Creative、Realtime、Trading、Compliance、Research、Adversarial、Moderation、Logistics、Conversational、IncidentOps。
 
+每个 archetype 最终都要回写到 `DomainDescriptor.recipe`，不能与 `DomainDescriptor` 脱节为第二套领域接入元数据。
+
 ## 后果
 
 - 24 域 baseline 有统一而可扩展的 recipe 模型

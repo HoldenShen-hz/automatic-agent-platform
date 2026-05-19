@@ -26,19 +26,16 @@
 | `createdAt` | `timestamp` | 创建时间 |
 | `updatedAt` | `timestamp` | 更新时间 |
 
-`SideEffectStatus`（16 states，R20-52 aligned）：
+`SideEffectStatus`（13 states，v4.3 canonical）：
 
 - `proposed`
-- `approved`
 - `reserved`
-- `committing`
-- `committed`
-- `confirming`（equivalent to `awaiting_confirmation`）
+- `claimed`
+- `executing`
+- `awaiting_confirmation`
 - `confirmed`
 - `ambiguous`
 - `reconciling`
-- `manual_review_required`
-- `compensation_required`
 - `compensating`
 - `compensated`
 - `failed`

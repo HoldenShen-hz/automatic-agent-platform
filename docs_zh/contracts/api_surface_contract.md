@@ -91,6 +91,16 @@
 - rollout / feedback / timeline 类接口若当前部署未启用相应能力，应返回显式 `not_enabled` 或受控 `404` 语义，不得伪装成成功空对象。
 - knowledge / domain / plugin / artifact plane 接口若当前部署未启用相应能力，应返回显式 `not_enabled`，而不是静默空列表。
 
+受控状态码映射：
+
+| 场景 | 状态码 | 稳定错误码 |
+| --- | --- | --- |
+| 资源不存在 / 能力未启用且允许受控空洞 | `404` | `api.task_not_found` 等 resource-specific code |
+| 幂等键冲突 / 重复请求 | `409` | `api.idempotency_key_conflict` / `api.duplicate_request` |
+| 请求体超限 | `413` | `api.payload_too_large` |
+| 媒体类型不支持 | `415` | `api.unsupported_media_type` |
+| 限流 | `429` | `api.rate_limit_exceeded` |
+
 ## 5. 补充规则
 
 ### 5.1 鉴权

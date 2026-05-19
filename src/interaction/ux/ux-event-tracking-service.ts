@@ -51,6 +51,20 @@ export type InteractionType =
   | "wizard_back"
   | "wizard_cancel";
 
+const INTERACTION_TYPES: readonly InteractionType[] = [
+  "click",
+  "submit",
+  "navigate",
+  "search",
+  "filter",
+  "export",
+  "share",
+  "feedback",
+  "wizard_next",
+  "wizard_back",
+  "wizard_cancel",
+];
+
 export interface ABTestAssignment {
   readonly testId: string;
   readonly variantId: string;
@@ -107,11 +121,11 @@ export class UxEventTrackingService {
       eventId,
       eventType,
       userId: payload.userId,
-      sessionId: (p.sessionId as string | null) ?? null,
-      taskId: (p.taskId as string | null) ?? null,
-      abTestGroup: (p.abTestGroup as string | null) ?? null,
-      elementId: (p.elementId as string | null) ?? null,
-      interactionType: (p.interactionType as UxEventTrack["interactionType"]) ?? "click",
+      sessionId: readOptionalString(p, "sessionId"),
+      taskId: readOptionalString(p, "taskId"),
+      abTestGroup: readOptionalString(p, "abTestGroup"),
+      elementId: readOptionalString(p, "elementId"),
+      interactionType: readInteractionType(p["interactionType"]),
       metadata: (p.metadata as Record<string, string>) ?? {},
       occurredAt,
     };
@@ -229,4 +243,15 @@ export class UxEventTrackingService {
   private getABTestAssignmentKey(userId: string, testId: string): string {
     return `${userId}:${testId}`;
   }
+}
+
+function readOptionalString(payload: Record<string, unknown>, key: string): string | null {
+  const value = payload[key];
+  return typeof value === "string" ? value : null;
+}
+
+function readInteractionType(value: unknown): InteractionType {
+  return typeof value === "string" && INTERACTION_TYPES.includes(value as InteractionType)
+    ? value as InteractionType
+    : "click";
 }

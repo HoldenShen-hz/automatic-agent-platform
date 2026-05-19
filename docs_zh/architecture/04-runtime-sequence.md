@@ -148,7 +148,7 @@
 
 ```
 ┌──────────────┐   ┌─────────────────┐   ┌────────────────┐   ┌─────────────────┐
-│   Producer   │   │ DurableEventBus │   │    SQLite      │   │ RecoveryService │
+│   Producer   │   │ DurableEventBus │   │    SQLite      │   │ RuntimeRecovery │
 │   Service    │   │                 │   │    Store       │   │                 │
 └──────┬───────┘   └────────┬────────┘   └───────┬────────┘   └────────┬────────┘
        │                     │                    │                    │
@@ -188,6 +188,7 @@
 - **Tier 2**: At-least-once; small percentage loss acceptable
 - **Tier 3**: Best-effort; high-frequency transient events (e.g., stream chunks)
 - `RuntimeRecoveryService` detects:
+ - 图中的恢复参与者统一指 `RuntimeRecoveryService`；`runtime-recovery-service.ts` 与 `runtime-recovery-service-root.ts` 只是同一恢复职责的 service/root 导出层，不表示两套独立恢复系统。
   - Stale leases (heartbeat missed)
   - Stall detection (execution not progressing)
   - Orphaned tickets (worker disappeared)

@@ -349,8 +349,10 @@ export class ChaosExperimentScheduler {
 
     experiment.results = [...experiment.results, result];
 
+    const evaluatedHypothesisNames = new Set(experiment.results.map((entry) => entry.steadyStateName));
+
     // Check if all hypotheses have been evaluated
-    if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
+    if (evaluatedHypothesisNames.size >= experiment.steadyStateHypotheses.length) {
       const allPassed = experiment.results.every((r) => r.passed);
 
       if (!allPassed) {

@@ -181,6 +181,67 @@ export class DurableEventBus {
     this.dlqRepository = repository;
   }
 
+  private persistDeadLetterRecord(input: {
+    readonly event: EventRecord;
+    readonly consumerId: string;
+    readonly errorCode: string;
+    readonly errorMessage: string | null;
+    readonly retryCount: number;
+  }): void {
+    const deadLetteredAt = nowIso();
+    if (this.dlqRepository) {
+      this.dlqRepository.insert({
+        deadLetterId: newId("dlq"),
+        sourceEventId: input.event.id,
+        eventType: input.event.eventType,
+        consumerId: input.consumerId,
+        errorCode: input.errorCode,
+        errorMessage: input.errorMessage,
+        payloadJson: input.event.payloadJson,
+        status: "pending",
+        retryCount: input.retryCount,
+        maxRetries: input.retryCount,
+        nextRetryAt: null,
+        createdAt: deadLetteredAt,
+        updatedAt: deadLetteredAt,
+        originalTimestamp: input.event.createdAt,
+        firstFailedAt: deadLetteredAt,
+        lastFailedAt: deadLetteredAt,
+        lastAttemptAt: deadLetteredAt,
+        failureCategory: null,
+        reason: input.errorCode,
+        retryExhaustedAt: deadLetteredAt,
+        linkedIncidentId: null,
+        operatorActionLog: [],
+      });
+      return;
+    }
+
+    this.store.event.insertEventDeadLetter({
+      id: newId("edl"),
+      originalEventId: input.event.id,
+      eventType: input.event.eventType,
+      payloadJson: input.event.payloadJson,
+      consumerId: input.consumerId,
+      failureCount: input.retryCount,
+      lastError: input.errorCode,
+      deadLetteredAt,
+      reprocessedAt: null,
+      reprocessResult: null,
+    });
+  }
+
+  private enqueueVolatileDeadLetter(event: EventRecord, consumerId: string, error: unknown): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    this.persistDeadLetterRecord({
+      event,
+      consumerId,
+      errorCode: `volatile_delivery_failed: ${errorMessage}`,
+      errorMessage,
+      retryCount: 1,
+    });
+  }
+
   /**
    * Registers a consumer group for isolated delivery.
    * R12-02: Consumer group isolation for independent ack state.
@@ -543,46 +604,13 @@ export class DurableEventBus {
     });
 
     try {
-      const deadLetteredAt = nowIso();
-      if (this.dlqRepository) {
-        this.dlqRepository.insert({
-          deadLetterId: newId("dlq"),
-          sourceEventId: item.event.id,
-          eventType: item.event.eventType,
-          consumerId: item.ack.consumerId,
-          errorCode: errorMessage,
-          errorMessage: lastError instanceof Error ? lastError.message : null,
-          payloadJson: item.event.payloadJson,
-          status: "pending",
-          retryCount: MAX_DELIVERY_RETRIES,
-          maxRetries: MAX_DELIVERY_RETRIES,
-          nextRetryAt: null,
-          createdAt: deadLetteredAt,
-          updatedAt: deadLetteredAt,
-          originalTimestamp: item.event.createdAt,
-          firstFailedAt: deadLetteredAt,
-          lastFailedAt: deadLetteredAt,
-          lastAttemptAt: deadLetteredAt,
-          failureCategory: null,
-          reason: errorMessage,
-          retryExhaustedAt: deadLetteredAt,
-          linkedIncidentId: null,
-          operatorActionLog: [],
-        });
-      } else {
-        this.store.event.insertEventDeadLetter({
-          id: newId("edl"),
-          originalEventId: item.event.id,
-          eventType: item.event.eventType,
-          payloadJson: item.event.payloadJson,
-          consumerId: item.ack.consumerId,
-          failureCount: MAX_DELIVERY_RETRIES,
-          lastError: errorMessage,
-          deadLetteredAt,
-          reprocessedAt: null,
-          reprocessResult: null,
-        });
-      }
+      this.persistDeadLetterRecord({
+        event: item.event,
+        consumerId: item.ack.consumerId,
+        errorCode: errorMessage,
+        errorMessage: lastError instanceof Error ? lastError.message : null,
+        retryCount: MAX_DELIVERY_RETRIES,
+      });
       // Keep the consumer ack in "failed" so retry workers and operator
       // inspection can still query the failed delivery alongside the DLQ row.
     } catch (dlqError) {
@@ -842,6 +870,16 @@ export class DurableEventBus {
           try {
             await subscriber.handler(nextEntry.event);
           } catch (error) {
+            try {
+              this.enqueueVolatileDeadLetter(nextEntry.event, consumerId, error);
+            } catch (dlqError) {
+              eventBusLogger.error("event_bus.volatile_dlq_persist_failed", {
+                eventId: nextEntry.event.id,
+                eventType: nextEntry.event.eventType,
+                consumerId,
+                error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+              });
+            }
             eventBusLogger.warn("event_bus.volatile_delivery_failed", {
               eventId: nextEntry.event.id,
               eventType: nextEntry.event.eventType,

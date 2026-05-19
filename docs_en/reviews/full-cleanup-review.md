@@ -44,7 +44,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
 **Status**: All STALE - performance/logger test artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
+rm -rf .tmp/
 ```
 
 ---
@@ -63,7 +63,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
 **Status**: All STALE - test artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
+rm -rf .test-db/
 ```
 
 ---
@@ -78,7 +78,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
 
 ```bash
 # Review first, then:
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-artifacts/
+rm -rf .aa-tool-artifacts/
 ```
 
 ---
@@ -146,7 +146,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-a
 **Status**: Safe to delete - old backups
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/tests/performance.bak/
+rm -rf tests/performance.bak/
 ```
 
 ---
@@ -171,7 +171,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/tests/perf
 **Status**: Duplicate build artifact from issue #2014 fix
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/dist_issue2014/
+rm -rf dist_issue2014/
 ```
 
 ---
@@ -216,7 +216,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/dist_issue
 **Status**: Safe to delete
 
 ```bash
-find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_Store" -delete
+find . -name ".DS_Store" -delete
 ```
 
 ---
@@ -229,7 +229,7 @@ find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_S
 - `docs_zh/reviews/extract-issues.mjs` (JS script, not translatable)
 
 ### Files ONLY in docs_en/ (English-only additions):
-- `docs_en/adr/109-v4.3-contract-freeze.md`
+- `docs_en/adr/109-contract-freeze.md`
 - `docs_en/architecture/v3.0-domain-research.md`
 - `docs_en/contracts/events_and_checkpoints_contract.md`
 - `docs_en/contracts/smtp_contract.md`

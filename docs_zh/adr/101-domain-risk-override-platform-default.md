@@ -27,6 +27,7 @@
 - 领域风险画像优先于平台默认风险矩阵
 - 任何覆写都必须留下审计理由
 - 无显式领域风险 profile 时，禁止高风险自动化
+- `advisory_only`、`human_accountable`、`deterministic_hot_path_only` 域默认禁止越过人工责任边界
 
 ## 后果
 

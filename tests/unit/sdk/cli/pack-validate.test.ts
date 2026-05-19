@@ -31,6 +31,12 @@ interface ValidationResult {
   metadata: Record<string, string>;
 }
 
+function parseMajorVersion(version: string): number {
+  const [majorSegment] = version.trim().split(".");
+  const major = Number(majorSegment);
+  return Number.isFinite(major) ? major : 0;
+}
+
 // Simplified validation logic extracted from pack-validate.ts for testing
 function runValidation(manifest: Record<string, unknown>, opts: PackValidateOptions): ValidationResult {
   const result: ValidationResult = { valid: true, errors: [], warnings: [], metadata: {} };
@@ -64,13 +70,12 @@ function runValidation(manifest: Record<string, unknown>, opts: PackValidateOpti
   result.metadata["capabilities"] = String(capabilities?.length ?? 0);
 
   // Contract version validation
-  const sdkRelease = manifest.sdk_release as Record<string, string> | undefined;
   if (opts.contractVersion) {
-    const minVersion = sdkRelease?.platform_min_version ?? "0.0.0";
-    const maxVersion = sdkRelease?.platform_max_version ?? "999.999.999";
-    const contractMajor = opts.contractVersion.split(".").map(Number)[0] ?? 0;
-    const minMajor = minVersion.split(".").map(Number)[0] ?? 0;
-    const maxMajor = maxVersion.split(".").map(Number)[0] ?? 999;
+    const minVersion = (manifest.platform_min_version as string | undefined) ?? "0.0.0";
+    const maxVersion = (manifest.platform_max_version as string | undefined) ?? "999.999.999";
+    const contractMajor = parseMajorVersion(opts.contractVersion);
+    const minMajor = parseMajorVersion(minVersion);
+    const maxMajor = parseMajorVersion(maxVersion);
 
     if (contractMajor < minMajor || contractMajor > maxMajor) {
       result.valid = false;
@@ -81,7 +86,7 @@ function runValidation(manifest: Record<string, unknown>, opts: PackValidateOpti
   }
 
   // SDK semver check
-  if (!sdkRelease?.sdk_semver) {
+  if (!manifest.sdk_semver) {
     if (opts.strict) {
       result.valid = false;
       result.errors.push("missing_field:sdk_semver");
@@ -91,7 +96,7 @@ function runValidation(manifest: Record<string, unknown>, opts: PackValidateOpti
   }
 
   // Contract test generator check
-  if (!sdkRelease?.contract_test_generator) {
+  if (!manifest.contract_test_generator) {
     result.warnings.push("missing_optional_field:contract_test_generator");
   }
 
@@ -164,11 +169,9 @@ test("runValidation returns valid for a complete manifest", () => {
     capabilities: [
       { capabilityKey: "cap1", requiredContracts: ["contract1"] },
     ],
-    sdk_release: {
-      sdk_semver: "1.0.0",
-      platform_min_version: "1.0.0",
-      platform_max_version: "2.0.0",
-    },
+    sdk_semver: "1.0.0",
+    platform_min_version: "1.0.0",
+    platform_max_version: "2.0.0",
   };
 
   const opts: PackValidateOptions = { manifest: "./pack.json" };
@@ -209,6 +212,29 @@ test("runValidation returns invalid for empty capabilities", () => {
 
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((e) => e.includes("empty_capabilities")));
+});
+
+test("runValidation uses requested contract version instead of manifest minimum version", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: ["contract1"] },
+    ],
+    sdk_semver: "1.0.0",
+    platform_min_version: "2.0.0",
+    platform_max_version: "3.0.0",
+  };
+
+  const ok = runValidation(manifest, { manifest: "./pack.json", contractVersion: "2.5.0" });
+  const mismatch = runValidation(manifest, { manifest: "./pack.json", contractVersion: "1.5.0" });
+
+  assert.equal(ok.valid, true);
+  assert.ok(ok.warnings.includes("contract_version_ok:2.5.0"));
+  assert.equal(mismatch.valid, false);
+  assert.ok(mismatch.errors.some((entry) => entry.includes("requested=1.5.0")));
 });
 
 test("runValidation adds warning for missing sdk_semver in non-strict mode", () => {
@@ -275,11 +301,9 @@ test("runValidation validates contract version compatibility", () => {
     capabilities: [
       { capabilityKey: "cap1", requiredContracts: [] },
     ],
-    sdk_release: {
-      sdk_semver: "1.0.0",
-      platform_min_version: "2.0.0",
-      platform_max_version: "3.0.0",
-    },
+    sdk_semver: "1.0.0",
+    platform_min_version: "2.0.0",
+    platform_max_version: "3.0.0",
   };
 
   const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "1.0.0" };
@@ -298,11 +322,9 @@ test("runValidation accepts compatible contract version", () => {
     capabilities: [
       { capabilityKey: "cap1", requiredContracts: [] },
     ],
-    sdk_release: {
-      sdk_semver: "1.0.0",
-      platform_min_version: "2.0.0",
-      platform_max_version: "3.0.0",
-    },
+    sdk_semver: "1.0.0",
+    platform_min_version: "2.0.0",
+    platform_max_version: "3.0.0",
   };
 
   const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "2.0.0" };

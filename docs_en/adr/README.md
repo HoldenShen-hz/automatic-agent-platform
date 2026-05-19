@@ -72,7 +72,6 @@
 | [064](./064-cost-attribution-and-optimization-engine.md) | Cost Attribution and Optimization Engine | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | Workflow Visual Debugger Architecture | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | Compliance Report Auto-Generation Engine | Accepted | 2026-04-20 |
-| [066](./066-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
 | [071](./071-plugin-spi-framework.md) | Plugin SPI Framework (Renumbered Retention) | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |

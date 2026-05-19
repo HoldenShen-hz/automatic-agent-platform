@@ -145,3 +145,61 @@ test("R12-03: DLQ repository insert is called on dead-lettering", async () => {
     cleanupPath(workspace);
   }
 });
+
+test("R31-27: volatile delivery failures are persisted to DLQ repository", async () => {
+  const workspace = createTempWorkspace("aa-dlq-volatile-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "dlq-volatile.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+
+    const dlqRecords: ExtendedDeadLetterRecord[] = [];
+    const mockDlqRepository: DlqRepository = {
+      insert(record: ExtendedDeadLetterRecord): void {
+        dlqRecords.push(record);
+      },
+      findById(id: string): ExtendedDeadLetterRecord | null {
+        return dlqRecords.find((record) => record.deadLetterId === id) ?? null;
+      },
+      update(record: ExtendedDeadLetterRecord): void {
+        const index = dlqRecords.findIndex((item) => item.deadLetterId === record.deadLetterId);
+        if (index >= 0) {
+          dlqRecords[index] = record;
+        }
+      },
+      listAll(): ExtendedDeadLetterRecord[] {
+        return dlqRecords.slice();
+      },
+      listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
+        return dlqRecords.filter((record) => record.consumerId === consumerId);
+      },
+      listRetryable(asOf: string): ExtendedDeadLetterRecord[] {
+        return dlqRecords.filter((record) => record.status === "retrying" && record.nextRetryAt !== null && record.nextRetryAt <= asOf);
+      },
+    };
+
+    bus.setDlqRepository(mockDlqRepository);
+    bus.subscribe("volatile_projection", async () => {
+      throw new Error("volatile boom");
+    });
+
+    bus.publish({
+      eventType: "perf:test_event",
+      payload: { benchmark: "fanout" },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    assert.equal(dlqRecords.length, 1);
+    assert.equal(dlqRecords[0]?.consumerId, "volatile_projection");
+    assert.equal(dlqRecords[0]?.eventType, "perf:test_event");
+    assert.ok(dlqRecords[0]?.errorCode.includes("volatile_delivery_failed"));
+
+    bus.dispose();
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

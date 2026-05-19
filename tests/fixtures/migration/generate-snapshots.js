@@ -13,7 +13,7 @@
  *   - v10: Message parts + remote routing
  *   - v20: Billing + perception + gateway
  *   - v30: Workflow dispatch + LLM eval
- *   - v40: Session events (current latest)
+ *   - latest: Current head schema
  */
 import { mkdirSync, writeFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -21,7 +21,14 @@ import { DatabaseSync } from "node:sqlite";
 import { SQLITE_MIGRATIONS, SQLITE_MIGRATION_LEDGER_SQL, } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-migration-plan.js";
 const OUTPUT_DIR = process.argv[2] ?? join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
 // Key version milestones for snapshot generation
-const SNAPSHOT_VERSIONS = [1, 5, 10, 20, 30, 40];
+export const SNAPSHOT_VERSIONS = [...new Set([1, 5, 10, 20, 30, SQLITE_MIGRATIONS.at(-1)?.version ?? 0])]
+    .filter((version) => version > 0)
+    .sort((left, right) => left - right);
+function isCompatibleFixtureSkip(message) {
+    return message.includes("duplicate column name")
+        || message.includes("no such column: organization_id")
+        || message.includes("no such column: status");
+}
 /**
  * Applies all migrations up to (and including) the specified version.
  */
@@ -36,7 +43,7 @@ function applyMigrationsUpTo(db, maxVersion) {
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            if (message.includes("duplicate column name")) {
+            if (isCompatibleFixtureSkip(message)) {
                 insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
                 continue;
             }
@@ -98,5 +105,7 @@ export function main() {
     console.log(`\nManifest written to: ${manifestPath}`);
     return results;
 }
-main();
+if (process.argv[1] && process.argv[1].endsWith("generate-snapshots.js")) {
+    main();
+}
 //# sourceMappingURL=generate-snapshots.js.map

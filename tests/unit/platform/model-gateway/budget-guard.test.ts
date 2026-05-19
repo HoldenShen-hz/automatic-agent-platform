@@ -54,6 +54,20 @@ test("BudgetGuard evaluateTaskSpend blocks when over limit", () => {
   assert.equal(result.reasonCode, "budget.task_limit_exceeded");
 });
 
+test("BudgetGuard evaluateTaskSpend blocks when projected cost equals task limit", () => {
+  const guard = new BudgetGuard();
+  const result = guard.evaluateTaskSpend({
+    policy: createDefaultPolicy(),
+    currentTaskCostUsd: 8.0,
+    nextEstimatedCostUsd: 2.0,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  assert.equal(result.remainingBudgetUsd, 0);
+});
+
 test("BudgetGuard evaluateTaskSpend requires approval when approaching limit", () => {
   const guard = new BudgetGuard();
   const result = guard.evaluateTaskSpend({

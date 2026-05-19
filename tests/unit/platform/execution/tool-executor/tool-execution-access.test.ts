@@ -36,7 +36,7 @@ test("resolveExecutionAllowedTools returns error when execution required but mis
     executionRequired: true,
   });
 
-  assert.equal(result.allowedTools, undefined);
+  assert.deepEqual(result.allowedTools, []);
   assert.equal(result.errorCode, "tool.execution_missing");
 });
 

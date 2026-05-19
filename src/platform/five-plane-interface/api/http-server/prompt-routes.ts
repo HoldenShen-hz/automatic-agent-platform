@@ -2,13 +2,21 @@ import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/r
 import type { ApiAuthService } from "../api-auth-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, decodeOpaqueCursor, encodeOpaqueCursor, readCursor, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
+import {
+  buildJsonErrorResponse,
+  buildJsonResponse,
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+  readCursor,
+  readLimit,
+  readQueryParam,
+  requirePrincipal,
+} from "./utils.js";
 import { z } from "zod";
-import type { PromptBundleRegistrationInput } from "../../../contracts/prompt-bundle/index.js";
 
-const promptBundleRequestSchema = z.object({
+const promptBundleRegistrationSchema = z.object({
   name: z.string().optional(),
-  version: z.number().optional(),
+  version: z.union([z.number(), z.string()]).optional(),
   displayVersion: z.string().optional(),
   taskType: z.string().optional(),
   systemPrompt: z.string().optional(),
@@ -17,11 +25,16 @@ const promptBundleRequestSchema = z.object({
   domain: z.string().optional(),
   packId: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  // R29-39: Removed .passthrough() to enforce strict schema validation
-  // Additional fields should be explicitly defined in the schema
-});
+}).strict();
 
-type PromptBundleRequestPayload = z.infer<typeof promptBundleRequestSchema>;
+const promptBundleDeprecationSchema = z.object({
+  version: z.union([z.number(), z.string()]),
+  level: z.enum(["global", "domain", "task-type"]).optional(),
+  domain: z.string().optional(),
+  packId: z.string().optional(),
+}).strict();
+
+type PromptBundleRequestPayload = z.infer<typeof promptBundleRegistrationSchema>;
 
 interface PromptCursor {
   readonly createdAt: string;
@@ -79,9 +92,8 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       pathname: "/v1/prompts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-        const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse);
+        const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRegistrationSchema.parse);
         const level = rawPayload.level ?? "global";
-        // R29-39: Register bundle with proper input from request
         const bundle = deps.promptRegistryService.registerBundle(
           {
             name: rawPayload.name ?? rawPayload.packId ?? "unnamed",
@@ -118,7 +130,14 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
         const bundle = deps.promptRegistryService.getBundle(name, taskType, packId, domain);
-        return buildJsonResponse(ctx.requestId, bundle ? 200 : 404, { bundle });
+        if (bundle == null) {
+          return buildJsonErrorResponse(ctx.requestId, 404, {
+            code: "api.prompt_bundle_not_found",
+            message: `Prompt bundle ${name} was not found.`,
+            details: { name, taskType, domain, packId },
+          });
+        }
+        return buildJsonResponse(ctx.requestId, 200, { bundle });
       },
     },
     {
@@ -131,15 +150,31 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         }
         requirePrincipal(ctx.request, deps.authService, "operator");
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
-        const payload = readJsonBody(ctx.request.body) as Record<string, unknown>;
-        const level = (payload.level as "global" | "domain" | "task-type" | undefined) ?? "global";
-        deps.promptRegistryService.deprecateBundle(
-          name,
-          String(payload.version ?? ""),
-          level,
-          payload.domain as string | undefined,
-          payload.packId as string | undefined,
-        );
+        const payload = readValidatedJsonBody(ctx.request.body, promptBundleDeprecationSchema.parse);
+        const level = payload.level ?? "global";
+        try {
+          deps.promptRegistryService.deprecateBundle(
+            name,
+            payload.version,
+            level,
+            payload.domain,
+            payload.packId,
+          );
+        } catch (error) {
+          if (
+            typeof error === "object"
+            && error !== null
+            && "code" in error
+            && error.code === "prompt_bundle.not_found"
+          ) {
+            return buildJsonErrorResponse(ctx.requestId, 404, {
+              code: "api.prompt_bundle_not_found",
+              message: `Prompt bundle ${name}@${payload.version} was not found.`,
+              details: { name, version: payload.version, level, domain: payload.domain, packId: payload.packId },
+            });
+          }
+          throw error;
+        }
         return buildJsonResponse(ctx.requestId, 200, { deprecated: true, name });
       },
     },

@@ -52,7 +52,7 @@
 2. 首页必须先回答“系统是否健康、当前在做什么、卡在哪里”。
 3. 关键页面必须能下钻到 evidence、timeline、inspect，而不是只显示 summary。
 4. 高风险动作必须展示风险等级、策略来源、审批链和接管入口。
-5. UI 展示状态不得反向定义 task、workflow 或 execution 的 authoritative 事实。
+5. UI 展示状态不得反向定义 HarnessRun、PlanGraph 或 NodeRun 的 authoritative 事实。
 
 ## 3. Console 信息架构
 
@@ -111,12 +111,12 @@ Console 首页应按以下优先级组织：
 
 最小字段：
 
-- `task_id`
-- `task_status`
-- `current_step`
-- `current_execution`
+- `task_projection_ref`
+- `harness_run_id`
+- `harness_run_status`
+- `active_node_run_id`
 - `blocked_reason?`
-- `latest_tool_call?`
+- `latest_attempt_receipt_ref?`
 - `latest_decision?`
 - `artifact_refs`
 
@@ -128,14 +128,15 @@ Console 首页应按以下优先级组织：
 - 取消任务
 - 进入人工接管
 
-### 5.2 `WorkflowCockpit`
+### 5.2 `RunCockpit`
 
 最小字段：
 
-- `workflow_id`
-- `workflow_status`
-- `steps`
-- `current_step_index`
+- `plan_graph_id`
+- `harness_run_id`
+- `harness_run_status`
+- `node_runs`
+- `active_node_run_id?`
 - `dependency_state`
 - `approval_nodes`
 - `evidence_refs`
@@ -152,7 +153,7 @@ Console 首页应按以下优先级组织：
 最小字段：
 
 - `approval_id`
-- `task_id`
+- `harness_run_id`
 - `risk_level`
 - `reason_summary`
 - `options`

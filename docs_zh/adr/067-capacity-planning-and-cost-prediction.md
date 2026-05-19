@@ -7,6 +7,11 @@
 
 平台需要预测容量需求和成本趋势，支持前瞻性扩容决策。
 
+当前口径下：
+
+- Ring 1 只要求稳定采集容量信号并形成可审计预测输入。
+- Ring 3 才进入跨区域、跨生态的自动容量规划与策略联动。
+
 ## 决策
 
 ### 容量指标
@@ -27,6 +32,24 @@ interface CapacityForecast {
   predictions: MetricPrediction[];
   confidence: number;
   recommendations: Recommendation[];
+}
+
+interface CapacityScenario {
+  scenario_id: string;
+  assumptions: string[];
+  forecast: CapacityForecast;
+}
+
+interface CapacityAlert {
+  alert_id: string;
+  forecast_ref: string;
+  severity: "warning" | "critical";
+}
+
+interface CapacityRecommendation {
+  recommendation_id: string;
+  scenario_ref: string;
+  action: "scale_up" | "scale_down" | "rebalance" | "defer";
 }
 
 interface MetricPrediction {

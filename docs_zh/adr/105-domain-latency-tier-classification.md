@@ -26,6 +26,8 @@
 
 - 每个域都必须声明 latency tier
 - 平台据此分配队列优先级、资源池和恢复顺序
+- `deterministic_hot_path_only` 域不得把 latency tier 解释为允许进入自由 LLM loop；LLM 参与必须保持受控边界
+- 本 ADR 只定义域级 latency tier，不作为 v4.3 非目标边界之外的“自动开放式 LLM loop”授权来源
 
 ## 后果
 

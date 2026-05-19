@@ -17,7 +17,7 @@
 
 ---
 
-- 状态：Accepted
+- 状态：Historical Context（see v4.3 runtime / operations baseline）
 - 决策日期：2026-04-02
 
 ## 背景

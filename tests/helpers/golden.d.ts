@@ -29,4 +29,4 @@ export declare function assertGoldenContains(snapshotName: string, actual: strin
 /**
  * Assert that actual output matches a regex pattern in the golden snapshot.
  */
-export declare function assertGoldenMatches(snapshotName: string, pattern: RegExp): void;
+export declare function assertGoldenMatches(snapshotName: string, actual: string, pattern: RegExp): void;

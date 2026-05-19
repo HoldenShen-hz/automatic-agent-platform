@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§46-§51` 引入组织治理层。当前仓库已有：
+当前权威口径对应 `docs_zh/architecture/00-platform-architecture.md` 中组织治理与知识边界章节。当前仓库已有：
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`
@@ -70,4 +70,3 @@ v2.7 `§46-§51` 引入组织治理层。当前仓库已有：
 
 - 组织治理层将成为 `tenant / division / policy / knowledge` 的统一上位边界
 - 后续实现优先补组织模型、审批路由和知识边界的 contract 与状态机测试
-

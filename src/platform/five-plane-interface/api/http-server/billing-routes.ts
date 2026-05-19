@@ -7,14 +7,13 @@
  * Part of http-api-server.ts split (see src/core/api/http-server/).
  */
 
-import { timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseBillingReconcilePayload } from "./schemas.js";
 import { buildJsonResponse } from "./utils.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService } from "../api-auth-service.js";
-import { authenticateOptionalPrincipal } from "./request-helpers.js";
 import type { BillingService } from "../api-external-support.js";
 
 class ApiError extends AppError {
@@ -35,6 +34,41 @@ export interface BillingRouteDeps {
   authService?: ApiAuthService | null;
 }
 
+const MAX_WEBHOOK_AGE_MS = 5 * 60 * 1000;
+
+function isTimingSafeHexEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "hex");
+  const rightBuffer = Buffer.from(right, "hex");
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function verifyWebhookSignature(
+  ctx: import("./types.js").RouteContext,
+  secret: string,
+): void {
+  const timestampHeader = ctx.request.headers["x-webhook-timestamp"];
+  const signatureHeader = ctx.request.headers["x-webhook-signature"];
+  if (typeof timestampHeader !== "string" || typeof signatureHeader !== "string") {
+    throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
+  }
+
+  const issuedAtMs = Number(timestampHeader) * 1000;
+  if (!Number.isFinite(issuedAtMs) || Math.abs(Date.now() - issuedAtMs) > MAX_WEBHOOK_AGE_MS) {
+    throw new ApiError(401, "api.webhook_timestamp_invalid", "Webhook timestamp is invalid.");
+  }
+
+  const payload = ctx.request.body ?? "";
+  const expected = createHmac("sha256", secret)
+    .update(timestampHeader)
+    .update(".")
+    .update(payload)
+    .digest("hex");
+
+  if (!/^[a-f0-9]{64}$/i.test(signatureHeader) || !isTimingSafeHexEqual(signatureHeader.toLowerCase(), expected)) {
+    throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
+  }
+}
+
 function handleReconcileWebhook(
   ctx: import("./types.js").RouteContext,
   deps: BillingRouteDeps,
@@ -45,17 +79,11 @@ function handleReconcileWebhook(
     throw new ApiError(503, "api.billing_unavailable", "Billing service is not configured.");
   }
 
-  const authenticatedPrincipal = authenticateOptionalPrincipal(ctx.request, deps.authService ?? null);
-  const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
   const expected = deps.webhookSecret;
   if (typeof expected !== "string" || expected.length === 0) {
     throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
   }
-  if (authenticatedPrincipal == null) {
-    if (typeof signature !== "string" || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-      throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
-    }
-  }
+  verifyWebhookSignature(ctx, expected);
 
   const result = billingService.reconcilePaymentSession({
     gatewayKind: payload.gatewayKind,
@@ -69,19 +97,6 @@ function handleReconcileWebhook(
 
 export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
   return [
-    {
-      method: "POST",
-      pathname: "/billing/webhooks/reconcile",
-      handler: (ctx) => {
-        const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
-        const response = handleReconcileWebhook(ctx, deps, payload);
-        // R14-20: Mark legacy route as deprecated
-        response.headers["Deprecation"] = "true";
-        response.headers["Sunset"] = "Sat, 31 Dec 2026 23:59:59 GMT";
-        response.headers["X-API-Version"] = "v1";
-        return response;
-      },
-    },
     {
       method: "POST",
       pathname: "/v1/billing/webhooks/reconcile",

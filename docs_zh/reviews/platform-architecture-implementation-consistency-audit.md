@@ -4,7 +4,7 @@
 
 | 主题 | 当前状态 | 根因 | 当前证据 |
 | --- | --- | --- | --- |
-| S1 OAPEFLIR 身份危机 | 已修复 | 根因是 OAPEFLIR spec/ADR 曾把认知投影视图写成 runtime truth，v4.3 迁移初期只改了局部 contract，引用链没有一起收口。 | `docs_zh/architecture/oapeflir-v4.4-executable-spec.md` 已降为 `Reference Draft`；`docs_zh/adr/070-conclusion.md`、`072-oapeflir-testing-strategy.md`、`066-plugin-spi-framework.md` 以及 `docs_zh/contracts/workflow_debugger_contract.md`、`plugin_spi_contract.md` 已把 OAPEFLIR 明确收回为 projection/view。 |
+| S1 OAPEFLIR 身份危机 | 已修复 | 根因是 OAPEFLIR spec/ADR 曾把认知投影视图写成 runtime truth，v4.3 迁移初期只改了局部 contract，引用链没有一起收口。 | `docs_zh/architecture/oapeflir-v4.4-executable-spec.md` 已降为 `Reference Draft`；`docs_zh/adr/070-conclusion.md`、`072-oapeflir-testing-strategy.md`、`071-plugin-spi-framework.md` 以及 `docs_zh/contracts/workflow_debugger_contract.md`、`plugin_spi_contract.md` 已把 OAPEFLIR 明确收回为 projection/view。 |
 | S2 废弃术语迁移未执行 | 部分修复 | 根因不是“还有几个旧词”这么简单，而是 v3 `workflow/execution/stepId` 兼容层长期停留在一等模型位置，代码、contract、ADR 各自继续复用旧键，迁移没有形成单一 canonical 边界。 | 本轮已把 `src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.ts` 收敛为 `nodeId` 内部主键、`src/platform/five-plane-state-evidence/events/projections/workflow-timeline-projection.ts` 补上 `planGraphBundleId / harnessRunId / nodeId` canonical 轴、`src/domains/registry/plugin-spi.ts` 把 `stepId/workflowId` 降为 alias；但 `src/scale-ecosystem/billing/types.ts` 及后文 2.4 / 3.4 所列部分 contract/ADR 残留仍未完全迁移。 |
 | S3 RuntimeStateMachine 被绕过 | 已修复 | 根因是 Harness / delegation / replay 曾各自维护局部状态，导致运行态修改散落在业务逻辑里。 | 复核实际文件后，`src/platform/five-plane-orchestration/harness/index.ts` 的 `runLoop()` 已经经由 `transitionRunStatus()` 驱动状态迁移；`src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.ts` 已改为状态机路径；`src/platform/five-plane-execution/ha/replay-worker.ts` 有 `assertReplayPolicySafe()` 门禁。 |
 | S4 Sandbox 含 `none` 档位 | 部分修复 | 根因是 sandbox canonical tier 只在安全策略层定义，但业务包、插件 SDK、delegation 上下文长期直接暴露 legacy alias，兼容输入与 canonical 输出没有分层。 | 本次已把 `src/sdk/plugin-sdk/plugin-definition.ts`、`src/sdk/plugin-sdk/plugin-context.ts`、`src/platform/five-plane-orchestration/agent-delegation/delegation-types.ts` 的公共类型收敛到 canonical 4 档；但 `src/platform/five-plane-control-plane/iam/sandbox-policy.ts` 与 `src/domains/business-pack/business-pack-manifest.ts` 仍保留 alias 兼容解析，所以不能宣称“完全消失”。 |
@@ -246,7 +246,7 @@
 | ------------------------------------------ | --------------------------------------------------------------------- |
 | `072-oapeflir-testing-strategy.md:E2E`     | 把 OAPEFLIR 当可执行 8 阶段链测试"无阶段被跳过"                       |
 | `072:Test 3`                               | "新 Plan 从失败步骤后继续"用废弃 step 术语                            |
-| `066-plugin-spi-framework.md:OAPEFLIR关联` | 描述 OAPEFLIR 为"正式扩展机制"（应为 projection）                     |
+| `071-plugin-spi-framework.md:OAPEFLIR关联` | 描述 OAPEFLIR 为"正式扩展机制"（应为 projection）                     |
 | 10+ ADR boilerplate                        | OAPEFLIR Execute 描述为"步骤执行与 Dual-Channel 输出"（应为认知投影） |
 
 ### 3.4 MED — 废弃术语作为 canonical

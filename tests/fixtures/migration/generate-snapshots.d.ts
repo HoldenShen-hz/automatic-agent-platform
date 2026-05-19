@@ -21,6 +21,7 @@ interface SnapshotResult {
     path: string;
     sizeBytes: number;
 }
+export declare const SNAPSHOT_VERSIONS: number[];
 /**
  * Main entry point: generates snapshots for all key versions.
  */

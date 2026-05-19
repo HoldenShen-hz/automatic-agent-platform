@@ -123,7 +123,7 @@ Provider 内建议规则：
 ## 交叉引用
 
 - [ADR-005 安全模型](./005-security-model.md)
-- [ADR-007 进化引擎](./007-evolution-engine.md)
+- [ADR-007 进化引擎](./007-evolution-engine.md)（其中 rollout / release 相关语义已由 ADR-075 部分替代）
 - [ADR-008 成本模型](./008-cost-model.md)
 
 ## 来源章节

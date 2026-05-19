@@ -136,7 +136,7 @@ export function resolveExecutionAllowedTools(options: {
     // R32-03 fix: Return empty allowlist (no tools allowed) when execution is required but missing.
     // Previously returned allowedTools:undefined which callers may interpret as "no restrictions".
     return {
-      allowedTools: undefined,
+      allowedTools: [],
       errorCode: "tool.execution_missing",
     };
   }

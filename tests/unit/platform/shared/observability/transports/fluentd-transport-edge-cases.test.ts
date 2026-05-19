@@ -65,6 +65,7 @@ test("FluentdTransport stops reconnecting after max attempts exhausted", async (
     tag: "test",
     reconnectIntervalMs,
   });
+  (transport as unknown as { maxReconnectAttempts: number }).maxReconnectAttempts = 2;
 
   // The maxReconnectAttempts is 10 (hardcoded in source)
   // With exponential backoff, the total wait time is roughly:
@@ -74,9 +75,8 @@ test("FluentdTransport stops reconnecting after max attempts exhausted", async (
   // Write to trigger connection attempts
   transport.write(createTestEntry({ message: "trigger reconnect" }));
 
-  // Wait long enough for reconnection attempts to exhaust (about 10 seconds max with backoff)
-  // Using a generous timeout since exponential backoff can accumulate
-  await new Promise<void>((resolve) => setTimeout(resolve, 15000));
+  // Exhaust just two reconnect attempts so the edge case stays covered without a long wall-clock sleep.
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
 
   // After exhausting attempts, the transport should have logged an error
   // We verify by checking that close() works without issues

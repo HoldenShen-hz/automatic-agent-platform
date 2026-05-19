@@ -23,8 +23,8 @@
 | 检查项 | 判定规则 | 失败动作 |
 | --- | --- | --- |
 | 迁移版本 | schema 版本与 ledger 一致 | fail-closed |
-| 活跃任务与 workflow 对齐 | `in_progress / awaiting_decision` 任务必须有对应 workflow_state 或可解释缺失 | 标记恢复 |
-| 非法 step index | `current_step_index` 不得越界 | fail-closed 或人工修复 |
+| 活跃运行与投影对齐 | 活跃 `HarnessRun / NodeRun` 必须有可解释的 task/workflow projection；缺失仅允许作为兼容投影视图例外 | 标记恢复 |
+| 非法运行游标 | `PlanGraphBundle` 当前 ready / active node 引用不得指向不存在或终态后继续推进的节点 | fail-closed 或人工修复 |
 | stale execution | `prechecking / executing` 且心跳过期（注：`retrying` 已废弃，重试通过新 execution attempt 实现） | 标记 recoverable |
 | 悬挂 session | session 处于活跃态但 task 已终态 | 自动收口或告警 |
 | 过期 file lock | `expires_at < now` 且 holder 已失活 | 清理并记事件 |
@@ -114,3 +114,9 @@ Phase 1a 明确做：
 ## 10. 收口结论
 
 恢复能力是否真实存在，不看文档里写了多少“支持恢复”，而看启动巡检和 drill 是否已经把最容易出事的断点逐项冻结下来。
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。若本文历史段落与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

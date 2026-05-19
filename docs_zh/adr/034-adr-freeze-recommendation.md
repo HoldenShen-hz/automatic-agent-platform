@@ -1,6 +1,6 @@
 # ADR-034 ADR 冻结建议
 
-- 状态：Accepted
+- 状态：Historical Context（ADR governance policy carried by current ADR index + docs sync guard）
 - 决策日期：2026-04-17
 
 ## 背景

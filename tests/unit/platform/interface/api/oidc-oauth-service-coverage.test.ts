@@ -57,50 +57,50 @@ test("OidcOAuthService lists all registered providers", () => {
 
 test("OidcOAuthService fetchOidcDiscovery fetches and caches provider config", async () => {
   const discoveryDoc = {
-    issuer: "https://idp.discovery.com",
-    authorization_endpoint: "https://idp.discovery.com/authorize",
-    token_endpoint: "https://idp.discovery.com/token",
-    jwks_uri: "https://idp.discovery.com/jwks",
-    userinfo_endpoint: "https://idp.discovery.com/userinfo",
+    issuer: "https://idp.discovery.invalid",
+    authorization_endpoint: "https://idp.discovery.invalid/authorize",
+    token_endpoint: "https://idp.discovery.invalid/token",
+    jwks_uri: "https://idp.discovery.invalid/jwks",
+    userinfo_endpoint: "https://idp.discovery.invalid/userinfo",
     scopes_supported: ["openid", "profile", "email"],
   };
 
   const mockFetch = createMockFetch(discoveryDoc);
-  const service = new OidcOAuthService([], ["https://idp.discovery.com"], "test", mockFetch);
+  const service = new OidcOAuthService([], ["https://idp.discovery.invalid"], "test", mockFetch);
 
-  const provider = await service.fetchOidcDiscovery("https://idp.discovery.com");
+  const provider = await service.fetchOidcDiscovery("https://idp.discovery.invalid");
 
-  assert.equal(provider.issuer, "https://idp.discovery.com");
-  assert.equal(provider.authorizationEndpoint, "https://idp.discovery.com/authorize");
-  assert.equal(provider.tokenEndpoint, "https://idp.discovery.com/token");
-  assert.equal(provider.jwksUri, "https://idp.discovery.com/jwks");
-  assert.equal(provider.userInfoEndpoint, "https://idp.discovery.com/userinfo");
+  assert.equal(provider.issuer, "https://idp.discovery.invalid");
+  assert.equal(provider.authorizationEndpoint, "https://idp.discovery.invalid/authorize");
+  assert.equal(provider.tokenEndpoint, "https://idp.discovery.invalid/token");
+  assert.equal(provider.jwksUri, "https://idp.discovery.invalid/jwks");
+  assert.equal(provider.userInfoEndpoint, "https://idp.discovery.invalid/userinfo");
   assert.deepStrictEqual(provider.scopes, ["openid", "profile", "email"]);
 });
 
 test("OidcOAuthService fetchOidcDiscovery normalizes trailing slash in issuer", async () => {
   const discoveryDoc = {
-    issuer: "https://idp.normalize.com",
-    authorization_endpoint: "https://idp.normalize.com/authorize",
-    token_endpoint: "https://idp.normalize.com/token",
-    jwks_uri: "https://idp.normalize.com/jwks",
+    issuer: "https://idp.normalize.invalid",
+    authorization_endpoint: "https://idp.normalize.invalid/authorize",
+    token_endpoint: "https://idp.normalize.invalid/token",
+    jwks_uri: "https://idp.normalize.invalid/jwks",
   };
 
   const mockFetch = createMockFetch(discoveryDoc);
-  const service = new OidcOAuthService([], ["https://idp.normalize.com"], "test", mockFetch);
+  const service = new OidcOAuthService([], ["https://idp.normalize.invalid"], "test", mockFetch);
 
-  await service.fetchOidcDiscovery("https://idp.normalize.com/");
+  await service.fetchOidcDiscovery("https://idp.normalize.invalid/");
 
-  const provider = service.getProvider("https://idp.normalize.com");
+  const provider = service.getProvider("https://idp.normalize.invalid");
   assert.ok(provider != null);
 });
 
 test("OidcOAuthService fetchOidcDiscovery throws on HTTP error", async () => {
   const mockFetch = createMockFetch({}, false);
-  const service = new OidcOAuthService([], ["https://idp.error.com"], "test", mockFetch);
+  const service = new OidcOAuthService([], ["https://idp.error.invalid"], "test", mockFetch);
 
   await assert.rejects(
-    async () => service.fetchOidcDiscovery("https://idp.error.com"),
+    async () => service.fetchOidcDiscovery("https://idp.error.invalid"),
     (err: unknown) => {
       return (err as { code?: string }).code === "oidc.discovery_failed";
     },
@@ -122,17 +122,17 @@ test("OidcOAuthService fetchJwks fetches and caches JWKS", async () => {
   };
 
   const mockFetch = createMockFetch(jwks);
-  const service = new OidcOAuthService([], ["https://idp.jwks.com"], "test", mockFetch);
+  const service = new OidcOAuthService([], ["https://idp.jwks.invalid"], "test", mockFetch);
 
   service.registerProvider({
-    issuer: "https://idp.jwks.com",
-    authorizationEndpoint: "https://idp.jwks.com/authorize",
-    tokenEndpoint: "https://idp.jwks.com/token",
-    jwksUri: "https://idp.jwks.com/jwks",
+    issuer: "https://idp.jwks.invalid",
+    authorizationEndpoint: "https://idp.jwks.invalid/authorize",
+    tokenEndpoint: "https://idp.jwks.invalid/token",
+    jwksUri: "https://idp.jwks.invalid/jwks",
     scopes: ["openid"],
   });
 
-  const keys = await service.fetchJwks("https://idp.jwks.com");
+  const keys = await service.fetchJwks("https://idp.jwks.invalid");
 
   assert.equal(keys.length, 1);
   assert.equal(keys[0]!.kid, "key-1");
@@ -154,18 +154,18 @@ test("OidcOAuthService fetchJwks returns cached keys within TTL", async () => {
   };
 
   const mockFetch = createMockFetch(jwks);
-  const service = new OidcOAuthService([], ["https://idp.cached.com"], "test", mockFetch);
+  const service = new OidcOAuthService([], ["https://idp.cached.invalid"], "test", mockFetch);
 
   service.registerProvider({
-    issuer: "https://idp.cached.com",
-    authorizationEndpoint: "https://idp.cached.com/authorize",
-    tokenEndpoint: "https://idp.cached.com/token",
-    jwksUri: "https://idp.cached.com/jwks",
+    issuer: "https://idp.cached.invalid",
+    authorizationEndpoint: "https://idp.cached.invalid/authorize",
+    tokenEndpoint: "https://idp.cached.invalid/token",
+    jwksUri: "https://idp.cached.invalid/jwks",
     scopes: ["openid"],
   });
 
   // First fetch
-  const keys1 = await service.fetchJwks("https://idp.cached.com");
+  const keys1 = await service.fetchJwks("https://idp.cached.invalid");
   assert.equal(keys1[0]!.kid, "key-cached");
 
   // Modify the mock to return different keys
@@ -174,15 +174,15 @@ test("OidcOAuthService fetchJwks returns cached keys within TTL", async () => {
   (service as unknown as { fetchImpl: typeof fetch }).fetchImpl = differentMockFetch;
 
   // Second fetch should return cached keys
-  const keys2 = await service.fetchJwks("https://idp.cached.com");
+  const keys2 = await service.fetchJwks("https://idp.cached.invalid");
   assert.equal(keys2[0]!.kid, "key-cached");
 });
 
 test("OidcOAuthService fetchJwks throws when provider not registered", async () => {
-  const service = new OidcOAuthService([], ["https://idp.unknown.com"], "test");
+  const service = new OidcOAuthService([], ["https://idp.unknown.invalid"], "test");
 
   await assert.rejects(
-    async () => service.fetchJwks("https://idp.unknown.com"),
+    async () => service.fetchJwks("https://idp.unknown.invalid"),
     (err: unknown) => {
       return (err as { code?: string }).code === "oidc.provider_not_registered";
     },

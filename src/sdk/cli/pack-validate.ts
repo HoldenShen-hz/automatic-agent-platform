@@ -42,6 +42,12 @@ interface ValidationResult {
   metadata: Record<string, string>;
 }
 
+function parseMajorVersion(version: string): number {
+  const [majorSegment] = version.trim().split(".");
+  const major = Number(majorSegment);
+  return Number.isFinite(major) ? major : 0;
+}
+
 function main(): void {
   const opts = parseArgs();
   if (!opts.manifest) {
@@ -65,9 +71,9 @@ function main(): void {
     if (opts.contractVersion) {
       const minVersion = validated.platform_min_version ?? "0.0.0";
       const maxVersion = validated.platform_max_version ?? "999.999.999";
-      const contractMajor = minVersion.split(".").map(Number)[0] ?? 0;
-      const minMajor = minVersion.split(".").map(Number)[0] ?? 0;
-      const maxMajor = maxVersion.split(".").map(Number)[0] ?? 999;
+      const contractMajor = parseMajorVersion(opts.contractVersion);
+      const minMajor = parseMajorVersion(minVersion);
+      const maxMajor = parseMajorVersion(maxVersion);
 
       if (contractMajor < minMajor || contractMajor > maxMajor) {
         result.valid = false;

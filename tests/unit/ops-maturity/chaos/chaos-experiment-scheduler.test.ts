@@ -131,6 +131,38 @@ test("ChaosExperimentScheduler.recordSteadyStateResult marks completed when all 
   assert.ok(retrieved?.completedAt !== null);
 });
 
+test("ChaosExperimentScheduler.recordSteadyStateResult only completes after distinct hypotheses are recorded", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const hypotheses: SteadyStateHypothesis[] = [
+    { name: "h1", metricName: "m1", tolerance: 1, operator: "lt" },
+    { name: "h2", metricName: "m2", tolerance: 1, operator: "gt" },
+  ];
+  const experiment = scheduler.scheduleExperiment({
+    name: "Distinct hypothesis completion",
+    description: "desc",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: hypotheses,
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 0.5, true, "OK");
+  scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 0.4, true, "duplicate");
+
+  const beforeSecondHypothesis = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(beforeSecondHypothesis?.status, "running");
+  assert.equal(beforeSecondHypothesis?.results.length, 1);
+
+  scheduler.recordSteadyStateResult(experiment.experimentId, "h2", 2, true, "OK");
+
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(retrieved?.status, "completed");
+  assert.equal(retrieved?.results.length, 2);
+});
+
 test("ChaosExperimentScheduler.recordSteadyStateResult marks violated when any fails", () => {
   const scheduler = new ChaosExperimentScheduler();
   const hypotheses: SteadyStateHypothesis[] = [

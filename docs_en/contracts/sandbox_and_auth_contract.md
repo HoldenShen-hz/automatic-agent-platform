@@ -134,6 +134,8 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - Blocking reason must be written to dispatch decision trace's `reasonCode`.
 - Session guard does not modify any state, purely read-only judgment.
 
+## 6. Supplementary Rules
+
 ### 6A. Canonical Sandbox Mode Matrix
 
 | mode | filesystem | network | execution profile | typical use |

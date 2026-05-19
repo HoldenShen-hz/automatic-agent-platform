@@ -17,7 +17,15 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
 // Set test mode to use in-memory Redis mock
+const previousRunningTests = process.env.AA_RUNNING_TESTS;
 process.env.AA_RUNNING_TESTS = "1";
+test.after(() => {
+  if (previousRunningTests === undefined) {
+    delete process.env.AA_RUNNING_TESTS;
+    return;
+  }
+  process.env.AA_RUNNING_TESTS = previousRunningTests;
+});
 
 function createSqliteHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);

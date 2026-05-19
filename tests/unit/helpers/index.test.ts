@@ -587,7 +587,7 @@ test("runConcurrentInvariant respects timeout", async () => {
     async () => {
       await runConcurrentInvariant(
         async () => {
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          await new Promise(() => {});
           return 1;
         },
         { concurrency: 2, timeout: 100 }
@@ -625,7 +625,7 @@ test("runConcurrentStateModification respects timeout", async () => {
     async () => {
       await runConcurrentStateModification(
         async () => {
-          await new Promise(resolve => setTimeout(resolve, 10000));
+          await new Promise(() => {});
         },
         { concurrency: 1, timeout: 50 }
       );

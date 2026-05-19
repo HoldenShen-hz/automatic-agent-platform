@@ -15,3 +15,4 @@
 - 新增架构内容优先落到专题文档或 ADR，不再扩写本索引为单体文档。
 - 需要引用历史全文时，链接归档文件并在 review 表记录原因。
 - 架构实现闭环以 `issues-table.md` 行级证据和 `scripts/ci/audit-review-batch-resource-contracts.mjs` 审计结果为准。
+- 历史 `five-plane-*` 目录名、旧 “CEO/VP/事业部” 叙事和 v2.x 分层表述只作为兼容检索入口；当前工程命名以 `P1-P5 + X1`、`DomainDescriptor`、`HarnessRun/NodeRun` 为准。

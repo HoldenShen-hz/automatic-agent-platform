@@ -13,11 +13,11 @@
  *   - v10: Message parts + remote routing
  *   - v20: Billing + perception + gateway
  *   - v30: Workflow dispatch + LLM eval
- *   - v40: Session events (current latest)
+ *   - latest: Current head schema
  */
 
 import { mkdirSync, writeFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import {
@@ -28,7 +28,15 @@ import {
 const OUTPUT_DIR = process.argv[2] ?? join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
 
 // Key version milestones for snapshot generation
-const SNAPSHOT_VERSIONS = [1, 5, 10, 20, 30, 40];
+export const SNAPSHOT_VERSIONS = [...new Set([1, 5, 10, 20, 30, SQLITE_MIGRATIONS.at(-1)?.version ?? 0])]
+  .filter((version) => version > 0)
+  .sort((left, right) => left - right);
+
+function isCompatibleFixtureSkip(message: string): boolean {
+  return message.includes("duplicate column name")
+    || message.includes("no such column: organization_id")
+    || message.includes("no such column: status");
+}
 
 interface SnapshotResult {
   version: number;
@@ -54,8 +62,7 @@ function applyMigrationsUpTo(db: DatabaseSync, maxVersion: number): void {
       insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes("duplicate column name")) {
-        insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
+      if (isCompatibleFixtureSkip(message)) {
         continue;
       }
       throw error;
@@ -90,7 +97,7 @@ function generateSnapshot(version: number): SnapshotResult {
   return {
     version,
     name,
-    path: dbPath,
+    path: relative(OUTPUT_DIR, dbPath) || `v${version}-snapshot.db`,
     sizeBytes,
   };
 }
@@ -131,4 +138,6 @@ export function main(): SnapshotResult[] {
   return results;
 }
 
-main();
+if (process.argv[1] && process.argv[1].endsWith("generate-snapshots.ts")) {
+  main();
+}

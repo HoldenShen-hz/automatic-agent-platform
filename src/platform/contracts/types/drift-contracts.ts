@@ -3,10 +3,10 @@
  *
  * Defines drift detection, alerting, and mitigation types per the architecture §63.
  *
- * @see docs_zh/contracts/DriftDetector.md
- * @see docs_zh/contracts/DriftAlert.md
- * @see docs_zh/contracts/DriftMitigationAction.md
- */
+ * @see docs_zh/contracts/drift_detector_contract.md
+ * @see docs_zh/contracts/drift_alert_contract.md
+ * @see docs_zh/contracts/drift_mitigation_action_contract.md
+*/
 
 import { newId, nowIso } from "./ids.js";
 

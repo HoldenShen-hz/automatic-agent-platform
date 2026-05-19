@@ -124,7 +124,7 @@ Phase 1-4 OAPEFLIR closed loop must be able to restore minimum observability cha
 
 Rules:
 
-- Metric naming uniformly uses `oapeflir_<stage>_<metric>_<unit?>` style, e.g., `oapeflir_feedback_signal_count`.
+- Metric naming uniformly uses `oapeflir_<stage>_<metric>_<unit?>` style; unimplemented examples must not be documented as frozen contract metrics.
 - The `stage` field must come from canonical OAPEFLIR stages and must not be synonyms created by individual modules.
 - Improve / Release metrics must be traceable to guardrail, approval, and release evidence, not just final success or failure.
 - Knowledge / Memory related metrics belong to M2 extension dimensions; if not enabled in current deployment, must explicitly return not_enabled / zero instead of fabricating samples.

@@ -12,6 +12,10 @@ import { join } from "node:path";
 const SNAPSHOTS_DIR = join(process.cwd(), "tests", "golden", "snapshots");
 const UPDATE_MODE = process.env.UPDATE_GOLDEN === "1";
 
+function stringifyGoldenValue(actual: unknown): string {
+  return typeof actual === "string" ? actual : JSON.stringify(actual, null, 2);
+}
+
 /**
  * Assert that actual output matches the stored golden snapshot.
  *
@@ -35,7 +39,7 @@ export function assertGolden(snapshotName: string, actual: unknown): void {
   }
 
   const snapshotPath = join(SNAPSHOTS_DIR, `${snapshotName}.golden`);
-  const actualJson = JSON.stringify(actual, null, 2);
+  const actualJson = stringifyGoldenValue(actual);
 
   if (UPDATE_MODE) {
     writeFileSync(snapshotPath, actualJson, "utf-8");
@@ -57,6 +61,7 @@ export function assertGolden(snapshotName: string, actual: unknown): void {
  * Useful when the snapshot contains partial content.
  */
 export function assertGoldenContains(snapshotName: string, actual: string): void {
+  assert.notEqual(actual.trim(), "", `Golden substring assertion for "${snapshotName}" requires non-empty actual content.`);
   const snapshotPath = join(SNAPSHOTS_DIR, `${snapshotName}.golden`);
   const expected = readFileSync(snapshotPath, "utf-8");
   assert.ok(
@@ -70,11 +75,17 @@ export function assertGoldenContains(snapshotName: string, actual: string): void
 /**
  * Assert that actual output matches a regex pattern in the golden snapshot.
  */
-export function assertGoldenMatches(snapshotName: string, pattern: RegExp): void {
+export function assertGoldenMatches(snapshotName: string, actual: string, pattern: RegExp): void {
   const snapshotPath = join(SNAPSHOTS_DIR, `${snapshotName}.golden`);
-  const expected = readFileSync(snapshotPath, "utf-8");
+  const expected = readFileSync(snapshotPath, "utf-8").replace(/\n$/, "");
+  assert.equal(
+    actual,
+    expected,
+    `Golden snapshot mismatch for "${snapshotName}" before regex assertion. ` +
+    `Run UPDATE_GOLDEN=1 to update snapshots.`,
+  );
   assert.ok(
-    pattern.test(expected),
-    `Golden snapshot "${snapshotName}" does not match pattern ${pattern}. Snapshot: ${expected}`,
+    pattern.test(actual),
+    `Golden snapshot "${snapshotName}" does not match pattern ${pattern}. Snapshot: ${actual}`,
   );
 }

@@ -36,7 +36,6 @@
 
 - `validation.invalid_input`
 - `provider.rate_limited`
-- `runtime.timeout_exceeded`
 
 ## 3. 基线错误码
 
@@ -44,18 +43,13 @@
 | --- | --- | --- | --- |
 | `validation.invalid_input` | `validation` | `false` | 输入不合法或缺字段 |
 | `validation.schema_mismatch` | `validation` | `false` | workflow 输入输出不兼容 |
-| `validation.tool_metadata_missing` | `validation` | `false` | 工具缺少关键执行元数据 |
-| `validation.tool_metadata_invalid` | `validation` | `false` | 工具执行元数据不合法 |
 | `policy.approval_required` | `policy` | `false` | 必须人工审批 |
 | `policy.action_denied` | `policy` | `false` | 策略显式拒绝 |
 | `auth.permission_denied` | `auth` | `false` | 权限不足 |
-| `auth.session_expired` | `auth` | `false` | 会话过期 |
 | `budget.budget_exceeded` | `budget` | `false` | 预算超限 |
 | `budget.quota_exceeded` | `budget` | `false` | 配额超限 |
 | `provider.rate_limited` | `provider` | `true` | provider 429 或等价限流 |
 | `provider.temporary_unavailable` | `provider` | `true` | provider 暂时不可用 |
-| `provider.invalid_credentials` | `provider` | `false` | provider 401/403 或凭据错误 |
-| `provider.capability_unsupported` | `provider` | `false` | provider 或模型不支持请求能力 |
 | `provider.compaction_unavailable` | `provider` | `true` | compaction / summarize provider 临时不可用 |
 | `tool.execution_failed` | `tool` | `false` | 工具执行失败且不可自动重试 |
 | `tool.temporary_io_error` | `tool` | `true` | 工具遇到临时 IO 问题 |
@@ -64,36 +58,25 @@
 | `tool.edit_similarity_too_low` | `tool` | `false` | edit / patch 模糊匹配相似度不足 |
 | `tool.file_lock_conflict` | `tool` | `true` | 文件锁冲突，可等待后重试 |
 | `tool.file_lock_timeout` | `tool` | `true` | 文件锁等待超时 |
-| `tool.output_sanitization_failed` | `tool` | `false` | 工具输出净化失败 |
-| `tool.recovery_strategy_unknown` | `tool` | `false` | 工具声明了未知恢复策略 |
 | `sandbox.path_denied` | `sandbox` | `false` | 访问路径超出白名单 |
 | `sandbox.network_denied` | `sandbox` | `false` | 网络访问被策略拒绝 |
 | `sandbox.exec_denied` | `sandbox` | `false` | 进程执行被沙箱或策略拒绝 |
 | `sandbox.isolation_broken` | `sandbox` | `false` | 隔离约束无法保证 |
 | `storage.write_failed` | `storage` | `true` | 写存储失败 |
-| `storage.integrity_violation` | `storage` | `false` | 外键或完整性错误 |
 | `workflow.dependency_unavailable` | `workflow` | `true` | 上游依赖暂不可用 |
-| `workflow.invalid_transition` | `workflow` | `false` | 非法状态跳转 |
-| `runtime.timeout_exceeded` | `runtime` | `false` | 执行超时 |
 | `runtime.recovery_required` | `runtime` | `true` | 需要恢复流程 |
 | `runtime.stale_lock_detected` | `runtime` | `true` | 检测到过期锁或陈旧运行 |
 | `runtime.context_overflow` | `runtime` | `true` | 上下文超限需裁剪或压缩 |
 | `tenant.not_found` | `tenant` | `false` | 找不到租户或工作区归属 |
 | `tenant.boundary_violation` | `tenant` | `false` | 访问跨租户边界 |
 | `tenant.workspace_mismatch` | `tenant` | `false` | workspace 与 tenant / org 归属不一致 |
-| `monetization.entitlement_denied` | `monetization` | `false` | entitlement 显式拒绝 |
-| `monetization.quota_counter_stale` | `monetization` | `true` | quota counter 延迟或不一致 |
-| `monetization.ledger_write_failed` | `monetization` | `true` | ledger 写入失败 |
-| `monetization.billing_state_invalid` | `monetization` | `false` | 账单或套餐状态非法 |
 | `external.service_unavailable` | `external` | `true` | 外部系统暂不可用 |
 | `internal.unexpected_error` | `internal` | `false` | 未分类内部错误 |
 
 ## 4. 特殊映射规则
 
-- provider 的 `401/403` 映射到 `provider.invalid_credentials`
 - provider 的 `429` 映射到 `provider.rate_limited`
 - provider 的 `5xx` 映射到 `provider.temporary_unavailable`
-- 非法状态推进映射到 `workflow.invalid_transition`
 - 文件锁获取冲突映射到 `tool.file_lock_conflict`
 - 文件锁等待超时映射到 `tool.file_lock_timeout`
 

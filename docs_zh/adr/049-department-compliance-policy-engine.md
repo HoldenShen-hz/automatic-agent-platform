@@ -14,7 +14,7 @@
 ```typescript
 interface CompliancePolicy {
   policy_id: string;
-  department_id: string;
+  org_node_id: string;
   rules: ComplianceRule[];
   enforced: boolean;
   version: string;
@@ -45,6 +45,7 @@ interface ComplianceRule {
 - 子部门继承父部门策略
 - 子部门可覆盖父部门策略（更严格）
 - 平台级策略不可覆盖
+- `org_node_id` 必须指向 `OrgNodeType.department` 节点，不再单独引入 `department_id` 命名分支
 
 ### 合规检查点
 

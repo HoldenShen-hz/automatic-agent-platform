@@ -1,6 +1,6 @@
 # Plugin SPI Contract
 
-> **OAPEFLIR Related**: This contract defines the OAPEFLIR Domain Registry Plugin SPI interface system, corresponding to ADR-066.
+> **OAPEFLIR Related**: This contract defines the OAPEFLIR Domain Registry Plugin SPI interface system, corresponding to ADR-071.
 > **Updated**: 2026-04-17
 
 ## 1. Scope
@@ -10,7 +10,7 @@ This contract defines the Service Provider Interface (SPI) for the Plugin system
 Related documents:
 - `tool_skill_plugin_contract.md`: Tool/Skill/Plugin relationships.
 - `sandbox_and_auth_contract.md`: Plugin sandbox security boundaries.
-- [ADR-066 Plugin SPI Framework](../adr/066-plugin-spi-framework.md)
+- [ADR-071 Plugin SPI Framework](../adr/071-plugin-spi-framework.md)
 
 ## 2. Four OAPEFLIR Domain Plugin SPI Interfaces
 

@@ -23,11 +23,10 @@
 
 ```typescript
 interface SdkReleaseDescriptor {
-  sdkName: "cli" | "client" | "pack" | "plugin";
-  version: string;
-  apiContractVersion: string | null;
-  runtimeCompatibility: string[];
-  breakingChanges: string[];
+  sdk_semver: string;
+  platform_min_version: string;
+  platform_max_version: string;
+  deprecation_policy: "notify_only" | "block" | "migration_required" | "hard_cutoff";
 }
 ```
 
@@ -41,8 +40,8 @@ interface SdkReleaseDescriptor {
 
 ```typescript
 interface ApiClient {
-  get(path: string, params?: Record<string, string | number | boolean>): Promise<unknown>;
-  post(path: string, body?: unknown): Promise<unknown>;
+  get<T>(path: string, params?: Record<string, string | number | boolean | null | undefined>): Promise<ApiResponse<T>>;
+  post<T>(path: string, body: unknown, options?: ApiRequestOptions): Promise<ApiResponse<T>>;
   getTaskCockpitByHarnessRunId(harnessRunId: string): Promise<unknown>;
   getWorkflowCockpitByHarnessRunId(harnessRunId: string): Promise<unknown>;
   getAdminTakeoverConsoleByHarnessRunId(harnessRunId: string): Promise<unknown>;
@@ -64,6 +63,8 @@ interface ApiClient {
 ## 7. 兼容性与弃用
 
 - 破坏性变更必须在 release descriptor 中显式列出。
+- `SdkReleaseDescriptor` 以 Pack manifest 的 `sdk_semver / platform_min_version / platform_max_version / deprecation_policy` 为 canonical 形态。
+- `ApiClient` 的基础读写接口必须返回统一 `ApiResponse<T>` envelope。
 - SDK 可弃用旧表面，但必须提供迁移窗口或替代命令/接口。
 - CLI、Pack SDK、Plugin SDK 不得对同一 canonical 对象使用不同字段命名。
 

@@ -8,6 +8,7 @@
 
 - `CapacitySignal`
 - `CapacityForecast`
+- `CapacityAlert`
 - `CapacityScenario`
 - `CapacityRecommendation`
 
@@ -25,6 +26,7 @@
 ## 4. 规则
 
 - 容量预测必须保留训练窗口与置信区间。
+- `CapacityAlert` 必须显式指出触发阈值、受影响资源和建议动作。
 - what-if 仿真必须可比较多个扩容 / 降配场景。
 - 容量建议必须同时考虑成本和 SLO 风险。
 
@@ -33,4 +35,3 @@
 - unit：trend analysis、forecast、scenario simulation
 - integration：runtime metrics -> forecast -> recommendation
 - contract：无时间窗口的预测输出不得进入决策链
-

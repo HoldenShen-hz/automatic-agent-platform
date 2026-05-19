@@ -273,21 +273,19 @@ test("HarnessLoopController.getGuards returns immutable guards snapshot", () => 
   assert.equal(guards.maxDurationMs, 60000);
 });
 
-test("HarnessLoopController handles maxSteps less than 3", () => {
+test("HarnessLoopController handles maxSteps less than 3 with one minimum iteration slot", () => {
   const pack = createTestConstraintPack({ maxSteps: 2 });
   const controller = new HarnessLoopController(pack);
 
-  // maxIterations = floor(2/3) = 0, so even iteration 0 should trigger violation
-  assert.equal(controller.getGuards().maxIterations, 0);
-  assert.equal(controller.getGuardViolation(), "harness.guard.max_iterations_reached");
+  assert.equal(controller.getGuards().maxIterations, 1);
+  assert.equal(controller.getGuardViolation(), null);
 });
 
-test("HarnessLoopController handles maxSteps of 0", () => {
+test("HarnessLoopController handles maxSteps of 0 with one minimum iteration slot", () => {
   const pack = createTestConstraintPack({ maxSteps: 0 });
   const controller = new HarnessLoopController(pack);
 
-  // maxIterations = floor(0/3) = 0
-  assert.equal(controller.getGuards().maxIterations, 0);
+  assert.equal(controller.getGuards().maxIterations, 1);
 });
 
 test("HarnessLoopController handles very large maxSteps", () => {

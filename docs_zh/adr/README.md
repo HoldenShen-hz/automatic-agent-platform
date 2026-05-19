@@ -72,8 +72,7 @@
 | [064](./064-cost-attribution-and-optimization-engine.md) | 成本归因与优化引擎 | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | 工作流可视化调试器架构 | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成引擎 | Accepted | 2026-04-20 |
-| [066](./066-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
-| [071](./071-plugin-spi-framework.md) | Plugin SPI Framework（重编号保留） | Accepted | 2026-04-17 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Accepted | 2026-04-20 |
@@ -128,7 +127,7 @@
 ## 备注
 
 - 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`；其中 `seven-layers` 仅保留为历史别名 / 跳转页，规范内容以 `003-memory-six-layers.md` 为准。
-- 原始历史文件中存在 `066` 号双占用，且后续保留了 `071-plugin-spi-framework.md` 作为重编号副本；为避免破坏既有引用，当前全部保留并在索引中显式列出。
+- Plugin SPI ADR 已统一收敛到 `071-plugin-spi-framework.md`；旧的 `066-plugin-spi-framework.md` 重复副本已移除，所有引用统一改到 ADR-071。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。
 - `109-112` 通过 freeze / authority / event namespace / ring boundary 约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名等语义；历史 ADR 正文保留，不直接改写。

@@ -33,7 +33,7 @@
 - `harnessRunId`
 - `nodeRunId?`
 - `amount`
-- `resourceKind` (`token | tool | api | compute | human | side_effect | other`)
+- `resourceKind` (`token | tool_call | api | compute | storage | bandwidth | memory | human | side_effect | other`)
 - `status` (`reserved | settled | released | expired | rejected`)
 - `expiresAt`
 - `createdAt`

@@ -80,7 +80,7 @@ test("assertGoldenMatches validates regex pattern", () => {
     "utf8",
   );
 
-  assertGoldenMatches(snapshotName, /ERROR:.*at line \d+/);
+  assertGoldenMatches(snapshotName, "ERROR: something failed at line 42", /ERROR:.*at line \d+/);
 });
 
 test("assertGoldenMatches throws on no match", () => {
@@ -94,7 +94,7 @@ test("assertGoldenMatches throws on no match", () => {
   );
 
   assert.throws(
-    () => assertGoldenMatches(snapshotName, /ERROR:/),
+    () => assertGoldenMatches(snapshotName, "Success: all good", /ERROR:/),
     /does not match/,
   );
 });

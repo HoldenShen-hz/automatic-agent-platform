@@ -1,6 +1,10 @@
-import { readFileSync } from 'fs';
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const content = readFileSync('/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/architecture-design-review.md', 'utf-8');
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const reviewPath = join(currentDir, "architecture-design-review.md");
+const content = readFileSync(reviewPath, "utf-8");
 
 const lines = content.split('\n');
 
@@ -151,8 +155,8 @@ for (const issue of issues) {
 console.log(`After deduplication: ${deduped.length}`);
 
 // Output as markdown table
-console.log('\n| ID | 区域 | 严重度 | 问题 | 文件路径 | 状态 |');
-console.log('|---|---|---|---|---|---|');
+console.log("\n| ID | 区域 | 严重度 | 问题 | 文件路径 | 状态 |");
+console.log("|---|---|---|---|---|---|");
 
 for (let i = 0; i < deduped.length; i++) {
   const issue = deduped[i];
@@ -163,5 +167,5 @@ for (let i = 0; i < deduped.length; i++) {
   if (filePath.length > 80) {
     filePath = filePath.substring(0, 77) + '...';
   }
-  console.log(`| ${id} | ${issue.area} | ${issue.severity} | ${title} | ${filePath} | 未处理 |`);
+  console.log(`| ${id} | ${issue.area} | ${issue.severity} | ${title} | ${filePath} | 待处理 |`);
 }

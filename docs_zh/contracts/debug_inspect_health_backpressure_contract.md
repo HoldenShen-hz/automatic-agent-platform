@@ -100,7 +100,6 @@
 - `fairness_index?`
 - `min_share?`
 - `max_share?`
-- `oldest_wait_seconds`
 - `backlog_size`
 - `backlog_growth_rate?`
 - `starvation_detected`

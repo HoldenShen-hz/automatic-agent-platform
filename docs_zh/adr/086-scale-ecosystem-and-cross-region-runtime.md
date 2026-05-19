@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§52-§57` 要求平台进入规模化运行和开放生态阶段。当前仓库已有：
+当前权威口径对应 `docs_zh/architecture/00-platform-architecture.md` 中多 Region、SLA 与生态扩展章节。当前仓库已有：
 
 - `src/scale-ecosystem/multi-region`
 - `src/scale-ecosystem/resource-manager`
@@ -70,4 +70,3 @@ SLA 不是纯报表字段，必须参与：
 
 - `scale-ecosystem` 将成为跨 Region 与开放生态的统一模块边界
 - 后续实现将优先补 scheduler、connector 和 cross-region contract
-

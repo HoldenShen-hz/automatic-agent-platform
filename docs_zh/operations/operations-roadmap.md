@@ -118,6 +118,13 @@ Week 6+:  Remote / PG-Redis / Enterprise Prep
 - 环境分层与配置中心治理
 - 架构治理与 schema 版本治理
 - 供应链与依赖安全
+
+### 3.5 Capacity Planning Deliverables
+
+- `CapacityForecast`：以可审计预测结果形式进入周度运维节奏。
+- `CapacityScenario`：记录扩容/缩容假设与影响范围，避免口头推演。
+- `CapacityAlert`：当预测值逼近阈值时触发告警，而不是只在资源耗尽后告警。
+- `CapacityRecommendation`：把建议动作结构化，供 operator 与自运维路径共用。
 - trace / RCA / 业务技术双 dashboard
 - workflow 静态分析与补偿闭环
 

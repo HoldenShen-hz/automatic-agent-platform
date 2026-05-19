@@ -41,81 +41,91 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 
 `ObserveSignalsCollectedPayload`
 
-- `task_id`
-- `workflow_id?`
+- `harness_run_id`
+- `plan_graph_id?`
 - `loop_iteration`
 - `signal_count`
 - `source_refs`
 - `trace_id`
+- `derived_from_event_id?`
 
 `UnifiedObservationCreatedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `observation_id`
 - `situation_snapshot`
 - `metrics`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.2 Assess Hub 事件
 
 `AssessmentCompletedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `assessment_id`
 - `complexity`
 - `risk_level`
 - `confidence`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.3 Plan Hub 事件
 
 `PlanCreatedPayload`
 
-- `task_id`
-- `plan_id`
-- `version`
+- `harness_run_id`
+- `plan_graph_id`
+- `graph_version`
 - `strategy`
-- `step_count`
+- `node_count`
 - `trace_id`
+- `derived_from_event_id?`
 
 `ReplanTriggeredPayload`
 
-- `task_id`
-- `plan_id`
-- `old_version`
-- `new_version`
+- `harness_run_id`
+- `plan_graph_id`
+- `previous_graph_version`
+- `next_graph_version`
 - `trigger_type`
 - `trace_id`
+- `derived_from_event_id`
 
 ### 3A.4 Execute Hub 事件
 
 `ExecutionCompletedPayload`
 
-- `task_id`
-- `execution_id`
-- `outcome`
+- `harness_run_id`
+- `node_run_id`
+- `node_attempt_id?`
+- `receipt_ref`
+- `status`
 - `output_refs`
 - `trace_id`
+- `derived_from_event_id`
 
 ### 3A.5 Feedback Hub 事件（ADR-079）
 
 `FeedbackCollectedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `feedback_id`
 - `signal_count`
 - `sources`
 - `trace_id`
+- `derived_from_event_id?`
 
 `FeedbackLearningSignalPayload`
 
 - `signal_id`
-- `task_id`
+- `harness_run_id`
 - `learning_signal_id`
 - `type`
 - `confidence`
 - `source_signals`
 - `trace_id`
+- `derived_from_event_id?`
 
 ### 3A.6 Learn Hub 事件（ADR-080）
 
@@ -168,12 +178,13 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 
 `ReleaseRolloutStartedPayload`
 
-- `task_id`
+- `harness_run_id`
 - `rollout_id`
 - `loop_iteration`
 - `strategy_version`
 - `level` (`L0` | `L1` | `L2` | `L3` | `L4` | `L5`)
 - `triggered_by`
+- `derived_from_event_id?`
 
 `ReleaseRolloutCompletedPayload`
 
@@ -190,6 +201,7 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 - Tier 1 的 improvement / rollout 事件不得退化为无类型 `json` blob。
 - 未启用的 M2 事件类型可以保留 schema 预留位，但不得在生产流量中伪造发布。
 - OAPEFLIR 事件类型统一使用 `<stage>:<event>` 格式（如 `feedback:collected`、`learning:object_promoted`）。
+- 由前序事实或事件派生出的 typed payload，必须显式携带 `derived_from_event_id`，避免 Plan / Execute / Feedback 链路丢失因果来源。
 
 ## 3B. Extension Plane Event Payload Types
 

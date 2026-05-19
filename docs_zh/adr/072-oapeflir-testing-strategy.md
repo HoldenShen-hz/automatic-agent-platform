@@ -1,6 +1,6 @@
 # ADR-072 OAPEFLIR 测试策略与新模块测试矩阵
 
-- 状态：Accepted
+- 状态：Partially Superseded by current layered test matrix and runtime contract tests
 - 决策日期：2026-04-17
 - 相关：ADR-016 OAPEFLIR 八阶段认知循环模型
 
@@ -141,7 +141,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ## 交叉引用
 
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
-- [ADR-018 Rollout 11 状态机](./018-rollout-eleven-state-machine.md)
+- [ADR-075 六级受控发布与 Rollout 状态机](./075-controlled-rollout-release.md)（ADR-018 仅用于历史对照）
 - `docs_zh/reviews/architecture-design-vs-implementation-review.md` §G1 解决方案（原始 design_gap_analysis_v9.md 已归档）
 
 ## 来源章节

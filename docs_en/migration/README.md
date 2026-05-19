@@ -13,3 +13,4 @@
 
 - First judge according to guidelines, then execute according to scope.
 - When conflicts arise with the platform skeleton, [architecture/00-platform-architecture.md](../architecture/00-platform-architecture.md) takes precedence.
+- `docs_en/migrations/` is retained only as a legacy alias path; `docs_en/migration/` is the canonical source of truth.

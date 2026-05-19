@@ -66,7 +66,7 @@ Corresponding implementation boundaries:
 
 ## Cross References
 
-- [ADR-066 Plugin SPI Framework](./066-plugin-spi-framework.md)
+- [ADR-071 Plugin SPI Framework](./071-plugin-spi-framework.md)
 - [ADR-089 AI Operations Governance and Quality](./089-ai-operations-governance-and-quality.md)
 
 ## Source Sections

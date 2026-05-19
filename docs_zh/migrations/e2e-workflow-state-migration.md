@@ -1,5 +1,7 @@
 # E2E Test Migration: insertWorkflowState → runMultiStepOrchestration
 
+> Legacy alias page. Canonical document moved to [../migration/e2e-workflow-state-migration.md](../migration/e2e-workflow-state-migration.md).
+
 ## Issue Reference
 R18-17, R18-18, R18-19: E2E tests still use legacy WorkflowStateRecord API
 

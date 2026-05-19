@@ -10,6 +10,7 @@
 - 阶段与范围看 [implementation_plan.md](./implementation_plan.md)
 - 开发顺序看 [operations-roadmap.md](./operations-roadmap.md)
 - 发布与编码检查看 [operations-checklist.md](./operations-checklist.md)
+- 稳定性命令入口（如 `npm run package:stable`、`npm run validate:stable`）继续以 `operations-checklist.md` 和 `docs_en/operations/` 对照文档为准
 
 ## 使用规则
 

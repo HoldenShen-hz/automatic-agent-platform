@@ -177,7 +177,7 @@ Layer 1 │ Infrastructure Layer (Five Planes · Stability · Risk · Security �
 | `019-agent-handoff-four-layer-protocol.md` | Agent handoff | Section 19 Delegation |
 | `020-memory-six-plane-model.md` | Memory six-plane | Section 3.5 |
 | `060-explicit-planning-hub.md` | Planning Hub | Section 13 OAPEFLIR-P |
-| `066-plugin-spi-framework.md` | Plugin SPI | Section 30 |
+| `071-plugin-spi-framework.md` | Plugin SPI | Section 30 |
 | `072-oapeflir-testing-strategy.md` | OAPEFLIR testing | Section 27 |
 | `075-controlled-rollout-release.md` | Controlled release | Section 32 |
 | `078-knowledge-plane-architecture.md` | Knowledge architecture | Section 3.4 |

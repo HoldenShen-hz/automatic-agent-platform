@@ -195,6 +195,10 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         },
       );
     }
+    vaultLogger.warn("vault.auth_static_token_fallback", {
+      hasAppRoleConfigured: Boolean(approleRole || approleSecret),
+      reason: approleRole && approleSecret ? "approle_login_failed" : "approle_not_configured",
+    });
     this._cachedToken = staticToken;
     // R12-19: Use configurable TTL instead of a fixed 3600 seconds.
     this._tokenExpiry = Date.now() + this.staticTokenTtlSec * 1000;
@@ -240,9 +244,10 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
     }
     const mountPart = parts[0] === this.mount ? parts[0] : this.mount;
     const pathParts = parts[0] === this.mount ? parts.slice(1) : parts;
-    const key = pathParts[pathParts.length - 1] ?? "";
     const path = pathParts.slice(0, -1).join("/");
-    return `${mountPart}/data/${path}`;
+    return path.length > 0
+      ? `${mountPart}/data/${path}`
+      : `${mountPart}/data`;
   }
 
   /**

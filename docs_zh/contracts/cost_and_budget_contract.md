@@ -42,7 +42,7 @@
 | `max_node_runs` | `number` | 允许创建的 NodeRun 数上限 |
 | `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
-| `runtime_mode` | `full_auto \| supervised_auto \| manual_only \| incident-mode` | 预算生效时的运行模式（与 sandbox 隔离级别正交） |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | 预算生效时的运行模式（与 sandbox 隔离级别正交） |
 | `rollout_guard` | `no_rollout \| approval_required \| rollout_allowed` | 预算超阈值时的发布保护 |
 | `sandbox_policy_mode` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | 执行沙箱隔离级别（与 runtime_mode 正交，组合使用时需通过 PolicyEngine 校验合法性） |
 
@@ -64,15 +64,15 @@
 - `input_tokens`
 - `output_tokens`
 - `cost_usd`
-- `budget_reservation_id?`
+- `budget_reservation_id`
 - `created_at`
 
 规则：
 
 - `harness_run_id` 是预算主体关联键（必填）。
 - `task_id` 仅用于 legacy 追溯查询，不得作为预算判断主键。
-- `budget_reservation_id` 关联本次成本所属的 BudgetReservation，用于预算结算。
-- CostEvent 不得使用废弃的 `execution_id`；成本归属必须关联到 `harness_run_id / node_run_id / attempt_id`。
+- `budget_reservation_id` 关联本次成本所属的 BudgetReservation，用于预算结算，进入预算结算链时必须填写。
+- CostEvent 不得使用废弃的 legacy execution 键；成本归属必须关联到 `harness_run_id / node_run_id / attempt_id`。
 
 ## 5. 行为约束
 
@@ -111,7 +111,7 @@
 - `cost_event_id`
 - `provider_request_id?`
 - `budget_scope`
-- `budget_reservation_id?`
+- `budget_reservation_id`
 - `pricing_version`
 
 ### 7.3 BYOK 区分
@@ -133,7 +133,7 @@
 规则：
 
 - 隐式成本必须参与预算阈值判断，不得绕过 `BudgetPolicy` 的累计检查。
-- 所有成本归属关联必须使用 `harness_run_id / node_run_id / attempt_id`，不得使用废弃的 `execution_id`。
+- 所有成本归属关联必须使用 `harness_run_id / node_run_id / attempt_id`，不得使用废弃的 legacy execution 键。
 - `task_id` 仅作为 legacy 追溯字段，不得参与预算判断逻辑。
 - skill 缓存命中时不产生模型调用成本，但缓存存储和查找的计算成本不计入 token 预算。
 - compaction 成本若使 run 超过 `max_cost_usd`，应触发与普通模型调用相同的阈值动作（告警、审批或熔断），不得静默放行。
@@ -165,7 +165,7 @@
 
 - T-41: 本文原先把 `BudgetPolicy` 缩减成 `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd` 三个财务阈值，根因是成本合同沿用了报表/账单口径，没有随着 v4.3 runtime budget guard 升级为多维预算约束。修复：正文现把 canonical `BudgetPolicy` 改为 `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_steps / max_duration_ms`，旧日/月统计只保留为 billing projection guardrail。
 - T-15: 原 `CostEvent` 以 `task_id` 为必填但 `harness_run_id` 为可选，预算主体层级倒置。修复：`harness_run_id` 改为必填，`task_id` 降为可选 legacy 追溯字段。
-- T-16: 隐式成本归属规则仍引用废弃的 `execution_id`，未对齐 `node_run_id/attempt_id`。修复：归属规则全面改用 `harness_run_id / node_run_id / attempt_id`，不得再使用 `execution_id`。
-- T-17: `CostEvent.budget_reservation_id` 在原文中仅标记为可选，但 v4.3 预算结算要求必须关联 BudgetReservation。修复：`budget_reservation_id` 字段保留为可选，但在规则层明确说明用于预算结算时必须填写。
+- T-16: 隐式成本归属规则仍引用废弃的旧 execution 键，未对齐 `node_run_id/attempt_id`。修复：归属规则全面改用 `harness_run_id / node_run_id / attempt_id`，不得再使用旧 execution 键。
+- T-17: `CostEvent.budget_reservation_id` 在原文中仅标记为可选，但 v4.3 预算结算要求必须关联 BudgetReservation。修复：`CostEvent` 与其扩展字段列表都统一改为显式携带 `budget_reservation_id`，用于结算链路时必须填写。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

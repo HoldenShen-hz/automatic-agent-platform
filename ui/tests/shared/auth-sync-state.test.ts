@@ -134,4 +134,21 @@ describe("shared auth/sync/state split modules", () => {
     expect(result.allowed).toBe(true);
     expect(result.evaluatedLayers).toEqual(["auth", "role", "permission", "feature-flag", "domain"]);
   });
+
+  it("exposes timeout warnings for sessions nearing expiry", () => {
+    const tokenManager = new TokenManager({ refreshWindowMs: 60_000 });
+    const now = Date.now();
+    tokenManager.setSession({
+      accessToken: "a1",
+      refreshToken: "r1",
+      expiresAt: now + 30_000,
+    });
+
+    const guard = new SessionGuard(tokenManager);
+    const warning = guard.getTimeoutWarning(now, 45_000);
+
+    expect(warning).not.toBeNull();
+    expect(warning?.remainingMs).toBe(30_000);
+    expect(warning?.shouldRefresh).toBe(true);
+  });
 });

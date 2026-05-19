@@ -62,7 +62,7 @@ Compatibility Note:
 - `input_tokens`
 - `output_tokens`
 - `cost_usd`
-- `budget_reservation_id?`
+- `budget_reservation_id`
 - `created_at`
 
 Rules:
@@ -109,7 +109,7 @@ Rules:
 - `cost_event_id`
 - `provider_request_id?`
 - `budget_scope`
-- `budget_reservation_id?`
+- `budget_reservation_id`
 - `pricing_version`
 
 ### 7.3 BYOK Distinction
@@ -164,6 +164,6 @@ The following items fix contract deviations recorded in `platform-architecture-i
 - T-41: This document previously reduced `BudgetPolicy` to three financial thresholds: `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd`. Root cause: the cost contract used report/billing口径 and did not upgrade to multi-dimensional budget constraints along with v4.3 runtime budget guard. Fix: The main text now changes canonical `BudgetPolicy` to `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_steps / max_duration_ms`, with old daily/monthly statistics retained only as billing projection guardrails.
 - T-15: Original `CostEvent` used `task_id` as required but `harness_run_id` as optional, budget subject hierarchy inverted. Fix: `harness_run_id` is now required, `task_id` demoted to optional legacy traceable field.
 - T-16: Implicit cost attribution rules still referenced the deprecated `execution_id`, not aligned with `node_run_id/attempt_id`. Fix: Attribution rules comprehensively changed to use `harness_run_id / node_run_id / attempt_id` and must no longer use `execution_id`.
-- T-17: `CostEvent.budget_reservation_id` was only marked as optional in original text, but v4.3 budget settlement requires association with BudgetReservation. Fix: `budget_reservation_id` field remains optional, but the rules layer explicitly states it must be filled for budget settlement.
+- T-17: `CostEvent.budget_reservation_id` was only marked as optional in original text, but v4.3 budget settlement requires association with BudgetReservation. Fix: both the core and extended `CostEvent` field lists now explicitly carry `budget_reservation_id`, and settlement paths must fill it.
 
 Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

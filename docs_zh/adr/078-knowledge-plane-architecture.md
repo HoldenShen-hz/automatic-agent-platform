@@ -1,6 +1,6 @@
 # ADR-078 Knowledge Plane 架构与信任模型
 
-- 状态：Accepted
+- 状态：Partially Superseded by current knowledge-plane contract baseline
 - 决策日期：2026-04-17
 - 相关：ADR-016 OAPEFLIR 八阶段认知循环模型，ADR-017 Knowledge 架构重构
 

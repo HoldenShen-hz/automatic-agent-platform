@@ -26,12 +26,13 @@
 - `clarification_questions?`
 - `continuation`
 - `suggested_division_id`
-- `suggested_workflow_id`
+- `suggested_business_pack_id?`
+- `suggested_recipe_id?`
 
 规则：
 
 - 低置信度、高风险、实体缺失三类情况必须允许 `requires_clarification=true`。
-- `suggested_division_id` 仅为建议，不等于最终执行授权。
+- `suggested_division_id`、`suggested_business_pack_id`、`suggested_recipe_id` 仅为建议，不等于最终执行授权。
 
 ## 4. `GoalDecomposition` 最小字段
 
@@ -83,4 +84,3 @@
 - unit：intent、entity、clarification、decomposition graph
 - integration：NL -> decomposition -> orchestration handoff
 - contract：模糊请求不得直接进入自动执行
-
