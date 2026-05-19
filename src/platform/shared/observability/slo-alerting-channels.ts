@@ -188,12 +188,12 @@ export class PagerDutyAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "pagerduty";
   private readonly fetchImpl: FetchLike;
   private readonly timeoutMs: number;
-  private readonly pagerdutyEndpoint: string;
+  private readonly pagerdutyEndpointOverride: string | null;
 
   constructor(options: PagerDutyAlertChannelOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 10_000;
-    this.pagerdutyEndpoint = options.endpoint ?? process.env.PAGERDUTY_API_URL ?? PAGERDUTY_DEFAULT_ENDPOINT;
+    this.pagerdutyEndpointOverride = options.endpoint?.trim() ? options.endpoint.trim() : null;
   }
 
   deliver(event: AlertEvent, config: Record<string, unknown>): AlertDeliveryResult {
@@ -222,7 +222,7 @@ export class PagerDutyAlertChannel implements AlertChannel {
       },
     };
 
-    this.fetchImpl(this.pagerdutyEndpoint, {
+    this.fetchImpl(resolvePagerDutyEndpoint(this.pagerdutyEndpointOverride), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -233,6 +233,15 @@ export class PagerDutyAlertChannel implements AlertChannel {
 
     return { channelKind: "pagerduty", delivered: true, error: null };
   }
+}
+
+function resolvePagerDutyEndpoint(endpointOverride: string | null): string {
+  const candidate = endpointOverride ?? process.env["PAGERDUTY_API_URL"] ?? PAGERDUTY_DEFAULT_ENDPOINT;
+  const resolved = new URL(candidate);
+  if (resolved.protocol !== "https:") {
+    throw new Error(`pagerduty.invalid_endpoint_protocol:${resolved.protocol}`);
+  }
+  return resolved.toString();
 }
 
 export interface OpsGenieAlertChannelOptions {

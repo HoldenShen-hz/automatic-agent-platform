@@ -64,8 +64,6 @@ test("integration: registerProcessErrorHandlers can be called multiple times", a
   const beforeUncaught = new Set(process.listeners("uncaughtException"));
   const beforeUnhandled = new Set(process.listeners("unhandledRejection"));
 
-  // Note: registerProcessErrorHandlers does not check for existing handlers
-  // so calling it twice adds duplicate handlers
   registerProcessErrorHandlers(shutdown);
   registerProcessErrorHandlers(shutdown);
 
@@ -75,9 +73,8 @@ test("integration: registerProcessErrorHandlers can be called multiple times", a
   const newUnhandled = afterUnhandled.filter((listener) => !beforeUnhandled.has(listener));
 
   try {
-    // Each call adds a new handler, so two calls means two handlers added
-    assert.equal(newUncaught.length, 2, "should add two uncaughtException handlers when called twice");
-    assert.equal(newUnhandled.length, 2, "should add two unhandledRejection handlers when called twice");
+    assert.equal(newUncaught.length, 1, "should keep exactly one uncaughtException handler when called twice");
+    assert.equal(newUnhandled.length, 1, "should keep exactly one unhandledRejection handler when called twice");
   } finally {
     for (const listener of newUncaught) {
       process.removeListener("uncaughtException", listener);

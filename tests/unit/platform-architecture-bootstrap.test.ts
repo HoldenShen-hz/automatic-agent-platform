@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -89,4 +90,9 @@ test("getPlatformArchitectureServices does not re-register services on the same 
   } finally {
     await registry.reset();
   }
+});
+
+test("registerPlatformArchitectureServices enforces startup ordering before registration", () => {
+  const source = readFileSync("src/platform-architecture-bootstrap.ts", "utf8");
+  assert.match(source, /assertStartupOrderEnforced\(\);/);
 });

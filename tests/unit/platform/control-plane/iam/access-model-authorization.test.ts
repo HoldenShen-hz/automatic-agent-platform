@@ -133,8 +133,8 @@ test("evaluateAuthorizationContext rejects production install_extension without 
 
 test("evaluateAuthorizationContext allows non-production environment exec_command for agent", () => {
   const result = evaluateAuthorizationContext({
-    principalType: "agent",
-    roles: ["agent_runtime"],
+    principalType: "worker",
+    roles: ["worker_runtime"],
     action: "exec_command",
     context: { environment: "staging" },
   });
@@ -287,8 +287,8 @@ test("inferCapabilitiesForAction maps all authorization actions to capabilities"
 
 test("evaluateAuthorizationContext workspace environment does not trigger production checks", () => {
   const result = evaluateAuthorizationContext({
-    principalType: "agent",
-    roles: ["agent_runtime"],
+    principalType: "worker",
+    roles: ["worker_runtime"],
     action: "exec_command",
     context: { environment: "workspace" },
   });
@@ -309,8 +309,8 @@ test("evaluateAuthorizationContext context is optional", () => {
 
 test("evaluateAuthorizationContext production with staging environment does not block", () => {
   const result = evaluateAuthorizationContext({
-    principalType: "agent",
-    roles: ["agent_runtime"],
+    principalType: "worker",
+    roles: ["worker_runtime"],
     action: "exec_command",
     context: { environment: "staging" },
   });
@@ -407,14 +407,6 @@ test("R33-02: roles with exec:command capability can authorize exec_command", ()
   });
   assert.equal(humanOpResult.allowed, true);
 
-  // agent_runtime has exec:command in its capabilities
-  const agentResult = evaluateAuthorizationContext({
-    principalType: "agent",
-    roles: ["agent_runtime"],
-    action: "exec_command",
-  });
-  assert.equal(agentResult.allowed, true);
-
   // worker_runtime has exec:command in its capabilities
   const workerResult = evaluateAuthorizationContext({
     principalType: "worker",
@@ -422,4 +414,11 @@ test("R33-02: roles with exec:command capability can authorize exec_command", ()
     action: "exec_command",
   });
   assert.equal(workerResult.allowed, true);
+
+  const serviceOperatorResult = evaluateAuthorizationContext({
+    principalType: "service",
+    roles: ["service_operator"],
+    action: "exec_command",
+  });
+  assert.equal(serviceOperatorResult.allowed, true);
 });

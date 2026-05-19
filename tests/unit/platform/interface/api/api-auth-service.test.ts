@@ -190,6 +190,28 @@ test("api auth service rejects JWT with unsupported algorithm", () => {
   );
 });
 
+test("api auth service honors configured allowedAlgorithms during authenticate", () => {
+  const service = new ApiAuthService({
+    apiKeys: [],
+    jwtSecret: "phase3-secret",
+    allowedAlgorithms: ["HS512"],
+  });
+
+  const hs256Token = createJwtWithValidSignature("HS256", {
+    sub: "operator-1",
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    roles: ["operator"],
+  }, "phase3-secret");
+
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${hs256Token}` }),
+    (error: unknown) =>
+      (error as any)?.code === "api.unsupported_algorithm"
+      && (error as any)?.statusCode === 401,
+  );
+});
+
 test("api auth service rejects empty algorithm", () => {
   const service = new ApiAuthService({
     apiKeys: [],
@@ -336,6 +358,25 @@ test("api auth service authenticate rejects malformed bearer token", () => {
   );
 });
 
+test("api auth service wraps malformed payload JSON as ApiAuthError", () => {
+  const service = new ApiAuthService({
+    apiKeys: [],
+    jwtSecret: "phase3-secret",
+  });
+
+  const encodedHeader = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const encodedPayload = Buffer.from("{", "utf8").toString("base64url");
+  const signature = crypto.createHmac("sha256", "phase3-secret").update(`${encodedHeader}.${encodedPayload}`).digest("base64url");
+  const malformedPayloadToken = `${encodedHeader}.${encodedPayload}.${signature}`;
+
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${malformedPayloadToken}` }),
+    (error: unknown) =>
+      (error as any)?.code === "api.invalid_token"
+      && (error as any)?.statusCode === 401,
+  );
+});
+
 test("api auth service requireRole rejects when principal lacks required role", () => {
   const service = new ApiAuthService({
     apiKeys: [
@@ -386,4 +427,32 @@ test("api auth service requireRole passes when principal has required role", () 
 
   const adminResult = service.requireRole({ "x-api-key": "admin-key" }, "admin");
   assert.equal(adminResult.actorId, "admin-actor");
+});
+
+test("api auth service requireRole applies role hierarchy for admin-only and operator-only principals", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "admin-only-key",
+        actorId: "admin-only-actor",
+        roles: ["admin"],
+      },
+      {
+        apiKey: "operator-only-key",
+        actorId: "operator-only-actor",
+        roles: ["operator"],
+      },
+    ],
+    jwtSecret: "test-secret",
+  });
+
+  assert.equal(service.requireRole({ "x-api-key": "admin-only-key" }, "viewer").actorId, "admin-only-actor");
+  assert.equal(service.requireRole({ "x-api-key": "admin-only-key" }, "operator").actorId, "admin-only-actor");
+  assert.equal(service.requireRole({ "x-api-key": "operator-only-key" }, "viewer").actorId, "operator-only-actor");
+  assert.throws(
+    () => service.requireRole({ "x-api-key": "operator-only-key" }, "admin"),
+    (error: unknown) =>
+      (error as any)?.code === "api.forbidden"
+      && (error as any)?.statusCode === 403,
+  );
 });

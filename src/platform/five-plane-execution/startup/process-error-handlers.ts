@@ -27,6 +27,9 @@ type RecoverableErrorLike = Error & {
   recoverable?: unknown;
 };
 
+let registeredUncaughtExceptionHandler: ((err: Error) => void) | null = null;
+let registeredUnhandledRejectionHandler: ((reason: unknown, promise: Promise<unknown>) => void) | null = null;
+
 function extractErrorCodes(error: unknown, seen: Set<unknown> = new Set()): string[] {
   if (error == null || seen.has(error)) {
     return [];
@@ -87,7 +90,7 @@ export function createUncaughtExceptionHandler(
       data: {
         errorName: err.name,
         errorMessage: err.message,
-        stack: err.stack,
+        errorCode: (err as RecoverableErrorLike).code ?? null,
       },
     });
 
@@ -137,7 +140,7 @@ export function createUnhandledRejectionHandler(
     const reasonStr = reason instanceof Error
       ? `${reason.name}: ${reason.message}`
       : String(reason ?? "unknown");
-    const reasonStack = reason instanceof Error ? reason.stack : undefined;
+    const reasonCode = reason instanceof Error ? (reason as RecoverableErrorLike).code ?? null : null;
 
     // Check if this is a recoverable error type
     const isRecoverable = isRecoverableRejection(reason);
@@ -146,7 +149,7 @@ export function createUnhandledRejectionHandler(
       processLogger.warn("UNHANDLED REJECTION (recoverable) — degraded mode", {
         data: {
           reason: reasonStr,
-          stack: reasonStack,
+          reasonCode,
           note: "Process continues but operates in degraded state",
         },
       });
@@ -157,7 +160,7 @@ export function createUnhandledRejectionHandler(
     processLogger.error("UNHANDLED REJECTION (non-recoverable) — process will exit", {
       data: {
         reason: reasonStr,
-        stack: reasonStack,
+        reasonCode,
       },
     });
 
@@ -194,8 +197,17 @@ export function registerProcessErrorHandlers(shutdown: GracefulShutdown): void {
   const uncaughtExceptionHandler = createUncaughtExceptionHandler(shutdown);
   const unhandledRejectionHandler = createUnhandledRejectionHandler(shutdown);
 
+  if (registeredUncaughtExceptionHandler) {
+    process.off("uncaughtException", registeredUncaughtExceptionHandler);
+  }
+  if (registeredUnhandledRejectionHandler) {
+    process.off("unhandledRejection", registeredUnhandledRejectionHandler);
+  }
+
   process.on("uncaughtException", uncaughtExceptionHandler);
   process.on("unhandledRejection", unhandledRejectionHandler);
+  registeredUncaughtExceptionHandler = uncaughtExceptionHandler;
+  registeredUnhandledRejectionHandler = unhandledRejectionHandler;
 
   processLogger.info("Process error handlers registered", {
     data: { pid: process.pid },

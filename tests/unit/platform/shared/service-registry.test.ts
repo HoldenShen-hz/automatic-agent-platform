@@ -104,7 +104,7 @@ test("ServiceRegistry - topologicalSort respects dependencies", () => {
   assert.ok(registry.isInitialized("dependency"));
 });
 
-test("ServiceRegistry - circular dependency handling returns acyclic portion", () => {
+test("ServiceRegistry - circular dependency handling throws", () => {
   const registry = createFreshRegistry();
 
   registry.register("service-a", {
@@ -116,7 +116,7 @@ test("ServiceRegistry - circular dependency handling returns acyclic portion", (
     dependsOn: ["service-a"],
   });
 
-  assert.deepEqual(registry.topologicalSort(), []);
+  assert.throws(() => registry.topologicalSort(), /service_registry.circular_dependency/);
 });
 
 test("ServiceRegistry - teardown is called on reset", async () => {
@@ -170,6 +170,44 @@ test("ServiceRegistry - register can override existing registration", () => {
 
   const service = registry.get<{ value: number }>("test-service");
   assert.equal(service.value, 2);
+});
+
+test("ServiceRegistry - re-register drops stale initialized instance", () => {
+  const registry = createFreshRegistry();
+
+  registry.register("replaceable", {
+    init: () => ({ value: 1 }),
+  });
+  assert.equal(registry.get<{ value: number }>("replaceable").value, 1);
+
+  registry.register("replaceable", {
+    init: () => ({ value: 2 }),
+  });
+
+  assert.equal(registry.get<{ value: number }>("replaceable").value, 2);
+});
+
+test("ServiceRegistry - register throws while reset is in progress", async () => {
+  const registry = createFreshRegistry();
+  let releaseTeardown: (() => void) | null = null;
+  const teardownBlocked = new Promise<void>((resolve) => {
+    releaseTeardown = resolve;
+  });
+
+  registry.register("blocked-reset-service", {
+    init: () => ({}),
+    teardown: async () => teardownBlocked,
+  });
+  registry.get("blocked-reset-service");
+
+  const resetPromise = registry.reset();
+  assert.throws(
+    () => registry.register("late-registration", { init: () => ({}) }),
+    /service_registry.reset_in_progress/,
+  );
+
+  releaseTeardown?.();
+  await resetPromise;
 });
 
 test("ServiceRegistry - initializeAll initializes all registered services", () => {

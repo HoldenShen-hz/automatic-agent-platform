@@ -17,6 +17,7 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { runMultiStepOrchestration } from "../../platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
@@ -96,4 +97,6 @@ async function main(): Promise<void> {
   )}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void main();
+}

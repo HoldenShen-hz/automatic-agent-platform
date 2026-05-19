@@ -1,15 +1,19 @@
 import { createGzip } from "node:zlib";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 
 const distRoot = join(process.cwd(), "apps/web/dist/assets");
+const lighthouseReportPath = process.env.LIGHTHOUSE_REPORT_PATH ?? join(process.cwd(), ".lighthouseci", "manifest.json");
 const budgets = {
   maxJsChunkBytes: 100 * 1024, // §7.3.1: main<200KB gz, lazy chunk<100KB gz – use stricter 100KB limit for all chunks
   maxCssChunkBytes: 150 * 1024,
   totalBytes: 1200 * 1024,
-  maxEchartsGzBytes: 350 * 1024,
-  maxMonacoGzBytes: 500 * 1024,
+  maxEchartsGzBytes: 150 * 1024,
+  maxMonacoGzBytes: 200 * 1024,
+  maxFirstContentfulPaintMs: 2000,
+  maxInteractionToNextPaintMs: 200,
+  minPerformanceScore: 0.8,
 };
 
 if (!existsSync(distRoot)) {
@@ -29,6 +33,34 @@ async function gzipSize(filePath) {
     }
   });
   return Buffer.concat(chunks).length;
+}
+
+function loadLighthouseSummaries() {
+  if (!existsSync(lighthouseReportPath)) {
+    return [];
+  }
+  try {
+    const manifest = JSON.parse(readFileSync(lighthouseReportPath, "utf8"));
+    const entries = Array.isArray(manifest) ? manifest : manifest?.items;
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+    return entries.flatMap((entry) => {
+      const reportPath = typeof entry?.jsonPath === "string" ? join(process.cwd(), entry.jsonPath) : null;
+      if (reportPath == null || !existsSync(reportPath)) {
+        return [];
+      }
+      const report = JSON.parse(readFileSync(reportPath, "utf8"));
+      return [{
+        path: reportPath,
+        performanceScore: report?.categories?.performance?.score ?? null,
+        firstContentfulPaintMs: report?.audits?.["first-contentful-paint"]?.numericValue ?? null,
+        interactionToNextPaintMs: report?.audits?.["interaction-to-next-paint"]?.numericValue ?? null,
+      }];
+    });
+  } catch {
+    return [];
+  }
 }
 
 const assets = readdirSync(distRoot).map((file) => ({
@@ -54,6 +86,7 @@ const largestCss = cssAssets.reduce((largest, asset) => (asset.gzipBytes ?? asse
 const totalEchartsGzipBytes = echartsAssets.reduce((total, asset) => total + (asset.gzipBytes ?? asset.bytes), 0);
 const totalMonacoGzipBytes = monacoAssets.reduce((total, asset) => total + (asset.gzipBytes ?? asset.bytes), 0);
 const totalGzipBytes = assets.reduce((total, asset) => total + (asset.gzipBytes ?? asset.bytes), 0);
+const lighthouseSummaries = loadLighthouseSummaries();
 
 if ((largestJs.gzipBytes ?? largestJs.bytes) > budgets.maxJsChunkBytes) {
   throw new Error(`perf_budget.js_chunk_exceeded:${largestJs.file}:${largestJs.gzipBytes ?? largestJs.bytes}`);
@@ -70,6 +103,17 @@ if (totalMonacoGzipBytes > budgets.maxMonacoGzBytes) {
 if (totalGzipBytes > budgets.totalBytes) {
   throw new Error(`perf_budget.total_exceeded:${totalGzipBytes}`);
 }
+for (const summary of lighthouseSummaries) {
+  if (typeof summary.performanceScore === "number" && summary.performanceScore < budgets.minPerformanceScore) {
+    throw new Error(`perf_budget.lighthouse_performance_exceeded:${summary.path}:${summary.performanceScore}`);
+  }
+  if (typeof summary.firstContentfulPaintMs === "number" && summary.firstContentfulPaintMs > budgets.maxFirstContentfulPaintMs) {
+    throw new Error(`perf_budget.lighthouse_fcp_exceeded:${summary.path}:${summary.firstContentfulPaintMs}`);
+  }
+  if (typeof summary.interactionToNextPaintMs === "number" && summary.interactionToNextPaintMs > budgets.maxInteractionToNextPaintMs) {
+    throw new Error(`perf_budget.lighthouse_inp_exceeded:${summary.path}:${summary.interactionToNextPaintMs}`);
+  }
+}
 
 console.log(JSON.stringify({
   budgets,
@@ -78,4 +122,5 @@ console.log(JSON.stringify({
   totalEchartsGzipBytes,
   totalMonacoGzipBytes,
   totalGzipBytes,
+  lighthouseSummaries,
 }, null, 2));

@@ -28,7 +28,7 @@ const BudgetPolicySchema = z.object({
   period: z.enum(["monthly", "weekly", "per_run"]),
   limitTokens: z.number().int().positive().optional(),
   limitCostUsd: z.number().positive().optional(),
-  warningThreshold: z.number().min(0).max(1),
+  warningThreshold: z.number().gt(0).max(1),
   actionsOnWarning: z.array(CostAlertActionSchema),
   actionsOnBreach: z.array(CostAlertActionSchema),
 });
@@ -38,13 +38,15 @@ const CostAlertConfigSchema = z.object({
   platformBudgetPolicy: BudgetPolicySchema.nullable().default(null),
   tenantBudgetPolicies: z.record(z.string(), BudgetPolicySchema).default({}),
   packBudgetPolicies: z.record(z.string(), BudgetPolicySchema).default({}),
+  stepBudgetPolicies: z.record(z.string(), BudgetPolicySchema).default({}),
   defaultWarningThreshold: z.number().min(0).max(1).default(0.8),
+  minAlertIntervalMs: z.number().int().nonnegative().default(300_000),
 });
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/cost-alert/default.json");
 const costAlertConfigLogger = new StructuredLogger({ retentionLimit: 100 });
 
-let cachedConfig: CostAlertConfig | null = null;
+const cachedConfigs = new Map<string, CostAlertConfig>();
 
 function buildDefaultCostAlertConfig(): CostAlertConfig {
   return {
@@ -52,7 +54,9 @@ function buildDefaultCostAlertConfig(): CostAlertConfig {
     platformBudgetPolicy: null,
     tenantBudgetPolicies: {},
     packBudgetPolicies: {},
+    stepBudgetPolicies: {},
     defaultWarningThreshold: 0.8,
+    minAlertIntervalMs: 300_000,
   };
 }
 
@@ -69,7 +73,9 @@ function normalizeValidatedConfig(validated: z.infer<typeof CostAlertConfigSchem
     platformBudgetPolicy: validated.platformBudgetPolicy,
     tenantBudgetPolicies: validated.tenantBudgetPolicies,
     packBudgetPolicies: validated.packBudgetPolicies,
+    stepBudgetPolicies: validated.stepBudgetPolicies,
     defaultWarningThreshold: validated.defaultWarningThreshold,
+    minAlertIntervalMs: validated.minAlertIntervalMs,
   };
 }
 
@@ -98,7 +104,7 @@ export class CostAlertConfigLoader {
     criticalThreshold: number;
   }): boolean {
     return input.budgetLimitUsd > 0
-      && input.warningThreshold >= 0
+      && input.warningThreshold > 0
       && input.warningThreshold < input.criticalThreshold
       && input.criticalThreshold <= 1;
   }
@@ -115,9 +121,9 @@ export function loadCostAlertConfig(
   configPath: string = DEFAULT_CONFIG_PATH,
   sandboxPolicy?: SandboxPolicy,
 ): CostAlertConfig {
-  if (cachedConfig) {
-    return cachedConfig;
-  }
+  const cacheKey = sandboxPolicy == null ? `path:${configPath}` : `sandbox:${configPath}`;
+  const cachedConfig = cachedConfigs.get(cacheKey);
+  if (cachedConfig) return cachedConfig;
 
   // Validate path before reading to prevent path traversal attacks
   if (sandboxPolicy != null) {
@@ -131,8 +137,9 @@ export function loadCostAlertConfig(
     // Use normalized path after validation
     const effectivePath = check.normalizedPath;
     try {
-      cachedConfig = parseCostAlertConfigFile(effectivePath);
-      return cachedConfig!;
+      const loaded = parseCostAlertConfigFile(effectivePath);
+      cachedConfigs.set(`sandbox:${effectivePath}`, loaded);
+      return loaded;
     } catch (error) {
       if (isMissingFileError(error)) {
         costAlertConfigLogger.warn("cost_alert.config_missing", {
@@ -151,8 +158,9 @@ export function loadCostAlertConfig(
   }
 
   try {
-    cachedConfig = parseCostAlertConfigFile(configPath);
-    return cachedConfig!;
+    const loaded = parseCostAlertConfigFile(configPath);
+    cachedConfigs.set(cacheKey, loaded);
+    return loaded;
   } catch (error) {
     if (isMissingFileError(error)) {
       costAlertConfigLogger.warn("cost_alert.config_missing", {
@@ -175,5 +183,5 @@ export function loadCostAlertConfig(
  * Useful for testing or when reloading config.
  */
 export function clearCostAlertConfigCache(): void {
-  cachedConfig = null;
+  cachedConfigs.clear();
 }

@@ -385,6 +385,11 @@ export class NetworkEgressAuditService {
  */
 let globalAuditService: NetworkEgressAuditService | null = null;
 
+export function setGlobalEgressAuditService(service: NetworkEgressAuditService): NetworkEgressAuditService {
+  globalAuditService = service;
+  return service;
+}
+
 /**
  * Gets or creates the global egress audit service instance.
  *

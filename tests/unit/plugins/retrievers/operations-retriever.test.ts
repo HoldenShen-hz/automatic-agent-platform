@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createOperationsRetrieverPlugin } from "../../../../src/plugins/retrievers/operations-retriever.js";
+import { createOperationsRetrieverPlugin, createOperationsRetrieverPluginWithOptions } from "../../../../src/plugins/retrievers/operations-retriever.js";
 
 test("OperationsRetriever type exports are correct", () => {
   const plugin = createOperationsRetrieverPlugin();
@@ -28,8 +28,8 @@ test("OperationsRetriever.initialize is no-op", async () => {
   await plugin.initialize();
 });
 
-test("OperationsRetriever.healthCheck returns true", async () => {
-  const plugin = createOperationsRetrieverPlugin();
+test("OperationsRetriever.healthCheck delegates to namespace health checks", async () => {
+  const plugin = createOperationsRetrieverPluginWithOptions({ healthCheck: () => true });
   assert.ok(plugin.healthCheck !== undefined);
   const result = await plugin.healthCheck();
   assert.equal(result, true);
@@ -90,6 +90,7 @@ test("OperationsRetriever.retrieve includes context in search", async () => {
 
   assert.ok(results.length > 0);
   assert.ok(results.every(r => typeof r.knowledgeRef === "string"));
+  assert.ok(results.every(r => typeof r.score === "number" && r.score > 0));
 });
 
 test("OperationsRetriever.retrieve returns valid knowledge references", async () => {

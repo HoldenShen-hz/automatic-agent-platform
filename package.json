@@ -161,6 +161,10 @@
     "migrate:up": "npm run build && node --enable-source-maps dist/src/sdk/cli/authoritative-storage-admin.js up",
     "secret-commands": "npm run build && node --enable-source-maps dist/src/sdk/cli/secret-commands.js",
     "migrate:sqlite-to-pg": "npm run build && node --enable-source-maps dist/src/sdk/cli/migrate-sqlite-to-pg.js",
+    "pack-create": "npm run build && node --enable-source-maps dist/src/sdk/cli/pack-create.js",
+    "pack-publish": "npm run build && node --enable-source-maps dist/src/sdk/cli/pack-publish.js",
+    "pack-test": "npm run build && node --enable-source-maps dist/src/sdk/cli/pack-test.js",
+    "pack-validate": "npm run build && node --enable-source-maps dist/src/sdk/cli/pack-validate.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createGameDevRetrieverPlugin } from "../../../../src/plugins/retrievers/game-dev-retriever.js";
+import { createGameDevRetrieverPlugin, createGameDevRetrieverPluginWithOptions } from "../../../../src/plugins/retrievers/game-dev-retriever.js";
 
 test("GameDevRetriever type exports are correct", () => {
   const plugin = createGameDevRetrieverPlugin();
@@ -28,8 +28,8 @@ test("GameDevRetriever.initialize is no-op", async () => {
   await plugin.initialize();
 });
 
-test("GameDevRetriever.healthCheck returns true", async () => {
-  const plugin = createGameDevRetrieverPlugin();
+test("GameDevRetriever.healthCheck delegates to namespace health checks", async () => {
+  const plugin = createGameDevRetrieverPluginWithOptions({ healthCheck: () => true });
   assert.ok(plugin.healthCheck !== undefined);
   const result = await plugin.healthCheck();
   assert.equal(result, true);
@@ -92,6 +92,7 @@ test("GameDevRetriever.retrieve includes context in search", async () => {
   assert.ok(results.length > 0);
   // All results have knowledgeRef as string
   assert.ok(results.every(r => typeof r.knowledgeRef === "string"));
+  assert.ok(results.every(r => typeof r.score === "number" && r.score > 0));
 });
 
 test("GameDevRetriever.retrieve returns valid knowledge references", async () => {

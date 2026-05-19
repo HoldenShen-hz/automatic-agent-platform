@@ -23,6 +23,7 @@ import {
 } from "../../../../../src/platform/five-plane-control-plane/iam/session-management.js";
 
 test.beforeEach(() => {
+  process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS = "1";
   __dangerousResetSessionStoreForTests();
 });
 
@@ -93,8 +94,16 @@ test("createSession generates unique token IDs", () => {
 // ============================================================================
 
 test("validateAccessToken returns valid for active session token", () => {
-  const session = createSession({ principalId: "user-validate", principalType: "user" });
-  const result = validateAccessToken(session.accessToken.tokenId);
+  const session = createSession({
+    principalId: "user-validate",
+    principalType: "user",
+    clientIp: "127.0.0.1",
+    userAgent: "aa-test",
+  });
+  const result = validateAccessToken(session.accessToken.tokenId, {
+    clientIp: "127.0.0.1",
+    userAgent: "aa-test",
+  });
 
   assert.equal(result.valid, true);
   assert.ok(result.session);
@@ -126,16 +135,38 @@ test("validateAccessToken marks revoked sessions as invalid", () => {
   assert.equal(result.reason, "session_revoked");
 });
 
+test("validateAccessToken rejects mismatched client binding", () => {
+  const session = createSession({
+    principalId: "user-bound",
+    principalType: "user",
+    clientIp: "10.0.0.1",
+    userAgent: "browser-a",
+  });
+
+  const result = validateAccessToken(session.accessToken.tokenId, {
+    clientIp: "10.0.0.2",
+    userAgent: "browser-a",
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, "access_token_invalid");
+});
+
 // ============================================================================
 // Session Refresh Tests
 // ============================================================================
 
 test("refreshSession rotates tokens and returns new session", () => {
-  const originalSession = createSession({ principalId: "user-refresh", principalType: "user" });
+  const originalSession = createSession({
+    principalId: "user-refresh",
+    principalType: "user",
+    clientIp: "127.0.0.1",
+    userAgent: "aa-test",
+  });
   const originalAccessTokenId = originalSession.accessToken.tokenId;
   const originalRefreshTokenId = originalSession.refreshToken.tokenId;
 
-  const newSession = refreshSession(originalSession.refreshToken.tokenId);
+  const newSession = refreshSession(originalSession.refreshToken.tokenId, "127.0.0.1", "aa-test");
 
   // New session should have different token IDs
   assert.notEqual(newSession.accessToken.tokenId, originalAccessTokenId);
@@ -164,15 +195,34 @@ test("refreshSession invalidates old access token", () => {
 });
 
 test("refreshSession invalidates old refresh token", () => {
-  const session = createSession({ principalId: "user-old-refresh", principalType: "user" });
+  const session = createSession({
+    principalId: "user-old-refresh",
+    principalType: "user",
+    clientIp: "127.0.0.1",
+    userAgent: "aa-test",
+  });
   const oldRefreshTokenId = session.refreshToken.tokenId;
 
-  refreshSession(oldRefreshTokenId);
+  refreshSession(oldRefreshTokenId, "127.0.0.1", "aa-test");
 
   // Refreshing again with old token should fail
   assert.throws(
     () => refreshSession(oldRefreshTokenId),
     /session.refresh_token_reused/,
+  );
+});
+
+test("refreshSession rejects mismatched bound context", () => {
+  const session = createSession({
+    principalId: "user-refresh-bound",
+    principalType: "user",
+    clientIp: "127.0.0.1",
+    userAgent: "browser-a",
+  });
+
+  assert.throws(
+    () => refreshSession(session.refreshToken.tokenId, "127.0.0.2", "browser-a"),
+    /session.refresh_token_invalid/,
   );
 });
 

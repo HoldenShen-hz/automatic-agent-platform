@@ -4,8 +4,10 @@
  * Creates a new business pack manifest with the required fields per §22.3.
  *
  * Usage:
- *   npx tsx src/sdk/cli/pack-create.ts --pack-id my-pack --domain my-domain --owner me
+ *   npm run pack-create -- --pack-id my-pack --domain my-domain --owner me
  */
+
+import { pathToFileURL } from "node:url";
 
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { newId } from "../../platform/contracts/types/ids.js";
@@ -89,4 +91,6 @@ function main(): void {
   process.stdout.write(`${output}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

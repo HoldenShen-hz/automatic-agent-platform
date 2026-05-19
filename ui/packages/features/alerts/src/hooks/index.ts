@@ -165,6 +165,35 @@ export function useAlertsVm(): AlertsVm {
     return unsubscribe;
   }, [wsClient]);
 
+  useEffect(() => {
+    if (snoozedUntil.size === 0) {
+      return;
+    }
+    const now = Date.now();
+    let nextExpiry: number | null = null;
+    for (const value of snoozedUntil.values()) {
+      if (value > now && (nextExpiry == null || value < nextExpiry)) {
+        nextExpiry = value;
+      }
+    }
+    if (nextExpiry == null) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSnoozedUntil((current) => {
+        const refreshed = new Map(current);
+        const refreshNow = Date.now();
+        for (const [incidentId, expiry] of current.entries()) {
+          if (expiry <= refreshNow) {
+            refreshed.delete(incidentId);
+          }
+        }
+        return refreshed;
+      });
+    }, Math.max(0, nextExpiry - now));
+    return () => clearTimeout(timer);
+  }, [snoozedUntil]);
+
   const mergedIncidents = useMemo(() => {
     const merged = new Map<string, IncidentDTO>();
     for (const incident of scopedIncidents) {

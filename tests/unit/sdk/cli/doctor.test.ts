@@ -5,7 +5,10 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+
+import { installBrokenPipeHandler } from "../../../../src/sdk/cli/doctor.js";
 
 // ---------------------------------------------------------------------------
 // Tests for EPIPE handler logic
@@ -26,9 +29,11 @@ test("non-EPIPE errors should be rethrown", () => {
 // ---------------------------------------------------------------------------
 
 test("doctor CLI installs broken pipe handler", () => {
-  // The doctor.ts file calls installBrokenPipeHandler() which sets up
-  // process.stdout.on("error", ...) to handle EPIPE errors gracefully
-  // This is a smoke test to verify the concept
-  const stdout = process.stdout;
-  assert.ok(stdout != null);
+  assert.equal(typeof installBrokenPipeHandler, "function");
+});
+
+test("doctor CLI only boots from direct execution and uses a one-shot EPIPE handler", () => {
+  const source = readFileSync("src/sdk/cli/doctor.ts", "utf8");
+  assert.match(source, /process\.stdout\.once\("error"/);
+  assert.match(source, /import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
 });

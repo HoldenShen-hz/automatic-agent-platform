@@ -17,7 +17,7 @@
  */
 
 import { ServiceRegistry } from "./service-registry.js";
-import { NetworkEgressAuditService } from "../../five-plane-control-plane/iam/network-egress-audit.js";
+import { NetworkEgressAuditService, setGlobalEgressAuditService } from "../../five-plane-control-plane/iam/network-egress-audit.js";
 import { NetworkEgressPolicyService, loadNetworkEgressPolicyConfigFromEnv } from "../../five-plane-control-plane/iam/network-egress-policy.js";
 import { OutputContinuationService } from "../../five-plane-execution/execution-engine/output-continuation-service.js";
 import { DelegationAuditService } from "../../five-plane-orchestration/agent-delegation/delegation-audit-service.js";
@@ -26,7 +26,7 @@ import { DelegationGovernanceService } from "../../five-plane-orchestration/agen
 ServiceRegistry.registerBootstrap("service-registry-bootstrap.core-services", (registry) => {
   // Register network egress audit service
   registry.register("network-egress-audit", {
-    init: () => new NetworkEgressAuditService(),
+    init: () => setGlobalEgressAuditService(new NetworkEgressAuditService()),
   });
 
   // Register network egress policy service (depends on audit service)

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  buildMigrateSqliteToPgUsage,
   parseMigrateSqliteToPgArgs,
   planSqliteToPgMigration,
   validateTableName,
@@ -25,6 +26,11 @@ test("parseMigrateSqliteToPgArgs parses required flags", () => {
 
 test("parseMigrateSqliteToPgArgs rejects missing arguments", () => {
   assert.throws(() => parseMigrateSqliteToPgArgs(["--sqlite", "/tmp/source.db"]), /usage:/);
+});
+
+test("parseMigrateSqliteToPgArgs advertises alias and help flow in usage text", () => {
+  assert.match(buildMigrateSqliteToPgUsage(), /--sqlite-path <path>/);
+  assert.throws(() => parseMigrateSqliteToPgArgs(["--help"]), /--help/);
 });
 
 test("planSqliteToPgMigration returns row counts for migrated tables", () => {

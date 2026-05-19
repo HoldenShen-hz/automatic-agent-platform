@@ -153,6 +153,22 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
+    if (this.resetInProgress) {
+      throw new InternalAppError(
+        "service_registry.reset_in_progress",
+        `service_registry.reset_in_progress: Cannot register "${name}" while reset is in progress`,
+        { source: "internal", details: { serviceName: name } },
+      );
+    }
+    if (this.services.has(name)) {
+      logger.log({
+        level: "warn",
+        message: "service_registry.registration_overridden",
+        data: { serviceName: name },
+      });
+    }
+    this.instances.delete(name);
+    this.initializing.delete(name);
     this.services.set(name, registration as ServiceRegistration<unknown>);
   }
 
@@ -330,11 +346,11 @@ export class ServiceRegistry {
     // Return the acyclic portion so callers such as teardownAll can still make progress.
     if (result.length !== serviceNames.length) {
       const unsortedServices = serviceNames.filter(n => !result.includes(n));
-      logger.log({
-        level: "warn",
-        message: "ServiceRegistry: circular dependency detected in topological sort",
-        data: { unsortedServices },
-      });
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        "service_registry.circular_dependency: circular dependency detected in topological sort",
+        { source: "internal", details: { unsortedServices } },
+      );
     }
 
     return result;

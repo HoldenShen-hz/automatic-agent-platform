@@ -268,6 +268,16 @@ export class ApprovalFlowEngine {
 
     // Create and validate the vote
     const delegationSource = flow.delegation?.fromApprover;
+    const isConfiguredApprover = flow.config.approvers.some((approver) => approver.identifier === approverId);
+    const isDelegatedApprover = flow.delegation?.toApprover === approverId;
+    if (!isConfiguredApprover && !isDelegatedApprover) {
+      return {
+        success: false,
+        quorumStatus: createInitialQuorumStatus(),
+        flowStatus: flow.status,
+        error: "Approver is not configured for this flow",
+      };
+    }
     const vote = createVote(approverId, voteType, delegationSource);
 
     try {
@@ -329,7 +339,7 @@ export class ApprovalFlowEngine {
 
     const quorumStatus = calculateQuorumStatus(
       flow.votes,
-      { minApprovals: 1, minRejectionsToDeny: 1 },
+      { minApprovals: 1, minRejectionsToDeny: 1, totalApprovers: 1 },
       flow.votingStartedAt,
       nowIso(),
     );
@@ -350,24 +360,21 @@ export class ApprovalFlowEngine {
       };
     }
 
-    // Check if approver has already voted
     if (hasApproverVoted(flow.votes, vote.approverId)) {
       const existingVote = getApproverVote(flow.votes, vote.approverId);
-      if (existingVote?.voteType === vote.voteType) {
-        return {
-          success: false,
-          quorumStatus: createInitialQuorumStatus(),
-          flowStatus: flow.status,
-          error: "Approver has already cast the same vote",
-        };
-      }
+      return {
+        success: false,
+        quorumStatus: createInitialQuorumStatus(),
+        flowStatus: flow.status,
+        error: `Approver has already cast an immutable vote (${existingVote?.voteType ?? "unknown"})`,
+      };
     }
 
     // Merge vote and calculate status
     const mergedVotes = mergeVotes(flow.votes, vote);
     const quorumStatus = calculateQuorumStatus(
       mergedVotes,
-      flow.config.quorum,
+      { ...flow.config.quorum, totalApprovers: flow.config.approvers.length },
       flow.votingStartedAt,
       nowIso(),
     );
@@ -421,7 +428,7 @@ export class ApprovalFlowEngine {
 
     // Check if approver can delegate
     const approverRule = flow.config.approvers.find(
-      (a) => a.identifier === fromApprover || a.type === "user",
+      (a) => a.identifier === fromApprover,
     );
     if (approverRule && !approverRule.can_delegate) {
       return { success: false, error: "Approver cannot delegate" };

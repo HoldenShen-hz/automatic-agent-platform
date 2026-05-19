@@ -4,10 +4,11 @@
  * Publishes a validated pack to the platform registry per §22.3.
  *
  * Usage:
- *   npx tsx src/sdk/cli/pack-publish.ts --manifest ./pack.json --registry-url https://api.example.com
+ *   npm run pack-publish -- --manifest ./pack.json --registry-url https://api.example.com
  */
 
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
 
@@ -53,13 +54,32 @@ interface PublishResult {
   dryRun: boolean;
 }
 
-async function main(): Promise<void> {
-  const opts = parseArgs();
-  if (!opts.manifest) {
-    process.stderr.write("Error: --manifest is required\n");
-    process.exit(1);
+function parseArgsFromValues(args: readonly string[]): PackPublishOptions {
+  const opts: PackPublishOptions = { manifest: "", dryRun: false };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && next !== undefined) {
+      opts.manifest = next;
+      i++;
+    } else if (arg === "--registry-url" && next !== undefined) {
+      opts.registryUrl = next;
+      i++;
+    } else if (arg === "--api-version" && next !== undefined) {
+      opts.apiVersion = next;
+      i++;
+    } else if (arg === "--bearer-token" && next !== undefined) {
+      opts.bearerToken = next;
+      i++;
+    } else if (arg === "--dry-run") {
+      opts.dryRun = true;
+    }
   }
+  return opts;
+}
 
+export async function publishPack(args = process.argv.slice(2)): Promise<PublishResult> {
+  const opts = parseArgsFromValues(args);
   const result: PublishResult = { published: false, packId: "", version: "", errors: [], dryRun: opts.dryRun ?? false };
 
   try {
@@ -72,19 +92,16 @@ async function main(): Promise<void> {
 
     if (opts.dryRun) {
       result.published = true;
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-      return;
+      return result;
     }
 
-    // Publish to registry
     const registryUrl = opts.registryUrl ?? process.env["AA_REGISTRY_URL"] ?? "https://api.platform.example.com";
     const apiVersion = opts.apiVersion ?? "v1";
     const bearerToken = opts.bearerToken ?? process.env["AA_BEARER_TOKEN"] ?? "";
 
     if (!bearerToken) {
       result.errors.push("missing_bearer_token:set AA_BEARER_TOKEN or pass --bearer-token");
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-      process.exit(1);
+      return result;
     }
 
     const config: ApiClientConfig = {
@@ -107,11 +124,21 @@ async function main(): Promise<void> {
     result.errors.push(`publish_failed:${err instanceof Error ? err.message : String(err)}`);
   }
 
+  return result;
+}
+
+export async function main(): Promise<void> {
+  const opts = parseArgs();
+  if (!opts.manifest) {
+    process.stderr.write("Error: --manifest is required\n");
+    process.exit(1);
+  }
+
+  const result = await publishPack(process.argv.slice(2));
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   process.exit(result.published ? 0 : 1);
 }
 
-main().catch((err) => {
-  process.stderr.write(`Fatal: ${err}\n`);
-  process.exit(1);
-});
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void main();
+}

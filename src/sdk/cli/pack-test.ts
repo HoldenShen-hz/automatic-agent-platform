@@ -4,10 +4,11 @@
  * Tests a pack manifest and validates its configuration per §22.3.
  *
  * Usage:
- *   npx tsx src/sdk/cli/pack-test.ts --manifest ./pack.json
+ *   npm run pack-test -- --manifest ./pack.json
  */
 
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 
 interface PackTestOptions {
@@ -88,4 +89,6 @@ function main(): void {
   process.exit(result.passed ? 0 : 1);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

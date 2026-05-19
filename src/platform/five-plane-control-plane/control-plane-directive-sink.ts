@@ -1,4 +1,5 @@
 import type { DecisionDirective, OperationalDirective } from "../contracts/control-directive/index.js";
+import { StructuredLogger } from "../shared/observability/structured-logger.js";
 
 export interface ControlPlaneDirectiveSink {
   emitOperationalDirective(directive: OperationalDirective): void;
@@ -18,12 +19,28 @@ export interface ControlPlaneDirectiveSink {
  * ```
  */
 export class NoOpControlPlaneDirectiveSink implements ControlPlaneDirectiveSink {
-  emitOperationalDirective(_directive: OperationalDirective): void {
-    // No-op: directives are dropped in environments without P3/P4 consumers
+  private readonly logger = new StructuredLogger({ retentionLimit: 50 });
+
+  emitOperationalDirective(directive: OperationalDirective): void {
+    this.logger.warn("control_plane.directive_dropped", {
+      data: {
+        directiveType: directive.type,
+        directiveId: directive.operationalDirectiveId,
+        scope: directive.scope,
+        kind: "operational",
+      },
+    });
   }
 
-  emitDecisionDirective(_directive: DecisionDirective): void {
-    // No-op: directives are dropped in environments without P3/P4 consumers
+  emitDecisionDirective(directive: DecisionDirective): void {
+    this.logger.warn("control_plane.directive_dropped", {
+      data: {
+        directiveType: directive.type,
+        directiveId: directive.decisionDirectiveId,
+        targetRef: directive.targetRef,
+        kind: "decision",
+      },
+    });
   }
 }
 
@@ -34,4 +51,3 @@ export class NoOpControlPlaneDirectiveSink implements ControlPlaneDirectiveSink 
 export function createNoOpDirectiveSink(): ControlPlaneDirectiveSink {
   return new NoOpControlPlaneDirectiveSink();
 }
-

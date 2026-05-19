@@ -57,7 +57,7 @@ export interface HttpTransportOptions {
 
 export const DEFAULT_ACCEPT_VERSION_HEADER = "2026-04-01,2026-01-01";
 
-export type RestHttpUiAction = "redirect_to_login" | "access_denied" | "backoff_and_retry" | "none";
+export type RestHttpUiAction = "redirect_to_login" | "access_denied" | "backoff_and_retry" | "version_not_supported" | "none";
 
 export class RestHttpError extends Error {
   public readonly status: number;
@@ -72,6 +72,8 @@ export class RestHttpError extends Error {
       ? "redirect_to_login"
       : status === 403
         ? "access_denied"
+        : status === 406
+          ? "version_not_supported"
         : status === 429
           ? "backoff_and_retry"
           : "none";

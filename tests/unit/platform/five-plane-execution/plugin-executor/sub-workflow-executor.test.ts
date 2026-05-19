@@ -168,7 +168,7 @@ test("SubWorkflowExecutor pauseWorkflow throws for unknown execution", () => {
 test("SubWorkflowExecutor pauseWorkflow throws for non-running workflow", () => {
   const executor = new SubWorkflowExecutor();
   const definition = createTestWorkflow();
-  const context = createTestContext();
+  const context = createTestContext({ executionId: "hrun_existing" });
 
   const executionId = executor.createWorkflow(definition, context);
 
@@ -465,6 +465,45 @@ test("SubWorkflowExecutor handles conditional steps", async () => {
   // step_2 should be skipped since step_1 output doesn't match conditional
   const skippedSteps = result.steps.filter((s) => s.status === "skipped");
   assert.ok(skippedSteps.length > 0);
+});
+
+test("SubWorkflowExecutor compares conditional equality by value for objects", async () => {
+  const executor = new SubWorkflowExecutor();
+  const definition = createTestWorkflow({
+    steps: [
+      { stepId: "step_1", name: "First", action: "action_1", maxRetries: 0 },
+      {
+        stepId: "step_2",
+        name: "Conditional",
+        action: "action_2",
+        maxRetries: 0,
+        dependsOn: ["step_1"],
+        conditional: { when: "step_1", equals: { result: "Step First completed successfully" } },
+      },
+    ],
+  });
+
+  const executionId = executor.createWorkflow(definition, createTestContext());
+  const result = await executor.executeWorkflow(executionId);
+  const conditionalStep = result.steps.find((step) => step.stepId === "step_2");
+
+  assert.equal(conditionalStep?.status, "completed");
+});
+
+test("SubWorkflowExecutor allows legacy created-state pause once per executor instance", () => {
+  const definition = createTestWorkflow();
+  const context = createTestContext();
+  const executorA = new SubWorkflowExecutor();
+  const executorB = new SubWorkflowExecutor();
+
+  const workflowA = executorA.createWorkflow(definition, context);
+  const workflowB = executorB.createWorkflow(definition, context);
+
+  executorA.pauseWorkflow(workflowA);
+  executorB.pauseWorkflow(workflowB);
+
+  assert.equal(executorA.getWorkflow(workflowA)?.status, "paused");
+  assert.equal(executorB.getWorkflow(workflowB)?.status, "paused");
 });
 
 test("SubWorkflowExecutor createSubWorkflowExecutor factory works", () => {

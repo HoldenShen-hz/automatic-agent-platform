@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDomainConfigsQuery } from "@aa/shared-state";
 
 export type DomainWizardStepId = "domain-select" | "risk-profile" | "capability-config" | "review";
@@ -113,6 +113,7 @@ export function useDomainWizardVm(): DomainWizardVm {
   const [allowedDrillDepth, setAllowedDrillDepth] = useState(stored.allowedDrillDepth);
   const [enableAutoRollback, setEnableAutoRollback] = useState(stored.enableAutoRollback);
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
+  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const items = useMemo(() => domains.map((domain) => ({
     title: domain.displayName,
@@ -152,7 +153,22 @@ export function useDomainWizardVm(): DomainWizardVm {
   ]);
 
   useEffect(() => {
-    persist();
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (persistTimeoutRef.current != null) {
+      clearTimeout(persistTimeoutRef.current);
+    }
+    persistTimeoutRef.current = setTimeout(() => {
+      persist();
+      persistTimeoutRef.current = null;
+    }, 150);
+    return () => {
+      if (persistTimeoutRef.current != null) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
   }, [persist]);
 
   const validationErrors = useMemo(() => {

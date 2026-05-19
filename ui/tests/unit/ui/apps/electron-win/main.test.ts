@@ -73,6 +73,8 @@ import {
 import { app, globalShortcut, Notification } from "electron";
 
 describe("electronMainBaseline", () => {
+  const channelNames = electronMainBaseline.channels.map((channel) => channel.name);
+
   it("keeps the hardened browser security baseline enabled", () => {
     expect(electronMainBaseline.security).toEqual({
       contextIsolation: true,
@@ -82,19 +84,27 @@ describe("electronMainBaseline", () => {
   });
 
   it("does not expose arbitrary shell execution IPC channels", () => {
-    expect(electronMainBaseline.channels).toContain("shell:openExternal");
-    expect(electronMainBaseline.channels).not.toContain("shell:run");
-    expect(electronMainBaseline.channels).not.toContain("shell:spawn");
+    expect(channelNames).toContain("shell:openExternal");
+    expect(channelNames).not.toContain("shell:run");
+    expect(channelNames).not.toContain("shell:spawn");
   });
 
   it("does not expose raw file read/write IPC channels", () => {
-    expect(electronMainBaseline.channels).not.toContain("files:read");
-    expect(electronMainBaseline.channels).not.toContain("files:write");
+    expect(channelNames).not.toContain("files:read");
+    expect(channelNames).not.toContain("files:write");
   });
 
-  it("keeps secure-storage and external navigation channels enumerated", () => {
-    expect(electronMainBaseline.channels).toContain("secure-store:read");
-    expect(electronMainBaseline.channels).toContain("shell:openExternal");
+  it("describes channels with tier and permission metadata", () => {
+    expect(electronMainBaseline.channels).toContainEqual({
+      name: "secure-store:read",
+      tier: "restricted",
+      permission: "secure-store:read",
+    });
+    expect(electronMainBaseline.channels).toContainEqual({
+      name: "shell:openExternal",
+      tier: "restricted",
+      permission: "external-link:open",
+    });
   });
 });
 

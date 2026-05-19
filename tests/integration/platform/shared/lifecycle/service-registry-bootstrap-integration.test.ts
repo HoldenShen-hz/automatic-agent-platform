@@ -15,6 +15,7 @@ import test from "node:test";
 // Import the bootstrap module - it registers services via ServiceRegistry.registerBootstrap()
 // This import runs the module-level code which calls ServiceRegistry.registerBootstrap()
 import "../../../../../src/platform/shared/lifecycle/service-registry-bootstrap.js";
+import { getGlobalEgressAuditService } from "../../../../../src/platform/five-plane-control-plane/iam/network-egress-audit.js";
 import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("service-registry-bootstrap: registers all core platform services", async () => {
@@ -51,6 +52,17 @@ test("service-registry-bootstrap: network-egress-policy depends on network-egres
   assert.ok(policyService !== null);
   assert.ok(registry.isInitialized("network-egress-audit"));
   assert.ok(registry.isInitialized("network-egress-policy"));
+});
+
+test("service-registry-bootstrap: network-egress-audit bootstrap seeds the global singleton used by policy", async () => {
+  const registry = new ServiceRegistry();
+
+  const auditService = registry.get("network-egress-audit");
+  const globalAuditService = getGlobalEgressAuditService();
+
+  assert.equal(auditService, globalAuditService);
+
+  await registry.reset();
 });
 
 test("service-registry-bootstrap: output-continuation has teardown function", async () => {

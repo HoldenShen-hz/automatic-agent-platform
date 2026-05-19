@@ -192,6 +192,7 @@ export function assertStartupOrderEnforced(startupTargets: readonly PlatformStar
 }
 
 export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
+  assertStartupOrderEnforced();
   if (!registeredArchitectureCatalogs.has(registry)) {
     registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
       init: () => PLATFORM_LAYER_MANIFESTS,

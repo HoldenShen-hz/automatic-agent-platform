@@ -123,7 +123,7 @@ describe("ui tooling baselines", () => {
     expect(existsSync(join(root, "scripts/run-task-with-stamp.mjs"))).toBe(true);
     expect(existsSync(join(root, "scripts/bundle-analysis.mjs"))).toBe(true);
     expect(existsSync(join(root, "scripts/perf-budget.mjs"))).toBe(true);
-    expect(existsSync(join(root, "turbo.json"))).toBe(true);
+    expect(existsSync(join(root, "turbo.json"))).toBe(false);
     expect(existsSync(join(root, "../.github/workflows/ui-quality.yml"))).toBe(true);
   });
 });

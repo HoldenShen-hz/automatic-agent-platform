@@ -19,6 +19,8 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
+import { pathToFileURL } from "node:url";
+
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadOrphanCleanupCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
@@ -48,4 +50,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

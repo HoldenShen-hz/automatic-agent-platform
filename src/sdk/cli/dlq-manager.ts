@@ -31,6 +31,26 @@ interface DlqAction {
   channel: string | undefined;
   retryLimit?: number;
   confirmed?: boolean;
+  help?: boolean;
+}
+
+const DLQ_USAGE = [
+  "Usage:",
+  "  npm run dlq -- -a list -q gateway [-l 50] [-c webhook]",
+  "  npm run dlq -- -a count -q gateway",
+  "  npm run dlq -- -a retry -q jobs [--retry-limit 100]",
+  "  npm run dlq -- -a purge -q events --yes",
+  "",
+  "Queues:",
+  "  gateway | jobs | events",
+  "",
+  "Environment:",
+  "  AA_DB_PATH=data/sqlite/authoritative-demo.db",
+  "  AA_DLQ_PURGE_CONFIRM=yes (required for destructive purge)",
+].join("\n");
+
+export function buildUsageText(): string {
+  return DLQ_USAGE;
 }
 
 function writeLine(message: string): void {
@@ -55,17 +75,29 @@ export function parseArguments(overrides?: Record<string, string | boolean | und
       channel: { type: "string", short: "c" },
       "retry-limit": { type: "string" },
       yes: { type: "boolean", short: "y" },
+      help: { type: "boolean", short: "h" },
     },
   }).values;
+
+  if (values.help === true) {
+    return {
+      action: "count",
+      queue: "gateway",
+      limit: 50,
+      channel: undefined,
+      confirmed: false,
+      help: true,
+    };
+  }
 
   const action = values.action as DlqAction["action"];
   const queue = values.queue as DlqAction["queue"];
 
   if (!action || !["list", "count", "retry", "purge"].includes(action)) {
-    throw new ValidationError("dlq.invalid_action", "Invalid action. Use: list, count, retry, purge");
+    throw new ValidationError("dlq.invalid_action", `Invalid action. Use: list, count, retry, purge\n\n${buildUsageText()}`);
   }
   if (!queue || !["gateway", "jobs", "events"].includes(queue)) {
-    throw new ValidationError("dlq.invalid_queue", "Invalid queue. Use: gateway, jobs, events");
+    throw new ValidationError("dlq.invalid_queue", `Invalid queue. Use: gateway, jobs, events\n\n${buildUsageText()}`);
   }
 
   const retryLimitRaw = values["retry-limit"];
@@ -193,7 +225,7 @@ function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   const sql = db.sql.connection;
 
   // R31-34 FIX: Require --confirm flag for purge operations to prevent accidental deletion
-  const confirmFlag = process.env.AA_DLQ_PURGE_CONFIRM ?? "";
+  const confirmFlag = process.env["AA_DLQ_PURGE_CONFIRM"] ?? "";
   if (confirmFlag !== "yes") {
     writeLine("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes environment variable.");
     writeLine(`Dry-run: Would delete all ${queue} dead letter records.`);
@@ -215,6 +247,10 @@ function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
 
 function main(): void {
   const args = parseArguments();
+  if (args.help) {
+    writeLine(buildUsageText());
+    return;
+  }
 
   const storage = openCliAuthoritativeStorageContext();
   storage.migrate();
@@ -238,6 +274,11 @@ function main(): void {
         retryDeadLetters(storage, args.queue);
         break;
       case "purge":
+        if (args.confirmed !== true) {
+          writeLine("Purge operation requires --yes in addition to AA_DLQ_PURGE_CONFIRM=yes.");
+          writeLine(`Dry-run: Would delete all ${args.queue} dead letter records.`);
+          return;
+        }
         purgeDeadLetters(storage, args.queue);
         break;
     }

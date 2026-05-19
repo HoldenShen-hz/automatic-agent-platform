@@ -3,6 +3,7 @@
 // Operates on a single database and produces structured reports for monitoring and auditing.
 
 import { dirname } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
@@ -48,4 +49,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -970,6 +970,33 @@ test("pagerduty alert channel uses PAGERDUTY_API_URL env var when endpoint not p
   }
 });
 
+test("pagerduty alert channel rejects non-https endpoints", () => {
+  const originalEnv = process.env.PAGERDUTY_API_URL;
+  process.env.PAGERDUTY_API_URL = "http://pagerduty.example.com/v2/enqueue";
+  try {
+    const channel = new PagerDutyAlertChannel({ fetchImpl: async () => ({ ok: true, status: 202 } as Response) });
+    assert.throws(() => channel.deliver({
+      id: "alert_pd_http",
+      ruleId: "rule_http",
+      severity: "critical",
+      status: "firing",
+      title: "Env test",
+      detail: "Testing env",
+      channelKind: "pagerduty",
+      deliveredAt: null,
+      acknowledgedBy: null,
+      resolvedAt: null,
+      firedAt: "2026-04-10T00:00:00.000Z",
+    }, { routingKey: "routing-key-1" }), /pagerduty\.invalid_endpoint_protocol/);
+  } finally {
+    if (originalEnv !== undefined) {
+      process.env.PAGERDUTY_API_URL = originalEnv;
+    } else {
+      delete process.env.PAGERDUTY_API_URL;
+    }
+  }
+});
+
 test("opsgenie alert channel maps critical severity to P1 priority", async () => {
   let receivedBody: { priority?: string } = {};
   const mockFetch = async (_url: string | URL | Request, init?: RequestInit) => {

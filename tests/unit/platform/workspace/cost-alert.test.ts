@@ -217,3 +217,16 @@ test("CostAlertConfigLoader rejects warning >= critical", () => {
 
   assert.equal(isValid, false);
 });
+
+test("CostAlertConfigLoader rejects zero warning threshold", () => {
+  const loader = new CostAlertConfigLoader();
+
+  const isValid = loader.validateBudgetPolicy({
+    scope: "platform",
+    budgetLimitUsd: 1000,
+    warningThreshold: 0,
+    criticalThreshold: 0.8,
+  });
+
+  assert.equal(isValid, false);
+});

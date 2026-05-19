@@ -9,6 +9,10 @@
 
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 
+export interface OperationsRetrieverPluginOptions {
+  readonly healthCheck?: () => boolean | Promise<boolean>;
+}
+
 /**
  * Build a search query from the intent and context.
  * Operations queries prioritize runbooks and incident records.
@@ -25,6 +29,12 @@ function buildQuery(intent: string, context: Record<string, unknown>): string {
 }
 
 export function createOperationsRetrieverPlugin(): DomainRetrieverPlugin {
+  return createOperationsRetrieverPluginWithOptions();
+}
+
+export function createOperationsRetrieverPluginWithOptions(
+  options: OperationsRetrieverPluginOptions = {},
+): DomainRetrieverPlugin {
   return {
     pluginId: "plugin.operations.retriever",
     domainId: "operations",
@@ -34,7 +44,7 @@ export function createOperationsRetrieverPlugin(): DomainRetrieverPlugin {
       // No-op: knowledge plane is available immediately
     },
     async healthCheck() {
-      return true;
+      return options.healthCheck?.() ?? false;
     },
     async shutdown() {
       return undefined;
@@ -49,7 +59,7 @@ export function createOperationsRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:ops/runbooks?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Runbook search: "${searchQuery}" — fetched from operations/runbooks namespace`,
-          score: 0.95,
+          score: Math.min(0.98, 0.72 + Math.min(searchQuery.length / 200, 0.18)),
           namespace: "operations/runbooks",
           chunkId: `runbook:${encodeURIComponent(searchQuery)}`,
           documentId: `ops/runbooks/search`,
@@ -58,7 +68,7 @@ export function createOperationsRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:ops/incidents?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Incident records matching: "${searchQuery}" — fetched from operations/incidents namespace`,
-          score: 0.85,
+          score: Math.min(0.92, 0.64 + Math.min(Object.keys(query.context).length * 0.05, 0.18)),
           namespace: "operations/incidents",
           chunkId: `incident:${encodeURIComponent(searchQuery)}`,
           documentId: `ops/incidents/search`,

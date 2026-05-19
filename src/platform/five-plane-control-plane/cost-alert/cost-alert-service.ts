@@ -10,6 +10,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §18
  */
 
+import { createHash } from "node:crypto";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -53,6 +54,7 @@ const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
  */
 export class CostAlertService extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
+  private readonly lastAlertByKey: Map<string, string> = new Map();
   private config: CostAlertConfig;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ACCUMULATORS = 500;
@@ -71,7 +73,9 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       platformBudgetPolicy: config?.platformBudgetPolicy ?? null,
       tenantBudgetPolicies: config?.tenantBudgetPolicies ?? {},
       packBudgetPolicies: config?.packBudgetPolicies ?? {},
+      stepBudgetPolicies: config?.stepBudgetPolicies ?? {},
       defaultWarningThreshold: config?.defaultWarningThreshold ?? DEFAULT_WARNING_THRESHOLD,
+      minAlertIntervalMs: config?.minAlertIntervalMs ?? 300_000,
     };
   }
 
@@ -126,6 +130,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     scope: BudgetScope;
     scopeId: string;
     projectedCostUsd: number;
+    projectedTokens?: number;
     tenantId?: string | null;
     taskId?: string | null;
     executionId?: string | null;
@@ -146,17 +151,25 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     }
 
     const accumulator = this.getOrCreateAccumulator(policy);
-    const currentCost = accumulator.accumulatedCostUsd;
+    const currentCost = accumulator.accumulatedCostUsd + accumulator.pendingProjectedCostUsd;
+    const currentTokens = accumulator.accumulatedTokens + accumulator.pendingProjectedTokens;
     const projectedCost = currentCost + input.projectedCostUsd;
+    const projectedTokens = currentTokens + (input.projectedTokens ?? 0);
 
-    const limitCost = policy.limitCostUsd ?? Infinity;
-    const remainingBudget = Math.max(0, limitCost - projectedCost);
-    const thresholdRatio = limitCost > 0 ? projectedCost / limitCost : 0;
+    const costLimit = policy.limitCostUsd ?? null;
+    const tokenLimit = policy.limitTokens ?? null;
+    const usesCostMetric = costLimit != null;
+    const remainingBudget = costLimit == null ? null : Math.max(0, costLimit - projectedCost);
+    const thresholdRatio = usesCostMetric
+      ? (costLimit! > 0 ? projectedCost / costLimit! : 0)
+      : tokenLimit != null && tokenLimit > 0
+        ? projectedTokens / tokenLimit
+        : 0;
 
     let alertLevel: CostAlertLevel = "ok";
     let reasonCode: CostAlertReasonCode = "cost.ok";
 
-    if (limitCost === 0 && projectedCost > 0) {
+    if (usesCostMetric && costLimit === 0 && projectedCost > 0) {
       alertLevel = "exceeded";
       reasonCode = this.getExceededReasonCode(input.scope, policy);
     } else if (thresholdRatio >= 1.0) {
@@ -171,6 +184,11 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     }
 
     const allowed = alertLevel === "ok" || alertLevel === "warning";
+    if (allowed) {
+      accumulator.pendingProjectedCostUsd += input.projectedCostUsd;
+      accumulator.pendingProjectedTokens += input.projectedTokens ?? 0;
+      accumulator.lastUpdatedAt = nowIso();
+    }
 
     return {
       allowed,
@@ -214,6 +232,8 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     const previousCost = accumulator.accumulatedCostUsd;
     const previousTokens = accumulator.accumulatedTokens;
 
+    accumulator.pendingProjectedCostUsd = Math.max(0, accumulator.pendingProjectedCostUsd - input.actualCostUsd);
+    accumulator.pendingProjectedTokens = Math.max(0, accumulator.pendingProjectedTokens - (input.tokens ?? 0));
     accumulator.accumulatedCostUsd += input.actualCostUsd;
     accumulator.accumulatedTokens += input.tokens ?? 0;
     accumulator.lastUpdatedAt = nowIso();
@@ -236,23 +256,31 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     }
 
     // Check if threshold was crossed
-    const thresholdRatio = policy.limitCostUsd
-      ? accumulator.accumulatedCostUsd / policy.limitCostUsd
-      : 0;
+    const usesCostMetric = policy.limitCostUsd != null;
+    const thresholdRatio = usesCostMetric
+      ? accumulator.accumulatedCostUsd / policy.limitCostUsd!
+      : policy.limitTokens != null && policy.limitTokens > 0
+        ? accumulator.accumulatedTokens / policy.limitTokens
+        : 0;
 
-    const warningThresholdCost =
-      (policy.limitCostUsd ?? Infinity) * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
-    const criticalThresholdCost =
-      (policy.limitCostUsd ?? Infinity) * DEFAULT_CRITICAL_THRESHOLD;
-    const limitCostUsd = policy.limitCostUsd ?? Infinity;
+    const warningThresholdBoundary = usesCostMetric
+      ? policy.limitCostUsd! * (policy.warningThreshold ?? this.config.defaultWarningThreshold)
+      : (policy.limitTokens ?? Infinity) * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
+    const criticalThresholdBoundary = usesCostMetric
+      ? policy.limitCostUsd! * DEFAULT_CRITICAL_THRESHOLD
+      : (policy.limitTokens ?? Infinity) * DEFAULT_CRITICAL_THRESHOLD;
+    const breachBoundary = usesCostMetric ? policy.limitCostUsd! : (policy.limitTokens ?? Infinity);
 
-    const wasWarning = previousCost >= warningThresholdCost;
+    const previousMetricValue = usesCostMetric ? previousCost : previousTokens;
+    const currentMetricValue = usesCostMetric ? accumulator.accumulatedCostUsd : accumulator.accumulatedTokens;
+
+    const wasWarning = previousMetricValue >= warningThresholdBoundary;
     const isWarning = thresholdRatio >= (policy.warningThreshold ?? this.config.defaultWarningThreshold);
 
-    const wasCritical = previousCost >= criticalThresholdCost;
+    const wasCritical = previousMetricValue >= criticalThresholdBoundary;
     const isCritical = thresholdRatio >= DEFAULT_CRITICAL_THRESHOLD;
 
-    const wasExceeded = previousCost >= limitCostUsd;
+    const wasExceeded = previousMetricValue >= breachBoundary;
     const isExceeded = thresholdRatio >= 1.0;
 
     // Emit events if thresholds were crossed (order matters: exceeded > critical > warning)
@@ -266,6 +294,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         limitCostUsd: policy.limitCostUsd ?? null,
         accumulatedTokens: accumulator.accumulatedTokens,
         limitTokens: policy.limitTokens ?? null,
+        thresholdMetric: usesCostMetric ? "cost_usd" : "tokens",
         periodStart: accumulator.periodStart,
         periodEnd: accumulator.periodEnd,
         tenantId: input.tenantId ?? null,
@@ -284,6 +313,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         limitCostUsd: policy.limitCostUsd ?? null,
         accumulatedTokens: accumulator.accumulatedTokens,
         limitTokens: policy.limitTokens ?? null,
+        thresholdMetric: usesCostMetric ? "cost_usd" : "tokens",
         periodStart: accumulator.periodStart,
         periodEnd: accumulator.periodEnd,
         tenantId: input.tenantId ?? null,
@@ -306,6 +336,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         limitCostUsd: policy.limitCostUsd ?? null,
         accumulatedTokens: accumulator.accumulatedTokens,
         limitTokens: policy.limitTokens ?? null,
+        thresholdMetric: usesCostMetric ? "cost_usd" : "tokens",
         periodStart: accumulator.periodStart,
         periodEnd: accumulator.periodEnd,
         tenantId: input.tenantId ?? null,
@@ -336,6 +367,8 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         scopeId: existing.scopeId,
         accumulatedCostUsd: 0,
         accumulatedTokens: 0,
+        pendingProjectedCostUsd: 0,
+        pendingProjectedTokens: 0,
         periodStart: nowIso(),
         periodEnd: existing.periodEnd, // Keep same period end
         lastUpdatedAt: nowIso(),
@@ -366,7 +399,9 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       case "pack":
         return this.config.packBudgetPolicies[scopeId] ?? null;
       case "step":
-        // Step-level uses tenant policy
+        if (this.config.stepBudgetPolicies[scopeId]) {
+          return this.config.stepBudgetPolicies[scopeId] ?? null;
+        }
         if (tenantId) {
           return this.config.tenantBudgetPolicies[tenantId] ?? null;
         }
@@ -393,6 +428,8 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         scopeId: policy.scopeId,
         accumulatedCostUsd: 0,
         accumulatedTokens: 0,
+        pendingProjectedCostUsd: 0,
+        pendingProjectedTokens: 0,
         periodStart: now,
         periodEnd: this.calculatePeriodEnd(now, policy.period),
         lastUpdatedAt: now,
@@ -405,6 +442,8 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     if (now > accumulator.periodEnd) {
       accumulator.accumulatedCostUsd = 0;
       accumulator.accumulatedTokens = 0;
+      accumulator.pendingProjectedCostUsd = 0;
+      accumulator.pendingProjectedTokens = 0;
       accumulator.periodStart = accumulator.periodEnd;
       accumulator.periodEnd = this.calculatePeriodEnd(now, policy.period);
     }
@@ -464,6 +503,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     limitCostUsd: number | null;
     accumulatedTokens: number;
     limitTokens: number | null;
+    thresholdMetric: "cost_usd" | "tokens";
     periodStart: string;
     periodEnd: string;
     tenantId: string | null;
@@ -472,6 +512,9 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     stepId: string | null;
     actions: CostAlertAction[];
   }): void {
+    if (!this.shouldEmitAlert(input.scope, input.scopeId, input.alertLevel, input.periodStart)) {
+      return;
+    }
     const event: CostThresholdExceededEvent = {
       eventType: "cost.threshold.exceeded",
       eventTier: this.getEventTier(input.alertLevel),
@@ -483,6 +526,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       limitCostUsd: input.limitCostUsd,
       accumulatedTokens: input.accumulatedTokens,
       limitTokens: input.limitTokens,
+      thresholdMetric: input.thresholdMetric,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
       triggeredAt: nowIso(),
@@ -522,7 +566,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     try {
       this.store.event.insertEvent({
         id: newId("evt"),
-        taskId: event.taskId ?? "system",
+        taskId: event.taskId ?? null,
         executionId: event.executionId ?? null,
         eventType: event.eventType,
         eventTier: event.eventTier,
@@ -569,25 +613,51 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         currency: "USD",
         cached: input.cached ?? false,
       };
+      const serialized = JSON.stringify(record);
+      const artifactId = newId("artifact");
+      const checksum = createHash("sha256").update(serialized).digest("hex");
+      if (input.taskId == null) {
+        return;
+      }
 
       // Store in artifact for retrieval
       // The artifact store can be queried to build cost reports
       this.store.artifact.insertArtifact({
-        artifactId: record.recordId,
-        taskId: input.taskId ?? "system",
+        artifactId,
+        taskId: input.taskId,
         executionId: input.executionId ?? null,
         stepId: input.stepId,
         kind: "step_usage_record",
-        storagePath: `step-usage/${record.recordId}.json`,
+        storagePath: `step-usage/${input.stepId}/${record.recordId}.json`,
         fileName: `step-usage-${input.stepId}-${record.timestamp}.json`,
         mimeType: "application/json",
-        sizeBytes: 0,
-        checksum: null,
+        sizeBytes: Buffer.byteLength(serialized, "utf8"),
+        checksum,
         lineageJson: null,
         createdAt: record.timestamp,
       });
     } catch {
       // Don't fail if step recording fails
     }
+  }
+
+  private shouldEmitAlert(
+    scope: BudgetScope,
+    scopeId: string,
+    alertLevel: CostAlertLevel,
+    periodStart: string,
+  ): boolean {
+    const alertKey = `${scope}:${scopeId}:${alertLevel}`;
+    const lastTriggeredAt = this.lastAlertByKey.get(alertKey);
+    const now = Date.now();
+    if (lastTriggeredAt != null) {
+      const lastMs = new Date(lastTriggeredAt).getTime();
+      const periodMs = new Date(periodStart).getTime();
+      if (lastMs >= periodMs && now - lastMs < this.config.minAlertIntervalMs) {
+        return false;
+      }
+    }
+    this.lastAlertByKey.set(alertKey, new Date(now).toISOString());
+    return true;
   }
 }

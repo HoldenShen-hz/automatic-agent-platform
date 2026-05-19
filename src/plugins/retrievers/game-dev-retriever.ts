@@ -9,6 +9,10 @@
 
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 
+export interface GameDevRetrieverPluginOptions {
+  readonly healthCheck?: () => boolean | Promise<boolean>;
+}
+
 /**
  * Build a search query from the intent and context.
  * Game Dev queries prioritize Unity projects, build outputs, and design docs.
@@ -28,6 +32,12 @@ function buildQuery(intent: string, context: Record<string, unknown>): string {
 }
 
 export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
+  return createGameDevRetrieverPluginWithOptions();
+}
+
+export function createGameDevRetrieverPluginWithOptions(
+  options: GameDevRetrieverPluginOptions = {},
+): DomainRetrieverPlugin {
   return {
     pluginId: "plugin.gamedev.retriever",
     domainId: "gamedev",
@@ -37,7 +47,7 @@ export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
       // No-op: knowledge plane is available immediately
     },
     async healthCheck() {
-      return true;
+      return options.healthCheck?.() ?? false;
     },
     async shutdown() {
       return undefined;
@@ -49,7 +59,7 @@ export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:gamedev/projects?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Unity project search: "${searchQuery}" — fetched from gamedev/projects namespace`,
-          score: 0.95,
+          score: Math.min(0.97, 0.7 + Math.min(searchQuery.length / 240, 0.18)),
           namespace: "gamedev/projects",
           chunkId: `project:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/projects/search`,
@@ -58,7 +68,7 @@ export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:gamedev/builds?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Build output for: "${searchQuery}" — fetched from gamedev/builds namespace`,
-          score: 0.88,
+          score: Math.min(0.94, 0.62 + Math.min(Object.keys(query.context).length * 0.06, 0.2)),
           namespace: "gamedev/builds",
           chunkId: `build:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/builds/search`,
@@ -67,7 +77,7 @@ export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:gamedev/design_docs?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Game design doc for: "${searchQuery}" — fetched from gamedev/design_docs namespace`,
-          score: 0.82,
+          score: Math.min(0.9, 0.58 + Math.min(query.intent.length / 200, 0.18)),
           namespace: "gamedev/design_docs",
           chunkId: `design:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/design_docs/search`,
@@ -76,7 +86,7 @@ export function createGameDevRetrieverPlugin(): DomainRetrieverPlugin {
         {
           knowledgeRef: `knowledge:gamedev/assets?query=${encodeURIComponent(searchQuery)}` as string,
           snippet: `Asset reference for: "${searchQuery}" — fetched from gamedev/assets namespace`,
-          score: 0.75,
+          score: Math.min(0.86, 0.54 + Math.min(query.tokenBudget / 4000, 0.18)),
           namespace: "gamedev/assets",
           chunkId: `asset:${encodeURIComponent(searchQuery)}`,
           documentId: `gamedev/assets/search`,

@@ -202,6 +202,7 @@ function scoreCapability(score: CapabilityTrustScore): number {
  * Autonomy level order (index 0 = lowest, higher = more autonomous)
  */
 const AUTONOMY_LEVEL_ORDER: readonly AutonomyLevel[] = [
+  "frozen",
   "suggestion",
   "supervised",
   "semi_auto",

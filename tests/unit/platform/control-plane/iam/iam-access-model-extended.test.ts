@@ -86,6 +86,8 @@ test("capabilitiesForRole agent_runtime has STANDARD_CAPABILITIES", () => {
   assert.ok(caps.includes("model:invoke"));
   assert.ok(caps.includes("tool:invoke"));
   assert.ok(caps.includes("network:access"));
+  assert.ok(!caps.includes("fs:write"));
+  assert.ok(!caps.includes("exec:command"));
 });
 
 // ============================================================================
@@ -197,9 +199,7 @@ test("resolvePrincipalAccessProfile filters capabilities to only those granted b
     capabilities: ["tool:invoke", "network:access"], // requesting capabilities viewer doesn't have
   });
 
-  // Should have no capabilities since viewer has none and we provided capabilities
-  // But since we provided capabilities, they're used directly
-  assert.ok(!profile.capabilities.includes("model:invoke"));
+  assert.deepEqual(profile.capabilities, []);
 });
 
 test("resolvePrincipalAccessProfile includes capabilities from roles", () => {
@@ -222,6 +222,18 @@ test("resolvePrincipalAccessProfile for plugin principal type", () => {
   assert.deepEqual(profile.principalType, "plugin");
   assert.deepEqual(profile.roles, ["plugin_runtime"]);
   assert.ok(profile.capabilities.includes("network:access"));
+});
+
+test("evaluateAuthorizationContext requires operator role for manual takeover", () => {
+  const denied = evaluateAuthorizationContext({
+    principalType: "worker",
+    roles: ["worker_runtime"],
+    action: "invoke_tool",
+    context: { manualTakeoverActive: true },
+  });
+
+  assert.equal(denied.allowed, false);
+  assert.equal(denied.reasonCode, "policy.context_manual_takeover_operator_required");
 });
 
 // ============================================================================
@@ -373,7 +385,7 @@ test("evaluateAuthorizationContext regulated data with sufficient capabilities",
   assert.equal(decision.requiresApproval, true);
 });
 
-test("evaluateAuthorizationContext manual takeover allows all principals", () => {
+test("evaluateAuthorizationContext manual takeover denies non-operators", () => {
   const decision = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -381,9 +393,8 @@ test("evaluateAuthorizationContext manual takeover allows all principals", () =>
     context: { manualTakeoverActive: true },
   });
 
-  // manualTakeoverActive allows all principals
-  assert.equal(decision.allowed, true);
-  assert.equal(decision.reasonCode, null);
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "policy.context_manual_takeover_operator_required");
 });
 
 test("evaluateAuthorizationContext manual takeover allows operators", () => {

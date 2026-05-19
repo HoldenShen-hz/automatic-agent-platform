@@ -123,7 +123,7 @@ test("ServiceRegistry topologicalSort handles single service", async () => {
   assert.deepEqual(sorted, ["solo"]);
 });
 
-test("ServiceRegistry topologicalSort detects circular dependency warning", async () => {
+test("ServiceRegistry topologicalSort rejects circular dependency graphs", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
   
@@ -136,10 +136,10 @@ test("ServiceRegistry topologicalSort detects circular dependency warning", asyn
     dependsOn: ["circular-a"],
   });
   
-  const sorted = registry.topologicalSort();
-  
-  // Circular deps result in partial sort - not all services included
-  assert.ok(sorted.length < 2);
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry.circular_dependency/,
+  );
 });
 
 test("ServiceRegistry reset clears all services and instances", async () => {

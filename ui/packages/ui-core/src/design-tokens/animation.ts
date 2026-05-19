@@ -46,21 +46,25 @@ export function createKeyframes(name: string, frames: Record<string, string>): s
 
 /** Animation utility object for use in components */
 export const animation = {
-  duration: getAnimationDuration(),
-  easing: getAnimationEasing(),
-
-  /** Duration tokens */
-  durations: {
-    fast: prefersReducedMotion() ? "0ms" : "120ms",
-    normal: prefersReducedMotion() ? "0ms" : "220ms",
-    slow: prefersReducedMotion() ? "0ms" : "400ms",
+  get duration() {
+    return getAnimationDuration();
   },
-
-  /** Easing tokens */
-  easings: {
-    standard: prefersReducedMotion() ? "linear" : "cubic-bezier(0.2, 0.8, 0.2, 1)",
-    enter: prefersReducedMotion() ? "linear" : "cubic-bezier(0, 0, 0.2, 1)",
-    exit: prefersReducedMotion() ? "linear" : "cubic-bezier(0.2, 0, 1, 1)",
+  get easing() {
+    return getAnimationEasing();
+  },
+  get durations() {
+    return {
+      fast: prefersReducedMotion() ? "0ms" : "120ms",
+      normal: prefersReducedMotion() ? "0ms" : "220ms",
+      slow: prefersReducedMotion() ? "0ms" : "400ms",
+    };
+  },
+  get easings() {
+    return {
+      standard: prefersReducedMotion() ? "linear" : "cubic-bezier(0.2, 0.8, 0.2, 1)",
+      enter: prefersReducedMotion() ? "linear" : "cubic-bezier(0, 0, 0.2, 1)",
+      exit: prefersReducedMotion() ? "linear" : "cubic-bezier(0.2, 0, 1, 1)",
+    };
   },
 };
 

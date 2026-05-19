@@ -101,8 +101,6 @@ const ROLE_CAPABILITY_MAP = {
   agent_runtime: [
     "model:invoke",
     "tool:invoke",
-    "fs:write",
-    "exec:command",
     "network:access",
   ],
   service_operator: [
@@ -223,14 +221,15 @@ export function resolvePrincipalAccessProfile(input: {
   capabilities?: readonly PlatformCapability[];
 }): PrincipalAccessProfile {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
-  // R10-01: Use hierarchical capabilitiesForRole to resolve inherited capabilities
   const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
-  const capabilities = dedupeCapabilities(input.capabilities?.length ? input.capabilities : roleCapabilities);
-  return {
+  const requestedCapabilities = input.capabilities?.length
+    ? dedupeCapabilities(input.capabilities.filter((capability) => roleCapabilities.includes(capability)))
+    : roleCapabilities;
+  return Object.freeze({
     principalType: input.principalType,
-    roles,
-    capabilities,
-  };
+    roles: Object.freeze([...roles]),
+    capabilities: Object.freeze([...requestedCapabilities]),
+  });
 }
 
 /**
@@ -249,6 +248,7 @@ export function evaluateAuthorizationContext(input: {
   principalType: PlatformPrincipalType;
   roles: readonly PlatformRole[];
   action: AuthorizationAction;
+  principalTenantId?: string | null;
   context?: AuthorizationContext;
   riskCategory?: string;
   mode?: string;
@@ -267,10 +267,8 @@ export function evaluateAuthorizationContext(input: {
         explainSummary: "Context-aware authorization requires a tenant scope for this action.",
       };
     }
-    // Validate principal's tenant matches context tenant when both are present
-    // This prevents impersonation across tenant boundaries
-    if (context.originalPrincipal?.tenantId != null && context.originalPrincipal.tenantId.length > 0) {
-      if (context.originalPrincipal.tenantId !== context.tenantId) {
+    const principalTenantId = input.principalTenantId ?? context.originalPrincipal?.tenantId ?? null;
+    if (principalTenantId != null && principalTenantId.length > 0 && principalTenantId !== context.tenantId) {
         return {
           allowed: false,
           requiresApproval: false,
@@ -279,11 +277,11 @@ export function evaluateAuthorizationContext(input: {
           constraints: {
             tenantScopeRequired: true,
             requestedTenant: context.tenantId,
-            originalTenant: context.originalPrincipal.tenantId,
+            principalTenantId,
+            originalPrincipal: context.originalPrincipal ?? null,
           },
           explainSummary: "On-behalf-of authorization failed: original principal tenant does not match target tenant.",
         };
-      }
     }
   }
 
@@ -343,12 +341,30 @@ export function evaluateAuthorizationContext(input: {
   }
 
   if (context?.manualTakeoverActive === true) {
+    const operatorRoles: readonly PlatformRole[] = ["platform_admin", "human_operator", "service_operator"];
+    if (!input.roles.some((role) => operatorRoles.includes(role))) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reasonCode: "policy.context_manual_takeover_operator_required",
+        matchedRuleRefs: ["context.manual_takeover_operator_required"],
+        constraints: {
+          manualTakeoverActive: true,
+          requiredRoles: [...operatorRoles],
+          originalPrincipal: context.originalPrincipal ?? null,
+        },
+        explainSummary: "Manual takeover execution requires an operator-grade principal role.",
+      };
+    }
     return {
       allowed: true,
       requiresApproval: false,
       reasonCode: null,
       matchedRuleRefs: ["context.manual_takeover_active"],
-      constraints: { manualTakeoverActive: true },
+      constraints: {
+        manualTakeoverActive: true,
+        originalPrincipal: context.originalPrincipal ?? null,
+      },
       explainSummary: "Manual takeover context recorded for audit and downstream controls.",
     };
   }

@@ -9,7 +9,7 @@ describe("UI tooling regressions", () => {
     expect(resolveMockRequest("/api/v1/approvals")).toEqual(
       expect.arrayContaining([expect.objectContaining({ approvalId: "approval-1", riskLevel: "critical" })]),
     );
-    expect(resolveMockRequest("/api/v1/version")).toEqual(
+    expect(resolveMockRequest("/api/v1/meta/contract-version")).toEqual(
       expect.objectContaining({ contractVersion: "1.0" }),
     );
   });

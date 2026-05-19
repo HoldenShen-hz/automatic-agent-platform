@@ -173,6 +173,7 @@ export function buildJsonResponse(requestId: string, statusCode: number, payload
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-request-id": requestId,
+      "x-trace-id": requestId,
     },
       body: JSON.stringify({ requestId, data: payload }, null, 2),
   };
@@ -194,6 +195,7 @@ export function buildJsonErrorResponse(
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-request-id": requestId,
+      "x-trace-id": traceId,
     },
     body: JSON.stringify({
       requestId,

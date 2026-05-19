@@ -34,6 +34,9 @@ describe("web build config", () => {
     expect(perfBudgetScript).toMatch(/if \(process\.env\.CI === "true"\)/);
     expect(perfBudgetScript).toMatch(/maxEchartsGzBytes/);
     expect(perfBudgetScript).toMatch(/maxMonacoGzBytes/);
+    expect(perfBudgetScript).toMatch(/lighthouseReportPath/);
+    expect(perfBudgetScript).toMatch(/maxFirstContentfulPaintMs/);
+    expect(perfBudgetScript).toMatch(/maxInteractionToNextPaintMs/);
     expect(packageJson.scripts.ci).toMatch(/perf:budget/);
   });
 });

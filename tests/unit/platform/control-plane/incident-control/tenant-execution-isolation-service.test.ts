@@ -183,6 +183,38 @@ test("getIsolationStatus returns correct status", () => {
   }
 });
 
+test("getIsolationStatus returns quota_critical when quota usage is critical but not exceeded", () => {
+  const h = createHarness("aa-isolation-critical-");
+  try {
+    const service = new TenantExecutionIsolationService(h.db, { quotaCriticalPercent: 90 });
+    service.defineQuota({
+      tenantId: "tenant-1",
+      quotaKind: "total_compute_minutes",
+      limitValue: 10,
+      windowSeconds: 60,
+      enforcementAction: "reject",
+      enabled: true,
+    });
+
+    service.recordResourceUsage({
+      executionId: "exec-critical",
+      tenantId: "tenant-1",
+      cpuMs: 9 * 60 * 1000,
+      memoryBytes: 1024,
+      networkBytes: 512,
+      durationMs: 9 * 60 * 1000,
+      recordedAt: new Date().toISOString(),
+    });
+
+    const status = service.getIsolationStatus("tenant-1");
+    assert.equal(status.overallStatus, "quota_critical");
+    assert.equal(status.quotas[0]?.status, "critical");
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
 test("quota usage tracks samples correctly", () => {
   const h = createHarness("aa-usage-");
   try {

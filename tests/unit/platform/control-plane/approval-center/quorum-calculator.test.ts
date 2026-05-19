@@ -259,16 +259,29 @@ test("mergeVotes adds new vote when approver not voted", () => {
   assert.equal(merged.length, 2);
 });
 
-test("mergeVotes updates existing vote when approver already voted", () => {
+test("mergeVotes rejects duplicate immutable votes", () => {
   const existing: QuorumVote[] = [
     makeVote("approver-1", VoteType.APPROVE),
   ];
   const newVote = makeVote("approver-1", VoteType.REJECT);
 
-  const merged = mergeVotes(existing, newVote);
+  assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
+});
 
-  assert.equal(merged.length, 1);
-  assert.equal(merged[0]!.voteType, VoteType.REJECT);
+test("calculateQuorumStatus denies expired abstain-only vote set", () => {
+  const votes: QuorumVote[] = [
+    makeVote("approver-1", VoteType.ABSTAIN),
+    makeVote("approver-2", VoteType.ABSTAIN),
+  ];
+
+  const status = calculateQuorumStatus(
+    votes,
+    { minApprovals: 2, minRejectionsToDeny: 2, votingWindowMs: 1000, totalApprovers: 2 },
+    new Date(Date.now() - 2000).toISOString(),
+    new Date().toISOString(),
+  );
+
+  assert.equal(status.isDenied, true);
 });
 
 test("createVote creates vote with correct fields", () => {

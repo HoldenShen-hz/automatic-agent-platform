@@ -173,6 +173,38 @@ export function Header({ title, subtitle, leftAction, rightAction }: HeaderProps
   );
 }
 
+export function GestureTouchable(props: TouchableOpacityProps): React.JSX.Element {
+  return <TouchableOpacity activeOpacity={0.7} {...props} />;
+}
+
+export function PushNotification({ title, body }: { readonly title: string; readonly body: string }): React.JSX.Element {
+  return (
+    <View style={styles.notificationCard}>
+      <Text style={styles.notificationTitle}>{title}</Text>
+      <Text style={styles.notificationBody}>{body}</Text>
+    </View>
+  );
+}
+
+export function BiometricAuth({ enabled, label }: { readonly enabled: boolean; readonly label?: string }): React.JSX.Element {
+  return (
+    <View style={styles.biometricCard}>
+      <Text style={styles.biometricTitle}>{label ?? "Biometric Authentication"}</Text>
+      <Text style={styles.biometricStatus}>{enabled ? "Enabled" : "Disabled"}</Text>
+    </View>
+  );
+}
+
+export function MobileWidget({ title, value, detail }: { readonly title: string; readonly value: string; readonly detail?: string }): React.JSX.Element {
+  return (
+    <View style={styles.widgetCard}>
+      <Text style={styles.widgetTitle}>{title}</Text>
+      <Text style={styles.widgetValue}>{value}</Text>
+      {detail != null && <Text style={styles.widgetDetail}>{detail}</Text>}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   button: {
     borderRadius: 8,
@@ -355,5 +387,55 @@ const styles = StyleSheet.create({
   headerAction: {
     fontSize: 16,
     color: "#0066CC",
+  },
+  notificationCard: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#FFF8E1",
+  },
+  notificationTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#6B4F00",
+  },
+  notificationBody: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#7A6412",
+  },
+  biometricCard: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#EEF7F1",
+  },
+  biometricTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F5132",
+  },
+  biometricStatus: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#146C43",
+  },
+  widgetCard: {
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: "#F6F7FB",
+  },
+  widgetTitle: {
+    fontSize: 13,
+    color: "#475467",
+  },
+  widgetValue: {
+    marginTop: 6,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#101828",
+  },
+  widgetDetail: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#667085",
   },
 });

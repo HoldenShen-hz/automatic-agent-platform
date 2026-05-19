@@ -475,6 +475,38 @@ test("service transitions to follower state when leadership lost", async () => {
   assert.ok(["candidate", "follower", "leader", "shutdown"].includes(service.getState()));
 });
 
+test("attemptElection serializes overlapping election attempts", async () => {
+  const coordinator = createMockCoordinator();
+  const { options } = createTestOptions(coordinator);
+  const service = new LeaderElectionService(coordinator, options);
+  let releaseLeadershipQuery: (() => void) | null = null;
+  const leadershipQueryBlocked = new Promise<void>((resolve) => {
+    releaseLeadershipQuery = resolve;
+  });
+
+  coordinator.queryLeadership = async (nodeId: string) => {
+    coordinator.queryLeadershipCalls.push({ nodeId });
+    await leadershipQueryBlocked;
+    return {
+      isLeader: false,
+      leaderNodeId: null,
+      epoch: 0,
+      fencingToken: 0,
+      expiresAt: null,
+      isExpired: false,
+    };
+  };
+
+  const firstAttempt = (service as any).attemptElection() as Promise<void>;
+  const secondAttempt = (service as any).attemptElection() as Promise<void>;
+
+  releaseLeadershipQuery?.();
+  await Promise.all([firstAttempt, secondAttempt]);
+
+  assert.equal(coordinator.queryLeadershipCalls.length, 1);
+  assert.equal(coordinator.acquireLeadershipCalls.length, 1);
+});
+
 // ---------------------------------------------------------------------------
 // Tests: Max Election Attempts
 // ---------------------------------------------------------------------------

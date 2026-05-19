@@ -1,7 +1,7 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 // R8-25 FIX: Plugin signature verification for secure plugin loading
 
@@ -9,6 +9,8 @@ export interface GithubAdapterPluginOptions {
   apiBaseUrl?: string;
   policy?: NetworkEgressPolicyService;
   signatureKey?: string;
+  defaultTimeoutMs?: number;
+  defaultRateLimitPerMinute?: number;
 }
 
 /**
@@ -41,12 +43,13 @@ export function verifyPluginSignature(
   }
 
   try {
-    const expectedSignature = createHash("sha256")
+    const expectedSignature = createHmac("sha256", secretKey)
       .update(`${pluginId}:${manifestHash}`)
-      .update(secretKey)
       .digest("hex");
 
-    if (signature !== expectedSignature) {
+    const provided = Buffer.from(signature, "hex");
+    const expected = Buffer.from(expectedSignature, "hex");
+    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
       return { valid: false, error: "plugin_signature.invalid", verifiedAt };
     }
 
@@ -101,6 +104,8 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
     mode: "enforce",
     allowedDomains: ["api.github.com", "github.com"],
   });
+  const defaultTimeoutMs = options.defaultTimeoutMs ?? 10_000;
+  const defaultRateLimitPerMinute = options.defaultRateLimitPerMinute ?? 60;
   let credentialFingerprint: string | null = null;
 
   return {
@@ -144,16 +149,34 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
           },
         );
       }
+      const idempotencyKey = action === "get_file" ? null : createHash("sha256")
+        .update(`${action}:${repository}:${JSON.stringify(params)}`)
+        .digest("hex");
       return {
         adapter: "github",
         action,
         repository,
         endpoint,
         credentialFingerprint,
+        timeoutMs: defaultTimeoutMs,
+        rateLimitPerMinute: defaultRateLimitPerMinute,
+        retryPolicy: { maxRetries: 3, backoffMs: 250 },
+        ...(idempotencyKey == null ? {} : { idempotencyKey }),
         payload: buildPayload(action, params),
       };
     },
   };
+}
+
+function encodeRepositoryPath(path: string): string {
+  if (path.trim().length === 0) {
+    throw new Error("github_adapter.missing_path");
+  }
+  const segments = path.split("/");
+  if (segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")) {
+    throw new Error("github_adapter.invalid_path");
+  }
+  return segments.map((segment) => encodeURIComponent(segment)).join("/");
 }
 
 function buildEndpoint(apiBaseUrl: string, action: string, repository: string, params: Record<string, unknown>): string {
@@ -165,7 +188,7 @@ function buildEndpoint(apiBaseUrl: string, action: string, repository: string, p
     case "dispatch_workflow":
       return `${apiBaseUrl}/repos/${repository}/actions/workflows/${requireString(params["workflowId"], "workflowId")}/dispatches`;
     case "get_file":
-      return `${apiBaseUrl}/repos/${repository}/contents/${requireString(params["path"], "path")}`;
+      return `${apiBaseUrl}/repos/${repository}/contents/${encodeRepositoryPath(requireString(params["path"], "path"))}`;
     default:
       return `${apiBaseUrl}/repos/${repository}`;
   }

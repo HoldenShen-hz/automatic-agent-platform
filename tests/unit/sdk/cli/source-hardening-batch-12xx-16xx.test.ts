@@ -30,6 +30,23 @@ const todoWriteToolSource = readFileSync(join(root, "src", "platform", "five-pla
 const gcpSecretProviderSource = readFileSync(join(root, "src", "platform", "five-plane-control-plane", "iam", "gcp-secret-manager-http-secret-provider.ts"), "utf8");
 const packTestLocalSource = readFileSync(join(root, "src", "sdk", "pack-sdk", "pack-test-local-service.ts"), "utf8");
 const packPluginCompatibilitySource = readFileSync(join(root, "src", "sdk", "pack-sdk", "pack-plugin-compatibility-service.ts"), "utf8");
+const directExecGuardSources = [
+  "src/sdk/cli/dispatch-execution.ts",
+  "src/sdk/cli/doctor.ts",
+  "src/sdk/cli/pack-create.ts",
+  "src/sdk/cli/pack-publish.ts",
+  "src/sdk/cli/pack-test.ts",
+  "src/sdk/cli/pack-validate.ts",
+  "src/sdk/cli/inspect.ts",
+  "src/sdk/cli/evolution.ts",
+  "src/sdk/cli/gateway-targets.ts",
+  "src/sdk/cli/ops-governance.ts",
+  "src/sdk/cli/orphan-cleanup.ts",
+  "src/sdk/cli/phase1b-demo.ts",
+].map((file) => ({
+  file,
+  source: readFileSync(join(root, file), "utf8"),
+}));
 
 test("login and secret command CLIs fail closed on home, encryption, and secret output handling", () => {
   assert.match(loginSource, /function resolveSecureCliHome/);
@@ -77,16 +94,28 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
   assert.equal(packageJson.scripts["test:performance"].includes("build:test"), false);
   assert.equal("migrate:down" in packageJson.scripts, false);
   assert.equal(packageJson.scripts["secret-commands"].includes("secret-commands.js"), true);
+  assert.equal(packageJson.scripts["pack-create"].includes("pack-create.js"), true);
+  assert.equal(packageJson.scripts["pack-publish"].includes("pack-publish.js"), true);
+  assert.equal(packageJson.scripts["pack-test"].includes("pack-test.js"), true);
+  assert.equal(packageJson.scripts["pack-validate"].includes("pack-validate.js"), true);
   assert.equal(packageJson.scripts["aa:dev"], "node --import tsx src/sdk/cli/aa.ts");
+  assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-create.ts"), "utf8"), /npm run pack-create --/);
+  assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-publish.ts"), "utf8"), /npm run pack-publish --/);
+  assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-test.ts"), "utf8"), /npm run pack-test --/);
+  assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-validate.ts"), "utf8"), /npm run pack-validate --/);
   assert.match(aaSource, /sourceExtension === "\.ts"/);
   assert.match(aaSource, /"--import", "tsx"/);
+  for (const entry of directExecGuardSources) {
+    assert.match(entry.source, /pathToFileURL/);
+    assert.match(entry.source, /import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
+  }
 });
 
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
   assert.equal(tsconfig.compilerOptions?.tsBuildInfoFile, ".cache/tsconfig.tsbuildinfo");
   assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "eslint.config.js"]);
   assert.equal(packageJson.scripts["typecheck"].includes("tsconfig.scripts.json"), true);
-  assert.equal(packageJson.scripts["lint"], "eslint src scripts eslint.config.js");
+  assert.equal(packageJson.scripts["lint"], "eslint . --ext .ts,.js,.mjs,.tsx");
   assert.match(rootEslintSource, /files: \["src\/\*\*\/\*\.ts", "scripts\/\*\*\/\*\.mjs"\]/);
   assert.match(uiEslintSource, /"scripts\/\*\*\/\*\.mjs"/);
   assert.match(uiEslintSource, /"\*\.config\.\{ts,mjs,js\}"/);

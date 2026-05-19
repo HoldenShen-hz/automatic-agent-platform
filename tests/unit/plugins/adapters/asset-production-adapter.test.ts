@@ -29,7 +29,7 @@ test("AssetProductionAdapter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("AssetProductionAdapter.healthCheck returns true", async () => {
+test("AssetProductionAdapter.healthCheck evaluates Figma API and CDN egress", async () => {
   const adapter = createAssetProductionAdapterPlugin();
   assert.ok(adapter.healthCheck !== undefined);
   const result = await adapter.healthCheck();

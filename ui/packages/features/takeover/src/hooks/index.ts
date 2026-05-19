@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { updateTask, fetchWorkflowRunSteps } from "@aa/shared-api-client";
-import { useRestClient, useTasksQuery } from "@aa/shared-state";
+import { useRestClient, useTasksQuery, useWsClient } from "@aa/shared-state";
 
 const STORAGE_KEY = "aa-takeover-snapshots";
 const MAX_SNAPSHOTS = 20;
@@ -56,11 +56,12 @@ function writeSnapshots(snapshots: readonly TakeoverSnapshot[]): void {
 
 export function useTakeoverVm(): TakeoverVm {
   const client = useRestClient();
+  const wsClient = useWsClient();
   const tasks = useTasksQuery().data ?? [];
   const [currentSnapshot, setCurrentSnapshot] = useState<TakeoverSnapshot | null>(() => readSnapshots()[0] ?? null);
   const [ownershipHistory, setOwnershipHistory] = useState<readonly TakeoverHistoryEntry[]>([]);
 
-  async function claimOwnership(taskId: string, owner: string): Promise<void> {
+  const claimOwnership = useCallback(async (taskId: string, owner: string): Promise<void> => {
     const task = tasks.find((candidate) => candidate.id === taskId);
     await updateTask(client, taskId, { owner, status: "running" });
     const steps = task?.currentStep == null ? [] : await fetchWorkflowRunSteps(client, task.currentStep);
@@ -75,9 +76,9 @@ export function useTakeoverVm(): TakeoverVm {
     writeSnapshots(nextSnapshots);
     setCurrentSnapshot(snapshot);
     setOwnershipHistory((entries) => [{ taskId, owner, action: "claim", recordedAt: snapshot.capturedAt }, ...entries]);
-  }
+  }, [client, tasks]);
 
-  async function transferOwnership(taskId: string, owner: string, reason: string): Promise<void> {
+  const transferOwnership = useCallback(async (taskId: string, owner: string, reason: string): Promise<void> => {
     await updateTask(client, taskId, {
       owner,
       status: "running",
@@ -94,30 +95,49 @@ export function useTakeoverVm(): TakeoverVm {
       setCurrentSnapshot(transferSnapshot);
     }
     setOwnershipHistory((entries) => [{ taskId, owner, action: `transfer:${reason}`, recordedAt: new Date().toISOString() }, ...entries]);
-  }
+  }, [client, currentSnapshot]);
 
-  async function takeoverCurrentTask(owner: string): Promise<void> {
+  const takeoverCurrentTask = useCallback(async (owner: string): Promise<void> => {
     const firstTask = tasks[0];
     if (firstTask == null) {
       return;
     }
     await claimOwnership(firstTask.id, owner);
-  }
+  }, [claimOwnership, tasks]);
 
-  function annotateCurrentSnapshot(note: string, owner: string): void {
+  const annotateCurrentSnapshot = useCallback((note: string, owner: string): void => {
     if (currentSnapshot == null) {
       return;
     }
     setOwnershipHistory((entries) => [{ taskId: currentSnapshot.taskId, owner, action: `annotate:${note}`, recordedAt: new Date().toISOString() }, ...entries]);
-  }
+  }, [currentSnapshot]);
 
-  async function resumeAutomaticExecution(owner: string): Promise<void> {
+  const resumeAutomaticExecution = useCallback(async (owner: string): Promise<void> => {
     if (currentSnapshot == null) {
       return;
     }
     await updateTask(client, currentSnapshot.taskId, { owner, status: "running" });
     setOwnershipHistory((entries) => [{ taskId: currentSnapshot.taskId, owner, action: "resume", recordedAt: new Date().toISOString() }, ...entries]);
-  }
+  }, [client, currentSnapshot]);
+
+  useEffect(() => {
+    return wsClient.subscribe("tasks", (event) => {
+      if (!event.type.startsWith("task.")) {
+        return;
+      }
+      const payload = event.payload as { taskId?: string; owner?: string; status?: string; steps?: readonly unknown[] };
+      if (payload.taskId == null || currentSnapshot?.taskId !== payload.taskId) {
+        return;
+      }
+      setCurrentSnapshot((snapshot) => snapshot == null ? snapshot : {
+        ...snapshot,
+        owner: payload.owner ?? snapshot.owner,
+        status: payload.status ?? snapshot.status,
+        steps: payload.steps ?? snapshot.steps,
+        capturedAt: new Date().toISOString(),
+      });
+    });
+  }, [currentSnapshot?.taskId, wsClient]);
 
   return useMemo(() => ({
     items: [

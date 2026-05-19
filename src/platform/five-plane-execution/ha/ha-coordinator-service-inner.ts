@@ -76,7 +76,7 @@ export class HaCoordinatorService {
     this.db.connection.exec(HA_COORDINATOR_DDL);
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
-    this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
+    this.fencingTokenCounter = { value: this.loadLatestFencingToken() };
   }
 
   // ── Node Management ────────────────────────────────────────────────
@@ -355,7 +355,7 @@ export class HaCoordinatorService {
       return {
         renewed: true,
         lease: updatedLease,
-        fencingToken: currentLease.ttlMs, // Return old fencing token - renewal doesn't change it
+        fencingToken: this.getLatestEpoch().fencingToken,
       };
     });
   }
@@ -739,6 +739,16 @@ export class HaCoordinatorService {
   private nextFencingToken(): number {
     this.fencingTokenCounter.value += 1;
     return this.fencingTokenCounter.value;
+  }
+
+  private loadLatestFencingToken(): number {
+    const row = this.db.connection
+      .prepare("SELECT MAX(fencing_token) AS fencingToken FROM leadership_epochs")
+      .get() as { fencingToken?: number | null } | undefined;
+    return Math.max(
+      EPOCH_FENCING_TOKEN_START,
+      Number(row?.fencingToken ?? EPOCH_FENCING_TOKEN_START) || EPOCH_FENCING_TOKEN_START,
+    );
   }
 
   private recordActionAudit(

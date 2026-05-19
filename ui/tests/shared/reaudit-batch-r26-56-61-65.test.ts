@@ -63,15 +63,10 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
     expect(response).toEqual({ status: 200, data: { ok: true } });
   });
 
-  it("R26-58 turbo config declares hash inputs/outputs/globalDependencies and env passthrough", () => {
-    const turbo = JSON.parse(readFileSync(resolve(process.cwd(), "turbo.json"), "utf8"));
-
-    expect(turbo.globalDependencies).toEqual(expect.arrayContaining(["package-lock.json", "vitest.config.ts"]));
-    expect(turbo.globalEnv).toEqual(expect.arrayContaining(["NODE_ENV", "VITE_API_BASE_URL", "VITE_WS_URL"]));
-    expect(turbo.tasks.build?.inputs?.length).toBeGreaterThan(0);
-    expect(turbo.tasks.build?.outputs?.length).toBeGreaterThan(0);
-    expect(turbo.tasks.test?.inputs?.length).toBeGreaterThan(0);
-    expect(turbo.tasks.test?.outputs?.length).toBeGreaterThan(0);
+  it("R26-58 task stamping no longer depends on a turborepo manifest", () => {
+    expect(() => readFileSync(resolve(process.cwd(), "turbo.json"), "utf8")).toThrow();
+    const source = readFileSync(resolve(process.cwd(), "scripts/run-task-with-stamp.mjs"), "utf8");
+    expect(source).toContain('join(process.cwd(), ".turbo", "tasks"');
   });
 
   it("R26-59 web vite config uses hidden sourcemaps only for production builds", () => {

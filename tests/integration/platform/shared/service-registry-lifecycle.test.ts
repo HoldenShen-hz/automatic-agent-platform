@@ -111,6 +111,11 @@ test("service-registry-lifecycle: circular dependency detection does not throw",
     // Circular deps may cause errors - this is expected behavior
   }
 
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry.circular_dependency/,
+  );
+
   await registry.reset();
 });
 

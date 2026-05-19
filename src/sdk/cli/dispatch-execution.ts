@@ -29,6 +29,7 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
+import { pathToFileURL } from "node:url";
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadDispatchExecutionCliEnv } from "../../platform/five-plane-control-plane/config-center/runtime-ops-env.js";
 import { ExecutionDispatchService } from "../../platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
@@ -79,4 +80,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

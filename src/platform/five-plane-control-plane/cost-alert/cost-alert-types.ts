@@ -61,6 +61,8 @@ export interface CostAccumulator {
   scopeId: string;
   accumulatedCostUsd: number;
   accumulatedTokens: number;
+  pendingProjectedCostUsd: number;
+  pendingProjectedTokens: number;
   periodStart: Timestamp;
   periodEnd: Timestamp;
   lastUpdatedAt: Timestamp;
@@ -121,6 +123,7 @@ export interface CostThresholdExceededEvent {
   limitCostUsd: number | null;
   accumulatedTokens: number;
   limitTokens: number | null;
+  thresholdMetric: "cost_usd" | "tokens";
   periodStart: Timestamp;
   periodEnd: Timestamp;
   triggeredAt: Timestamp;
@@ -142,7 +145,9 @@ export interface CostAlertConfig {
   platformBudgetPolicy: BudgetPolicy | null;
   tenantBudgetPolicies: Record<string, BudgetPolicy>;
   packBudgetPolicies: Record<string, BudgetPolicy>;
+  stepBudgetPolicies: Record<string, BudgetPolicy>;
   defaultWarningThreshold: number; // Default ratio for new tenants
+  minAlertIntervalMs: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -29,6 +29,8 @@ export interface QuorumConfig {
   minRejectionsToDeny: number;
   /** Time window for voting in milliseconds (optional) */
   votingWindowMs?: number;
+  /** Total configured approvers eligible to vote */
+  totalApprovers?: number;
 }
 
 /**
@@ -130,8 +132,12 @@ export function calculateQuorumStatus(
   const remainingRejectionsNeeded = Math.max(0, config.minRejectionsToDeny - rejectionsReceived);
 
   // Determine quorum and denial status
+  const allEligibleVotesConsumed = config.totalApprovers !== undefined
+    && uniqueApprovers.size >= config.totalApprovers;
   const isQuorumMet = approvalsReceived >= config.minApprovals;
-  const isDenied = rejectionsReceived >= config.minRejectionsToDeny;
+  const isDenied = rejectionsReceived >= config.minRejectionsToDeny
+    || (isVotingWindowExpired && !isQuorumMet)
+    || (allEligibleVotesConsumed && !isQuorumMet);
 
   return {
     isQuorumMet,
@@ -181,7 +187,7 @@ export function getRemainingVotes(status: QuorumStatus): { approvals: number; re
 
 /**
  * Merges a new vote with existing votes.
- * If the approver has already voted, updates their vote instead of adding.
+ * Votes are immutable once cast.
  *
  * @param existing - Existing votes
  * @param newVote - New vote to add
@@ -193,10 +199,7 @@ export function mergeVotes(existing: QuorumVote[], newVote: QuorumVote): QuorumV
   );
 
   if (existingIndex >= 0) {
-    // Update existing vote
-    const updated = [...existing];
-    updated[existingIndex] = newVote;
-    return updated;
+    throw new Error(`Approver ${newVote.approverId} has already cast an immutable vote`);
   }
 
   return [...existing, newVote];
@@ -242,10 +245,11 @@ export function determineFinalStatus(
   status: QuorumStatus,
   config: QuorumConfig,
 ): "approved" | "rejected" | "pending" {
+  void config;
   if (status.isQuorumMet) {
     return "approved";
   }
-  if (status.isDenied) {
+  if (status.isDenied || (status.isVotingWindowExpired && !status.isQuorumMet)) {
     return "rejected";
   }
   return "pending";

@@ -14,6 +14,7 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
 import type { SandboxModeLike } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { isDeepStrictEqual } from "node:util";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -103,6 +104,7 @@ export interface SubWorkflowExecutorOptions {
   defaultTimeout?: number;
   maxNestedDepth?: number;
   enableCheckpointing?: boolean;
+  workflowTimeoutMs?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,8 +140,6 @@ interface CheckpointRecord {
   state: Record<string, unknown>;
 }
 
-let legacyCreatedPauseConsumed = false;
-
 function canonicalStepId(input: { readonly nodeId?: string | null; readonly stepId: string }): string {
   return input.nodeId?.trim() || input.stepId;
 }
@@ -152,6 +152,8 @@ export class SubWorkflowExecutor {
   private readonly defaultTimeout: number;
   private readonly maxNestedDepth: number;
   private readonly enableCheckpointing: boolean;
+  private readonly workflowTimeoutMs: number;
+  private legacyCreatedPauseConsumed = false;
   private readonly executions = new Map<string, WorkflowExecution>();
   private readonly executionResults: SubWorkflowExecutionResult[] = [];
 
@@ -159,6 +161,7 @@ export class SubWorkflowExecutor {
     this.defaultTimeout = options.defaultTimeout ?? 30000;
     this.maxNestedDepth = options.maxNestedDepth ?? 3;
     this.enableCheckpointing = options.enableCheckpointing ?? true;
+    this.workflowTimeoutMs = options.workflowTimeoutMs ?? 5 * 60 * 1000;
   }
 
   // ── Workflow Management ───────────────────────────────────────────────────
@@ -263,7 +266,7 @@ export class SubWorkflowExecutor {
       );
     }
 
-    if (execution.status === "completed" || execution.status === "cancelled") {
+    if (execution.status === "completed" || execution.status === "cancelled" || execution.status === "failed") {
       throw new ValidationError(
         "subworkflow_executor.cannot_execute",
         `subworkflow_executor.cannot_execute: Workflow execution ${executionId} cannot be executed (status: ${execution.status})`,
@@ -272,15 +275,19 @@ export class SubWorkflowExecutor {
     }
 
     const startTime = Date.now();
+    this.restoreLatestCheckpoint(execution);
     execution.status = "running";
-    execution.startedAt = nowIso();
+    execution.startedAt ??= nowIso();
 
     try {
-      // Execute steps in dependency order
-      const completedSteps = await this.executeSteps(execution);
+      await this.executeWithWorkflowTimeout(() => this.executeSteps(execution));
 
-      // Mark workflow as completed
-      execution.status = "completed";
+      execution.status = execution.stepOrder.every((nodeId) => {
+        const status = execution.steps.get(nodeId)?.status;
+        return status === "completed" || status === "skipped" || status === "rolled_back";
+      })
+        ? "completed"
+        : "failed";
       execution.completedAt = nowIso();
 
       // Create final checkpoint if enabled
@@ -321,9 +328,9 @@ export class SubWorkflowExecutor {
     const allowLegacyCreatedPause =
       execution.status === "created"
       && execution.allowCreatedPause
-      && !legacyCreatedPauseConsumed;
+      && !this.legacyCreatedPauseConsumed;
     if (allowLegacyCreatedPause) {
-      legacyCreatedPauseConsumed = true;
+      this.legacyCreatedPauseConsumed = true;
     }
     if (execution.status !== "running" && !allowLegacyCreatedPause) {
       throw new ValidationError(
@@ -565,6 +572,12 @@ export class SubWorkflowExecutor {
       const stepDef = stepDefMap.get(nodeId);
 
       if (!stepDef) continue;
+      if (step.status === "completed" || step.status === "skipped" || step.status === "rolled_back") {
+        if (step.status === "completed") {
+          completedSteps.push(nodeId);
+        }
+        continue;
+      }
 
       // Check dependencies
       if (stepDef.dependsOn && stepDef.dependsOn.length > 0) {
@@ -584,7 +597,7 @@ export class SubWorkflowExecutor {
       // Check conditional
       if (stepDef.conditional) {
         const condStep = execution.steps.get(this.resolveDefinitionReference(execution, stepDef.conditional.when));
-        if (condStep?.output !== stepDef.conditional.equals) {
+        if (!isDeepStrictEqual(condStep?.output, stepDef.conditional.equals)) {
           step.status = "skipped";
           step.output = { skipped: true, reason: "Conditional not met" };
           continue;
@@ -593,7 +606,8 @@ export class SubWorkflowExecutor {
 
       await this.executeSingleStep(execution, step);
 
-      if (step.status === "completed") {
+      const finalStatus = step.status as WorkflowStepStatus;
+      if (finalStatus === "completed") {
         completedSteps.push(nodeId);
 
         // Create checkpoint at interval
@@ -604,9 +618,12 @@ export class SubWorkflowExecutor {
         ) {
           this.createCheckpoint(execution);
         }
-      } else if (step.status === "failed") {
-        // Stop execution on failure
-        break;
+      } else if (finalStatus === "failed") {
+        throw new ValidationError(
+          "subworkflow_executor.step_failed",
+          `subworkflow_executor.step_failed: Step ${step.nodeId} failed`,
+          { details: { executionId: execution.executionId, stepId: step.nodeId, error: step.error ?? null } },
+        );
       }
     }
 
@@ -672,6 +689,7 @@ export class SubWorkflowExecutor {
         execution.stepOrder.map((id) => [id, execution.steps.get(id)?.status]),
       ),
       rollbackHistory: execution.rollbackHistory,
+      steps: execution.stepOrder.map((id) => execution.steps.get(id)),
     };
 
     const record: CheckpointRecord = {
@@ -698,10 +716,13 @@ export class SubWorkflowExecutor {
       const step = execution.steps.get(entry.nodeId);
       if (!step) continue;
 
-      // Simulate rollback action
-      await this.simulateRollback(entry);
-
-      step.status = "rolled_back";
+      try {
+        await this.simulateRollback(entry);
+        step.status = "rolled_back";
+      } catch (error) {
+        step.status = "failed";
+        step.error = error instanceof Error ? error.message : String(error);
+      }
     }
   }
 
@@ -764,6 +785,55 @@ export class SubWorkflowExecutor {
 
   private resolveDefinitionReference(execution: WorkflowExecution, reference: string): string {
     return this.resolveStepLookupKey(execution, reference);
+  }
+
+  private async executeWithWorkflowTimeout<T>(operation: () => Promise<T>): Promise<T> {
+    let timeoutHandle: NodeJS.Timeout | null = null;
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<T>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            reject(new ValidationError(
+              "subworkflow_executor.workflow_timeout",
+              "subworkflow_executor.workflow_timeout: Workflow execution exceeded timeout",
+              { details: { workflowTimeoutMs: this.workflowTimeoutMs } },
+            ));
+          }, this.workflowTimeoutMs);
+          timeoutHandle.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  private restoreLatestCheckpoint(execution: WorkflowExecution): void {
+    const latest = execution.checkpoints.at(-1);
+    if (!latest) {
+      return;
+    }
+    const state = latest.state;
+    if (typeof state["status"] === "string") {
+      execution.status = state["status"] as WorkflowStatus;
+    }
+    const stepStatuses = state["stepStatuses"];
+    if (stepStatuses != null && typeof stepStatuses === "object" && !Array.isArray(stepStatuses)) {
+      const statusMap = stepStatuses as Record<string, WorkflowStepStatus>;
+      for (const nodeId of execution.stepOrder) {
+        const step = execution.steps.get(nodeId);
+        const status = statusMap[nodeId];
+        if (step && status) {
+          step.status = status;
+        }
+      }
+    }
+    const rollbackHistory = state["rollbackHistory"];
+    if (Array.isArray(rollbackHistory)) {
+      execution.rollbackHistory = rollbackHistory as RollbackHistoryEntry[];
+    }
   }
 }
 

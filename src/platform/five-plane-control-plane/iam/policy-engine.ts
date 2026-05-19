@@ -73,6 +73,7 @@ import {
 } from "./policy-engine-support.js";
 export class PolicyEngine {
   private readonly budgetGuard = new BudgetGuard();
+  private readonly decisionCacheMaxEntries: number;
 
   /** R33-09: Cached fingerprint of the last known policy state */
   private _currentFingerprint: string = "";
@@ -85,6 +86,7 @@ export class PolicyEngine {
 
   public constructor(private readonly options: PolicyEngineOptions) {
     this.decisionCacheTtlMs = options.decisionCacheTtlMs ?? 5_000;
+    this.decisionCacheMaxEntries = options.decisionCacheMaxEntries ?? 500;
     // Initialize fingerprint on construction
     this._currentFingerprint = this.computeFingerprint(options.budgetPolicy);
   }
@@ -202,12 +204,24 @@ export class PolicyEngine {
     const cacheKey = this.buildCacheKey(request);
     const fingerprint = this.computeFingerprint(this.options.budgetPolicy);
 
+    if (this.decisionCache.has(cacheKey)) {
+      this.decisionCache.delete(cacheKey);
+    }
+
     this.decisionCache.set(cacheKey, {
       value: result,
       cachedAt: Date.now(),
       ttlMs: this.decisionCacheTtlMs,
       policyFingerprint: fingerprint,
     });
+
+    while (this.decisionCache.size > this.decisionCacheMaxEntries) {
+      const oldestKey = this.decisionCache.keys().next().value;
+      if (oldestKey === undefined) {
+        break;
+      }
+      this.decisionCache.delete(oldestKey);
+    }
   }
 
   /**
@@ -217,6 +231,7 @@ export class PolicyEngine {
   private buildCacheKey(request: PolicyDecisionRequest): string {
     return [
       this.getPolicyVersion(),
+      this.options.killSwitchEnabled === true ? "kill:1" : "kill:0",
       request.taskId,
       request.subjectId,
       request.metadata?.tenantId ?? "tenant:none",
@@ -285,6 +300,12 @@ export class PolicyEngine {
     // V-02: Validate subject has required roles and capabilities for the action
     validateSubjectPermissions(input);
     const normalizedMode = normalizePolicyMode(input.mode);
+    const cached = this.getCachedDecision(input);
+    if (cached) {
+      const result = this.cloneCachedDecision(cached, input.decisionId);
+      this.emitAuditEvent(result, input);
+      return result;
+    }
 
     // Step 1: Kill switch check
     if (this.options.killSwitchEnabled) {
@@ -300,6 +321,7 @@ export class PolicyEngine {
         "Action denied because kill switch is active.",
         ["kill_switch"],
       );
+      this.cacheDecision(input, result);
       this.emitAuditEvent(result, input);
       return result;
     }
@@ -327,6 +349,7 @@ export class PolicyEngine {
         "Action denied because task budget would be exceeded.",
         ["budget"],
       );
+      this.cacheDecision(input, result);
       this.emitAuditEvent(result, input);
       return result;
     }
@@ -372,6 +395,7 @@ export class PolicyEngine {
       "Action allowed under current mode and budget constraints.",
       ["budget", "runtime_mode"],
     );
+    this.cacheDecision(input, result);
     this.emitAuditEvent(result, input);
     return result;
   }
@@ -470,8 +494,36 @@ export class PolicyEngine {
       ["risk_category", "budget", "runtime_mode"],
       "Reduce risk or re-run under a stricter approved mode.",
     );
+    this.cacheDecision(input, result);
     this.emitAuditEvent(result, input);
     return result;
+  }
+
+  private cloneCachedDecision(
+    cached: PolicyDecisionResult,
+    decisionId: string,
+  ): PolicyDecisionResult {
+    return {
+      ...cached,
+      ...(cached.explain == null
+        ? {}
+        : {
+            explain: {
+              ...cached.explain,
+              decisionId,
+            },
+          }),
+      ...(cached.auditRecord == null
+        ? {}
+        : {
+            auditRecord: {
+              ...cached.auditRecord,
+              auditId: `audit_policy_${randomUUID()}`,
+              decisionId,
+              evaluatedAt: new Date().toISOString(),
+            },
+          }),
+    };
   }
 
   private buildDecisionResult(

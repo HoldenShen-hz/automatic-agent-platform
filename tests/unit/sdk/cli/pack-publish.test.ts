@@ -6,7 +6,11 @@
  */
 
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
 import test from "node:test";
+
+import { publishPack } from "../../../../src/sdk/cli/pack-publish.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 interface PackPublishOptions {
   manifest: string;
@@ -145,6 +149,37 @@ test("parseArgs handles registry-url with port", () => {
   ]);
 
   assert.equal(opts.registryUrl, "https://localhost:8080");
+});
+
+test("publishPack returns structured missing token error instead of exiting early", async () => {
+  const originalRegistry = process.env["AA_REGISTRY_URL"];
+  const originalToken = process.env["AA_BEARER_TOKEN"];
+  delete process.env["AA_BEARER_TOKEN"];
+  process.env["AA_REGISTRY_URL"] = "https://api.example.com";
+  const workspace = createTempWorkspace("aa-pack-publish-");
+  try {
+    const manifestPath = `${workspace}/pack.json`;
+    writeFileSync(manifestPath, JSON.stringify({
+      packId: "test-pack",
+      version: "1.0.0",
+      domainId: "test-domain",
+      owner: "test-owner",
+      capabilities: [{ capabilityKey: "cap1", requiredContracts: [] }],
+    }));
+    const result = await publishPack(["--manifest", manifestPath]);
+    assert.equal(result.published, false);
+    assert.ok(result.errors.some((error) => error.includes("missing_bearer_token")));
+  } finally {
+    cleanupPath(workspace);
+    if (originalRegistry != null) {
+      process.env["AA_REGISTRY_URL"] = originalRegistry;
+    } else {
+      delete process.env["AA_REGISTRY_URL"];
+    }
+    if (originalToken != null) {
+      process.env["AA_BEARER_TOKEN"] = originalToken;
+    }
+  }
 });
 
 test("mockValidateManifest returns packId and version for valid manifest", () => {

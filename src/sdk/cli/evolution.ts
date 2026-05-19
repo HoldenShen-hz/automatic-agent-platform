@@ -29,6 +29,8 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
+import { pathToFileURL } from "node:url";
+
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadEvolutionCliEnv } from "../../platform/five-plane-control-plane/config-center/product-cli-env.js";
 import { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
@@ -149,4 +151,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

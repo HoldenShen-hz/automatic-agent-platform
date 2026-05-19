@@ -17,14 +17,17 @@
  * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
+import { pathToFileURL } from "node:url";
 import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServices } from "./governance-bootstrap.js";
 
-function installBrokenPipeHandler(): void {
-  process.stdout.on("error", (error) => {
+export function installBrokenPipeHandler(): void {
+  process.stdout.once("error", (error) => {
     const err = error as NodeJS.ErrnoException;
     if (err.code === "EPIPE") {
-      process.exit(0);
+      process.exitCode = 141;
+      process.stdout.destroy();
+      return;
     }
     setImmediate(() => {
       throw error;
@@ -40,7 +43,7 @@ function installBrokenPipeHandler(): void {
  * outputs the results as formatted JSON, and ensures the database connection
  * is properly closed before exiting.
  */
-function main(): void {
+export function main(): void {
   installBrokenPipeHandler();
 
   const output = withCliStorage((storage) => {
@@ -52,4 +55,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

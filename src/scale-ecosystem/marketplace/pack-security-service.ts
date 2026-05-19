@@ -83,7 +83,7 @@ export interface DependencyResolutionResult {
 const CRITICAL_VULNERABILITY_PATTERNS = [
   { pattern: /exec\s*\(\s*user/i, code: "SAND001", message: "User-controlled exec detected" },
   { pattern: /eval\s*\(\s*user/i, code: "SAND002", message: "User-controlled eval detected" },
-  { pattern: /process\.env(?!\.)/i, code: "SAND003", message: "Broad environment access detected" },
+  { pattern: /process\.env(?:\.[A-Z0-9_]+|\s*\[[^\]]+\])/i, code: "SAND003", message: "Broad environment access detected" },
   { pattern: /child_process.*shell.*true/i, code: "SAND004", message: "Shell execution enabled in child process" },
 ];
 

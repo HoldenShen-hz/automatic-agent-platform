@@ -10,7 +10,7 @@
  * Authorization is role-based with three levels: viewer (read-only), operator (read-write), admin (full access).
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { AuthError } from "../../contracts/errors.js";
 
 /** Role levels for API access control */
@@ -86,6 +86,12 @@ interface JwtClaims {
   exp: number;
 }
 
+const API_ROLE_RANK: Record<ApiRole, number> = {
+  viewer: 0,
+  operator: 1,
+  admin: 2,
+};
+
 function base64UrlEncode(value: string): string {
   return Buffer.from(value, "utf8").toString("base64url");
 }
@@ -95,6 +101,10 @@ function base64UrlDecode(value: string): string {
 }
 
 const ALLOWED_JWT_ALGORITHMS = new Set(["HS256"]);
+
+function hashSecretToken(value: string): Buffer {
+  return createHash("sha256").update(value, "utf8").digest();
+}
 
 function signJwt(payload: JwtClaims, secret: string): string {
   const header = { alg: "HS256", typ: "JWT" };
@@ -144,7 +154,12 @@ function verifyJwt(token: string, secret: string, options?: { maxTokenAgeMs?: nu
     throw new ApiAuthError(401, "api.invalid_token_signature", "Bearer token signature is invalid.");
   }
 
-  const claims = JSON.parse(base64UrlDecode(encodedPayload)) as JwtClaims;
+  let claims: JwtClaims;
+  try {
+    claims = JSON.parse(base64UrlDecode(encodedPayload)) as JwtClaims;
+  } catch {
+    throw new ApiAuthError(401, "api.invalid_token", "Bearer token payload is malformed.");
+  }
   if (!claims.sub || !Array.isArray(claims.roles) || typeof claims.exp !== "number") {
     throw new ApiAuthError(401, "api.invalid_token_claims", "Bearer token claims are invalid.");
   }
@@ -158,6 +173,11 @@ function verifyJwt(token: string, secret: string, options?: { maxTokenAgeMs?: nu
     }
   }
   return claims;
+}
+
+function principalHasRequiredRole(principalRoles: readonly ApiRole[], requiredRole: ApiRole): boolean {
+  const requiredRank = API_ROLE_RANK[requiredRole];
+  return principalRoles.some((role) => API_ROLE_RANK[role] >= requiredRank);
 }
 
 function normalizeRoles(roles: readonly ApiRole[]): ApiRole[] {
@@ -200,11 +220,9 @@ export class ApiAuthService {
    * @throws ApiAuthError if the API key is invalid
    */
   public exchangeApiKey(apiKey: string, issuedAt: string = new Date().toISOString()): ExchangeApiKeyResult {
+    const requestedKeyDigest = hashSecretToken(apiKey);
     const record = this.apiKeys.find((item) => {
-      if (item.apiKey.length !== apiKey.length) {
-        return false;
-      }
-      return timingSafeEqual(Buffer.from(item.apiKey, "utf8"), Buffer.from(apiKey, "utf8"));
+      return timingSafeEqual(hashSecretToken(item.apiKey), requestedKeyDigest);
     });
     if (record == null) {
       throw new ApiAuthError(401, "api.invalid_api_key", "API key is invalid.");
@@ -244,7 +262,12 @@ export class ApiAuthService {
   public authenticate(headers: Record<string, string | undefined>): ApiPrincipal {
     const authorization = headers.authorization;
     if (authorization?.startsWith("Bearer ")) {
-      const claims = verifyJwt(authorization.slice("Bearer ".length), this.options.jwtSecret, { maxTokenAgeMs: this.maxTokenAgeMs });
+      const claims = verifyJwt(authorization.slice("Bearer ".length), this.options.jwtSecret, {
+        maxTokenAgeMs: this.maxTokenAgeMs,
+        allowedAlgorithms: this.options.allowedAlgorithms == null
+          ? undefined
+          : new Set(this.options.allowedAlgorithms),
+      });
       return {
         actorId: claims.sub,
         roles: normalizeRoles(claims.roles),
@@ -271,7 +294,7 @@ export class ApiAuthService {
    */
   public requireRole(headers: Record<string, string | undefined>, requiredRole: ApiRole): ApiPrincipal {
     const principal = this.authenticate(headers);
-    if (!principal.roles.includes(requiredRole)) {
+    if (!principalHasRequiredRole(principal.roles, requiredRole)) {
       throw new ApiAuthError(403, "api.forbidden", "Authenticated principal lacks the required role.");
     }
     return principal;

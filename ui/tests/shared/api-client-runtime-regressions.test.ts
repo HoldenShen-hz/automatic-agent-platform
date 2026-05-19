@@ -188,6 +188,7 @@ describe("shared api-client runtime regressions", () => {
     const cases = [
       { status: 401, expectedAction: "redirect_to_login" as const, retryAfter: null },
       { status: 403, expectedAction: "access_denied" as const, retryAfter: null },
+      { status: 406, expectedAction: "version_not_supported" as const, retryAfter: null },
       { status: 429, expectedAction: "backoff_and_retry" as const, retryAfter: 7000 },
     ];
 

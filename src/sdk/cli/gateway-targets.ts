@@ -26,6 +26,8 @@
  * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
+import { pathToFileURL } from "node:url";
+
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadGatewayTargetsCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
@@ -93,4 +95,6 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

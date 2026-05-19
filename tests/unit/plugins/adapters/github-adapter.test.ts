@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 
-import { createGithubAdapterPlugin, type GithubAdapterPluginOptions } from "../../../../src/plugins/adapters/github-adapter.js";
+import { createGithubAdapterPlugin, type GithubAdapterPluginOptions, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import type { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 
 function createMockPolicy(allowed: boolean = true): NetworkEgressPolicyService {
@@ -90,6 +91,9 @@ test("GithubAdapter.execute builds correct endpoint for create_issue", async () 
   assert.equal(output.action, "create_issue");
   assert.equal(output.repository, "owner/repo");
   assert.ok(output.endpoint.includes("/repos/owner/repo/issues"));
+  assert.equal(output.timeoutMs, 10000);
+  assert.equal(output.rateLimitPerMinute, 60);
+  assert.equal(typeof output.idempotencyKey, "string");
 });
 
 test("GithubAdapter.execute builds correct endpoint for create_pr_comment", async () => {
@@ -134,6 +138,7 @@ test("GithubAdapter.execute builds correct endpoint for get_file", async () => {
   const output = result as any;
   assert.equal(output.action, "get_file");
   assert.ok(output.endpoint.includes("/contents/README.md"));
+  assert.equal(output.idempotencyKey, undefined);
 });
 
 test("GithubAdapter.execute throws PolicyDeniedError when egress blocked", async () => {
@@ -204,4 +209,26 @@ test("GithubAdapter.execute rejects encoded slash repository input", async () =>
     }),
     { message: "github_adapter.invalid_repository" },
   );
+});
+
+test("GithubAdapter.execute rejects path traversal input", async () => {
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  await adapter.authenticate({ token: "ghp_test1234567890" });
+
+  await assert.rejects(
+    async () => adapter.execute("get_file", {
+      repository: "owner/repo",
+      path: "../README.md",
+    }),
+    { message: "github_adapter.invalid_path" },
+  );
+});
+
+test("GithubAdapter.verifyPluginSignature uses HMAC validation", () => {
+  const pluginId = "plugin.shared.github_adapter";
+  const manifestHash = "abc123";
+  const secretKey = "super-secret";
+  const signature = createHmac("sha256", secretKey).update(`${pluginId}:${manifestHash}`).digest("hex");
+  const result = verifyPluginSignature(pluginId, manifestHash, signature, secretKey);
+  assert.equal(result.valid, true);
 });

@@ -116,6 +116,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   private renewalIntervalHandle: ReturnType<typeof setInterval> | null = null;
   private heartbeatIntervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly retryTimeoutHandles = new Set<ReturnType<typeof setTimeout>>();
+  private attemptElectionPromise: Promise<void> | null = null;
   private disposed: boolean = false;
 
   // Config
@@ -469,6 +470,20 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
    * Implements leader stickiness to reduce unnecessary failovers.
    */
   private async attemptElection(): Promise<void> {
+    if (this.attemptElectionPromise) {
+      await this.attemptElectionPromise;
+      return;
+    }
+
+    this.attemptElectionPromise = this.runAttemptElection();
+    try {
+      await this.attemptElectionPromise;
+    } finally {
+      this.attemptElectionPromise = null;
+    }
+  }
+
+  private async runAttemptElection(): Promise<void> {
     if (this.state === "shutdown" || this.disposed) {
       return;
     }

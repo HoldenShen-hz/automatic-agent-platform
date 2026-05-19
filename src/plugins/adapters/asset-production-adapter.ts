@@ -9,13 +9,13 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
-
-const assetProductionPolicy = new NetworkEgressPolicyService({
-  mode: "enforce",
-  allowedDomains: ["api.figma.com", "cdn.figma.com"],
-});
+import { createHash } from "node:crypto";
 
 export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
+  const assetProductionPolicy = new NetworkEgressPolicyService({
+    mode: "enforce",
+    allowedDomains: ["api.figma.com", "cdn.figma.com"],
+  });
   let credentialFingerprint: string | null = null;
   return {
     pluginId: "plugin.assetproduction.figma_adapter",
@@ -26,7 +26,8 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       // Figma API credentials would be validated here
     },
     async healthCheck() {
-      return assetProductionPolicy.evaluate("https://api.figma.com").allowed;
+      return assetProductionPolicy.evaluate("https://api.figma.com/v1/files").allowed
+        && assetProductionPolicy.evaluate("https://cdn.figma.com").allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -36,7 +37,7 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       if (!token || typeof token !== "string") {
         throw new Error("asset_production_adapter.missing_credentials");
       }
-      credentialFingerprint = `figma_${token.slice(0, 8)}`;
+      credentialFingerprint = `figma_${createHash("sha256").update(token).digest("hex").slice(0, 12)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
       if (credentialFingerprint == null) {
@@ -49,7 +50,8 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       };
 
       // R28-14 fix: enforce egress policy
-      const allowed = assetProductionPolicy.evaluate("https://api.figma.com").allowed;
+      const targetUrl = action.startsWith("cdn_") ? "https://cdn.figma.com" : "https://api.figma.com/v1/files";
+      const allowed = assetProductionPolicy.evaluate(targetUrl).allowed;
       if (!allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Asset production adapter: egress denied");
       }

@@ -4,7 +4,7 @@
 
 export * from "./release-pipeline-support.js";
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
@@ -46,6 +46,7 @@ export class ReleasePipelineService {
   private readonly secretManagementService: SecretManagementService | null;
   private readonly store: AuthoritativeTaskStore | null;
   private readonly commandRunner: ReleasePipelineCommandRunner;
+  private environmentConfigCache: { cacheKey: string; configs: ReleaseEnvironmentConfig[] } | null = null;
 
   public constructor(options: ReleasePipelineServiceOptions = {}) {
     this.repoRootDir = resolve(options.repoRootDir ?? DEFAULT_REPO_ROOT);
@@ -70,13 +71,26 @@ export class ReleasePipelineService {
       });
     }
 
-    return readdirSync(this.configRootDir)
+    const entries = readdirSync(this.configRootDir)
       .filter((entry) => entry.endsWith(".json"))
-      .sort()
+      .sort();
+    const cacheKey = entries
       .map((entry) => {
         const path = join(this.configRootDir, entry);
-        return JSON.parse(readFileSync(path, "utf8")) as ReleaseEnvironmentConfig;
-      });
+        const stat = statSync(path);
+        return `${entry}:${stat.mtimeMs}:${stat.size}`;
+      })
+      .join("|");
+    if (this.environmentConfigCache?.cacheKey === cacheKey) {
+      return this.environmentConfigCache.configs.map((config) => ({ ...config }));
+    }
+    const configs = entries.map((entry) => {
+      const path = join(this.configRootDir, entry);
+      const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
+      return this.validateEnvironmentConfig(path, parsed);
+    });
+    this.environmentConfigCache = { cacheKey, configs };
+    return configs.map((config) => ({ ...config }));
   }
 
   /**
@@ -347,7 +361,7 @@ export class ReleasePipelineService {
     if (
       ROTATION_GUARDED_ENVIRONMENTS.has(environment) &&
       description.registry.nextRotationDueAt != null &&
-      description.registry.nextRotationDueAt <= nowIso()
+      new Date(description.registry.nextRotationDueAt).getTime() <= Date.now()
     ) {
       const code = `release.secret_rotation_due:${environment}:${usage}:${secretRef}`;
       throw new PolicyDeniedError(code, code, {
@@ -629,5 +643,42 @@ export class ReleasePipelineService {
       leaseExpiresAt: lease.expiresAt,
       revokedAt: lease.revokedAt,
     };
+  }
+
+  private validateEnvironmentConfig(path: string, parsed: unknown): ReleaseEnvironmentConfig {
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new ValidationError("release.invalid_environment_config", "release.invalid_environment_config", {
+        details: { path },
+      });
+    }
+    const config = parsed as Partial<ReleaseEnvironmentConfig>;
+    const requiredFields: Array<keyof ReleaseEnvironmentConfig> = [
+      "environment",
+      "registry",
+      "imageRepository",
+      "deploymentNamespace",
+      "configPath",
+      "configBundleRef",
+      "registryCredentialRef",
+      "deploymentCredentialRef",
+      "deployWorkflowPath",
+      "publishWorkflowPath",
+      "clusterName",
+      "allowedRolloutStrategies",
+    ];
+    for (const field of requiredFields) {
+      const value = config[field];
+      if (value == null || (typeof value === "string" && value.trim().length === 0)) {
+        throw new ValidationError("release.invalid_environment_config", "release.invalid_environment_config", {
+          details: { path, field },
+        });
+      }
+    }
+    if (!Array.isArray(config.allowedRolloutStrategies) || config.allowedRolloutStrategies.length === 0) {
+      throw new ValidationError("release.invalid_environment_config", "release.invalid_environment_config", {
+        details: { path, field: "allowedRolloutStrategies" },
+      });
+    }
+    return config as ReleaseEnvironmentConfig;
   }
 }

@@ -192,14 +192,14 @@ test("CrmAdapter.execute makes real API call with correct URL and headers", asyn
   assert.ok(capturedUrl!.includes("properties=email"));
   assert.ok(capturedRequest !== null);
   assert.equal(capturedRequest!.method, "GET");
-  assert.match((capturedRequest!.headers as Record<string, string>)["Authorization"] ?? "", /^Bearer crm_hubspot_[a-f0-9]{8}$/);
+  assert.equal((capturedRequest!.headers as Record<string, string>)["Authorization"], "Bearer real_hubspot_token_abc12345");
   assert.equal((result as any).ok, true);
   assert.deepEqual((result as any).data.result, mockResponse);
 
   delete (globalThis as any).fetch;
 });
 
-test("CrmAdapter.execute makes POST request with body for custom actions", async () => {
+test("CrmAdapter.execute makes POST request with body for whitelisted mutating actions", async () => {
   const mockResponse = { id: "op-123", success: true };
   let capturedRequest: RequestInit | null = null;
 
@@ -216,7 +216,7 @@ test("CrmAdapter.execute makes POST request with body for custom actions", async
   const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
   await adapter.authenticate({ token: "hubspot_token_xyz" });
 
-  const result = await adapter.execute("custom_action", { param1: "value1", param2: 42 });
+  const result = await adapter.execute("upsert_contact", { param1: "value1", param2: 42 });
 
   assert.ok(capturedRequest !== null);
   assert.equal(capturedRequest!.method, "POST");
@@ -227,6 +227,16 @@ test("CrmAdapter.execute makes POST request with body for custom actions", async
   assert.equal((result as any).ok, true);
   assert.deepEqual((result as any).data.result, mockResponse);
 
+  delete (globalThis as any).fetch;
+});
+
+test("CrmAdapter.execute rejects non-whitelisted mutating actions", async () => {
+  globalThis.fetch = createMockFetch({}) as any;
+  const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
+  await adapter.authenticate({ token: "hubspot_token_xyz" });
+  const result = await adapter.execute("custom_action", { param1: "value1" });
+  assert.equal((result as any).ok, false);
+  assert.match((result as any).data.error, /crm_adapter\.invalid_action/);
   delete (globalThis as any).fetch;
 });
 

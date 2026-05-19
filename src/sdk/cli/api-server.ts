@@ -53,6 +53,7 @@ import { PrometheusMetricsExporter } from "../../platform/shared/observability/p
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { CoordinatorLoadBalancingService } from "../../platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 import { getGlobalGracefulShutdown } from "../../platform/five-plane-execution/startup/graceful-shutdown.js";
+import { registerProcessErrorHandlers } from "../../platform/five-plane-execution/startup/process-error-handlers.js";
 import { getModelCallProvider, resetModelCallProvider } from "../../platform/five-plane-execution/execution-engine/model-call-provider.js";
 import { getProcessTracker, resetProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
@@ -100,6 +101,7 @@ async function main(): Promise<void> {
     datadog: envConfig.logDatadog,
   });
   const shutdown = getGlobalGracefulShutdown();
+  registerProcessErrorHandlers(shutdown);
   const startupCleanup: Array<() => Promise<void>> = [];
   let startupComplete = false;
   const registerManagedHandler = (name: string, handler: () => Promise<void>): void => {

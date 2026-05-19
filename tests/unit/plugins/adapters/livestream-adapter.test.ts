@@ -29,18 +29,12 @@ test("LivestreamAdapter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("LivestreamAdapter.healthCheck returns true", async () => {
-  const previousObsToken = process.env["OBS_WS_TOKEN"];
-  process.env["OBS_WS_TOKEN"] = "AValidOBSWebSocketToken123";
+test("LivestreamAdapter.healthCheck returns true only after authentication", async () => {
   const adapter = createLivestreamAdapterPlugin();
-  try {
-    assert.ok(adapter.healthCheck !== undefined);
-    const result = await adapter.healthCheck();
-    assert.equal(result, true);
-  } finally {
-    if (previousObsToken == null) delete process.env["OBS_WS_TOKEN"];
-    else process.env["OBS_WS_TOKEN"] = previousObsToken;
-  }
+  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
+  assert.ok(adapter.healthCheck !== undefined);
+  const result = await adapter.healthCheck();
+  assert.equal(result, true);
 });
 
 test("LivestreamAdapter.shutdown returns undefined", async () => {

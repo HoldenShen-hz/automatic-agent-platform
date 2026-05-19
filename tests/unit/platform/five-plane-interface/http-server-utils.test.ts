@@ -156,6 +156,7 @@ test("buildJsonResponse creates correct structure", () => {
   assert.equal(result.statusCode, 200);
   assert.ok(result.headers["content-type"]?.includes("application/json"));
   assert.ok(result.headers["x-request-id"], "req_123");
+  assert.equal(result.headers["x-trace-id"], "req_123");
   const body = JSON.parse(result.body);
   assert.equal(body.requestId, "req_123");
   assert.deepEqual(body.data, { tasks: ["a", "b"] });
@@ -168,6 +169,7 @@ test("buildJsonErrorResponse creates correct error structure", () => {
   });
   assert.equal(result.statusCode, 404);
   assert.ok(result.headers["content-type"]?.includes("application/json"));
+  assert.equal(result.headers["x-trace-id"], "req_123");
   const body = JSON.parse(result.body);
   assert.equal(body.requestId, "req_123");
   assert.equal(body.error.code, "api.not_found");

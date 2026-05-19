@@ -17,6 +17,8 @@ export interface ThemeStoreState {
   setThemeMode(mode: ThemeMode): void;
 }
 
+type ThemeStoreApi = ReturnType<ReturnType<typeof createStore<ThemeStoreState>>>;
+
 function resolveThemeName(mode: ThemeMode): ResolvedThemeName {
   if (mode === "high-contrast") {
     return "high-contrast";
@@ -35,7 +37,7 @@ function resolveColorScheme(mode: ThemeMode): "light" | "dark" {
 }
 
 export function createThemeStore() {
-  return createStore<ThemeStoreState>()(
+  const store = createStore<ThemeStoreState>()(
     withPersistDevtoolsDraft(
       "aa-theme-store",
       (set) => ({
@@ -52,4 +54,25 @@ export function createThemeStore() {
       }),
     ),
   );
+  subscribeToSystemTheme(store);
+  return store;
+}
+
+function subscribeToSystemTheme(store: ThemeStoreApi): void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return;
+  }
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const applySystemTheme = () => {
+    const current = store.getState();
+    if (current.themeMode !== "system") {
+      return;
+    }
+    current.setThemeMode("system");
+  };
+  if (typeof mediaQuery.addEventListener === "function") {
+    mediaQuery.addEventListener("change", applySystemTheme);
+    return;
+  }
+  mediaQuery.addListener(applySystemTheme);
 }

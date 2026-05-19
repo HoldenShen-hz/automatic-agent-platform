@@ -4,10 +4,11 @@
  * Validates a pack manifest against the platform contract requirements per §22.3.
  *
  * Usage:
- *   npx tsx src/sdk/cli/pack-validate.ts --manifest ./pack.json --contract-version 1.0.0
+ *   npm run pack-validate -- --manifest ./pack.json --contract-version 1.0.0
  */
 
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 
 interface PackValidateOptions {
@@ -123,4 +124,6 @@ function main(): void {
   process.exit(result.valid ? 0 : 1);
 }
 
-main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -141,7 +141,16 @@ export interface MigrateSqliteToPgOptions {
   dryRun: boolean;
 }
 
+const MIGRATE_SQLITE_TO_PG_USAGE = "usage: migrate-sqlite-to-pg --sqlite <path>|--sqlite-path <path> --pg-dsn <dsn> [--dry-run] [--help]";
+
+export function buildMigrateSqliteToPgUsage(): string {
+  return MIGRATE_SQLITE_TO_PG_USAGE;
+}
+
 export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOptions {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    throw new ValidationError("migrate_sqlite_to_pg.usage", buildMigrateSqliteToPgUsage());
+  }
   let sqlitePath = "";
   let pgDsn = "";
   let dryRun = false;
@@ -164,7 +173,7 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
   if (!sqlitePath || !pgDsn) {
     throw new ValidationError(
       "migrate_sqlite_to_pg.usage",
-      "usage: migrate-sqlite-to-pg --sqlite <path> --pg-dsn <dsn> [--dry-run]",
+      buildMigrateSqliteToPgUsage(),
     );
   }
   return { sqlitePath, pgDsn, dryRun };

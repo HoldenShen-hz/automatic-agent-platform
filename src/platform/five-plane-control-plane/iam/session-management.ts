@@ -85,12 +85,12 @@ interface SessionEntry {
 }
 
 const sessions = new Map<string, SessionEntry>();
-const accessTokenIndex = new Map<string, string>(); // tokenId -> sessionId
-const refreshTokenIndex = new Map<string, string>(); // tokenId -> sessionId
+const accessTokenIndex = new Map<string, string>(); // accessTokenSecretHash -> sessionId
+const refreshTokenIndex = new Map<string, string>(); // refreshTokenSecretHash -> sessionId
 // Index for revoked tokens to enable session_revoked error instead of access_token_invalid
-const revokedAccessTokenIndex = new Map<string, string>(); // revoked tokenId -> sessionId
+const revokedAccessTokenIndex = new Map<string, string>(); // revoked accessTokenSecretHash -> sessionId
 // Index for rotated refresh tokens to enable refresh_token_reused error
-const rotatedRefreshTokenIndex = new Map<string, string>(); // old rotated tokenId -> sessionId
+const rotatedRefreshTokenIndex = new Map<string, string>(); // old refreshTokenSecretHash -> sessionId
 
 function assertInMemorySessionStoreAllowed(): void {
   if (process.env.NODE_ENV === "production" && process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE !== "1") {
@@ -105,10 +105,10 @@ function touchSession(sessionId: string, entry: SessionEntry): void {
 
 function deleteSessionEntry(sessionId: string, entry: SessionEntry): void {
   sessions.delete(sessionId);
-  accessTokenIndex.delete(entry.session.accessToken.tokenId);
-  refreshTokenIndex.delete(entry.session.refreshToken.tokenId);
-  revokedAccessTokenIndex.delete(entry.session.accessToken.tokenId);
-  rotatedRefreshTokenIndex.delete(entry.session.refreshToken.tokenId);
+  accessTokenIndex.delete(entry.accessTokenSecretHash);
+  refreshTokenIndex.delete(entry.refreshTokenSecretHash);
+  revokedAccessTokenIndex.delete(entry.accessTokenSecretHash);
+  rotatedRefreshTokenIndex.delete(entry.refreshTokenSecretHash);
 }
 
 function evictOldestEntries<K, V>(index: Map<K, V>, maxEntries: number): void {
@@ -161,6 +161,24 @@ function hashToken(token: string): string {
   // Use a simple hash for index lookup (not for password storage)
   // In production, use a proper HMAC-based token storage
   return createHash("sha256").update(token).digest("base64url");
+}
+
+function deriveTokenLookupKey(token: string): string {
+  return hashToken(token);
+}
+
+function hasMatchingBoundContext(
+  session: Session,
+  clientIp?: string | null,
+  userAgent?: string | null,
+): boolean {
+  if ((session.clientIp ?? null) !== (clientIp ?? null) && session.clientIp != null) {
+    return false;
+  }
+  if ((session.userAgent ?? null) !== (userAgent ?? null) && session.userAgent != null) {
+    return false;
+  }
+  return true;
 }
 
 // ============================================================================
@@ -229,8 +247,8 @@ export function createSession(input: {
   };
 
   touchSession(sessionId, entry);
-  accessTokenIndex.set(accessTokenId, sessionId);
-  refreshTokenIndex.set(refreshTokenId, sessionId);
+  accessTokenIndex.set(deriveTokenLookupKey(accessTokenId), sessionId);
+  refreshTokenIndex.set(deriveTokenLookupKey(refreshTokenId), sessionId);
   pruneSessionStore(now);
 
   return session;
@@ -240,14 +258,17 @@ export function createSession(input: {
  * Validate an access token.
  * §11.2: Token validation with expiry check.
  */
-export function validateAccessToken(accessTokenString: string): SessionValidationResult {
+export function validateAccessToken(
+  accessTokenString: string,
+  context: { clientIp?: string | null; userAgent?: string | null } = {},
+): SessionValidationResult {
   pruneSessionStore();
-  const tokenId = accessTokenString; // In production, parse JWT or opaque token
-  let sessionId = accessTokenIndex.get(tokenId);
+  const tokenHash = deriveTokenLookupKey(accessTokenString);
+  let sessionId = accessTokenIndex.get(tokenHash);
 
   // Check if token was revoked (deleted from index but tracked separately)
   if (!sessionId) {
-    sessionId = revokedAccessTokenIndex.get(tokenId) ?? undefined;
+    sessionId = revokedAccessTokenIndex.get(tokenHash) ?? undefined;
   }
 
   if (!sessionId) {
@@ -274,6 +295,14 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
     return { valid: false, session, reason: "access_token_expired" };
   }
 
+  if (entry.accessTokenSecretHash !== tokenHash) {
+    return { valid: false, session: null, reason: "access_token_invalid" };
+  }
+
+  if (!hasMatchingBoundContext(session, context.clientIp, context.userAgent)) {
+    return { valid: false, session: null, reason: "access_token_invalid" };
+  }
+
   touchSession(sessionId, entry);
   return { valid: true, session, reason: null };
 }
@@ -284,12 +313,13 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
  */
 export function refreshSession(refreshTokenString: string, clientIp?: string | null, userAgent?: string | null): Session {
   pruneSessionStore();
-  const tokenId = refreshTokenString;
-  let sessionId = refreshTokenIndex.get(tokenId);
+  const tokenHash = deriveTokenLookupKey(refreshTokenString);
+  let sessionId = refreshTokenIndex.get(tokenHash);
+  const reusedTokenSessionId = rotatedRefreshTokenIndex.get(tokenHash);
 
   // Check if token was rotated (deleted from index but tracked separately)
   if (!sessionId) {
-    sessionId = rotatedRefreshTokenIndex.get(tokenId) ?? undefined;
+    sessionId = reusedTokenSessionId ?? undefined;
   }
 
   if (!sessionId) {
@@ -312,16 +342,28 @@ export function refreshSession(refreshTokenString: string, clientIp?: string | n
     throw new ValidationError("session.refresh_token_expired", "session.refresh_token_expired");
   }
 
-  if (session.refreshToken.isRotated && session.refreshToken.tokenId !== tokenId) {
+  if (reusedTokenSessionId != null && entry.refreshTokenSecretHash !== tokenHash) {
+    throw new ValidationError("session.refresh_token_reused", "session.refresh_token_reused");
+  }
+
+  if (entry.refreshTokenSecretHash !== tokenHash) {
+    throw new ValidationError("session.refresh_token_invalid", "session.refresh_token_invalid");
+  }
+
+  if (!hasMatchingBoundContext(session, clientIp, userAgent)) {
+    throw new ValidationError("session.refresh_token_invalid", "session.refresh_token_invalid");
+  }
+
+  if (session.refreshToken.isRotated && session.refreshToken.tokenId !== refreshTokenString) {
     throw new ValidationError("session.refresh_token_reused", "session.refresh_token_reused");
   }
 
   // Record rotated refresh token for later reuse detection
-  rotatedRefreshTokenIndex.set(session.refreshToken.tokenId, sessionId);
+  rotatedRefreshTokenIndex.set(entry.refreshTokenSecretHash, sessionId);
 
   // Invalidate old tokens
-  accessTokenIndex.delete(session.accessToken.tokenId);
-  refreshTokenIndex.delete(session.refreshToken.tokenId);
+  accessTokenIndex.delete(entry.accessTokenSecretHash);
+  refreshTokenIndex.delete(entry.refreshTokenSecretHash);
 
   // Issue new tokens with rotation
   const newAccessTokenId = generateTokenId();
@@ -364,8 +406,8 @@ export function refreshSession(refreshTokenString: string, clientIp?: string | n
   };
 
   touchSession(sessionId, newEntry);
-  accessTokenIndex.set(newAccessTokenId, sessionId);
-  refreshTokenIndex.set(newRefreshTokenId, sessionId);
+  accessTokenIndex.set(newEntry.accessTokenSecretHash, sessionId);
+  refreshTokenIndex.set(newEntry.refreshTokenSecretHash, sessionId);
   pruneSessionStore(now);
 
   return newSession;
@@ -383,11 +425,11 @@ export function revokeSession(sessionId: string): void {
   }
 
   // Record revoked access token for later lookup (enables session_revoked error)
-  revokedAccessTokenIndex.set(entry.session.accessToken.tokenId, sessionId);
+  revokedAccessTokenIndex.set(entry.accessTokenSecretHash, sessionId);
 
   // Invalidate tokens
-  accessTokenIndex.delete(entry.session.accessToken.tokenId);
-  refreshTokenIndex.delete(entry.session.refreshToken.tokenId);
+  accessTokenIndex.delete(entry.accessTokenSecretHash);
+  refreshTokenIndex.delete(entry.refreshTokenSecretHash);
 
   // Mark session as revoked
   const revokedSession: Session = {
@@ -492,7 +534,18 @@ export function getSessionStats(): {
   };
 }
 
+function assertTestSessionMutationAllowed(): void {
+  if (process.env.NODE_ENV === "test" || process.env.AA_ALLOW_TEST_SESSION_STORE_MUTATIONS === "1") {
+    return;
+  }
+  throw new ValidationError(
+    "session.test_only_mutation_denied",
+    "session.test_only_mutation_denied",
+  );
+}
+
 export function __dangerousResetSessionStoreForTests(): void {
+  assertTestSessionMutationAllowed();
   sessions.clear();
   accessTokenIndex.clear();
   refreshTokenIndex.clear();
@@ -501,6 +554,7 @@ export function __dangerousResetSessionStoreForTests(): void {
 }
 
 export function __dangerousExpireSessionForTests(sessionId: string): void {
+  assertTestSessionMutationAllowed();
   const entry = sessions.get(sessionId);
   if (!entry) {
     return;

@@ -165,6 +165,7 @@ export interface ReleasePipelineCommandRequest {
   command: string;
   args: string[];
   cwd: string;
+  timeoutMs?: number;
 }
 
 /**
@@ -215,18 +216,25 @@ export class LocalReleasePipelineCommandRunner implements ReleasePipelineCommand
       cwd: request.cwd,
       stdio: ["ignore", "pipe", "pipe"] as const,
     });
-    const stdout = await new Promise<string>((resolve) => {
-      let data = "";
-      child.stdout?.on("data", (chunk) => { data += chunk; });
-      child.stdout?.on("end", () => resolve(data));
-    });
-    const stderr = await new Promise<string>((resolve) => {
-      let data = "";
-      child.stderr?.on("data", (chunk) => { data += chunk; });
-      child.stderr?.on("end", () => resolve(data));
-    });
-    const exitCode = await new Promise<number>((resolve) => {
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    child.stdout?.on("data", (chunk) => { stdoutChunks.push(String(chunk)); });
+    child.stderr?.on("data", (chunk) => { stderrChunks.push(String(chunk)); });
+
+    const timeoutMs = request.timeoutMs ?? 5 * 60 * 1000;
+    let timeoutHandle: NodeJS.Timeout | null = setTimeout(() => {
+      child.kill("SIGKILL");
+    }, timeoutMs);
+    timeoutHandle.unref?.();
+
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      child.on("error", reject);
       child.on("close", (code) => resolve(code ?? 1));
+    }).finally(() => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
     });
     return {
       step: request.step,
@@ -234,8 +242,8 @@ export class LocalReleasePipelineCommandRunner implements ReleasePipelineCommand
       args: [...request.args],
       executed: true,
       exitCode,
-      stdout,
-      stderr,
+      stdout: stdoutChunks.join(""),
+      stderr: stderrChunks.join(""),
       durationMs: Date.now() - startedAt,
     };
   }

@@ -17,7 +17,10 @@ export interface CrmAdapterPluginOptions {
   apiBaseUrl?: string;
   crmType?: "salesforce" | "hubspot";
   policy?: NetworkEgressPolicyService;
+  fetchImplementation?: typeof fetch;
 }
+
+const MUTATING_ACTIONS = new Set(["upsert_contact", "upsert_company", "append_note"]);
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -33,7 +36,9 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     mode: "enforce",
     allowedDomains: ["api.hubspot.com", "api.salesforce.com"],
   });
+  const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
   let credentialFingerprint: string | null = null;
+  let credentialToken: string | null = null;
 
   async function crmRequest(endpoint: string, method: string = "GET", body?: Record<string, unknown>): Promise<unknown> {
     if (credentialFingerprint == null) {
@@ -43,14 +48,14 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     const requestInit: RequestInit = {
       method,
       headers: {
-        "Authorization": `Bearer ${credentialFingerprint}`,
+        "Authorization": `Bearer ${credentialToken}`,
         "Content-Type": "application/json",
       },
     };
     if (body !== undefined) {
       requestInit.body = JSON.stringify(body);
     }
-    const response = await fetch(url, requestInit);
+    const response = await fetchImplementation(url, requestInit);
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "unknown");
       throw new Error(`crm_adapter.api_error:${response.status}:${errorBody}`);
@@ -71,14 +76,16 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     },
     async shutdown() {
       credentialFingerprint = null;
+      credentialToken = null;
     },
     async authenticate(credentials): Promise<void> {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
       const fingerprint = createHash("sha256").update(token).digest("hex").slice(0, 8);
+      credentialToken = token;
       credentialFingerprint = `crm_${crmType}_${fingerprint}`;
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
-      if (credentialFingerprint == null) {
+      if (credentialFingerprint == null || credentialToken == null) {
         throw new Error("crm_adapter.not_authenticated");
       }
       if (!/^[a-zA-Z0-9_]+$/.test(action)) {
@@ -118,6 +125,9 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
             break;
           }
           default: {
+            if (!MUTATING_ACTIONS.has(action)) {
+              throw new Error("crm_adapter.invalid_action");
+            }
             result = await crmRequest(action, "POST", params);
           }
         }

@@ -135,7 +135,7 @@ test("PackSecurityService.runSecurityScan detects user-controlled eval pattern",
 test("PackSecurityService.runSecurityScan detects broad environment access", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
-    sourceUri: "inline:process.env",
+    sourceUri: "inline:const token = process.env.AA_SECRET_AUTH_TOKEN",
     manifestChecksum: "a".repeat(64),
     capabilities: [],
     permissions: [],

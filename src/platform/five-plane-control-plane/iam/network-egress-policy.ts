@@ -111,11 +111,14 @@ export interface PolicyAwareFetchOptions {
  */
 const INTERNAL_HOSTNAME_PATTERNS = [
   /^127\.\d+\.\d+\.\d+$/,
+  /^::ffff:127\.\d+\.\d+\.\d+$/i,
   /^10\.\d+\.\d+\.\d+$/,
   /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/,
   /^192\.168\.\d+\.\d+$/,
   /^169\.254\.\d+\.\d+$/,
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+$/,
   /^0\.0\.0\.0$/,
+  /^::$/i,
   /^::1$/i,
   /^fe80:/i,
   /^fc00:/i,
@@ -167,7 +170,16 @@ function parseDestinationTypes(value: string | undefined): EgressDestinationType
  * @returns Lowercase, trimmed, deduplicated domain list
  */
 function normalizeDomains(value: readonly string[] | undefined): string[] {
-  return [...new Set((value ?? []).map((item) => item.trim().toLowerCase()).filter((item) => item.length > 0))];
+  return [...new Set((value ?? []).map(normalizeHostname).filter((item) => item.length > 0))];
+}
+
+function normalizeHostname(hostname: string): string {
+  const trimmed = hostname.trim().replace(/\.+$/, "").toLowerCase();
+  if (trimmed.length === 0) {
+    return "";
+  }
+  const ascii = domainToASCII(trimmed);
+  return ascii.length > 0 ? ascii.toLowerCase() : trimmed;
 }
 
 /**
@@ -177,7 +189,7 @@ function normalizeDomains(value: readonly string[] | undefined): string[] {
  * @returns true if the hostname is internal
  */
 function isInternalHostname(hostname: string): boolean {
-  const normalized = hostname.trim().toLowerCase();
+  const normalized = normalizeHostname(hostname);
   return INTERNAL_HOSTNAME_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
@@ -190,7 +202,10 @@ function isInternalHostname(hostname: string): boolean {
  * @returns true if hostname matches the pattern
  */
 function domainMatches(hostname: string, candidate: string): boolean {
-  return hostname === candidate || hostname.endsWith(`.${candidate}`);
+  const normalizedHostname = normalizeHostname(hostname);
+  const normalizedCandidate = normalizeHostname(candidate);
+  return normalizedHostname === normalizedCandidate
+    || normalizedHostname.endsWith(`.${normalizedCandidate}`);
 }
 
 /**
@@ -288,7 +303,7 @@ export class NetworkEgressPolicyService {
     }
 
     const parsed = parseUrlForAudit(url);
-    const hostname = parsed?.host?.toLowerCase() ?? destination.toLowerCase();
+    const hostname = normalizeHostname(parsed?.host ?? destination);
 
     // R12-20: Blocked destinations should return allowed:false when mode is deny/enforce.
     // Previously used `this.mode !== "enforce"` which incorrectly returned allowed:true
@@ -463,3 +478,4 @@ export function createPolicyAwareFetch(
     }
   }) as typeof fetch;
 }
+import { domainToASCII } from "node:url";

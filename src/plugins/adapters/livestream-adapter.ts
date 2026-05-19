@@ -31,8 +31,9 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket credentials would be validated here
     },
     async healthCheck(): Promise<boolean> {
-      const token = process.env["OBS_WS_TOKEN"];
-      return typeof token === "string" && token.trim().length > 0 && policy.evaluate("https://api.twitch.tv").allowed;
+      return credentialFingerprint != null
+        && policy.evaluate("https://api.twitch.tv/helix/streams").allowed
+        && policy.evaluate("https://www.googleapis.com/youtube/v3/liveBroadcasts").allowed;
     },
     async shutdown() {
       credentialFingerprint = null;

@@ -15,7 +15,7 @@ describe("resolveMockRequest", () => {
   });
 
   it("ignores query strings when resolving canonical routes", () => {
-    const result = resolveMockRequest("/api/v1/version?verbose=true");
+    const result = resolveMockRequest("/api/v1/meta/contract-version?verbose=true");
     expect(result).toEqual({
       accepted: true,
       apiVersion: "v1",

@@ -57,6 +57,7 @@ type ConversationClientSnapshot = {
 
 const conversationClientListeners = new Set<(snapshot: ConversationClientSnapshot) => void>();
 let sharedConversationClient: ConversationClient | null = null;
+let sharedConversationClientRefCount = 0;
 
 function normalizeMessageRole(role: Message["role"] | undefined): Message["role"] {
   return role ?? "assistant";
@@ -155,6 +156,12 @@ function subscribeConversationClient(listener: (snapshot: ConversationClientSnap
 }
 
 function disposeSharedConversationClient(): void {
+  if (sharedConversationClientRefCount > 0) {
+    sharedConversationClientRefCount -= 1;
+  }
+  if (sharedConversationClientRefCount > 0) {
+    return;
+  }
   if (sharedConversationClient != null && typeof (sharedConversationClient as { dispose?: () => void; }).dispose === "function") {
     (sharedConversationClient as { dispose: () => void; }).dispose();
   }
@@ -170,6 +177,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const [planReady, setPlanReady] = useState(persisted?.planReady ?? false);
   const [executionReady, setExecutionReady] = useState(persisted?.executionReady ?? false);
   const [isStreaming, setIsStreaming] = useState(persisted?.isStreaming ?? false);
+  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const unsubscribeStatusRef = useRef<(() => void) | null>(null);
   const stateRef = useRef<PersistedConversationState>({
@@ -181,6 +189,13 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     isStreaming: persisted?.isStreaming ?? false,
   });
   const client = getSharedConversationClient(persisted);
+
+  useEffect(() => {
+    sharedConversationClientRefCount += 1;
+    return () => {
+      disposeSharedConversationClient();
+    };
+  }, []);
 
   const syncFromClient = useCallback((overrides?: Partial<PersistedConversationState>) => {
     const snapshot = typeof (client as { getSnapshot?: () => {
@@ -208,7 +223,9 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
 
     const currentState = stateRef.current;
     const nextMessages = snapshot.messages != null ? mapConversationMessages(snapshot.messages) : currentState.messages;
-    const nextStatus = snapshot.status ?? currentState.status;
+    const nextStatus = snapshot.status === "idle" && currentState.status !== "idle" && currentState.messages.length > 0
+      ? currentState.status
+      : (snapshot.status ?? currentState.status);
     const nextPlanReady = snapshot.planReady ?? currentState.planReady;
     const nextExecutionReady = snapshot.executionReady ?? currentState.executionReady;
     const nextIsStreaming = snapshot.isStreaming ?? currentState.isStreaming;
@@ -262,7 +279,19 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   useEffect(() => {
     const nextState = { messages, attachments, status, planReady, executionReady, isStreaming };
     stateRef.current = nextState;
-    persistState(nextState);
+    if (persistTimeoutRef.current != null) {
+      clearTimeout(persistTimeoutRef.current);
+    }
+    persistTimeoutRef.current = setTimeout(() => {
+      persistState(nextState);
+      persistTimeoutRef.current = null;
+    }, isStreaming ? 200 : 0);
+    return () => {
+      if (persistTimeoutRef.current != null) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
   }, [attachments, executionReady, isStreaming, messages, planReady, status]);
 
   useEffect(() => {
@@ -330,7 +359,6 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       unsubscribeRef.current = null;
       unsubscribeStatusRef.current?.();
       unsubscribeStatusRef.current = null;
-      disposeSharedConversationClient();
     };
   }, [syncPersistedSnapshot, wsClient]);
 
@@ -416,7 +444,6 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     unsubscribeRef.current = null;
     unsubscribeStatusRef.current?.();
     unsubscribeStatusRef.current = null;
-    disposeSharedConversationClient();
     wsClient?.disconnect();
   }, [wsClient]);
 

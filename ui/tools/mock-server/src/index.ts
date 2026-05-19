@@ -17,7 +17,7 @@ export function resolveMockRequest(path: string) {
   const requestUrl = new URL(path, "http://mock.local");
   const pathname = requestUrl.pathname;
 
-  if (pathname === "/api/v1/version") {
+  if (pathname === "/api/v1/meta/contract-version") {
     return {
       accepted: true,
       apiVersion: "v1",

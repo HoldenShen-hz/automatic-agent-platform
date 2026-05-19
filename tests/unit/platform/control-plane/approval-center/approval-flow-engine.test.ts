@@ -96,7 +96,7 @@ test("calculateQuorumStatus with voting window expired", () => {
   assert.strictEqual(status.isVotingWindowExpired, true);
 });
 
-test("mergeVotes updates existing vote", () => {
+test("mergeVotes rejects duplicate immutable vote", () => {
   const existing: QuorumVote[] = [
     { approverId: "user1", voteType: VoteType.APPROVE, votedAt: "2026-04-21T00:00:00.000Z" },
   ];
@@ -106,10 +106,7 @@ test("mergeVotes updates existing vote", () => {
     votedAt: "2026-04-21T00:00:01.000Z",
   };
 
-  const merged = mergeVotes(existing, newVote);
-
-  assert.strictEqual(merged.length, 1);
-  assert.strictEqual(merged[0]!.voteType, VoteType.REJECT);
+  assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
 });
 
 test("mergeVotes adds new vote", () => {
@@ -554,6 +551,61 @@ test("ApprovalFlowEngine submitVote denies on enough rejections", () => {
   const result2 = engine.submitVote(flow.flowId, "user2", VoteType.REJECT);
   assert.strictEqual(result2.flowStatus, FlowStatus.REJECTED);
   assert.strictEqual(result2.quorumStatus.isDenied, true);
+});
+
+test("ApprovalFlowEngine submitVote rejects unconfigured approver", () => {
+  const engine = new ApprovalFlowEngine();
+  const request = createMockApprovalRequest();
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.MULTI_PARTY,
+      approvers: [
+        { type: "user", identifier: "user1", can_delegate: true },
+        { type: "user", identifier: "user2", can_delegate: true },
+      ],
+      quorum: { minApprovals: 2, minRejectionsToDeny: 2 },
+      timeout: { warnAfterMs: 60000, escalateAfterMs: 120000, autoActionAfterMs: 86400000, autoAction: "deny" },
+      escalation: {
+        escalateTo: { type: "role", identifier: "superadmin", can_delegate: false },
+        maxEscalationDepth: 3,
+        notificationChannels: [],
+        escalationTimeoutMs: 30000,
+      },
+    },
+    request,
+  );
+
+  const result = engine.submitVote(flow.flowId, "outsider", VoteType.APPROVE);
+  assert.strictEqual(result.success, false);
+  assert.ok(result.error?.includes("not configured"));
+});
+
+test("ApprovalFlowEngine submitVote rejects second vote from same approver", () => {
+  const engine = new ApprovalFlowEngine();
+  const request = createMockApprovalRequest();
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.MULTI_PARTY,
+      approvers: [
+        { type: "user", identifier: "user1", can_delegate: true },
+        { type: "user", identifier: "user2", can_delegate: true },
+      ],
+      quorum: { minApprovals: 2, minRejectionsToDeny: 2 },
+      timeout: { warnAfterMs: 60000, escalateAfterMs: 120000, autoActionAfterMs: 86400000, autoAction: "deny" },
+      escalation: {
+        escalateTo: { type: "role", identifier: "superadmin", can_delegate: false },
+        maxEscalationDepth: 3,
+        notificationChannels: [],
+        escalationTimeoutMs: 30000,
+      },
+    },
+    request,
+  );
+
+  assert.strictEqual(engine.submitVote(flow.flowId, "user1", VoteType.APPROVE).success, true);
+  const duplicate = engine.submitVote(flow.flowId, "user1", VoteType.REJECT);
+  assert.strictEqual(duplicate.success, false);
+  assert.ok(duplicate.error?.includes("immutable vote"));
 });
 
 test("ApprovalFlowEngine submitVote returns error for non-existent flow", () => {

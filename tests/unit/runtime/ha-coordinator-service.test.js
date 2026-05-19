@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { HaCoordinatorService, HA_COORDINATOR_DDL, MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS, } from "../../../src/platform/execution/ha/ha-coordinator-service.js";
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { HaCoordinatorService } from "../../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
+import { HA_COORDINATOR_DDL, MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS } from "../../../src/platform/five-plane-execution/ha/types.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { join } from "node:path";
 function createHarness(prefix) {
@@ -134,11 +135,12 @@ test("renewLeadership extends lease", () => {
     try {
         const service = new HaCoordinatorService(h.db);
         service.registerNode("coordinator-1", "us-east-1");
-        service.acquireLeadership({ nodeId: "coordinator-1", ttlMs: 5000 });
+        const acquired = service.acquireLeadership({ nodeId: "coordinator-1", ttlMs: 5000 });
         const result = service.renewLeadership({ nodeId: "coordinator-1", ttlMs: 10000 });
         assert.equal(result.renewed, true);
         assert.ok(result.lease);
         assert.ok(result.lease.ttlMs >= 10000);
+        assert.equal(result.fencingToken, acquired.fencingToken);
     }
     finally {
         h.db.close();
@@ -500,6 +502,23 @@ test("renewLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS", ()
         assert.ok(result.lease);
         // TTL should be clamped to MAX_LEASE_TTL_MS
         assert.ok(result.lease.ttlMs <= MAX_LEASE_TTL_MS + 100);
+    }
+    finally {
+        h.db.close();
+        cleanupPath(h.workspace);
+    }
+});
+test("fencing token counter resumes from persisted epoch history", () => {
+    const h = createHarness("aa-fence-persist-");
+    try {
+        const first = new HaCoordinatorService(h.db);
+        first.registerNode("coordinator-1", "us-east-1");
+        const acquired = first.acquireLeadership({ nodeId: "coordinator-1" });
+        first.releaseLeadership("coordinator-1");
+        const second = new HaCoordinatorService(h.db);
+        second.registerNode("coordinator-2", "us-east-1");
+        const reacquired = second.acquireLeadership({ nodeId: "coordinator-2" });
+        assert.ok(reacquired.fencingToken > acquired.fencingToken);
     }
     finally {
         h.db.close();

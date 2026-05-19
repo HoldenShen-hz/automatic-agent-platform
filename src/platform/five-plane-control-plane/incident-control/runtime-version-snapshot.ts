@@ -16,18 +16,22 @@ import { fileURLToPath } from "node:url";
 
 import { ConfigGovernanceService } from "../config-center/config-governance-service.js";
 import { resolveAgentProfileHome } from "../config-center/profile-home.js";
+import { readTrimmedEnv } from "../config-center/runtime-env.js";
+import { EnabledExtensionsSchema, FeatureFlagsSchema } from "../config-center/startup-env-schema.js";
 import type { SqliteSchemaStatus } from "../../five-plane-state-evidence/truth/sqlite-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+function getRuntimeVersionSnapshotLogger(): StructuredLogger {
+  return new StructuredLogger({ retentionLimit: 100 });
+}
 
 export interface RuntimeVersionSnapshot {
   applicationVersion: string | null;
   buildCommit: string | null;
   buildTimestamp: string | null;
   buildProfile: string | null;
-  configVersion: string;
-  promptBundleVersion: string;
+  configVersion: string | null;
+  promptBundleVersion: string | null;
   enabledExtensions: string[];
   featureFlags: string[];
   configIssues: string[];
@@ -56,6 +60,24 @@ function parseCsvEnv(value: string | undefined): string[] {
   return Array.from(new Set(value.split(",").map((item) => item.trim()).filter((item) => item.length > 0))).sort();
 }
 
+function readValidatedCsvEnv(
+  name: "AA_ENABLED_EXTENSIONS" | "AA_FEATURE_FLAGS",
+  schema: typeof EnabledExtensionsSchema | typeof FeatureFlagsSchema,
+): string[] {
+  const rawValue = readTrimmedEnv(process.env, name);
+  const parsed = schema.safeParse(rawValue ?? undefined);
+  if (!parsed.success) {
+    getRuntimeVersionSnapshotLogger().warn("runtime_version_snapshot.invalid_csv_env", {
+      data: {
+        envName: name,
+        issues: parsed.error.issues.map((issue) => issue.message),
+      },
+    });
+    return [];
+  }
+  return parseCsvEnv(parsed.data ?? undefined);
+}
+
 /**
  * Reads the application version from package.json by checking multiple possible paths.
  * Falls back to the npm_package_version environment variable if file reading fails.
@@ -78,7 +100,7 @@ function readApplicationVersion(): string | null {
         return candidate.version;
       }
     } catch (err) {
-      logger.warn("detectApplicationVersion parse failed", { error: err });
+      getRuntimeVersionSnapshotLogger().warn("detectApplicationVersion parse failed", { error: err });
       continue;
     }
   }
@@ -86,9 +108,17 @@ function readApplicationVersion(): string | null {
   try {
     return process.env.npm_package_version ?? null;
   } catch (err) {
-    logger.warn("detectApplicationVersion npm_package_version failed", { error: err });
+    getRuntimeVersionSnapshotLogger().warn("detectApplicationVersion npm_package_version failed", { error: err });
     return null;
   }
+}
+
+function resolveConfigEnvironment(): "dev" | "staging" | "prod" {
+  const value = (process.env.AA_CONFIG_ENV ?? "prod").trim().toLowerCase();
+  if (value === "dev" || value === "staging" || value === "prod") {
+    return value;
+  }
+  return "prod";
 }
 
 /**
@@ -97,12 +127,12 @@ function readApplicationVersion(): string | null {
  * loading encounters errors.
  */
 function safeLoadConfigBundle(): {
-  configVersion: string;
-  promptBundleVersion: string;
+  configVersion: string | null;
+  promptBundleVersion: string | null;
   configIssues: string[];
 } {
   try {
-    const bundle = new ConfigGovernanceService().loadBundle("dev");
+    const bundle = new ConfigGovernanceService().loadBundle(resolveConfigEnvironment());
     return {
       configVersion: bundle.version.versionId,
       promptBundleVersion: bundle.version.versionId,
@@ -110,8 +140,8 @@ function safeLoadConfigBundle(): {
     };
   } catch (error) {
     return {
-      configVersion: "single_task_execution.default",
-      promptBundleVersion: "single_task_execution.default",
+      configVersion: null,
+      promptBundleVersion: null,
       configIssues: [error instanceof Error ? error.message : String(error)],
     };
   }
@@ -135,8 +165,8 @@ export function buildRuntimeVersionSnapshot(schemaStatus: SqliteSchemaStatus): R
     buildProfile: process.env.AA_BUILD_PROFILE ?? null,
     configVersion: config.configVersion,
     promptBundleVersion: config.promptBundleVersion,
-    enabledExtensions: parseCsvEnv(process.env.AA_ENABLED_EXTENSIONS),
-    featureFlags: parseCsvEnv(process.env.AA_FEATURE_FLAGS),
+    enabledExtensions: readValidatedCsvEnv("AA_ENABLED_EXTENSIONS", EnabledExtensionsSchema),
+    featureFlags: readValidatedCsvEnv("AA_FEATURE_FLAGS", FeatureFlagsSchema),
     configIssues: config.configIssues,
     profile: {
       profileId: profile.profileId,
