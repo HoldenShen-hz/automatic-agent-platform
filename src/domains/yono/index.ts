@@ -509,7 +509,7 @@ export const YONO_DOMAIN_DEFINITION: DomainDefinition = {
       llmInHotPathAllowed: false,
       maxHotPathLatencyMs: 1000,
     },
-    latencyTier: "interactive",
+    latencyTier: "near_realtime",
     compiledArtifactRef: null,
   },
   externalAdapters: ["wallet", "market-data", "onchain-indexer"],

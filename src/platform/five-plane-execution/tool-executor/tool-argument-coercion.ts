@@ -213,11 +213,17 @@ function coerceStringEnum<T extends string>(
 /**
  * Parses a JSON string as a string array.
  */
+const MAX_JSON_COERCION_CHARS = 16_384;
+
 function coerceJsonStringArray(
   value: unknown,
   fieldPath: string,
 ): { value: unknown; trace?: ToolArgumentCoercionTrace } {
   if (typeof value !== "string") {
+    return { value };
+  }
+  if (value.length > MAX_JSON_COERCION_CHARS) {
+    toolArgumentCoercionLogger.warn("tool_argument_coercion.json_too_large", { fieldPath, length: value.length });
     return { value };
   }
   try {
@@ -250,6 +256,10 @@ function coerceQuestionOptions(
 ): { value: unknown; traces: ToolArgumentCoercionTrace[] } {
   const traces: ToolArgumentCoercionTrace[] = [];
   if (typeof value !== "string") {
+    return { value, traces };
+  }
+  if (value.length > MAX_JSON_COERCION_CHARS) {
+    toolArgumentCoercionLogger.warn("tool_argument_coercion.json_too_large", { fieldPath, length: value.length });
     return { value, traces };
   }
 

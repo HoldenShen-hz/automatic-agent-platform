@@ -5,11 +5,15 @@
   "type": "module",
   "main": "./src/index.tsx",
   "module": "./src/index.tsx",
-  "types": "./src/index.tsx",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.tsx",
+      "types": "./src/index.d.ts",
       "import": "./src/index.tsx"
     }
+  },
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   }
 }

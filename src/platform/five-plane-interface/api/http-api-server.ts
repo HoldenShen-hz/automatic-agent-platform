@@ -648,6 +648,7 @@ export class HttpApiServer {
       const timer = setTimeout(() => {
         reject(new ApiError(HTTP_STATUS_GATEWAY_TIMEOUT, "api.request_timeout", `Request exceeded ${timeoutMs} ms timeout.`));
       }, timeoutMs);
+      timer.unref?.();
       void operation.then((value) => {
         clearTimeout(timer);
         resolve(value);

@@ -204,6 +204,8 @@ export interface HaLevelConfig {
   haLevel: HaLevel;
   /** Interval for lease renewal in milliseconds */
   leaseRenewalIntervalMs: number;
+  /** Interval for node heartbeats in milliseconds */
+  heartbeatIntervalMs: number;
   /** TTL for leadership leases in milliseconds */
   leaseTtlMs: number;
   /** Interval for checking expired leases in milliseconds */
@@ -231,6 +233,7 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = Object.freeze({
   HA_1: Object.freeze({
     haLevel: "HA_1",
     leaseRenewalIntervalMs: 0, // Not needed for single-node
+    heartbeatIntervalMs: 0,
     leaseTtlMs: 60_000,
     leaseReclaimerIntervalMs: 0, // No reclamation needed
     stuckRunSweeperIntervalMs: 300_000,
@@ -244,6 +247,7 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = Object.freeze({
   HA_2: Object.freeze({
     haLevel: "HA_2",
     leaseRenewalIntervalMs: 5_000,
+    heartbeatIntervalMs: 5_000,
     leaseTtlMs: 15_000,
     leaseReclaimerIntervalMs: 10_000,
     stuckRunSweeperIntervalMs: 60_000,
@@ -257,6 +261,7 @@ export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = Object.freeze({
   HA_3: Object.freeze({
     haLevel: "HA_3",
     leaseRenewalIntervalMs: 3_000,
+    heartbeatIntervalMs: 3_000,
     leaseTtlMs: 10_000,
     leaseReclaimerIntervalMs: 5_000,
     stuckRunSweeperIntervalMs: 30_000,

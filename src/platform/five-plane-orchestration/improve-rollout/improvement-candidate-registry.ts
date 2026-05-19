@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { LearningObject } from "../learn/learning-object-model.js";
 import { parseImprovementCandidate, type ImprovementCandidate, type ImprovementChangeScope } from "../oapeflir/types/improvement-candidate.js";
 import type { AutonomyTarget } from "./autonomy-boundary-policy.js";
@@ -34,6 +35,7 @@ export interface CandidateTtlConfig {
 
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days default TTL
 const DEFAULT_MAX_SIZE = 100;
+const improvementCandidateRegistryLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export class ImprovementCandidateRegistry {
   private readonly candidates = new Map<string, ImprovementCandidate>();
@@ -164,8 +166,11 @@ export class ImprovementCandidateRegistry {
     // R23-45 fix: Also remove from persistence store
     try {
       this.persistenceStore?.deleteCandidate(candidateId);
-    } catch {
-      // Ignore persistence errors during cleanup
+    } catch (error) {
+      improvementCandidateRegistryLogger.error("improvement_candidate.delete_failed", {
+        candidateId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -175,8 +180,11 @@ export class ImprovementCandidateRegistry {
   private persistCandidate(candidate: ImprovementCandidate): void {
     try {
       this.persistenceStore?.saveCandidate(candidate);
-    } catch {
-      // R23-45 fix: Persistence failures should not block in-memory operation
+    } catch (error) {
+      improvementCandidateRegistryLogger.error("improvement_candidate.persist_failed", {
+        candidateId: candidate.candidateId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -385,6 +385,9 @@ export class DataClassificationService {
     const annotations: PiiAnnotation[] = [];
 
     for (const { type, pattern, confidence } of PII_PATTERNS) {
+      if (!this.isRegexSafe(pattern)) {
+        continue;
+      }
       const regex = new RegExp(pattern, "g");
       let match: RegExpExecArray | null;
       while ((match = regex.exec(content)) !== null) {
@@ -728,6 +731,9 @@ export class DataClassificationService {
 
     // Check patterns
     for (const pattern of rule.patterns) {
+      if (!this.isRegexSafe(pattern)) {
+        continue;
+      }
       if (new RegExp(pattern, "i").test(content)) return true;
     }
 
@@ -737,6 +743,18 @@ export class DataClassificationService {
     }
 
     return false;
+  }
+
+  private isRegexSafe(pattern: string): boolean {
+    if (pattern.length === 0 || pattern.length > 512) {
+      return false;
+    }
+    try {
+      void new RegExp(pattern);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private classifyLegacyInput(input: { dataType: string; context?: string }): ClassificationResult {

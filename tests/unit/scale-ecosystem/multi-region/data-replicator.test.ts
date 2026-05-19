@@ -216,6 +216,18 @@ test("ReplicationEventBuffer shouldFlush returns true when interval passed", asy
   assert.ok(buffer.size() >= 0);
 });
 
+test("ReplicationEventBuffer unrefs scheduled flush timer", () => {
+  const buffer = new ReplicationEventBuffer(100, 1000);
+
+  buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
+
+  const timer = (buffer as unknown as { timer: { hasRef?: () => boolean } | null }).timer;
+  assert.ok(timer);
+  if (typeof timer?.hasRef === "function") {
+    assert.equal(timer.hasRef(), false);
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Checksum Tests
 // ─────────────────────────────────────────────────────────────────────────────

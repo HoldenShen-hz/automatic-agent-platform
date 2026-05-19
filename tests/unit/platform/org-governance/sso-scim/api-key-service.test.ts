@@ -140,13 +140,14 @@ test("ApiKeyService rotateApiKey rotates active key", () => {
 
   const result = service.rotateApiKey(record.keyId, "admin-2");
 
-  assert.ok(result !== null);
-  assert.strictEqual(result!.record.name, "Test Key");
-  assert.strictEqual(result!.record.ownerId, "user-1");
-  assert.notStrictEqual(result!.rawKey, service.getApiKey(record.keyId));
+  assert.strictEqual(result.reason, undefined);
+  assert.ok(result.record !== null);
+  assert.strictEqual(result.record.name, "Test Key");
+  assert.strictEqual(result.record.ownerId, "user-1");
+  assert.notStrictEqual(result.rawKey, service.getApiKey(record.keyId));
 });
 
-test("ApiKeyService rotateApiKey returns null for revoked key", () => {
+test("ApiKeyService rotateApiKey returns key_revoked for revoked key", () => {
   const service = new ApiKeyService();
   const { record } = service.generateApiKey({
     name: "Test Key",
@@ -157,7 +158,7 @@ test("ApiKeyService rotateApiKey returns null for revoked key", () => {
 
   const result = service.rotateApiKey(record.keyId, "admin-2");
 
-  assert.strictEqual(result, null);
+  assert.deepEqual(result, { record: null, rawKey: null, reason: "key_revoked" });
 });
 
 test("ApiKeyService generateApiKey with scopes", () => {

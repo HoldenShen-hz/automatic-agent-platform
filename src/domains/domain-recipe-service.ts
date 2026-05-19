@@ -49,9 +49,14 @@ export interface RecipeCreateRequest {
   readonly archetype?: DomainRecipeArchetype;
   readonly name: string;
   readonly description: string;
+  readonly riskProfileRef?: string;
+  readonly guardrailOverlay?: Record<string, unknown>;
   readonly triggerPhrases: readonly string[];
   readonly defaultWorkflowId: string;
+  readonly recommendedWorkflowIds?: readonly string[];
   readonly defaultToolBundleIds?: readonly string[];
+  readonly defaultPromptBundleRef?: string;
+  readonly acceptanceChecklistRef?: string;
 }
 
 export interface RecipeUpdateRequest {
@@ -236,9 +241,14 @@ export class DomainRecipeService {
       archetype: request.archetype ?? "crud_heavy",
       name: request.name,
       description: request.description,
+      riskProfileRef: request.riskProfileRef ?? `${request.domainId}.risk`,
+      guardrailOverlay: request.guardrailOverlay ?? {},
       triggerPhrases: [...request.triggerPhrases],
       defaultWorkflowId: request.defaultWorkflowId,
+      recommendedWorkflowIds: [...(request.recommendedWorkflowIds ?? [request.defaultWorkflowId])],
       defaultToolBundleIds: [...(request.defaultToolBundleIds ?? [])],
+      defaultPromptBundleRef: request.defaultPromptBundleRef ?? `${request.domainId}.default-prompt`,
+      acceptanceChecklistRef: request.acceptanceChecklistRef ?? `${request.domainId}.acceptance`,
     };
 
     this.recipes.set(recipe.recipeId, recipe);

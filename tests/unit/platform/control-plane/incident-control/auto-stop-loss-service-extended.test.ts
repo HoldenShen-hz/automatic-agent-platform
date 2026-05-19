@@ -142,6 +142,18 @@ test("AutoStopLossService normalizes anomaly severity strings before deriving es
   assert.equal(result.matchingPlaybooks.length, 1);
 });
 
+test("AutoStopLossService does not treat arbitrary emergency substrings as emergency severity", () => {
+  const service = createIsolatedService();
+  service.registerPlaybook(createTestPlaybook({
+    id: "strict-emergency-playbook",
+    triggerCondition: { type: "anomaly_severity", severityThreshold: "emergency" },
+  }));
+
+  const result = service.evaluateHealth("degraded", { anomalySeverity: "non_emergency" });
+
+  assert.equal(result.matchingPlaybooks.length, 0);
+});
+
 test("AutoStopLossService evaluateHealth matches health status playbooks", () => {
   const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({

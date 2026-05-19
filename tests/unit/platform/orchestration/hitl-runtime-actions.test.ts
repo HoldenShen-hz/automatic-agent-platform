@@ -300,7 +300,7 @@ test("R23-38: LearningObjectValidator quarantines PII and secret tainted content
 
   assert.equal(result.valid, false);
   assert.equal(result.learningObject.promotionStatus, "quarantined");
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("R23-39: HarnessRunStatus exposes cancelled and HITL rejection resolves to cancelled", () => {

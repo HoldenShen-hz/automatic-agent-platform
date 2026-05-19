@@ -1,7 +1,7 @@
 {
   "domainId": "data-engineering",
   "phase": "9a",
-  "divisionId": "data",
+  "divisionId": "data-engineering",
   "latencyTier": "business_day",
   "workflowProfile": {
     "workflowId": "data-engineering.primary",

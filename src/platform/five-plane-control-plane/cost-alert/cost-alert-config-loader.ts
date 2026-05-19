@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { CostAlertConfig } from "./cost-alert-types.js";
 import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
 import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../iam/sandbox-policy.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 // Zod schema for cost alert configuration validation
 const CostAlertActionSchema = z.enum([
@@ -41,8 +42,49 @@ const CostAlertConfigSchema = z.object({
 });
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/cost-alert/default.json");
+const costAlertConfigLogger = new StructuredLogger({ retentionLimit: 100 });
 
 let cachedConfig: CostAlertConfig | null = null;
+
+function buildDefaultCostAlertConfig(): CostAlertConfig {
+  return {
+    enabled: true,
+    platformBudgetPolicy: null,
+    tenantBudgetPolicies: {},
+    packBudgetPolicies: {},
+    defaultWarningThreshold: 0.8,
+  };
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object"
+    && error != null
+    && "code" in error
+    && String(error.code) === "ENOENT";
+}
+
+function normalizeValidatedConfig(validated: z.infer<typeof CostAlertConfigSchema>): CostAlertConfig {
+  return {
+    enabled: validated.enabled,
+    platformBudgetPolicy: validated.platformBudgetPolicy,
+    tenantBudgetPolicies: validated.tenantBudgetPolicies,
+    packBudgetPolicies: validated.packBudgetPolicies,
+    defaultWarningThreshold: validated.defaultWarningThreshold,
+  };
+}
+
+function parseCostAlertConfigFile(configPath: string): CostAlertConfig {
+  const raw = readFileSync(configPath, "utf-8");
+  const parsed = JSON.parse(raw);
+  const validated = CostAlertConfigSchema.parse(parsed);
+  return normalizeValidatedConfig(validated);
+}
+
+function createCostAlertConfigValidationError(error: unknown): ValidationError {
+  return error instanceof Error
+    ? new ValidationError("cost_alert.config_invalid", "cost_alert.config_invalid", { cause: error })
+    : new ValidationError("cost_alert.config_invalid", "cost_alert.config_invalid");
+}
 
 export class CostAlertConfigLoader {
   public loadDefault(configPath: string = DEFAULT_CONFIG_PATH, sandboxPolicy?: SandboxPolicy): CostAlertConfig {
@@ -89,58 +131,42 @@ export function loadCostAlertConfig(
     // Use normalized path after validation
     const effectivePath = check.normalizedPath;
     try {
-      const raw = readFileSync(effectivePath, "utf-8");
-      const parsed = JSON.parse(raw);
-
-      // Validate parsed config against Zod schema
-      const validated = CostAlertConfigSchema.parse(parsed);
-
-      cachedConfig = {
-        enabled: validated.enabled,
-        platformBudgetPolicy: validated.platformBudgetPolicy,
-        tenantBudgetPolicies: validated.tenantBudgetPolicies,
-        packBudgetPolicies: validated.packBudgetPolicies,
-        defaultWarningThreshold: validated.defaultWarningThreshold,
-      };
-
+      cachedConfig = parseCostAlertConfigFile(effectivePath);
       return cachedConfig!;
     } catch (error) {
-      // Return default config if file doesn't exist or validation fails
-      return {
-        enabled: true,
-        platformBudgetPolicy: null,
-        tenantBudgetPolicies: {},
-        packBudgetPolicies: {},
-        defaultWarningThreshold: 0.8,
-      };
+      if (isMissingFileError(error)) {
+        costAlertConfigLogger.warn("cost_alert.config_missing", {
+          data: { configPath: effectivePath },
+        });
+        return buildDefaultCostAlertConfig();
+      }
+      costAlertConfigLogger.error("cost_alert.config_invalid", {
+        data: {
+          configPath: effectivePath,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+      throw createCostAlertConfigValidationError(error);
     }
   }
 
   try {
-    const raw = readFileSync(configPath, "utf-8");
-    const parsed = JSON.parse(raw);
-
-    // Validate parsed config against Zod schema
-    const validated = CostAlertConfigSchema.parse(parsed);
-
-    cachedConfig = {
-      enabled: validated.enabled,
-      platformBudgetPolicy: validated.platformBudgetPolicy,
-      tenantBudgetPolicies: validated.tenantBudgetPolicies,
-      packBudgetPolicies: validated.packBudgetPolicies,
-      defaultWarningThreshold: validated.defaultWarningThreshold,
-    };
-
+    cachedConfig = parseCostAlertConfigFile(configPath);
     return cachedConfig!;
-  } catch {
-    // Return default config if file doesn't exist or validation fails
-    return {
-      enabled: true,
-      platformBudgetPolicy: null,
-      tenantBudgetPolicies: {},
-      packBudgetPolicies: {},
-      defaultWarningThreshold: 0.8,
-    };
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      costAlertConfigLogger.warn("cost_alert.config_missing", {
+        data: { configPath },
+      });
+      return buildDefaultCostAlertConfig();
+    }
+    costAlertConfigLogger.error("cost_alert.config_invalid", {
+      data: {
+        configPath,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+    throw createCostAlertConfigValidationError(error);
   }
 }
 

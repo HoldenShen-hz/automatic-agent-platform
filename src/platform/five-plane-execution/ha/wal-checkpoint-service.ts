@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS event_replay_positions (
 );
 `;
 
+function parseJsonRecord(value: unknown, fieldName: string): Record<string, unknown> {
+  const parsed = JSON.parse(String(value));
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`wal_checkpoint.invalid_${fieldName}`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
 // ── Default Configuration ─────────────────────────────────────────
 
 const DEFAULT_CHECKPOINT_INTERVAL_MS = 30_000; // 30 seconds
@@ -358,10 +366,10 @@ export class WalCheckpointService {
     return {
       id: String(row.id),
       executionId: String(row.execution_id),
-      state: JSON.parse(String(row.state)) as Record<string, unknown>,
+      state: parseJsonRecord(row.state, "state"),
       createdAt: String(row.created_at),
       lastWalSequence: Number(row.last_wal_sequence),
-      metadata: row.metadata ? JSON.parse(String(row.metadata)) as Record<string, unknown> : null,
+      metadata: row.metadata ? parseJsonRecord(row.metadata, "metadata") : null,
     };
   }
 
@@ -599,6 +607,7 @@ export class WalCheckpointService {
     this.checkpointIntervalHandle = setInterval(() => {
       this.performScheduledCheckpoint();
     }, this.config.checkpointIntervalMs);
+    this.checkpointIntervalHandle.unref?.();
   }
 
   /**
@@ -651,7 +660,7 @@ export class WalCheckpointService {
       executionId: row.execution_id as string | null,
       taskId: row.task_id as string | null,
       sessionId: row.session_id as string | null,
-      payload: JSON.parse(String(row.payload)) as Record<string, unknown>,
+      payload: parseJsonRecord(row.payload, "payload"),
       createdAt: String(row.created_at),
       checkpointId: row.checkpoint_id as string | null,
       sequenceNumber: Number(row.sequence_number),

@@ -19,6 +19,7 @@ export const OAPEFLIR_STAGES = [
   "learn",
   "improve",
   "release",
+  "knowledge_promotion",
 ] as const;
 
 export type { OapeflirStage };
@@ -71,6 +72,7 @@ const STAGE_ENTRY_CONDITIONS: ReadonlyMap<OapeflirStage, StageEntryCondition> = 
   ["learn", { stage: "learn", requiredStatus: ["completed"], validationRequired: true }],
   ["improve", { stage: "improve", requiredStatus: ["completed", "skipped"], validationRequired: true }],
   ["release", { stage: "release", requiredStatus: ["completed", "skipped"], validationRequired: true }],
+  ["knowledge_promotion", { stage: "knowledge_promotion", requiredStatus: ["completed", "skipped"], validationRequired: true }],
 ]);
 
 export class StageTransitionFSM {

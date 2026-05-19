@@ -196,12 +196,12 @@ test("security: bash without dangerous flags is allowed", () => {
   assert.strictEqual(result.allowed, true, "bash with script path should be allowed");
 });
 
-test("security: script file interpreter with flag is blocked", () => {
+test("security: script file interpreter keeps script arguments allowed", () => {
   const classifier = new CommandSafetyClassifier();
 
-  // python with --malicious-flag
+  // Script arguments remain part of the sandboxed script invocation.
   const result = classifier.assess("python", ["script.py", "--malicious-flag"]);
 
-  assert.strictEqual(result.allowed, false, "python with flag should be blocked");
-  assert.strictEqual(result.reasonCode, "tool.command_interpreter_flag_denied", "Should have interpreter flag reason");
+  assert.strictEqual(result.allowed, true, "python script arguments should be allowed");
+  assert.strictEqual(result.reasonCode, null, "No interpreter-level denial should be raised");
 });

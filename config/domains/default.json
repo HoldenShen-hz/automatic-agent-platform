@@ -5,6 +5,16 @@
       "name": "Coding",
       "description": "Coding workflows, tools, and plugin bindings.",
       "version": "1.0.0",
+      "planGraph": {
+        "planGraphId": "coding.default",
+        "entryNodeId": "analyze",
+        "terminalNodeIds": ["analyze"]
+      },
+      "riskSpec": {
+        "advisoryOnly": false,
+        "humanAccountable": true,
+        "deterministicHotPathOnly": false
+      },
       "workflows": [
         {
           "workflowId": "coding-default",

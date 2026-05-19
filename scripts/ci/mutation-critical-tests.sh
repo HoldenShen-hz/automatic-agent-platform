@@ -12,4 +12,4 @@ cd "${REPO_ROOT}"
   tests/unit/platform/interface/api/http-server/approval-routes.test.ts \
   tests/unit/platform/interface/api/http-server/gateway-routes.test.ts \
   tests/unit/platform/orchestration/oapeflir/oapeflir-loop-service.test.ts \
-  tests/unit/runtime/redis-client-options.test.ts
+  tests/unit/platform/shared/utils/redis-client-options.test.ts

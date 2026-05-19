@@ -1,7 +1,7 @@
 {
   "domainId": "coding",
   "phase": "9a",
-  "divisionId": "engineering_ops",
+  "divisionId": "coding",
   "latencyTier": "near_realtime",
   "workflowProfile": {
     "workflowId": "coding.primary",

@@ -71,6 +71,12 @@ import { ValidationError } from "../../contracts/errors.js";
 import type { ControlPlaneDirectiveSink } from "../../five-plane-control-plane/control-plane-directive-sink.js";
 import { OapeflirLoopSupport } from "./oapeflir-loop-support.js";
 
+const DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION = Object.freeze({
+  maxTokens: 5_000,
+  timeoutMs: 60_000,
+});
+const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000;
+
 export interface OapeflirLoopInput {
   taskId: string;
   objective: string;
@@ -313,7 +319,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           risk: "medium",
           riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
           routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
-          resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
+          resourceAllocation: { modelClass: "medium", ...DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION },
           approvalPolicy: { required: false, level: "none" },
           executionMode: "auto",
           suggestedActions: [],
@@ -342,8 +348,12 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         approvalMode: "none" as const,
         autonomyMode: "full_auto" as const,
         tool_policy: { allowedTools: [] as const },
-        sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: 300000 },
-        approvalRequirement: { requiredForRiskClass: [] as const, approverRoles: [] as const, escalationTimeoutMs: 60000 },
+        sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: DEFAULT_SANDBOX_TIMEOUT_MS },
+        approvalRequirement: {
+          requiredForRiskClass: [] as const,
+          approverRoles: [] as const,
+          escalationTimeoutMs: DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION.timeoutMs,
+        },
       };
       const loopController = new HarnessLoopController(constraintPack, {}, { startedAt: Date.now() });
 
@@ -905,7 +915,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         risk: "medium",
         riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
         routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
-        resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
+        resourceAllocation: { modelClass: "medium", ...DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION },
         approvalPolicy: { required: false, level: "none" },
         executionMode: "auto",
         suggestedActions: [],

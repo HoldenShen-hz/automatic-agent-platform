@@ -47,9 +47,9 @@ export interface LearningObject {
   readonly validatedBy: "none" | "evidence" | "human_review" | "shadow_execution";
   readonly promotionStatus: LearningObjectPromotionStatus;
   readonly status: LearningObjectStatus;
-  readonly createdAt: string | number;
-  readonly validatedAt?: string | number;
-  readonly promotedAt?: string | number;
+  readonly createdAt: string;
+  readonly validatedAt?: string;
+  readonly promotedAt?: string;
 }
 
 export function normalizeLearningObjectPromotionStatus(
@@ -81,9 +81,9 @@ export const LearningObjectSchema = z.object({
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
   promotionStatus: LearningObjectPromotionStatusSchema.default("quarantine"),
   status: z.enum(["created", "validating", "validated", "rejected", "promoted"]).optional(),
-  createdAt: z.union([z.string(), z.number().int().nonnegative()]),
-  validatedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
-  promotedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
+  createdAt: z.string().min(1),
+  validatedAt: z.string().min(1).optional(),
+  promotedAt: z.string().min(1).optional(),
 }).superRefine((value, context) => {
   const content = value.content;
   const title = value.title ?? content?.title;

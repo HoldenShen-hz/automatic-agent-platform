@@ -185,8 +185,7 @@ test("ApiKeyService.rotateApiKey with already expired key", () => {
 
   const result = service.rotateApiKey(record.keyId, "admin");
 
-  // Should return null because key is already expired
-  assert.equal(result, null);
+  assert.deepEqual(result, { record: null, rawKey: null, reason: "key_expired" });
 });
 
 test("ApiKeyService.rotateApiKey with already revoked key", () => {
@@ -201,8 +200,7 @@ test("ApiKeyService.rotateApiKey with already revoked key", () => {
   service.revokeApiKey(record.keyId, "admin");
   const result = service.rotateApiKey(record.keyId, "admin");
 
-  // Should return null because key is revoked
-  assert.equal(result, null);
+  assert.deepEqual(result, { record: null, rawKey: null, reason: "key_revoked" });
 });
 
 test("ApiKeyService.listApiKeysForOwner with no keys", () => {

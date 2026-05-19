@@ -306,6 +306,7 @@ export class OidcOAuthService {
     this.rotationKeys.set(rotationId, {
       keyId: rotationId,
       actorId: record.actorId,
+      oldApiKey: apiKey,
       status: "rotating",
       createdAt: new Date().toISOString(),
       rotatedAt: null,
@@ -336,6 +337,7 @@ export class OidcOAuthService {
       return false;
     }
 
+    this.apiKeys.delete(record.oldApiKey);
     record.status = "revoked";
     record.rotatedAt = new Date().toISOString();
 

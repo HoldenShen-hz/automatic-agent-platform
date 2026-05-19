@@ -798,10 +798,10 @@ export class EventRepository {
       eventType: input.eventType,
       taskId: input.taskId,
       sessionId: input.sessionId ?? null,
-      executionId: input.executionId,
+      executionId: resolvedExecutionId,
       payload: input.payload,
     };
-    const aggregateId = input.taskId ?? input.sessionId ?? input.executionId ?? eventRecord.id;
+    const aggregateId = input.taskId ?? input.sessionId ?? resolvedExecutionId ?? eventRecord.id;
 
     this.conn
       .prepare(

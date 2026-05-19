@@ -416,14 +416,17 @@ export class MemoryRetrievalService {
     if (memoryQuery.agentId != null) {
       results = results.filter(r => r.memory.agentId === memoryQuery.agentId);
     }
-    if (memoryQuery.scopes != null && memoryQuery.scopes.length > 0) {
-      results = results.filter(r => memoryQuery.scopes!.includes(r.memory.scope));
+    const scopes = memoryQuery.scopes;
+    if (scopes != null && scopes.length > 0) {
+      results = results.filter((r) => scopes.includes(r.memory.scope));
     }
-    if (memoryQuery.memoryLayers != null && memoryQuery.memoryLayers.length > 0) {
-      results = results.filter(r => memoryQuery.memoryLayers!.includes(r.memory.memoryLayer));
+    const memoryLayers = memoryQuery.memoryLayers;
+    if (memoryLayers != null && memoryLayers.length > 0) {
+      results = results.filter((r) => memoryLayers.includes(r.memory.memoryLayer));
     }
-    if (memoryQuery.classifications != null && memoryQuery.classifications.length > 0) {
-      results = results.filter(r => memoryQuery.classifications!.includes(r.memory.classification));
+    const classifications = memoryQuery.classifications;
+    if (classifications != null && classifications.length > 0) {
+      results = results.filter((r) => classifications.includes(r.memory.classification));
     }
 
     // Apply multi-signal reranking: BM25 + recency + importance + access

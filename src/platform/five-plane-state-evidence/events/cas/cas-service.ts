@@ -25,6 +25,8 @@
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
  */
 
+import { newId } from "../../../contracts/types/ids.js";
+
 /**
  * Result of a CAS operation indicating success or failure.
  */
@@ -56,6 +58,14 @@ interface CasDistributedLockAdapter {
   acquire(input: { lockKey: string; owner: string; ttlMs?: number }): { acquired: boolean };
   release(lockKey: string, owner: string): boolean;
 }
+
+interface CasLockOptions {
+  lockTtlMs?: number;
+  ownerFactory?: () => string;
+}
+
+const DEFAULT_DISTRIBUTED_CAS_LOCK_TTL_MS = 10_000;
+const DEFAULT_DISTRIBUTED_CAS_OWNER_FACTORY = (): string => newId("cas");
 
 class InMemoryCasRepository implements CasRepository {
   private readonly store = new Map<string, CasRecord>();
@@ -199,6 +209,7 @@ class DistributedLockCasRepository implements CasRepository {
   public constructor(
     private readonly inner: CasRepository,
     private readonly lockAdapter: CasDistributedLockAdapter,
+    private readonly options: Required<CasLockOptions>,
   ) {}
 
   public get(key: string): CasRecord | undefined {
@@ -219,10 +230,10 @@ class DistributedLockCasRepository implements CasRepository {
 
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
     const lockKey = `cas:${key}`;
-    const owner = `cas-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const owner = this.options.ownerFactory();
 
     // Acquire distributed lock before read-check-write
-    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: 10_000 });
+    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: this.options.lockTtlMs });
     if (!result.acquired) {
       // Could not acquire lock - treat as CAS failure
       const current = this.inner.get(key);
@@ -244,10 +255,10 @@ class DistributedLockCasRepository implements CasRepository {
 
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
     const lockKey = `cas:${key}`;
-    const owner = `cas-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const owner = this.options.ownerFactory();
 
     // Acquire distributed lock before read-check-write
-    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: 10_000 });
+    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: this.options.lockTtlMs });
     if (!result.acquired) {
       // Could not acquire lock - treat as CAS failure
       const current = this.inner.get(key);
@@ -283,6 +294,10 @@ export class CasService {
   public constructor(
     private readonly repository: CasRepository = new InMemoryCasRepository(),
     private readonly lockAdapter?: CasDistributedLockAdapter,
+    private readonly lockOptions: Required<CasLockOptions> = {
+      lockTtlMs: DEFAULT_DISTRIBUTED_CAS_LOCK_TTL_MS,
+      ownerFactory: DEFAULT_DISTRIBUTED_CAS_OWNER_FACTORY,
+    },
   ) {}
 
   /**
@@ -378,7 +393,7 @@ export class CasService {
    */
   private getEffectiveRepository(): CasRepository {
     if (this.lockAdapter) {
-      return new DistributedLockCasRepository(this.repository, this.lockAdapter);
+      return new DistributedLockCasRepository(this.repository, this.lockAdapter, this.lockOptions);
     }
     return this.repository;
   }
@@ -386,6 +401,10 @@ export class CasService {
 
 export function createInMemoryCasService(): CasService {
   return new CasService(new InMemoryCasRepository());
+}
+
+export function createSqliteCasService(repository: CasRepository): CasService {
+  return new CasService(repository);
 }
 
 /**
@@ -397,6 +416,10 @@ export function createInMemoryCasService(): CasService {
 export function createDistributedCasService(
   repository: CasRepository,
   lockAdapter: CasDistributedLockAdapter,
+  options: CasLockOptions = {},
 ): CasService {
-  return new CasService(repository, lockAdapter);
+  return new CasService(repository, lockAdapter, {
+    lockTtlMs: options.lockTtlMs ?? DEFAULT_DISTRIBUTED_CAS_LOCK_TTL_MS,
+    ownerFactory: options.ownerFactory ?? DEFAULT_DISTRIBUTED_CAS_OWNER_FACTORY,
+  });
 }

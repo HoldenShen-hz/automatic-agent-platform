@@ -286,6 +286,20 @@ test("DataClassificationService classify applies rule match", () => {
   assert.equal(result.level, "confidential");
 });
 
+test("DataClassificationService ignores unsafe custom regex rules", () => {
+  const service = new DataClassificationService();
+  service.defineRule({
+    name: "Unsafe Rule",
+    level: "restricted",
+    patterns: ["("],
+    keywords: [],
+    autoClassify: true,
+  });
+
+  const result = service.classify("This would have crashed before.");
+  assert.equal(result.level, "public");
+});
+
 test("DataClassificationService auditLog records decisions", () => {
   const service = new DataClassificationService({ enableAuditTrail: true });
   service.filterForPrompt("confidential information");

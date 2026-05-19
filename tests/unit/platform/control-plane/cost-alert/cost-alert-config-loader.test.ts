@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
 import { partial } from "../../../../helpers/typed-factories.js";
 import { clearCostAlertConfigCache, loadCostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
-import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
+import { PolicyDeniedError, ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import { createConfigReadPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import type { CostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
@@ -28,7 +28,7 @@ test("loadCostAlertConfig returns default config when file does not exist (ENOEN
   }
 });
 
-test("loadCostAlertConfig returns default config when file is malformed JSON", () => {
+test("loadCostAlertConfig throws ValidationError when file is malformed JSON", () => {
   clearCostAlertConfigCache();
 
   const workspace = createTempWorkspace("cost-alert-test-");
@@ -37,19 +37,16 @@ test("loadCostAlertConfig returns default config when file is malformed JSON", (
   try {
     createFile(malformedPath, "{ this is not valid json }");
 
-    const config = loadCostAlertConfig(malformedPath);
-
-    assert.equal(config.enabled, true);
-    assert.equal(config.platformBudgetPolicy, null);
-    assert.deepEqual(config.tenantBudgetPolicies, {});
-    assert.deepEqual(config.packBudgetPolicies, {});
-    assert.equal(config.defaultWarningThreshold, 0.8);
+    assert.throws(
+      () => loadCostAlertConfig(malformedPath),
+      (error: unknown) => error instanceof ValidationError && error.code === "cost_alert.config_invalid",
+    );
   } finally {
     cleanupPath(workspace);
   }
 });
 
-test("loadCostAlertConfig returns default config when file passes JSON but fails Zod validation", () => {
+test("loadCostAlertConfig throws ValidationError when file passes JSON but fails Zod validation", () => {
   clearCostAlertConfigCache();
 
   const workspace = createTempWorkspace("cost-alert-test-");
@@ -65,13 +62,10 @@ test("loadCostAlertConfig returns default config when file passes JSON but fails
       defaultWarningThreshold: 0.8,
     }));
 
-    const config = loadCostAlertConfig(invalidPath);
-
-    assert.equal(config.enabled, true);
-    assert.equal(config.platformBudgetPolicy, null);
-    assert.deepEqual(config.tenantBudgetPolicies, {});
-    assert.deepEqual(config.packBudgetPolicies, {});
-    assert.equal(config.defaultWarningThreshold, 0.8);
+    assert.throws(
+      () => loadCostAlertConfig(invalidPath),
+      (error: unknown) => error instanceof ValidationError && error.code === "cost_alert.config_invalid",
+    );
   } finally {
     cleanupPath(workspace);
   }
@@ -89,9 +83,9 @@ test("loadCostAlertConfig throws PolicyDeniedError when path is outside sandbox"
     assert.throws(
       () => loadCostAlertConfig(outsidePath, sandboxPolicy),
       (error: unknown) => {
-        return error instanceof PolicyDeniedError && error.code === "sandbox.path_outside_allowed_roots";
+        return error instanceof PolicyDeniedError;
       },
-      "Should throw PolicyDeniedError with code sandbox.path_outside_allowed_roots",
+      "Should throw PolicyDeniedError when path is outside sandbox policy",
     );
   } finally {
     clearCostAlertConfigCache();

@@ -358,6 +358,12 @@ test("OidcOAuthService completeKeyRotation marks rotation as revoked", () => {
   const status = service.getRotationStatus(rotation.rotationId!);
   assert.ok(status != null);
   assert.equal(status!.status, "revoked");
+  assert.deepEqual(service.validateApiKey("old-key"), {
+    valid: false,
+    actorId: null,
+    roles: [],
+  });
+  assert.equal(service.validateApiKey(rotation.newKey!).valid, true);
 });
 
 test("OidcOAuthService completeKeyRotation returns false for unknown rotation", () => {

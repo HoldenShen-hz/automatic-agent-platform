@@ -1,4 +1,7 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../../platform/shared/observability/structured-logger.js";
+
+const hitlRuntimeLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export type HitlMode = "inspect" | "patch" | "override" | "takeover" | "resume" | "edit" | "delegate" | "escalate";
 export type HitlRequestStatus = "pending" | "pending_approval" | "approved" | "rejected" | "paused" | "completed";
@@ -98,8 +101,11 @@ export class HitlRuntime {
     // Then persist to durable store (primary)
     try {
       this.store.saveRequest(normalized);
-    } catch {
-      // R9-21 fix: Map is fallback - if persistence fails, we still have the in-memory copy
+    } catch (error) {
+      hitlRuntimeLogger.error("hitl.persist_request_failed", {
+        requestId: normalized.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -110,8 +116,11 @@ export class HitlRuntime {
       this.memoryFallback.set(normalized.requestId, normalized);
       try {
         this.store.saveRequest(normalized);
-      } catch {
-        // R9-21 fix: Continue loading even if persistence fails
+      } catch (error) {
+        hitlRuntimeLogger.error("hitl.load_request_persist_failed", {
+          requestId: normalized.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -121,8 +130,11 @@ export class HitlRuntime {
     this.memoryFallback.set(normalized.requestId, normalized);
     try {
       this.store.saveRequest(normalized);
-    } catch {
-      // R9-21 fix: Map is fallback
+    } catch (error) {
+      hitlRuntimeLogger.error("hitl.hydrate_request_failed", {
+        requestId: normalized.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     if (record != null) {
       this.responsibilityRecords.set(normalized.requestId, record);

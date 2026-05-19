@@ -12,7 +12,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const delegationAuditLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /** Default directory for delegation audit events */
 const DEFAULT_AUDIT_DIR = join(process.cwd(), ".audit", "delegation");
@@ -38,8 +42,12 @@ function safeReadJson<T>(path: string): T | null {
   }
   try {
     return JSON.parse(raw) as T;
-  } catch {
-    return null;
+  } catch (error) {
+    delegationAuditLogger.error("delegation_audit.invalid_json", {
+      path,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new ValidationError("delegation_audit.invalid_json", `delegation_audit.invalid_json: ${path}`);
   }
 }
 

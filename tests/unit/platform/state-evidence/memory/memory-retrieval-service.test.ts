@@ -473,6 +473,22 @@ test("MemoryRetrievalService.searchMemories applies classifications filter", () 
   }
 });
 
+test("MemoryRetrievalService.searchMemories tolerates null optional array filters", () => {
+  const store = createMockStore([createTestMemory()]);
+  const service = new MemoryRetrievalService(store);
+
+  const results = service.searchMemories(
+    { query: "test" },
+    {
+      scopes: null,
+      memoryLayers: null,
+      classifications: null,
+    } as unknown as MemoryRecallQuery,
+  );
+
+  assert.equal(results.length, 1);
+});
+
 test("MemoryRetrievalService.searchMemories uses limit and offset", () => {
   const store = createMockStore([]);
   const service = new MemoryRetrievalService(store);

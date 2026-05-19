@@ -21,9 +21,14 @@ export const DomainRecipeSchema = z.object({
   archetype: DomainRecipeArchetypeSchema.default("crud_heavy"),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  riskProfileRef: z.string().min(1),
+  guardrailOverlay: z.record(z.string(), z.unknown()).default({}),
   triggerPhrases: z.array(z.string()).default([]),
   defaultWorkflowId: z.string().min(1),
+  recommendedWorkflowIds: z.array(z.string().min(1)).default([]),
   defaultToolBundleIds: z.array(z.string()).default([]),
+  defaultPromptBundleRef: z.string().min(1),
+  acceptanceChecklistRef: z.string().min(1),
 });
 
 export type DomainRecipe = z.infer<typeof DomainRecipeSchema>;

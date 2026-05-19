@@ -34,11 +34,12 @@
  */
 
 import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, relative, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
-const DEFAULT_DENIED_ROOTS = ["/etc", "/proc", "/sys"] as const;
+const DEFAULT_SANDBOX_DENIED_ROOTS = ["/etc", "/proc", "/sys", `${homedir()}/.ssh`] as const;
 
 /**
  * Sandbox operating mode determining what operations are permitted.
@@ -597,7 +598,7 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     policyId: "workspace_write",
     mode: "workspace_write",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [...DEFAULT_DENIED_ROOTS],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -612,7 +613,7 @@ export function createReadOnlyPolicy(workspaceRoot: string): SandboxPolicy {
     policyId: "read_only",
     mode: "read_only",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
@@ -627,7 +628,7 @@ export function createScopedExternalAccessPolicy(workspaceRoot: string): Sandbox
     policyId: "scoped_external_access",
     mode: "scoped_external_access",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -642,7 +643,7 @@ export function createRestrictedExecPolicy(workspaceRoot: string): SandboxPolicy
     policyId: "restricted_exec",
     mode: "restricted_exec",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -670,7 +671,7 @@ export function createConfigReadPolicy(configRoot: string): SandboxPolicy {
     policyId: "config_read",
     mode: "read_only",
     allowedRoots: [configRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",

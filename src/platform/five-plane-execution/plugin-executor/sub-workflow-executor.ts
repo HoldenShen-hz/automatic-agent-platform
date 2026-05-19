@@ -707,9 +707,8 @@ export class SubWorkflowExecutor {
 
   private async simulateRollback(entry: RollbackHistoryEntry): Promise<void> {
     // Simulated rollback - in real implementation would call rollback handlers
-    return new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
+    void entry;
+    await Promise.resolve();
   }
 
   private buildResult(

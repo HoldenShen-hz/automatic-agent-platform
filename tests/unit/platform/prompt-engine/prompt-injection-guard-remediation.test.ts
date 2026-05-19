@@ -5,6 +5,8 @@ import {
   DEFAULT_ML_CLASSIFIER_CONFIG,
   classifyPromptInjectionRisk,
   executePromptDefenseChain,
+  escapePromptInputForRendering,
+  normalizePromptInputForAnalysis,
   sanitizePromptInput,
 } from "../../../../src/platform/prompt-engine/index.js";
 
@@ -18,6 +20,14 @@ test("classifyPromptInjectionRisk analyzes normalized raw input before escaping 
   assert.ok(result.matchedSignals.includes("code_injection"));
   assert.equal(result.sanitizedInput, "<script>alert('xss')</script>");
   assert.match(sanitizePromptInput(result.sanitizedInput), /&lt;script&gt;/);
+});
+
+test("prompt injection helpers split analysis normalization from rendering escaping", () => {
+  const normalized = normalizePromptInputForAnalysis("ignore\u200B this <script>`x`</script>");
+  const escaped = escapePromptInputForRendering("ignore\u200B this <script>`x`</script>");
+
+  assert.equal(normalized, "ignore this <script>`x`</script>");
+  assert.match(escaped, /&lt;script&gt;/);
 });
 
 test("executePromptDefenseChain relies on external guardrails for blocking instead of classifier-only deny", async () => {

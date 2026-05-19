@@ -403,9 +403,14 @@ function buildRecipes(seed: DomainSeed, workflowId: string, bundleId: string): r
       archetype: inferRecipeArchetype(seed.tags),
       name: `${seed.displayName} Baseline Recipe`,
       description: `Baseline recipe for ${seed.displayName}.`,
+      riskProfileRef: `${seed.domainId}.risk`,
+      guardrailOverlay: {},
       triggerPhrases: seed.tags.map((tag) => tag.replace(/-/g, " ")),
       defaultWorkflowId: workflowId,
+      recommendedWorkflowIds: [workflowId],
       defaultToolBundleIds: [bundleId],
+      defaultPromptBundleRef: `${seed.domainId}.observe`,
+      acceptanceChecklistRef: `${seed.domainId}.acceptance`,
     },
   ];
 }

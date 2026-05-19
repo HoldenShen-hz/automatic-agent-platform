@@ -262,6 +262,46 @@ test("WalCheckpointService writeWalEntry returns WalEntry with sequence number",
   assert.deepStrictEqual(entry.payload, { key: "value" });
 });
 
+test("WalCheckpointService getLatestCheckpoint rejects non-object JSON state", () => {
+  const db = {
+    connection: {
+      exec() {},
+      prepare() {
+        return {
+          get() {
+            return {
+              id: "checkpoint-1",
+              execution_id: "exec-1",
+              state: "[]",
+              created_at: "2026-05-01T00:00:00.000Z",
+              last_wal_sequence: 1,
+              metadata: "{\"ok\":true}",
+            };
+          },
+          all() {
+            return [];
+          },
+          run() {
+            return { changes: 1 };
+          },
+        };
+      },
+    },
+    transaction<T>(fn: () => T): T {
+      return fn();
+    },
+    integrityCheck(): string[] {
+      return ["ok"];
+    },
+    getSchemaStatus() {
+      return { pendingVersions: [], checksumMismatches: [] };
+    },
+  } as unknown as AuthoritativeSqlDatabase;
+  const service = new WalCheckpointService({ db });
+
+  assert.throws(() => service.getLatestCheckpoint("exec-1"), /wal_checkpoint.invalid_state/);
+});
+
 test("WalCheckpointService resumes sequence numbers from persisted WAL state", () => {
   const db = createMockDatabase();
   const firstService = new WalCheckpointService({

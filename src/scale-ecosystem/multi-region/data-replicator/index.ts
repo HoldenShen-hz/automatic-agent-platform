@@ -149,6 +149,7 @@ export class ReplicationEventBuffer {
       this.timer = null;
       this.onScheduledFlush?.();
     }, this.flushIntervalMs);
+    this.timer.unref?.();
   }
 }
 

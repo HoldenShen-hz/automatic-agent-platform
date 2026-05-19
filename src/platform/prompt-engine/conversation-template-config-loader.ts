@@ -7,10 +7,13 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { z } from "zod";
-import type { ConversationTemplate } from "./conversation-template-service.js";
+import {
+  ConversationTemplateSchema,
+  type ConversationTemplate,
+} from "./conversation-template-service.js";
 
 const ConversationTemplateConfigSchema = z.object({
-  templates: z.array(z.any()),
+  templates: z.array(ConversationTemplateSchema),
   defaultTemplateId: z.string().optional(),
   maxStepsPerTemplate: z.number().default(10),
   enableTemplateAutoSelection: z.boolean().default(true),

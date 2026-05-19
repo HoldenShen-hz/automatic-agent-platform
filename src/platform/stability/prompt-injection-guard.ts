@@ -121,6 +121,14 @@ function normalizePromptInput(input: string): string {
   return input.normalize("NFKC").replace(ZERO_WIDTH_PATTERN, "").replace(CONTROL_PATTERN, "");
 }
 
+export function normalizePromptInputForAnalysis(input: string): string {
+  return normalizePromptInput(input);
+}
+
+export function escapePromptInputForRendering(input: string): string {
+  return sanitizePromptInput(input);
+}
+
 export function sanitizePromptInput(input: string): string {
   const normalized = normalizePromptInput(input);
   return normalized

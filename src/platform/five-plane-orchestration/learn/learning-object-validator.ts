@@ -140,7 +140,7 @@ export class LearningObjectValidator {
     if (piiResult.containsPii) {
       return {
         valid: false,
-        reasonCode: "learning.pii_secret_detected",
+        reasonCode: "learning.pii_detected",
         learningObject: {
           ...candidate,
           validatedBy: "none",
@@ -154,7 +154,7 @@ export class LearningObjectValidator {
     if (piiResult.containsSecrets) {
       return {
         valid: false,
-        reasonCode: "learning.pii_secret_detected",
+        reasonCode: "learning.secret_detected",
         learningObject: {
           ...candidate,
           validatedBy: "none",

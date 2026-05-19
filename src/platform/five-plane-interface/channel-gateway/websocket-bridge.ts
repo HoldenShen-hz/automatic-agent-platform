@@ -410,8 +410,12 @@ export class WebSocketBridge {
           resolve();
         }
       };
-      this.wss.close(() => finish());
-      setTimeout(() => finish(), CLOSE_TIMEOUT_MS);
+      const closeTimeout = setTimeout(() => finish(), CLOSE_TIMEOUT_MS);
+      closeTimeout.unref?.();
+      this.wss.close(() => {
+        clearTimeout(closeTimeout);
+        finish();
+      });
     });
   }
 

@@ -234,8 +234,10 @@ class MultiStepToolRegistry {
     // If still over capacity, remove oldest agents
     if (this.spawnedAgents.size > this.MAX_SPAWNED_AGENTS) {
       const sortedEntries = [...this.spawnedAgents.entries()].sort((a, b) => {
-        const aTime = a[1].execution?.updatedAt ? new Date(a[1].execution!.updatedAt).getTime() : 0;
-        const bTime = b[1].execution?.updatedAt ? new Date(b[1].execution!.updatedAt).getTime() : 0;
+        const aUpdatedAt = a[1].execution?.updatedAt;
+        const bUpdatedAt = b[1].execution?.updatedAt;
+        const aTime = aUpdatedAt != null ? new Date(aUpdatedAt).getTime() : 0;
+        const bTime = bUpdatedAt != null ? new Date(bUpdatedAt).getTime() : 0;
         return aTime - bTime;
       });
 

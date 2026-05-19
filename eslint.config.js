@@ -20,5 +20,5 @@ export default [
       "@typescript-eslint/no-unsafe-member-access": "warn",
     },
   },
-  { ignores: ["dist/", "node_modules/", "*.config.*"] },
+  { ignores: ["dist/", "node_modules/"] },
 ];

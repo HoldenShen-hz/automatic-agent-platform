@@ -133,7 +133,8 @@ export class ContextAssembler {
     }
     let redacted = value;
     for (const pattern of redactionPolicy.redactPatterns) {
-      const regex = new RegExp(`(${pattern})\\s*[:=]\\s*(\\S+)`, "gi");
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(${escapedPattern})\\s*[:=]\\s*(\\S+)`, "gi");
       redacted = redacted.replace(regex, `$1: ${redactionPolicy.replacementMask}`);
     }
     return redacted;

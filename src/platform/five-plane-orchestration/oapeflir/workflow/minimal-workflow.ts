@@ -40,6 +40,12 @@ export const GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH = join(
   "schemas",
   "minimal-output.json",
 );
+const MINIMAL_WORKFLOW_TIMEOUTS_MS = {
+  analyze: 120_000,
+  triage: 60_000,
+  draft: 180_000,
+  review: 90_000,
+} as const;
 
 /**
  * Compensation model for steps that produce side effects.
@@ -123,7 +129,7 @@ export const SINGLE_AGENT_MINIMAL_WORKFLOW: MinimalWorkflowDefinition = {
       roleId: "general_executor",
       outputKey: "analysis",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
-      timeoutMs: 120_000,
+      timeoutMs: MINIMAL_WORKFLOW_TIMEOUTS_MS.analyze,
       maxAttempts: 1,
       compensationModel: "idempotent_replay",
     },
@@ -150,7 +156,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       inputKeys: [],
       outputKey: "triage",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
-      timeoutMs: 60_000,
+      timeoutMs: MINIMAL_WORKFLOW_TIMEOUTS_MS.triage,
       maxAttempts: 1,
       dependsOnStepIds: [],
       compensationModel: "idempotent_replay",
@@ -161,7 +167,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       inputKeys: ["triage"],
       outputKey: "draft",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
-      timeoutMs: 180_000,
+      timeoutMs: MINIMAL_WORKFLOW_TIMEOUTS_MS.draft,
       maxAttempts: 2,
       dependsOnStepIds: ["intake_triage"],
       compensationModel: "idempotent_replay",
@@ -172,7 +178,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       inputKeys: ["draft"],
       outputKey: "final",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
-      timeoutMs: 90_000,
+      timeoutMs: MINIMAL_WORKFLOW_TIMEOUTS_MS.review,
       maxAttempts: 1,
       dependsOnStepIds: ["draft_solution"],
       compensationModel: "idempotent_replay",

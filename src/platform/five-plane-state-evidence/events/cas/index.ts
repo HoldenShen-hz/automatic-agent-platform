@@ -10,6 +10,7 @@
 export {
   CasService,
   createInMemoryCasService,
+  createSqliteCasService,
   createDistributedCasService,
   type CasRecord,
   type CasRepository,

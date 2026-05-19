@@ -188,16 +188,17 @@ test("ApiKeyService.rotateApiKey creates new key and revokes old", () => {
 
   const rotationResult = service.rotateApiKey(oldRecord.keyId, "admin");
 
-  assert.ok(rotationResult);
+  assert.equal(rotationResult.reason, undefined);
   assert.notEqual(rotationResult.rawKey, oldRawKey);
   assert.equal(oldRecord.status, "revoked");
+  assert.ok(rotationResult.record !== null);
   assert.equal(rotationResult.record.status, "active");
 });
 
-test("ApiKeyService.rotateApiKey returns null for unknown key", () => {
+test("ApiKeyService.rotateApiKey returns key_not_found for unknown key", () => {
   const service = new ApiKeyService();
 
   const result = service.rotateApiKey("unknown-key-id", "admin");
 
-  assert.equal(result, null);
+  assert.deepEqual(result, { record: null, rawKey: null, reason: "key_not_found" });
 });

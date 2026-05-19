@@ -47,8 +47,13 @@ export const DomainLifecycleStateSchema = z.preprocess(
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
 export const DomainHotPathModeSchema = z.enum(["deterministic_only", "llm_allowed"]);
 export const DomainLatencyTierSchema = z.preprocess(
-  (value) => value,
-  z.enum(["realtime", "near_realtime", "interactive", "batch"]),
+  (value) => {
+    if (value === "interactive") {
+      return "near_realtime";
+    }
+    return value;
+  },
+  z.enum(["realtime", "near_realtime", "batch"]),
 );
 
 export const DomainExecutionProfileSchema = z.object({
@@ -63,7 +68,7 @@ export const DomainExecutionProfileSchema = z.object({
     llmInHotPathAllowed: true,
     maxHotPathLatencyMs: 1000,
   }),
-  latencyTier: DomainLatencyTierSchema.default("interactive"),
+  latencyTier: DomainLatencyTierSchema.default("near_realtime"),
   compiledArtifactRef: z.string().trim().min(1).nullable().default(null),
 });
 
@@ -81,6 +86,9 @@ export const DomainRiskSpecSchema = z.object({
   advisoryOnly: z.boolean().default(false),
   humanAccountable: z.boolean().default(false),
   deterministicHotPathOnly: z.boolean().default(false),
+  allowedCapabilityOverrides: z.array(z.string().min(1)).default([]),
+  requiredApprovalPolicies: z.array(z.string().min(1)).default([]),
+  evidenceRequirements: z.array(z.string().min(1)).default([]),
   liabilityOwner: z.array(z.string().min(1)).min(1),
   compensationModel: z.array(z.enum(["refund", "reversal", "appeal", "manual_repair", "no_compensation"])).min(1),
   sideEffectTypes: z.array(z.string().min(1)).default([]),

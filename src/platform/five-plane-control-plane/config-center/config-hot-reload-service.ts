@@ -102,6 +102,7 @@ export class ConfigHotReloadService {
 
   /** File watcher interval handle */
   private fileWatcherHandle: ReturnType<typeof setInterval> | null = null;
+  private fileWatcherTickInFlight = false;
 
   /** Watched config files */
   private readonly watchedFiles = new Set<string>();
@@ -397,7 +398,19 @@ export class ConfigHotReloadService {
     }
 
     this.fileWatcherHandle = setInterval(async () => {
-      await this.checkFileChanges();
+      if (this.fileWatcherTickInFlight) {
+        return;
+      }
+      this.fileWatcherTickInFlight = true;
+      try {
+        await this.checkFileChanges();
+      } catch (error) {
+        process.stderr.write(
+          `[ConfigHotReload] File watcher tick failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+        );
+      } finally {
+        this.fileWatcherTickInFlight = false;
+      }
     }, this.fileWatcherIntervalMs);
     this.fileWatcherHandle.unref?.();
   }

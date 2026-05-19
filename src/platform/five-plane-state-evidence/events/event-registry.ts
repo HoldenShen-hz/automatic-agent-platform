@@ -1131,9 +1131,14 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
  * at least serialize to an object record.
  */
 export function validateEventPayload(type: string, payload: unknown): Record<string, unknown> {
-  getEventSchema(type);
-  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType] ?? genericEventPayloadSchema;
-  const result = validator.safeParse(payload);
+  const schema = getEventSchema(type);
+  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType];
+  if (validator == null && schema.tier === "tier_1") {
+    throw new ValidationError("event.payload_schema_missing", `No payload validator registered for tier-1 event type: ${type}`, {
+      details: { eventType: type },
+    });
+  }
+  const result = (validator ?? genericEventPayloadSchema).safeParse(payload);
 
   if (!result.success) {
     const firstIssue = result.error.issues[0];

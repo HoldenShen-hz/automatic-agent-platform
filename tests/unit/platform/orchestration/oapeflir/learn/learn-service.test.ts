@@ -66,7 +66,7 @@ test("LearningObjectValidator detects password in text", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.secret_detected");
 });
 
 test("LearningObjectValidator detects API key in text", () => {
@@ -86,7 +86,7 @@ test("LearningObjectValidator detects API key in text", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.secret_detected");
 });
 
 test("LearningObjectValidator detects email address in text", () => {
@@ -106,7 +106,7 @@ test("LearningObjectValidator detects email address in text", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator detects credit card pattern", () => {
@@ -126,7 +126,7 @@ test("LearningObjectValidator detects credit card pattern", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator detects SSN pattern", () => {
@@ -146,7 +146,7 @@ test("LearningObjectValidator detects SSN pattern", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator detects secret in recommendation", () => {
@@ -166,7 +166,7 @@ test("LearningObjectValidator detects secret in recommendation", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.secret_detected");
 });
 
 test("LearningObjectValidator accepts safe content", () => {
@@ -207,7 +207,7 @@ test("LearningObjectValidator detects credential in title", () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.secret_detected");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

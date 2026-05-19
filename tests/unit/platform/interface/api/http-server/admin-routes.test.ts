@@ -10,6 +10,7 @@ import type { MissionControlService } from "../../../../../../src/platform/five-
 import type { CoordinatorLoadBalancingService } from "../../../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+import { StorageError } from "../../../../../../src/platform/contracts/errors.js";
 
 function createMockMissionControlService(): MissionControlService {
   return {
@@ -328,6 +329,57 @@ test("GET /v1/admin/workers returns workers list envelope", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("\"workers\""));
+});
+
+test("GET /v1/harness-runs/:id falls back from workflowId lookup to matching taskId", async () => {
+  const deps = {
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: {
+      ...createMockMissionControlService(),
+      getWorkflowCockpit(id: string) {
+        if (id === "workflow-123") {
+          throw new StorageError("workflow.not_found", "workflow.not_found", {
+            statusCode: 404,
+            retryable: false,
+          });
+        }
+        return {
+          summary: { taskId: "task-123", workflowId: "workflow-123", workflowStatus: "running", pendingApprovalCount: 0, retryCount: 0, generatedAt: "2026-04-16T00:00:00.000Z" },
+          inspect: { workflowState: {} },
+          timeline: { entries: [] },
+        };
+      },
+      listWorkflowCockpits() {
+        return [{ taskId: "task-123", workflowId: "workflow-123", workflowStatus: "running", pendingApprovalCount: 0, retryCount: 0, generatedAt: "2026-04-16T00:00:00.000Z" }];
+      },
+    } as unknown as MissionControlService,
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  };
+  const routes = createAdminRoutes(deps);
+  const ctx = createMockContext("/v1/harness-runs/workflow-123", ["v1", "harness-runs", "workflow-123"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("\"task-123\""));
+});
+
+test("GET /v1/harness-runs/:id does not swallow internal workflow lookup errors", async () => {
+  const deps = {
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: {
+      ...createMockMissionControlService(),
+      getWorkflowCockpit() {
+        throw new Error("database offline");
+      },
+      listWorkflowCockpits() {
+        assert.fail("listWorkflowCockpits should not run for non-not-found failures");
+      },
+    } as unknown as MissionControlService,
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  };
+  const routes = createAdminRoutes(deps);
+  const ctx = createMockContext("/v1/harness-runs/workflow-123", ["v1", "harness-runs", "workflow-123"]);
+  await assert.rejects(() => callRoute(routes, ctx), /database offline/);
 });
 
 test("POST /v1/admin/config returns update metadata", async () => {

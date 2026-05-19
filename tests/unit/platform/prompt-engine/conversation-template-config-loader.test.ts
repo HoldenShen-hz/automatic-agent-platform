@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -83,6 +86,25 @@ test("loadConversationTemplateConfig handles invalid JSON gracefully", () => {
 
   assert.deepEqual(config.templates, []);
   assert.equal(config.maxStepsPerTemplate, 10);
+});
+
+test("loadConversationTemplateConfig falls back when template payload violates schema", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "conversation-template-config-"));
+  const configPath = join(tempDir, "templates.json");
+  try {
+    writeFileSync(configPath, JSON.stringify({
+      templates: [{ templateId: "broken-template" }],
+      maxStepsPerTemplate: 3,
+      enableTemplateAutoSelection: false,
+    }), "utf8");
+
+    const config = loadConversationTemplateConfig(configPath);
+    assert.deepEqual(config.templates, []);
+    assert.equal(config.maxStepsPerTemplate, 10);
+    assert.equal(config.enableTemplateAutoSelection, true);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("getTemplatesFromConfig returns readonly array", () => {

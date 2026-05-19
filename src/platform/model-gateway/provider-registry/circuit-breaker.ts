@@ -223,13 +223,7 @@ export class CircuitBreaker {
    * Get current circuit breaker state.
    */
   getState(): CircuitBreakerState {
-    // Check if we should transition from open to half_open
-    if (this.state === "open" && this.nextAttemptAt !== null) {
-      if (Date.now() >= this.nextAttemptAt) {
-        this.transitionTo("half_open");
-      }
-    }
-    return this.state;
+    return this.computeReadableState();
   }
 
   /**
@@ -248,6 +242,13 @@ export class CircuitBreaker {
       nextAttemptAt: this.nextAttemptAt,
       recentFailureRate: this.getRecentFailureRate(),
     };
+  }
+
+  private computeReadableState(): CircuitBreakerState {
+    if (this.state === "open" && this.nextAttemptAt !== null && Date.now() >= this.nextAttemptAt) {
+      return "half_open";
+    }
+    return this.state;
   }
 
   /**

@@ -20,7 +20,7 @@ export {
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./components/extended";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
-export { darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
+export { applyResolvedTheme, darkTheme, highContrastTheme, lightTheme, resolveTheme, type ThemeRuntimeBridge } from "./themes";
 
 export interface FeatureModule {
   readonly manifest: PlatformFeatureManifest;

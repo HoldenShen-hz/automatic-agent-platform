@@ -13,6 +13,7 @@
 
 import { nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
   TopologyValidator,
   createTopologyValidator,
@@ -62,6 +63,8 @@ export type {
   ExpirationScanResult,
 } from "./delegation-manager-support.js";
 export { createDelegationManager } from "./delegation-manager-factory.js";
+
+const delegationManagerLogger = new StructuredLogger({ retentionLimit: 100 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Manager Service
@@ -117,7 +120,9 @@ export class DelegationManagerService {
     if (this.delegationRepository) {
       this.hydrateFromRepository().catch((err) => {
         // Log but don't fail startup - in-memory mode still works as fallback
-        process.stderr.write(`Failed to hydrate delegations from repository: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+        delegationManagerLogger.error("delegation.hydrate_from_repository_failed", {
+          error: err instanceof Error ? err.stack ?? err.message : String(err),
+        });
       });
     }
   }

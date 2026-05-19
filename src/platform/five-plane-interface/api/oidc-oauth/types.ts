@@ -56,6 +56,7 @@ export interface TokenValidationResult {
 export interface ApiKeyRotationRecord {
   keyId: string;
   actorId: string;
+  oldApiKey: string;
   status: "active" | "rotating" | "revoked";
   createdAt: string;
   rotatedAt: string | null;

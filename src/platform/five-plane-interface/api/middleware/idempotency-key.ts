@@ -217,7 +217,15 @@ export class IdempotencyKeyMiddleware {
           try {
             body = JSON.parse(existing.responseBody);
           } catch {
-            body = existing.responseBody;
+            return {
+              allowed: false,
+              isDuplicate: true,
+              error: {
+                statusCode: 500,
+                code: "api.idempotency_cached_response_corrupt",
+                message: `Cached idempotent response for '${idempotencyKey}' is corrupt and cannot be replayed safely.`,
+              },
+            };
           }
         } else {
           body = undefined;

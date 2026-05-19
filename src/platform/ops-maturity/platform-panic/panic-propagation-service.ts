@@ -8,6 +8,7 @@
  */
 
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../../platform/shared/observability/structured-logger.js";
 import type {
   PanicAcknowledgment,
   PanicFreezeMode,
@@ -18,6 +19,8 @@ import type {
   PlatformResumeDirective,
 } from "./index.js";
 import { PlatformPanicService } from "./index.js";
+
+const panicLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export type PlaneName = "P1" | "P2" | "P3" | "P4" | "P5";
 
@@ -250,7 +253,7 @@ export class PanicPropagationService {
     this.updatePlaneState(directiveId, plane, "force-terminated");
 
     // Log the force termination
-    process.stderr.write(`[PanicPropagation] Force termination triggered for ${plane} directive ${directiveId}\n`);
+    panicLogger.error("panic.force_termination_triggered", { directiveId, plane });
 
     // In a real implementation, this would:
     // 1. Send SIGKILL or equivalent to all processes on the plane
@@ -464,11 +467,12 @@ export class PanicPropagationService {
     // 2. Send encrypted halt directive with directiveId, scope, freezeModes
     // 3. Wait for acknowledgment or timeout
     // For now, we simulate successful delivery
-    process.stdout.write(
-      `[PanicPropagation] Sending HALT directive to ${directive.targetPlane}: ` +
-        `directiveId=${directive.directiveId}, scope=${directive.scope}, ` +
-        `deadline=${directive.ackDeadline}\n`,
-    );
+    panicLogger.info("panic.halt_directive_sent", {
+      directiveId: directive.directiveId,
+      targetPlane: directive.targetPlane,
+      scope: directive.scope,
+      ackDeadline: directive.ackDeadline,
+    });
     return true;
   }
 
@@ -480,6 +484,7 @@ export class PanicPropagationService {
       this.forceTerminatePlane(directiveId, plane);
       this.pendingAcks.delete(key);
     }, timeoutMs);
+    timeout.unref?.();
 
     this.pendingAcks.set(key, timeout);
   }

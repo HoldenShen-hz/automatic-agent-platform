@@ -18,6 +18,7 @@ import type { GracefulShutdown } from "./graceful-shutdown.js";
 
 const processLogger = new StructuredLogger({ retentionLimit: 200 });
 const RECOVERABLE_ERROR_CODES = new Set(["ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "ECONNRESET"]);
+const PROCESS_HARD_EXIT_TIMEOUT_MS = 60_000;
 
 type RecoverableErrorLike = Error & {
   code?: unknown;
@@ -107,7 +108,7 @@ export function createUncaughtExceptionHandler(
     hardExitTimer = setTimeout(() => {
       processLogger.error("uncaughtException handler timed out — forcing process.exit(1)");
       process.exit(1);
-    }, 60_000);
+    }, PROCESS_HARD_EXIT_TIMEOUT_MS);
     hardExitTimer.unref?.();
   };
 }
@@ -176,7 +177,7 @@ export function createUnhandledRejectionHandler(
     hardExitTimer = setTimeout(() => {
       processLogger.error("unhandledRejection handler timed out — forcing process.exit(1)");
       process.exit(1);
-    }, 60_000);
+    }, PROCESS_HARD_EXIT_TIMEOUT_MS);
     hardExitTimer.unref?.();
   };
 }

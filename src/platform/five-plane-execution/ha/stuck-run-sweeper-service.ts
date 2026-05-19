@@ -490,6 +490,7 @@ export class StuckRunSweeperService implements RecoveryWorker {
     this.intervalHandle = setInterval(() => {
       void this.doSweepCycle();
     }, this.config.sweepIntervalMs);
+    this.intervalHandle.unref?.();
   }
 
   /**

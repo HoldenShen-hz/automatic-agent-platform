@@ -91,6 +91,8 @@ export interface LeaderElectionServiceOptions {
   leaseTtlMs?: number;
   /** Interval for renewal attempts (derived from HA level if not specified) */
   renewalIntervalMs?: number;
+  /** Interval for node heartbeats (derived from HA level if not specified) */
+  heartbeatIntervalMs?: number;
   /** Maximum number of election attempts before giving up */
   maxElectionAttempts?: number;
   /** Metadata to attach to this node */
@@ -113,6 +115,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   private electionAttempts: number = 0;
   private renewalIntervalHandle: ReturnType<typeof setInterval> | null = null;
   private heartbeatIntervalHandle: ReturnType<typeof setInterval> | null = null;
+  private readonly retryTimeoutHandles = new Set<ReturnType<typeof setTimeout>>();
   private disposed: boolean = false;
 
   // Config
@@ -145,6 +148,8 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
       leaseTtlMs: options.leaseTtlMs ?? options.haConfig?.leaseTtlMs ?? baseConfig.leaseTtlMs,
       leaseRenewalIntervalMs:
         options.renewalIntervalMs ?? options.haConfig?.leaseRenewalIntervalMs ?? baseConfig.leaseRenewalIntervalMs,
+      heartbeatIntervalMs:
+        options.heartbeatIntervalMs ?? options.haConfig?.heartbeatIntervalMs ?? baseConfig.heartbeatIntervalMs,
     };
 
     this.maxElectionAttempts = options.maxElectionAttempts ?? 5;
@@ -288,6 +293,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
   public dispose(): void {
     this.stopRenewalLoop();
     this.stopHeartbeat();
+    this.clearRetryTimeouts();
     this.disposed = true;
     this.state = "stopped";
     this.currentLease = null;
@@ -520,11 +526,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
 
         // Schedule retry if we haven't exhausted attempts
         if (this.electionAttempts < this.maxElectionAttempts) {
-          setTimeout(() => {
-            if (this.state === "follower" && !this.disposed) {
-              void this.attemptElection();
-            }
-          }, this.config.leaseRenewalIntervalMs);
+          this.scheduleElectionRetry();
         }
       }
     } catch (error) {
@@ -537,11 +539,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
       this.state = "follower";
 
       if (this.electionAttempts < this.maxElectionAttempts) {
-        setTimeout(() => {
-          if (this.state === "follower" && !this.disposed) {
-            void this.attemptElection();
-          }
-        }, this.config.leaseRenewalIntervalMs);
+        this.scheduleElectionRetry();
       }
     }
   }
@@ -606,12 +604,15 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
       return;
     }
 
-    // Heartbeat every 5 seconds
+    if (this.config.heartbeatIntervalMs <= 0) {
+      return;
+    }
+
     this.heartbeatIntervalHandle = setInterval(() => {
       if (typeof this.coordinatorCompat.updateNodeHeartbeat === "function") {
         this.coordinatorCompat.updateNodeHeartbeat(this.effectiveNodeId, "active");
       }
-    }, 5_000);
+    }, this.config.heartbeatIntervalMs);
     this.heartbeatIntervalHandle.unref?.();
   }
 
@@ -657,11 +658,7 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
 
         // Try to re-acquire
         if (this.electionAttempts < this.maxElectionAttempts) {
-          setTimeout(() => {
-            if (this.state === "follower" && !this.disposed) {
-              void this.attemptElection();
-            }
-          }, this.config.leaseRenewalIntervalMs);
+          this.scheduleElectionRetry();
         }
       }
     } catch (error) {
@@ -689,6 +686,24 @@ export class LeaderElectionService extends LocalTypedEventEmitter<Record<string,
         ...data,
       },
     });
+  }
+
+  private scheduleElectionRetry(): void {
+    const handle = setTimeout(() => {
+      this.retryTimeoutHandles.delete(handle);
+      if (this.state === "follower" && !this.disposed) {
+        void this.attemptElection();
+      }
+    }, this.config.leaseRenewalIntervalMs);
+    handle.unref?.();
+    this.retryTimeoutHandles.add(handle);
+  }
+
+  private clearRetryTimeouts(): void {
+    for (const handle of this.retryTimeoutHandles) {
+      clearTimeout(handle);
+    }
+    this.retryTimeoutHandles.clear();
   }
 
   private registerNode(): void {

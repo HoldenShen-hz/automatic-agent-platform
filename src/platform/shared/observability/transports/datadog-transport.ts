@@ -7,7 +7,7 @@
 
 import { Agent, request } from "node:https";
 import type { LogTransport } from "../log-transport.js";
-import type { StructuredLogEntry } from "../structured-logger.js";
+import { StructuredLogger, type StructuredLogEntry } from "../structured-logger.js";
 
 export type DatadogRequestFactory = typeof request;
 
@@ -28,6 +28,7 @@ const DEFAULT_DATADOG_HTTPS_AGENT = new Agent({
   maxFreeSockets: 10,
   timeout: 30_000,
 });
+const datadogTransportLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export class DatadogTransport implements LogTransport {
   readonly name = "datadog";
@@ -86,7 +87,11 @@ export class DatadogTransport implements LogTransport {
         if (isLastAttempt) {
           // Re-add entries to front of batch for backpressure when all retries exhausted
           this.batch.unshift(...entries);
-          process.stderr.write(`[DatadogTransport] failed to send ${entries.length} logs after ${maxRetries} attempts: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+          datadogTransportLogger.error("datadog_transport.flush_failed", {
+            entryCount: entries.length,
+            maxRetries,
+            error: err instanceof Error ? err.stack ?? err.message : String(err),
+          });
           return;
         }
         // Exponential backoff: 100ms, 200ms, 400ms

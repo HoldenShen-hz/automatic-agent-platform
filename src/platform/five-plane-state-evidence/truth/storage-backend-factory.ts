@@ -22,6 +22,8 @@ import {
   createAsyncRepositoryRegistry,
   type AsyncRepositoryRegistry,
 } from "./async-repository-registry.js";
+import { type CasService, createSqliteCasService } from "../events/cas/cas-service.js";
+import { SqliteCasRepository } from "../events/cas/sqlite-cas-repository.js";
 
 const require = createRequire(import.meta.url);
 
@@ -78,6 +80,8 @@ export interface SqliteAuthoritativeStorageBackendHandle {
   asyncSql: AsyncSqlDatabase;
   /** Async repository registry for gradual sync -> async migration */
   asyncRepos: AsyncRepositoryRegistry;
+  /** SQLite-backed CAS service for durable optimistic concurrency */
+  cas: CasService;
   /** The SQLite database instance */
   sqlite: SqliteDatabase;
   /** Runs pending migrations */
@@ -98,6 +102,8 @@ export interface PostgresAuthoritativeStorageBackendHandle {
   asyncSql: AsyncSqlDatabase;
   /** Async repository registry for PostgreSQL-backed runtime services */
   asyncRepos: AsyncRepositoryRegistry;
+  /** CAS service backed by shadow SQLite when available */
+  cas: CasService | null;
   /** The PostgreSQL database instance */
   postgres: PgDatabase;
   /** Shadow SQLite used for compatibility during PostgreSQL dual-run, when configured */
@@ -362,12 +368,14 @@ export function openAuthoritativeStorageBackend(
   const target = resolveSyncSqliteTarget(options, plan);
   const db = new SqliteDatabase(target.dbPath, options.sqliteOptions);
   const asyncAdapter = new SqliteAsyncAdapter(db);
+  const cas = createSqliteCasService(new SqliteCasRepository(db.connection));
   return {
     driver: "sqlite",
     runtimeProfile: target.runtimeProfile,
     sql: db,
     asyncSql: asyncAdapter,
     asyncRepos: createAsyncRepositoryRegistry(asyncAdapter),
+    cas,
     sqlite: db,
     migrate() {
       db.migrate();
@@ -444,6 +452,9 @@ export async function openPostgresAuthoritativeStorageBackend(
     ? undefined
     : new SqliteDatabase(shadowSqlitePath, options.sqliteOptions);
   const sql = shadowSqlite ?? createUnsupportedPostgresSyncFacade(pgDb);
+  const cas = shadowSqlite == null
+    ? null
+    : createSqliteCasService(new SqliteCasRepository(shadowSqlite.connection));
 
   const handle: PostgresAuthoritativeStorageBackendHandle = {
     driver: "postgres",
@@ -451,6 +462,7 @@ export async function openPostgresAuthoritativeStorageBackend(
     sql,
     asyncSql: pgDb, // PgDatabase implements AsyncSqlDatabase
     asyncRepos: createAsyncRepositoryRegistry(pgDb),
+    cas,
     postgres: pgDb,
     ...(shadowSqlite ? { shadowSqlite } : {}),
     async migrate(): Promise<void> {

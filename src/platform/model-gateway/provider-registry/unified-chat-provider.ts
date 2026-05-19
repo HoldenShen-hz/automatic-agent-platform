@@ -394,20 +394,13 @@ export class UnifiedChatProvider {
       );
     };
 
-    // R2-2: AbortSignal check interval for streaming - verify abort is not triggered during chunk processing
-    const checkAbortInterval = runtimeSignal != null ? setInterval(() => {
-      if (runtimeSignal.aborted) {
-        throw new Error("streaming.aborted");
-      }
-    }, 100) : null;
-
-    try {
     switch (provider) {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
         const runStreaming = () => anthropicService.createStreamingChatCompletion(
           this.toAnthropicRequest(runtimeRequest),
           (chunk, isFinal) => {
+            this.assertNotAborted(runtimeSignal);
             firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeAnthropicResult(chunk, provider, normalizedRequest.model, 0);
 
@@ -443,6 +436,7 @@ export class UnifiedChatProvider {
         const runStreaming = () => openaiService.createStreamingChatCompletion(
           this.toOpenAIRequest(runtimeRequest),
           (chunk, isFinal) => {
+            this.assertNotAborted(runtimeSignal);
             firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeOpenAIResult(chunk, provider, normalizedRequest.model, 0);
 
@@ -477,6 +471,7 @@ export class UnifiedChatProvider {
         const runStreaming = () => minimaxService.createStreamingChatCompletion(
           this.toMiniMaxRequest(runtimeRequest),
           (chunk) => {
+            this.assertNotAborted(runtimeSignal);
             firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeMiniMaxResult(chunk, provider, normalizedRequest.model, 0);
             const isFinal = normalized.finishReason.length > 0;
@@ -506,11 +501,6 @@ export class UnifiedChatProvider {
         }
         recordStreamingLatency(normalizedRequest.model);
         return;
-      }
-    }
-    } finally {
-      if (checkAbortInterval != null) {
-        clearInterval(checkAbortInterval);
       }
     }
   }

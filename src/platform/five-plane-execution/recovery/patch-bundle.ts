@@ -132,6 +132,7 @@ export function validatePatchBundle(
 function matchesPattern(path: string, pattern: string): boolean {
   // Simple glob pattern matching
   const regex = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, '.*')
     .replace(/\*/g, '[^/]*')
     .replace(/\?/g, '.');

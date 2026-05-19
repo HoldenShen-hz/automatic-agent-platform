@@ -5,8 +5,6 @@
  * Uses a sliding window cache with request fingerprinting.
  */
 
-import { nowIso } from "../api-platform-support.js";
-
 /**
  * Request fingerprint for deduplication.
  * Combines method, path, and optionally body hash.

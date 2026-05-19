@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-05-14
+## [0.1.0] - 2026-05-14
 
 - Added repository hygiene documentation for review maintenance, scripts, golden tests, deployment runbooks, chaos experiments, data output, platform symlinks, legacy runtime compatibility, domains, contracts, configuration, docs synchronization, and npm scripts.
 - Strengthened `.env.example` secret handling guidance and JWT production warning.

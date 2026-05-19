@@ -117,6 +117,7 @@ test("completeKeyRotation marks rotation as revoked", () => {
 
   const { rotationId, newKey } = service.initiateKeyRotation("old-key");
   assert.ok(rotationId);
+  assert.ok(newKey);
 
   const completed = service.completeKeyRotation(rotationId!);
   assert.equal(completed, true);
@@ -124,6 +125,12 @@ test("completeKeyRotation marks rotation as revoked", () => {
   const status = service.getRotationStatus(rotationId!);
   assert.ok(status !== null);
   assert.equal(status!.status, "revoked");
+  assert.deepEqual(service.validateApiKey("old-key"), {
+    valid: false,
+    actorId: null,
+    roles: [],
+  });
+  assert.equal(service.validateApiKey(newKey!).valid, true);
 });
 
 test("completeKeyRotation returns false for unknown rotation", () => {

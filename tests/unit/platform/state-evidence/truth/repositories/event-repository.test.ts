@@ -702,11 +702,44 @@ test("EventRepository createTier1StatusEvent creates required acks and audit cha
     const requiredConsumers = repo.getRequiredConsumerIds(event.id).sort();
     const pendingTier1 = repo.listPendingTier1Acks("9999-12-31T23:59:59.999Z");
     const integrityReport = repo.getTier1AuditIntegrityReport();
+    const outboxEntry = db.connection.prepare(
+      "SELECT payload_json FROM outbox WHERE aggregate_id = ? ORDER BY created_at DESC LIMIT 1",
+    ).get("task-tier1") as { payload_json: string } | undefined;
 
     assert.deepEqual(requiredConsumers, ["inspect_projection", "task_projection"]);
     assert.ok(pendingTier1.some((record) => record.eventId === event.id));
     assert.equal(integrityReport.checked, true);
     assert.ok(integrityReport.totalTrackedEvents >= 1);
+    assert.ok(outboxEntry);
+    assert.equal(JSON.parse(outboxEntry!.payload_json).executionId, "exec-tier1");
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("EventRepository createTier1StatusEvent downgrades missing executionId consistently in outbox payload", () => {
+  const workspace = createTempWorkspace("aa-event-repo-");
+  const dbPath = join(workspace, "event-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new EventRepository(db.connection);
+
+    repo.createTier1StatusEvent({
+      taskId: null,
+      executionId: "exec-missing",
+      eventType: "task:status_changed",
+      traceId: "trace-tier1-missing",
+      payload: { status: "failed" },
+    });
+
+    const outboxEntry = db.connection.prepare(
+      "SELECT payload_json FROM outbox ORDER BY created_at DESC LIMIT 1",
+    ).get() as { payload_json: string } | undefined;
+
+    assert.ok(outboxEntry);
+    assert.equal(JSON.parse(outboxEntry!.payload_json).executionId, null);
   } finally {
     cleanupPath(workspace);
   }

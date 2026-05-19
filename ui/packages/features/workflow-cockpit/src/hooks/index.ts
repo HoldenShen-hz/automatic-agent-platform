@@ -40,7 +40,7 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
   const client = useRestClient();
   const queryClient = useQueryClient();
   const workflows = useWorkflowsQuery().data ?? [];
-  const [selectedId, setSelectedId] = useState<string | null>(workflows[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
   const [pendingOperations, setPendingOperations] = useState(0);
 
@@ -49,12 +49,12 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       if (current != null && workflows.some((workflow) => workflow.id === current)) {
         return current;
       }
-      return workflows[0]?.id ?? null;
+      return null;
     });
   }, [workflows]);
 
   const baseVm = useMemo(() => mapWorkflowsToVm(workflows), [workflows]);
-  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? workflows[0] ?? null;
+  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? null;
 
   const runAction = useCallback(async (
     action: () => Promise<unknown>,

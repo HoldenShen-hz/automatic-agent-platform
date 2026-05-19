@@ -11,6 +11,9 @@ import type { ErasurePlan, ErasureTarget } from "./erasure/index.js";
 import { ErasurePlanningService } from "./erasure/index.js";
 import type { DataLineageEdge } from "./lineage/index.js";
 import { DataLineageService } from "./lineage/index.js";
+import { StructuredLogger } from "../shared/observability/structured-logger.js";
+
+const complianceCaseLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export type ComplianceTransferStatus = "approved" | "requires_redaction" | "blocked";
 export type ComplianceErasureStatus = "ready" | "blocked";
@@ -297,7 +300,13 @@ export class ComplianceCaseOrchestrationService {
         occurredAt: input.occurredAt,
         ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
       }) ?? this.buildDeniedGovernanceResult(input, "governance_evaluation_returned_null");
-    } catch {
+    } catch (error) {
+      complianceCaseLogger.error("compliance.governance_evaluation_failed", {
+        actorId: input.actorId,
+        orgNodeId: input.orgNodeId,
+        action: input.action,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return this.buildDeniedGovernanceResult(input, "governance_evaluation_failed");
     }
   }

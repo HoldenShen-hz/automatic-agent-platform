@@ -64,6 +64,7 @@ interface ApiClient {
 
 - 破坏性变更必须在 release descriptor 中显式列出。
 - `SdkReleaseDescriptor` 以 Pack manifest 的 `sdk_semver / platform_min_version / platform_max_version / deprecation_policy` 为 canonical 形态。
+- 当前 SDK 发布基线为 `0.1.0`，并在根 `CHANGELOG.md` 与 `docs_zh/CHANGELOG.md` 中同步记录。
 - `ApiClient` 的基础读写接口必须返回统一 `ApiResponse<T>` envelope。
 - SDK 可弃用旧表面，但必须提供迁移窗口或替代命令/接口。
 - CLI、Pack SDK、Plugin SDK 不得对同一 canonical 对象使用不同字段命名。

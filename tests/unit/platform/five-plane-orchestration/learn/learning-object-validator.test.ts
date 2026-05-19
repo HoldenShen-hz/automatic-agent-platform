@@ -114,7 +114,7 @@ test("LearningObjectValidator.validate detects PII patterns", () => {
   const result = validator.validate(obj);
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.secret_detected");
 });
 
 test("LearningObjectValidator.validate detects SSN pattern", () => {
@@ -126,7 +126,7 @@ test("LearningObjectValidator.validate detects SSN pattern", () => {
   const result = validator.validate(obj);
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator.validate detects credit card pattern", () => {
@@ -138,7 +138,7 @@ test("LearningObjectValidator.validate detects credit card pattern", () => {
   const result = validator.validate(obj);
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator.validate detects email pattern", () => {
@@ -150,7 +150,7 @@ test("LearningObjectValidator.validate detects email pattern", () => {
   const result = validator.validate(obj);
 
   assert.equal(result.valid, false);
-  assert.equal(result.reasonCode, "learning.pii_secret_detected");
+  assert.equal(result.reasonCode, "learning.pii_detected");
 });
 
 test("LearningObjectValidator.validateMany filters valid objects", () => {

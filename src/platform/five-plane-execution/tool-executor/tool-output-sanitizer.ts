@@ -353,7 +353,17 @@ function sanitizeTextValue(
   let redactionCount = 0;
   if (options.redactSecrets) {
     for (const definition of SECRET_PATTERN_DEFINITIONS) {
-      const pattern = new RegExp(definition.source, definition.flags);
+      let pattern: RegExp;
+      try {
+        pattern = new RegExp(definition.source, definition.flags);
+      } catch (error) {
+        toolOutputSanitizerLogger.warn("tool_output_sanitizer.invalid_secret_pattern", {
+          source: definition.source,
+          flags: definition.flags,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        continue;
+      }
       sanitized = sanitized.replace(pattern, () => {
         redactionCount += 1;
         return "[REDACTED]";

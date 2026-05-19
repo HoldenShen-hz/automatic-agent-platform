@@ -269,6 +269,25 @@ test("triggerReload computes version for new config", async () => {
   assert.notEqual(receivedChanges[1]!.previousVersion, receivedChanges[1]!.newVersion);
 });
 
+test("ConfigHotReloadService file watcher skips overlapping polling ticks", async () => {
+  const service = new ConfigHotReloadService({ fileWatcherIntervalMs: 5 });
+  let concurrent = 0;
+  let maxConcurrent = 0;
+
+  (service as unknown as { checkFileChanges: () => Promise<void> }).checkFileChanges = async () => {
+    concurrent += 1;
+    maxConcurrent = Math.max(maxConcurrent, concurrent);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    concurrent -= 1;
+  };
+
+  (service as unknown as { startFileWatcher: () => void }).startFileWatcher();
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  service.shutdown();
+
+  assert.equal(maxConcurrent, 1);
+});
+
 test("watchFile does not trigger reload when file version is unchanged", async () => {
   const workspace = createTempWorkspace("aa-config-hot-reload-version-");
   try {

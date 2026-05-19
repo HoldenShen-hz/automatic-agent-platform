@@ -16,6 +16,9 @@ import {
 import { createHash } from "node:crypto";
 import type { PlanStep } from "../oapeflir/types/index.js";
 
+const DEFAULT_PLAN_STEP_TIMEOUT_MS = 60_000;
+const DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS = 250;
+
 export interface PlanBuilderInput {
   observation: TaskSituation;
   assessment: UnifiedAssessment;
@@ -84,10 +87,10 @@ export class PlanBuilder {
       outputs: item.outputKey != null ? [item.outputKey] : [],
       dependencies: [...(item.dependsOn ?? item.dependsOnStepIds ?? [])],
       status: "pending",
-      timeout: item.timeoutMs ?? item.timeout ?? 60000,
+      timeout: item.timeoutMs ?? item.timeout ?? DEFAULT_PLAN_STEP_TIMEOUT_MS,
       retryPolicy: {
         maxRetries: Math.max(0, (item.maxAttempts ?? 1) - 1),
-        backoffMs: 250 * (index + 1),
+        backoffMs: DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS * (index + 1),
       },
     }));
 
@@ -291,8 +294,8 @@ export class PlanBuilder {
             outputs: (payload.outputs as string[]) ?? [],
             dependencies: (payload.dependencies as string[]) ?? [],
             status: "pending",
-            timeout: (payload.timeout as number) ?? 60000,
-            retryPolicy: { maxRetries: 0, backoffMs: 250 },
+            timeout: (payload.timeout as number) ?? DEFAULT_PLAN_STEP_TIMEOUT_MS,
+            retryPolicy: { maxRetries: 0, backoffMs: DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS },
           };
           // R5-12: Insert after the target ref or at the end
           const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);

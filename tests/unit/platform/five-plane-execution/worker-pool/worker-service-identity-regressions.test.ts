@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
 
 function createStore(existingSnapshot?: Record<string, unknown>) {
@@ -34,6 +35,8 @@ test("WorkerServiceIdentityRegistry rejects overwriting a verified worker finger
       mtlsPeerFingerprint: "fp-456",
       allowedNodeRunTenants: ["tenant-1"],
     }),
-    /verified worker identity/i,
+    (error: unknown) =>
+      error instanceof ValidationError
+      && error.code === "worker_identity.verified_identity_overwrite_denied",
   );
 });

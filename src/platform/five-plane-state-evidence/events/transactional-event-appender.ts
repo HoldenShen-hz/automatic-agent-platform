@@ -31,6 +31,8 @@ export interface TransactionalAppendOptions {
   traceId?: string | null;
   /** Event tier (defaults to auto-detect based on event type) */
   eventTier?: EventRecord["eventTier"];
+  /** Optional hook to mutate truth state in the same transaction as event append. */
+  mutateTruth?: (() => void) | null;
 }
 
 /**
@@ -98,6 +100,7 @@ export class TransactionalEventAppender {
     const result = this.db.transaction(() => {
       // Step 1: Insert event into event store
       const insertedEvent = this.insertEventInternal(event);
+      options.mutateTruth?.();
 
       // Step 2: Optionally write to outbox
       let outboxEntryId: string | undefined;
@@ -150,6 +153,7 @@ export class TransactionalEventAppender {
         });
 
         const insertedEvent = this.insertEventInternal(event);
+        options.mutateTruth?.();
         let outboxEntryId: string | undefined;
 
         if (options.writeToOutbox) {

@@ -1,3 +1,4 @@
+import { ValidationError } from "../../contracts/errors.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 
 export interface WorkerServiceIdentity {
@@ -51,7 +52,10 @@ export class WorkerServiceIdentityRegistry {
       existingVerified != null
       && existingVerified.mtlsPeerFingerprint !== identity.mtlsPeerFingerprint
     ) {
-      throw new Error(`Cannot overwrite verified worker identity fingerprint for ${identity.workerId}.`);
+      throw new ValidationError(
+        "worker_identity.verified_identity_overwrite_denied",
+        `Cannot overwrite verified worker identity fingerprint for ${identity.workerId}.`,
+      );
     }
 
     // R13-19 fix: Store in memory map for coordinator restarts

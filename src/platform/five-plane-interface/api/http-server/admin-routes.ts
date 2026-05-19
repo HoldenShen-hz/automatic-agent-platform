@@ -178,7 +178,10 @@ function resolveWorkflowLookupId(missionControlService: MissionControlService, w
   try {
     missionControlService.getWorkflowCockpit(workflowOrTaskId);
     return workflowOrTaskId;
-  } catch {
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "workflow.not_found") {
+      throw error;
+    }
     const fallback = missionControlService
       .listWorkflowCockpits(200)
       .find((workflow) => workflow.workflowId === workflowOrTaskId || workflow.taskId === workflowOrTaskId);

@@ -1,4 +1,5 @@
 import { nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type {
   PlanEdge,
   PlanGraphBundle,
@@ -14,31 +15,32 @@ import type {
   StepResult,
 } from "./execute-bridge.js";
 
-export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
-  let outputs: Record<string, unknown> = {};
+const runtimeExecuteBridgeLogger = new StructuredLogger({ retentionLimit: 100 });
+
+function parseJsonWithWarning<T>(raw: string, fallback: T, field: string, stepId: string): T {
   try {
-    outputs = JSON.parse(record.dataJson);
-  } catch {
-    outputs = {};
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    runtimeExecuteBridgeLogger.warn("runtime_execute_bridge.json_parse_failed", {
+      field,
+      stepId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fallback;
   }
-  let artifacts: string[] = [];
-  if (record.artifactsJson != null) {
-    try {
-      artifacts = JSON.parse(record.artifactsJson) as string[];
-    } catch {
-      artifacts = [];
-    }
-  }
-  let validationPassed = false;
-  if (record.validationJson != null) {
-    try {
-      validationPassed = (JSON.parse(record.validationJson) as { valid?: unknown }).valid === true;
-    } catch {
-      validationPassed = false;
-    }
-  }
+}
+
+export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
+  const stepId = record.stepId ?? record.nodeRunId ?? "unknown";
+  const outputs = parseJsonWithWarning<Record<string, unknown>>(record.dataJson, {}, "outputs", stepId);
+  const artifacts = record.artifactsJson != null
+    ? parseJsonWithWarning<string[]>(record.artifactsJson, [], "artifacts", stepId)
+    : [];
+  const validationPassed = record.validationJson != null
+    ? parseJsonWithWarning<{ valid?: unknown }>(record.validationJson, {}, "validation", stepId).valid === true
+    : false;
   return {
-    stepId: record.stepId ?? record.nodeRunId ?? "unknown",
+    stepId,
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
     durationMs: record.durationMs,
     tokenCost: record.tokenCost,

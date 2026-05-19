@@ -4,6 +4,9 @@ import { HarnessLoopController } from "./loop/index.js";
 import { TypedEventBusPublisher, type TypedEventPublisher } from "../../five-plane-state-evidence/events/typed-event-publisher.js";
 import type { TypedEventBus } from "../../five-plane-state-evidence/events/typed-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const recoveryControllerLogger = new StructuredLogger({ retentionLimit: 100 });
 
 export type HarnessFailureType =
   | "worker_crash"
@@ -90,8 +93,13 @@ export class RecoveryController {
           ...decisionDetails,
         },
       });
-    } catch {
-      // Event emission failure should not interrupt recovery flow
+    } catch (error) {
+      recoveryControllerLogger.error("recovery.event_publish_failed", {
+        eventType,
+        executionId,
+        reasonCode,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

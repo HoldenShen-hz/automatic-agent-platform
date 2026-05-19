@@ -113,12 +113,12 @@ test("R30-21 grep/rg path extraction includes every file argument", () => {
   assert.deepEqual(rgAssessment.sandboxReadArgPaths, ["dir/a.ts", "dir/b.ts"]);
 });
 
-test("R30-23 interpreter commands deny script flags after script path", () => {
+test("R30-23 interpreter commands allow script arguments after script path", () => {
   const classifier = new CommandSafetyClassifier();
   const assessment = classifier.assess("python3", ["script.py", "--verbose"]);
 
-  assert.equal(assessment.allowed, false);
-  assert.equal(assessment.reasonCode, "tool.command_interpreter_flag_denied");
+  assert.equal(assessment.allowed, true);
+  assert.equal(assessment.reasonCode, null);
 });
 
 test("R30-24 replan guard fails closed at the configured boundary", () => {

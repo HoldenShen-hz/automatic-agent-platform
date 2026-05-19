@@ -11,5 +11,9 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     }
+  },
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-native": "0.0.0-stub"
   }
 }

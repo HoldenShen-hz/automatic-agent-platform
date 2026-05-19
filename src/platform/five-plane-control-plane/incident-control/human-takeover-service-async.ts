@@ -307,6 +307,7 @@ export class HumanTakeoverServiceAsync {
 
   /** Flag indicating if the processing loop is running. */
   private processingLoopActive = false;
+  private processingLoopPromise: Promise<void> | null = null;
 
   /** Abort controller for graceful shutdown of the processing loop. */
   private readonly abortController: AbortController = new AbortController();
@@ -740,17 +741,19 @@ export class HumanTakeoverServiceAsync {
             data: { error: err instanceof Error ? err.message : String(err) },
           });
 
-          await new Promise((resolve) => setTimeout(resolve, this.config.backoffDelayMs));
+          await this.waitForDelay(this.config.backoffDelayMs);
         }
       }
     };
 
-    loop().catch((err) => {
+    this.processingLoopPromise = loop().catch((err) => {
       this.logger.log({
         level: "error",
         message: "takeover.processing_loop_crashed",
         data: { error: err instanceof Error ? err.message : String(err) },
       });
+    }).finally(() => {
+      this.processingLoopPromise = null;
     });
 
     this.logger.log({ level: "info", message: "takeover.processing_loop_started" });
@@ -764,8 +767,7 @@ export class HumanTakeoverServiceAsync {
 
     this.processingLoopActive = false;
     this.abortController.abort();
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await this.processingLoopPromise;
 
     this.escalationManager.clearAllTimers();
 
@@ -781,5 +783,30 @@ export class HumanTakeoverServiceAsync {
    */
   public getSyncService(): HumanTakeoverService {
     return this.sync;
+  }
+
+  private waitForDelay(delayMs: number): Promise<void> {
+    if (delayMs <= 0 || this.abortController.signal.aborted) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, delayMs);
+      timeout.unref?.();
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        this.abortController.signal.removeEventListener("abort", onAbort);
+      };
+
+      const onAbort = () => {
+        cleanup();
+        resolve();
+      };
+
+      this.abortController.signal.addEventListener("abort", onAbort, { once: true });
+    });
   }
 }

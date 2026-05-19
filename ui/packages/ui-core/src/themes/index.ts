@@ -1,5 +1,9 @@
 import { designTokens, type CoreDesignTokens } from "../design-tokens";
 
+export interface ThemeRuntimeBridge {
+  applyResolvedTheme(name: "light" | "dark" | "high-contrast"): CoreDesignTokens;
+}
+
 export const lightTheme: CoreDesignTokens = designTokens;
 
 export const darkTheme: CoreDesignTokens = {
@@ -51,4 +55,17 @@ export function resolveTheme(name: "light" | "dark" | "high-contrast"): CoreDesi
   if (name === "light") return lightTheme;
   if (name === "high-contrast") return highContrastTheme;
   return darkTheme;
+}
+
+export function applyResolvedTheme(
+  name: "light" | "dark" | "high-contrast",
+  root: Pick<HTMLElement, "dataset" | "style"> = document.documentElement,
+): CoreDesignTokens {
+  const theme = resolveTheme(name);
+  root.dataset.aaTheme = name;
+  root.style.setProperty("--aa-color-background", theme.color.background);
+  root.style.setProperty("--aa-color-surface", theme.color.surface);
+  root.style.setProperty("--aa-color-text", theme.color.text);
+  root.style.setProperty("--aa-color-accent", theme.color.accent);
+  return theme;
 }

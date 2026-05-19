@@ -131,7 +131,7 @@
     "soak:stable": "npm run build && node --enable-source-maps dist/src/sdk/cli/stable-soak.js",
     "demo": "npm run build && node --enable-source-maps dist/src/index.js",
     "demo:phase1b": "npm run build && node --enable-source-maps dist/src/sdk/cli/phase1b-demo.js",
-    "lint": "eslint src scripts eslint.config.js",
+    "lint": "eslint . --ext .ts,.js,.mjs,.tsx",
     "audit:test-exclusions": "node scripts/ci/audit-test-exclusions.mjs",
     "audit:review-large-sources": "node scripts/ci/audit-review-large-source-examples.mjs",
     "audit:ci-supply-chain": "node scripts/ci/audit-ci-supply-chain.mjs",

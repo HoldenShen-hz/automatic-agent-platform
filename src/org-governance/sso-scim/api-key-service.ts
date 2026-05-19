@@ -25,6 +25,8 @@ export interface ApiKeyRecord {
   createdAt: string;
   status: "active" | "revoked" | "expired";
   createdBy: string;
+  revokedAt?: string | null;
+  revokedBy?: string | null;
 }
 
 export interface CreateApiKeyInput {
@@ -43,11 +45,24 @@ export interface ApiKeyValidationResult {
   reason?: string;
 }
 
+export type ApiKeyRotationResult =
+  | {
+      readonly record: ApiKeyRecord;
+      readonly rawKey: string;
+      readonly reason?: undefined;
+    }
+  | {
+      readonly record: null;
+      readonly rawKey: null;
+      readonly reason: "key_not_found" | "key_expired" | "key_revoked";
+    };
+
 const KEY_PREFIX_LENGTH = 8;
 
 export class ApiKeyService {
   private readonly keys = new Map<string, ApiKeyRecord>();
   private readonly keyHashIndex = new Map<string, string>();
+  private readonly auditLog: Array<{ action: "revoke"; keyId: string; actorId: string; occurredAt: string }> = [];
 
   public generateApiKey(input: CreateApiKeyInput): { record: ApiKeyRecord; rawKey: string } {
     const rawKey = this.generateRawKey();
@@ -66,6 +81,8 @@ export class ApiKeyService {
       createdAt: nowIso(),
       status: "active",
       createdBy: input.createdBy,
+      revokedAt: null,
+      revokedBy: null,
     };
 
     this.keys.set(record.keyId, record);
@@ -108,7 +125,19 @@ export class ApiKeyService {
     }
 
     record.status = "revoked";
+    record.revokedAt = nowIso();
+    record.revokedBy = revokedBy;
+    this.auditLog.push({
+      action: "revoke",
+      keyId,
+      actorId: revokedBy,
+      occurredAt: record.revokedAt,
+    });
     return true;
+  }
+
+  public listAuditLog(): ReadonlyArray<{ action: "revoke"; keyId: string; actorId: string; occurredAt: string }> {
+    return [...this.auditLog];
   }
 
   public listApiKeysForOwner(ownerId: string): ApiKeyRecord[] {
@@ -119,14 +148,21 @@ export class ApiKeyService {
     return this.keys.get(keyId) ?? null;
   }
 
-  public rotateApiKey(keyId: string, rotatedBy: string): { record: ApiKeyRecord; rawKey: string } | null {
+  public rotateApiKey(keyId: string, rotatedBy: string): ApiKeyRotationResult {
     const existing = this.keys.get(keyId);
-    if (!existing || existing.status !== "active") {
-      return null;
+    if (!existing) {
+      return { record: null, rawKey: null, reason: "key_not_found" };
+    }
+    if (existing.status !== "active") {
+      return {
+        record: null,
+        rawKey: null,
+        reason: existing.status === "expired" ? "key_expired" : "key_revoked",
+      };
     }
     if (existing.expiresAt && new Date(existing.expiresAt) < new Date()) {
       existing.status = "expired";
-      return null;
+      return { record: null, rawKey: null, reason: "key_expired" };
     }
 
     existing.status = "revoked";

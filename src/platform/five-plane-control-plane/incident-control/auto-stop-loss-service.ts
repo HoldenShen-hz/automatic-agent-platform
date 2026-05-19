@@ -416,6 +416,23 @@ export class AutoStopLossService {
     return value === "info" || value === "warning" || value === "critical" || value === "emergency";
   }
 
+  private normalizeSeverityAlias(normalized: string): AnomalySeverity | undefined {
+    const aliases: Readonly<Record<string, AnomalySeverity>> = {
+      info: "info",
+      informational: "info",
+      sev_info: "info",
+      warning: "warning",
+      warn: "warning",
+      sev_warning: "warning",
+      critical: "critical",
+      crit: "critical",
+      sev_critical: "critical",
+      emergency: "emergency",
+      sev_emergency: "emergency",
+    };
+    return aliases[normalized];
+  }
+
   private normalizeAnomalySeverity(value: unknown): AnomalySeverity | undefined {
     if (this.isAnomalySeverity(value)) {
       return value;
@@ -425,25 +442,7 @@ export class AutoStopLossService {
     }
 
     const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
-    if (normalized === "warn") {
-      return "warning";
-    }
-    if (normalized === "crit") {
-      return "critical";
-    }
-    if (normalized.includes("emergency")) {
-      return "emergency";
-    }
-    if (normalized.includes("critical")) {
-      return "critical";
-    }
-    if (normalized.includes("warning") || normalized.includes("warn")) {
-      return "warning";
-    }
-    if (normalized.includes("info")) {
-      return "info";
-    }
-    return undefined;
+    return this.normalizeSeverityAlias(normalized);
   }
 
   private isHealthStatus(value: unknown): value is SystemHealthSnapshot["status"] {
@@ -791,13 +790,36 @@ export class AutoStopLossService {
         healthStatus: snapshot.status,
         ...snapshot,
       }).catch((err) => {
-        logger.error("auto_stop_loss.playbook_execution_failed", {
-          playbookId: playbook.id,
-          healthStatus: snapshot.status,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        this.recordPlaybookError(playbook.id, snapshot.status, err);
       });
     }
+  }
+
+  private recordPlaybookError(
+    playbookId: string,
+    healthStatus: SystemHealthSnapshot["status"],
+    error: unknown,
+  ): void {
+    const classified = this.classifyPlaybookError(error);
+    logger.error("auto_stop_loss.playbook_execution_failed", {
+      playbookId,
+      healthStatus,
+      errorCode: classified.code,
+      errorMessage: classified.message,
+    });
+  }
+
+  private classifyPlaybookError(error: unknown): { readonly code: string; readonly message: string } {
+    if (error instanceof Error) {
+      return {
+        code: error.name?.trim().length > 0 ? `playbook.${this.toSnakeCase(error.name)}` : "playbook.execution_failed",
+        message: error.message,
+      };
+    }
+    return {
+      code: "playbook.execution_failed",
+      message: String(error),
+    };
   }
 
   /**
