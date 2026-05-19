@@ -84,29 +84,30 @@ test("golden: session summary retrieval returns latest summary", () => {
     const first = service.createSummary({
       sessionId,
       summaryText: "First summary - task approach decided",
+      createdAt: "2026-05-01T00:00:00.000Z",
     });
 
-    // Small delay to ensure different timestamp
-    const later1 = new Date(Date.now() + 1).toISOString();
     const second = service.createSummary({
       sessionId,
       summaryText: "Second summary - task in progress, mid-way checkpoint",
+      createdAt: "2026-05-01T00:00:01.000Z",
     });
 
-    // Another delay
-    const later2 = new Date(Date.now() + 2).toISOString();
     const third = service.createSummary({
       sessionId,
       summaryText: "Third summary - task completed successfully with all objectives met",
       keyOutcomes: ["Task completed"],
+      createdAt: "2026-05-01T00:00:02.000Z",
     });
 
     // Retrieve latest summary
     const retrieved = service.getLatestSummary(sessionId);
     assert.ok(retrieved, "Should retrieve a summary");
-    assert.ok(retrieved?.summaryText.includes("summary"), "Should retrieve some summary");
-    // Note: Due to same-timestamp behavior, we just verify we get a valid summary
-    // The exact ordering depends on database behavior with equal timestamps
+    assert.equal(first.summaryText, "First summary - task approach decided");
+    assert.equal(second.summaryText, "Second summary - task in progress, mid-way checkpoint");
+    assert.equal(retrieved?.id, third.id);
+    assert.equal(retrieved?.summaryText, third.summaryText);
+    assert.deepEqual(JSON.parse(retrieved?.keyOutcomes ?? "[]"), ["Task completed"]);
 
     db.close();
   } finally {

@@ -1,0 +1,10 @@
+{
+  "planningModes": [
+    "llm_assisted",
+    "deterministic_only"
+  ],
+  "hotPathModes": [
+    "deterministic_only",
+    "llm_allowed"
+  ]
+}

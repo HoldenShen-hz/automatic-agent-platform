@@ -45,6 +45,16 @@ export interface PackCompatibilityReport {
   verdict: "compatible" | "missing_plugins" | "license_blocked";
 }
 
+export interface PackPluginCompatibilityPolicy {
+  recommendationLimit: number;
+  exactMatchScore: number;
+  tokenOverlapScore: number;
+  minimumTokenOverlap: number;
+  sameDomainBonus: number;
+  sharedDomainBonus: number;
+  pluginLicenseTiers: Partial<Record<string, LicenseTier>>;
+}
+
 const LICENSE_RANK: Record<LicenseTier, number> = {
   community: 0,
   professional: 1,
@@ -79,6 +89,20 @@ const PROFESSIONAL_KEYWORDS = [
 ];
 
 export class PackPluginCompatibilityService {
+  public constructor(
+    private readonly policy: PackPluginCompatibilityPolicy = {
+      recommendationLimit: 5,
+      exactMatchScore: 10,
+      tokenOverlapScore: 2,
+      minimumTokenOverlap: 2,
+      sameDomainBonus: 3,
+      sharedDomainBonus: 1,
+      pluginLicenseTiers: {
+        "plugin.shared.github_adapter": "professional",
+      },
+    },
+  ) {}
+
   public listAvailablePlugins(): BuiltinPluginInventoryEntry[] {
     return listBuiltinPluginIds()
       .map((pluginId) => this.inspectBuiltinPlugin(pluginId))
@@ -101,7 +125,7 @@ export class PackPluginCompatibilityService {
         ...(typeof plugin.healthCheck === "function" ? ["healthCheck" as const] : []),
         ...(typeof plugin.shutdown === "function" ? ["shutdown" as const] : []),
       ],
-      minimumLicenseTier: inferPluginLicenseTier(plugin),
+      minimumLicenseTier: this.policy.pluginLicenseTiers[plugin.pluginId] ?? "community",
       boundaryClass: inferBoundaryClass(plugin.pluginId),
     };
   }
@@ -167,15 +191,15 @@ export class PackPluginCompatibilityService {
     availablePlugins: readonly BuiltinPluginInventoryEntry[],
   ): PackCapabilityCompatibility {
     const rankedSelected = selectedPlugins
-      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey) }))
+      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey, this.policy) }))
       .filter((item) => item.score > 0)
       .sort((left, right) => right.score - left.score || left.plugin.pluginId.localeCompare(right.plugin.pluginId));
     const rankedCandidates = availablePlugins
-      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey) }))
+      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey, this.policy) }))
       .filter((item) => item.score > 0)
       .sort((left, right) => right.score - left.score || left.plugin.pluginId.localeCompare(right.plugin.pluginId));
     const matchedPluginIds = rankedSelected.map((item) => item.plugin.pluginId);
-    const candidatePluginIds = rankedCandidates.map((item) => item.plugin.pluginId).slice(0, 5);
+    const candidatePluginIds = rankedCandidates.map((item) => item.plugin.pluginId).slice(0, this.policy.recommendationLimit);
     const requiredLicenseTier = [
       inferCapabilityLicenseTier(capability.capabilityKey),
       ...(capability.requiredContracts ?? []).map((contract) => inferCapabilityLicenseTier(contract)),
@@ -206,22 +230,6 @@ export class PackPluginCompatibilityService {
   }
 }
 
-function inferPluginLicenseTier(plugin: RegisteredPlugin): LicenseTier {
-  const tokens = tokenize([
-    plugin.pluginId,
-    ...("domainId" in plugin && typeof plugin.domainId === "string" ? [plugin.domainId] : []),
-    ...(plugin.capabilityIds ?? []),
-    plugin.spiType,
-  ]);
-  if (plugin.spiType === "adapter" || tokens.some((token) => PROFESSIONAL_KEYWORDS.includes(token))) {
-    return "professional";
-  }
-  if (tokens.some((token) => ENTERPRISE_KEYWORDS.includes(token))) {
-    return "enterprise";
-  }
-  return "community";
-}
-
 function inferCapabilityLicenseTier(value: string): LicenseTier {
   const tokens = tokenize([value]);
   if (tokens.some((token) => ENTERPRISE_KEYWORDS.includes(token))) {
@@ -247,19 +255,20 @@ function scorePluginForCapability(
   plugin: BuiltinPluginInventoryEntry,
   domain: string,
   capabilityKey: string,
+  policy: PackPluginCompatibilityPolicy,
 ): number {
-  const exactMatch = plugin.capabilityIds.includes(capabilityKey) ? 10 : 0;
+  const exactMatch = plugin.capabilityIds.includes(capabilityKey) ? policy.exactMatchScore : 0;
   const capabilityTokens = new Set(tokenize([capabilityKey]));
   const pluginTokens = tokenize([plugin.pluginId, plugin.domainId ?? "", ...plugin.capabilityIds]);
   const overlap = pluginTokens.filter((token) => capabilityTokens.has(token)).length;
-  if (exactMatch === 0 && overlap < 2) {
+  if (exactMatch === 0 && overlap < policy.minimumTokenOverlap) {
     return 0;
   }
-  const baseScore = exactMatch + overlap * 2;
+  const baseScore = exactMatch + overlap * policy.tokenOverlapScore;
   if (baseScore === 0) {
     return 0;
   }
-  const domainBonus = plugin.domainId === domain ? 3 : plugin.domainId == null ? 1 : 0;
+  const domainBonus = plugin.domainId === domain ? policy.sameDomainBonus : plugin.domainId == null ? policy.sharedDomainBonus : 0;
   return baseScore + domainBonus;
 }
 

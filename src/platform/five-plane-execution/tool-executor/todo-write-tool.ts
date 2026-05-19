@@ -182,7 +182,7 @@ export class TodoWriteToolService {
 
     const existing = this.todos.get(normalizedRequest.todoId);
     if (!existing) {
-      throw new ValidationError("todo.not_found", `Todo not found: ${normalizedRequest.todoId}`, {
+      throw new ValidationError("todo.not_found", "Todo not found.", {
         source: "tool",
         details: { todoId: normalizedRequest.todoId },
       });
@@ -237,7 +237,7 @@ export class TodoWriteToolService {
     }
 
     if (!this.todos.has(normalizedRequest.todoId)) {
-      throw new ValidationError("todo.not_found", `Todo not found: ${normalizedRequest.todoId}`, {
+      throw new ValidationError("todo.not_found", "Todo not found.", {
         source: "tool",
         details: { todoId: normalizedRequest.todoId },
       });

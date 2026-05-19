@@ -6,7 +6,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "scripts/**/*.mjs"],
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
@@ -20,5 +20,5 @@ export default [
       "@typescript-eslint/no-unsafe-member-access": "warn",
     },
   },
-  { ignores: ["dist/", "node_modules/", "*.config.*", "scripts/*.mjs"] },
+  { ignores: ["dist/", "node_modules/", "*.config.*"] },
 ];

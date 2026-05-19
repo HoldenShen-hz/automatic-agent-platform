@@ -1,0 +1,8 @@
+{
+  "healthcareRiskClass": "critical",
+  "healthcareAdvisoryOnly": true,
+  "quantRiskClass": "high",
+  "financialRiskClass": "high",
+  "legalRiskClass": "critical",
+  "unknownIsNull": true
+}

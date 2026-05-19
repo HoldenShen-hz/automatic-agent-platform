@@ -1,0 +1,14 @@
+{
+  "totalRelations": 9,
+  "relations": [
+    "derived_from",
+    "replaces",
+    "depends_on",
+    "tested_by",
+    "reviewed_by",
+    "uses",
+    "published_from",
+    "summarizes",
+    "attached_to"
+  ]
+}

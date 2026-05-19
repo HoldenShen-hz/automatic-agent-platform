@@ -1,5 +1,6 @@
 import { createCipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -61,10 +62,23 @@ async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, veri
   });
 
   if (!response.ok) {
-    throw new ValidationError("oauth.token_exchange_failed", `Token exchange failed: ${response.statusText}`);
+    throw new ValidationError(
+      "oauth.token_exchange_failed",
+      `oauth.token_exchange_failed:${response.status}`,
+    );
   }
 
   return response.json() as Promise<TokenResponse>;
+}
+
+function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
+  const explicitHome = readTrimmedEnv(env, "HOME");
+  const fallbackHome = homedir().trim();
+  const home = explicitHome ?? (fallbackHome.length > 0 ? fallbackHome : null);
+  if (home == null) {
+    throw new ValidationError("oauth.home_directory_required", "oauth.home_directory_required");
+  }
+  return home;
 }
 
 function saveOAuthTokens(tokens: {
@@ -73,31 +87,31 @@ function saveOAuthTokens(tokens: {
   expiresIn: number;
   refreshToken?: string;
 }, env: NodeJS.ProcessEnv = process.env): string {
-  const credentialsPath = env.AA_CREDENTIALS_PATH ?? join(env.HOME ?? "/tmp", ".automatic-agent", "credentials.json");
+  const credentialsPath = env.AA_CREDENTIALS_PATH ?? join(resolveSecureCliHome(env), ".automatic-agent", "credentials.json");
   mkdirSync(dirname(credentialsPath), { recursive: true, mode: 0o700 });
   const payload = JSON.stringify(tokens, null, 2);
   const encryptionKey = env.AA_CREDENTIALS_ENCRYPTION_KEY?.trim();
-  if (encryptionKey != null && encryptionKey.length > 0) {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
-    const key = scryptSync(encryptionKey, salt, 32);
-    const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const ciphertext = Buffer.concat([cipher.update(payload, "utf8"), cipher.final()]);
-    const envelope = {
-      version: "oauth-cred-v1",
-      algorithm: "aes-256-gcm",
-      salt: salt.toString("base64"),
-      iv: iv.toString("base64"),
-      tag: cipher.getAuthTag().toString("base64"),
-      ciphertext: ciphertext.toString("base64"),
-    };
-    writeFileSync(credentialsPath, JSON.stringify(envelope, null, 2), { encoding: "utf8", mode: 0o600 });
-    return credentialsPath;
+  if (encryptionKey == null || encryptionKey.length === 0) {
+    throw new ValidationError(
+      "oauth.credentials_encryption_key_required",
+      "oauth.credentials_encryption_key_required",
+    );
   }
-  if (env.NODE_ENV === "production") {
-    throw new ValidationError("oauth.credentials_encryption_key_required", "oauth.credentials_encryption_key_required");
-  }
-  writeFileSync(credentialsPath, payload, { encoding: "utf8", mode: 0o600 });
+
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const key = scryptSync(encryptionKey, salt, 32);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(payload, "utf8"), cipher.final()]);
+  const envelope = {
+    version: "oauth-cred-v1",
+    algorithm: "aes-256-gcm",
+    salt: salt.toString("base64"),
+    iv: iv.toString("base64"),
+    tag: cipher.getAuthTag().toString("base64"),
+    ciphertext: ciphertext.toString("base64"),
+  };
+  writeFileSync(credentialsPath, JSON.stringify(envelope, null, 2), { encoding: "utf8", mode: 0o600 });
   return credentialsPath;
 }
 
@@ -153,7 +167,7 @@ export function loadOAuthPkceConfig(env: NodeJS.ProcessEnv = process.env): OAuth
 
 export function resolveOAuthLoginStatePath(env: NodeJS.ProcessEnv = process.env): string {
   return readTrimmedEnv(env, "AA_OAUTH_STATE_PATH")
-    ?? join(env.HOME ?? "/tmp", ".automatic-agent", "oauth-login-state.json");
+    ?? join(resolveSecureCliHome(env), ".automatic-agent", "oauth-login-state.json");
 }
 
 function writeLoginState(statePath: string, record: LoginStateRecord): void {
@@ -162,7 +176,14 @@ function writeLoginState(statePath: string, record: LoginStateRecord): void {
 }
 
 function readLoginState(statePath: string): LoginStateRecord {
-  return JSON.parse(readFileSync(statePath, "utf8")) as LoginStateRecord;
+  try {
+    return JSON.parse(readFileSync(statePath, "utf8")) as LoginStateRecord;
+  } catch (error) {
+    throw new ValidationError(
+      "oauth.invalid_login_state",
+      error instanceof Error ? `oauth.invalid_login_state:${statePath}` : "oauth.invalid_login_state",
+    );
+  }
 }
 
 export function startOAuthLogin(

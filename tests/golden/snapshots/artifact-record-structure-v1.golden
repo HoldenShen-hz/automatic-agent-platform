@@ -1,0 +1,10 @@
+{
+  "artifactId": "art_001",
+  "harnessRunId": "hrun_001",
+  "type": "source_code",
+  "path": "/artifacts/src/index.ts",
+  "sizeBytes": 1234,
+  "publishStatus": "published",
+  "hasRefs": true,
+  "refCount": 1
+}

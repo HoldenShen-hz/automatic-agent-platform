@@ -1,0 +1,7 @@
+{
+  "artifactId": "art_extended",
+  "namespace": "production",
+  "artifactType": "report",
+  "storageUri": "s3://artifacts/production/report.pdf",
+  "createdBy": "system"
+}

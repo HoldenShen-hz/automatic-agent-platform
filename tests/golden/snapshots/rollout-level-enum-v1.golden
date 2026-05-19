@@ -1,0 +1,11 @@
+{
+  "validLevels": [
+    "L0_off",
+    "L1_evaluate",
+    "L2_canary",
+    "L3_partial",
+    "L4_stable",
+    "L5_full"
+  ],
+  "totalLevels": 6
+}

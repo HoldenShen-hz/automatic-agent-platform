@@ -1,0 +1,6 @@
+{
+  "domainId": "test",
+  "knowledgeSourceCount": 0,
+  "accessControlPolicy": "platform_default",
+  "freshnessPolicy": "scheduled_refresh"
+}

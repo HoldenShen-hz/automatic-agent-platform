@@ -1,0 +1,35 @@
+{
+  "planGraphBundleId": "bundle_test_workflow_golden_001",
+  "harnessRunId": "hrun_golden_test_001",
+  "graphVersion": 1,
+  "graph": {
+    "graphId": "graph_c6510624-781f-4078-b008-00c61f3b4525",
+    "nodesCount": 3,
+    "edgesCount": 2,
+    "entryNodeIds": [
+      "step_a"
+    ],
+    "terminalNodeIds": [
+      "step_c"
+    ],
+    "joinStrategy": "all",
+    "graphHash": "hash_783687b8-2b6b-4777-b9b6-808b279b629a"
+  },
+  "schedulerPolicy": {
+    "policyId": "scheduler:oapeflir.default",
+    "strategy": "deterministic_fifo"
+  },
+  "budgetPlanRef": "budget:test_workflow_golden_001",
+  "riskProfile": {
+    "riskClass": "medium",
+    "reasons": [
+      "workflow:test_workflow_golden_001"
+    ]
+  },
+  "validationReport": {
+    "valid": true,
+    "findingsCount": 0
+  },
+  "artifactRefsCount": 0,
+  "createdAt": "2026-05-06T09:40:57.876Z"
+}

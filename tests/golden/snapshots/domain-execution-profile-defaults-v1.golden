@@ -1,0 +1,8 @@
+{
+  "planningMode": "llm_assisted",
+  "hotPathMode": "llm_allowed",
+  "llmInHotPathAllowed": true,
+  "maxHotPathLatencyMs": 1000,
+  "latencyTier": "interactive",
+  "compiledArtifactRef": null
+}

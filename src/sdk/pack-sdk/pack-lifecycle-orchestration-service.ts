@@ -98,6 +98,7 @@ export interface RegisterBusinessPackInput {
   evalDatasetIds?: readonly string[] | undefined;
   previousManifest?: BusinessPackManifest | null | undefined;
   declaredDeprecationWarnings?: number | undefined;
+  requiredDeprecationWarnings?: number | undefined;
   createdAt?: string | undefined;
 }
 
@@ -109,6 +110,7 @@ export interface RecordPackTestingInput {
   stagingIntegrationPassed: boolean;
   evalPassed: boolean;
   reportRef: string;
+  coverageThresholdPercent?: number | undefined;
   recordedAt?: string | undefined;
 }
 
@@ -141,6 +143,7 @@ export interface DeprecateBusinessPackInput {
   migrationGuideRef: string;
   effectiveAt: string;
   supportWindowDays: number;
+  minimumSupportWindowDays?: number | undefined;
   deprecatedAt?: string | undefined;
 }
 
@@ -166,6 +169,7 @@ export class PackLifecycleOrchestrationService {
       input.previousManifest == null ? null : validateBusinessPackManifest(input.previousManifest),
       manifest,
       input.declaredDeprecationWarnings ?? 0,
+      input.requiredDeprecationWarnings ?? 2,
     );
     const findings = [
       ...(input.evalDatasetIds == null || input.evalDatasetIds.length === 0 ? ["pack_lifecycle.eval_dataset_missing"] : []),
@@ -194,8 +198,9 @@ export class PackLifecycleOrchestrationService {
   public recordTesting(input: RecordPackTestingInput): PackLifecycleRecord {
     const record = this.getMutableRecord(input.packId, input.version);
     assertLifecycleStage(record, ["development", "testing"]);
+    const coverageThresholdPercent = roundPercent(input.coverageThresholdPercent ?? 80);
     const findings = [
-      ...(input.coveragePercent >= 80 ? [] : ["pack_lifecycle.coverage_below_threshold"]),
+      ...(input.coveragePercent >= coverageThresholdPercent ? [] : ["pack_lifecycle.coverage_below_threshold"]),
       ...(input.mockTestsPassed ? [] : ["pack_lifecycle.mock_tests_failed"]),
       ...(input.stagingIntegrationPassed ? [] : ["pack_lifecycle.staging_integration_failed"]),
       ...(input.evalPassed ? [] : ["pack_lifecycle.eval_gate_failed"]),
@@ -294,10 +299,11 @@ export class PackLifecycleOrchestrationService {
   public deprecatePack(input: DeprecateBusinessPackInput): PackLifecycleRecord {
     const record = this.getMutableRecord(input.packId, input.version);
     assertLifecycleStage(record, ["certified", "published", "running", "deprecated"]);
-    if (input.supportWindowDays < 90) {
+    const minimumSupportWindowDays = input.minimumSupportWindowDays ?? 90;
+    if (input.supportWindowDays < minimumSupportWindowDays) {
       throw new ValidationError(
         `pack_lifecycle.support_window_too_short:${record.packId}@${record.version}`,
-        `Business pack ${record.packId}@${record.version} must provide at least 90 days of support during deprecation.`,
+        `Business pack ${record.packId}@${record.version} must provide at least ${minimumSupportWindowDays} days of support during deprecation.`,
       );
     }
 
@@ -357,6 +363,7 @@ function buildApiChangeSummary(
   previousManifest: BusinessPackManifest | null,
   candidateManifest: BusinessPackManifest,
   declaredDeprecationWarnings: number,
+  requiredDeprecationWarnings: number,
 ): PackLifecycleRecord["apiChange"] {
   if (previousManifest == null) {
     return {
@@ -373,10 +380,12 @@ function buildApiChangeSummary(
 
   const previousCapabilities = new Map(previousManifest.capabilities.map((capability) => [capability.capabilityKey, capability]));
   const candidateCapabilities = new Map(candidateManifest.capabilities.map((capability) => [capability.capabilityKey, capability]));
+  const previousContracts = uniqueContracts(previousManifest.capabilities);
+  const candidateContracts = uniqueContracts(candidateManifest.capabilities);
   const addedCapabilities = [...candidateCapabilities.keys()].filter((capability) => !previousCapabilities.has(capability)).sort();
   const removedCapabilities = [...previousCapabilities.keys()].filter((capability) => !candidateCapabilities.has(capability)).sort();
-  const addedContracts = uniqueContracts(candidateManifest.capabilities).filter((contract) => !uniqueContracts(previousManifest.capabilities).includes(contract));
-  const removedContracts = uniqueContracts(previousManifest.capabilities).filter((contract) => !uniqueContracts(candidateManifest.capabilities).includes(contract));
+  const addedContracts = candidateContracts.filter((contract) => !previousContracts.includes(contract));
+  const removedContracts = previousContracts.filter((contract) => !candidateContracts.includes(contract));
 
   let changeType: PackApiChangeType = "compatible";
   if (
@@ -392,10 +401,9 @@ function buildApiChangeSummary(
   }
 
   const previousVersion = parseSemver(previousManifest.version);
-  const candidateVersion = parseSemver(candidateManifest.version);
   const requiresDeprecationWarnings = changeType === "breaking";
   const deprecationWarningsSatisfied = !requiresDeprecationWarnings
-    || (candidateVersion.major > previousVersion.major && declaredDeprecationWarnings >= 2);
+    || (parseSemver(candidateManifest.version).major > previousVersion.major && declaredDeprecationWarnings >= requiredDeprecationWarnings);
 
   return {
     changeType,
@@ -413,14 +421,17 @@ function hasContractTightening(
   previousCapabilities: readonly BusinessPackCapability[],
   candidateCapabilities: readonly BusinessPackCapability[],
 ): boolean {
-  const previous = new Map(previousCapabilities.map((capability) => [capability.capabilityKey, (capability.requiredContracts ?? []).slice().sort().join("|")]));
+  const previous = new Map(previousCapabilities.map((capability) => [capability.capabilityKey, new Set(capability.requiredContracts ?? [])]));
   for (const candidate of candidateCapabilities) {
     const previousContracts = previous.get(candidate.capabilityKey);
     if (previousContracts == null) {
       continue;
     }
-    if (previousContracts !== (candidate.requiredContracts ?? []).slice().sort().join("|")) {
-      return true;
+    const candidateContracts = new Set(candidate.requiredContracts ?? []);
+    for (const contract of previousContracts) {
+      if (!candidateContracts.has(contract)) {
+        return true;
+      }
     }
   }
   return false;
@@ -486,5 +497,5 @@ function recordKey(packId: string, version: string): string {
 }
 
 function cloneRecord(record: PackLifecycleRecord): PackLifecycleRecord {
-  return JSON.parse(JSON.stringify(record)) as PackLifecycleRecord;
+  return structuredClone(record);
 }

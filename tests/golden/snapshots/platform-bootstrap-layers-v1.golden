@@ -1,0 +1,14 @@
+{
+  "layerCount": 9,
+  "layerIds": [
+    "platform",
+    "domains",
+    "interaction",
+    "org-governance",
+    "scale-ecosystem",
+    "ops-maturity",
+    "plugins",
+    "sdk",
+    "apps"
+  ]
+}

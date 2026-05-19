@@ -1,0 +1,9 @@
+{
+  "deterministicAllowsHumanRequired": true,
+  "deterministicBlocksFullAuto": true,
+  "deterministicBlocksLlmAssisted": true,
+  "humanAccountableBlocksFullAuto": true,
+  "humanAccountableAllowsLlmAssisted": true,
+  "advisoryAllowsFullAuto": true,
+  "fullyAllowsFullAuto": true
+}

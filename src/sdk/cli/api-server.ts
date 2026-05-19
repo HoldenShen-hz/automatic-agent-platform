@@ -38,6 +38,7 @@ import { HttpApiServer } from "../../platform/five-plane-interface/api/http-api-
 import { MissionControlService } from "../../platform/five-plane-interface/api/mission-control-service.js";
 import { TaskWebSocketStatusRelay } from "../../platform/five-plane-interface/api/task-websocket-status-relay.js";
 import { loadApiServerEnv } from "../../platform/five-plane-control-plane/config-center/api-server-env.js";
+import { resolveConfigWorkspaceRoot } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
 import { requireValidStartupEnv } from "../../platform/five-plane-control-plane/config-center/startup-env-schema.js";
 import { TypedEventBus } from "../../platform/five-plane-state-evidence/events/typed-event-bus.js";
 import { TypedEventBusPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
@@ -98,10 +99,27 @@ async function main(): Promise<void> {
     fluentd: envConfig.logFluentd,
     datadog: envConfig.logDatadog,
   });
+  const shutdown = getGlobalGracefulShutdown();
+  const startupCleanup: Array<() => Promise<void>> = [];
+  let startupComplete = false;
+  const registerManagedHandler = (name: string, handler: () => Promise<void>): void => {
+    shutdown.addHandler({ name, handler });
+    startupCleanup.push(handler);
+  };
 
-  await withPersistentCliStorageAsync(async (storage) => {
+  registerManagedHandler("structured_logger_transports", async () => {
+    await StructuredLogger.flushTransports();
+    await StructuredLogger.closeTransports();
+  });
+  registerManagedHandler("otel_sdk", async () => {
+    await shutdownOtel();
+  });
+
+  try {
+    await withPersistentCliStorageAsync(async (storage) => {
     const db = storage.sql;
     const store = storage.store;
+    const dataRoot = join(resolveConfigWorkspaceRoot(), "data");
 
     // Initialize core observability services
     const health = new HealthService(db, store);
@@ -109,6 +127,9 @@ async function main(): Promise<void> {
     const prometheusMetricsExporter = new PrometheusMetricsExporter(db, metrics);
     const inspect = new InspectService(store);
     const typedEventBus = new TypedEventBus(db, store);
+    registerManagedHandler("typed_event_bus", async () => {
+      typedEventBus.dispose();
+    });
     const eventPublisher = new TypedEventBusPublisher(typedEventBus);
     const domainEventFeedbackConsumer = new DomainEventFeedbackConsumer();
     domainEventFeedbackConsumer.subscribe(typedEventBus);
@@ -126,7 +147,7 @@ async function main(): Promise<void> {
       eventPublisher,
       semanticVectorStore,
       snapshotStore: new KnowledgeSnapshotStore({
-        snapshotPath: join("data", "knowledge", "knowledge-plane.snapshot.json"),
+        snapshotPath: join(dataRoot, "knowledge", "knowledge-plane.snapshot.json"),
       }),
     });
     for (const namespace of registryBootstrap.knowledgeNamespaces) {
@@ -139,12 +160,26 @@ async function main(): Promise<void> {
       undefined,
       undefined,
       new ArtifactPublishService(new ArtifactPublishLedger({
-        ledgerPath: join(process.cwd(), "data", "artifacts", "publish-ledger.jsonl"),
+        ledgerPath: join(dataRoot, "artifacts", "publish-ledger.jsonl"),
       })),
     );
     const metricsServer = envConfig.metricsPort == null
       ? null
       : createMetricsServer(prometheusMetricsExporter);
+    registerManagedHandler("metrics_server", async () => {
+      if (metricsServer == null || !metricsServer.listening) {
+        return;
+      }
+      await new Promise<void>((resolve, reject) => {
+        metricsServer.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    });
 
     // Initialize approval and gateway services
     const approvals = new ApprovalService(db, store);
@@ -179,6 +214,9 @@ async function main(): Promise<void> {
     const channelGatewayRetryExecutor = new ChannelGatewayRetryExecutor(channelGateway, {
       autoStart: true,
     });
+    registerManagedHandler("channel_gateway_retry_executor", async () => {
+      channelGatewayRetryExecutor.stop();
+    });
 
     // Initialize coordinator load balancing for multi-coordinator setups
     const coordinatorLoadBalancing = new CoordinatorLoadBalancingService(db, store);
@@ -211,6 +249,21 @@ async function main(): Promise<void> {
       envConfig.enableWebSocket && authService != null
         ? new TaskWebSocketStatusRelay(server, store)
         : null;
+    registerManagedHandler("task_websocket_status_relay", async () => {
+      webSocketStatusRelay?.stop();
+    });
+    registerManagedHandler("model_call_provider", async () => {
+      getModelCallProvider()?.dispose();
+      resetModelCallProvider();
+    });
+    registerManagedHandler("process_tracker", async () => {
+      const tracker = getProcessTracker();
+      await tracker.killAll();
+      resetProcessTracker();
+    });
+    registerManagedHandler("http_api_server", async () => {
+      await server.stop();
+    });
 
     // Resolve host and port from environment or defaults
     const startOptions: { host?: string; port?: number } = {};
@@ -251,80 +304,20 @@ async function main(): Promise<void> {
       )}\n`,
     );
 
-    // Register graceful shutdown handlers for clean termination
-    const shutdown = getGlobalGracefulShutdown();
-    shutdown.addHandler({
-      name: "otel_sdk",
-      handler: async () => {
-        await shutdownOtel();
-      },
-    });
-    shutdown.addHandler({
-      name: "metrics_server",
-      handler: async () => {
-        if (metricsServer == null || !metricsServer.listening) {
-          return;
-        }
-        await new Promise<void>((resolve, reject) => {
-          metricsServer.close((error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-            resolve();
-          });
-        });
-      },
-    });
-    shutdown.addHandler({
-      name: "task_websocket_status_relay",
-      handler: async () => {
-        webSocketStatusRelay?.stop();
-      },
-    });
-    shutdown.addHandler({
-      name: "structured_logger_transports",
-      handler: async () => {
-        await StructuredLogger.flushTransports();
-        await StructuredLogger.closeTransports();
-      },
-    });
-    shutdown.addHandler({
-      name: "channel_gateway_retry_executor",
-      handler: async () => {
-        channelGatewayRetryExecutor.stop();
-      },
-    });
-    shutdown.addHandler({
-      name: "typed_event_bus",
-      handler: async () => {
-        typedEventBus.dispose();
-      },
-    });
-    shutdown.addHandler({
-      name: "model_call_provider",
-      handler: async () => {
-        getModelCallProvider()?.dispose();
-        resetModelCallProvider();
-      },
-    });
-    shutdown.addHandler({
-      name: "process_tracker",
-      handler: async () => {
-        const tracker = getProcessTracker();
-        await tracker.killAll();
-        resetProcessTracker();
-      },
-    });
-    shutdown.addHandler({
-      name: "http_api_server",
-      handler: async () => {
-        await server.stop();
-      },
-    });
+    startupComplete = true;
   }, {
     dbPath: envConfig.dbPath ?? resolveCliDbPath(),
   });
+  } catch (error) {
+    if (!startupComplete) {
+      for (const handler of startupCleanup.slice().reverse()) {
+        await handler().catch(() => undefined);
+      }
+    }
+    throw error;
+  }
 }
 
-void main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  void main();
+}

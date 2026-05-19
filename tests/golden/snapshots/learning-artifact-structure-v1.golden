@@ -1,0 +1,9 @@
+{
+  "artifactId": "artifact_lo_001",
+  "sourceObjectId": "lo_001",
+  "version": 1,
+  "format": "json",
+  "namespace": "engineering",
+  "tokenSize": 50,
+  "checksumLength": 64
+}

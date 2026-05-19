@@ -1,0 +1,12 @@
+{
+  "validStates": [
+    "draft",
+    "validated",
+    "registered",
+    "active",
+    "updating",
+    "deprecated",
+    "archived"
+  ],
+  "totalStates": 7
+}

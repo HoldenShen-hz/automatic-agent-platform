@@ -1,0 +1,9 @@
+{
+  "validFormats": [
+    "json",
+    "yaml",
+    "markdown",
+    "policy_bundle"
+  ],
+  "totalFormats": 4
+}

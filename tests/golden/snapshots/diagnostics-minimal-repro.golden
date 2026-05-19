@@ -1,0 +1,8 @@
+{
+  "taskId": "diag_repro_task_001",
+  "hasSensitivityWarning": true,
+  "messageCount": 0,
+  "toolUsageCount": 0,
+  "artifactCount": 0,
+  "hasConfigSubset": true
+}

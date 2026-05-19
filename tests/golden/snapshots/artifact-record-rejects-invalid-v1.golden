@@ -1,0 +1,5 @@
+{
+  "missingArtifactIdFails": true,
+  "invalidTypeFails": true,
+  "invalidStatusFails": true
+}

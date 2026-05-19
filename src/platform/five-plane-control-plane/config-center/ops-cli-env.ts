@@ -1,4 +1,3 @@
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
@@ -60,9 +59,7 @@ function resolveDbPath(env: NodeJS.ProcessEnv): string {
   if (fromEnv != null) {
     return fromEnv;
   }
-  const sqliteDir = join(process.cwd(), "data", "sqlite");
-  mkdirSync(sqliteDir, { recursive: true });
-  return join(sqliteDir, "authoritative-demo.db");
+  return join(process.cwd(), "data", "sqlite", "automatic-agent.db");
 }
 
 function requiredEnv(env: NodeJS.ProcessEnv, name: string): string {

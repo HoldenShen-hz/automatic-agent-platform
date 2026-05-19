@@ -1,0 +1,9 @@
+{
+  "defaultPassThreshold": 0.7,
+  "criticalPassThreshold": 0.9,
+  "enforcement": "blocking",
+  "elevatedRiskThreshold": 0.6,
+  "criticalRiskThreshold": 0.85,
+  "maxStepDurationMs": 30000,
+  "maxTaskDurationMs": 300000
+}

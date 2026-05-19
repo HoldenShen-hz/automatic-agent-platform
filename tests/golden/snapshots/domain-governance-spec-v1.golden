@@ -1,0 +1,7 @@
+{
+  "domainId": "government",
+  "hitlPolicy": "always_require_human",
+  "recertificationPolicy": "quarterly",
+  "waiverPolicy": "no_waivers",
+  "policyRefCount": 2
+}

@@ -1,0 +1,5 @@
+{
+  "missingTitleFails": true,
+  "emptyTitleFails": true,
+  "emptySummaryFails": true
+}

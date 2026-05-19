@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 
 import { CLI_ENTRYPOINTS } from "./index.js";
 
@@ -36,7 +36,12 @@ async function main(): Promise<void> {
   }
 
   const moduleDir = dirname(fileURLToPath(import.meta.url));
-  const child = spawn(process.execPath, [join(moduleDir, `${command}.js`), ...args], {
+  const sourceExtension = extname(fileURLToPath(import.meta.url));
+  const childEntrypoint = join(moduleDir, `${command}.${sourceExtension === ".ts" ? "ts" : "js"}`);
+  const childArgs = sourceExtension === ".ts"
+    ? ["--import", "tsx", childEntrypoint, ...args]
+    : [childEntrypoint, ...args];
+  const child = spawn(process.execPath, childArgs, {
     stdio: "inherit",
     env: process.env,
   });

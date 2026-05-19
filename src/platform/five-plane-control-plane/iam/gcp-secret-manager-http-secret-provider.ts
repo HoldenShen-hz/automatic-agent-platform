@@ -185,7 +185,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
     const normalized = secretRef.replace(/^secret:\/\//, "").replace(/^\/+/, "");
     const parts = normalized.split("/").filter((part) => part.length > 0);
     if (parts.length !== 1 && !(parts.length === 3 && parts[1] === "versions")) {
-      throw new ValidationError(`gcp.invalid_secret_ref:${secretRef}`, `gcp.invalid_secret_ref:${secretRef}`, {
+      throw new ValidationError("gcp.invalid_secret_ref", "gcp.invalid_secret_ref", {
         source: "provider",
         details: { secretRef },
       });
@@ -198,7 +198,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
 
   private requireSafeSegment(value: string, field: "project" | "secret" | "version", secretRef: string): string {
     if (!GCP_SAFE_RESOURCE_SEGMENT.test(value)) {
-      throw new ValidationError(`gcp.invalid_${field}:${secretRef}`, `gcp.invalid_${field}:${secretRef}`, {
+      throw new ValidationError(`gcp.invalid_${field}`, `gcp.invalid_${field}`, {
         source: "provider",
         details: { secretRef, field },
       });
@@ -216,7 +216,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
    */
   public async requireSecret(secretRef: string): Promise<SecretProviderMetadata & { value: string }> {
     if (!this.projectId) {
-      throw new ValidationError(`gcp.config_missing:AA_GCP_PROJECT_ID:${secretRef}`, `gcp.config_missing:AA_GCP_PROJECT_ID:${secretRef}`, {
+      throw new ValidationError("gcp.config_missing", "gcp.config_missing:AA_GCP_PROJECT_ID", {
         source: "provider",
         details: { secretRef },
       });

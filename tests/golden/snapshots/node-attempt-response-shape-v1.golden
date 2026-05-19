@@ -1,0 +1,12 @@
+{
+  "nodeAttemptId": "<node_attempt>",
+  "nodeRunId": "<node_run>",
+  "attemptNo": 1,
+  "attemptKind": "initial",
+  "executorRef": "executor:test",
+  "inputSnapshotRef": {
+    "artifactId": "input_art",
+    "uri": "memory://test/input"
+  },
+  "startedAt": "<iso-timestamp>"
+}

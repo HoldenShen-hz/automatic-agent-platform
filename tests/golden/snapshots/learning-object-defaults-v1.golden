@@ -1,0 +1,7 @@
+{
+  "learningObjectId": "lo_minimal",
+  "evidenceRefsDefault": true,
+  "sourceSignalIdsDefault": true,
+  "validatedByDefault": "none",
+  "promotionStatusDefault": "quarantine"
+}

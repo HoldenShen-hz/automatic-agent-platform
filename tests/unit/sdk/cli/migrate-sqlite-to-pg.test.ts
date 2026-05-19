@@ -55,7 +55,22 @@ test("planSqliteToPgMigration returns row counts for migrated tables", () => {
     );
     const plan = planSqliteToPgMigration(db);
     assert.equal(plan.find((entry) => entry.table === "tasks")?.rowCount, 1);
-    assert.equal(plan.find((entry) => entry.table === "workflows")?.rowCount, 0);
+    assert.equal(plan.find((entry) => entry.table === "workflow_state")?.rowCount, 0);
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("planSqliteToPgMigration fails closed when an allowlisted table is missing", () => {
+  const workspace = createTempWorkspace("aa-migrate-plan-missing-table-");
+  try {
+    const db = new SqliteDatabase(join(workspace, "source.db"));
+    db.connection.exec("CREATE TABLE tasks (id TEXT PRIMARY KEY)");
+    assert.throws(
+      () => planSqliteToPgMigration(db),
+      /migrate_sqlite_to_pg\.missing_source_table/,
+    );
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -94,27 +109,24 @@ test("validateTableName accepts only tables in the allowlist", () => {
     "tasks",
     "sessions",
     "executions",
-    "leases",
+    "workflow_state",
     "events",
     "approvals",
     "artifacts",
-    "billing_records",
-    "dispatches",
-    "divisions",
-    "evolutions",
-    "intelligence_records",
-    "locks",
+    "billing_accounts",
+    "deployment_bindings",
+    "dlq_records",
+    "harness_runs",
     "marketplace_listings",
-    "memory_entries",
-    "operations",
+    "memories",
     "organizations",
-    "releases",
     "secret_registry",
     "secret_usage_audits",
     "secret_rotation_events",
     "secret_leases",
-    "workers",
-    "workflows",
+    "tenant_billing",
+    "worker_snapshots",
+    "workflow_step_outputs",
   ];
   for (const table of validTables) {
     assert.doesNotThrow(

@@ -1,0 +1,11 @@
+{
+  "reasonCount": 6,
+  "reasons": [
+    "Context window approaching limit",
+    "Removing old tool results",
+    "Full context compaction required",
+    "Session too long - summarizing",
+    "Memory pressure detected",
+    "Manual compaction requested by user"
+  ]
+}

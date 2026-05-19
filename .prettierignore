@@ -1,0 +1,7 @@
+dist/
+coverage/
+logs/
+.audit/
+tests/golden/snapshots/
+tests/fixtures/migration/snapshots/
+ui/test-results/

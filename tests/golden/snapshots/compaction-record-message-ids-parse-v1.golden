@@ -1,0 +1,6 @@
+{
+  "id": "compaction_parse_test",
+  "messageCount": 4,
+  "firstMessageId": "msg_001",
+  "lastMessageId": "msg_004"
+}

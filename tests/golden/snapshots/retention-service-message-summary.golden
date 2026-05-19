@@ -1,0 +1,11 @@
+{
+  "retentionDays": 30,
+  "totalCount": 0,
+  "eligibleCount": 0,
+  "preservedSummaryCount": 0,
+  "preservedActiveSessionCount": 0,
+  "preservedTypes": [
+    "compaction_summary",
+    "summary"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "nodeId": "node_planner",
+      "nodeType": "llm",
+      "inputRefs": [],
+      "outputSchemaRef": "schema:test.output",
+      "riskClass": "medium",
+      "budgetIntent": {
+        "amount": 0.01,
+        "currency": "USD",
+        "resourceKinds": [
+          "token",
+          "compute"
+        ]
+      },
+      "sideEffectProfile": {
+        "mayCommitExternalEffect": false,
+        "reversible": true
+      },
+      "retryPolicyRef": "retry:test.default",
+      "timeoutMs": 30000
+    },
+    {
+      "nodeId": "node_generator",
+      "nodeType": "tool",
+      "inputRefs": [
+        "node_planner"
+      ],
+      "outputSchemaRef": "schema:test.output",
+      "riskClass": "medium",
+      "budgetIntent": {
+        "amount": 0.01,
+        "currency": "USD",
+        "resourceKinds": [
+          "token",
+          "compute"
+        ]
+      },
+      "sideEffectProfile": {
+        "mayCommitExternalEffect": false,
+        "reversible": true
+      },
+      "retryPolicyRef": "retry:test.default",
+      "timeoutMs": 30000
+    },
+    {
+      "nodeId": "node_evaluator",
+      "nodeType": "evaluator",
+      "inputRefs": [
+        "node_generator"
+      ],
+      "outputSchemaRef": "schema:test.output",
+      "riskClass": "medium",
+      "budgetIntent": {
+        "amount": 0.01,
+        "currency": "USD",
+        "resourceKinds": [
+          "token",
+          "compute"
+        ]
+      },
+      "sideEffectProfile": {
+        "mayCommitExternalEffect": false,
+        "reversible": true
+      },
+      "retryPolicyRef": "retry:test.default",
+      "timeoutMs": 30000
+    }
+  ]
+}

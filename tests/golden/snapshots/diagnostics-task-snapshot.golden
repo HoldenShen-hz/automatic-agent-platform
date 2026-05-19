@@ -1,0 +1,12 @@
+{
+  "taskId": "diag_snapshot_task_001",
+  "hasTraceSummary": true,
+  "hasInspect": true,
+  "timelineCount": 0,
+  "logCount": 0,
+  "contextSummary": {
+    "messageCount": 0,
+    "hasRemoteRouting": true,
+    "hasLeaseHandover": true
+  }
+}

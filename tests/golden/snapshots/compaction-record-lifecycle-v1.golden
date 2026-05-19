@@ -1,0 +1,9 @@
+{
+  "trimId": "compaction_lifecycle_trim",
+  "trimStage": "trim",
+  "trimReduction": 500,
+  "summarizeId": "compaction_lifecycle_summarize",
+  "summarizeStage": "summarize",
+  "summarizeReduction": 2500,
+  "totalReduction": 3000
+}

@@ -1,0 +1,11 @@
+{
+  "id": "compaction_001",
+  "sessionId": "session_001",
+  "taskId": "task_001",
+  "stage": "trim",
+  "hasSourceMessageIds": true,
+  "coveredMessageRange": "0-100",
+  "overflowTriggered": true,
+  "autoTriggered": true,
+  "tokenReductionEstimate": 1500
+}

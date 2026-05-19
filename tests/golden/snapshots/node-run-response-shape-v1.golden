@@ -1,0 +1,13 @@
+{
+  "nodeRunId": "<node_run>",
+  "harnessRunId": "<harness_run>",
+  "planGraphBundleId": "bundle_test_001",
+  "graphVersion": 1,
+  "nodeId": "test_node_001",
+  "status": "created",
+  "attemptCount": 0,
+  "currentSeq": 0,
+  "createdAt": "<iso-timestamp>",
+  "updatedAt": "<iso-timestamp>",
+  "fencingToken": "test_node_001-fence"
+}

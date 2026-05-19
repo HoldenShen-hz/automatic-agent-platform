@@ -1,0 +1,6 @@
+{
+  "domainId": "legal",
+  "knowledgeSourceCount": 2,
+  "accessControlPolicy": "restricted",
+  "freshnessPolicy": "real_time"
+}

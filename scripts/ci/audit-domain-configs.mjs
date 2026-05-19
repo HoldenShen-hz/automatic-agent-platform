@@ -13,9 +13,9 @@ const requiredTopLevel = [
 ];
 
 const fullContractDomains = new Set([
-  "marketing",
-  "quant-trading",
-  "user-operations",
+  "coding",
+  "customer-service",
+  "data-engineering",
 ]);
 
 const checks = [];
@@ -36,6 +36,7 @@ function validateMinimalConfig(path, config) {
   for (const key of requiredTopLevel) {
     check(`${config.domainId ?? path} has ${key}`, Object.prototype.hasOwnProperty.call(config, key), path);
   }
+  check(`${config.domainId} has workflowId`, typeof config.workflowId === "string" && config.workflowId.length > 0, "workflowId is declared");
   check(`${config.domainId} required tools`, nonEmptyArray(config.toolProfile?.requiredTools), "toolProfile.requiredTools is non-empty");
   check(`${config.domainId} blocking metrics`, nonEmptyArray(config.evalProfile?.blockingMetrics), "evalProfile.blockingMetrics is non-empty");
   check(`${config.domainId} ownership`, Boolean(config.ownership?.ownerTeam && config.ownership?.escalationTeam), "owner and escalation teams are declared");

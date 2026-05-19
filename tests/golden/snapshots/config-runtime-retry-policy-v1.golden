@@ -1,0 +1,5 @@
+{
+  "maxRetries": 3,
+  "backoffMs": 1000,
+  "maxBackoffMs": 30000
+}

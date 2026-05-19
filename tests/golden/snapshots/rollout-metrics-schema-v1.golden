@@ -1,0 +1,12 @@
+{
+  "validMetrics": {
+    "errorRate": 0.05,
+    "latencyP99": 200,
+    "successRate": 0.95,
+    "sampleCount": 500
+  },
+  "zeroMetrics": {
+    "errorRate": 0,
+    "sampleCount": 0
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "planGraphBundleId": "<pgb>",
+  "harnessRunId": "hrun_test_001",
+  "graphVersion": 1,
+  "graph": {
+    "graphId": "graph_test_001",
+    "nodesCount": 3,
+    "edgesCount": 2,
+    "entryNodeIds": [
+      "node_planner"
+    ],
+    "terminalNodeIds": [
+      "node_evaluator"
+    ],
+    "joinStrategy": "all",
+    "graphHash": "hash_test_001"
+  },
+  "schedulerPolicy": {
+    "policyId": "scheduler:test.deterministic_fifo",
+    "strategy": "deterministic_fifo"
+  },
+  "budgetPlanRef": "budget:test.ref",
+  "riskProfile": {
+    "riskClass": "medium",
+    "reasons": [
+      "test_risk_profile"
+    ]
+  },
+  "validationReport": {
+    "valid": true,
+    "findings": [],
+    "normalizedNodeIds": [
+      "node_planner",
+      "node_generator",
+      "node_evaluator"
+    ]
+  },
+  "artifactRefsCount": 2,
+  "createdAt": "<iso-timestamp>"
+}

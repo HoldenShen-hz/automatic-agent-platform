@@ -1,0 +1,12 @@
+{
+  "totalTypes": 7,
+  "types": [
+    "tool",
+    "llm",
+    "hitl_wait",
+    "subgraph",
+    "evaluator",
+    "router",
+    "compensation"
+  ]
+}

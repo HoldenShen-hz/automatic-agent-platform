@@ -23,6 +23,7 @@ export interface SessionSummaryInput {
   keyDecisions?: string[];
   keyOutcomes?: string[];
   memoryIdsReferenced?: string[];
+  createdAt?: string;
 }
 
 /**
@@ -48,7 +49,7 @@ export class SessionSummaryService {
       keyOutcomes: input.keyOutcomes ? JSON.stringify(input.keyOutcomes) : null,
       memoryIdsReferenced: input.memoryIdsReferenced ? JSON.stringify(input.memoryIdsReferenced) : null,
       tokenCount: estimateTextTokens(input.summaryText),
-      createdAt: nowIso(),
+      createdAt: input.createdAt ?? nowIso(),
     };
 
     this.store.session.insertSessionSummary(record);

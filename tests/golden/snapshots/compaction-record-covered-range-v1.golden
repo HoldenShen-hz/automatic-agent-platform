@@ -1,0 +1,9 @@
+{
+  "validRanges": [
+    "0-100",
+    "50-200",
+    "1000-1500",
+    "0-0"
+  ],
+  "nullRangeAllowed": true
+}

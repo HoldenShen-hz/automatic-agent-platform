@@ -1,0 +1,6 @@
+{
+  "missingArtifactIdFails": true,
+  "invalidFormatFails": true,
+  "emptyContentIsValid": true,
+  "missingSourceObjectIdFails": true
+}

@@ -1,0 +1,7 @@
+{
+  "domainId": "healthcare",
+  "ownerOrgNodeId": "org_healthcare",
+  "primaryEntityCount": 3,
+  "recipeArchetype": "compliance",
+  "lifecycleState": "active"
+}

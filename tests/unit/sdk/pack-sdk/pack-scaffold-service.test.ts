@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -167,6 +167,59 @@ test("PackScaffoldService.scaffold trims sanitized config before rendering files
     assert.equal(manifest.domainId, "trimmed.domain");
   } finally {
     process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("PackScaffoldService.scaffold allows dotted pack IDs and custom output roots", () => {
+  const service = new PackScaffoldService();
+  const tmpDir = mkdtempSync(join(tmpdir(), "pack-scaffold-test-"));
+
+  try {
+    const result = service.scaffold({
+      packId: "test.pack",
+      name: "Dotted Pack",
+      template: "minimal",
+      domain: "testing",
+      owner: "test@example.com",
+      riskLevel: "low",
+      outputRoot: join(tmpDir, "custom-packs"),
+    });
+
+    assert.ok(result.rootDir.includes(join("custom-packs", "test.pack")));
+    assert.equal(readFileSync(result.manifestPath, "utf8").includes("\"packId\": \"test.pack\""), true);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("PackScaffoldService.scaffold refuses to overwrite an existing manifest", () => {
+  const service = new PackScaffoldService();
+  const tmpDir = mkdtempSync(join(tmpdir(), "pack-scaffold-test-"));
+  const outputRoot = join(tmpDir, "packs");
+  const existingPackDir = join(outputRoot, "existing-pack");
+
+  try {
+    mkdirSync(existingPackDir, { recursive: true });
+    writeFileSync(join(existingPackDir, "manifest.json"), "{}");
+
+    assert.throws(
+      () =>
+        service.scaffold({
+          packId: "existing-pack",
+          name: "Existing Pack",
+          template: "minimal",
+          domain: "testing",
+          owner: "test@example.com",
+          riskLevel: "low",
+          outputRoot,
+        }),
+      (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && error.code === "pack_scaffold.pack_already_exists",
+    );
+  } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
 });

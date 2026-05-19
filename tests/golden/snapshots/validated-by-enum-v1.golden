@@ -1,0 +1,9 @@
+{
+  "validValues": [
+    "none",
+    "evidence",
+    "human_review",
+    "shadow_execution"
+  ],
+  "totalValues": 4
+}

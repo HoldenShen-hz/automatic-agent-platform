@@ -1,0 +1,6 @@
+{
+  "minConfidence": 0,
+  "maxConfidence": 1,
+  "belowMinFails": true,
+  "aboveMaxFails": true
+}

@@ -1,0 +1,23 @@
+{
+  "totalStages": 8,
+  "statuses": [
+    "under_review",
+    "approved",
+    "evaluation_enabled",
+    "canary_5",
+    "partial_25",
+    "stable_75",
+    "stable_100",
+    "released"
+  ],
+  "levels": [
+    "L0_off",
+    "L1_evaluate",
+    "L1_evaluate",
+    "L2_canary",
+    "L3_partial",
+    "L4_stable",
+    "L5_full",
+    "L5_full"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "totalClasses": 4,
+  "classes": [
+    "low",
+    "medium",
+    "high",
+    "critical"
+  ]
+}

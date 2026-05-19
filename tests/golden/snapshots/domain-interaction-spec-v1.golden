@@ -1,0 +1,6 @@
+{
+  "domainId": "customer-service",
+  "nlEntryPolicy": "confirm_before_act",
+  "dashboardPolicy": "full_visibility",
+  "proactiveTriggerPolicy": "always"
+}

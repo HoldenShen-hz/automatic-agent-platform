@@ -1,0 +1,6 @@
+{
+  "status": "completed",
+  "terminalAt": "<iso-timestamp>",
+  "terminalReason": "task.completed",
+  "currentSeq": 1
+}

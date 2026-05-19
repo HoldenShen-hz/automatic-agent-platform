@@ -1,0 +1,8 @@
+{
+  "artifactId": "art_minimal",
+  "type": "log",
+  "hasNodeRunId": false,
+  "hasChecksum": false,
+  "hasRefs": false,
+  "metadataEmpty": true
+}

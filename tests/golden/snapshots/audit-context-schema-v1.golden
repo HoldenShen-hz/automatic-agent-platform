@@ -1,0 +1,9 @@
+{
+  "hasUserId": true,
+  "hasReason": true,
+  "metadataKeys": [
+    "ip",
+    "userAgent"
+  ],
+  "minimalHasUserId": false
+}

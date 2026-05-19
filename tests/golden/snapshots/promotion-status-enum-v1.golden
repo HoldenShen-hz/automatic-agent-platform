@@ -1,0 +1,10 @@
+{
+  "validStatuses": [
+    "draft",
+    "quarantine",
+    "validated",
+    "promoted",
+    "retired"
+  ],
+  "totalStatuses": 5
+}

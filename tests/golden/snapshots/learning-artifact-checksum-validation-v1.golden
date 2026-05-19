@@ -1,0 +1,5 @@
+{
+  "validChecksumPasses": true,
+  "shortChecksumFails": true,
+  "nonHexChecksumFails": true
+}

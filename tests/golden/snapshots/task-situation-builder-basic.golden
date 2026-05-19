@@ -1,0 +1,10 @@
+{
+  "taskId": "situation_task_001",
+  "objective": "Build a REST API endpoint",
+  "currentPhase": "executing",
+  "hasUserIntent": true,
+  "blockerCount": 0,
+  "hasCodebaseSnapshot": true,
+  "hasEnvironmentContext": true,
+  "hasHistoricalContext": true
+}

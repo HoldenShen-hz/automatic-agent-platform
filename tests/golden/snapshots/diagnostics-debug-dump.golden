@@ -1,0 +1,11 @@
+{
+  "taskId": "diag_debug_task_001",
+  "hasTraceId": true,
+  "stateSnapshots": {
+    "hasTaskStatus": true,
+    "hasExecutionStatus": true
+  },
+  "eventTailCount": 0,
+  "warningCount": 1,
+  "hasWarningSummary": true
+}

@@ -1,0 +1,9 @@
+{
+  "learningObjectId": "lo_001",
+  "learningType": "failure_pattern",
+  "confidence": 0.85,
+  "evidenceRefCount": 2,
+  "sourceSignalCount": 2,
+  "validatedBy": "evidence",
+  "promotionStatus": "validated"
+}

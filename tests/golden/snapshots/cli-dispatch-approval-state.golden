@@ -1,0 +1,7 @@
+{
+  "approvalIdPrefix": "approval",
+  "taskId": "dispatch_approval_task_001",
+  "status": "requested",
+  "isPending": true,
+  "hasTimeout": true
+}

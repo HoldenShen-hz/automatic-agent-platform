@@ -1,0 +1,6 @@
+{
+  "domainId": "ecommerce",
+  "baselineCount": 2,
+  "criticalCaseCount": 3,
+  "adversarialScenarioCount": 2
+}

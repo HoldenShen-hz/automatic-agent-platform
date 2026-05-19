@@ -1,4 +1,4 @@
-import { createHash, createSign, createVerify, generateKeyPairSync } from "node:crypto";
+import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 
 export interface PackCapabilityProfile {
@@ -116,7 +116,11 @@ export function scanPackSecurity(
         : `Found ${matches.length} occurrence(s): ${matches.join(", ")}`;
 
       issues.push({
-        severity: (code === "PACK_SCAN_SHELL_EXEC" || code === "PACK_SCAN_DYNAMIC_CODE_EXEC") ? "critical" : "warning",
+        severity: (
+          code === "PACK_SCAN_SHELL_EXEC"
+          || code === "PACK_SCAN_DYNAMIC_CODE_EXEC"
+          || code === "PACK_SCAN_DYNAMIC_FUNCTION"
+        ) ? "critical" : "warning",
         code,
         message,
         evidence,
@@ -166,14 +170,12 @@ export function signPackArtifact(
   algorithm: "RSA-SHA256" | "RSA-SHA384" | "RSA-SHA512" = "RSA-SHA256",
 ): PackArtifactSignature {
   const sign = createSign(algorithm);
-  sign.update(JSON.stringify(manifest));
+  sign.update(stableManifestPayload(manifest));
 
   const signature = sign.sign(privateKeyPem, "base64");
 
-  // Generate key fingerprint from the private key
-  const hash = createHash("sha256");
-  hash.update(privateKeyPem);
-  const keyFingerprint = hash.digest("hex").substring(0, 16);
+  const publicKeyPem = createPublicKey(privateKeyPem).export({ type: "spki", format: "pem" });
+  const keyFingerprint = createHash("sha256").update(publicKeyPem).digest("hex").substring(0, 16);
 
   return {
     packId: manifest.packId,
@@ -203,7 +205,7 @@ export function verifyPackSignature(
   }
 
   const verify = createVerify(signature.algorithm);
-  verify.update(JSON.stringify(manifest));
+  verify.update(stableManifestPayload(manifest));
 
   try {
     return verify.verify(publicKeyPem, signature.signature, "base64");
@@ -277,6 +279,7 @@ export interface VerifyPackOptions {
  */
 export function verifyPackArtifact(options: VerifyPackOptions): PackVerificationResult {
   const failures: string[] = [];
+  let signatureValid: boolean | undefined;
 
   // Verify signature if required
   if (options.requireSignature || options.signature) {
@@ -285,8 +288,8 @@ export function verifyPackArtifact(options: VerifyPackOptions): PackVerification
     } else if (!options.publicKey) {
       failures.push("pack_verify.missing_public_key: Public key is required to verify signature");
     } else {
-      const sigValid = verifyPackSignature(options.manifest, options.signature, options.publicKey);
-      if (!sigValid) {
+      signatureValid = verifyPackSignature(options.manifest, options.signature, options.publicKey);
+      if (!signatureValid) {
         failures.push("pack_verify.invalid_signature: Signature verification failed - pack may be tampered");
       }
     }
@@ -311,9 +314,7 @@ export function verifyPackArtifact(options: VerifyPackOptions): PackVerification
     valid: failures.length === 0,
     failures,
     securityScan,
-    signatureValid: options.signature && options.publicKey
-      ? verifyPackSignature(options.manifest, options.signature, options.publicKey)
-      : undefined,
+    signatureValid,
   };
 }
 
@@ -398,4 +399,19 @@ export function summarizeCapabilityMatrix(
 
 function dedupeTrimmed(values: readonly string[] | undefined): string[] {
   return [...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function stableManifestPayload(manifest: BusinessPackManifest): string {
+  return stableStringify(validateBusinessPackManifest(manifest));
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value != null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

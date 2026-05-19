@@ -17,6 +17,7 @@ export interface TestOptions {
   evalDatasetId?: string;
   recordArtifacts: boolean;
   timeoutMs?: number;
+  timeoutProfileMs?: Partial<Record<TestMode, number>>;
 }
 
 export interface TestReport {
@@ -60,6 +61,12 @@ export interface MockToolResult {
   durationMs: number;
 }
 
+const DEFAULT_TIMEOUT_PROFILE_MS: Readonly<Record<TestMode, number>> = Object.freeze({
+  unit: 30_000,
+  integration: 60_000,
+  simulation: 120_000,
+});
+
 export class PackTestLocalService {
   private mockLlmConfig: MockLlmConfig | null = null;
   private mockToolResults: Map<string, MockToolResult> = new Map();
@@ -97,6 +104,7 @@ export class PackTestLocalService {
     validateTestOptions(options);
 
     const { packId, version, mode, mockLlm, evalDatasetId, recordArtifacts, timeoutMs } = options;
+    const effectiveTimeoutMs = resolveTimeout(timeoutMs, options.timeoutProfileMs?.[mode] ?? defaultTimeoutForMode(mode));
     const findings: string[] = [];
     const artifacts: string[] = [];
 
@@ -107,17 +115,17 @@ export class PackTestLocalService {
 
     switch (mode) {
       case "unit":
-        ({ casesPassed, casesFailed, coveragePercent } = await this.runUnitTests(packId, resolveTimeout(timeoutMs, 30000)));
+        ({ casesPassed, casesFailed, coveragePercent } = await this.runUnitTests(packId, effectiveTimeoutMs));
         break;
       case "integration":
-        ({ casesPassed, casesFailed, coveragePercent } = await this.runIntegrationTests(packId, mockLlm, resolveTimeout(timeoutMs, 60000)));
+        ({ casesPassed, casesFailed, coveragePercent } = await this.runIntegrationTests(packId, mockLlm, effectiveTimeoutMs));
         break;
       case "simulation":
         ({ casesPassed, casesFailed, coveragePercent } = await this.runSimulationTests(
           packId,
           evalDatasetId,
           recordArtifacts,
-          resolveTimeout(timeoutMs, 120000),
+          effectiveTimeoutMs,
         ));
         break;
     }
@@ -161,7 +169,7 @@ export class PackTestLocalService {
       return null;
     }
     if (this.mockLlmConfig?.delayMs) {
-      await delay(this.mockLlmConfig.delayMs);
+      await sleep(this.mockLlmConfig.delayMs);
     }
     if (this.mockLlmConfig?.errorRate && this.nextErrorSample() < this.mockLlmConfig.errorRate) {
       throw new Error("Mock LLM error");
@@ -172,9 +180,6 @@ export class PackTestLocalService {
   private nextErrorSample(): number {
     const seed = this.mockLlmConfig?.errorSeed ?? this.errorPrngState;
     this.errorPrngState = (1664525 * seed + 1013904223) >>> 0;
-    if (this.mockLlmConfig?.errorSeed != null) {
-      this.mockLlmConfig = { ...this.mockLlmConfig, errorSeed: this.errorPrngState };
-    }
     return this.errorPrngState / 0x100000000;
   }
 
@@ -183,11 +188,10 @@ export class PackTestLocalService {
     casesFailed: number;
     coveragePercent: number;
   }> {
-    await delay(Math.min(timeoutMs, 50));
-    return this.evaluateFixtureCases(packId, "unit", {
-      defaultCaseCount: 5,
-      baseCoveragePercent: 82,
-    });
+    return this.runModeWithTimeout(timeoutMs, async () =>
+      this.evaluateFixtureCases(packId, "unit", {
+        requireFixtures: false,
+      }));
   }
 
   private async runIntegrationTests(packId: string, mockLlm: boolean, timeoutMs: number): Promise<{
@@ -195,18 +199,17 @@ export class PackTestLocalService {
     casesFailed: number;
     coveragePercent: number;
   }> {
-    await delay(Math.min(timeoutMs, 100));
-    const result = this.evaluateFixtureCases(packId, "integration", {
-      defaultCaseCount: mockLlm ? 4 : 3,
-      baseCoveragePercent: 74,
-      requireMockLlm: mockLlm,
-    });
+    const result = await this.runModeWithTimeout(timeoutMs, async () =>
+      this.evaluateFixtureCases(packId, "integration", {
+        requireMockLlm: mockLlm,
+        requireFixtures: true,
+      }));
     if (!mockLlm && result.casesPassed > 0) {
       return {
         ...result,
         casesPassed: Math.max(0, result.casesPassed - 1),
         casesFailed: result.casesFailed + 1,
-        coveragePercent: Math.max(60, result.coveragePercent - 6),
+        coveragePercent: Math.max(0, result.coveragePercent - 10),
       };
     }
     return result;
@@ -217,16 +220,15 @@ export class PackTestLocalService {
     casesFailed: number;
     coveragePercent: number;
   }> {
-    await delay(Math.min(timeoutMs, 150));
-    const result = this.evaluateFixtureCases(packId, "simulation", {
-      defaultCaseCount: evalDatasetId ? 8 : 6,
-      baseCoveragePercent: recordArtifacts ? 90 : 86,
-      requireEvalDataset: evalDatasetId != null,
-    });
+    const result = await this.runModeWithTimeout(timeoutMs, async () =>
+      this.evaluateFixtureCases(packId, "simulation", {
+        requireEvalDataset: evalDatasetId != null,
+        requireFixtures: true,
+      }));
     return evalDatasetId == null
       ? {
           ...result,
-          coveragePercent: Math.max(60, result.coveragePercent - 18),
+          coveragePercent: Math.max(0, result.coveragePercent - (recordArtifacts ? 15 : 20)),
         }
       : result;
   }
@@ -235,10 +237,9 @@ export class PackTestLocalService {
     packId: string,
     mode: TestMode,
     options: {
-      defaultCaseCount: number;
-      baseCoveragePercent: number;
       requireMockLlm?: boolean;
       requireEvalDataset?: boolean;
+      requireFixtures?: boolean;
     },
   ): {
     casesPassed: number;
@@ -246,16 +247,14 @@ export class PackTestLocalService {
     coveragePercent: number;
   } {
     const fixtures = this.collectFixtures(packId, mode);
-    const cases = fixtures.length === 0
-      ? Array.from({ length: options.defaultCaseCount }, (_, index) => ({
-          caseId: `${mode}:${packId}:${index + 1}`,
-          passed: true,
-          coverageWeight: 1,
-          requiredToolIds: [] as string[],
-          fixtureId: undefined as string | undefined,
-          requiresEvalDataset: undefined as boolean | undefined,
-        }))
-      : fixtures;
+    if (fixtures.length === 0 && options.requireFixtures === true) {
+      return {
+        casesPassed: 0,
+        casesFailed: 1,
+        coveragePercent: 0,
+      };
+    }
+    const cases = fixtures;
 
     let casesPassed = 0;
     let casesFailed = 0;
@@ -282,13 +281,9 @@ export class PackTestLocalService {
       }
     }
 
-    const coveragePercent = Math.max(
-      0,
-      Math.min(
-        100,
-        Math.round(((executedWeight / Math.max(coverageWeight, 1)) * 100 + options.baseCoveragePercent) / 2),
-      ),
-    );
+    const coveragePercent = coverageWeight === 0
+      ? 0
+      : Math.max(0, Math.min(100, Math.round((executedWeight / coverageWeight) * 100)));
 
     return {
       casesPassed,
@@ -329,6 +324,25 @@ export class PackTestLocalService {
         };
       });
   }
+
+  private async runModeWithTimeout<T>(timeoutMs: number, runner: () => Promise<T> | T): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(runner),
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(new ValidationError("test_local.timeout_exceeded", `test_local.timeout_exceeded:${timeoutMs}`));
+          }, timeoutMs);
+          timer.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timer != null) {
+        clearTimeout(timer);
+      }
+    }
+  }
 }
 
 function validateTestOptions(options: TestOptions): void {
@@ -350,6 +364,13 @@ function resolveTimeout(value: number | undefined, fallback: number): number {
   return value == null || value === 0 ? fallback : value;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function defaultTimeoutForMode(mode: TestMode): number {
+  return DEFAULT_TIMEOUT_PROFILE_MS[mode];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }

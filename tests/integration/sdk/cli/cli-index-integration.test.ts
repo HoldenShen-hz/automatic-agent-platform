@@ -197,7 +197,7 @@ test("CLI_ENTRYPOINTS includes repair and maintenance commands", () => {
 });
 
 test("CLI_ENTRYPOINTS count matches documented total", () => {
-  assert.equal(CLI_ENTRYPOINTS.length, 80);
+  assert.equal(CLI_ENTRYPOINTS.length, 81);
 });
 
 test("CLI_ENTRYPOINTS are sorted alphabetically", () => {

@@ -1,0 +1,6 @@
+{
+  "linkId": "link_001",
+  "fromArtifactId": "art_source",
+  "toArtifactId": "art_target",
+  "relation": "derived_from"
+}

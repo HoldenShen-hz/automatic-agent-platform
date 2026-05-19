@@ -1,0 +1,16 @@
+{
+  "harnessRunId": "<harness_run>",
+  "tenantId": "tenant:test",
+  "domainId": "coding",
+  "confirmedTaskSpecId": "confirmed_task_spec:<harness_run>",
+  "requestEnvelopeId": "request_envelope:<harness_run>",
+  "requestHash": "hash:<harness_run>",
+  "status": "created",
+  "constraintPackRef": "constraint_pack:test",
+  "versionLockId": "<version_lock>",
+  "planGraphBundleId": "bundle:<harness_run>",
+  "budgetLedgerId": "<budget_ledger>",
+  "currentSeq": 0,
+  "createdAt": "<iso-timestamp>",
+  "updatedAt": "<iso-timestamp>"
+}

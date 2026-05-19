@@ -1,0 +1,9 @@
+{
+  "generatedAt": "<iso-timestamp>",
+  "activeTaskCount": 1,
+  "queuedTaskCount": 0,
+  "blockedTaskCount": 0,
+  "pendingApprovalCount": 0,
+  "workerCount": 0,
+  "findingsCount": 0
+}

@@ -1,0 +1,12 @@
+{
+  "generatedAt": "<iso-timestamp>",
+  "taskBoardCount": 2,
+  "pendingApprovalsCount": 0,
+  "divisionsCount": 33,
+  "hasProductSignals": true,
+  "successRate": 0,
+  "avgDurationMs": null,
+  "activeAgents": 2,
+  "queueDepth": 0,
+  "errorRate": 0
+}

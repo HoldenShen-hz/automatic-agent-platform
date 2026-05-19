@@ -1,0 +1,17 @@
+{
+  "validStatuses": [
+    "candidate_created",
+    "under_review",
+    "approved",
+    "evaluation_enabled",
+    "canary_5",
+    "partial_25",
+    "stable_75",
+    "stable_100",
+    "released",
+    "rejected",
+    "rolled_back",
+    "paused"
+  ],
+  "totalStatuses": 12
+}

@@ -1,0 +1,7 @@
+{
+  "id": "compaction_trim_001",
+  "stage": "trim",
+  "hasSummaryText": false,
+  "hasSummaryRef": false,
+  "tokenReductionEstimate": 800
+}

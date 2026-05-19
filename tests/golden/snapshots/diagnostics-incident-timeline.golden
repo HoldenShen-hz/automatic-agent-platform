@@ -1,0 +1,15 @@
+{
+  "taskId": "diag_timeline_task_001",
+  "window": {
+    "hasStartedAt": false,
+    "hasEndedAt": false
+  },
+  "summary": {
+    "totalEntries": 0,
+    "eventCount": 0,
+    "dispatchCount": 0,
+    "hasHighestSeverity": true
+  },
+  "entriesCount": 0,
+  "rootCausesCount": 1
+}

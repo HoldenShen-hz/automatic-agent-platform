@@ -1,0 +1,14 @@
+{
+  "autoOverflow": {
+    "overflowTriggered": true,
+    "autoTriggered": true
+  },
+  "manualAuto": {
+    "overflowTriggered": false,
+    "autoTriggered": true
+  },
+  "explicitManual": {
+    "overflowTriggered": false,
+    "autoTriggered": false
+  }
+}

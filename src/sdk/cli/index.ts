@@ -44,6 +44,7 @@ export const CLI_ENTRYPOINTS = [
   "repair",
   "replay-events",
   "replay-recovery",
+  "secret-commands",
   "secret-management",
   "shadow-snapshot",
   "skill-creator",

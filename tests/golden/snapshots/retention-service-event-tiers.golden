@@ -1,0 +1,19 @@
+{
+  "tiers": [
+    "tier_1",
+    "tier_2",
+    "tier_3"
+  ],
+  "tier1": {
+    "retentionDays": null,
+    "totalCount": 0
+  },
+  "tier2": {
+    "retentionDays": 14,
+    "totalCount": 0
+  },
+  "tier3": {
+    "retentionDays": 3,
+    "totalCount": 0
+  }
+}

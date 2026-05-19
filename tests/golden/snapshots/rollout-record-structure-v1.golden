@@ -1,0 +1,7 @@
+{
+  "recordId": "rollout_001",
+  "candidateId": "candidate_test_001",
+  "level": "L2_canary",
+  "previousLevel": "L0_off",
+  "status": "canary_5"
+}

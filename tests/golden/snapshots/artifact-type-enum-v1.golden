@@ -1,0 +1,30 @@
+{
+  "totalTypes": 25,
+  "typeList": [
+    "source_code",
+    "config",
+    "document",
+    "report",
+    "evidence_bundle",
+    "timeline_export",
+    "diagnostic_bundle",
+    "workflow_checkpoint",
+    "feedback_snapshot",
+    "learning_object_bundle",
+    "improvement_candidate_bundle",
+    "rollout_evidence",
+    "policy_explain_export",
+    "plan_dag_export",
+    "execution_output",
+    "test_result",
+    "log",
+    "binary",
+    "patch",
+    "code_bundle",
+    "asset_package",
+    "image_prompt",
+    "render_job_spec",
+    "live_runbook",
+    "postmortem"
+  ]
+}

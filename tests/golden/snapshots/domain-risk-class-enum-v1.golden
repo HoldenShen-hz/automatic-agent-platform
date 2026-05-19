@@ -1,0 +1,9 @@
+{
+  "validClasses": [
+    "low",
+    "medium",
+    "high",
+    "critical"
+  ],
+  "totalClasses": 4
+}

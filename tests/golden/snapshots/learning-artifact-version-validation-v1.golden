@@ -1,0 +1,5 @@
+{
+  "validVersionPasses": true,
+  "zeroVersionFails": true,
+  "negativeVersionFails": true
+}

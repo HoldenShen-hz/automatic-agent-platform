@@ -56,6 +56,8 @@ interface CliSyncStorageTarget {
   env: NodeJS.ProcessEnv;
 }
 
+const registeredCliShutdownHandlers = new Set<string>();
+
 /**
  * Registers a one-time shutdown handler for a storage instance.
  *
@@ -73,6 +75,7 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
   const shutdown = getGlobalGracefulShutdown();
   const originalClose = storage.close.bind(storage);
   let closed = false;
+  const handlerName = `cli_storage:${label}:${storage.driver}`;
 
   // Create a close function that can only be called once
   const closeOnce = (() => {
@@ -85,12 +88,15 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
     };
   })() as T["close"];
 
-  shutdown.addHandler({
-    name: `cli_storage:${label}:${storage.driver}`,
-    handler: async () => {
-      await Promise.resolve(closeOnce());
-    },
-  });
+  if (!registeredCliShutdownHandlers.has(handlerName)) {
+    shutdown.addHandler({
+      name: handlerName,
+      handler: async () => {
+        await Promise.resolve(closeOnce());
+      },
+    });
+    registeredCliShutdownHandlers.add(handlerName);
+  }
 
   return {
     ...storage,

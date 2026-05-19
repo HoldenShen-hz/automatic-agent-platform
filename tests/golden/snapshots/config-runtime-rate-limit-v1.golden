@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "maxRequestsPerSecond": 100,
+  "burstSize": 200
+}

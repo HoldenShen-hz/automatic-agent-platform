@@ -6,7 +6,7 @@
  */
 
 import { join } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { ValidationError } from "../../platform/contracts/errors.js";
 
 export type PackTemplate = "minimal" | "standard" | "full";
@@ -18,6 +18,7 @@ export interface ScaffoldConfig {
   domain: string;
   owner: string;
   riskLevel: "low" | "medium" | "high";
+  outputRoot?: string | undefined;
 }
 
 export interface ScaffoldResult {
@@ -242,19 +243,22 @@ export class PackScaffoldService {
   scaffold(config: ScaffoldConfig): ScaffoldResult {
     const normalizedConfig = validateScaffoldConfig(config);
 
-    const rootDir = resolvePackDir(normalizedConfig.packId);
+    const rootDir = resolvePackDir(normalizedConfig.packId, normalizedConfig.outputRoot);
     const structure = TEMPLATE_STRUCTURE[normalizedConfig.template];
     const manifestPath = join(rootDir, "manifest.json");
     const entryPointPath = join(rootDir, "src", "index.ts");
+    if (existsSync(manifestPath)) {
+      throw new ValidationError(
+        "pack_scaffold.pack_already_exists",
+        `Pack scaffold target already contains a manifest: ${manifestPath}`,
+      );
+    }
 
     // Create directory structure
     mkdirSync(rootDir, { recursive: true });
-    mkdirSync(join(rootDir, "src", "tools"), { recursive: true });
-    mkdirSync(join(rootDir, "src", "adapters"), { recursive: true });
-    mkdirSync(join(rootDir, "src", "retrievers"), { recursive: true });
-    mkdirSync(join(rootDir, "src", "evaluators"), { recursive: true });
-    mkdirSync(join(rootDir, "tests"), { recursive: true });
-    mkdirSync(join(rootDir, "scripts"), { recursive: true });
+    for (const directory of collectTemplateDirectories(structure.files)) {
+      mkdirSync(join(rootDir, directory), { recursive: true });
+    }
 
     // Write manifest
     const manifest = buildManifest(normalizedConfig, structure.manifestCapabilities);
@@ -341,9 +345,8 @@ function validateScaffoldConfig(config: ScaffoldConfig): ScaffoldConfig {
   if (!packId) {
     throw new ValidationError("pack_scaffold.invalid_pack_id", "Pack ID is required and cannot be empty.");
   }
-  // R28-23/R28-28 fix: disallow dots to prevent path traversal ambiguity
-  if (!/^[a-z0-9][a-z0-9_-]*$/.test(packId)) {
-    throw new ValidationError("pack_scaffold.invalid_pack_id_format", "Pack ID must match pattern: lowercase, numbers, hyphens, underscores (no dots).");
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(packId)) {
+    throw new ValidationError("pack_scaffold.invalid_pack_id_format", "Pack ID must match pattern: lowercase, numbers, dots, hyphens, underscores.");
   }
   return {
     ...config,
@@ -354,8 +357,23 @@ function validateScaffoldConfig(config: ScaffoldConfig): ScaffoldConfig {
   };
 }
 
-function resolvePackDir(packId: string): string {
-  return join(process.cwd(), "packs", packId);
+function resolvePackDir(packId: string, outputRoot?: string): string {
+  const baseDir = outputRoot?.trim() || join(process.cwd(), "packs");
+  return join(baseDir, packId);
+}
+
+function collectTemplateDirectories(files: Array<{ path: string; content: string }>): string[] {
+  const directories = new Set<string>([""]);
+  for (const file of files) {
+    const parts = file.path.split("/");
+    parts.pop();
+    let current = "";
+    for (const part of parts) {
+      current = current.length === 0 ? part : `${current}/${part}`;
+      directories.add(current);
+    }
+  }
+  return [...directories].filter((directory) => directory.length > 0).sort();
 }
 
 function buildManifest(

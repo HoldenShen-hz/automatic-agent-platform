@@ -1,0 +1,24 @@
+{
+  "hasValidJson": true,
+  "outputStructure": [
+    "status",
+    "selfCheckSummary",
+    "checks",
+    "versionSnapshot",
+    "lockSummary",
+    "eventBacklogSummary",
+    "storageBackend",
+    "workerSummary",
+    "health",
+    "auditIntegrity",
+    "startupConsistency",
+    "stalledExecutions",
+    "stalledEscalations",
+    "resourceCeilings",
+    "runtimeRecovery",
+    "sqliteReliability",
+    "protectedGovernance",
+    "storageQuota",
+    "observabilityRetention"
+  ]
+}

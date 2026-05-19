@@ -1,0 +1,10 @@
+{
+  "tier1Retention": null,
+  "tier2Retention": 14,
+  "tier3Retention": 3,
+  "terminalMessageRetention": 30,
+  "preservedTypes": [
+    "compaction_summary",
+    "summary"
+  ]
+}

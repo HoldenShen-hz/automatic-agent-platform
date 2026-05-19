@@ -1,0 +1,8 @@
+{
+  "artifactId": "art_refs",
+  "refCount": 2,
+  "targetTypes": [
+    "execution",
+    "learning"
+  ]
+}

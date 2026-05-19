@@ -5,30 +5,134 @@ import { SqliteDatabase } from "../../platform/five-plane-state-evidence/truth/s
 import { PgDatabase } from "../../platform/five-plane-state-evidence/truth/postgres/pg-database.js";
 
 const TABLES = [
-  "tasks",
-  "sessions",
-  "executions",
-  "leases",
-  "events",
+  "action_proposals",
+  "agent_execution_records",
+  "analytics_facts",
   "approvals",
   "artifacts",
-  "billing_records",
-  "dispatches",
-  "divisions",
-  "evolutions",
-  "intelligence_records",
-  "locks",
+  "archive_bundles",
+  "artifact_version_lock_sets",
+  "billing_accounts",
+  "billing_invoices",
+  "billing_payment_sessions",
+  "budget_alerts",
+  "budget_ledgers",
+  "budget_reservations",
+  "budget_settlements",
+  "compaction_records",
+  "config_rollback_points",
+  "config_rollouts",
+  "config_version_snapshots",
+  "confirmed_task_specs",
+  "coordinator_instance_snapshots",
+  "cost_event_wal",
+  "cost_events",
+  "cost_reports",
+  "data_namespaces",
+  "data_movement_jobs",
+  "dead_letters",
+  "decision_input_bundles",
+  "delegation_events",
+  "delegations",
+  "deployment_bindings",
+  "deployment_execution_reports",
+  "dlq_records",
+  "enterprise_capability_reports",
+  "enterprise_governance_reports",
+  "entitlement_decisions",
+  "environment_promotion_history",
+  "environment_readiness_records",
+  "eval_case_results",
+  "eval_runs",
+  "eval_suites",
+  "event_consumer_acks",
+  "event_dead_letters",
+  "events",
+  "evolution_logs",
+  "evolution_policies",
+  "evolution_proposals",
+  "execution_leases",
+  "executions",
+  "execution_prechecks",
+  "execution_tickets",
+  "experience_cache",
+  "extension_packages",
+  "file_locks",
+  "gateway_targets",
+  "governance_gate_events",
+  "governance_releases",
+  "graph_patches",
+  "harness_runs",
+  "harness_decisions",
+  "heartbeat_snapshots",
+  "human_responsibility_records",
+  "incident_handoff_records",
+  "intel_briefs",
+  "intel_items",
+  "lease_audits",
+  "ledger_entries",
+  "marketplace_governance_reports",
   "marketplace_listings",
-  "memory_entries",
-  "operations",
+  "marketplace_publications",
+  "marketplace_reviews",
+  "memories",
+  "messages",
+  "mission_context_snapshots",
+  "mission_event_sequences",
+  "mission_memberships",
+  "mission_records",
+  "node_attempt_receipts",
+  "node_attempts",
+  "node_runs",
+  "operator_actions",
+  "organization_memberships",
   "organizations",
-  "releases",
-  "secret_registry",
-  "secret_usage_audits",
-  "secret_rotation_events",
+  "outbox",
+  "pack_downloads",
+  "pack_reviews",
+  "perception_sources",
+  "plan_graph_bundles",
+  "pmf_validation_reports",
+  "prompt_ab_tests",
+  "prompt_bundles",
+  "prompt_versions",
+  "quota_counters",
+  "release_bundles",
+  "release_execution_reports",
+  "remote_log_entries",
+  "replay_datasets",
+  "request_envelopes",
+  "run_version_locks",
+  "runtime_audit_refs",
+  "runtime_event_log",
+  "runtime_outbox",
+  "schema_migrations",
   "secret_leases",
-  "workers",
-  "workflows",
+  "secret_registry",
+  "secret_rotation_events",
+  "secret_usage_audits",
+  "secret_versions",
+  "sessions",
+  "session_events",
+  "session_summaries",
+  "side_effect_records",
+  "skill_execution_policies",
+  "skill_registry",
+  "tasks",
+  "takeover_sessions",
+  "task_drafts",
+  "tenants",
+  "tenant_billing",
+  "tenant_quotas",
+  "token_usage_daily",
+  "tool_result_files",
+  "usage_events",
+  "worker_registration_challenges",
+  "worker_snapshots",
+  "workflow_state",
+  "workflow_step_outputs",
+  "workspace_memberships",
+  "workspaces",
 ] as const;
 
 export interface MigrateSqliteToPgOptions {
@@ -80,17 +184,18 @@ export function redactDsnCredentials(dsn: string): string {
 
 export function planSqliteToPgMigration(sqlite: SqliteDatabase): Array<{ table: string; rowCount: number }> {
   return TABLES.map((table) => {
-    try {
-      // R31-32 FIX: Validate table name against allowlist to prevent SQL injection
-      validateTableName(table);
-      const row = sqlite.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count?: number } | undefined;
-      return { table, rowCount: row?.count ?? 0 };
-    } catch (error) {
-      if (error instanceof Error && /no such table/i.test(error.message)) {
-        return { table, rowCount: 0 };
-      }
-      throw error;
+    validateTableName(table);
+    const schemaRow = sqlite.connection.prepare(
+      "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = ?",
+    ).get(table) as { count?: number } | undefined;
+    if ((schemaRow?.count ?? 0) === 0) {
+      throw new ValidationError(
+        "migrate_sqlite_to_pg.missing_source_table",
+        `migrate_sqlite_to_pg.missing_source_table:${table}`,
+      );
     }
+    const row = sqlite.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count?: number } | undefined;
+    return { table, rowCount: row?.count ?? 0 };
   });
 }
 
@@ -117,7 +222,7 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
         migrated.push({ table, migrated: 0 });
         continue;
       }
-      const columns = Object.keys(rows[0] ?? {});
+      const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))].sort();
       const placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
       const sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
       let count = 0;

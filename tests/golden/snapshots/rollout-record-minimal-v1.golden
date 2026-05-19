@@ -1,0 +1,7 @@
+{
+  "recordId": "rollout_minimal",
+  "level": "L2_canary",
+  "previousLevel": "L0_off",
+  "status": "candidate_created",
+  "hasDefaultValues": true
+}

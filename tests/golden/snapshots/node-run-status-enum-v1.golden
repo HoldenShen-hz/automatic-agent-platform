@@ -1,0 +1,19 @@
+{
+  "totalStatuses": 14,
+  "statuses": [
+    "created",
+    "ready",
+    "leased",
+    "running",
+    "retry_wait",
+    "awaiting_hitl",
+    "reconciling",
+    "succeeded",
+    "failed",
+    "skipped",
+    "cancelled",
+    "dependency_failed",
+    "policy_blocked",
+    "aborted"
+  ]
+}

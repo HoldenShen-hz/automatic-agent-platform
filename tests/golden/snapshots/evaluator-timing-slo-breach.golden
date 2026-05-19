@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "decision": "accept",
+  "findingCategories": [
+    "deviation",
+    "risk",
+    "budget",
+    "timing"
+  ],
+  "hasTimingFinding": true
+}

@@ -1,0 +1,10 @@
+{
+  "taskId": "inspect_view_task_001",
+  "taskStatus": "in_progress",
+  "hasExecution": true,
+  "hasWorkflowState": false,
+  "hasSession": false,
+  "hasRecoverySummary": true,
+  "dispatchDecisionCount": 0,
+  "recentEventCount": 0
+}

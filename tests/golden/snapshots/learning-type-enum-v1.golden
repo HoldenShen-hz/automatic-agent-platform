@@ -1,0 +1,8 @@
+{
+  "validTypes": [
+    "failure_pattern",
+    "user_correction",
+    "recovery_playbook"
+  ],
+  "totalTypes": 3
+}

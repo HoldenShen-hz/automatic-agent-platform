@@ -1,0 +1,7 @@
+{
+  "validStages": [
+    "trim",
+    "summarize"
+  ],
+  "totalStages": 2
+}

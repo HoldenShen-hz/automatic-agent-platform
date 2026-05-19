@@ -1,0 +1,12 @@
+{
+  "nodeAttemptId": "<node_attempt>",
+  "nodeRunId": "<node_run>",
+  "receiptKind": "llm",
+  "status": "succeeded",
+  "evidenceRefs": [
+    {
+      "artifactId": "evidence_001",
+      "uri": "memory://test/evidence_001"
+    }
+  ]
+}

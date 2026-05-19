@@ -1,0 +1,7 @@
+{
+  "blockerCount": 2,
+  "severities": [
+    "critical",
+    "high"
+  ]
+}

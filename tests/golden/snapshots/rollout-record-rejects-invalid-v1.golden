@@ -1,0 +1,5 @@
+{
+  "missingRecordIdFails": true,
+  "invalidLevelFails": true,
+  "invalidStatusFails": true
+}

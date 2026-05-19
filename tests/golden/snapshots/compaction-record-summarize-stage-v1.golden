@@ -1,0 +1,7 @@
+{
+  "id": "compaction_summarize_001",
+  "stage": "summarize",
+  "hasSummaryText": true,
+  "hasSummaryRef": true,
+  "tokenReductionEstimate": 3000
+}

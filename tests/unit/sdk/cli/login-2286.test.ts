@@ -64,6 +64,7 @@ test("2286: finishOAuthLogin exchanges code, saves credentials, and clears pendi
     AA_OAUTH_SCOPES: "openid profile email",
     AA_OAUTH_STATE: "state-finish",
     AA_OAUTH_AUTH_CODE: "code-123",
+    AA_CREDENTIALS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef",
   };
   const originalFetch = globalThis.fetch;
 
@@ -89,18 +90,40 @@ test("2286: finishOAuthLogin exchanges code, saves credentials, and clears pendi
 
     const result = await finishOAuthLogin(env);
     const saved = JSON.parse(readFileSync(result.credentialsPath, "utf8")) as {
-      accessToken: string;
-      refreshToken?: string;
-      tokenType: string;
+      version: string;
+      ciphertext: string;
+      iv: string;
     };
 
     assert.equal(result.mode, "finish");
-    assert.equal(saved.accessToken, "access-token-123");
-    assert.equal(saved.refreshToken, "refresh-token-123");
-    assert.equal(saved.tokenType, "Bearer");
+    assert.equal(saved.version, "oauth-cred-v1");
+    assert.ok(saved.ciphertext.length > 0);
+    assert.ok(saved.iv.length > 0);
     assert.equal(existsSync(statePath), false);
   } finally {
     globalThis.fetch = originalFetch;
+    cleanupPath(workspace);
+  }
+});
+
+test("2286: finishOAuthLogin requires encrypted credential storage", async () => {
+  const workspace = createTempWorkspace("aa-oauth-login-encryption-required-");
+
+  try {
+    await assert.rejects(
+      () =>
+        finishOAuthLogin({
+          HOME: workspace,
+          AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
+          AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
+          AA_OAUTH_CLIENT_ID: "cli-client",
+          AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+          AA_OAUTH_SCOPES: "openid profile email",
+          AA_OAUTH_AUTH_CODE: "code-123",
+        }),
+      /oauth\.invalid_login_state|oauth\.credentials_encryption_key_required/,
+    );
+  } finally {
     cleanupPath(workspace);
   }
 });

@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "degradationMode": "none",
+  "tier1AckBacklog": 0,
+  "hasQueueGovernance": true
+}

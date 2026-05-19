@@ -1,0 +1,8 @@
+{
+  "domainId": "financial-services",
+  "riskClass": "high",
+  "humanAccountable": true,
+  "deterministicHotPathOnly": true,
+  "liabilityOwnerCount": 1,
+  "compensationModelCount": 2
+}

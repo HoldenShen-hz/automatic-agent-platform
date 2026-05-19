@@ -1,0 +1,12 @@
+{
+  "reportIdPrefix": "eval",
+  "harnessRunId": "hrn_test_001",
+  "planGraphBundleId": "pgb_test_001",
+  "graphVersion": 1,
+  "passed": true,
+  "qualityScore": 1,
+  "decision": "accept",
+  "findingCount": 4,
+  "riskLevel": "unchanged",
+  "hasFindings": true
+}
