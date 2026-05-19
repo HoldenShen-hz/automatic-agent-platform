@@ -7,6 +7,7 @@
 
 import type { CacheLookupResult, CacheMeta } from '../cache-types.js';
 import type { CacheStore } from './cache-store.js';
+import { stableStringify } from '../utils/stable-stringify.js';
 
 /**
  * LRU (Least Recently Used) cache entry with metadata.
@@ -71,6 +72,16 @@ export class MemoryCacheStore implements CacheStore {
     }
   }
 
+  private cloneStoredValue<T>(value: T): T {
+    if (typeof globalThis.structuredClone === "function") {
+      return globalThis.structuredClone(value);
+    }
+    if (value === undefined || value === null || typeof value !== "object") {
+      return value;
+    }
+    return JSON.parse(stableStringify(value)) as T;
+  }
+
   async get<T>(namespace: string, key: string): Promise<CacheLookupResult<T>> {
     const bucketKey = this.getBucketKey(namespace, key);
     const entry = this.entries.get(bucketKey);
@@ -96,13 +107,19 @@ export class MemoryCacheStore implements CacheStore {
 
     return {
       hit: true,
-      value: entry.value as T,
+      value: this.cloneStoredValue(entry.value as T),
       layer: 'L1',
+      meta: this.cloneStoredValue(entry.meta),
     };
   }
 
   async set<T>(namespace: string, key: string, value: T, meta: CacheMeta): Promise<void> {
     const bucketKey = this.getBucketKey(namespace, key);
+    const existing = this.entries.get(bucketKey);
+    if (existing != null) {
+      this.removeLru(existing);
+      this.entries.delete(bucketKey);
+    }
 
     // Evict oldest if at capacity
     if (!this.entries.has(bucketKey) && this.entries.size >= this.maxEntries) {
@@ -115,7 +132,10 @@ export class MemoryCacheStore implements CacheStore {
       }
     }
 
-    const entry: LruEntry = { value, meta };
+    const entry: LruEntry = {
+      value: this.cloneStoredValue(value),
+      meta: this.cloneStoredValue(meta),
+    };
     this.addToHead(entry);
     this.entries.set(bucketKey, entry);
   }

@@ -3,7 +3,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-const E2E_ROOT = join(process.cwd(), "tests", "e2e");
+const TEST_ROOTS = [
+  join(process.cwd(), "tests", "e2e"),
+  join(process.cwd(), "tests", "unit"),
+  join(process.cwd(), "tests", "integration"),
+  join(process.cwd(), "tests", "golden"),
+] as const;
 const DISALLOWED_SKIP_PATTERNS = [
   /\btest\.skip\s*\(/g,
   /\bit\.skip\s*\(/g,
@@ -32,14 +37,16 @@ function stripComments(source: string): string {
     .replace(/^\s*\/\/.*$/gm, "");
 }
 
-test("invariant: e2e test files do not contain explicit skip markers", () => {
+test("invariant: core test roots do not contain explicit skip markers", () => {
   const violations: string[] = [];
-  for (const file of listTestFiles(E2E_ROOT)) {
-    const source = stripComments(readFileSync(file, "utf8"));
-    for (const pattern of DISALLOWED_SKIP_PATTERNS) {
-      if (pattern.test(source)) {
-        violations.push(file);
-        break;
+  for (const root of TEST_ROOTS) {
+    for (const file of listTestFiles(root)) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      for (const pattern of DISALLOWED_SKIP_PATTERNS) {
+        if (pattern.test(source)) {
+          violations.push(file);
+          break;
+        }
       }
     }
   }
@@ -47,6 +54,6 @@ test("invariant: e2e test files do not contain explicit skip markers", () => {
   assert.deepEqual(
     violations,
     [],
-    `Explicit test skips are not allowed in tests/e2e. Remove skip markers from: ${violations.join(", ")}`,
+    `Explicit test skips are not allowed in core test roots. Remove skip markers from: ${violations.join(", ")}`,
   );
 });

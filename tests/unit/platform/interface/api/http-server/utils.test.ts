@@ -533,7 +533,7 @@ test("requirePrincipal throws ApiError when authService is null", () => {
 test("requirePrincipal returns principal for valid role", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "admin-key", actorId: "admin-1", roles: ["admin"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const exchange = service.exchangeApiKey("admin-key");
   const request = makeRequest("/api/admin", { authorization: `Bearer ${exchange.accessToken}` });
@@ -546,7 +546,7 @@ test("requirePrincipal returns principal for valid role", () => {
 test("requirePrincipal throws for insufficient role", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "viewer-key", actorId: "viewer-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const exchange = service.exchangeApiKey("viewer-key");
   const request = makeRequest("/api/admin", { authorization: `Bearer ${exchange.accessToken}` });
@@ -560,7 +560,7 @@ test("requirePrincipal throws for insufficient role", () => {
 test("requirePrincipal propagates ApiAuthError with correct status", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "viewer-key", actorId: "viewer-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   // Use an invalid token so authenticate() throws ApiAuthError
   const request = makeRequest("/api/admin", { authorization: "Bearer invalid.token.here" });

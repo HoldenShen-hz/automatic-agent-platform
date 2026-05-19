@@ -115,7 +115,7 @@ export function decorateResponseHeaders(
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": payload.headers["x-api-version"] ?? "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
-    ...(traceId != null ? { "x-trace-id": traceId, "X-Trace-Id": traceId } : {}),
+    ...(traceId != null ? { "x-trace-id": traceId } : {}),
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);
   if (allowOrigin != null) {

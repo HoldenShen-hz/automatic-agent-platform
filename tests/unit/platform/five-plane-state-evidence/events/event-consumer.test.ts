@@ -64,12 +64,14 @@ function createEventConsumer(consumerGroup: string, consumerId: string): MockEve
   return new MockEventConsumer(consumerGroup, consumerId);
 }
 
+let mockEventCounter = 0;
+
 /**
  * Helper to create a mock EventRecord with optional sequence number
  */
 function createMockEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
-    id: "evt_test_" + Math.random().toString(36).slice(2, 9),
+    id: `evt_test_${String(++mockEventCounter).padStart(4, "0")}`,
     taskId: null,
     sessionId: null,
     executionId: null,

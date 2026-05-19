@@ -90,6 +90,98 @@ test("ExecutionReceipt is listed in LEGACY_CONTRACT_NAMES", () => {
   assert.equal(LEGACY_CONTRACT_NAMES.includes("ExecutionReceipt"), true);
 });
 
+test("validateExecutableContract enforces typed RequestEnvelope directives", () => {
+  const envelope = {
+    requestId: "req-1",
+    confirmedTaskSpecId: "task-1",
+    tenantId: "tenant-1",
+    principal,
+    domainId: "coding",
+    traceId: "trace-1",
+    idempotencyKey: "idem-1",
+    priority: 1,
+    requestHash: "hash-1",
+    constraintPackRef: "constraint://default",
+    budgetIntent,
+    policyContext: {},
+    artifactRefs: [],
+    submittedAt: "2026-05-19T00:00:00.000Z",
+    directives: [
+      {
+        operationalDirectiveId: "od-1",
+        type: "pause",
+        scope: { tenantId: "tenant-1", harnessRunId: "hrun-1" },
+        issuedBy: { principalId: "principal-1", tenantId: "tenant-1", roles: ["operator"] },
+        reason: "manual pause",
+        params: { mode: "safe" },
+        audience: ["runtime"],
+        nonce: "nonce-1",
+        signature: "sig-1",
+        createdAt: "2026-05-19T00:00:00.000Z",
+      },
+      {
+        decisionDirectiveId: "dd-1",
+        type: "approve",
+        scope: { tenantId: "tenant-1", humanResponsibilityRecordId: "hrr-1" },
+        issuedBy: {
+          principalId: "principal-2",
+          tenantId: "tenant-1",
+          roles: ["approver"],
+          displayName: "Approver",
+        },
+        targetRef: "approval://1",
+        payload: { decision: "approve" },
+        reason: "approved",
+        riskAcknowledged: true,
+        audience: ["policy"],
+        nonce: "nonce-2",
+        signature: "sig-2",
+        createdAt: "2026-05-19T00:00:00.000Z",
+      },
+    ],
+  };
+
+  const validated = validateExecutableContract("RequestEnvelope", envelope);
+  assert.equal(validated.directives?.length, 2);
+});
+
+test("validateExecutableContract rejects malformed RequestEnvelope directives", () => {
+  const envelope = {
+    requestId: "req-1",
+    confirmedTaskSpecId: "task-1",
+    tenantId: "tenant-1",
+    principal,
+    domainId: "coding",
+    traceId: "trace-1",
+    idempotencyKey: "idem-1",
+    priority: 1,
+    requestHash: "hash-1",
+    constraintPackRef: "constraint://default",
+    budgetIntent,
+    policyContext: {},
+    artifactRefs: [],
+    submittedAt: "2026-05-19T00:00:00.000Z",
+    directives: [
+      {
+        operationalDirectiveId: "od-1",
+        type: "pause",
+        scope: { tenantId: "tenant-1" },
+        issuedBy: { principalId: "principal-1", tenantId: "tenant-1", roles: ["operator"] },
+        reason: "manual pause",
+        params: { mode: "safe" },
+        audience: ["runtime"],
+        nonce: "nonce-1",
+        signature: "sig-1",
+      },
+    ],
+  };
+
+  assert.throws(
+    () => validateExecutableContract("RequestEnvelope", envelope),
+    ValidationError,
+  );
+});
+
 test("createNodeAttemptReceipt creates successful tool receipt", () => {
   const receipt = createNodeAttemptReceipt({
     nodeAttemptId: "nattempt-1",

@@ -204,6 +204,7 @@ test("ApiKeyRotationRecord type accepts active record", () => {
   const record: ApiKeyRotationRecord = {
     keyId: "key-rot-001",
     actorId: "actor-123",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "active",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: null,
@@ -220,6 +221,7 @@ test("ApiKeyRotationRecord type accepts rotating record", () => {
   const record: ApiKeyRotationRecord = {
     keyId: "key-rot-002",
     actorId: "actor-456",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "rotating",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: "2024-06-01T00:00:00Z",
@@ -234,6 +236,7 @@ test("ApiKeyRotationRecord type accepts revoked record", () => {
   const record: ApiKeyRotationRecord = {
     keyId: "key-rot-003",
     actorId: "actor-789",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "revoked",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: "2024-03-01T00:00:00Z",

@@ -32,7 +32,8 @@
  * @see EnvSecretProvider for the interface this implements
  */
 
-import { closeSync, fstatSync, lstatSync, openSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, realpathSync, statSync } from "node:fs";
+import { open as openFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 import { ProviderError, ValidationError } from "../../contracts/errors.js";
@@ -196,22 +197,22 @@ function verifySecurePath(filePath: string, code: string): void {
   }
 }
 
-function securelyReadSecretsFile(filePath: string, code: string): string {
+async function securelyReadSecretsFile(filePath: string, code: string): Promise<string> {
   verifySecurePath(filePath, code);
-  let fd: number | null = null;
+  let fd: Awaited<ReturnType<typeof openFile>> | null = null;
   try {
     const realPath = realpathSync(filePath);
     verifySecurePath(realPath, code);
     const expectedStat = statSync(realPath);
-    fd = openSync(realPath, "r");
-    const openedStat = fstatSync(fd);
+    fd = await openFile(realPath, "r");
+    const openedStat = await fd.stat();
     if (openedStat.dev !== expectedStat.dev || openedStat.ino !== expectedStat.ino) {
       throw new ProviderError(code, code, {
         details: { filePath, reason: "file_changed_during_open" },
         retryable: false,
       });
     }
-    return readFileSync(fd, "utf8");
+    return await fd.readFile({ encoding: "utf8" });
   } catch (error) {
     if (error instanceof ProviderError || error instanceof ValidationError) {
       throw error;
@@ -222,7 +223,7 @@ function securelyReadSecretsFile(filePath: string, code: string): string {
     });
   } finally {
     if (fd != null) {
-      closeSync(fd);
+      void fd.close();
     }
   }
 }
@@ -366,7 +367,7 @@ export class ExternalSecretProvider {
    */
   public async describeSecret(secretRef: string): Promise<SecretProviderMetadata> {
     const normalized = validateSecretRef(secretRef);
-    const configuredSource = this.readConfiguredSecrets();
+    const configuredSource = await this.readConfiguredSecrets();
     if (configuredSource == null) {
       return {
         secretRef: normalized,
@@ -407,7 +408,7 @@ export class ExternalSecretProvider {
    */
   public async requireSecret(secretRef: string): Promise<SecretProviderValue> {
     const metadata = await this.describeSecret(secretRef);
-    const configuredSource = this.readConfiguredSecrets();
+    const configuredSource = await this.readConfiguredSecrets();
     if (configuredSource == null) {
       throw new ValidationError(`secret.missing_value:${metadata.secretRef}:${metadata.envName}`, `secret.missing_value:${metadata.secretRef}:${metadata.envName}`, {
         source: "provider",
@@ -446,7 +447,7 @@ export class ExternalSecretProvider {
    */
   public async issueSecretLease(secretRef: string): Promise<SecretProviderIssuedLease | null> {
     const metadata = await this.describeSecret(secretRef);
-    const configuredSource = this.readConfiguredSecrets();
+    const configuredSource = await this.readConfiguredSecrets();
     if (configuredSource == null) {
       return null;
     }
@@ -483,7 +484,9 @@ export class ExternalSecretProvider {
    * @returns true if inline JSON or secrets file is configured
    */
   public hasConfiguredSource(): boolean {
-    return this.readConfiguredSecrets() != null;
+    const fileEnv = fileSecretsEnvName(this.providerKind);
+    const inlineEnv = inlineSecretsEnvName(this.providerKind);
+    return (this.env[fileEnv]?.trim().length ?? 0) > 0 || (this.env[inlineEnv]?.trim().length ?? 0) > 0;
   }
 
   public invalidateCache(): void {
@@ -496,11 +499,11 @@ export class ExternalSecretProvider {
    *
    * @returns Parsed secrets or null if not configured
    */
-  private readConfiguredSecrets(): {
+  private async readConfiguredSecrets(): Promise<{
     sourceName: string;
     filePath: string | null;
     entries: Record<string, unknown>;
-  } | null {
+  } | null> {
     const fileEnv = fileSecretsEnvName(this.providerKind);
     const inlineEnv = inlineSecretsEnvName(this.providerKind);
     const filePath = this.env[fileEnv]?.trim() || "";
@@ -515,7 +518,7 @@ export class ExternalSecretProvider {
           return this.cachedSource;
         }
         const parsed = normalizeRecord(
-          JSON.parse(securelyReadSecretsFile(filePath, `secret.provider_config_invalid:${this.providerKind}:${filePath}`)),
+          JSON.parse(await securelyReadSecretsFile(filePath, `secret.provider_config_invalid:${this.providerKind}:${filePath}`)),
           `secret.provider_config_invalid:${this.providerKind}:${filePath}`,
         );
         this.cachedSource = {

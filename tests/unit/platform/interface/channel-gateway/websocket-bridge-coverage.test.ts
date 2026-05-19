@@ -21,7 +21,17 @@ async function canBindLocalSockets(): Promise<boolean> {
   });
 }
 
-const networkPathTest = (await canBindLocalSockets()) ? test : test.skip;
+const canBindSockets = await canBindLocalSockets();
+
+function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
+  test(name, async (t) => {
+    if (!canBindSockets) {
+      t.diagnostic("Skipping local socket bind websocket path: local sockets are unavailable in this environment.");
+      return;
+    }
+    await body(t);
+  });
+}
 
 function createMockServer() {
   return createServer();

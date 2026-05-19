@@ -58,12 +58,24 @@ export function createCacheGovernanceMiddleware(options: CacheGovernanceMiddlewa
 
       const tags = tagBuilder.toolContext(toolName, normalizedArgs, ctx.taskId);
       const namespace = `tool.${toolName}`;
+      let toolResult: T | undefined;
+      let toolState: "not_started" | "resolved" | "rejected" = "not_started";
 
       try {
         const result = await cache.getOrCompute<T>(
           namespace,
           normalizedArgs,
-          next,
+          async () => {
+            try {
+              const value = await next();
+              toolState = "resolved";
+              toolResult = value;
+              return value;
+            } catch (error) {
+              toolState = "rejected";
+              throw error;
+            }
+          },
           { tags }
         );
 
@@ -75,7 +87,16 @@ export function createCacheGovernanceMiddleware(options: CacheGovernanceMiddlewa
 
         return result.value;
       } catch (error) {
-        // Cache errors should not break tool execution
+        if (toolState === "resolved") {
+          logger?.warn("Cache write failed after tool execution; returning uncached result", {
+            toolName,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return toolResult as T;
+        }
+        if (toolState === "rejected") {
+          throw error;
+        }
         logger?.warn('Cache error, falling through to tool execution', {
           toolName,
           error: error instanceof Error ? error.message : String(error),
@@ -92,12 +113,36 @@ export function createCacheSummaryMiddleware(options: CacheGovernanceMiddlewareO
   return {
     name: "cache-summary",
     priority: 40,
-    async run(ctx): Promise<{ success: true }> {
-      const stats = cache.getMetricsSnapshot?.();
+    async run(ctx): Promise<{ success: boolean; error?: { code: string; message: string; warning?: boolean } }> {
+      let stats: unknown;
+      try {
+        stats = cache.getMetricsSnapshot?.();
+      } catch (error) {
+        logger?.warn("Cache metrics summary unavailable", {
+          error: error instanceof Error ? error.message : String(error),
+          taskId: ctx.taskId,
+        });
+        return {
+          success: false,
+          error: {
+            code: "cache.metrics_snapshot_failed",
+            message: error instanceof Error ? error.message : String(error),
+            warning: true,
+          },
+        };
+      }
       if (stats) {
         logger?.debug("Cache metrics summary", { stats, taskId: ctx.taskId });
+        return { success: true };
       }
-      return { success: true };
+      return {
+        success: false,
+        error: {
+          code: "cache.metrics_snapshot_unavailable",
+          message: "Cache metrics snapshot is unavailable.",
+          warning: true,
+        },
+      };
     },
   };
 }

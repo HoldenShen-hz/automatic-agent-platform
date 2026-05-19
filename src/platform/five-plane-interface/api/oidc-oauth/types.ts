@@ -8,6 +8,7 @@ export interface OidcProvider {
   jwksUri: string;
   userInfoEndpoint?: string;
   scopes: string[];
+  allowedRedirectUris?: string[];
 }
 
 /**
@@ -35,6 +36,8 @@ export interface FederatedTokenClaims {
   aud: string | string[];
   exp: number;
   iat: number;
+  nbf?: number;
+  jti?: string;
   email?: string;
   name?: string;
   roles?: string[];
@@ -56,7 +59,7 @@ export interface TokenValidationResult {
 export interface ApiKeyRotationRecord {
   keyId: string;
   actorId: string;
-  oldApiKey: string;
+  oldApiKeyFingerprint: string;
   status: "active" | "rotating" | "revoked";
   createdAt: string;
   rotatedAt: string | null;

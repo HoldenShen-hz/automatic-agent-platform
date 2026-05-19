@@ -254,3 +254,27 @@ test("decorateAuthoritativeTaskStore logs retry attempts", () => {
   assert.equal(retryLog?.data?.operation, "listTasks");
   assert.equal(retryLog?.data?.attempt, 1);
 });
+
+test("decorateAuthoritativeTaskStore keeps metrics per decorated instance and aggregates snapshots", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const firstStore = {
+    listTasks(): string[] {
+      return ["task-a"];
+    },
+  } as unknown as AuthoritativeTaskStore;
+  const secondStore = {
+    listTasks(): string[] {
+      return ["task-b"];
+    },
+  } as unknown as AuthoritativeTaskStore;
+
+  const firstDecorated = decorateAuthoritativeTaskStore(firstStore, { logger });
+  const secondDecorated = decorateAuthoritativeTaskStore(secondStore, { logger });
+
+  (firstDecorated as unknown as { listTasks(): string[] }).listTasks();
+  (secondDecorated as unknown as { listTasks(): string[] }).listTasks();
+
+  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  assert.equal(metrics.listTasks?.calls, 2);
+  assert.equal(metrics.listTasks?.successes, 2);
+});

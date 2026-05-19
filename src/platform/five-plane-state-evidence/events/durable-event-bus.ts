@@ -32,6 +32,14 @@ export type {
 } from "./durable-event-bus-support.js";
 export { ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS } from "./durable-event-bus-support.js";
 const eventBusLogger = new StructuredLogger({ retentionLimit: 200 });
+const DELIVERY_BACKPRESSURE_HIGH_WATER_MARK = 100;
+const DELIVERY_BACKPRESSURE_ESTIMATED_EVENT_BYTES = 1_024;
+const DELIVERY_QUEUE_DEPTH_HIGH = 100;
+const DELIVERY_QUEUE_DEPTH_MEDIUM = 50;
+const DELIVERY_QUEUE_DEPTH_LOW = 10;
+const DELIVERY_POLL_INTERVAL_HIGH_QUEUE_MS = 1_000;
+const DELIVERY_POLL_INTERVAL_MEDIUM_QUEUE_MS = 500;
+const DELIVERY_POLL_INTERVAL_LOW_QUEUE_MS = 250;
 
 /**
  * Durable Event Bus - Reliable event delivery with acknowledgment tracking.
@@ -325,11 +333,7 @@ export class DurableEventBus {
 
     const schema = getEventSchema(input.eventType);
     const resolvedSequence = this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null);
-    // R12-05 FIX: Event append, truth update, and volatile dispatch MUST happen in the
-    // same transaction. Previously dispatchVolatile/scheduleFanOut were called outside
-    // the transaction, meaning an event could be committed but its delivery could fail
-    // silently. Now volatile dispatch is deferred and executed within the transaction
-    // so that event record and handler invocation are atomic (or both roll back).
+    const volatileRecords: EventRecord[] = [];
     const eventRecord = this.db.transaction(() =>
       {
         ensureEventReferencedTask(this.store, input.taskId ?? null);
@@ -355,23 +359,25 @@ export class DurableEventBus {
           principal: input.principal ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
-        // R12-05 FIX: Execute volatile dispatch atomically within the transaction.
-        // For tier_2/tier_3 events this ensures the event record and fan-out are
-        // committed together, so a handler failure causes the whole transaction to
-        // roll back rather than silently losing delivery.
         if (record.eventTier !== "tier_1") {
-          this.dispatchVolatileAtomic(record);
+          volatileRecords.push(record);
         }
         return record;
       },
     );
 
-    // Tier-1 events use polling-based delivery; tier-2/3 events are dispatched
-    // atomically but still need scheduleFanOut to trigger processPartitionQueue.
-    // Previously scheduleFanOut was only called for tier-1, causing tier-2/3 volatile
-    // delivery to never actually deliver events to handlers (dispatchVolatileAtomic only
-    // enqueued to pendingPartitionEvents but never triggered processPartitionQueue).
-    this.scheduleFanOut();
+    const volatilePartitionKeys = new Set<string>();
+    for (const record of volatileRecords) {
+      this.dispatchVolatile(record);
+      volatilePartitionKeys.add(record.aggregateId ?? record.id);
+    }
+    if (eventRecord.eventTier === "tier_1") {
+      this.scheduleFanOut({
+        consumerIds: this.getActiveSubscribersForEventType(eventRecord.eventType),
+      });
+    } else {
+      this.scheduleFanOut({ partitionKeys: volatilePartitionKeys });
+    }
 
     return eventRecord;
   }
@@ -415,9 +421,8 @@ export class DurableEventBus {
 
     const resolvedSequences = inputs.map((input) => this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null));
 
-    // Insert all events in a single transaction for efficiency
-    // R12-05 FIX: Include volatile dispatch inside transaction so event record and
-    // fan-out are committed atomically together.
+    const volatileRecords: EventRecord[] = [];
+    const tier1ConsumerIds = new Set<string>();
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
@@ -443,19 +448,29 @@ export class DurableEventBus {
           principal: input.principal ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
-        // R12-05 FIX: Atomic volatile dispatch for non-tier-1 events
         if (record.eventTier !== "tier_1") {
-          this.dispatchVolatileAtomic(record);
+          volatileRecords.push(record);
+        } else {
+          for (const consumerId of this.getActiveSubscribersForEventType(record.eventType)) {
+            tier1ConsumerIds.add(consumerId);
+          }
         }
         return record;
       }),
     );
 
-    // R12-05 FIX: scheduleFanOut to trigger async delivery of all events
-    // tier-1 events use polling-based delivery; tier_2/3 events are dispatched
-    // atomically but still need scheduleFanOut to trigger processPartitionQueue
     if (eventRecords.length > 0) {
-      this.scheduleFanOut();
+      const volatilePartitionKeys = new Set<string>();
+      for (const record of volatileRecords) {
+        this.dispatchVolatile(record);
+        volatilePartitionKeys.add(record.aggregateId ?? record.id);
+      }
+      if (tier1ConsumerIds.size > 0) {
+        this.scheduleFanOut({ consumerIds: tier1ConsumerIds });
+      }
+      if (volatilePartitionKeys.size > 0) {
+        this.scheduleFanOut({ partitionKeys: volatilePartitionKeys });
+      }
     }
 
     return eventRecords;
@@ -590,15 +605,14 @@ export class DurableEventBus {
       return { delivered: false, deadLettered: false };
     }
 
-    // All retries exhausted - mark as failed before moving the delivery to DLQ.
+    // All retries exhausted - mark as dead-lettered before moving the delivery to DLQ.
     const errorMessage = lastError
       ? `failed_after_${MAX_DELIVERY_RETRIES}_retries: ${lastError.message}`
       : `failed_after_${MAX_DELIVERY_RETRIES}_retries: unknown_error`;
 
-    this.store.event.markEventAck({
+    this.store.event.markEventDeadLettered({
       eventId: item.event.id,
       consumerId: item.ack.consumerId,
-      status: "failed",
       occurredAt: nowIso(),
       errorCode: errorMessage,
     });
@@ -611,8 +625,6 @@ export class DurableEventBus {
         errorMessage: lastError instanceof Error ? lastError.message : null,
         retryCount: MAX_DELIVERY_RETRIES,
       });
-      // Keep the consumer ack in "failed" so retry workers and operator
-      // inspection can still query the failed delivery alongside the DLQ row.
     } catch (dlqError) {
       eventBusLogger.error("event_bus.dlq_persist_failed", {
         eventId: item.event.id,
@@ -627,7 +639,7 @@ export class DurableEventBus {
     }
 
     // REL-01: structured alert log on dead-letter. Persistence is handled
-    // by the event_consumer_acks row above (status=failed, error_code set);
+    // by the event_consumer_acks row above (status=dead_lettered, error_code set);
     // this log surfaces the failure to operators/alerting so a silent drop
     // cannot happen. retentionLimit=200 keeps a rolling audit buffer.
     eventBusLogger.log({
@@ -656,14 +668,26 @@ export class DurableEventBus {
   /**
    * Schedules fan-out delivery to all registered subscribers.
    */
-  private scheduleFanOut(): void {
+  private scheduleFanOut(input?: { consumerIds?: Iterable<string>; partitionKeys?: Iterable<string> }): void {
     if (this.disposed) {
       return;
     }
-    for (const consumerId of this.subscribers.keys()) {
+    const consumerIds = input?.consumerIds == null
+      ? this.subscribers.keys()
+      : new Set(input.consumerIds);
+    for (const consumerId of consumerIds) {
+      if (!this.subscribers.has(consumerId)) {
+        continue;
+      }
       this.scheduleDelivery(consumerId);
     }
-    for (const partitionKey of this.pendingPartitionEvents.keys()) {
+    const partitionKeys = input?.partitionKeys == null
+      ? this.pendingPartitionEvents.keys()
+      : new Set(input.partitionKeys);
+    for (const partitionKey of partitionKeys) {
+      if (!this.pendingPartitionEvents.has(partitionKey)) {
+        continue;
+      }
       this.processPartitionQueue(partitionKey);
     }
   }
@@ -690,25 +714,28 @@ export class DurableEventBus {
   }
 
   private calculatePollingInterval(consumerId: string, queueDepth: number): number {
-    const highWaterMark = 100;
-    runtimeMetricsRegistry.recordEventBackpressure(consumerId, queueDepth, queueDepth >= highWaterMark);
+    runtimeMetricsRegistry.recordEventBackpressure(
+      consumerId,
+      queueDepth,
+      queueDepth >= DELIVERY_BACKPRESSURE_HIGH_WATER_MARK,
+    );
 
     const chainState = this.deliveryChainStates.get(consumerId);
     if (chainState) {
       chainState.backPressure = {
-        isBackPressure: queueDepth >= highWaterMark,
+        isBackPressure: queueDepth >= DELIVERY_BACKPRESSURE_HIGH_WATER_MARK,
         pendingCount: queueDepth,
-        bufferedBytes: queueDepth * 1024,
+        bufferedBytes: queueDepth * DELIVERY_BACKPRESSURE_ESTIMATED_EVENT_BYTES,
         lastCheckedAt: nowIso(),
       };
     }
 
-    if (queueDepth > 100) {
-      return 1_000;
-    } else if (queueDepth > 50) {
-      return 500;
-    } else if (queueDepth > 10) {
-      return 250;
+    if (queueDepth > DELIVERY_QUEUE_DEPTH_HIGH) {
+      return DELIVERY_POLL_INTERVAL_HIGH_QUEUE_MS;
+    } else if (queueDepth > DELIVERY_QUEUE_DEPTH_MEDIUM) {
+      return DELIVERY_POLL_INTERVAL_MEDIUM_QUEUE_MS;
+    } else if (queueDepth > DELIVERY_QUEUE_DEPTH_LOW) {
+      return DELIVERY_POLL_INTERVAL_LOW_QUEUE_MS;
     }
 
     return this.adaptivePolling.getInterval(
@@ -793,39 +820,6 @@ export class DurableEventBus {
     // after the transaction commits, keeping the event and enqueue atomic.
   }
 
-  /**
-   * R12-05 FIX: Atomic volatile dispatch - enqueues event without running handlers.
-   * Handlers run later via scheduleFanOut after transaction commits.
-   */
-  private dispatchVolatileAtomic(event: EventRecord): void {
-    const partitionKey = event.aggregateId ?? event.id;
-    const eventSequence = event.sequence ?? this.nextImplicitPartitionSequence(partitionKey);
-
-    const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
-
-    for (const [consumerId, entry] of this.subscribers.entries()) {
-      if (entry.partitions.size > 0 && !entry.partitions.has(partitionKey)) {
-        continue;
-      }
-      eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
-    }
-
-    const queue = this.pendingPartitionEvents.get(partitionKey) ?? [];
-    const queueEntry: PartitionSequenceEntry = {
-      sequence: eventSequence,
-      event,
-      pendingConsumers: new Set(eligibleConsumers.map((consumer) => consumer.consumerId)),
-    };
-    const insertIndex = queue.findIndex((entry) => entry.sequence > eventSequence);
-    if (insertIndex === -1) {
-      queue.push(queueEntry);
-    } else {
-      queue.splice(insertIndex, 0, queueEntry);
-    }
-    this.pendingPartitionEvents.set(partitionKey, queue);
-    // R12-05 FIX: Do NOT call processPartitionQueue - handlers run after commit via scheduleFanOut
-  }
-
   private processPartitionQueue(partitionKey: string): void {
     const queue = this.pendingPartitionEvents.get(partitionKey);
     const nextEntry = queue?.[0];
@@ -865,10 +859,10 @@ export class DurableEventBus {
       const next = Promise.resolve()
         .then(async () => {
           this.assertNotDisposed();
-          this.partitionSequenceNumbers.set(consumerPartitionKey, nextEntry.sequence + 1);
 
           try {
             await subscriber.handler(nextEntry.event);
+            this.partitionSequenceNumbers.set(consumerPartitionKey, nextEntry.sequence + 1);
           } catch (error) {
             try {
               this.enqueueVolatileDeadLetter(nextEntry.event, consumerId, error);
@@ -894,27 +888,53 @@ export class DurableEventBus {
       const chain = next.then(() => undefined, () => undefined);
       this.deliveryChains.set(partitionChainKey, chain);
       void chain.finally(() => {
-        nextEntry.pendingConsumers.delete(consumerId);
-        if (this.deliveryChains.get(partitionChainKey) === chain) {
-          this.deliveryChains.delete(partitionChainKey);
-        }
-        if (nextEntry.pendingConsumers.size === 0) {
-          queue.shift();
-          if (queue.length === 0) {
-            this.pendingPartitionEvents.delete(partitionKey);
-          }
-        }
+        this.finishPartitionConsumerDelivery(partitionKey, nextEntry, consumerId, partitionChainKey, chain);
         this.processPartitionQueue(partitionKey);
       });
     }
 
     if (nextEntry.pendingConsumers.size === 0) {
-      queue.shift();
-      if (queue.length === 0) {
-        this.pendingPartitionEvents.delete(partitionKey);
-      }
+      this.removePartitionQueueHead(partitionKey, nextEntry);
       this.processPartitionQueue(partitionKey);
     }
+  }
+
+  private finishPartitionConsumerDelivery(
+    partitionKey: string,
+    entry: PartitionSequenceEntry,
+    consumerId: string,
+    partitionChainKey: string,
+    chain: Promise<void>,
+  ): void {
+    entry.pendingConsumers.delete(consumerId);
+    if (this.deliveryChains.get(partitionChainKey) === chain) {
+      this.deliveryChains.delete(partitionChainKey);
+    }
+    if (entry.pendingConsumers.size === 0) {
+      this.removePartitionQueueHead(partitionKey, entry);
+    }
+  }
+
+  private removePartitionQueueHead(partitionKey: string, entry: PartitionSequenceEntry): void {
+    const queue = this.pendingPartitionEvents.get(partitionKey);
+    if (!queue || queue[0] !== entry) {
+      return;
+    }
+    queue.shift();
+    if (queue.length === 0) {
+      this.pendingPartitionEvents.delete(partitionKey);
+    }
+  }
+
+  private getActiveSubscribersForEventType(eventType: string): string[] {
+    const registeredConsumers = new Set(getRegisteredConsumers(eventType));
+    const consumerIds: string[] = [];
+    for (const consumerId of this.subscribers.keys()) {
+      if (registeredConsumers.has(consumerId)) {
+        consumerIds.push(consumerId);
+      }
+    }
+    return consumerIds;
   }
 
   private nextImplicitPartitionSequence(partitionKey: string): number {

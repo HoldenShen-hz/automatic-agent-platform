@@ -37,6 +37,8 @@
 
 ## 4. Ring 1 / Ring 2 事件注册表
 
+> 本表只冻结高频与运维关键事件的基线语义；完整 canonical registry 以 `src/platform/five-plane-state-evidence/events/event-registry.ts` 为准，并由 `event-types.ts` / typed event bus 做编译期校验。新增低频或细分 `platform.*` 子事件时，可先落源码注册表，再按本 contract 的分层/producer/consumer 规则补文档，不再要求此表逐条镜像全部 140+ 事件。
+
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
 | `platform.harness_run.created` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
@@ -47,10 +49,8 @@
 | `platform.harness_run.failed` | `tier1` | harness runtime | truth projector, audit projection | 是 | 是 |
 | `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
-| `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
-| `execution.succeeded` | `tier1` | runtime | transition service, observability | 是 | 是 |
-| `execution.failed` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
-| `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
+| `execution:status_changed` | `tier1` | runtime | supervisor, recovery scan, observability | 是 | 是 |
+| `cost:limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
 | `oapeflir.view.run_lifecycle` | `tier2` | oapeflir loop service | oapeflir projection, inspect projection | 否 | 建议 |
 | `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
@@ -64,8 +64,10 @@
 | `dispatch:ticket_created` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | ��议 |
 | `dispatch:decision_recorded` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
+| `dispatch:execution_preempted` | `tier2` | execution priority preemption service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_reconciled` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_requeued` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
+| `dispatch:ticket_rebuilt` | `tier2` | execution DB queue disconnect repair service | inspect_projection | 否 | 否 |
 | `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | ��议 |
 | `worker:claim_rejected` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:heartbeat_recorded` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |

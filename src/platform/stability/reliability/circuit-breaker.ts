@@ -63,9 +63,9 @@ export class CircuitBreaker {
     this.onStateChange = options.onStateChange ?? undefined;
   }
 
-  private emitStateChange(newState: CircuitState, reason: string): void {
+  private emitStateChange(previousState: CircuitState, newState: CircuitState, reason: string): void {
     if (this.onStateChange) {
-      this.onStateChange(this.state, newState, reason);
+      this.onStateChange(previousState, newState, reason);
     }
   }
 
@@ -94,7 +94,7 @@ export class CircuitBreaker {
       const prevState = this.state;
       this.state = CircuitState.HALF_OPEN;
       this.successes = 0;
-      this.emitStateChange(prevState, "half_open_transition");
+      this.emitStateChange(prevState, this.state, "half_open_transition");
     }
 
     try {
@@ -136,7 +136,7 @@ export class CircuitBreaker {
         // Successful recovery - close the circuit
         this.state = CircuitState.CLOSED;
         this.successes = 0;
-        this.emitStateChange(prevState, "successful_recovery");
+        this.emitStateChange(prevState, this.state, "successful_recovery");
       }
     }
   }
@@ -150,12 +150,12 @@ export class CircuitBreaker {
       // Failed recovery attempt - go back to open
       this.state = CircuitState.OPEN;
       this.nextAttempt = Date.now() + this.resetTimeout;
-      this.emitStateChange(prevState, "half_open_recovery_failed");
+      this.emitStateChange(prevState, this.state, "half_open_recovery_failed");
     } else if (this.failures >= this.failureThreshold) {
       // Threshold exceeded - open the circuit
       this.state = CircuitState.OPEN;
       this.nextAttempt = Date.now() + this.resetTimeout;
-      this.emitStateChange(prevState, "failure_threshold_exceeded");
+      this.emitStateChange(prevState, this.state, "failure_threshold_exceeded");
     }
   }
 
@@ -196,7 +196,12 @@ export class CircuitBreaker {
     }
     this.state = state;
     if (state === CircuitState.CLOSED) {
+      this.failures = 0;
+      this.successes = 0;
       this.totalRequests = 0;
+      this.lastFailure = null;
+      this.lastSuccess = null;
+      this.nextAttempt = 0;
     }
   }
 }

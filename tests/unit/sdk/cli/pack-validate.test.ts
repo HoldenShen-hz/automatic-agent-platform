@@ -85,14 +85,18 @@ function runValidation(manifest: Record<string, unknown>, opts: PackValidateOpti
     }
   }
 
-  // SDK semver check
+  // Required compatibility metadata check
   if (!manifest.sdk_semver) {
-    if (opts.strict) {
-      result.valid = false;
-      result.errors.push("missing_field:sdk_semver");
-    } else {
-      result.warnings.push("missing_optional_field:sdk_semver");
-    }
+    result.valid = false;
+    result.errors.push("missing_field:sdk_semver");
+  }
+  if (!manifest.platform_min_version) {
+    result.valid = false;
+    result.errors.push("missing_field:platform_min_version");
+  }
+  if (!manifest.platform_max_version) {
+    result.valid = false;
+    result.errors.push("missing_field:platform_max_version");
   }
 
   // Contract test generator check
@@ -237,7 +241,7 @@ test("runValidation uses requested contract version instead of manifest minimum 
   assert.ok(mismatch.errors.some((entry) => entry.includes("requested=1.5.0")));
 });
 
-test("runValidation adds warning for missing sdk_semver in non-strict mode", () => {
+test("runValidation fails for missing compatibility metadata by default", () => {
   const manifest = {
     packId: "test-pack",
     version: "1.0.0",
@@ -251,10 +255,13 @@ test("runValidation adds warning for missing sdk_semver in non-strict mode", () 
   const opts: PackValidateOptions = { manifest: "./pack.json" };
   const result = runValidation(manifest, opts);
 
-  assert.ok(result.warnings.some((w) => w.includes("missing_optional_field:sdk_semver")));
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("missing_field:sdk_semver")));
+  assert.ok(result.errors.some((e) => e.includes("missing_field:platform_min_version")));
+  assert.ok(result.errors.some((e) => e.includes("missing_field:platform_max_version")));
 });
 
-test("runValidation adds error for missing sdk_semver in strict mode", () => {
+test("runValidation still fails for missing compatibility metadata in strict mode", () => {
   const manifest = {
     packId: "test-pack",
     version: "1.0.0",
@@ -270,6 +277,8 @@ test("runValidation adds error for missing sdk_semver in strict mode", () => {
 
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((e) => e.includes("missing_field:sdk_semver")));
+  assert.ok(result.errors.some((e) => e.includes("missing_field:platform_min_version")));
+  assert.ok(result.errors.some((e) => e.includes("missing_field:platform_max_version")));
 });
 
 test("runValidation adds warning for missing contract_test_generator", () => {
@@ -417,11 +426,9 @@ test("runValidation handles manifest with multiple capabilities", () => {
       { capabilityKey: "cap1", requiredContracts: ["contract1"] },
       { capabilityKey: "cap2", requiredContracts: ["contract2", "contract3"] },
     ],
-    sdk_release: {
-      sdk_semver: "1.0.0",
-      platform_min_version: "1.0.0",
-      platform_max_version: "5.0.0",
-    },
+    sdk_semver: "1.0.0",
+    platform_min_version: "1.0.0",
+    platform_max_version: "5.0.0",
   };
 
   const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "3.0.0" };

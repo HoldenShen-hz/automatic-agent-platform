@@ -70,7 +70,19 @@ test("GET /healthz returns health status", async () => {
   assert.ok(response.body.includes("ok"));
 });
 
-test("GET /v1/healthz returns health status", async () => {
+test("GET /healthz returns 503 for unhealthy report", async () => {
+  const deps = {
+    missionControlService: createMockMissionControlService({ status: "degraded" }),
+  };
+  const routes = createHealthRoutes(deps);
+  const healthzRoute = routes.find((r) => r.pathname === "/healthz")!;
+  const response = await healthzRoute.handler(createMockContext());
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 503);
+  assert.ok(response.body.includes("degraded"));
+});
+
+test("GET /v1/healthz returns 503 for unhealthy report", async () => {
   const deps = {
     missionControlService: createMockMissionControlService({ status: "degraded" }),
   };
@@ -79,7 +91,7 @@ test("GET /v1/healthz returns health status", async () => {
   const ctx = createMockContext();
   const response = await healthzRoute.handler(ctx);
   if (!response) throw new Error("Handler returned null");
-  assert.equal(response.statusCode, 200);
+  assert.equal(response.statusCode, 503);
   assert.ok(response.body.includes("degraded"));
 });
 

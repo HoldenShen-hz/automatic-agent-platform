@@ -83,7 +83,7 @@ test("api-server returns null fileSinkConfig when logFilePath is not set", () =>
 });
 
 test("api-server authService is null when apiKeys are empty", () => {
-  const envConfig = { apiKeys: [] as string[], jwtSecret: "secret" };
+  const envConfig = { apiKeys: [] as string[], jwtSecret: "secret-123" };
   const authService = envConfig.apiKeys.length === 0 || envConfig.jwtSecret == null
     ? null
     : { apiKeys: envConfig.apiKeys, jwtSecret: envConfig.jwtSecret };

@@ -1,4 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { Socket } from "node:net";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { createGzip, createBrotliCompress } from "node:zlib";
 import { parse as parseUrl } from "node:url";
 
@@ -85,6 +88,7 @@ import {
 import {
   buildPreflightHeaders,
   decorateResponseHeaders,
+  isOriginAllowed,
   normalizeCorsConfig,
   parseAllowedOrigins,
   type CorsConfig,
@@ -98,6 +102,12 @@ import type {
 } from "./http-api-server-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const SERVER_HEADERS_TIMEOUT_MS = 60_000;
+const SERVER_KEEP_ALIVE_TIMEOUT_MS = 5_000;
+const SERVER_REQUEST_TIMEOUT_MS = 30_000;
+const SERVER_MAX_HEADERS_COUNT = 2_000;
+const SERVER_MAX_REQUESTS_PER_SOCKET = 1_000;
+const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
 
 export type {
   HttpApiServerOptions,
@@ -124,10 +134,14 @@ export class HttpApiServer {
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
-  private readonly requestDeduplication = createDeduplicationMiddleware();
+  private readonly requestDeduplication = createDeduplicationMiddleware({ allowInMemoryInProduction: true });
   private readonly idempotencyMiddleware = createIdempotencyKeyMiddleware();
   private workerHeartbeatSweepTimer: NodeJS.Timeout | null = null;
   private readonly staleWorkerIncidentIds = new Set<string>();
+  private readonly activeSockets = new Set<Socket>();
+  private activeRequestCount = 0;
+  private isShuttingDown = false;
+  private readonly activeRequestDrainResolvers = new Set<() => void>();
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -173,11 +187,32 @@ export class HttpApiServer {
     this.server = createServer((request, response) => {
       void this.handleRequest(request, response);
     });
+    this.server.headersTimeout = SERVER_HEADERS_TIMEOUT_MS;
+    this.server.keepAliveTimeout = SERVER_KEEP_ALIVE_TIMEOUT_MS;
+    this.server.requestTimeout = SERVER_REQUEST_TIMEOUT_MS;
+    this.server.maxHeadersCount = SERVER_MAX_HEADERS_COUNT;
+    this.server.maxRequestsPerSocket = SERVER_MAX_REQUESTS_PER_SOCKET;
+    this.server.on("connection", (socket) => {
+      this.activeSockets.add(socket);
+      socket.on("close", () => {
+        this.activeSockets.delete(socket);
+      });
+    });
   }
 
   public async start(options: StartServerOptions = {}): Promise<StartedServerAddress> {
     const host = options.host ?? "127.0.0.1";
     const port = options.port ?? 0;
+    this.isShuttingDown = false;
+
+    if (this.options.enableWebSocket && this.options.authService && this.webSocketBridge == null) {
+      this.webSocketBridge = new WebSocketBridge(
+        this.server,
+        this.options.authService,
+      );
+      logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
+    }
+
     await new Promise<void>((resolve, reject) => {
       this.server.once("error", reject);
       this.server.listen(port, host, () => {
@@ -185,15 +220,6 @@ export class HttpApiServer {
         resolve();
       });
     });
-
-    // Initialize WebSocket bridge if enabled and auth service is available
-    if (this.options.enableWebSocket && this.options.authService) {
-      this.webSocketBridge = new WebSocketBridge(
-        this.server,
-        this.options.authService,
-      );
-      logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
-    }
     this.startWorkerHeartbeatSweep();
 
     const address = this.server.address();
@@ -212,6 +238,7 @@ export class HttpApiServer {
   }
 
   public async stop(): Promise<void> {
+    this.isShuttingDown = true;
     if (this.workerHeartbeatSweepTimer != null) {
       clearInterval(this.workerHeartbeatSweepTimer);
       this.workerHeartbeatSweepTimer = null;
@@ -240,6 +267,7 @@ export class HttpApiServer {
         resolve();
       });
     });
+    await this.waitForActiveRequestsToDrain();
   }
 
   public broadcastTaskEvent(taskId: string, event: TaskWebSocketEvent): void {
@@ -273,11 +301,8 @@ export class HttpApiServer {
       });
       payload.headers["x-api-version"] = versionDecision.version;
     } else if (method === "OPTIONS") {
-      payload = {
-        statusCode: 204,
-        headers: buildPreflightHeaders(headers.origin, this.corsConfig),
-        body: "",
-      };
+      const endpoint = this.extractEndpointKey(options.url);
+      payload = await this.handlePreflightRequest(requestId, headers.origin, `inject:${endpoint}`);
     } else if (this.rateLimiter != null) {
       const endpoint = this.extractEndpointKey(options.url);
       const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`inject:${endpoint}`);
@@ -327,6 +352,7 @@ export class HttpApiServer {
 
   private async handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const startedAt = Date.now();
+    this.trackActiveRequest(response);
     const headers = normalizeHeaders(request.headers);
     const requestId = readRequestId({
       method: request.method,
@@ -337,6 +363,16 @@ export class HttpApiServer {
     let payload: ApiResponsePayload;
 
     try {
+      if (this.isShuttingDown) {
+        payload = this.buildJsonErrorResponse(requestId, 503, {
+          code: "api.server_shutting_down",
+          message: "Server is shutting down and is not accepting new requests.",
+        });
+        const finalizedPayload = this.decoratePayload(payload, headers.origin);
+        this.recordPrometheusHttpMetric(request.method ?? "GET", request.url, finalizedPayload.statusCode, Date.now() - startedAt);
+        this.sendPayload(response, finalizedPayload, headers["accept-encoding"]);
+        return;
+      }
       const versionDecision = globalVersionRoutingMiddleware.selectVersion(
         globalVersionRoutingMiddleware.parseAcceptVersion(headers["accept-version"] ?? null),
       );
@@ -352,15 +388,13 @@ export class HttpApiServer {
       }
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
       else if ((request.method ?? "GET") === "OPTIONS") {
-        payload = {
-          statusCode: 204,
-          headers: buildPreflightHeaders(headers.origin, this.corsConfig),
-          body: "",
-        };
+        const clientIp = this.resolveClientIp(headers, request.socket?.remoteAddress);
+        const endpoint = this.extractEndpointKey(request.url ?? "/");
+        payload = await this.handlePreflightRequest(requestId, headers.origin, `${clientIp}:${endpoint}`);
       }
       // 2. Rate limiting check (non-OPTIONS only)
       else if (this.rateLimiter != null) {
-        const clientIp = request.socket?.remoteAddress ?? "unknown";
+        const clientIp = this.resolveClientIp(headers, request.socket?.remoteAddress);
         const endpoint = this.extractEndpointKey(request.url ?? "/");
         const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`${clientIp}:${endpoint}`);
         if (!result.allowed) {
@@ -469,6 +503,69 @@ export class HttpApiServer {
     return `/${segments.join("/")}`;
   }
 
+  private resolveClientIp(headers: Record<string, string | undefined>, fallback: string | undefined | null): string {
+    const forwardedFor = headers["x-forwarded-for"]?.split(",")[0]?.trim();
+    if (forwardedFor != null && forwardedFor.length > 0) {
+      return forwardedFor;
+    }
+    const realIp = headers["x-real-ip"]?.trim();
+    if (realIp != null && realIp.length > 0) {
+      return realIp;
+    }
+    const forwarded = headers.forwarded?.match(/for=(?:"?)([^;,"]+)/i)?.[1]?.trim();
+    if (forwarded != null && forwarded.length > 0) {
+      return forwarded;
+    }
+    return fallback?.trim() || "unknown";
+  }
+
+  private async handlePreflightRequest(
+    requestId: string,
+    origin: string | undefined,
+    rateLimitKey: string,
+  ): Promise<ApiResponsePayload> {
+    if (this.rateLimiter != null) {
+      const result = await this.rateLimiter.checkAndConsume(rateLimitKey);
+      if (!result.allowed) {
+        return this.attachRateLimitHeaders(this.buildJsonErrorResponse(requestId, 429, {
+          code: "api.rate_limit_exceeded",
+          message: "Too many requests. Please retry later.",
+        }), result);
+      }
+      return this.attachRateLimitHeaders(this.buildCorsPreflightResponse(requestId, origin), result);
+    }
+    return this.buildCorsPreflightResponse(requestId, origin);
+  }
+
+  private buildCorsPreflightResponse(requestId: string, origin: string | undefined): ApiResponsePayload {
+    const headers = buildPreflightHeaders(origin, this.corsConfig);
+    if (origin != null && origin.trim().length > 0 && Object.keys(headers).length === 0) {
+      return this.buildJsonErrorResponse(requestId, 403, {
+        code: "api.origin_forbidden",
+        message: "Request origin is not allowed.",
+      });
+    }
+    return {
+      statusCode: 204,
+      headers,
+      body: "",
+    };
+  }
+
+  private assertMutatingOriginAllowed(request: ApiRequestLike): void {
+    const method = (request.method ?? "GET").toUpperCase();
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+      return;
+    }
+    const origin = request.headers.origin;
+    if (origin == null || origin.trim().length === 0) {
+      return;
+    }
+    if (!isOriginAllowed(origin, this.corsConfig)) {
+      throw new ApiError(403, "api.origin_forbidden", "Request origin is not allowed.");
+    }
+  }
+
   private async dispatchRequest(
     request: ApiRequestLike,
     options: {
@@ -489,6 +586,7 @@ export class HttpApiServer {
         if (bodyBytes > MAX_BODY_BYTES) {
           throw new ApiError(413, "api.payload_too_large", "Request body exceeds 1 MB limit.");
         }
+        this.assertMutatingOriginAllowed(request);
         assertJsonRequestContentType(request, request.body);
         const route = matchRoute(request);
         if (!route) {
@@ -690,6 +788,7 @@ export class HttpApiServer {
     return [
       ...createHealthRoutes({
         missionControlService: this.options.missionControlService,
+        isShuttingDown: () => this.isShuttingDown,
       }),
       ...createMetricsRoutes({
         prometheusMetricsExporter: this.options.prometheusMetricsExporter ?? null,
@@ -876,6 +975,47 @@ export class HttpApiServer {
     }
   }
 
+  private trackActiveRequest(response: ServerResponse): void {
+    this.activeRequestCount += 1;
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      this.activeRequestCount = Math.max(0, this.activeRequestCount - 1);
+      if (this.activeRequestCount === 0) {
+        for (const resolve of this.activeRequestDrainResolvers) {
+          resolve();
+        }
+        this.activeRequestDrainResolvers.clear();
+      }
+    };
+    response.once("finish", finish);
+    response.once("close", finish);
+  }
+
+  private async waitForActiveRequestsToDrain(): Promise<void> {
+    if (this.activeRequestCount === 0) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      const onDrained = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        this.activeRequestDrainResolvers.delete(onDrained);
+        for (const socket of this.activeSockets) {
+          socket.destroy();
+        }
+        resolve();
+      }, SHUTDOWN_DRAIN_TIMEOUT_MS);
+      timeout.unref?.();
+      this.activeRequestDrainResolvers.add(onDrained);
+    });
+  }
+
   private attachRateLimitHeaders(payload: ApiResponsePayload, result: RateLimitCheckResult): ApiResponsePayload {
     const headers: Record<string, string> = {
       ...payload.headers,
@@ -895,6 +1035,27 @@ export class HttpApiServer {
     return decorateResponseHeaders(payload, origin, this.corsConfig);
   }
 
+  private shouldCompressPayload(payload: ApiResponsePayload, acceptEncoding: string | undefined): "br" | "gzip" | null {
+    if (payload.body.length < 1024) {
+      return null;
+    }
+    if (payload.headers["content-encoding"] != null || payload.headers["transfer-encoding"] != null) {
+      return null;
+    }
+    const contentType = payload.headers["content-type"]?.toLowerCase() ?? "";
+    if (contentType.startsWith("text/event-stream") || contentType.includes("application/x-ndjson")) {
+      return null;
+    }
+    const normalizedAcceptEncoding = (acceptEncoding ?? "").toLowerCase();
+    if (normalizedAcceptEncoding.includes("br")) {
+      return "br";
+    }
+    if (normalizedAcceptEncoding.includes("gzip")) {
+      return "gzip";
+    }
+    return null;
+  }
+
   private sendPayload(
     response: ServerResponse,
     payload: ApiResponsePayload,
@@ -905,31 +1066,24 @@ export class HttpApiServer {
       response.setHeader(name, value);
     }
 
-    const normalizedAcceptEncoding = (acceptEncoding ?? "").toLowerCase();
-    const body = payload.body;
-    const useCompression = body.length >= 1024;
-
-    if (useCompression && normalizedAcceptEncoding.includes("br")) {
+    const compression = this.shouldCompressPayload(payload, acceptEncoding);
+    if (compression != null) {
       response.removeHeader("content-length");
-      response.setHeader("content-encoding", "br");
+      response.removeHeader("transfer-encoding");
+      response.setHeader("content-encoding", compression);
       response.setHeader("transfer-encoding", "chunked");
-      const compress = createBrotliCompress();
-      compress.pipe(response);
-      compress.end(body);
+      const compress = compression === "br" ? createBrotliCompress() : createGzip();
+      void pipeline(
+        Readable.from([payload.body]),
+        compress,
+        response,
+      ).catch(() => {
+        response.destroy();
+      });
       return;
     }
 
-    if (useCompression && normalizedAcceptEncoding.includes("gzip")) {
-      response.removeHeader("content-length");
-      response.setHeader("content-encoding", "gzip");
-      response.setHeader("transfer-encoding", "chunked");
-      const compress = createGzip();
-      compress.pipe(response);
-      compress.end(body);
-      return;
-    }
-
-    response.end(body);
+    response.end(payload.body);
   }
 
   private recordPrometheusHttpMetric(method: string, url: string | undefined, statusCode: number, durationMs: number | null): void {
@@ -959,6 +1113,7 @@ function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): DistributedRateLim
   return new DistributedRateLimiter({
     maxCalls,
     windowMs,
+    allowLocalFallbackInProduction: true,
     ...(redis != null ? { redis } : {}),
   });
 }

@@ -83,6 +83,16 @@
 | `runtime` | `defaultTaskTimeoutMs` | 必须为正数 |
 | `runtime` | `defaultStepTimeoutMs` | 必须为正数 |
 | `runtime` | `maxConcurrentTasks` | 必须为正整数 |
+| `runtime` | `apiDefaultTimeoutMs` | 必须为正整数 |
+| `runtime` | `apiMaxTimeoutMs` | 必须为正整数 |
+| `runtime` | `maxAgentRounds` | 若声明则必须为正整数 |
+| `runtime` | `maxToolCalls` | 若声明则必须为正整数 |
+| `runtime` | `retryMax` | 必须为正整数 |
+| `runtime` | `circuitBreaker.enabled` | 必须为布尔值 |
+| `runtime` | `circuitBreaker.threshold` | 必须为正整数 |
+| `runtime` | `rateLimit.enabled` | 必须为布尔值 |
+| `runtime` | `rateLimit.requestsPerMinute` | 必须为正整数 |
+| `runtime` | `configDriftReconciler.interval` | 必须为正整数 |
 | `security` | `sandboxMode` | 必须为 `read_only \| workspace_write \| scoped_external_access \| restricted_exec` 之一 |
 | `security` | `remoteWorkerRegistration.challengeTtlMs` | 必须为正数 |
 | `security` | `remoteWorkerRegistration.allowedCapabilities` | 必须为非空字符串数组 |
@@ -95,6 +105,11 @@
 ### 3A.3 JSONC 支持
 
 配置文件支持 `//` 行注释、`/* */` 块注释和尾逗号。解析时先剥离注释再做 JSON parse。
+
+### 3A.3A Schema 载体
+
+- “versioned schema” 指存在权威且带版本的配置结构约束，不强制必须以内联 `$schema` 或独立 `*.schema.json` 文件形态交付。
+- 允许使用代码内的权威 executable schema / validator，只要其与 `configSchemaVersion` 一起受版本管理，并在 bundle 加载时强校验。
 
 ### 3A.4 Sandbox 路径约束
 

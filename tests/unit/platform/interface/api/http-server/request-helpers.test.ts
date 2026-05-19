@@ -238,7 +238,7 @@ test("authenticateOptionalPrincipal returns null when authService is null", () =
 test("authenticateOptionalPrincipal returns null when no auth headers present", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const request: ApiRequestLike = {
     method: "GET",
@@ -253,7 +253,7 @@ test("authenticateOptionalPrincipal returns null when no auth headers present", 
 test("authenticateOptionalPrincipal returns null when auth headers are empty", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const request: ApiRequestLike = {
     method: "GET",
@@ -268,7 +268,7 @@ test("authenticateOptionalPrincipal returns null when auth headers are empty", (
 test("authenticateOptionalPrincipal returns principal for valid Bearer token", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const exchange = service.exchangeApiKey("test-key");
   const request: ApiRequestLike = {
@@ -286,7 +286,7 @@ test("authenticateOptionalPrincipal returns principal for valid Bearer token", (
 test("authenticateOptionalPrincipal returns principal for valid API key", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-2", roles: ["operator"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const request: ApiRequestLike = {
     method: "GET",
@@ -303,7 +303,7 @@ test("authenticateOptionalPrincipal returns principal for valid API key", () => 
 test("authenticateOptionalPrincipal returns null for invalid token (swallows error)", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const request: ApiRequestLike = {
     method: "GET",
@@ -318,7 +318,7 @@ test("authenticateOptionalPrincipal returns null for invalid token (swallows err
 test("authenticateOptionalPrincipal returns null for invalid API key (swallows error)", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
-    jwtSecret: "secret",
+    jwtSecret: "secret-123",
   });
   const request: ApiRequestLike = {
     method: "GET",

@@ -164,6 +164,7 @@ test("ApiKeyRotationRecord statuses", () => {
   const activeRecord: ApiKeyRotationRecord = {
     keyId: "key123",
     actorId: "actor456",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "active",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: null,
@@ -174,6 +175,7 @@ test("ApiKeyRotationRecord statuses", () => {
   const rotatingRecord: ApiKeyRotationRecord = {
     keyId: "key123",
     actorId: "actor456",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "rotating",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: "2024-06-01T00:00:00Z",
@@ -184,6 +186,7 @@ test("ApiKeyRotationRecord statuses", () => {
   const revokedRecord: ApiKeyRotationRecord = {
     keyId: "key123",
     actorId: "actor456",
+    oldApiKeyFingerprint: "sha256:abc123def456",
     status: "revoked",
     createdAt: "2024-01-01T00:00:00Z",
     rotatedAt: "2024-06-01T00:00:00Z",

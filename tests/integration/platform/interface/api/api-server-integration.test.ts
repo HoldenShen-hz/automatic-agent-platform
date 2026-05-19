@@ -115,7 +115,7 @@ test("api server handles cors preflight requests", async () => {
       },
     });
     // Default allowed origins may be empty or restrictive
-    assert.ok([204, 400].includes(wrongOrigin.statusCode));
+    assert.ok([403].includes(wrongOrigin.statusCode));
   } finally {
     context.db.close();
     cleanupPath(workspace);

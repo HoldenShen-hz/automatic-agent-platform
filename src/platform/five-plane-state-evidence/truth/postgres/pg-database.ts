@@ -6,6 +6,7 @@
  * with the SQLite implementation while providing PostgreSQL-specific optimizations.
  *
  * Requires the `postgres` npm package, which is now declared in the main runtime dependencies.
+ * Contract reference: docs_zh/contracts/runtime_repository_and_migration_contract.md
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";

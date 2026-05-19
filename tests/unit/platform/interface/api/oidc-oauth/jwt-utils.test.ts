@@ -63,6 +63,13 @@ test("parseJwtHeader ignores non-string alg", () => {
   );
 });
 
+test("parseJwtHeader rejects unsupported algorithm names", () => {
+  assert.throws(
+    () => parseJwtHeader({ kid: "key-1", alg: "none" }),
+    (err: any) => err.code === "jwt.header_invalid",
+  );
+});
+
 test("parseJwtHeader throws for non-record value", () => {
   assert.throws(
     () => parseJwtHeader("string"),

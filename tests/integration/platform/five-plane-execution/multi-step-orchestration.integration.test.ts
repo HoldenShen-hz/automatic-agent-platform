@@ -42,12 +42,9 @@ test("integration: runMultiStepOrchestration with oapeflir plan request", async 
     assert.ok(result.plannedWorkflow);
     assert.equal(result.routing.routeReason, "oapeflir_bridge");
   } finally {
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-    }
-    const artifactsDir = join(dirname(dbPath), "artifacts");
-    if (fs.existsSync(artifactsDir)) {
-      fs.rmSync(artifactsDir, { recursive: true, force: true });
+    const dbDir = dirname(dbPath);
+    if (fs.existsSync(dbDir)) {
+      fs.rmSync(dbDir, { recursive: true, force: true });
     }
   }
 });
@@ -73,12 +70,9 @@ test("integration: runMultiStepOrchestration creates routing and workflow", asyn
     assert.ok(result.plannedWorkflow.workflow.workflowId);
     assert.equal(result.routing.requiresOrchestration, true);
   } finally {
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-    }
-    const artifactsDir = join(dirname(dbPath), "artifacts");
-    if (fs.existsSync(artifactsDir)) {
-      fs.rmSync(artifactsDir, { recursive: true, force: true });
+    const dbDir = dirname(dbPath);
+    if (fs.existsSync(dbDir)) {
+      fs.rmSync(dbDir, { recursive: true, force: true });
     }
   }
 });
@@ -101,12 +95,9 @@ test("integration: runMultiStepOrchestration stores events", async () => {
     // Snapshot should contain events
     assert.ok(result.snapshot.events);
   } finally {
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-    }
-    const artifactsDir = join(dirname(dbPath), "artifacts");
-    if (fs.existsSync(artifactsDir)) {
-      fs.rmSync(artifactsDir, { recursive: true, force: true });
+    const dbDir = dirname(dbPath);
+    if (fs.existsSync(dbDir)) {
+      fs.rmSync(dbDir, { recursive: true, force: true });
     }
   }
 });

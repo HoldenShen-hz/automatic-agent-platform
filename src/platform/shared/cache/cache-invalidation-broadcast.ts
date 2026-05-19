@@ -11,8 +11,10 @@ import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../utils/redis-client-options.js";
 import { StructuredLogger } from "../observability/structured-logger.js";
+import { runtimeMetricsRegistry } from "../observability/runtime-metrics-registry.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
+const BROADCAST_MAX_ATTEMPTS = 3;
 
 export interface CacheInvalidationMessage {
   type: "tag" | "namespace";
@@ -32,6 +34,7 @@ export class CacheInvalidationBroadcast {
   private readonly instanceId: string;
   private readonly onInvalidate: (msg: CacheInvalidationMessage) => Promise<void>;
   private isStarted = false;
+  private isSubscribed = false;
 
   constructor(
     private readonly config: CacheInvalidationBroadcastConfig,
@@ -60,55 +63,108 @@ export class CacheInvalidationBroadcast {
     if (this.isStarted) return;
 
     await this.sub.subscribe(this.channel);
-    this.sub.on("message", async (_channel: string, raw: string) => {
-      try {
-        const msg = JSON.parse(raw) as CacheInvalidationMessage;
-        if (msg.origin === this.instanceId) return;
-        await this.onInvalidate(msg);
-      } catch {
-        // Ignore parse errors
-      }
+    this.isSubscribed = true;
+    this.sub.on("message", (_channel: string, raw: string) => {
+      void this.handleIncomingMessage(raw);
     });
 
     this.isStarted = true;
   }
 
   async broadcastTagInvalidation(tag: string): Promise<void> {
-    await this.pub.publish(
-      this.channel,
-      JSON.stringify({
-        type: "tag",
-        tag,
-        origin: this.instanceId,
-      } satisfies CacheInvalidationMessage),
-    );
+    await this.publishWithRetry({
+      type: "tag",
+      tag,
+      origin: this.instanceId,
+    } satisfies CacheInvalidationMessage);
   }
 
   async broadcastNamespaceInvalidation(namespace: string): Promise<void> {
-    await this.pub.publish(
-      this.channel,
-      JSON.stringify({
-        type: "namespace",
-        namespace,
-        origin: this.instanceId,
-      } satisfies CacheInvalidationMessage),
-    );
+    await this.publishWithRetry({
+      type: "namespace",
+      namespace,
+      origin: this.instanceId,
+    } satisfies CacheInvalidationMessage);
   }
 
   async close(): Promise<void> {
-    if (this.isStarted) {
-      await this.sub.unsubscribe(this.channel);
+    if (this.isSubscribed) {
+      try {
+        await this.sub.unsubscribe(this.channel);
+      } catch (error) {
+        logger.warn("cache_invalidation.unsubscribe_failed", {
+          channel: this.channel,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
-    if (this.pub.status === "wait" || this.pub.status === "end") {
-      this.pub.disconnect();
-    } else {
-      await this.pub.quit();
-    }
-    if (this.sub.status === "wait" || this.sub.status === "end") {
-      this.sub.disconnect();
-    } else {
-      await this.sub.quit();
-    }
+    await this.closeClient("pub", this.pub);
+    await this.closeClient("sub", this.sub);
+    this.isSubscribed = false;
     this.isStarted = false;
+  }
+
+  private async handleIncomingMessage(raw: string): Promise<void> {
+    let msg: CacheInvalidationMessage;
+    try {
+      msg = JSON.parse(raw) as CacheInvalidationMessage;
+    } catch (error) {
+      runtimeMetricsRegistry.incrementCounter("cache_invalidation_broadcast_failures_total", { phase: "parse" }, 1);
+      logger.warn("cache_invalidation.message_parse_failed", {
+        channel: this.channel,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    if (msg.origin === this.instanceId) {
+      return;
+    }
+    try {
+      await this.onInvalidate(msg);
+    } catch (error) {
+      runtimeMetricsRegistry.incrementCounter("cache_invalidation_broadcast_failures_total", { phase: "consume" }, 1);
+      logger.error("cache_invalidation.message_consume_failed", {
+        channel: this.channel,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private async publishWithRetry(message: CacheInvalidationMessage): Promise<void> {
+    const payload = JSON.stringify(message);
+    let attempt = 0;
+    let lastError: unknown;
+    while (attempt < BROADCAST_MAX_ATTEMPTS) {
+      attempt += 1;
+      try {
+        await this.pub.publish(this.channel, payload);
+        return;
+      } catch (error) {
+        lastError = error;
+        runtimeMetricsRegistry.incrementCounter("cache_invalidation_broadcast_failures_total", { phase: "publish" }, 1);
+        if (attempt < BROADCAST_MAX_ATTEMPTS) {
+          runtimeMetricsRegistry.incrementCounter("cache_invalidation_broadcast_retries_total", { phase: "publish" }, 1);
+          continue;
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  }
+
+  private async closeClient(component: "pub" | "sub", client: Redis): Promise<void> {
+    try {
+      if (client.status === "wait" || client.status === "end") {
+        client.disconnect();
+        return;
+      }
+      await client.quit();
+    } catch (error) {
+      runtimeMetricsRegistry.incrementCounter("cache_invalidation_broadcast_failures_total", { phase: "close", component }, 1);
+      logger.warn("cache_invalidation.client_close_failed", {
+        component,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      client.disconnect();
+    }
   }
 }

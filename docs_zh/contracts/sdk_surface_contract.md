@@ -19,6 +19,16 @@
 | Pack SDK | `src/sdk/pack-sdk/` | pack scaffold / lifecycle / compatibility |
 | Plugin SDK | `src/sdk/plugin-sdk/` | plugin 定义、上下文、测试 harness |
 
+## 2.1 包导出与稳定性边界
+
+根 `package.json` 当前额外导出 `./apps`、`./domains`、`./interaction`、`./ops-maturity`、`./org-governance`、`./platform`、`./platform/*`、`./plugins`、`./scale-ecosystem/*` 等入口。
+
+稳定性规则：
+
+- `./sdk`、`./sdk/cli`、`./cli`、`./operator` 属于**版本化稳定表面**，必须遵守本 contract。
+- `./apps`、`./domains`、`./interaction`、`./platform*`、`./plugins`、`./scale-ecosystem*` 属于**代码级兼容导出**，用于 monorepo / 集成测试 / 渐进迁移，不单独承诺 semver 稳定；若对外开放，必须先补充对应 contract 与类型面文档。
+- 对外文档若未单列某个 export family，默认按“内部兼容导出”处理，不得被 marketplace / 第三方 SDK 当作稳定公共 API。
+
 ## 3. 核心对象
 
 ```typescript

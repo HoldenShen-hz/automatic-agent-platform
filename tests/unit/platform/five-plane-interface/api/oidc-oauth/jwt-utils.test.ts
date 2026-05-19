@@ -45,14 +45,25 @@ test("parseJwtHeader returns empty object when no kid or alg", () => {
   assert.deepEqual(result, {});
 });
 
-test("parseJwtHeader only extracts string kid", () => {
-  const result = parseJwtHeader({ alg: "RS256", kid: 123 });
-  assert.deepEqual(result, { alg: "RS256" });
+test("parseJwtHeader throws when kid is not string", () => {
+  assert.throws(
+    () => parseJwtHeader({ alg: "RS256", kid: 123 }),
+    /jwt\.header_invalid/,
+  );
 });
 
-test("parseJwtHeader only extracts string alg", () => {
-  const result = parseJwtHeader({ alg: 123, kid: "key123" });
-  assert.deepEqual(result, { kid: "key123" });
+test("parseJwtHeader throws when alg is not string", () => {
+  assert.throws(
+    () => parseJwtHeader({ alg: 123, kid: "key123" }),
+    /jwt\.header_invalid/,
+  );
+});
+
+test("parseJwtHeader rejects unsupported algorithms", () => {
+  assert.throws(
+    () => parseJwtHeader({ alg: "none", kid: "key123" }),
+    /jwt\.header_invalid/,
+  );
 });
 
 test("parseJwtHeader throws for non-object value", () => {

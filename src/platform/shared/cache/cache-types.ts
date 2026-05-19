@@ -43,6 +43,8 @@ export interface CacheLookupResult<T> {
   value: T | null;
   layer?: CacheLayer;
   reason?: CacheMissReason;
+  meta?: CacheMeta;
+  backfillFailed?: boolean;
 }
 
 export interface CachePolicy {

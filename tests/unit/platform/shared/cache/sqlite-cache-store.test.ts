@@ -52,6 +52,9 @@ class MockDatabase {
   }
 
   async execute(sql: string, params?: unknown[]): Promise<{ changes?: number }> {
+    if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") {
+      return { changes: 0 };
+    }
     if (sql.includes("INSERT") && sql.includes("cache_entries")) {
       const p = params as unknown[];
       const namespace = String(p[0] ?? "");
@@ -67,9 +70,10 @@ class MockDatabase {
       const hit_count = Number(p[10] ?? 0);
 
       const fullKey = `${namespace}:${key}`;
+      const existing = this.entries.get(fullKey);
       this.entries.set(fullKey, {
         namespace, cache_key: key, value_json, scope, version, tags_json,
-        size_bytes, created_at, expires_at, last_accessed_at, hit_count,
+        size_bytes, created_at, expires_at, last_accessed_at, hit_count: existing?.hit_count ?? hit_count,
       });
       return { changes: 1 };
     }
@@ -83,6 +87,14 @@ class MockDatabase {
       return { changes: 1 };
     }
     if (sql.includes("UPDATE") && sql.includes("cache_entries")) {
+      const namespace = String((params as unknown[])[1] ?? "");
+      const key = String((params as unknown[])[2] ?? "");
+      const fullKey = `${namespace}:${key}`;
+      const existing = this.entries.get(fullKey);
+      if (existing != null) {
+        existing.last_accessed_at = Number((params as unknown[])[0] ?? existing.last_accessed_at);
+        existing.hit_count += 1;
+      }
       return { changes: 1 };
     }
     if (sql.includes("DELETE") && sql.includes("cache_entries") && sql.includes("expires_at")) {
@@ -119,6 +131,37 @@ class MockDatabase {
     }
     if (sql.includes("DELETE") && sql.includes("cache_tag_index") && sql.includes("namespace = ?")) {
       return { changes: 0 };
+    }
+    if (sql.includes("DELETE FROM cache_entries") && sql.includes("IN (")) {
+      const pairs = params as string[];
+      for (let index = 0; index < pairs.length; index += 2) {
+        const namespace = pairs[index];
+        const key = pairs[index + 1];
+        if (namespace != null && key != null) {
+          this.entries.delete(`${namespace}:${key}`);
+        }
+      }
+      return { changes: pairs.length / 2 };
+    }
+    if (sql.includes("DELETE FROM cache_tag_index") && sql.includes("IN (")) {
+      const pairs = params as string[];
+      const toDelete = new Set<string>();
+      for (let index = 0; index < pairs.length; index += 2) {
+        const namespace = pairs[index];
+        const key = pairs[index + 1];
+        if (namespace != null && key != null) {
+          toDelete.add(`${namespace}:${key}`);
+        }
+      }
+      for (const [tag, entries] of this.tagIndex.entries()) {
+        const filtered = entries.filter((entry) => !toDelete.has(`${entry.namespace}:${entry.cache_key}`));
+        if (filtered.length === 0) {
+          this.tagIndex.delete(tag);
+        } else {
+          this.tagIndex.set(tag, filtered);
+        }
+      }
+      return { changes: toDelete.size };
     }
     return { changes: 0 };
   }
@@ -189,6 +232,21 @@ test("SqliteCacheStore.set updates existing entry on conflict", async () => {
   assert.equal(result.value, "updated");
 });
 
+test("SqliteCacheStore.set preserves accumulated hit count on conflict updates", async () => {
+  const db = new MockDatabase();
+  const store = new SqliteCacheStore(db);
+
+  await store.set("ns", "key1", "original", makeMeta());
+  await store.get<string>("ns", "key1");
+  const before = db.entries.get("ns:key1");
+  assert.equal(before?.hit_count, 1);
+
+  await store.set("ns", "key1", "updated", makeMeta());
+
+  const after = db.entries.get("ns:key1");
+  assert.equal(after?.hit_count, 1);
+});
+
 test("SqliteCacheStore.delete removes entry", async () => {
   const db = new MockDatabase();
   const store = new SqliteCacheStore(db);
@@ -210,7 +268,10 @@ test("SqliteCacheStore.invalidateByTag removes tagged entries", async () => {
 
   const count = await store.invalidateByTag("tag:x");
 
-  assert.equal(count >= 1, true);
+  assert.equal(count, 2);
+  assert.equal((await store.get<string>("ns", "key1")).hit, false);
+  assert.equal((await store.get<string>("ns", "key3")).hit, false);
+  assert.equal((await store.get<string>("ns", "key2")).hit, true);
 });
 
 test("SqliteCacheStore.invalidateByTag returns 0 for non-existent tag", async () => {

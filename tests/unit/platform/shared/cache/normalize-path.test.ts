@@ -79,6 +79,12 @@ test("normalizePath with windows-style workspace root", () => {
   assert.equal(result, "/workspace/src/file.ts");
 });
 
+test("normalizePath does not treat prefix collisions as workspace children", () => {
+  const result = normalizePath("/foobar/app.ts", "/foo");
+  assert.equal(result, "/foobar/app.ts");
+  assert.equal(isWithinWorkspace("/foobar/app.ts", "/foo"), false);
+});
+
 test("isWithinWorkspace works with normalized paths", () => {
   const normalized = normalizePath("/workspace/src/file.ts", "/workspace");
   assert.equal(isWithinWorkspace(normalized, "/workspace"), true);

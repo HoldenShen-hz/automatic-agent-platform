@@ -350,3 +350,11 @@ test("parseJwtHeader allows numeric alg in legacy format", () => {
     assert.equal(error.code, "jwt.header_invalid");
   }
 });
+
+test("parseJwtHeader rejects unsupported algorithm names", () => {
+  assert.throws(() => {
+    parseJwtHeader({ alg: "none" });
+  }, (err: unknown) => {
+    return (err as { code?: string }).code === "jwt.header_invalid";
+  });
+});

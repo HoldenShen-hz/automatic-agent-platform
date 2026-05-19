@@ -1,3 +1,7 @@
+/**
+ * SQLite authoritative storage backend.
+ * Contract reference: docs_zh/contracts/runtime_repository_and_migration_contract.md
+ */
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -121,6 +125,7 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
   private readonly migrationPlan: readonly SqliteMigrationDefinition[];
   private readonly busyTimeoutMs: number;
   private transactionDepth = 0;
+  private migrationLedgerEnsured = false;
 
   public constructor(public readonly filePath: string, options: SqliteDatabaseOptions = {}) {
     mkdirSync(dirname(filePath), { recursive: true });
@@ -188,7 +193,8 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    * @returns The schema status object
    */
   public getSchemaStatus(): SqliteSchemaStatus {
-    const applied = new Map(this.listAppliedMigrations().map((record) => [record.version, record]));
+    const appliedRecords = this.listAppliedMigrations();
+    const applied = new Map(appliedRecords.map((record) => [record.version, record]));
     const pendingVersions: number[] = [];
     const checksumMismatches: SqliteSchemaStatus["checksumMismatches"] = [];
 
@@ -209,7 +215,7 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
       }
     }
 
-    const currentVersion = Math.max(0, ...this.listAppliedMigrations().map((record) => record.version));
+    const currentVersion = Math.max(0, ...appliedRecords.map((record) => record.version));
     return {
       currentVersion,
       expectedVersion: this.migrationPlan.at(-1)?.version ?? 0,
@@ -313,11 +319,19 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    */
   public async healthCheck(): Promise<boolean> {
     try {
-      this.connection.exec("CREATE TABLE IF NOT EXISTS __health_probe (id INTEGER PRIMARY KEY, created_at TEXT)");
-      this.connection.exec("INSERT INTO __health_probe(created_at) VALUES (CURRENT_TIMESTAMP)");
-      this.connection.exec("DELETE FROM __health_probe");
+      this.transaction(() => {
+        this.connection.exec("CREATE TEMP TABLE IF NOT EXISTS __health_probe (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL);");
+        this.connection.exec("INSERT INTO __health_probe(created_at) VALUES (CURRENT_TIMESTAMP);");
+        this.connection.exec("DELETE FROM __health_probe;");
+        this.connection.exec("DROP TABLE IF EXISTS __health_probe;");
+      });
       return true;
-    } catch {
+    } catch (error) {
+      sqliteDbLogger.log({
+        level: "warn",
+        message: "SQLite health check failed",
+        data: { filePath: this.filePath, error: error instanceof Error ? error.message : String(error) },
+      });
       return false;
     }
   }
@@ -336,7 +350,11 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    * Ensures the migration ledger table exists.
    */
   private ensureMigrationLedgerTable(): void {
+    if (this.migrationLedgerEnsured) {
+      return;
+    }
     this.connection.exec(SQLITE_MIGRATION_LEDGER_SQL);
+    this.migrationLedgerEnsured = true;
   }
 
   /**
@@ -347,7 +365,7 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    */
   private runInTransaction<T>(mode: "read" | "write", work: () => T): T {
     const isRootTransaction = this.transactionDepth === 0;
-    const savepointName = `aa_tx_${this.transactionDepth + 1}`;
+    const savepointName = this.quoteIdentifier(`aa_tx_${this.transactionDepth + 1}`);
 
     try {
       if (isRootTransaction) {
@@ -370,15 +388,15 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
       throw this.normalizeTransactionError(mode, error);
     }
 
-    this.transactionDepth -= 1;
-
     try {
       if (isRootTransaction) {
         this.connection.exec("COMMIT");
       } else {
         this.connection.exec(`RELEASE SAVEPOINT ${savepointName}`);
       }
+      this.transactionDepth -= 1;
     } catch (error) {
+      this.transactionDepth -= 1;
       this.rollbackTransaction(isRootTransaction, savepointName);
       throw this.normalizeTransactionError(mode, error);
     }
@@ -856,6 +874,10 @@ CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
       default:
         return false;
     }
+  }
+
+  private quoteIdentifier(identifier: string): string {
+    return `"${identifier.replace(/"/g, "\"\"")}"`;
   }
 
   /**

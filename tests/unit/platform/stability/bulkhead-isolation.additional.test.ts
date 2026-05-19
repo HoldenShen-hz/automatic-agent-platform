@@ -140,6 +140,61 @@ describe("bulkhead-isolation additional tests", () => {
         BulkheadTimeoutError,
       );
     });
+
+    test("queued calls use the configured timeout as an end-to-end deadline", async () => {
+      const isolator = new BulkheadIsolator("test-plane", {
+        maxConcurrentCalls: 1,
+        queueSize: 1,
+        timeoutMs: 40,
+      });
+      const releaseFirstCall = createDeferred<void>();
+      const firstCallStarted = createDeferred<void>();
+
+      const firstCall = isolator.execute(async () => {
+        firstCallStarted.resolve();
+        await releaseFirstCall.promise;
+        return "first";
+      }).catch((error) => error);
+      await firstCallStarted.promise;
+
+      const queuedCall = isolator.execute(async () => "queued");
+
+      await assert.rejects(queuedCall, (error: unknown) => {
+        assert.ok(error instanceof BulkheadTimeoutError);
+        assert.equal(error.timeoutMs, 40);
+        return true;
+      });
+
+      releaseFirstCall.resolve();
+      await firstCall;
+    });
+
+    test("timed out active calls keep capacity occupied until the underlying work settles", async () => {
+      const isolator = new BulkheadIsolator("test-plane", {
+        maxConcurrentCalls: 1,
+        queueSize: 0,
+        timeoutMs: 20,
+      });
+      const releaseSlowCall = createDeferred<void>();
+
+      const slowCall = isolator.execute(async () => {
+        await releaseSlowCall.promise;
+        return "slow";
+      });
+
+      await assert.rejects(slowCall, BulkheadTimeoutError);
+      assert.equal(isolator.getMetrics().activeCalls, 1);
+
+      await assert.rejects(
+        isolator.execute(async () => "second"),
+        BulkheadRejectionError,
+      );
+
+      releaseSlowCall.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.equal(isolator.getMetrics().activeCalls, 0);
+      assert.equal(await isolator.execute(async () => "recovered"), "recovered");
+    });
   });
 
   describe("BulkheadMetrics accuracy", () => {
@@ -204,6 +259,27 @@ describe("bulkhead-isolation additional tests", () => {
       const metrics = registry.getAllMetrics();
       assert.equal(Array.isArray(metrics), true);
       assert.equal(metrics.length, 0);
+    });
+
+    test("getOrCreate applies later config updates to an existing isolator", async () => {
+      const registry = new BulkheadRegistry();
+      const isolator = registry.getOrCreate("configurable-plane", { maxConcurrentCalls: 1, queueSize: 0, timeoutMs: 50 });
+      const releaseFirstCall = createDeferred<void>();
+      const firstCallStarted = createDeferred<void>();
+
+      const firstCall = isolator.execute(async () => {
+        firstCallStarted.resolve();
+        await releaseFirstCall.promise;
+        return "first";
+      });
+      await firstCallStarted.promise;
+
+      registry.getOrCreate("configurable-plane", { queueSize: 1 });
+      const queuedCall = isolator.execute(async () => "queued");
+
+      releaseFirstCall.resolve();
+      assert.equal(await queuedCall, "queued");
+      await firstCall;
     });
   });
 

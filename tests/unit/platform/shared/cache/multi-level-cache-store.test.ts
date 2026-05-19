@@ -107,7 +107,7 @@ test("MultiLevelCacheStore.invalidateByTag removes from all layers", async () =>
 
   const count = await store.invalidateByTag("tag:a");
 
-  assert.equal(count, 2);
+  assert.equal(count, 6);
 
   const r1 = await store.get<string>("ns", "key1");
   const r2 = await store.get<string>("ns", "key2");
@@ -126,7 +126,7 @@ test("MultiLevelCacheStore.invalidateNamespace removes all entries in namespace 
 
   const count = await store.invalidateNamespace("ns1");
 
-  assert.equal(count, 1);
+  assert.equal(count, 3);
 
   const r1 = await store.get<string>("ns1", "key1");
   const r2 = await store.get<string>("ns2", "key2");
@@ -159,6 +159,47 @@ test("MultiLevelCacheStore.cleanupExpired delegates to all layers", async () => 
 
   assert.equal(rExpired.hit, false);
   assert.equal(rFresh.hit, true);
+});
+
+test("MultiLevelCacheStore.get backfills L1 with upstream metadata", async () => {
+  const l1 = new MemoryCacheStore(100);
+  const l2 = new MemoryCacheStore(100);
+  const l3 = new MemoryCacheStore(100);
+  const store = new MultiLevelCacheStore(l1, l2, l3);
+  const expiresAt = Date.now() + 60_000;
+
+  await l2.set("ns", "key1", "l2-value", {
+    ...makeMeta("session"),
+    tags: ["tag:l2"],
+    expiresAt,
+  });
+
+  const result = await store.get<string>("ns", "key1");
+  const l1Result = await l1.get<string>("ns", "key1");
+
+  assert.equal(result.hit, true);
+  assert.equal(result.layer, "L2");
+  assert.equal(result.meta?.expiresAt, expiresAt);
+  assert.deepEqual(result.meta?.tags, ["tag:l2"]);
+  assert.equal(l1Result.hit, true);
+  assert.equal(l1Result.meta?.expiresAt, expiresAt);
+  assert.deepEqual(l1Result.meta?.tags, ["tag:l2"]);
+  assert.equal(l1Result.meta?.scope, "memory");
+});
+
+test("MultiLevelCacheStore.get returns backfillFailed when L1 backfill fails", async () => {
+  const l1 = new ThrowingCacheStore(new Set(["set"]));
+  const l2 = new MemoryCacheStore(100);
+  const l3 = new MemoryCacheStore(100);
+  const store = new MultiLevelCacheStore(l1, l2, l3);
+
+  await l2.set("ns", "key1", "l2-value", makeMeta("session"));
+
+  const result = await store.get<string>("ns", "key1");
+
+  assert.equal(result.hit, true);
+  assert.equal(result.layer, "L2");
+  assert.equal(result.backfillFailed, true);
 });
 
 test("MultiLevelCacheStore.getStoreForLayer returns correct store", () => {
@@ -230,7 +271,7 @@ test("MultiLevelCacheStore.delete propagates error when one layer throws", async
 
   await assert.rejects(
     () => store.delete("ns", "key1"),
-    (err: unknown) => (err as Error).message === "delete failed",
+    (err: unknown) => err instanceof AggregateError && err.errors.some((cause) => (cause as Error).message === "delete failed"),
   );
 });
 
@@ -242,7 +283,7 @@ test("MultiLevelCacheStore.invalidateByTag propagates error when one layer throw
 
   await assert.rejects(
     () => store.invalidateByTag("tag:a"),
-    (err: unknown) => (err as Error).message === "invalidateByTag failed",
+    (err: unknown) => err instanceof AggregateError && err.errors.some((cause) => (cause as Error).message === "invalidateByTag failed"),
   );
 });
 
@@ -254,7 +295,7 @@ test("MultiLevelCacheStore.invalidateNamespace propagates error when one layer t
 
   await assert.rejects(
     () => store.invalidateNamespace("ns"),
-    (err: unknown) => (err as Error).message === "invalidateNamespace failed",
+    (err: unknown) => err instanceof AggregateError && err.errors.some((cause) => (cause as Error).message === "invalidateNamespace failed"),
   );
 });
 
@@ -266,6 +307,6 @@ test("MultiLevelCacheStore.cleanupExpired propagates error when one layer throws
 
   await assert.rejects(
     () => store.cleanupExpired(),
-    (err: unknown) => (err as Error).message === "cleanupExpired failed",
+    (err: unknown) => err instanceof AggregateError && err.errors.some((cause) => (cause as Error).message === "cleanupExpired failed"),
   );
 });

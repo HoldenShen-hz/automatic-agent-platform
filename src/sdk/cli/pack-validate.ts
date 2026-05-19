@@ -84,14 +84,19 @@ function main(): void {
       }
     }
 
-    // SDK semver check
+    // Align required compatibility fields with pack-test so a manifest cannot
+    // pass validation and then fail the test command for the same omission.
     if (!validated.sdk_semver) {
-      if (opts.strict) {
-        result.valid = false;
-        result.errors.push("missing_field:sdk_semver");
-      } else {
-        result.warnings.push("missing_optional_field:sdk_semver");
-      }
+      result.valid = false;
+      result.errors.push("missing_field:sdk_semver");
+    }
+    if (!validated.platform_min_version) {
+      result.valid = false;
+      result.errors.push("missing_field:platform_min_version");
+    }
+    if (!validated.platform_max_version) {
+      result.valid = false;
+      result.errors.push("missing_field:platform_max_version");
     }
 
     // Contract test generator check

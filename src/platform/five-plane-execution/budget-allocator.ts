@@ -541,7 +541,8 @@ export class BudgetAllocator {
     expectedVersion: number,
     context: NormalizedBudgetAllocatorContext,
   ): Promise<BudgetSettlementResult> {
-    const result = await this.atomicRepository!.settleAtomically(
+    const atomicRepository = this.requireAtomicRepository("budget_settlement.atomic_repository_missing");
+    const result = await atomicRepository.settleAtomically(
       input.ledger,
       input.reservation,
       input.actualAmount,
@@ -596,7 +597,8 @@ export class BudgetAllocator {
     expectedVersion: number,
     context: NormalizedBudgetAllocatorContext,
   ): Promise<BudgetReleaseResult> {
-    const result = await this.atomicRepository!.releaseAtomically(
+    const atomicRepository = this.requireAtomicRepository("budget_release.atomic_repository_missing");
+    const result = await atomicRepository.releaseAtomically(
       input.ledger,
       input.reservation,
       expectedVersion,
@@ -633,6 +635,16 @@ export class BudgetAllocator {
       context,
     });
     return { reservation, settlement, ledger };
+  }
+
+  private requireAtomicRepository(errorCode: string): BudgetAtomicRepository {
+    if (this.atomicRepository == null) {
+      throw new ValidationError(
+        errorCode,
+        `${errorCode}: Atomic budget repository is required for SQL-level CAS operations.`,
+      );
+    }
+    return this.atomicRepository;
   }
 
   private trackActiveReservation(reservation: BudgetReservation): void {

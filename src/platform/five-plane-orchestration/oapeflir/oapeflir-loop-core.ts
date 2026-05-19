@@ -850,9 +850,13 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         && latestReplanDecision.shouldReplan === false
         ? loopReplanDecisionFinal
         : latestReplanDecision;
+      const validatedObservation: UnifiedObservation = {
+        ...taskObservation,
+        task: observedTask,
+      };
 
       return {
-        observation: taskObservation,
+        observation: validatedObservation,
         assessment: validatedAssessment,
         plan: loopPlan,
         planGraphBundle: loopPlanGraphBundle,

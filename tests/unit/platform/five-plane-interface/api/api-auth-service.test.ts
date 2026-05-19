@@ -107,6 +107,22 @@ describe("ApiAuthService", () => {
       const actualTtl = expiresAt - beforeExchange;
       assert.ok(actualTtl >= 4900 && actualTtl <= 5500, `Expected ~5000ms, got ${actualTtl}ms`);
     });
+
+    it("should include issuer, audience, nbf, and jti when configured", () => {
+      const svc = createService(
+        [{ apiKey: "test-api-key-12345", actorId: "user-123", roles: ["operator"] }],
+        { jwtIssuer: "automatic-agent", jwtAudience: ["api", "console"] },
+      );
+
+      const result = svc.exchangeApiKey("test-api-key-12345", "2024-01-15T10:00:00.000Z");
+      const payload = JSON.parse(Buffer.from(result.accessToken.split(".")[1]!, "base64url").toString("utf8"));
+
+      assert.equal(payload.iss, "automatic-agent");
+      assert.deepEqual(payload.aud, ["api", "console"]);
+      assert.equal(payload.nbf, payload.iat);
+      assert.equal(typeof payload.jti, "string");
+      assert.ok(payload.jti.length > 0);
+    });
   });
 
   describe("authenticate", () => {
@@ -331,6 +347,87 @@ describe("ApiAuthService", () => {
       const principal = svc.authenticate({ authorization: `Bearer ${accessToken}` });
       assert.strictEqual(principal.actorId, "user");
     });
+
+    it("should reject token with mismatched issuer", () => {
+      const svc = createService([], { jwtIssuer: "automatic-agent" });
+      const token = createJwtWithClaims(
+        { alg: "HS256", typ: "JWT" },
+        { sub: "user", roles: ["viewer"], iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600, iss: "other-service" },
+        jwtSecret,
+      );
+
+      assert.throws(
+        () => svc.authenticate({ authorization: `Bearer ${token}` }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.invalid_token_issuer",
+      );
+    });
+
+    it("should reject token with mismatched audience", () => {
+      const svc = createService([], { jwtAudience: "automatic-agent-api" });
+      const token = createJwtWithClaims(
+        { alg: "HS256", typ: "JWT" },
+        { sub: "user", roles: ["viewer"], iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600, aud: "other-audience" },
+        jwtSecret,
+      );
+
+      assert.throws(
+        () => svc.authenticate({ authorization: `Bearer ${token}` }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.invalid_token_audience",
+      );
+    });
+
+    it("should reject token that is not valid yet", () => {
+      const svc = createService([], { clockSkewMs: 0 });
+      const future = Math.floor(Date.now() / 1000) + 60;
+      const token = createJwtWithClaims(
+        { alg: "HS256", typ: "JWT" },
+        { sub: "user", roles: ["viewer"], iat: Math.floor(Date.now() / 1000), nbf: future, exp: future + 3600 },
+        jwtSecret,
+      );
+
+      assert.throws(
+        () => svc.authenticate({ authorization: `Bearer ${token}` }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.token_not_yet_valid",
+      );
+    });
+
+    it("should reject revoked JWT IDs when required", () => {
+      const jwtId = "jwt-id-123";
+      const svc = createService([], {
+        requireJwtId: true,
+        isJwtRevoked: (candidateJwtId) => candidateJwtId === jwtId,
+      });
+      const token = createJwtWithClaims(
+        { alg: "HS256", typ: "JWT" },
+        { sub: "user", roles: ["viewer"], iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600, jti: jwtId },
+        jwtSecret,
+      );
+
+      assert.throws(
+        () => svc.authenticate({ authorization: `Bearer ${token}` }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.token_revoked",
+      );
+    });
+
+    it("should accept verification with rotated JWT secret", () => {
+      const signingSvc = createService([{ apiKey: "key-a", actorId: "user-a", roles: ["viewer"] }], { jwtSecret: "secret-a1" });
+      const verifyingSvc = createService([], {
+        jwtSecret: "secret-b1",
+        jwtVerificationSecrets: ["secret-a1"],
+      });
+
+      const { accessToken } = signingSvc.exchangeApiKey("key-a");
+      const principal = verifyingSvc.authenticate({ authorization: `Bearer ${accessToken}` });
+
+      assert.equal(principal.actorId, "user-a");
+    });
+
+    it("should reject weak JWT secrets", () => {
+      assert.throws(
+        () => createService([], { jwtSecret: "secret" }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.jwt_secret_too_short",
+      );
+    });
   });
 
   describe("ApiAuthError", () => {
@@ -353,3 +450,11 @@ describe("ApiAuthService", () => {
     });
   });
 });
+
+function createJwtWithClaims(header: Record<string, unknown>, payload: Record<string, unknown>, secret: string): string {
+  const encodedHeader = Buffer.from(JSON.stringify(header), "utf8").toString("base64url");
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const body = `${encodedHeader}.${encodedPayload}`;
+  const signature = Buffer.from(createHmac("sha256", secret).update(body).digest()).toString("base64url");
+  return `${body}.${signature}`;
+}

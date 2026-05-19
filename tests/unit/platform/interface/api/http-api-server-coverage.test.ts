@@ -132,7 +132,17 @@ async function canBindLocalSockets(): Promise<boolean> {
   });
 }
 
-const networkPathTest = (await canBindLocalSockets()) ? test : test.skip;
+const canBindSockets = await canBindLocalSockets();
+
+function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
+  test(name, async (t) => {
+    if (!canBindSockets) {
+      t.diagnostic("Skipping local socket bind lifecycle path: local sockets are unavailable in this environment.");
+      return;
+    }
+    await body(t);
+  });
+}
 
 function createMockPrometheusMetricsExporter() {
   return {
@@ -162,7 +172,11 @@ function createMinimalServer(): HttpApiServer {
   });
 }
 
-networkPathTest("HttpApiServer start and stop lifecycle", async () => {
+test("HttpApiServer start and stop lifecycle", async (t) => {
+  if (!canBindSockets) {
+    t.diagnostic("Skipping local socket bind lifecycle path: local sockets are unavailable in this environment.");
+    return;
+  }
   const server = createMinimalServer();
 
   const { host, port } = await server.start();

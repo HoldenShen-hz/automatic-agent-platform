@@ -149,6 +149,21 @@ test("OapeflirLoopService evaluationReport follows R5-7 structure", async () => 
   assert.ok(result.evaluationReport.confidence >= 0 && result.evaluationReport.confidence <= 1, "confidence must be 0-1");
 });
 
+test("OapeflirLoopService returns normalized observation task in final result", async () => {
+  runtimeMetricsRegistry.reset();
+  const spy = new SpyExecuteBridge();
+  const service = new OapeflirLoopService({ executeBridge: spy });
+
+  const result = await service.run({
+    taskId: "task_observation_normalized",
+    objective: "Verify normalized observation task is returned",
+    workflow: createSingleStepWorkflow("task_observation_normalized"),
+  });
+
+  assert.equal(result.observation.task.taskId, "task_observation_normalized");
+  assert.ok(Array.isArray(result.observation.task.blockers));
+});
+
 test("OapeflirLoopService produces graphPatch during replan (R5-12)", async () => {
   runtimeMetricsRegistry.reset();
   const spy = new SpyExecuteBridge();

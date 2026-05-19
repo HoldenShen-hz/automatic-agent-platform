@@ -1,0 +1,32 @@
+{
+  "packId": "ops.core",
+  "version": "0.1.0",
+  "domainId": "ops",
+  "domain": "ops",
+  "owner": "platform",
+  "sideEffects": [],
+  "dataClasses": [],
+  "maxRiskClass": "low",
+  "tools": [],
+  "connectors": [],
+  "plugins": [],
+  "evalRequirements": {
+    "requiredDatasets": [],
+    "blockingEvaluators": []
+  },
+  "compatibility": {
+    "requiresActiveDomain": true,
+    "supportedDomainSpecVersions": [
+      "cdm-v2"
+    ]
+  },
+  "capabilities": [
+    {
+      "capabilityKey": "query.execute",
+      "maturity": "ga",
+      "requiredContracts": [
+        "runtime_execution_contract"
+      ]
+    }
+  ]
+}

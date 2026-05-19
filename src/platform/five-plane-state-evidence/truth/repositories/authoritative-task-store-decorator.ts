@@ -2,7 +2,7 @@ import { StructuredLogger } from "../../../shared/observability/structured-logge
 import type { AuthoritativeTaskStore } from "../authoritative-task-store.js";
 
 const authoritativeTaskStoreDecoratorLogger = new StructuredLogger({ retentionLimit: 100 });
-const decoratorMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
+const decoratorMetricsRegistry = new Set<Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>>();
 
 export interface AuthoritativeTaskStoreDecoratorOperationMetrics {
   calls: number;
@@ -48,13 +48,6 @@ function isRetryableSqliteBusyError(error: unknown): boolean {
   return message.includes("SQLITE_BUSY") || code.includes("SQLITE_BUSY");
 }
 
-function sleepSync(ms: number): void {
-  if (ms <= 0) {
-    return;
-  }
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
 function computeRetryBackoffMs(
   attempt: number,
   options: Pick<DecoratedAuthoritativeTaskStoreOptions, "baseRetryDelayMs" | "maxRetryDelayMs" | "retryJitterRatio">,
@@ -73,16 +66,27 @@ function computeRetryBackoffMs(
 
 export function getAuthoritativeTaskStoreDecoratorMetricsSnapshot():
 Record<string, AuthoritativeTaskStoreDecoratorOperationMetrics> {
+  const aggregated = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
+  for (const metricsMap of decoratorMetricsRegistry) {
+    for (const [operation, metrics] of metricsMap.entries()) {
+      const target = getOrCreateOperationMetrics(aggregated, operation);
+      target.calls += metrics.calls;
+      target.successes += metrics.successes;
+      target.failures += metrics.failures;
+      target.retries += metrics.retries;
+      target.totalDurationMs += metrics.totalDurationMs;
+      target.totalBackoffMs += metrics.totalBackoffMs;
+      target.lastDurationMs = metrics.lastDurationMs;
+      target.lastAttemptCount = metrics.lastAttemptCount;
+    }
+  }
   return Object.fromEntries(
-    [...decoratorMetrics.entries()].map(([operation, metrics]) => [
-      operation,
-      { ...metrics },
-    ]),
+    [...aggregated.entries()].map(([operation, metrics]) => [operation, { ...metrics }]),
   );
 }
 
 export function resetAuthoritativeTaskStoreDecoratorMetrics(): void {
-  decoratorMetrics.clear();
+  decoratorMetricsRegistry.clear();
 }
 
 export interface DecoratedAuthoritativeTaskStoreOptions {
@@ -99,6 +103,8 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
 ): T {
   const logger = options.logger ?? authoritativeTaskStoreDecoratorLogger;
   const maxAttempts = Math.max(1, Math.trunc(options.maxRetryAttempts ?? 3));
+  const instanceMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
+  decoratorMetricsRegistry.add(instanceMetrics);
 
   return new Proxy(store, {
     get(target, property, receiver) {
@@ -112,7 +118,7 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
         const startedAt = Date.now();
         let attempt = 0;
         let totalBackoffMs = 0;
-        const metrics = getOrCreateOperationMetrics(decoratorMetrics, operation);
+        const metrics = getOrCreateOperationMetrics(instanceMetrics, operation);
         metrics.calls += 1;
 
         while (true) {
@@ -145,7 +151,6 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
                 backoffMs,
                 error: error instanceof Error ? error.message : String(error),
               });
-              sleepSync(backoffMs);
               continue;
             }
 

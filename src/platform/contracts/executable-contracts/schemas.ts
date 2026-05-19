@@ -125,6 +125,58 @@ export const ConfirmedTaskSpecSchema = z.object({
   missionSnapshotRef: z.string().min(1).optional(),
 });
 
+const DirectiveIssuedBySchema = z.object({
+  principalId: z.string().min(1),
+  tenantId: z.string().min(1),
+  roles: z.array(z.string().min(1)),
+});
+
+const OperationalDirectiveScopeSchema = z.object({
+  tenantId: z.string().min(1).optional(),
+  harnessRunId: z.string().min(1).optional(),
+  nodeRunId: z.string().min(1).optional(),
+  workerId: z.string().min(1).optional(),
+});
+
+const DecisionDirectiveScopeSchema = z.object({
+  tenantId: z.string().min(1).optional(),
+  harnessRunId: z.string().min(1).optional(),
+  nodeRunId: z.string().min(1).optional(),
+  humanResponsibilityRecordId: z.string().min(1).optional(),
+});
+
+const OperationalDirectiveSchema = z.object({
+  operationalDirectiveId: z.string().min(1),
+  type: z.enum(["mode_switch", "pause", "resume", "quota_adjust", "kill", "rollback"]),
+  scope: OperationalDirectiveScopeSchema,
+  issuedBy: DirectiveIssuedBySchema,
+  reason: z.string().min(1),
+  params: z.record(z.string(), JsonValueSchema),
+  audience: z.array(z.string().min(1)),
+  nonce: z.string().min(1),
+  signature: z.string().min(1),
+  createdAt: z.string().min(1),
+  expiresAt: z.string().min(1).optional(),
+});
+
+const DecisionDirectiveSchema = z.object({
+  decisionDirectiveId: z.string().min(1),
+  type: z.enum(["approve", "deny", "override", "patch", "takeover", "expire_approval"]),
+  scope: DecisionDirectiveScopeSchema,
+  issuedBy: DirectiveIssuedBySchema.extend({
+    displayName: z.string().min(1).optional(),
+  }),
+  targetRef: z.string().min(1),
+  payload: JsonValueSchema,
+  reason: z.string().min(1),
+  riskAcknowledged: z.boolean(),
+  audience: z.array(z.string().min(1)),
+  nonce: z.string().min(1),
+  signature: z.string().min(1),
+  createdAt: z.string().min(1),
+  expiresAt: z.string().min(1).optional(),
+});
+
 export const RequestEnvelopeSchema = z.object({
   requestId: z.string().min(1),
   confirmedTaskSpecId: z.string().min(1),
@@ -142,8 +194,7 @@ export const RequestEnvelopeSchema = z.object({
   submittedAt: z.string().min(1),
   sourcePlane: z.string().min(1).optional(),
   targetPlane: z.string().min(1).optional(),
-  // R27-17 FIX: ADR-021 directives field for runtime control across planes.
-  directives: z.any().optional(),
+  directives: z.array(z.union([OperationalDirectiveSchema, DecisionDirectiveSchema])).optional(),
   missionRef: MissionRefSchema.optional(),
   missionSnapshotRef: z.string().min(1).optional(),
 });

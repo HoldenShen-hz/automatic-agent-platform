@@ -16,9 +16,11 @@ import {
   type DelegationEvent,
 } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-tracker.js";
 
+let delegationResultCounter = 0;
+
 function createDelegationResult(overrides: Partial<DelegationResult> = {}): DelegationResult {
   return {
-    delegationId: `dlg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    delegationId: `dlg_${++delegationResultCounter}`,
     parentAgentId: "root_agent",
     childAgentId: "child_agent_1",
     depth: 1,

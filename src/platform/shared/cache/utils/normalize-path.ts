@@ -13,16 +13,21 @@ import path from 'node:path';
  * replaces workspace root with /workspace virtual prefix.
  */
 export function normalizePath(input: string, workspaceRoot: string): string {
-  // Resolve to absolute path
-  const resolved = path.resolve(workspaceRoot, input);
-
-  // Normalize slashes for cross-platform consistency
+  const resolvedWorkspaceRoot = path.resolve(workspaceRoot);
+  const resolved = path.resolve(resolvedWorkspaceRoot, input);
+  const relativeToWorkspace = path.relative(resolvedWorkspaceRoot, resolved);
   const normalized = resolved.replace(/\\/g, '/');
 
-  // Replace workspace root with virtual path
-  const normalizedRoot = workspaceRoot.replace(/\\/g, '/');
-  if (normalized.startsWith(normalizedRoot)) {
-    return normalized.replace(normalizedRoot, '/workspace');
+  if (
+    relativeToWorkspace === ""
+    || (
+      !relativeToWorkspace.startsWith(`..${path.sep}`)
+      && relativeToWorkspace !== ".."
+      && !path.isAbsolute(relativeToWorkspace)
+    )
+  ) {
+    const normalizedRelative = relativeToWorkspace.replace(/\\/g, "/");
+    return normalizedRelative === "" ? "/workspace" : `/workspace/${normalizedRelative}`;
   }
 
   return normalized;

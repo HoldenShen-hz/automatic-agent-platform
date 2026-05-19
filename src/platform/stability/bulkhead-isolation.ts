@@ -35,11 +35,14 @@ export interface BulkheadMetrics {
 }
 
 interface QueuedCall<T = unknown> {
-  fn: () => Promise<T>;
+  id: number;
+  fn: (signal?: AbortSignal) => Promise<T>;
   resolve: (value: T) => void;
   reject: (error: Error) => void;
   queuedAt: number;
+  deadlineAt: number;
   timeoutId: ReturnType<typeof setTimeout>;
+  settled: boolean;
 }
 
 /**
@@ -47,13 +50,14 @@ interface QueuedCall<T = unknown> {
  * Limits concurrent calls to a target plane to prevent cascade failures.
  */
 export class BulkheadIsolator {
-  private readonly config: BulkheadConfig;
+  private config: BulkheadConfig;
   private readonly planeName: string;
   private activeCalls = 0;
   private readonly queue: QueuedCall[] = [];
   private totalRejections = 0;
   private totalWaitTime = 0;
   private waitCount = 0;
+  private nextQueuedCallId = 1;
 
   public constructor(planeName: string, config: Partial<BulkheadConfig> = {}) {
     this.planeName = planeName;
@@ -64,7 +68,7 @@ export class BulkheadIsolator {
    * Execute a function with bulkhead isolation.
    * @returns Promise that resolves with the function result
    */
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
+  async execute<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
     // Check if we can start a new call
     if (this.activeCalls >= this.config.maxConcurrentCalls) {
       // Check queue capacity
@@ -81,64 +85,94 @@ export class BulkheadIsolator {
       return this.queueCall(fn);
     }
 
-    return this.startCall(fn);
+    return this.startCall(fn, Date.now() + this.config.timeoutMs);
   }
 
   /**
    * Start a new call.
    */
-  private async startCall<T>(fn: () => Promise<T>): Promise<T> {
+  private async startCall<T>(fn: (signal?: AbortSignal) => Promise<T>, deadlineAt: number): Promise<T> {
     this.activeCalls++;
-
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new BulkheadTimeoutError(
-          `bulkhead:timeout:${this.planeName}`,
-          `Bulkhead isolation: ${this.planeName} call timed out after ${this.config.timeoutMs}ms`,
-          this.planeName,
-          this.config.timeoutMs,
-        ));
-      }, this.config.timeoutMs);
+    const controller = new AbortController();
+    let settled = false;
+    const remainingMs = Math.max(0, deadlineAt - Date.now());
+    const timeoutError = new BulkheadTimeoutError(
+      `bulkhead:timeout:${this.planeName}`,
+      `Bulkhead isolation: ${this.planeName} call timed out after ${this.config.timeoutMs}ms`,
+      this.planeName,
+      this.config.timeoutMs,
+    );
+    const timeoutId = setTimeout(() => {
+      controller.abort(timeoutError);
+      settled = true;
+      rejectPromise(timeoutError);
+    }, remainingMs);
+    let rejectPromise!: (error: Error) => void;
+    const responsePromise = new Promise<T>((resolve, reject) => {
+      rejectPromise = reject;
+      fn(controller.signal)
+        .then((result) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            resolve(result);
+          }
+        })
+        .catch((error) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+          this.activeCalls = Math.max(0, this.activeCalls - 1);
+          this.processQueue();
+        });
     });
 
     try {
-      const result = await Promise.race([fn(), timeoutPromise]);
-      clearTimeout(timeoutId!);
-      return result as T;
-    } finally {
-      this.activeCalls--;
-      this.processQueue();
+      return await responsePromise;
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
   /**
    * Queue a call when at capacity.
    */
-  private queueCall<T>(fn: () => Promise<T>): Promise<T> {
+  private queueCall<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       const queuedAt = Date.now();
+      const queuedCallId = this.nextQueuedCallId++;
+      const deadlineAt = queuedAt + this.config.timeoutMs;
       const timeoutId = setTimeout(() => {
-        // Remove from queue if still waiting
-        const index = this.queue.findIndex((c) => c.fn === fn && c.queuedAt === queuedAt);
+        const index = this.queue.findIndex((c) => c.id === queuedCallId);
         if (index !== -1) {
-          this.queue.splice(index, 1);
+          const [call] = this.queue.splice(index, 1);
+          if (call && !call.settled) {
+            call.settled = true;
+            this.totalRejections++;
+            reject(new BulkheadTimeoutError(
+              `bulkhead:timeout:${this.planeName}`,
+              `Bulkhead isolation: ${this.planeName} queued call timed out after ${this.config.timeoutMs}ms`,
+              this.planeName,
+              this.config.timeoutMs,
+            ));
+          }
         }
-        this.totalRejections++;
-        reject(new BulkheadTimeoutError(
-          `bulkhead:timeout:${this.planeName}`,
-          `Bulkhead isolation: ${this.planeName} queued call timed out after ${this.config.timeoutMs * 2}ms`,
-          this.planeName,
-          this.config.timeoutMs * 2,
-        ));
-      }, this.config.timeoutMs * 2);
+      }, this.config.timeoutMs);
 
       this.queue.push({
+        id: queuedCallId,
         fn,
         resolve: resolve as (value: unknown) => void,
         reject,
         queuedAt,
+        deadlineAt,
         timeoutId,
+        settled: false,
       });
     });
   }
@@ -152,40 +186,38 @@ export class BulkheadIsolator {
       && this.queue.length > 0
     ) {
       const call = this.queue.shift()!;
+      clearTimeout(call.timeoutId);
+      if (call.settled) {
+        continue;
+      }
       const waitTime = Date.now() - call.queuedAt;
       this.totalWaitTime += waitTime;
       this.waitCount++;
-
-      // Start the queued call
-      this.activeCalls++;
-
-      const timeoutId = setTimeout(() => {
-        clearTimeout(call.timeoutId);
-        this.activeCalls--;
+      const remainingMs = call.deadlineAt - Date.now();
+      if (remainingMs <= 0) {
+        call.settled = true;
+        this.totalRejections++;
         call.reject(new BulkheadTimeoutError(
           `bulkhead:timeout:${this.planeName}`,
           `Bulkhead isolation: ${this.planeName} queued call timed out after ${this.config.timeoutMs}ms`,
           this.planeName,
           this.config.timeoutMs,
         ));
-        this.processQueue();
-      }, this.config.timeoutMs);
+        continue;
+      }
 
-      // Execute the function with timeout
-      fnWithTimeout(call.fn, this.config.timeoutMs)
+      this.startCall(call.fn, call.deadlineAt)
         .then((result) => {
-          clearTimeout(timeoutId);
-          clearTimeout(call.timeoutId);
-          call.resolve(result);
+          if (!call.settled) {
+            call.settled = true;
+            call.resolve(result);
+          }
         })
         .catch((err) => {
-          clearTimeout(timeoutId);
-          clearTimeout(call.timeoutId);
-          call.reject(err);
-        })
-        .finally(() => {
-          this.activeCalls--;
-          this.processQueue();
+          if (!call.settled) {
+            call.settled = true;
+            call.reject(err instanceof Error ? err : new Error(String(err)));
+          }
         });
     }
   }
@@ -210,6 +242,11 @@ export class BulkheadIsolator {
     this.totalRejections = 0;
     this.totalWaitTime = 0;
     this.waitCount = 0;
+  }
+
+  public updateConfig(config: Partial<BulkheadConfig>): void {
+    this.config = { ...this.config, ...config };
+    this.processQueue();
   }
 }
 
@@ -243,28 +280,6 @@ export class BulkheadTimeoutError extends Error {
 }
 
 /**
- * Helper for timing out a function.
- * Executes the provided function with timeout protection.
- */
-async function fnWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`Function timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    fn()
-      .then((result) => {
-        clearTimeout(timeoutId);
-        resolve(result);
-      })
-      .catch((err) => {
-        clearTimeout(timeoutId);
-        reject(err);
-      });
-  });
-}
-
-/**
  * Global bulkhead isolators for each plane pair.
  */
 export class BulkheadRegistry {
@@ -278,6 +293,8 @@ export class BulkheadRegistry {
     if (isolator == null) {
       isolator = new BulkheadIsolator(planeName, config);
       this.isolators.set(planeName, isolator);
+    } else if (config != null) {
+      isolator.updateConfig(config);
     }
     return isolator;
   }

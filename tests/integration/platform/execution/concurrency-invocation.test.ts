@@ -27,6 +27,8 @@ import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
+let syntheticConcurrentExecutionCounter = 0;
+
 // ============================================================================
 // Test 1: Concurrent Task Updates
 // ============================================================================
@@ -459,8 +461,9 @@ test("[CONCURRENCY-2] concurrent execution creation with same taskId doesn't cre
       async () => {
         try {
           db.transaction(() => {
+            const syntheticId = syntheticConcurrentExecutionCounter++;
             store.insertExecution({
-              id: `exec-new-${Date.now()}-${Math.random()}`,
+              id: `exec-new-${syntheticId}`,
               taskId,
               workflowId: "single_agent_minimal",
               parentExecutionId: null,
@@ -469,7 +472,7 @@ test("[CONCURRENCY-2] concurrent execution creation with same taskId doesn't cre
               runKind: "task_run",
               status: "created",
               inputRef: null,
-              traceId: `trace-new-${Math.random()}`,
+              traceId: `trace-new-${syntheticId}`,
               attempt: 2,
               timeoutMs: 60000,
               budgetUsdLimit: 1,

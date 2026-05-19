@@ -7,6 +7,8 @@ import { createSeededApiContext } from "../../../../helpers/api.js";
 // Re-export barrel exports from index.ts
 import * as ApiModule from "../../../../../src/platform/five-plane-interface/api/index.js";
 
+process.env["NODE_ENV"] = "test";
+
 // Test the barrel file exports
 test("api barrel exports AdminConfigService", () => {
   assert.ok(ApiModule.AdminConfigService !== undefined);
@@ -485,6 +487,7 @@ test("api barrel oidc oauth service build authorization url", () => {
     tokenEndpoint: "https://idp.example.com/token",
     jwksUri: "https://idp.example.com/jwks",
     scopes: ["openid", "profile", "email"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
   };
 
   const url = service.buildAuthorizationUrl(
@@ -518,6 +521,7 @@ test("api barrel oidc oauth service build authorization url with custom scopes",
     tokenEndpoint: "https://idp.example.com/token",
     jwksUri: "https://idp.example.com/jwks",
     scopes: ["openid", "profile"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
   };
 
   const url = service.buildAuthorizationUrl(

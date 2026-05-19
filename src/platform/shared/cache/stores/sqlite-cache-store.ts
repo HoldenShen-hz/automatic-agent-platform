@@ -14,8 +14,21 @@ export interface SqliteCacheStoreDeps {
   query<T>(sql: string, params?: unknown[]): Promise<T[]>;
 }
 
+interface SerializedSqliteCacheEntry<T = unknown> {
+  value: T;
+  meta?: CacheMeta;
+}
+
 export class SqliteCacheStore implements CacheStore {
   constructor(private readonly db: SqliteCacheStoreDeps) {}
+
+  private deserializeValue<T>(valueJson: string): SerializedSqliteCacheEntry<T> {
+    const parsed = JSON.parse(valueJson) as T | SerializedSqliteCacheEntry<T>;
+    if (parsed != null && typeof parsed === "object" && "value" in parsed) {
+      return parsed as SerializedSqliteCacheEntry<T>;
+    }
+    return { value: parsed as T };
+  }
 
   async get<T>(namespace: string, key: string): Promise<CacheLookupResult<T>> {
     const rows = await this.db.query<{
@@ -63,13 +76,23 @@ export class SqliteCacheStore implements CacheStore {
 
     return {
       hit: true,
-      value: JSON.parse(row.value_json) as T,
+      value: this.deserializeValue<T>(row.value_json).value,
       layer: 'L3',
+      meta: {
+        scope: row.scope as CacheMeta["scope"],
+        tags: JSON.parse(row.tags_json) as string[],
+        version: row.version,
+        createdAt: row.created_at,
+        ...(row.expires_at != null ? { expiresAt: row.expires_at } : {}),
+        lastAccessedAt: Date.now(),
+        hitCount: row.hit_count + 1,
+        sizeBytes: row.size_bytes,
+      },
     };
   }
 
   async set<T>(namespace: string, key: string, value: T, meta: CacheMeta): Promise<void> {
-    const valueJson = stableStringify(value);
+    const valueJson = stableStringify({ value, meta });
     const tagsJson = stableStringify(meta.tags);
 
     await this.db.execute(
@@ -85,7 +108,7 @@ export class SqliteCacheStore implements CacheStore {
          size_bytes = excluded.size_bytes,
          expires_at = excluded.expires_at,
          last_accessed_at = excluded.last_accessed_at,
-         hit_count = excluded.hit_count`,
+         hit_count = cache_entries.hit_count`,
       [
         namespace,
         key,
@@ -133,13 +156,28 @@ export class SqliteCacheStore implements CacheStore {
       return 0;
     }
 
-    let count = 0;
-    for (const entry of entries) {
-      await this.delete(entry.namespace, entry.cache_key);
-      count++;
+    const tuplePlaceholders = entries.map(() => "(?, ?)").join(", ");
+    const tupleParams = entries.flatMap((entry) => [entry.namespace, entry.cache_key]);
+
+    await this.db.execute("BEGIN");
+    try {
+      await this.db.execute(
+        `DELETE FROM cache_entries
+         WHERE (namespace, cache_key) IN (${tuplePlaceholders})`,
+        tupleParams,
+      );
+      await this.db.execute(
+        `DELETE FROM cache_tag_index
+         WHERE (namespace, cache_key) IN (${tuplePlaceholders})`,
+        tupleParams,
+      );
+      await this.db.execute("COMMIT");
+    } catch (error) {
+      await this.db.execute("ROLLBACK");
+      throw error;
     }
 
-    return count;
+    return entries.length;
   }
 
   async invalidateNamespace(namespace: string): Promise<number> {

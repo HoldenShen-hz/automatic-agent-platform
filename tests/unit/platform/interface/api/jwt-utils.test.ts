@@ -86,6 +86,13 @@ test("parseJwtHeader throws when alg is not string", () => {
   );
 });
 
+test("parseJwtHeader throws when alg is unsupported", () => {
+  assert.throws(
+    () => parseJwtHeader({ alg: "none" }),
+    (err: unknown) => err instanceof ValidationError && err.code === "jwt.header_invalid"
+  );
+});
+
 test("parseFederatedTokenClaims parses valid claims with string aud", () => {
   const claims = {
     sub: "user123",

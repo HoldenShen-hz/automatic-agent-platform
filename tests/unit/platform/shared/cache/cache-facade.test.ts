@@ -224,6 +224,32 @@ test("CacheFacade.getOrCompute deduplicates concurrent requests", async () => {
   assert.equal(computeCallCount, 1); // Still 1, no new compute
 });
 
+test("CacheFacade.getOrCompute returns live-compute semantics to concurrent waiters", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  let computeCallCount = 0;
+  let resolveCompute: (value: { result: string }) => void;
+  const computeGate = new Promise<{ result: string }>((resolve) => {
+    resolveCompute = resolve;
+  });
+  const compute = async () => {
+    computeCallCount++;
+    return await computeGate;
+  };
+
+  const firstPromise = facade.getOrCompute(NS, { id: "shared-live" }, compute);
+  const secondPromise = facade.getOrCompute(NS, { id: "shared-live" }, compute);
+  await Promise.resolve();
+  resolveCompute!({ result: "computed" });
+
+  const [firstResult, secondResult] = await Promise.all([firstPromise, secondPromise]);
+  assert.equal(computeCallCount, 1);
+  assert.equal(firstResult.fromCache, false);
+  assert.equal(secondResult.fromCache, false);
+});
+
 test("CacheFacade.invalidateByTag delegates to store", async () => {
   const mockStore = createMockCacheStore();
   const mockMetrics = createMockCacheMetrics();
@@ -232,6 +258,28 @@ test("CacheFacade.invalidateByTag delegates to store", async () => {
   const count = await facade.invalidateByTag("tag1");
 
   assert.equal(typeof count, "number");
+});
+
+test("CacheFacade.invalidateByTag broadcasts cross-instance invalidation when configured", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const calls: string[] = [];
+  const facade = new CacheFacade(
+    mockStore as any,
+    mockMetrics as any,
+    {
+      async broadcastTagInvalidation(tag: string): Promise<void> {
+        calls.push(`tag:${tag}`);
+      },
+      async broadcastNamespaceInvalidation(namespace: string): Promise<void> {
+        calls.push(`ns:${namespace}`);
+      },
+    },
+  );
+
+  await facade.invalidateByTag("tag1");
+
+  assert.deepEqual(calls, ["tag:tag1"]);
 });
 
 test("CacheFacade.invalidateNamespace delegates to store", async () => {
@@ -252,6 +300,28 @@ test("CacheFacade.invalidateNamespace delegates to store", async () => {
   const result2 = await facade.get(NS, { id: 2 });
   assert.equal(result1.hit, false);
   assert.equal(result2.hit, false);
+});
+
+test("CacheFacade.invalidateNamespace broadcasts cross-instance invalidation when configured", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const calls: string[] = [];
+  const facade = new CacheFacade(
+    mockStore as any,
+    mockMetrics as any,
+    {
+      async broadcastTagInvalidation(tag: string): Promise<void> {
+        calls.push(`tag:${tag}`);
+      },
+      async broadcastNamespaceInvalidation(namespace: string): Promise<void> {
+        calls.push(`ns:${namespace}`);
+      },
+    },
+  );
+
+  await facade.invalidateNamespace(NS);
+
+  assert.deepEqual(calls, [`ns:${NS}`]);
 });
 
 test("CacheFacade.getMetricsSnapshot returns metrics", async () => {

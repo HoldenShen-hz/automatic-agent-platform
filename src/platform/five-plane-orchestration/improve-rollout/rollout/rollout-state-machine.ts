@@ -41,7 +41,7 @@ const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus
   deployed: ["rolled_back", "paused"],
   rejected: ["rejected"],
   rolled_back: ["rolled_back"],
-  paused: ["under_review", "approved", "shadow_running", "evaluation_enabled", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "stable_75", "stable_100", "released", "rolled_back", "paused"],
+  paused: ["under_review", "approved", "shadow", "evaluation_enabled", "canary_5", "partial_25", "rolled_back", "paused"],
 };
 
 export class RolloutStateMachine {

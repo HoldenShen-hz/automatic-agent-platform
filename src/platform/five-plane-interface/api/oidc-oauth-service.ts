@@ -46,6 +46,34 @@ export type {
 
 const OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration";
 const JWKS_CACHE_TTL_MS = MS_PER_HOUR;
+const FEDERATED_TOKEN_CLOCK_SKEW_MS = 60_000;
+
+interface StoredApiKeyRecord {
+  readonly apiKeyHash: string;
+  readonly actorId: string;
+  readonly roles: string[];
+  readonly rotatedAt: string | null;
+  readonly expiresAt: string | null;
+}
+
+interface StoredApiKeyRotationRecord {
+  readonly keyId: string;
+  readonly actorId: string;
+  readonly oldApiKeyHash: string;
+  readonly oldApiKeyFingerprint: string;
+  status: "active" | "rotating" | "revoked";
+  readonly createdAt: string;
+  rotatedAt: string | null;
+  readonly expiresAt: string;
+}
+
+function hashApiKey(apiKey: string): string {
+  return createHash("sha256").update(apiKey, "utf8").digest("hex");
+}
+
+function fingerprintApiKey(apiKeyHash: string): string {
+  return `sha256:${apiKeyHash.slice(0, 12)}`;
+}
 
 /**
  * Creates an OIDC provider error for network issues.
@@ -83,8 +111,8 @@ function throwOidcValidationError(code: string, details: Record<string, unknown>
 export class OidcOAuthService {
   private readonly providers: BoundedCache<string, OidcProvider> = new BoundedCache(50);
   private readonly jwksCache: BoundedCache<string, { keys: JwksKey[]; fetchedAt: number }> = new BoundedCache(200);
-  private readonly apiKeys: BoundedCache<string, ApiKeyRecord> = new BoundedCache(500);
-  private readonly rotationKeys: BoundedCache<string, ApiKeyRotationRecord> = new BoundedCache(100);
+  private readonly apiKeys: BoundedCache<string, StoredApiKeyRecord> = new BoundedCache(500);
+  private readonly rotationKeys: BoundedCache<string, StoredApiKeyRotationRecord> = new BoundedCache(100);
   private readonly trustedIssuers: string[];
   private readonly audience: string;
   private readonly fetchImpl: FetchLike;
@@ -109,7 +137,7 @@ export class OidcOAuthService {
     skipSignatureVerification = false,
   ) {
     this.fetchImpl = fetchImpl ?? fetch;
-    if (skipSignatureVerification && process.env["NODE_ENV"] === "production") {
+    if (skipSignatureVerification && process.env["NODE_ENV"] !== "test") {
       throwOidcValidationError("oidc.skip_signature_verification_forbidden", { audience });
     }
     this._skipSignatureVerification = skipSignatureVerification;
@@ -218,9 +246,17 @@ export class OidcOAuthService {
         return { valid: false, error: "jwt.invalid_audience", claims: null, provider: null };
       }
 
-      // Verify expiration
-      if (payload.exp * 1000 < Date.now()) {
+      const now = Date.now();
+
+      // Verify expiration with bounded clock skew tolerance.
+      if (payload.exp * 1000 + FEDERATED_TOKEN_CLOCK_SKEW_MS < now) {
         return { valid: false, error: "jwt.token_expired", claims: null, provider: null };
+      }
+      if (payload.nbf != null && payload.nbf * 1000 - FEDERATED_TOKEN_CLOCK_SKEW_MS > now) {
+        return { valid: false, error: "jwt.not_yet_valid", claims: null, provider: null };
+      }
+      if (payload.iat * 1000 - FEDERATED_TOKEN_CLOCK_SKEW_MS > now) {
+        return { valid: false, error: "jwt.issued_in_future", claims: null, provider: null };
       }
 
       // Skip signature verification if configured (for unit testing with mock tokens)
@@ -258,8 +294,9 @@ export class OidcOAuthService {
    * @param expiresAt - Optional expiration timestamp
    */
   registerApiKey(apiKey: string, actorId: string, roles: string[], expiresAt?: string): void {
-    this.apiKeys.set(apiKey, {
-      apiKey,
+    const apiKeyHash = hashApiKey(apiKey);
+    this.apiKeys.set(apiKeyHash, {
+      apiKeyHash,
       actorId,
       roles,
       rotatedAt: null,
@@ -274,7 +311,7 @@ export class OidcOAuthService {
    * @returns Validation result with actor ID and roles if valid
    */
   validateApiKey(apiKey: string): { valid: boolean; actorId: string | null; roles: string[] } {
-    const record = this.apiKeys.get(apiKey);
+    const record = this.apiKeys.get(hashApiKey(apiKey));
     if (!record) {
       return { valid: false, actorId: null, roles: [] };
     }
@@ -294,7 +331,8 @@ export class OidcOAuthService {
    * @returns Rotation result with new key if successful
    */
   initiateKeyRotation(apiKey: string): { success: boolean; rotationId: string | null; newKey: string | null } {
-    const record = this.apiKeys.get(apiKey);
+    const oldApiKeyHash = hashApiKey(apiKey);
+    const record = this.apiKeys.get(oldApiKeyHash);
     if (!record) {
       return { success: false, rotationId: null, newKey: null };
     }
@@ -306,7 +344,8 @@ export class OidcOAuthService {
     this.rotationKeys.set(rotationId, {
       keyId: rotationId,
       actorId: record.actorId,
-      oldApiKey: apiKey,
+      oldApiKeyHash,
+      oldApiKeyFingerprint: fingerprintApiKey(oldApiKeyHash),
       status: "rotating",
       createdAt: new Date().toISOString(),
       rotatedAt: null,
@@ -314,8 +353,9 @@ export class OidcOAuthService {
     });
 
     // Create new key
-    this.apiKeys.set(newKey, {
-      apiKey: newKey,
+    const newKeyHash = hashApiKey(newKey);
+    this.apiKeys.set(newKeyHash, {
+      apiKeyHash: newKeyHash,
       actorId: record.actorId,
       roles: record.roles,
       rotatedAt: null,
@@ -337,7 +377,7 @@ export class OidcOAuthService {
       return false;
     }
 
-    this.apiKeys.delete(record.oldApiKey);
+    this.apiKeys.delete(record.oldApiKeyHash);
     record.status = "revoked";
     record.rotatedAt = new Date().toISOString();
 
@@ -351,7 +391,19 @@ export class OidcOAuthService {
    * @returns Rotation record or null
    */
   getRotationStatus(rotationId: string): ApiKeyRotationRecord | null {
-    return this.rotationKeys.get(rotationId) ?? null;
+    const record = this.rotationKeys.get(rotationId);
+    if (!record) {
+      return null;
+    }
+    return {
+      keyId: record.keyId,
+      actorId: record.actorId,
+      oldApiKeyFingerprint: record.oldApiKeyFingerprint,
+      status: record.status,
+      createdAt: record.createdAt,
+      rotatedAt: record.rotatedAt,
+      expiresAt: record.expiresAt,
+    };
   }
 
   // ── Provider Management ───────────────────────────────────────────
@@ -406,15 +458,11 @@ export class OidcOAuthService {
         return false;
       }
 
-      // Find the key by kid if specified
-      let key = header.kid
+      // Only allow implicit first-key selection when the token omitted `kid`.
+      // A mismatched `kid` must fail closed instead of silently downgrading.
+      const key = header.kid
         ? keys.find((k) => k.kid === header.kid)
         : keys[0];
-
-      if (!key) {
-        // Fall back to first key if kid not found
-        key = keys[0];
-      }
 
       if (!key) {
         return false;
@@ -424,8 +472,11 @@ export class OidcOAuthService {
       // algorithm confusion attacks; header.alg is used for HMAC (kty: "oct")
       let alg: string;
       if (key.kty === "oct") {
-        // P0-5: HMAC alg comes from header or default - the key itself has no inherent algorithm
-        alg = header.alg ?? key.alg ?? "HS256";
+        const configuredAlg = key.alg ?? "HS256";
+        if (header.alg != null && header.alg !== configuredAlg) {
+          return false;
+        }
+        alg = configuredAlg;
       } else {
         // P0-5: RSA/EC trust key.alg over header.alg to prevent attacker-specified algorithms
         alg = key.alg ?? header.alg ?? "RS256";
@@ -527,25 +578,32 @@ export class OidcOAuthService {
     clientId: string,
     clientSecret: string,
   ): Promise<{ accessToken: string; idToken: string; expiresIn: number }> {
-    const response = await this.fetchImpl(provider.tokenEndpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-        code_verifier: codeVerifier,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await this.fetchImpl(provider.tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+      });
+    } catch (error) {
+      throwOidcProviderError("oauth.token_exchange_transport_failed", {
+        issuer: provider.issuer,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     if (!response.ok) {
       throwOidcProviderError("oauth.token_exchange_failed", {
         issuer: provider.issuer,
-        tokenEndpoint: provider.tokenEndpoint,
         status: response.status,
       }, response.status);
     }
@@ -605,6 +663,17 @@ export class OidcOAuthService {
     codeChallenge: string,
     scopes?: string[],
   ): string {
+    if (provider.allowedRedirectUris == null || provider.allowedRedirectUris.length === 0) {
+      throwOidcValidationError("oidc.redirect_uri_allowlist_required", {
+        issuer: provider.issuer,
+      });
+    }
+    if (!provider.allowedRedirectUris.includes(redirectUri)) {
+      throwOidcValidationError("oidc.redirect_uri_not_allowed", {
+        issuer: provider.issuer,
+        redirectUri,
+      });
+    }
     const params = new URLSearchParams({
       response_type: "code",
       client_id: clientId,

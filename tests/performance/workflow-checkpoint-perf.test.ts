@@ -135,7 +135,7 @@ function createCheckpointAndStore(
       executionId: input.executionId,
       stepId: input.stepId,
       kind: "workflow_step_snapshot",
-      storagePath: `/tmp/checkpoints/${input.taskId}/${input.stepId}.json`,
+      storagePath: `artifact://checkpoints/${input.taskId}/${input.stepId}.json`,
       fileName: `${input.stepId}.json`,
       mimeType: "application/json",
       sizeBytes: serializedCheckpoint.length,

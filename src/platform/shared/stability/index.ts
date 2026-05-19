@@ -20,6 +20,7 @@ export {
   CircuitBreaker,
   CircuitState,
   CircuitBreakerOpenError,
+  CircuitBreakerResetError,
   type CircuitBreakerOptions,
   type CircuitBreakerStats,
 } from "../../stability/circuit-breaker.js";
@@ -27,8 +28,10 @@ export {
 export {
   Retry,
   RetryResult,
+  RetryAbortError,
   RetryTimeoutError,
   type RetryOptions,
+  type RetryExecutionOptions,
   type RetryAttempt,
   type RetryStats,
 } from "../../stability/retry.js";

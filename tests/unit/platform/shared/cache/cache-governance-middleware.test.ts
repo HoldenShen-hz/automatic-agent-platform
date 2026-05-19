@@ -30,10 +30,13 @@ const createMockCache = () => ({
 // Mock logger - using any to avoid interface mismatch
 const createMockLogger = () => ({
   debugMsgs: [] as Array<Record<string, unknown>>,
+  warnMsgs: [] as Array<Record<string, unknown>>,
   debug(msg: string, meta?: Record<string, unknown>) {
     this.debugMsgs.push({ msg, ...meta });
   },
-  warn() {},
+  warn(msg: string, meta?: Record<string, unknown>) {
+    this.warnMsgs.push({ msg, ...meta });
+  },
   info() {},
   error() {},
 });
@@ -214,6 +217,49 @@ test("createCacheSummaryMiddleware returns success", async () => {
   assert.deepEqual(result, { success: true });
 });
 
+test("createCacheSummaryMiddleware reports unavailable metrics instead of pretending success", async () => {
+  const logger = createMockLogger();
+  const summaryMiddleware = createCacheSummaryMiddleware({
+    cache: { getMetricsSnapshot: () => undefined } as any,
+    logger: logger as any,
+  });
+
+  const result = await summaryMiddleware.run(createMockContext(), { response: {}, toolsUsed: [] });
+
+  assert.deepEqual(result, {
+    success: false,
+    error: {
+      code: "cache.metrics_snapshot_unavailable",
+      message: "Cache metrics snapshot is unavailable.",
+      warning: true,
+    },
+  });
+});
+
+test("createCacheSummaryMiddleware reports thrown metric errors", async () => {
+  const logger = createMockLogger();
+  const summaryMiddleware = createCacheSummaryMiddleware({
+    cache: {
+      getMetricsSnapshot() {
+        throw new Error("metrics failed");
+      },
+    } as any,
+    logger: logger as any,
+  });
+
+  const result = await summaryMiddleware.run(createMockContext(), { response: {}, toolsUsed: [] });
+
+  assert.deepEqual(result, {
+    success: false,
+    error: {
+      code: "cache.metrics_snapshot_failed",
+      message: "metrics failed",
+      warning: true,
+    },
+  });
+  assert.ok(logger.warnMsgs.some((entry) => entry.msg === "Cache metrics summary unavailable"));
+});
+
 test("createCacheSummaryMiddleware logs metrics", async () => {
   const mockCache = createMockCache();
   const logger = createMockLogger();
@@ -237,4 +283,63 @@ test("createCacheGovernanceMiddleware does not call next when cache hit", async 
   );
 
   assert.equal(nextCalled, false);
+});
+
+test("createCacheGovernanceMiddleware returns tool result when cache write fails after execution", async () => {
+  let callCount = 0;
+  const failingCache = {
+    async getOrCompute<T>(
+      _namespace: string,
+      _args: Record<string, unknown>,
+      compute: () => Promise<T>,
+    ): Promise<{ fromCache: boolean; value: T }> {
+      const value = await compute();
+      throw new Error(`cache set failed for ${String(value)}`);
+    },
+  };
+  const logger = createMockLogger();
+  const middleware = createCacheGovernanceMiddleware({
+    cache: failingCache as any,
+    logger: logger as any,
+  });
+
+  const result = await middleware.run(
+    createMockContext(),
+    { toolName: "read", args: {} },
+    async () => {
+      callCount++;
+      return "tool-result";
+    },
+  );
+
+  assert.equal(result, "tool-result");
+  assert.equal(callCount, 1);
+  assert.ok(logger.warnMsgs.some((entry) => entry.msg === "Cache write failed after tool execution; returning uncached result"));
+});
+
+test("createCacheGovernanceMiddleware rethrows tool errors instead of swallowing them behind cache fallback", async () => {
+  const passthroughCache = {
+    async getOrCompute<T>(
+      _namespace: string,
+      _args: Record<string, unknown>,
+      compute: () => Promise<T>,
+    ): Promise<{ fromCache: boolean; value: T }> {
+      return { fromCache: false, value: await compute() };
+    },
+  };
+  const middleware = createCacheGovernanceMiddleware({
+    cache: passthroughCache as any,
+  });
+
+  await assert.rejects(
+    () =>
+      middleware.run(
+        createMockContext(),
+        { toolName: "read", args: {} },
+        async () => {
+          throw new Error("tool failed");
+        },
+      ),
+    /tool failed/,
+  );
 });

@@ -32,7 +32,7 @@ describe("stable-evidence-crypto", () => {
       assert.equal(envelope.algorithm, STABLE_EVIDENCE_ALGORITHM);
       assert.equal(typeof envelope.signedAt, "string");
       assert.equal(typeof envelope.nonce, "string");
-      assert.ok(envelope.nonce.length > 0);
+      assert.equal(envelope.nonce.length, 32);
     });
 
     test("payload is canonical JSON string", () => {
@@ -168,6 +168,7 @@ describe("stable-evidence-crypto", () => {
       assert.equal(sig.algorithm, STABLE_EVIDENCE_ALGORITHM);
       assert.equal(typeof sig.signedAt, "string");
       assert.equal(typeof sig.nonce, "string");
+      assert.equal(sig.nonce.length, 32);
       assert.equal(sig.artifactCount, 2);
     });
 

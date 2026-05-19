@@ -97,7 +97,7 @@ test("R28-53 security defaults add explicit MCP sandbox and rate-limit policy", 
     allowNetworkEgress: false,
     allowedDomains: [],
     maxRequestsPerMinute: 60,
-    sandboxMode: "workspace_write",
+    sandboxMode: "read_only",
     allowedTransports: ["stdio"],
   });
 });

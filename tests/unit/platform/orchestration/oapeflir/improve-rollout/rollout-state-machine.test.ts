@@ -98,16 +98,35 @@ test("RolloutStateMachine allows paused rollouts to resume or roll back", () => 
   const stateMachine = new RolloutStateMachine();
   const candidate = createCandidate("approved");
 
-  const resumed = stateMachine.transition(candidate, "L4_stable", {
+  const resumed = stateMachine.transition(candidate, "L3_partial", {
     currentStatus: "paused",
   });
-  assert.equal(resumed.status, "stable_75");
+  assert.equal(resumed.status, "partial_25");
 
   const rolledBack = stateMachine.transition(candidate, "L0_off", {
     currentStatus: "paused",
     targetStatus: "rolled_back",
   });
   assert.equal(rolledBack.status, "rolled_back");
+});
+
+test("RolloutStateMachine blocks paused rollouts from jumping directly into stable or released states", () => {
+  const stateMachine = new RolloutStateMachine();
+  const candidate = createCandidate("approved");
+
+  assert.throws(
+    () => stateMachine.transition(candidate, "L4_stable", {
+      currentStatus: "paused",
+    }),
+    /Invalid rollout transition/,
+  );
+  assert.throws(
+    () => stateMachine.transition(candidate, "L5_full", {
+      currentStatus: "paused",
+      targetStatus: "released",
+    }),
+    /Invalid rollout transition/,
+  );
 });
 
 test("RolloutStateMachine preserves guardrail reason codes", () => {

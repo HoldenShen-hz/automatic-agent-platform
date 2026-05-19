@@ -1,0 +1,12 @@
+{
+  "name": "ops.core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test tests/",
+    "domain:lint": "agent-platform domain validate --domain-id=ops --lint-only",
+    "domain:validate": "agent-platform domain validate --domain-id=ops"
+  }
+}

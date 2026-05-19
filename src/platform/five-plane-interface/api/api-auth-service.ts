@@ -10,7 +10,7 @@
  * Authorization is role-based with three levels: viewer (read-only), operator (read-write), admin (full access).
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { AuthError } from "../../contracts/errors.js";
 
 /** Role levels for API access control */
@@ -71,11 +71,23 @@ export class ApiAuthError extends AuthError {
 export interface ApiAuthServiceOptions {
   apiKeys: ApiKeyRecord[];
   jwtSecret: string;
+  /** Additional secrets accepted during JWT verification to support key rotation. */
+  jwtVerificationSecrets?: readonly string[];
   tokenTtlMs?: number;
   /** Allowed JWT signing algorithms (default: ["HS256"]). */
   allowedAlgorithms?: readonly string[];
   /** Maximum token age in milliseconds (default: 24 hours). */
   maxTokenAgeMs?: number;
+  /** Expected issuer for service-issued and verified JWTs. */
+  jwtIssuer?: string;
+  /** Expected audience for service-issued and verified JWTs. */
+  jwtAudience?: string | readonly string[];
+  /** Clock skew tolerance used for exp/iat/nbf validation. */
+  clockSkewMs?: number;
+  /** Require and validate JWT ID claim during verification. */
+  requireJwtId?: boolean;
+  /** Revocation callback for JWT IDs. */
+  isJwtRevoked?: (jwtId: string, claims: Readonly<JwtClaims>) => boolean;
 }
 
 interface JwtClaims {
@@ -84,6 +96,10 @@ interface JwtClaims {
   tenantId?: string;
   iat: number;
   exp: number;
+  iss?: string;
+  aud?: string | string[];
+  nbf?: number;
+  jti?: string;
 }
 
 const API_ROLE_RANK: Record<ApiRole, number> = {
@@ -101,9 +117,43 @@ function base64UrlDecode(value: string): string {
 }
 
 const ALLOWED_JWT_ALGORITHMS = new Set(["HS256"]);
+const MINIMUM_JWT_SECRET_LENGTH = 8;
+const WEAK_JWT_SECRETS = new Set(["secret", "password", "changeme", "default", "jwtsecret"]);
 
 function hashSecretToken(value: string): Buffer {
   return createHash("sha256").update(value, "utf8").digest();
+}
+
+function assertJwtSecretStrength(secret: string): void {
+  if (secret.length < MINIMUM_JWT_SECRET_LENGTH) {
+    throw new ApiAuthError(500, "api.jwt_secret_too_short", "JWT secret must be at least 8 characters.");
+  }
+  if (WEAK_JWT_SECRETS.has(secret.trim().toLowerCase())) {
+    throw new ApiAuthError(500, "api.jwt_secret_weak", "JWT secret must not use a known weak default.");
+  }
+}
+
+function normalizeAudience(value: string | readonly string[] | undefined): string[] {
+  if (value == null) {
+    return [];
+  }
+  return typeof value === "string" ? [value] : [...value];
+}
+
+function claimsMatchAudience(claimsAudience: string | string[] | undefined, allowedAudiences: readonly string[]): boolean {
+  if (allowedAudiences.length === 0) {
+    return true;
+  }
+  const claimValues = claimsAudience == null
+    ? []
+    : Array.isArray(claimsAudience)
+      ? claimsAudience
+      : [claimsAudience];
+  return claimValues.some((audience) => allowedAudiences.includes(audience));
+}
+
+function createJwtId(): string {
+  return randomBytes(16).toString("hex");
 }
 
 function signJwt(payload: JwtClaims, secret: string): string {
@@ -115,7 +165,20 @@ function signJwt(payload: JwtClaims, secret: string): string {
   return `${body}.${signature}`;
 }
 
-function verifyJwt(token: string, secret: string, options?: { maxTokenAgeMs?: number; allowedAlgorithms?: ReadonlySet<string> }): JwtClaims {
+function verifyJwt(
+  token: string,
+  secret: string,
+  options?: {
+    maxTokenAgeMs?: number;
+    allowedAlgorithms?: ReadonlySet<string>;
+    verificationSecrets?: readonly string[];
+    allowedIssuers?: ReadonlySet<string>;
+    allowedAudiences?: readonly string[];
+    clockSkewMs?: number;
+    requireJwtId?: boolean;
+    isJwtRevoked?: (jwtId: string, claims: Readonly<JwtClaims>) => boolean;
+  },
+): JwtClaims {
   const segments = token.split(".");
   if (segments.length !== 3) {
     throw new ApiAuthError(401, "api.invalid_token", "Bearer token is malformed.");
@@ -148,9 +211,13 @@ function verifyJwt(token: string, secret: string, options?: { maxTokenAgeMs?: nu
 
   // Verify signature
   const body = `${encodedHeader}.${encodedPayload}`;
-  const expected = createHmac("sha256", secret).update(body).digest();
   const actual = Buffer.from(signature, "base64url");
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+  const verificationSecrets = [secret, ...(options?.verificationSecrets ?? [])];
+  const hasValidSignature = verificationSecrets.some((candidateSecret) => {
+    const expected = createHmac("sha256", candidateSecret).update(body).digest();
+    return actual.length === expected.length && timingSafeEqual(actual, expected);
+  });
+  if (!hasValidSignature) {
     throw new ApiAuthError(401, "api.invalid_token_signature", "Bearer token signature is invalid.");
   }
 
@@ -163,14 +230,31 @@ function verifyJwt(token: string, secret: string, options?: { maxTokenAgeMs?: nu
   if (!claims.sub || !Array.isArray(claims.roles) || typeof claims.exp !== "number") {
     throw new ApiAuthError(401, "api.invalid_token_claims", "Bearer token claims are invalid.");
   }
-  if (claims.exp * 1000 <= Date.now()) {
+  const now = Date.now();
+  const clockSkewMs = options?.clockSkewMs ?? 0;
+  if (claims.exp * 1000 + clockSkewMs <= now) {
     throw new ApiAuthError(401, "api.token_expired", "Bearer token has expired.");
   }
+  if (claims.nbf != null && claims.nbf * 1000 - clockSkewMs > now) {
+    throw new ApiAuthError(401, "api.token_not_yet_valid", "Bearer token is not valid yet.");
+  }
+  if (options?.allowedIssuers != null && options.allowedIssuers.size > 0 && !options.allowedIssuers.has(claims.iss ?? "")) {
+    throw new ApiAuthError(401, "api.invalid_token_issuer", "Bearer token issuer is not allowed.");
+  }
+  if (!claimsMatchAudience(claims.aud, options?.allowedAudiences ?? [])) {
+    throw new ApiAuthError(401, "api.invalid_token_audience", "Bearer token audience is not allowed.");
+  }
   if (options?.maxTokenAgeMs != null && claims.iat != null) {
-    const tokenAge = Date.now() - claims.iat * 1000;
+    const tokenAge = now - claims.iat * 1000;
     if (tokenAge > options.maxTokenAgeMs) {
       throw new ApiAuthError(401, "api.token_too_old", "JWT issued too long ago");
     }
+  }
+  if (options?.requireJwtId && typeof claims.jti !== "string") {
+    throw new ApiAuthError(401, "api.invalid_token_id", "Bearer token is missing a valid JWT ID.");
+  }
+  if (typeof claims.jti === "string" && options?.isJwtRevoked?.(claims.jti, claims)) {
+    throw new ApiAuthError(401, "api.token_revoked", "Bearer token has been revoked.");
   }
   return claims;
 }
@@ -194,14 +278,26 @@ export class ApiAuthService {
   private readonly tokenTtlMs: number;
   private readonly apiKeys: ApiKeyRecord[];
   private readonly maxTokenAgeMs: number;
+  private readonly verificationSecrets: readonly string[];
+  private readonly allowedAudiences: readonly string[];
+  private readonly clockSkewMs: number;
+  private readonly allowedIssuers: ReadonlySet<string>;
 
   /**
    * Creates an API auth service with the given configuration.
    * @param options - Configuration including registered API keys, JWT secret, and token TTL
    */
   public constructor(private readonly options: ApiAuthServiceOptions) {
+    assertJwtSecretStrength(options.jwtSecret);
+    for (const rotatedSecret of options.jwtVerificationSecrets ?? []) {
+      assertJwtSecretStrength(rotatedSecret);
+    }
     this.tokenTtlMs = options.tokenTtlMs ?? 60 * 60 * 1000;
     this.maxTokenAgeMs = options.maxTokenAgeMs ?? 24 * 60 * 60 * 1000;
+    this.verificationSecrets = [...(options.jwtVerificationSecrets ?? [])];
+    this.allowedAudiences = normalizeAudience(options.jwtAudience);
+    this.clockSkewMs = Math.max(0, Math.trunc(options.clockSkewMs ?? 0));
+    this.allowedIssuers = new Set(options.jwtIssuer == null ? [] : [options.jwtIssuer]);
     this.apiKeys = options.apiKeys.map((item) => ({
       apiKey: item.apiKey,
       actorId: item.actorId,
@@ -235,6 +331,12 @@ export class ApiAuthService {
       ...(record.tenantId ? { tenantId: record.tenantId } : {}),
       iat: Math.floor(iatMs / 1000),
       exp: Math.floor(expMs / 1000),
+      ...(this.options.jwtIssuer != null ? { iss: this.options.jwtIssuer } : {}),
+      ...(this.allowedAudiences.length > 0
+        ? { aud: this.allowedAudiences.length === 1 ? this.allowedAudiences[0] : [...this.allowedAudiences] }
+        : {}),
+      nbf: Math.floor(iatMs / 1000),
+      jti: createJwtId(),
     };
     return {
       tokenType: "Bearer",
@@ -262,12 +364,19 @@ export class ApiAuthService {
   public authenticate(headers: Record<string, string | undefined>): ApiPrincipal {
     const authorization = headers.authorization;
     if (authorization?.startsWith("Bearer ")) {
-      const claims = verifyJwt(authorization.slice("Bearer ".length), this.options.jwtSecret, {
+      const verifyOptions = {
         maxTokenAgeMs: this.maxTokenAgeMs,
-        allowedAlgorithms: this.options.allowedAlgorithms == null
-          ? undefined
-          : new Set(this.options.allowedAlgorithms),
-      });
+        ...(this.options.allowedAlgorithms == null
+          ? {}
+          : { allowedAlgorithms: new Set(this.options.allowedAlgorithms) }),
+        verificationSecrets: this.verificationSecrets,
+        allowedIssuers: this.allowedIssuers,
+        allowedAudiences: this.allowedAudiences,
+        clockSkewMs: this.clockSkewMs,
+        requireJwtId: this.options.requireJwtId ?? false,
+        isJwtRevoked: this.options.isJwtRevoked,
+      };
+      const claims = verifyJwt(authorization.slice("Bearer ".length), this.options.jwtSecret, verifyOptions);
       return {
         actorId: claims.sub,
         roles: normalizeRoles(claims.roles),

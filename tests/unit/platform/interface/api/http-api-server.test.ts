@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { PassThrough } from "node:stream";
 import { finished } from "node:stream/promises";
 import test from "node:test";
@@ -442,6 +443,19 @@ function createTestServer(overrides: Partial<ConstructorParameters<typeof HttpAp
   return { server, authService };
 }
 
+function buildBillingWebhookHeaders(body: string, secret = "test-webhook-secret"): Record<string, string> {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = createHmac("sha256", secret)
+    .update(timestamp)
+    .update(".")
+    .update(body)
+    .digest("hex");
+  return {
+    "x-webhook-signature": signature,
+    "x-webhook-timestamp": timestamp,
+  };
+}
+
 function createMockServerResponse(): {
   response: PassThrough & {
     statusCode: number;
@@ -592,24 +606,23 @@ test("POST /v1/auth/token rejects non-object payloads", async () => {
 
 test("POST /v1/billing/webhooks/reconcile requires valid billing payload", async () => {
   const { server } = createTestServer();
+  const body = JSON.stringify({
+    gatewayKind: "stripe",
+    gatewaySessionRef: "session_123",
+    status: "paid",
+  });
 
   try {
     const response = await server.inject({
       method: "POST",
       url: "/v1/billing/webhooks/reconcile",
-      headers: {
-        "x-webhook-signature": "test-webhook-secret",
-      },
-      body: JSON.stringify({
-        gatewayKind: "stripe",
-        gatewaySessionRef: "session_123",
-        status: "paid",
-      }),
+      headers: buildBillingWebhookHeaders(body),
+      body,
     });
 
     assert.equal(response.statusCode, 200);
-    const body = response.json<{ requestId: string; data: { sessionRef: string; status: string } }>();
-    assert.equal(body.data.status, "paid");
+    const payload = response.json<{ requestId: string; data: { sessionRef: string; status: string } }>();
+    assert.equal(payload.data.status, "paid");
   } finally {
     await server.stop();
   }
@@ -617,23 +630,22 @@ test("POST /v1/billing/webhooks/reconcile requires valid billing payload", async
 
 test("POST /v1/billing/webhooks/reconcile rejects payload without required fields", async () => {
   const { server } = createTestServer();
+  const body = JSON.stringify({
+    gatewayKind: "stripe",
+    // missing gatewaySessionRef and status
+  });
 
   try {
     const response = await server.inject({
       method: "POST",
       url: "/v1/billing/webhooks/reconcile",
-      headers: {
-        "x-webhook-signature": "test-webhook-secret",
-      },
-      body: JSON.stringify({
-        gatewayKind: "stripe",
-        // missing gatewaySessionRef and status
-      }),
+      headers: buildBillingWebhookHeaders(body),
+      body,
     });
 
     assert.equal(response.statusCode, 400);
-    const body = response.json<{ requestId: string; error: { code: string; message: string } }>();
-    assert.equal(body.error.code, "api.invalid_billing_reconcile_payload:gatewaySessionRef");
+    const payload = response.json<{ requestId: string; error: { code: string; message: string } }>();
+    assert.equal(payload.error.code, "api.invalid_billing_reconcile_payload:gatewaySessionRef");
   } finally {
     await server.stop();
   }
@@ -662,25 +674,24 @@ test("POST /v1/billing/webhooks/reconcile requires webhook signature without aut
 
 test("POST /v1/billing/webhooks/reconcile rejects invalid occurredAt timestamp", async () => {
   const { server } = createTestServer();
+  const body = JSON.stringify({
+    gatewayKind: "stripe",
+    gatewaySessionRef: "session_123",
+    status: "paid",
+    occurredAt: "not-a-timestamp",
+  });
 
   try {
     const response = await server.inject({
       method: "POST",
       url: "/v1/billing/webhooks/reconcile",
-      headers: {
-        "x-webhook-signature": "test-webhook-secret",
-      },
-      body: JSON.stringify({
-        gatewayKind: "stripe",
-        gatewaySessionRef: "session_123",
-        status: "paid",
-        occurredAt: "not-a-timestamp",
-      }),
+      headers: buildBillingWebhookHeaders(body),
+      body,
     });
 
     assert.equal(response.statusCode, 400);
-    const body = response.json<{ requestId: string; error: { code: string } }>();
-    assert.equal(body.error.code, "api.invalid_billing_reconcile_payload:occurredAt");
+    const payload = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(payload.error.code, "api.invalid_billing_reconcile_payload:occurredAt");
   } finally {
     await server.stop();
   }
@@ -1915,6 +1926,68 @@ test("OPTIONS preflight returns 204 with access-control headers", async () => {
   } finally {
     await server.stop();
   }
+});
+
+test("OPTIONS preflight rejects disallowed origins with 403", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "OPTIONS",
+      url: "/v1/tasks",
+      headers: {
+        origin: "https://malicious.example.test",
+        "access-control-request-method": "POST",
+      },
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json<{ error: { code: string } }>().error.code, "api.origin_forbidden");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("state changing requests reject disallowed origins", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: {
+        origin: "https://malicious.example.test",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ apiKey: "test-operator-key" }),
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json<{ error: { code: string } }>().error.code, "api.origin_forbidden");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("HttpApiServer configures hardened HTTP server timeouts", async () => {
+  const { server } = createTestServer();
+  const nodeServer = (server as unknown as {
+    server: {
+      headersTimeout: number;
+      keepAliveTimeout: number;
+      requestTimeout: number;
+      maxHeadersCount: number;
+      maxRequestsPerSocket: number;
+    };
+  }).server;
+
+  assert.equal(nodeServer.headersTimeout, 60_000);
+  assert.equal(nodeServer.keepAliveTimeout, 5_000);
+  assert.equal(nodeServer.requestTimeout, 30_000);
+  assert.equal(nodeServer.maxHeadersCount, 2_000);
+  assert.equal(nodeServer.maxRequestsPerSocket, 1_000);
+
+  await server.stop();
 });
 
 test("GET /prometheus returns prometheus metrics when exporter configured", async () => {

@@ -142,6 +142,14 @@ function createJwtWithValidSignature(headerAlg: string, payload: object, secret:
   return `${body}.${signature}`;
 }
 
+function createJwtWithHeaderAndPayload(header: object, payload: object, secret: string): string {
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const body = `${encodedHeader}.${encodedPayload}`;
+  const signature = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
 test("api auth service rejects JWT with alg: 'none'", () => {
   const service = new ApiAuthService({
     apiKeys: [],
@@ -262,6 +270,80 @@ test("api auth service rejects token that is too old via maxTokenAgeMs option", 
       (error as any)?.code === "api.token_too_old"
       && (error as any)?.statusCode === 401,
     "JWT issued too long ago should be rejected",
+  );
+});
+
+test("api auth service validates issuer, audience, nbf, and revoked jti when configured", () => {
+  const jwtId = "jwt-id-1";
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const service = new ApiAuthService({
+    apiKeys: [],
+    jwtSecret: "phase3-secret",
+    jwtIssuer: "automatic-agent",
+    jwtAudience: "api",
+    requireJwtId: true,
+    isJwtRevoked: (candidate) => candidate === jwtId,
+  });
+
+  const wrongIssuer = createJwtWithHeaderAndPayload(
+    { alg: "HS256", typ: "JWT" },
+    { sub: "viewer-1", iat: issuedAt, exp: issuedAt + 3600, roles: ["viewer"], iss: "other", aud: "api", jti: "other-jti" },
+    "phase3-secret",
+  );
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${wrongIssuer}` }),
+    (error: unknown) => (error as any)?.code === "api.invalid_token_issuer",
+  );
+
+  const wrongAudience = createJwtWithHeaderAndPayload(
+    { alg: "HS256", typ: "JWT" },
+    { sub: "viewer-1", iat: issuedAt, exp: issuedAt + 3600, roles: ["viewer"], iss: "automatic-agent", aud: "console", jti: "other-jti" },
+    "phase3-secret",
+  );
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${wrongAudience}` }),
+    (error: unknown) => (error as any)?.code === "api.invalid_token_audience",
+  );
+
+  const notYetValid = createJwtWithHeaderAndPayload(
+    { alg: "HS256", typ: "JWT" },
+    { sub: "viewer-1", iat: issuedAt, nbf: issuedAt + 60, exp: issuedAt + 3600, roles: ["viewer"], iss: "automatic-agent", aud: "api", jti: "other-jti" },
+    "phase3-secret",
+  );
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${notYetValid}` }),
+    (error: unknown) => (error as any)?.code === "api.token_not_yet_valid",
+  );
+
+  const revoked = createJwtWithHeaderAndPayload(
+    { alg: "HS256", typ: "JWT" },
+    { sub: "viewer-1", iat: issuedAt, exp: issuedAt + 3600, roles: ["viewer"], iss: "automatic-agent", aud: "api", jti: jwtId },
+    "phase3-secret",
+  );
+  assert.throws(
+    () => service.authenticate({ authorization: `Bearer ${revoked}` }),
+    (error: unknown) => (error as any)?.code === "api.token_revoked",
+  );
+});
+
+test("api auth service accepts rotated verification secrets and rejects too-short secrets", () => {
+  const issuer = new ApiAuthService({
+    apiKeys: [{ apiKey: "issuer-key", actorId: "issuer-actor", roles: ["viewer"] }],
+    jwtSecret: "secret-a1",
+  });
+  const verifier = new ApiAuthService({
+    apiKeys: [],
+    jwtSecret: "secret-b1",
+    jwtVerificationSecrets: ["secret-a1"],
+  });
+
+  const token = issuer.exchangeApiKey("issuer-key").accessToken;
+  const principal = verifier.authenticate({ authorization: `Bearer ${token}` });
+  assert.equal(principal.actorId, "issuer-actor");
+
+  assert.throws(
+    () => new ApiAuthService({ apiKeys: [], jwtSecret: "secret" }),
+    (error: unknown) => (error as any)?.code === "api.jwt_secret_too_short",
   );
 });
 

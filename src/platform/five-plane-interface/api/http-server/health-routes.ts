@@ -58,12 +58,18 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
     {
       method: "GET",
       pathname: "/healthz",
-      handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, await deps.missionControlService.getHealthReportAsync()),
+      handler: async (ctx) => {
+        const report = await deps.missionControlService.getHealthReportAsync();
+        return buildJsonResponse(ctx.requestId, healthStatusCode(report, deps.isShuttingDown?.() ?? false), report);
+      },
     },
     {
       method: "GET",
       pathname: "/v1/healthz",
-      handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, await deps.missionControlService.getHealthReportAsync()),
+      handler: async (ctx) => {
+        const report = await deps.missionControlService.getHealthReportAsync();
+        return buildJsonResponse(ctx.requestId, healthStatusCode(report, deps.isShuttingDown?.() ?? false), report);
+      },
     },
     {
       method: "GET",

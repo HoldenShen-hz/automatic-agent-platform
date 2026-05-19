@@ -56,6 +56,22 @@ test("MemoryCacheStore.set and get returns hit", async () => {
   assert.equal(result.layer, "L1");
 });
 
+test("MemoryCacheStore.get returns defensive copy for object values", async () => {
+  const store = new MemoryCacheStore();
+  const meta = createCacheMeta();
+  const original = { nested: { value: "one" } };
+
+  await store.set("ns1", "key1", original, meta);
+  const first = await store.get<{ nested: { value: string } }>("ns1", "key1");
+  assert.equal(first.hit, true);
+  assert.notEqual(first.value, original);
+  first.value!.nested.value = "mutated";
+
+  const second = await store.get<{ nested: { value: string } }>("ns1", "key1");
+  assert.equal(second.hit, true);
+  assert.equal(second.value!.nested.value, "one");
+});
+
 test("MemoryCacheStore.set overwrites existing key", async () => {
   const store = new MemoryCacheStore();
   const meta = createCacheMeta();

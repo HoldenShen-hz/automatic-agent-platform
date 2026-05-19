@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { OidcOAuthService, OidcProvider } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth-service.js";
 
+process.env["NODE_ENV"] = "test";
+
 function createService(providers: OidcProvider[] = [], trustedIssuers: string[] = [], skipSignatureVerification = false) {
   return new OidcOAuthService(providers, trustedIssuers, "test-audience", undefined, skipSignatureVerification);
 }
@@ -180,6 +182,7 @@ test("buildAuthorizationUrl constructs correct URL", () => {
     tokenEndpoint: "https://idp.example.com/token",
     jwksUri: "https://idp.example.com/jwks",
     scopes: ["openid", "profile", "email"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
   };
 
   const url = service.buildAuthorizationUrl(
@@ -303,6 +306,39 @@ test("validateFederatedToken rejects expired token", async () => {
   const result = await service.validateFederatedToken(token);
   assert.equal(result.valid, false);
   assert.equal(result.error, "jwt.token_expired");
+});
+
+test("validateFederatedToken rejects token that is not yet valid", async () => {
+  const service = createService([], ["https://idp.example.com"], true);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: "https://idp.example.com",
+    sub: "user123",
+    aud: "test-audience",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor(Date.now() / 1000),
+    nbf: Math.floor((Date.now() + 5 * 60_000) / 1000),
+  })).toString("base64url");
+
+  const result = await service.validateFederatedToken(`${header}.${payload}.signature`);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "jwt.not_yet_valid");
+});
+
+test("validateFederatedToken rejects token issued too far in the future", async () => {
+  const service = createService([], ["https://idp.example.com"], true);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: "https://idp.example.com",
+    sub: "user123",
+    aud: "test-audience",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor((Date.now() + 5 * 60_000) / 1000),
+  })).toString("base64url");
+
+  const result = await service.validateFederatedToken(`${header}.${payload}.signature`);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "jwt.issued_in_future");
 });
 
 test("validateFederatedToken accepts valid token from trusted issuer", async () => {
@@ -482,6 +518,54 @@ test("exchangeCodeForTokens throws when token endpoint returns error", async () 
   );
 });
 
+test("exchangeCodeForTokens sanitizes transport failures", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+  const service = new OidcOAuthService([provider], [], "test-audience", async () => {
+    throw new Error("socket hang up");
+  });
+
+  await assert.rejects(
+    async () => service.exchangeCodeForTokens(
+      "code",
+      "https://app.example.com/callback",
+      "verifier",
+      provider,
+      "client-id",
+      "client-secret",
+    ),
+    (err: Error) => err.message.includes("oauth.token_exchange_transport_failed"),
+  );
+});
+
+test("buildAuthorizationUrl rejects redirect URIs outside provider allowlist", () => {
+  const service = createService();
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
+  };
+
+  assert.throws(
+    () => service.buildAuthorizationUrl(
+      provider,
+      "client-123",
+      "https://evil.example.com/callback",
+      "state-abc",
+      "challenge-xyz",
+    ),
+    /oidc\.redirect_uri_not_allowed/,
+  );
+});
+
 test("fetchOidcDiscovery parses discovery document correctly", async () => {
   const provider: OidcProvider = {
     issuer: "https://idp.example.com",
@@ -650,6 +734,42 @@ test("validateFederatedToken rejects when signature verification fails", async (
 
   // Create a token with invalid signature
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "key-1" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: "https://idp.example.com",
+    sub: "user123",
+    aud: "test-audience",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor(Date.now() / 1000),
+  })).toString("base64url");
+  const token = `${header}.${payload}.invalid-signature`;
+
+  const result = await service.validateFederatedToken(token);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "jwt.signature_invalid");
+});
+
+test("validateFederatedToken rejects token when kid does not match JWKS key", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: true,
+      json: async () => ({
+        keys: [
+          { kty: "RSA", use: "sig", kid: "key-1", alg: "RS256", n: "abc", e: "AQAB" },
+        ],
+      }),
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([provider], ["https://idp.example.com"], "test-audience", mockFetch, false);
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "missing-key" })).toString("base64url");
   const payload = Buffer.from(JSON.stringify({
     iss: "https://idp.example.com",
     sub: "user123",

@@ -285,3 +285,28 @@ test("sqlite database fail-closes competing root write transactions with a stabl
     cleanupPath(workspace);
   }
 });
+
+test("sqlite database health check leaves no probe table behind", async () => {
+  const workspace = createTempWorkspace("aa-sqlite-db-health-");
+  const dbPath = join(workspace, "health-check.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+
+    assert.equal(await db.healthCheck(), true);
+
+    const persistedProbeTables = db.connection
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='__health_probe'")
+      .all();
+    const tempProbeTables = db.connection
+      .prepare("SELECT name FROM sqlite_temp_master WHERE type='table' AND name='__health_probe'")
+      .all();
+
+    assert.equal(persistedProbeTables.length, 0);
+    assert.equal(tempProbeTables.length, 0);
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

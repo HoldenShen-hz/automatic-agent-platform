@@ -1,12 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCodingRetrieverPlugin } from "../../../src/plugins/retrievers/coding-retriever.js";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { chdir } from "node:process";
+import {
+  DEFAULT_CODING_RETRIEVER_ROOT_PATH,
+  createCodingRetrieverPlugin,
+} from "../../../src/plugins/retrievers/coding-retriever.js";
 import type { SemanticRepoMapService } from "../../../src/platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 
 function createMockRepoMapService(searchResult: {
   symbols?: Array<{ name: string; kind: string; filePath: string; line: number }>;
   files?: Array<{ relativePath: string; filePath: string; imports: string[]; referencedBy: string[] }>;
   relevanceScores?: Map<string, number>;
+  captureArgs?: (args: { query: string; currentFile?: string; limit: number }) => void;
 }) {
   return {
     buildMap() {
@@ -19,6 +27,7 @@ function createMockRepoMapService(searchResult: {
       // no-op for mock
     },
     search(args: { query: string; currentFile?: string; limit: number }) {
+      searchResult.captureArgs?.(args);
       return {
         symbols: searchResult.symbols ?? [],
         files: searchResult.files ?? [],
@@ -35,6 +44,19 @@ test("createCodingRetrieverPlugin returns valid plugin structure", () => {
   assert.equal(plugin.domainId, "coding");
   assert.equal(plugin.spiType, "retriever");
   assert.deepEqual(plugin.capabilityIds, ["knowledge.retrieve", "domain.observe", "repo.search"]);
+});
+
+test("coding retriever default root path is repo-scoped, not the caller cwd", () => {
+  const originalCwd = process.cwd();
+  const tempCwd = mkdtempSync(join(tmpdir(), "coding-retriever-cwd-"));
+  try {
+    chdir(tempCwd);
+    assert.notEqual(DEFAULT_CODING_RETRIEVER_ROOT_PATH, process.cwd());
+    const plugin = createCodingRetrieverPlugin();
+    assert.equal(plugin.pluginId, "plugin.coding.retriever");
+  } finally {
+    chdir(originalCwd);
+  }
 });
 
 test("coding retriever returns results from search with symbols", async () => {
@@ -147,4 +169,23 @@ test("coding retriever caps total results at 12", async () => {
   });
 
   assert.ok(result.length <= 12);
+});
+
+test("coding retriever derives search limit from token budget using the shared chars-to-tokens estimate", async () => {
+  let receivedLimit = -1;
+  const mockService = createMockRepoMapService({
+    captureArgs(args) {
+      receivedLimit = args.limit;
+    },
+  });
+  const plugin = createCodingRetrieverPlugin({ repoMapService: mockService, rootPath: "/project" });
+
+  await plugin.retrieve({
+    taskId: "task_1",
+    intent: "search",
+    context: {},
+    tokenBudget: 256,
+  });
+
+  assert.equal(receivedLimit, 4);
 });

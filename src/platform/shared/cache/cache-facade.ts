@@ -13,12 +13,18 @@ import { CacheKeyFactory } from './cache-key-factory.js';
 import { stableStringify } from './utils/stable-stringify.js';
 import { CacheMetrics } from './cache-metrics.js';
 
+export interface CacheInvalidationBroadcaster {
+  broadcastTagInvalidation(tag: string): Promise<void>;
+  broadcastNamespaceInvalidation(namespace: string): Promise<void>;
+}
+
 export class CacheFacade implements ICacheFacade {
   private readonly pendingComputes = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly store: CacheStore,
     private readonly metrics = new CacheMetrics(),
+    private readonly broadcaster: CacheInvalidationBroadcaster | null = null,
   ) {}
 
   async get<T>(namespace: string, normalizedInput: unknown): Promise<CacheLookupResult<T>> {
@@ -93,7 +99,7 @@ export class CacheFacade implements ICacheFacade {
     const existing = this.pendingComputes.get(key);
     if (existing !== undefined) {
       const result = await existing as Promise<{ value: T; fromCache: boolean }>;
-      return { ...result, fromCache: true };
+      return result;
     }
 
     const computePromise = (async () => {
@@ -112,11 +118,15 @@ export class CacheFacade implements ICacheFacade {
   }
 
   async invalidateByTag(tag: string): Promise<number> {
-    return this.store.invalidateByTag(tag);
+    const count = await this.store.invalidateByTag(tag);
+    await this.broadcaster?.broadcastTagInvalidation(tag);
+    return count;
   }
 
   async invalidateNamespace(namespace: string): Promise<number> {
-    return this.store.invalidateNamespace(namespace);
+    const count = await this.store.invalidateNamespace(namespace);
+    await this.broadcaster?.broadcastNamespaceInvalidation(namespace);
+    return count;
   }
 
   getMetricsSnapshot() {

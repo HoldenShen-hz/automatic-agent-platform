@@ -36,7 +36,7 @@
 
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { DiagnosticsService } from "../shared/observability/diagnostics-service.js";
 import { HealthService } from "../shared/observability/health-service.js";
@@ -517,7 +517,7 @@ function hmacSha256(value: string): string {
  */
 export function createSignedEnvelope(payload: unknown): StableEvidenceSignedEnvelope {
   const canonicalJson = JSON.stringify(payload);
-  const nonce = randomBytes(8).toString("hex");
+  const nonce = randomBytes(16).toString("hex");
   const signedAt = nowIso();
   const signatureInput = `${nonce}:${signedAt}:${canonicalJson}`;
   const signature = hmacSha256(signatureInput);
@@ -549,7 +549,9 @@ export function verifySignedEnvelope(envelope: StableEvidenceSignedEnvelope): St
   const signatureInput = `${envelope.nonce}:${envelope.signedAt}:${envelope.payload}`;
   const expectedSignature = hmacSha256(signatureInput);
 
-  if (expectedSignature !== envelope.signature) {
+  const expectedBuffer = Buffer.from(expectedSignature, "hex");
+  const actualBuffer = Buffer.from(envelope.signature, "hex");
+  if (expectedBuffer.length !== actualBuffer.length || !timingSafeEqual(expectedBuffer, actualBuffer)) {
     return { valid: false, checked: true, reason: "signature mismatch - evidence may have been tampered with" };
   }
 
@@ -640,7 +642,7 @@ export function createStableEvidenceSigner(): StableEvidenceSigner {
         chainHash,
         artifactName: name,
         artifactJson,
-        nonce: randomBytes(8).toString("hex"),
+        nonce: randomBytes(16).toString("hex"),
       });
       chainHash = hmacSha256(chainInput);
       return chainHash;

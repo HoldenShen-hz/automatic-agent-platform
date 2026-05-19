@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import { relative } from "node:path";
-import { cwd } from "node:process";
+import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 import { SemanticRepoMapService } from "../../platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
@@ -9,6 +9,12 @@ export interface CodingRetrieverPluginOptions {
   rootPath?: string;
   repoMapService?: SemanticRepoMapService;
 }
+
+export const DEFAULT_CODING_RETRIEVER_ROOT_PATH = resolve(
+  fileURLToPath(new URL("../../..", import.meta.url)),
+);
+const APPROX_RETRIEVER_RESULT_CHARS = 256;
+const APPROX_RETRIEVER_RESULT_TOKENS = Math.ceil(APPROX_RETRIEVER_RESULT_CHARS / 4);
 
 function buildQuery(intent: string, context: Record<string, unknown>): string {
   const fragments = [intent];
@@ -22,7 +28,7 @@ function buildQuery(intent: string, context: Record<string, unknown>): string {
 }
 
 export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOptions = {}): DomainRetrieverPlugin {
-  const rootPath = options.rootPath ?? cwd();
+  const rootPath = options.rootPath ?? DEFAULT_CODING_RETRIEVER_ROOT_PATH;
   const repoMapService = options.repoMapService ?? new SemanticRepoMapService(rootPath);
 
   return {
@@ -42,7 +48,7 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
       const search = repoMapService.search({
         query: buildQuery(query.intent, query.context),
         ...(currentFile ? { currentFile } : {}),
-        limit: Math.max(4, Math.min(20, Math.floor(query.tokenBudget / 250))),
+        limit: Math.max(4, Math.min(20, Math.floor(query.tokenBudget / APPROX_RETRIEVER_RESULT_TOKENS))),
       });
 
       const symbolResults: RetrieverKnowledgeResult[] = search.symbols.slice(0, 8).map((symbol) => ({

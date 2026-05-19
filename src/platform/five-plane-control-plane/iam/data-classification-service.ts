@@ -10,6 +10,7 @@
  * @see docs_zh/contracts/data_classification_and_prompt_handling_contract.md
  */
 
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -167,6 +168,12 @@ export interface ClassificationAuditEntry {
   piiAnnotations: PiiAnnotation[];
 }
 
+export interface AuditLogClearRequest {
+  principalId: string;
+  authorized: boolean;
+  reason?: string;
+}
+
 // ── PII Detection Patterns ─────────────────────────────────────────────
 // Using simple patterns that avoid catastrophic backtracking
 
@@ -283,6 +290,7 @@ export class DataClassificationService {
   private readonly enableAuditTrail: boolean;
   private readonly rules: Map<string, DataClassificationRule> = new Map();
   private readonly auditLog: ClassificationAuditEntry[] = [];
+  private readonly regexCache = new Map<string, RegExp>();
 
   constructor(options?: DataClassificationServiceOptions) {
     this.strictMode = options?.strictMode ?? false;
@@ -385,10 +393,11 @@ export class DataClassificationService {
     const annotations: PiiAnnotation[] = [];
 
     for (const { type, pattern, confidence } of PII_PATTERNS) {
-      if (!this.isRegexSafe(pattern)) {
+      const regex = this.getCachedRegex(pattern, "g");
+      if (regex == null) {
         continue;
       }
-      const regex = new RegExp(pattern, "g");
+      regex.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = regex.exec(content)) !== null) {
         annotations.push({
@@ -684,8 +693,24 @@ export class DataClassificationService {
    * Clears the audit log.
    * Use with caution - this cannot be undone.
    */
-  clearAuditLog(): void {
+  clearAuditLog(request: AuditLogClearRequest): void {
+    if (!request.authorized) {
+      throw new ValidationError(
+        "data_classification.audit_log_clear_forbidden",
+        "data_classification.audit_log_clear_forbidden: Clearing classification audit logs requires explicit authorization.",
+      );
+    }
+    const clearedEntries = this.auditLog.length;
     this.auditLog.length = 0;
+    this.logAuditEntry({
+      originalContent: "[audit-log-cleared]",
+      classificationLevel: "restricted",
+      dimension: "debug",
+      decision: "audit",
+      reason: `audit_log_cleared:${request.reason ?? "operator_request"}:${clearedEntries}`,
+      auditTrailId: `audit://classification/audit-log-clear/${request.principalId}`,
+      piiAnnotations: [],
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -731,10 +756,12 @@ export class DataClassificationService {
 
     // Check patterns
     for (const pattern of rule.patterns) {
-      if (!this.isRegexSafe(pattern)) {
+      const regex = this.getCachedRegex(pattern, "i");
+      if (regex == null) {
         continue;
       }
-      if (new RegExp(pattern, "i").test(content)) return true;
+      regex.lastIndex = 0;
+      if (regex.test(content)) return true;
     }
 
     // Check keywords
@@ -804,5 +831,19 @@ export class DataClassificationService {
       requiresAudit,
       autoAnnotated: true,
     };
+  }
+
+  private getCachedRegex(pattern: string, flags: string): RegExp | null {
+    if (!this.isRegexSafe(pattern)) {
+      return null;
+    }
+    const cacheKey = `${flags}:${pattern}`;
+    const cached = this.regexCache.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    const compiled = new RegExp(pattern, flags);
+    this.regexCache.set(cacheKey, compiled);
+    return compiled;
   }
 }

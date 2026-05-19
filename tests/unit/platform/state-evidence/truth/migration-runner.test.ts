@@ -106,3 +106,51 @@ test("MigrationRunner down reports fail-closed rollback status", async () => {
   assert.equal(result.rollbackSupported, false);
   assert.match(result.rollbackReason ?? "", /not supported/);
 });
+
+test("MigrationRunner up does not read schema status when migrate fails", async () => {
+  const calls: string[] = [];
+  const runner = new MigrationRunner({
+    driver: "postgres",
+    runtimeProfile: {
+      driver: "postgres",
+      environment: "dev",
+      issues: [],
+      postgres: {
+        dsnConfigured: true,
+        dsnSource: "AA_STORAGE_POSTGRES_DSN",
+        host: "localhost",
+        database: "agent_company_os",
+        sslmode: null,
+        poolMin: 0,
+        poolMax: 20,
+        dualRun: false,
+        shadowSqlitePath: null,
+        schema: null,
+      },
+    },
+    sql: {} as never,
+    asyncSql: {} as never,
+    asyncRepos: {} as never,
+    postgres: {
+      getSchemaStatus: async () => {
+        calls.push("status");
+        return {
+          currentVersion: 0,
+          expectedVersion: 1,
+          upToDate: false,
+          pendingVersions: [1],
+          checksumMismatches: [],
+        };
+      },
+      healthCheck: async () => true,
+    },
+    migrate: async () => {
+      calls.push("migrate");
+      throw new Error("migration failed");
+    },
+    close: async () => {},
+  } as unknown as AuthoritativeStorageBackendHandle);
+
+  await assert.rejects(() => runner.up(), /migration failed/);
+  assert.deepEqual(calls, ["migrate"]);
+});

@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { OidcOAuthService } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth-service.js";
 import type { OidcProvider, JwksKey } from "../../../../../src/platform/five-plane-interface/api/oidc-oauth/types.js";
 
+process.env["NODE_ENV"] = "test";
+
 // Mock fetch implementation
 function createMockFetch(response: unknown, ok = true): typeof fetch {
   return async (_url: string | URL | Request, _init?: RequestInit) => {
@@ -441,6 +443,7 @@ test("OidcOAuthService buildAuthorizationUrl constructs valid URL", () => {
     tokenEndpoint: "https://idp.auth.com/token",
     jwksUri: "https://idp.auth.com/jwks",
     scopes: ["openid", "profile"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
   };
 
   const url = service.buildAuthorizationUrl(
@@ -470,6 +473,7 @@ test("OidcOAuthService buildAuthorizationUrl uses custom scopes when provided", 
     tokenEndpoint: "https://idp.auth.com/token",
     jwksUri: "https://idp.auth.com/jwks",
     scopes: ["openid", "profile", "email", "custom"],
+    allowedRedirectUris: ["https://app.example.com/callback"],
   };
 
   const url = service.buildAuthorizationUrl(

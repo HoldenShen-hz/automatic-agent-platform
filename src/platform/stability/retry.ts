@@ -20,6 +20,10 @@ export interface RetryOptions {
   retryableErrors?: string[];    // Error names to retry on (default: all errors retryable)
 }
 
+export interface RetryExecutionOptions {
+  signal?: AbortSignal;
+}
+
 export interface RetryAttempt<T> {
   attempt: number;
   delay: number;
@@ -44,6 +48,12 @@ export class Retry {
   private readonly jitterFactor: number;
   private readonly maxDurationMs: number;
   private readonly retryableErrors: Set<string>;
+  private lastStats: RetryStats = {
+    totalAttempts: 0,
+    successfulAttempts: 0,
+    failedAttempts: 0,
+    totalDurationMs: 0,
+  };
 
   constructor(options: RetryOptions = {}) {
     this.maxAttempts = options.maxAttempts ?? 3;
@@ -56,67 +66,96 @@ export class Retry {
   }
 
   async execute<T>(
-    fn: () => Promise<T>,
-    shouldRetry?: (error: Error, attempt: number) => boolean
+    fn: (signal?: AbortSignal) => Promise<T>,
+    shouldRetry?: (error: Error, attempt: number) => boolean,
+    executionOptions: RetryExecutionOptions = {},
   ): Promise<T> {
     const startTime = Date.now();
     let lastError: Error | undefined;
     let attempt = 0;
+    const attempts: RetryAttempt<unknown>[] = [];
+    this.throwIfAborted(executionOptions.signal);
 
     while (attempt < this.maxAttempts) {
       const elapsed = Date.now() - startTime;
       if (elapsed >= this.maxDurationMs) {
-        throw new RetryTimeoutError(
+        const timeoutError = new RetryTimeoutError(
           `Max retry duration exceeded: ${this.maxDurationMs}ms`
         );
+        this.lastStats = this.buildStats(attempts, startTime, timeoutError);
+        throw timeoutError;
       }
 
       attempt++;
-
-      try {
-        const result = await fn();
-        return result;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        if (shouldRetry && !shouldRetry(lastError, attempt)) {
-          throw lastError;
-        }
-
-        if (attempt >= this.maxAttempts) {
-          throw lastError;
-        }
-
-        if (this.retryableErrors.size > 0 && !this.retryableErrors.has(lastError.name)) {
-          throw lastError;
-        }
-
-        const delay = this.calculateDelay(attempt);
-        await this.sleep(delay);
-      }
-    }
-
-    throw lastError ?? new Error("Retry failed with no error");
-  }
-
-  async executeWithResult<T>(
-    fn: () => Promise<T>,
-    shouldRetry?: (error: Error, attempt: number) => boolean
-  ): Promise<RetryAttempt<T>> {
-    const startTime = Date.now();
-    const attempts: RetryAttempt<T>[] = [];
-
-    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      this.throwIfAborted(executionOptions.signal);
       const attemptStart = Date.now();
 
       try {
-        const result = await fn();
+        const result = await fn(executionOptions.signal);
         attempts.push({
           attempt,
           delay: Date.now() - attemptStart,
           result,
           success: true,
         });
+        this.lastStats = this.buildStats(attempts, startTime);
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        attempts.push({
+          attempt,
+          delay: Date.now() - attemptStart,
+          error: lastError,
+          success: false,
+        });
+
+        if (shouldRetry && !shouldRetry(lastError, attempt)) {
+          this.lastStats = this.buildStats(attempts, startTime, lastError);
+          throw lastError;
+        }
+
+        if (attempt >= this.maxAttempts) {
+          this.lastStats = this.buildStats(attempts, startTime, lastError);
+          throw lastError;
+        }
+
+        if (this.retryableErrors.size > 0 && !this.retryableErrors.has(lastError.name)) {
+          this.lastStats = this.buildStats(attempts, startTime, lastError);
+          throw lastError;
+        }
+
+        const delay = this.calculateDelay(attempt);
+        await this.sleep(delay, executionOptions.signal);
+      }
+    }
+
+    const finalError = lastError ?? new Error("Retry failed with no error");
+    this.lastStats = this.buildStats(attempts, startTime, finalError);
+    throw finalError;
+  }
+
+  async executeWithResult<T>(
+    fn: (signal?: AbortSignal) => Promise<T>,
+    shouldRetry?: (error: Error, attempt: number) => boolean,
+    executionOptions: RetryExecutionOptions = {},
+  ): Promise<RetryAttempt<T>> {
+    const startTime = Date.now();
+    const attempts: RetryAttempt<T>[] = [];
+    this.throwIfAborted(executionOptions.signal);
+
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      const attemptStart = Date.now();
+      this.throwIfAborted(executionOptions.signal);
+
+      try {
+        const result = await fn(executionOptions.signal);
+        attempts.push({
+          attempt,
+          delay: Date.now() - attemptStart,
+          result,
+          success: true,
+        });
+        this.lastStats = this.buildStats(attempts, startTime);
         return attempts[attempts.length - 1]!;
       } catch (error) {
         const attemptError = error instanceof Error ? error : new Error(String(error));
@@ -132,14 +171,16 @@ export class Retry {
           : true;
 
         if (!shouldContinue || attempt >= this.maxAttempts) {
+          this.lastStats = this.buildStats(attempts, startTime, attemptError);
           return attempts[attempts.length - 1]!;
         }
 
         const delay = this.calculateDelay(attempt);
-        await this.sleep(delay);
+        await this.sleep(delay, executionOptions.signal);
       }
     }
 
+    this.lastStats = this.buildStats(attempts, startTime);
     return attempts[attempts.length - 1]!;
   }
 
@@ -147,20 +188,56 @@ export class Retry {
     const exponentialDelay = this.initialDelayMs * Math.pow(this.backoffMultiplier, attempt - 1);
     const cappedDelay = Math.min(exponentialDelay, this.maxDelayMs);
     const jitter = cappedDelay * this.jitterFactor * (Math.random() * 2 - 1);
-    return Math.floor(cappedDelay + jitter);
+    const candidateDelay = Math.floor(cappedDelay + jitter);
+    return Math.min(this.maxDelayMs, Math.max(this.initialDelayMs, candidateDelay));
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    this.throwIfAborted(signal);
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, Math.max(0, ms));
+      const onAbort = () => {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener("abort", onAbort);
+        reject(this.toAbortError(signal));
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      throw this.toAbortError(signal);
+    }
+  }
+
+  private toAbortError(signal?: AbortSignal): Error {
+    const reason = signal?.reason;
+    if (reason instanceof Error) {
+      return reason;
+    }
+    return new RetryAbortError(typeof reason === "string" ? reason : "Retry aborted");
+  }
+
+  private buildStats(
+    attempts: readonly RetryAttempt<unknown>[],
+    startTime: number,
+    lastError?: Error,
+  ): RetryStats {
+    return {
+      totalAttempts: attempts.length,
+      successfulAttempts: attempts.filter((attempt) => attempt.success).length,
+      failedAttempts: attempts.filter((attempt) => !attempt.success).length,
+      totalDurationMs: Date.now() - startTime,
+      ...(lastError ? { lastError } : {}),
+    };
   }
 
   getStats(): RetryStats {
-    return {
-      totalAttempts: this.maxAttempts,
-      successfulAttempts: 0,
-      failedAttempts: this.maxAttempts - 1,
-      totalDurationMs: 0,
-    };
+    return { ...this.lastStats };
   }
 }
 
@@ -168,6 +245,13 @@ export class RetryTimeoutError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "RetryTimeoutError";
+  }
+}
+
+export class RetryAbortError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RetryAbortError";
   }
 }
 

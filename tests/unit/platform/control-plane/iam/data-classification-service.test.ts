@@ -307,12 +307,17 @@ test("DataClassificationService auditLog records decisions", () => {
   assert.ok(log.length > 0);
 });
 
-test("DataClassificationService clearAuditLog removes entries", () => {
+test("DataClassificationService clearAuditLog requires authorization and records a clear marker", () => {
   const service = new DataClassificationService({ enableAuditTrail: true });
-  service.filterForPrompt("internal data");
-  service.clearAuditLog();
+  service.filterForPrompt("confidential information");
+  assert.throws(
+    () => service.clearAuditLog({ principalId: "viewer", authorized: false }),
+    /data_classification\.audit_log_clear_forbidden/,
+  );
+  service.clearAuditLog({ principalId: "operator-1", authorized: true, reason: "retention_window" });
   const log = service.getAuditLog();
-  assert.equal(log.length, 0);
+  assert.equal(log.length, 1);
+  assert.match(log[0]?.reason ?? "", /^audit_log_cleared:retention_window:1$/);
 });
 
 test("DataClassificationService getAuditLog respects limit", () => {

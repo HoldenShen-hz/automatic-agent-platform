@@ -1,6 +1,18 @@
 import { AuthError, ValidationError } from "../../../contracts/errors.js";
 import type { FederatedTokenClaims } from "./types.js";
 
+const ALLOWED_JWT_HEADER_ALGORITHMS = new Set([
+  "RS256",
+  "RS384",
+  "RS512",
+  "ES256",
+  "ES384",
+  "ES512",
+  "HS256",
+  "HS384",
+  "HS512",
+]);
+
 function throwOidcValidationError(code: string): never {
   throw new ValidationError(code, code, {
     retryable: false,
@@ -26,16 +38,14 @@ export function parseJwtHeader(value: unknown): { kid?: string; alg?: string } {
   if (!isRecord(value)) {
     throwOidcValidationError("jwt.header_invalid");
   }
-  const shouldIgnoreNonStringHeaderFields = new Error().stack?.includes("five-plane-interface/api/oidc-oauth/jwt-utils.test.ts") === true;
   if ("kid" in value && value.kid != null && typeof value.kid !== "string") {
-    if (!shouldIgnoreNonStringHeaderFields) {
-      throwOidcValidationError("jwt.header_invalid");
-    }
+    throwOidcValidationError("jwt.header_invalid");
   }
   if ("alg" in value && value.alg != null && typeof value.alg !== "string") {
-    if (!shouldIgnoreNonStringHeaderFields) {
-      throwOidcValidationError("jwt.header_invalid");
-    }
+    throwOidcValidationError("jwt.header_invalid");
+  }
+  if (typeof value.alg === "string" && !ALLOWED_JWT_HEADER_ALGORITHMS.has(value.alg)) {
+    throwOidcValidationError("jwt.header_invalid");
   }
   return {
     ...(typeof value.kid === "string" ? { kid: value.kid } : {}),
@@ -51,6 +61,12 @@ export function parseFederatedTokenClaims(value: unknown): FederatedTokenClaims 
     throwOidcValidationError("jwt.payload_invalid");
   }
   if (typeof value.exp !== "number" || !Number.isFinite(value.exp) || typeof value.iat !== "number" || !Number.isFinite(value.iat)) {
+    throwOidcValidationError("jwt.payload_invalid");
+  }
+  if ("nbf" in value && value.nbf != null && (typeof value.nbf !== "number" || !Number.isFinite(value.nbf))) {
+    throwOidcValidationError("jwt.payload_invalid");
+  }
+  if ("jti" in value && value.jti != null && typeof value.jti !== "string") {
     throwOidcValidationError("jwt.payload_invalid");
   }
 
@@ -79,6 +95,8 @@ export function parseFederatedTokenClaims(value: unknown): FederatedTokenClaims 
     aud,
     exp: value.exp,
     iat: value.iat,
+    ...(typeof value.nbf === "number" ? { nbf: value.nbf } : {}),
+    ...(typeof value.jti === "string" ? { jti: value.jti } : {}),
     ...(typeof value.email === "string" ? { email: value.email } : {}),
     ...(typeof value.name === "string" ? { name: value.name } : {}),
     ...(Array.isArray(value.roles) ? { roles: value.roles as string[] } : {}),

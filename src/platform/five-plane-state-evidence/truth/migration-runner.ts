@@ -1,3 +1,7 @@
+/**
+ * Runtime authoritative migration status/result facade.
+ * Contract reference: docs_zh/contracts/runtime_repository_and_migration_contract.md
+ */
 import type { AuthoritativeStorageBackendHandle } from "./storage-backend-factory.js";
 
 export interface MigrationRunnerSchemaStatus {

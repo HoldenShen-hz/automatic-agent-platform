@@ -17,6 +17,12 @@ export interface CircuitBreakerOptions {
   successThreshold?: number;      // Successes in half-open before closing (default: 2)
   timeout?: number;              // ms before considering it a failure (default: 30000)
   resetTimeout?: number;          // ms before trying half-open (default: 60000)
+  onStateChange?: (previousState: CircuitState, newState: CircuitState) => void;
+}
+
+interface ActiveExecution {
+  readonly controller: AbortController;
+  readonly timeoutId: ReturnType<typeof setTimeout>;
 }
 
 export interface CircuitBreakerStats {
@@ -34,52 +40,83 @@ export class CircuitBreaker {
   private lastFailure: number | null = null;
   private lastSuccess: number | null = null;
   private nextAttempt: number = 0;
+  private halfOpenInFlight = 0;
+  private readonly activeExecutions = new Set<ActiveExecution>();
 
   private readonly failureThreshold: number;
   private readonly successThreshold: number;
   private readonly timeout: number;
   private readonly resetTimeout: number;
+  private readonly onStateChange: ((previousState: CircuitState, newState: CircuitState) => void) | undefined;
 
   constructor(options: CircuitBreakerOptions = {}) {
     this.failureThreshold = options.failureThreshold ?? 5;
     this.successThreshold = options.successThreshold ?? 2;
     this.timeout = options.timeout ?? 30000;
     this.resetTimeout = options.resetTimeout ?? 60000;
+    this.onStateChange = options.onStateChange;
   }
 
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
+  async execute<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
     if (this.state === CircuitState.OPEN) {
       if (Date.now() < this.nextAttempt) {
         throw new CircuitBreakerOpenError(`Circuit is OPEN. Next attempt at ${new Date(this.nextAttempt).toISOString()}`);
       }
-      this.state = CircuitState.HALF_OPEN;
-      this.successes = 0;
+      this.transitionTo(CircuitState.HALF_OPEN, { resetSuccesses: true });
     }
+
+    const enteredHalfOpen = this.enterHalfOpenProbe();
 
     try {
       const result = await this.executeWithTimeout(fn);
       this.onSuccess();
       return result;
     } catch (error) {
-      this.onFailure();
+      if (!(error instanceof CircuitBreakerResetError)) {
+        this.onFailure();
+      }
       throw error;
+    } finally {
+      if (enteredHalfOpen) {
+        this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+      }
     }
   }
 
-  private async executeWithTimeout<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new CircuitBreakerTimeoutError(`Operation timed out after ${this.timeout}ms`));
-      }, this.timeout);
+  private enterHalfOpenProbe(): boolean {
+    if (this.state !== CircuitState.HALF_OPEN) {
+      return false;
+    }
+    if (this.halfOpenInFlight >= 1) {
+      throw new CircuitBreakerOpenError("Circuit is HALF_OPEN with a probe already in flight");
+    }
+    this.halfOpenInFlight += 1;
+    return true;
+  }
 
-      fn()
+  private async executeWithTimeout<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        const timeoutError = new CircuitBreakerTimeoutError(`Operation timed out after ${this.timeout}ms`);
+        controller.abort(timeoutError);
+        reject(timeoutError);
+      }, this.timeout);
+      const execution: ActiveExecution = { controller, timeoutId: timer };
+      this.activeExecutions.add(execution);
+
+      const complete = (fnResult: () => void) => {
+        clearTimeout(timer);
+        this.activeExecutions.delete(execution);
+        fnResult();
+      };
+
+      fn(controller.signal)
         .then((result) => {
-          clearTimeout(timer);
-          resolve(result);
+          complete(() => resolve(result));
         })
         .catch((error) => {
-          clearTimeout(timer);
-          reject(error);
+          complete(() => reject(error));
         });
     });
   }
@@ -91,10 +128,7 @@ export class CircuitBreaker {
     if (this.state === CircuitState.HALF_OPEN) {
       this.successes++;
       if (this.successes >= this.successThreshold) {
-        // R4-41: Emit circuit breaker state change event on transition to CLOSED
-        this.emitStateChange(CircuitState.CLOSED);
-        this.state = CircuitState.CLOSED;
-        this.successes = 0;
+        this.transitionTo(CircuitState.CLOSED, { resetSuccesses: true, resetNextAttempt: true });
       }
     }
   }
@@ -104,23 +138,18 @@ export class CircuitBreaker {
     this.failures++;
 
     if (this.state === CircuitState.HALF_OPEN) {
-      // R4-41: Emit circuit breaker state change event on transition back to OPEN
-      this.emitStateChange(CircuitState.OPEN);
-      this.state = CircuitState.OPEN;
       this.nextAttempt = Date.now() + this.resetTimeout;
+      this.transitionTo(CircuitState.OPEN, { resetSuccesses: true });
     } else if (this.failures >= this.failureThreshold) {
-      // R4-41: Emit circuit breaker state change event on transition to OPEN
-      this.emitStateChange(CircuitState.OPEN);
-      this.state = CircuitState.OPEN;
       this.nextAttempt = Date.now() + this.resetTimeout;
+      this.transitionTo(CircuitState.OPEN);
     }
   }
 
   /**
    * Emit circuit breaker state change event to event bus per §9.4.
    */
-  private emitStateChange(newState: CircuitState): void {
-    const oldState = this.state;
+  private emitStateChange(oldState: CircuitState, newState: CircuitState): void {
     const payload = {
       circuitName: "circuit_breaker",
       oldState,
@@ -132,9 +161,34 @@ export class CircuitBreaker {
     // In production, this would publish to the durable event bus
     try {
       void payload;
+      this.onStateChange?.(oldState, newState);
     } catch {
       // Event bus emission failures must not affect circuit breaker operation
     }
+  }
+
+  private transitionTo(
+    newState: CircuitState,
+    options: {
+      resetSuccesses?: boolean;
+      resetNextAttempt?: boolean;
+    } = {},
+  ): void {
+    const oldState = this.state;
+    if (oldState === newState && !options.resetSuccesses && !options.resetNextAttempt) {
+      return;
+    }
+    this.state = newState;
+    if (options.resetSuccesses) {
+      this.successes = 0;
+    }
+    if (options.resetNextAttempt) {
+      this.nextAttempt = 0;
+    }
+    if (newState !== CircuitState.HALF_OPEN) {
+      this.halfOpenInFlight = 0;
+    }
+    this.emitStateChange(oldState, newState);
   }
 
   getState(): CircuitState {
@@ -152,12 +206,18 @@ export class CircuitBreaker {
   }
 
   reset(): void {
+    for (const execution of this.activeExecutions) {
+      clearTimeout(execution.timeoutId);
+      execution.controller.abort(new CircuitBreakerResetError("Circuit breaker reset aborted in-flight operation"));
+    }
+    this.activeExecutions.clear();
     this.state = CircuitState.CLOSED;
     this.failures = 0;
     this.successes = 0;
     this.lastFailure = null;
     this.lastSuccess = null;
     this.nextAttempt = 0;
+    this.halfOpenInFlight = 0;
   }
 }
 
@@ -172,5 +232,12 @@ export class CircuitBreakerTimeoutError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "CircuitBreakerTimeoutError";
+  }
+}
+
+export class CircuitBreakerResetError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CircuitBreakerResetError";
   }
 }

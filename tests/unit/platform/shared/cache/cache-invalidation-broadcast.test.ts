@@ -520,6 +520,65 @@ test("message handler handles JSON parse errors gracefully", async () => {
   assert.equal(invalidateCallCount, 0);
 });
 
+test("broadcastTagInvalidation retries publish failures before succeeding", async () => {
+  let attempts = 0;
+  const mockPub = createMockRedisClient({
+    publish: async (channel: string, message: string) => {
+      attempts += 1;
+      if (attempts < 3) {
+        throw new Error("publish failed");
+      }
+      return 1;
+    },
+  });
+  const mockSub = createMockRedisClient();
+  const broadcast = createBroadcastWithMockedRedis(mockPub, mockSub, {});
+
+  await broadcast.broadcastTagInvalidation("tag:a");
+
+  assert.equal(attempts, 3);
+});
+
+test("message handler swallows onInvalidate failures and continues", async () => {
+  const mockPub = createMockRedisClient();
+  const mockSub = createMockRedisClient();
+  let attempts = 0;
+  const broadcast = createBroadcastWithMockedRedis(mockPub, mockSub, {}, async () => {
+    attempts += 1;
+    throw new Error("consume failed");
+  });
+
+  await broadcast.start();
+  mockSub._triggerMessage("aacache:invalidation", JSON.stringify({
+    type: "tag",
+    tag: "tag:a",
+    origin: "other-instance",
+  }));
+
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(attempts, 1);
+});
+
+test("close tolerates unsubscribe and quit failures", async () => {
+  const mockPub = createMockRedisClient({
+    quit: async () => {
+      throw new Error("quit failed");
+    },
+  });
+  const mockSub = createMockRedisClient({
+    unsubscribe: async () => {
+      throw new Error("unsubscribe failed");
+    },
+  });
+  const broadcast = createBroadcastWithMockedRedis(mockPub, mockSub, {});
+
+  await broadcast.start();
+  await broadcast.close();
+
+  assert.equal((broadcast as any).isStarted, false);
+});
+
 // =============================================================================
 // Interface Tests
 // =============================================================================
