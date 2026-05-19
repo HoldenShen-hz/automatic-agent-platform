@@ -70,12 +70,22 @@ function toRepoRelativePath(filePath) {
   return relativePath;
 }
 
+function normalizeCoverageRelativePath(relativePath) {
+  if (relativePath.startsWith("src/")) {
+    return relativePath;
+  }
+  if (relativePath.startsWith("dist/src/")) {
+    return relativePath.slice("dist/".length);
+  }
+  return null;
+}
+
 function isExecutableCoverageEntry(entry) {
   return METRIC_KEYS.some((key) => (entry[key]?.total ?? 0) > 0);
 }
 
 function shouldIncludeFile(relativePath, entry) {
-  return relativePath.startsWith("src/") && isExecutableCoverageEntry(entry);
+  return normalizeCoverageRelativePath(relativePath) != null && isExecutableCoverageEntry(entry);
 }
 
 function createDirectoryAccumulator(directory) {
@@ -121,7 +131,12 @@ export function buildCoverageReport(summary) {
       continue;
     }
 
-    const directory = path.posix.dirname(relativePath);
+    const normalizedPath = normalizeCoverageRelativePath(relativePath);
+    if (normalizedPath == null) {
+      continue;
+    }
+
+    const directory = path.posix.dirname(normalizedPath);
     const accumulator = directoryAccumulators.get(directory) ?? createDirectoryAccumulator(directory);
     accumulator.fileCount += 1;
 

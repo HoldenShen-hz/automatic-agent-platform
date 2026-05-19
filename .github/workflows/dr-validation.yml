@@ -29,6 +29,7 @@ on:
 jobs:
   dr-drill:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,13 +53,14 @@ jobs:
       - name: Initialize test databases
         run: |
           # Create minimal test databases for DR validation
-          if command -v sqlite3 &> /dev/null; then
-            sqlite3 data/events.db "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);"
-            sqlite3 data/truth.db "CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);"
-            # Insert test data
-            sqlite3 data/events.db "INSERT INTO events VALUES ('evt_test_1', 'task:created', 'task_1', '{}', '$(date -Iseconds)');"
-            sqlite3 data/truth.db "INSERT INTO tasks VALUES ('task_1', 'created', '$(date -Iseconds)');"
+          if ! command -v sqlite3 >/dev/null 2>&1; then
+            echo "sqlite3 is required for DR validation"
+            exit 1
           fi
+          sqlite3 data/events.db "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);"
+          sqlite3 data/truth.db "CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);"
+          sqlite3 data/events.db "INSERT INTO events VALUES ('evt_test_1', 'task:created', 'task_1', '{}', '$(date -Iseconds)');"
+          sqlite3 data/truth.db "INSERT INTO tasks VALUES ('task_1', 'created', '$(date -Iseconds)');"
 
       - name: Run DR Drill
         id: drill
@@ -74,11 +76,12 @@ jobs:
 
       - name: Verify DR Report Generated
         run: |
-          if [ ! -f ".dr-reports/drill_*/drill_report.json" ]; then
+          REPORT_PATH="$(find .dr-reports -path '*/drill_report.json' -type f | head -1)"
+          if [ -z "$REPORT_PATH" ]; then
             echo "DR report not generated"
             exit 1
           fi
-          echo "DR report generated successfully"
+          echo "DR report generated successfully: $REPORT_PATH"
 
       - name: Check RTO/RPO Compliance
         run: |
@@ -88,9 +91,12 @@ jobs:
             exit 1
           fi
 
-          # Check if rtoCompliance and rpoCompliance are true
-          RTO_COMPLIANT=$(grep -o '"rtoCompliance":\s*\(true\|false\)' "$REPORT" | cut -d: -f2 | tr -d ' ')
-          RPO_COMPLIANT=$(grep -o '"rpoCompliance":\s*\(true\|false\)' "$REPORT" | cut -d: -f2 | tr -d ' ')
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "jq is required for DR validation"
+            exit 1
+          fi
+          RTO_COMPLIANT=$(jq -r '.rtoCompliance' "$REPORT")
+          RPO_COMPLIANT=$(jq -r '.rpoCompliance' "$REPORT")
 
           echo "RTO Compliance: $RTO_COMPLIANT"
           echo "RPO Compliance: $RPO_COMPLIANT"

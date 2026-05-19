@@ -36,6 +36,7 @@ vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
       setAllowedDrillDepth: vi.fn(),
       setEnableAutoRollback: vi.fn(),
     },
+    submissionMessage: null,
     submitConfig: vi.fn(),
   }),
 }));

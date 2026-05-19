@@ -1,6 +1,6 @@
 # Automatic Agent Platform
 
-Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository now follows the v2.7 seven-layer architecture defined in `docs_zh/architecture/00-platform-architecture.md`, with ADR, contract, source, and test coverage tracked in `docs_zh/analysis/00-architecture-coverage-matrix.md`.
+Enterprise automatic-agent platform baseline built on Node.js 20/22 + TypeScript ESM. The repository now follows the v2.7 seven-layer architecture defined in `docs_zh/architecture/00-platform-architecture.md`, with ADR, contract, source, and test coverage tracked in `docs_zh/analysis/00-architecture-coverage-matrix.md`.
 
 ## Quick Start
 
@@ -18,6 +18,21 @@ npm run inspect
 npm run dispatch-execution
 npm run worker-handshake
 npm run worker-writeback
+npm run migrate:status
+aa doctor
+aa platform-operator
+```
+
+Validation and release helpers:
+
+```bash
+npm run lint
+npm run typecheck
+npm run coverage:gate
+npm run changelog:check
+npm run test:pg-integration
+npm run test:secret-providers
+npm run package:stable
 ```
 
 ## Documentation
@@ -34,7 +49,14 @@ npm run worker-writeback
 
 ```text
 src/
-  platform/         # five planes: interface / control-plane / orchestration / execution / state-evidence
+  apps/             # app entrypoints and launch surfaces
+  benchmarks/       # performance and benchmark helpers
+  platform/         # five planes plus shared contracts / gateway / prompt / stability modules
+    five-plane-interface/
+    five-plane-control-plane/
+    five-plane-orchestration/
+    five-plane-execution/
+    five-plane-state-evidence/
   domains/          # domain descriptor, onboarding, prompt/eval/domain registry
   interaction/      # NL entry, goal decomposition, proactive agent, dashboard, UX
   org-governance/   # org model, approval routing, SSO/SCIM, compliance, knowledge boundary
@@ -42,13 +64,14 @@ src/
   ops-maturity/     # explainability, panic/resume, edge runtime, drift, cost, debugger, multimodal
   sdk/              # CLI and SDK-facing entry surfaces
   plugins/          # built-in plugin/runtime extension points
+  testing/          # test-support utilities shipped with source
 tests/
   unit/ integration/ golden/ e2e/
 ```
 
 ## Current Notes
 
-- `src/core/runtime/` is retained only as a compatibility shim layer; canonical orchestration/runtime code lives under `src/platform/execution/` and `src/platform/orchestration/`.
+- `src/core/runtime/` is retained only as a compatibility shim layer; canonical orchestration/runtime code lives under `src/platform/five-plane-execution/` and `src/platform/five-plane-orchestration/`.
 - Root docs, ADR, contracts, and review matrices are expected to stay consistent. If a boundary changes, update the matching contract and tests in the same change.
 
 ## License

@@ -1,5 +1,8 @@
 import { DefaultPlatformAdapter } from "./base-platform-adapter";
 
+const LOCAL_FILE_PREFIX = "aa.file.";
+const MAX_FILE_STORAGE_BYTES = 256 * 1024;
+
 export class WebPlatformAdapter extends DefaultPlatformAdapter {
   public constructor() {
     super("web", { screenSecurityDefault: true });
@@ -23,19 +26,27 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   }
 
   public override async readFile(path: string): Promise<string> {
-    return globalThis.localStorage?.getItem(`aa.file.${path}`) ?? super.readFile(path);
+    const normalizedPath = normalizeLocalFilePath(path);
+    if (normalizedPath == null) {
+      return super.readFile(path);
+    }
+    return readLocalStorage(`${LOCAL_FILE_PREFIX}${normalizedPath}`) ?? super.readFile(path);
   }
 
   public override async writeFile(path: string, contents: string): Promise<void> {
-    globalThis.localStorage?.setItem(`aa.file.${path}`, contents);
+    const normalizedPath = normalizeLocalFilePath(path);
+    if (normalizedPath != null && new TextEncoder().encode(contents).byteLength <= MAX_FILE_STORAGE_BYTES) {
+      writeLocalStorage(`${LOCAL_FILE_PREFIX}${normalizedPath}`, contents);
+    }
     await super.writeFile(path, contents);
   }
 
   public override async openDeepLink(url: string): Promise<void> {
-    if (typeof window !== "undefined") {
-      window.location.hash = url;
+    const safeTarget = normalizeDeepLinkTarget(url);
+    if (typeof window !== "undefined" && safeTarget != null) {
+      window.location.hash = safeTarget.startsWith("#") ? safeTarget : `#${safeTarget.replace(/^\/+/, "/")}`;
     }
-    this.setDebugValue("__deeplink__", url);
+    this.setDebugValue("__deeplink__", safeTarget ?? url);
   }
 
   public override onForeground(listener: () => void): () => void {
@@ -70,17 +81,20 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   }
 
   public override async openWindow(path: string): Promise<void> {
-    globalThis.open?.(path, "_blank", "noopener,noreferrer");
+    const safeUrl = normalizeWindowTarget(path);
+    if (safeUrl != null) {
+      globalThis.open?.(safeUrl, "_blank", "noopener,noreferrer");
+    }
     await super.openWindow(path);
   }
 
   public override async getAnalyticsConsent(): Promise<boolean> {
-    const stored = globalThis.localStorage?.getItem("aa.analytics.consent");
+    const stored = readLocalStorage("aa.analytics.consent");
     return stored == null ? super.getAnalyticsConsent() : stored === "true";
   }
 
   public override async setAnalyticsConsent(enabled: boolean): Promise<void> {
-    globalThis.localStorage?.setItem("aa.analytics.consent", String(enabled));
+    writeLocalStorage("aa.analytics.consent", String(enabled));
     this.setAnalyticsConsentState(enabled);
   }
 
@@ -89,5 +103,69 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
       document.documentElement.dataset.aaScreenSecurity = enabled ? "enabled" : "disabled";
     }
     this.setScreenSecurityState(enabled);
+  }
+}
+
+function normalizeLocalFilePath(path: string): string | null {
+  const trimmed = path.trim();
+  if (
+    trimmed.length === 0
+    || trimmed.length > 240
+    || trimmed.includes("..")
+    || /[\r\n]/.test(trimmed)
+    || !/^[/A-Za-z0-9._-]+$/.test(trimmed)
+  ) {
+    return null;
+  }
+  return trimmed.replace(/^\/+/, "");
+}
+
+function normalizeDeepLinkTarget(url: string): string | null {
+  const trimmed = url.trim();
+  if (trimmed.length === 0 || /[\r\n]/.test(trimmed)) {
+    return null;
+  }
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("#")) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, globalThis.location?.origin ?? "https://example.invalid");
+    if (parsed.origin !== (globalThis.location?.origin ?? parsed.origin)) {
+      return null;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeWindowTarget(path: string): string | null {
+  try {
+    const parsed = new URL(path, globalThis.location?.origin ?? "https://example.invalid");
+    if (!["http:", "https:", "mailto:"].includes(parsed.protocol)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function readLocalStorage(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    globalThis.localStorage?.setItem(key, value);
+  } catch {
+    // Storage is best-effort in the browser adapter and should not crash the UI runtime.
   }
 }

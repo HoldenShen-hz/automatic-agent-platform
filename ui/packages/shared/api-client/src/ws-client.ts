@@ -111,6 +111,8 @@ export class BrowserWSClient implements WSClient {
   private lastEventId: string | null = null;
   private currentUrl: string | null = null;
   private currentToken: string | null = null;
+  private activeSocketNonce = 0;
+  private manualDisconnect = false;
 
   public constructor(
     private readonly websocketFactory: WebSocketFactory = WebSocket,
@@ -119,6 +121,7 @@ export class BrowserWSClient implements WSClient {
   ) {}
 
   public connect(url: string, token: string): void {
+    this.manualDisconnect = false;
     this.currentUrl = url;
     this.currentToken = token;
     this.reconnectAttempts = 0;
@@ -126,13 +129,15 @@ export class BrowserWSClient implements WSClient {
   }
 
   public disconnect(): void {
+    this.manualDisconnect = true;
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.reconnectAttempts = this.maxReconnectAttempts;
-    this.socket?.close();
+    const socket = this.socket;
     this.socket = null;
     this.currentUrl = null;
     this.currentToken = null;
+    socket?.close();
     this.fallbackClient?.disconnect();
     this.setStatus("disconnected");
   }
@@ -191,8 +196,12 @@ export class BrowserWSClient implements WSClient {
     this.stopHeartbeat();
     try {
       const socket = new this.websocketFactory(url, "v1.auth.token");
+      const socketNonce = ++this.activeSocketNonce;
       this.socket = socket;
       socket.onopen = () => {
+        if (!this.isActiveSocket(socket, socketNonce)) {
+          return;
+        }
         this.reconnectAttempts = 0;
         this.setStatus("connected");
         socket.send(JSON.stringify({
@@ -212,6 +221,9 @@ export class BrowserWSClient implements WSClient {
         this.startHeartbeat();
       };
       socket.onmessage = (event) => {
+        if (!this.isActiveSocket(socket, socketNonce)) {
+          return;
+        }
         const data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
         if (data.action === "pong" || data.type === "pong") {
           this.clearHeartbeatDeadline();
@@ -219,10 +231,20 @@ export class BrowserWSClient implements WSClient {
         }
         this.publish(data);
       };
-      socket.onclose = () => {
-        this.handleReconnect(url, token);
+      socket.onclose = (event) => {
+        if (!this.isActiveSocket(socket, socketNonce)) {
+          return;
+        }
+        this.handleReconnect(url, token, event?.code);
       };
       socket.onerror = () => {
+        if (!this.isActiveSocket(socket, socketNonce)) {
+          return;
+        }
+        if (socket.readyState === this.getConnectingState() || socket.readyState === this.getOpenState()) {
+          socket.close();
+          return;
+        }
         this.handleReconnect(url, token);
       };
     } catch {
@@ -230,8 +252,15 @@ export class BrowserWSClient implements WSClient {
     }
   }
 
-  private handleReconnect(url: string, token: string): void {
+  private handleReconnect(url: string, token: string, closeCode?: number): void {
+    if (this.manualDisconnect || this.currentUrl == null || this.currentToken == null) {
+      return;
+    }
     this.stopHeartbeat();
+    if (closeCode === 4001 || closeCode === 4003) {
+      this.setStatus("disconnected");
+      return;
+    }
     this.setStatus("reconnecting");
     if (this.fallbackClient != null) {
       this.fallbackClient.connect(url, token);
@@ -277,11 +306,14 @@ export class BrowserWSClient implements WSClient {
       this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempts),
       this.maxReconnectDelayMs,
     );
-    const jitter = exponentialDelay * (Math.random() * 0.3 - 0.15);
-    return Math.floor(exponentialDelay + jitter);
+    const jitter = exponentialDelay * Math.random() * 0.3;
+    return Math.min(this.maxReconnectDelayMs, Math.floor(exponentialDelay + jitter));
   }
 
   private scheduleReconnect(): void {
+    if (this.reconnectTimer != null) {
+      return;
+    }
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.setStatus("disconnected");
       return;
@@ -305,6 +337,10 @@ export class BrowserWSClient implements WSClient {
 
   private getOpenState(): number {
     return typeof WebSocket !== "undefined" ? WebSocket.OPEN : 1;
+  }
+
+  private getConnectingState(): number {
+    return typeof WebSocket !== "undefined" ? WebSocket.CONNECTING : 0;
   }
 
   private replayBufferedEvents(channel: string, handler: EventHandler): void {
@@ -345,6 +381,10 @@ export class BrowserWSClient implements WSClient {
     for (const handler of this.statusHandlers) {
       handler(status);
     }
+  }
+
+  private isActiveSocket(socket: WebSocket, socketNonce: number): boolean {
+    return this.socket === socket && this.activeSocketNonce === socketNonce;
   }
 }
 

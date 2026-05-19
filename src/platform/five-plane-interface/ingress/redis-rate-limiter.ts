@@ -5,6 +5,7 @@
  * rate limiting across multiple instances.
  */
 
+import { randomUUID } from "node:crypto";
 import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
@@ -68,7 +69,7 @@ export class RedisRateLimiter {
     pipeline.zremrangebyscore(fullKey, 0, windowStart);
 
     // Add current request with timestamp as score
-    const requestId = `${now}:${Math.random()}`;
+    const requestId = `${now}:${randomUUID()}`;
     pipeline.zadd(fullKey, now, requestId);
 
     // Count entries in the window

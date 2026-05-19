@@ -8,6 +8,7 @@
  * Environment Variables:
  *   - AA_DB_PATH: Path to the SQLite database (defaults to data/sqlite/authoritative-demo.db)
  *   - AA_AUTHORITATIVE_STORAGE_ACTION: Action to perform (summary, migrate, plan)
+ *   - CLI argv[0]: Optional action override (`status`, `up`, `down`, etc.)
  *
  * Actions:
  *   - summary: Display storage configuration summary (default)
@@ -31,7 +32,7 @@ import { MigrationRunner } from "../../platform/five-plane-state-evidence/truth/
  * Executes the requested storage administration action and outputs the result as JSON.
  */
 async function main(): Promise<void> {
-  const envConfig = loadAuthoritativeStorageAdminCliEnv();
+  const envConfig = loadAuthoritativeStorageAdminCliEnv(process.env, process.argv.slice(2));
   const dbPath = envConfig.dbPath;
   const action = envConfig.action;
   const plan = describeCliAuthoritativeStoragePlan(dbPath);

@@ -12,4 +12,14 @@ describe("web platform security regressions", () => {
     expect(window.localStorage.getItem("aa.secure.token")).toBeNull();
     expect(window.localStorage.length).toBe(0);
   });
+
+  it("rejects unsafe window targets and local file keys", async () => {
+    const adapter = createWebPlatformAdapter();
+    window.localStorage.clear();
+
+    await adapter.openWindow("javascript:alert(1)");
+    await adapter.writeFile("../escape", "secret");
+
+    expect(window.localStorage.length).toBe(0);
+  });
 });

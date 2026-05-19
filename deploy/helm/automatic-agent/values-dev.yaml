@@ -3,7 +3,8 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/holdenshen-hz/automatic-agent-platform
+  registry: ghcr.io
+  repository: automatic-agent-platform
   pullPolicy: IfNotPresent
   tag: dev
 

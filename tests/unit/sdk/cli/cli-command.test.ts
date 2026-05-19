@@ -15,9 +15,9 @@ import {
 test("CLI_ENTRYPOINTS exports expected entrypoints", () => {
   assert.ok(CLI_ENTRYPOINTS.length > 0, "CLI_ENTRYPOINTS should not be empty");
   assert.ok(CLI_ENTRYPOINTS.includes("platform-operator"));
-  assert.ok(CLI_ENTRYPOINTS.includes("authoritative-storage"));
   assert.ok(CLI_ENTRYPOINTS.includes("doctor"));
   assert.ok(CLI_ENTRYPOINTS.includes("inspect"));
+  assert.ok(CLI_ENTRYPOINTS.includes("login"));
 });
 
 test("CLI_ENTRYPOINTS contains only string values", () => {
@@ -35,7 +35,6 @@ test("CliEntrypoint type accepts valid entrypoints", () => {
 test("CLI_ENTRYPOINTS includes critical operational commands", () => {
   const criticalCommands = [
     "platform-operator",
-    "authoritative-storage",
     "authoritative-storage-admin",
     "worker-register",
     "worker-handshake",
@@ -56,6 +55,7 @@ test("CLI_ENTRYPOINTS includes critical operational commands", () => {
 test("CLI_ENTRYPOINTS includes stability and testing commands", () => {
   const stabilityCommands = CLI_ENTRYPOINTS.filter((e) => e.startsWith("stable-"));
   assert.ok(stabilityCommands.length > 0, "Should have stability commands");
+  assert.ok(!CLI_ENTRYPOINTS.includes("stable-runner-factory" as CliEntrypoint));
 
   const testingCommands = CLI_ENTRYPOINTS.filter((e) => e.includes("demo") || e.includes("test"));
   assert.ok(testingCommands.length > 0, "Should have demo/testing commands");

@@ -46,6 +46,15 @@ export interface AuthoritativeStorageAdminCliEnvConfig {
   action: "summary" | "migrate" | "plan" | "status" | "up" | "down";
 }
 
+const AUTHORITATIVE_STORAGE_ACTIONS = new Set([
+  "summary",
+  "migrate",
+  "plan",
+  "status",
+  "up",
+  "down",
+] as const);
+
 function resolveDbPath(env: NodeJS.ProcessEnv): string {
   const fromEnv = readTrimmedEnv(env, "AA_DB_PATH");
   if (fromEnv != null) {
@@ -140,20 +149,15 @@ export function loadProfileHomeCliEnv(env: NodeJS.ProcessEnv = process.env): Pro
 
 export function loadAuthoritativeStorageAdminCliEnv(
   env: NodeJS.ProcessEnv = process.env,
+  argv: readonly string[] = process.argv.slice(2),
 ): AuthoritativeStorageAdminCliEnvConfig {
-  const action = readTrimmedEnv(env, "AA_AUTHORITATIVE_STORAGE_ACTION") ?? "summary";
-  if (
-    action !== "summary"
-    && action !== "migrate"
-    && action !== "plan"
-    && action !== "status"
-    && action !== "up"
-    && action !== "down"
-  ) {
+  const actionFromArgv = argv[0]?.trim();
+  const action = readTrimmedEnv(env, "AA_AUTHORITATIVE_STORAGE_ACTION") ?? actionFromArgv ?? "summary";
+  if (!AUTHORITATIVE_STORAGE_ACTIONS.has(action as never)) {
     throw new ValidationError(`unknown_authoritative_storage_action:${action}`, `unknown_authoritative_storage_action:${action}`);
   }
   return {
     dbPath: resolveDbPath(env),
-    action,
+    action: action as AuthoritativeStorageAdminCliEnvConfig["action"],
   };
 }

@@ -141,6 +141,8 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       cleanupRef.current?.();
       cleanupRef.current = null;
       chartRef.current = null;
+      previousValuesRef.current = [];
+      initializedRef.current = false;
       chart.dispose();
     };
   }, []);
@@ -164,7 +166,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       });
     }
     previousValuesRef.current = [...values];
-  }, [values, chartTheme.accent, chartTheme.border]);
+  }, [title, values, theme]);
 
   return (
     <div>

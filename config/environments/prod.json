@@ -1,6 +1,6 @@
 {
   "environment": "prod",
-  "registry": "ghcr.io/holdenshen-hz",
+  "registry": "ghcr.io/automatic-agent",
   "imageRepository": "automatic-agent-system",
   "deploymentNamespace": "automatic-agent-prod",
   "configPath": "config/runtime/default.json",

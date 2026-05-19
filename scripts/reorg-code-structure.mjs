@@ -302,7 +302,6 @@ const INTEGRATION_PREFIX_MAP = [
   ["tests/integration/locking/", "tests/integration/platform/execution/distributed-lock/"],
   ["tests/integration/memory/", "tests/integration/platform/state-evidence/memory/"],
   ["tests/integration/messages/", "tests/integration/platform/model-gateway/messages/"],
-  ["tests/integration/migration/", "tests/integration/platform/state-evidence/truth/migration/"],
   ["tests/integration/observability/", "tests/integration/platform/shared/observability/"],
   ["tests/integration/product/", "tests/integration/scale-ecosystem/marketplace/"],
   ["tests/integration/providers/", "tests/integration/platform/model-gateway/provider-registry/"],

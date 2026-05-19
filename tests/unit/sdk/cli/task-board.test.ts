@@ -36,8 +36,7 @@ test("resolveDbPath returns default path when AA_DB_PATH not set", () => {
   try {
     delete process.env.AA_DB_PATH;
     const resolved = resolveCliDbPath();
-    // Default path should end with data/sqlite/authoritative-demo.db
-    assert.ok(resolved.includes("data/sqlite/authoritative-demo.db"), `Expected default path, got: ${resolved}`);
+    assert.ok(resolved.includes("data/sqlite/automatic-agent.db"), `Expected default path, got: ${resolved}`);
   } finally {
     if (previousDbPath == null) {
       delete process.env.AA_DB_PATH;

@@ -13,6 +13,7 @@
  */
 
 import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import { newId } from "../../contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------
 // Wake Condition Types
@@ -198,7 +199,7 @@ export function createHibernationRecord(input: {
   const expiresAt = new Date(Date.now() + ttl).toISOString();
 
   return {
-    hibernationId: input.hibernationId ?? `hib-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    hibernationId: input.hibernationId ?? newId("hib"),
     harnessRunId: input.harnessRunId,
     tenantId: input.tenantId,
     status: "hibernating",

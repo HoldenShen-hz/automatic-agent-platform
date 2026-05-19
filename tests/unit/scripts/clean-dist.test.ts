@@ -83,3 +83,26 @@ test("clean-dist prunes stale compiled tests even when dist is preserved", () =>
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("clean-dist honors AA_PRESERVE_DIST=0 even while AA_RUNNING_TESTS=1", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-force-delete-"));
+
+  try {
+    mkdirSync(join(workspace, "dist"), { recursive: true });
+    writeFileSync(join(workspace, "dist", "marker.txt"), "marker\n");
+
+    execFileSync("node", [SCRIPT_PATH], {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        AA_RUNNING_TESTS: "1",
+        AA_PRESERVE_DIST: "0",
+      },
+      stdio: "pipe",
+    });
+
+    assert.equal(existsSync(join(workspace, "dist")), false);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

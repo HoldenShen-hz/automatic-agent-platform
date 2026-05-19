@@ -325,6 +325,81 @@ describe("BrowserWSClient", () => {
 
     expect(statuses.includes("reconnecting")).toBe(false);
   });
+
+  it("does not reconnect after an authentication close code", async () => {
+    vi.useFakeTimers();
+    const sockets: Array<{ onopen: (() => void) | null; onclose: ((event: { code: number }) => void) | null }> = [];
+
+    class AuthCloseSocket {
+      public static readonly OPEN = 1;
+      public readyState = AuthCloseSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: ((event: { code: number }) => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(_url: string, _protocols?: string | string[]) {
+        sockets.push(this);
+        queueMicrotask(() => this.onopen?.());
+      }
+
+      public send(_message: string): void {}
+
+      public close(): void {
+        this.onclose?.({ code: 4001 });
+      }
+    }
+
+    const client = new BrowserWSClient(AuthCloseSocket as unknown as typeof WebSocket, new InMemoryWSClient());
+    client.connect("ws://example.com/ws", "token");
+    await vi.runAllTicks();
+
+    sockets[0]?.onclose?.({ code: 4001 });
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(sockets).toHaveLength(1);
+  });
+
+  it("ignores stale close events after a manual disconnect and later reconnect", async () => {
+    vi.useFakeTimers();
+    const sockets: ReconnectSocket[] = [];
+
+    class ReconnectSocket {
+      public static readonly OPEN = 1;
+      public static readonly CONNECTING = 0;
+      public static readonly CLOSED = 3;
+      public readyState = ReconnectSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: ((event?: { code: number }) => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(_url: string, _protocols?: string | string[]) {
+        sockets.push(this);
+        queueMicrotask(() => this.onopen?.());
+      }
+
+      public send(_message: string): void {}
+
+      public close(): void {
+        this.readyState = ReconnectSocket.CLOSED;
+      }
+    }
+
+    const client = new BrowserWSClient(ReconnectSocket as unknown as typeof WebSocket, new InMemoryWSClient());
+    client.connect("ws://example.com/ws", "first-token");
+    await vi.runAllTicks();
+
+    const firstSocket = sockets[0]!;
+    client.disconnect();
+    client.connect("ws://example.com/ws", "second-token");
+    await vi.runAllTicks();
+
+    firstSocket.onclose?.({ code: 1006 });
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(sockets).toHaveLength(2);
+  });
 });
 
 describe("createRuntimeWSClient", () => {

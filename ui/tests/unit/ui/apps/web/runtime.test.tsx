@@ -278,6 +278,46 @@ describe("service worker registration", () => {
     // The function should handle this gracefully
     expect(result === null || result instanceof ServiceWorkerRegistration).toBe(true);
   });
+
+  it("emits an update event when a waiting service worker is present", async () => {
+    const stateChangeListeners: Array<() => void> = [];
+    const updateFoundListeners: Array<() => void> = [];
+    const registration = {
+      waiting: {},
+      installing: {
+        state: "installing",
+        addEventListener: (_event: string, listener: () => void) => {
+          stateChangeListeners.push(listener);
+        },
+      },
+      addEventListener: (_event: string, listener: () => void) => {
+        updateFoundListeners.push(listener);
+      },
+    };
+    const originalServiceWorker = navigator.serviceWorker;
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        controller: {},
+        register: vi.fn(async () => registration),
+      },
+    });
+
+    const result = await registerWebServiceWorker();
+    updateFoundListeners[0]?.();
+    (registration.installing as { state: string }).state = "installed";
+    stateChangeListeners[0]?.();
+
+    expect(result).toBe(registration);
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "aa-sw-update-available" }));
+
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: originalServiceWorker,
+    });
+  });
 });
 
 describe("web App component", () => {

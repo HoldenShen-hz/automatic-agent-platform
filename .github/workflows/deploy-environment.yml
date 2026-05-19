@@ -28,19 +28,37 @@ on:
 
 permissions:
   contents: read
-  packages: read
   id-token: write
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Login to GHCR
-        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Wait for image to become available
+      - name: Validate workflow inputs
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DEPLOYMENT_SECRET_REF: ${{ inputs.deployment_secret_ref }}
+          CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
         run: |
-          IMAGE_REF="ghcr.io/holdenshen-hz/${{ github.event.repository.name }}:${{ inputs.image_tag }}"
+          set -euo pipefail
+          [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || {
+            echo "::error::Invalid image_tag"; exit 1;
+          }
+          [[ "${DEPLOYMENT_SECRET_REF}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
+            echo "::error::Invalid deployment_secret_ref"; exit 1;
+          }
+          [[ "${CONFIG_BUNDLE_REF}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
+            echo "::error::Invalid config_bundle_ref"; exit 1;
+          }
+      - name: Wait for image to become available
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_REGISTRY: ${{ format('{0}/{1}', vars.CONTAINER_REGISTRY_HOST != '' && vars.CONTAINER_REGISTRY_HOST || 'ghcr.io', vars.CONTAINER_REGISTRY_NAMESPACE != '' && vars.CONTAINER_REGISTRY_NAMESPACE || github.repository_owner) }}
+          IMAGE_REPOSITORY: ${{ github.event.repository.name }}
+        run: |
+          IMAGE_REF="${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}"
           for attempt in $(seq 1 30); do
             if docker manifest inspect "${IMAGE_REF}" >/dev/null 2>&1; then
               echo "Image available: ${IMAGE_REF}"
@@ -55,6 +73,7 @@ jobs:
   deployment-preflight:
     needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: ${{ inputs.environment }}
     steps:
       - name: Validate deployment environment secrets
@@ -78,11 +97,16 @@ jobs:
   deploy:
     needs: deployment-preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: ${{ inputs.environment }}
     env:
       DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
       CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
-      IMAGE_REPOSITORY: ghcr.io/holdenshen-hz/${{ github.event.repository.name }}
+      IMAGE_REGISTRY: ${{ format('{0}/{1}', vars.CONTAINER_REGISTRY_HOST != '' && vars.CONTAINER_REGISTRY_HOST || 'ghcr.io', vars.CONTAINER_REGISTRY_NAMESPACE != '' && vars.CONTAINER_REGISTRY_NAMESPACE || github.repository_owner) }}
+      IMAGE_REPOSITORY: ${{ github.event.repository.name }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -90,13 +114,15 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
+        with:
+          version: '1.31.8'
 
       - name: Configure kubeconfig
-        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
 
       - name: Verify kube context
         run: kubectl config get-contexts
@@ -156,7 +182,8 @@ jobs:
             --namespace "${{ steps.namespace.outputs.namespace }}"
             --create-namespace
             -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml"
-            --set "image.tag=${{ inputs.image_tag }}"
+            --set "image.tag=${IMAGE_TAG}"
+            --set "image.registry=${IMAGE_REGISTRY}"
             --set "image.repository=${IMAGE_REPOSITORY}"
             --set "env.AA_BUILD_COMMIT=${{ github.sha }}"
             --set "env.AA_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -189,7 +216,8 @@ jobs:
             helm upgrade --install automatic-agent deploy/helm/automatic-agent \
               --namespace "$NAMESPACE" \
               -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml" \
-              --set "image.tag=${{ inputs.image_tag }}" \
+              --set "image.tag=${IMAGE_TAG}" \
+              --set "image.registry=${IMAGE_REGISTRY}" \
               --set "image.repository=${IMAGE_REPOSITORY}" \
               --set "rolloutStrategy=rolling" \
               --wait --timeout 10m
@@ -220,7 +248,7 @@ jobs:
 
       - name: Record deployment info
         run: |
-          echo "Deployed image: ${IMAGE_REPOSITORY}:${{ inputs.image_tag }}"
+          echo "Deployed image: ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}"
           echo "Environment: ${{ inputs.environment }}"
           echo "Rollout strategy: ${{ inputs.rollout_strategy }}"
           echo "Release name: ${{ steps.rollout.outputs.release_name }}"
@@ -231,21 +259,26 @@ jobs:
     needs: deploy
     if: ${{ always() && needs.deploy.result == 'failure' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: ${{ inputs.environment }}
     env:
       DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
       CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
+        with:
+          version: '1.31.8'
       - name: Configure kubeconfig
-        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
       - name: Setup Helm
         uses: azure/setup-helm@v4
         with:
@@ -271,7 +304,11 @@ jobs:
             RELEASE_NAME="${CURRENT_SELECTOR:-automatic-agent}"
           fi
           PREVIOUS_REVISION=$(helm history "${RELEASE_NAME}" --namespace "${{ steps.namespace.outputs.namespace }}" -o json \
-            | node -e 'const history=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=history.filter((row)=>row.status==="deployed"||row.status==="superseded"); const previous=deployed.length >= 2 ? deployed[deployed.length - 2].revision : null; if (previous == null) process.exit(1); process.stdout.write(String(previous));')
+            | node -e 'const history=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=history.filter((row)=>row.status==="deployed"||row.status==="superseded"); const previous=deployed.length >= 2 ? deployed[deployed.length - 2].revision : null; if (previous != null) process.stdout.write(String(previous));')
+          if [ -z "${PREVIOUS_REVISION}" ]; then
+            echo "::warning::No previous Helm revision available for ${RELEASE_NAME}; skipping rollback."
+            exit 0
+          fi
           helm rollback ${RELEASE_NAME} ${PREVIOUS_REVISION} \
             --namespace ${{ steps.namespace.outputs.namespace }} \
             --wait --timeout 5m

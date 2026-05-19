@@ -122,6 +122,12 @@ export function DomainWizardWebView(): ReactElement {
           </section>
         ) : null}
 
+        {vm.submissionMessage == null ? null : (
+          <section aria-live="polite" role="status">
+            {vm.submissionMessage}
+          </section>
+        )}
+
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">Back</button>
           <button disabled={!vm.canGoNext} onClick={vm.goNext} type="button">Next</button>

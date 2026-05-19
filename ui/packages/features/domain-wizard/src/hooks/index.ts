@@ -41,6 +41,7 @@ export interface DomainWizardVm {
   readonly catalogItems: readonly { title: string; description: string }[];
   readonly previewRows: readonly { key: string; value: string }[];
   readonly validationErrors: readonly string[];
+  readonly submissionMessage: string | null;
   readonly canGoBack: boolean;
   readonly canGoNext: boolean;
   setCurrentStep(step: DomainWizardStepId): void;
@@ -111,6 +112,7 @@ export function useDomainWizardVm(): DomainWizardVm {
   const [maxConcurrentTasks, setMaxConcurrentTasks] = useState(stored.maxConcurrentTasks);
   const [allowedDrillDepth, setAllowedDrillDepth] = useState(stored.allowedDrillDepth);
   const [enableAutoRollback, setEnableAutoRollback] = useState(stored.enableAutoRollback);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
 
   const items = useMemo(() => domains.map((domain) => ({
     title: domain.displayName,
@@ -133,7 +135,11 @@ export function useDomainWizardVm(): DomainWizardVm {
       savedAt: new Date().toISOString(),
       ...next,
     };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // Ignore browser storage failures and keep the in-memory draft authoritative.
+    }
   }, [
     allowedDrillDepth,
     currentStep,
@@ -240,6 +246,7 @@ export function useDomainWizardVm(): DomainWizardVm {
     catalogItems: items,
     previewRows,
     validationErrors,
+    submissionMessage,
     canGoBack: currentIndex > 0,
     canGoNext: currentIndex < orderedSteps.length - 1 && validationErrors.length === 0,
     setCurrentStep(step) {
@@ -268,7 +275,7 @@ export function useDomainWizardVm(): DomainWizardVm {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(STORAGE_KEY);
       }
-      window.alert("Domain configuration submitted");
+      setSubmissionMessage("Domain configuration submitted");
     },
   };
 }

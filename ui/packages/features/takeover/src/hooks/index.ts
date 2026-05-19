@@ -3,6 +3,7 @@ import { updateTask, fetchWorkflowRunSteps } from "@aa/shared-api-client";
 import { useRestClient, useTasksQuery } from "@aa/shared-state";
 
 const STORAGE_KEY = "aa-takeover-snapshots";
+const MAX_SNAPSHOTS = 20;
 
 export interface TakeoverSnapshot {
   readonly taskId: string;
@@ -46,7 +47,11 @@ function writeSnapshots(snapshots: readonly TakeoverSnapshot[]): void {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
+  } catch {
+    // Ignore storage write failures and preserve the in-memory snapshot state.
+  }
 }
 
 export function useTakeoverVm(): TakeoverVm {
@@ -66,7 +71,7 @@ export function useTakeoverVm(): TakeoverVm {
       steps,
       capturedAt: new Date().toISOString(),
     };
-    const nextSnapshots = [snapshot, ...readSnapshots()];
+    const nextSnapshots = [snapshot, ...readSnapshots()].slice(0, MAX_SNAPSHOTS);
     writeSnapshots(nextSnapshots);
     setCurrentSnapshot(snapshot);
     setOwnershipHistory((entries) => [{ taskId, owner, action: "claim", recordedAt: snapshot.capturedAt }, ...entries]);

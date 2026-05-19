@@ -14,11 +14,11 @@ const ci = read(".github/workflows/ci.yml");
 check("ci explicit permissions", /permissions:[\s\S]*contents:\s*read[\s\S]*security-events:\s*write/.test(ci), "CI declares least-privilege read plus CodeQL upload permission");
 check("ci concurrency", /concurrency:[\s\S]*cancel-in-progress:\s*true/.test(ci), "CI cancels superseded runs");
 check("ci npm ci", /run:\s*npm ci/.test(ci), "CI installs from lockfile");
-check("ci npm audit", /npm audit --audit-level=high/.test(ci), "CI runs npm audit gate");
+check("ci npm audit sarif pipeline", /npm audit --audit-level=high --omit=dev --json/.test(ci) && /upload-sarif@v3/.test(ci), "CI converts npm audit findings into SARIF and uploads them");
 check("ci typecheck", /npm run typecheck/.test(ci), "CI runs typecheck");
 check("ci coverage gate", /npm run coverage:gate/.test(ci), "CI runs coverage gate");
 check("ci codeql", /github\/codeql-action\/analyze@v3/.test(ci), "CI runs CodeQL");
-check("ci trivy", /aquasecurity\/trivy-action@master/.test(ci) && /CRITICAL,HIGH/.test(ci), "CI scans image for critical/high vulnerabilities");
+check("ci trivy", /aquasecurity\/trivy-action@0\.32\.0/.test(ci) && /image-ref:\s*automatic-agent/.test(ci) && /CRITICAL,HIGH/.test(ci), "CI scans image for critical/high vulnerabilities with pinned Trivy action");
 
 const publish = read(".github/workflows/publish-image.yml");
 check("publish environment approval", /environment:\s*\$\{\{/.test(publish), "publish job binds GitHub environment");

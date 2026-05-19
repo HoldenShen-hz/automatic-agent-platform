@@ -1,4 +1,4 @@
-const APP_SHELL_CACHE = "aa-ui-runtime-v1";
+const APP_SHELL_CACHE = "aa-ui-runtime-v2";
 const OFFLINE_MUTATION_DB = "aa-ui-offline";
 const OFFLINE_MUTATION_STORE = "mutations";
 const PRECACHE_ASSETS = ["/", "/offline"];
@@ -35,11 +35,24 @@ self.addEventListener("fetch", (event) => {
     if (cached != null) {
       return cached;
     }
-    const response = await fetch(event.request);
-    if (response.ok) {
-      await cache.put(cacheKey, response.clone());
+    try {
+      const response = await fetchWithTimeout(event.request, 8000);
+      if (response.ok) {
+        await cache.put(cacheKey, response.clone());
+      }
+      return response;
+    } catch {
+      const offlineFallback = await cache.match("/offline");
+      if (offlineFallback != null) {
+        return offlineFallback;
+      }
+      return new Response("Offline", {
+        status: 503,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+        },
+      });
     }
-    return response;
   })());
 });
 
@@ -60,6 +73,18 @@ function normalizeCacheRequest(request) {
   url.search = "";
   url.hash = "";
   return new Request(url.toString(), { method: "GET" });
+}
+
+async function fetchWithTimeout(request, timeoutMs) {
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller == null ? null : setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(request, controller == null ? undefined : { signal: controller.signal });
+  } finally {
+    if (timeout != null) {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 async function replayOfflineMutations() {

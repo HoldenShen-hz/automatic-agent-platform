@@ -156,7 +156,7 @@ describe("shared api-client runtime regressions", () => {
     expect(FakeSocket.instances[0]?.sent[0]).toContain('"token":"secret-token"');
 
     FakeSocket.instances[0]?.close();
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1500);
     await vi.runAllTicks();
 
     expect(FakeSocket.instances).toHaveLength(2);
@@ -278,5 +278,90 @@ describe("shared api-client runtime regressions", () => {
     await updatePreferences(client, { theme: "light", locale: "en-US" }, "etag-42");
 
     expect(ifMatch).toBe("etag-42");
+  });
+
+  it("does not retry aborted requests or unsafe writes without an idempotency key", async () => {
+    vi.useFakeTimers();
+    let abortAttempts = 0;
+    const abortTransport = new HttpTransport({
+      baseUrl: "https://example.test",
+      timeoutMs: 5,
+      fetchImplementation: async (_input, init) => {
+        abortAttempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        if (init?.signal?.aborted === true) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+
+    const abortPromise = abortTransport.send(createRequest("/api/v1/tasks")).then(
+      () => ({ ok: true as const }),
+      (error) => ({ ok: false as const, error }),
+    );
+    await vi.runAllTimersAsync();
+    const abortResult = await abortPromise;
+    expect(abortResult.ok).toBe(false);
+    expect(abortAttempts).toBe(1);
+
+    let writeAttempts = 0;
+    const writeTransport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async () => {
+        writeAttempts += 1;
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+
+    const writePromise = writeTransport.send({
+      path: "/api/v1/preferences",
+      method: "POST",
+      headers: new Headers(),
+      body: { theme: "dark" },
+    }).then(
+      () => ({ ok: true as const }),
+      (error) => ({ ok: false as const, error }),
+    );
+    await vi.runAllTimersAsync();
+    const writeResult = await writePromise;
+    expect(writeResult.ok).toBe(false);
+    expect(writeAttempts).toBe(1);
+  });
+
+  it("exposes credentials and mode for cross-origin API requests and tolerates uppercase absolute URLs", async () => {
+    let capturedMode = "";
+    let capturedCredentials = "";
+    let capturedUrl = "";
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      mode: "cors",
+      credentials: "include",
+      fetchImplementation: async (input, init) => {
+        capturedUrl = String(input);
+        capturedMode = String(init?.mode);
+        capturedCredentials = String(init?.credentials);
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+
+    await transport.send({
+      path: "HTTPS://api.example.test/tasks",
+      method: "GET",
+      headers: new Headers(),
+    });
+
+    expect(capturedUrl).toBe("HTTPS://api.example.test/tasks");
+    expect(capturedMode).toBe("cors");
+    expect(capturedCredentials).toBe("include");
   });
 });

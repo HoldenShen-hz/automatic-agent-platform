@@ -26,6 +26,8 @@ function loadServiceWorker(overrides: {
     URL,
     Request,
     Response,
+    AbortController,
+    DOMException,
     Promise,
     setTimeout,
     clearTimeout,
@@ -81,7 +83,7 @@ it("service worker activate removes stale aa-ui caches and keeps current version
   const deletedCaches: string[] = [];
   const listeners = loadServiceWorker({
     caches: {
-      keys: async () => ["aa-ui-runtime-v1", "aa-ui-runtime-v0", "other-cache"],
+      keys: async () => ["aa-ui-runtime-v2", "aa-ui-runtime-v1", "other-cache"],
       delete: async (cacheName: string) => {
         deletedCaches.push(cacheName);
         return true;
@@ -97,7 +99,7 @@ it("service worker activate removes stale aa-ui caches and keeps current version
   });
   await activatePromise;
 
-  assert.deepEqual(deletedCaches, ["aa-ui-runtime-v0"]);
+  assert.deepEqual(deletedCaches, ["aa-ui-runtime-v1"]);
 });
 
 it("service worker fetch normalizes cache keys by stripping query strings", async () => {
@@ -155,6 +157,36 @@ it("service worker bypasses caching for API GET requests", () => {
 
   assert.equal(respondWithCalled, false);
   assert.equal(cacheOpened, false);
+});
+
+it("service worker falls back to the offline route when network fetch times out", async () => {
+  const listeners = loadServiceWorker({
+    caches: {
+      open: async () => ({
+        match: async (request: Request | string) => {
+          if (typeof request === "string" ? request === "/offline" : request.url.endsWith("/offline")) {
+            return new Response("offline-page", { status: 200 });
+          }
+          return undefined;
+        },
+        put: async () => undefined,
+      }),
+    } as unknown as CacheStorage,
+    fetch: async () => {
+      throw new Error("network failed");
+    },
+  });
+
+  let responsePromise: Promise<Response> | undefined;
+  listeners.fetch?.({
+    request: new Request("https://example.com/assets/app.js", { method: "GET" }),
+    respondWith(promise: Promise<Response>) {
+      responsePromise = promise;
+    },
+  });
+
+  const response = await responsePromise;
+  assert.equal(await response?.text(), "offline-page");
 });
 
 it("service worker sync replays offline queue and deletes successfully synced mutations", async () => {

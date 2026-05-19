@@ -170,7 +170,14 @@ describe("WebAppShell", () => {
 
     expect(screen.getByText("Access denied")).toBeInTheDocument();
     expect(screen.getByText("Insufficient permissions")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Go Back" })).toBeInTheDocument();
+  });
+
+  it("renders an empty-state shell when no features are registered", () => {
+    renderShell([], { initialEntries: ["/"] });
+
+    expect(screen.getByText("No features available")).toBeInTheDocument();
   });
 
   it("catches feature render errors in the error boundary", () => {

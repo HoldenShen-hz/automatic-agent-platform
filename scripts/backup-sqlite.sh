@@ -9,7 +9,7 @@
 #   ./backup-sqlite.sh [DB_PATH] [BACKUP_DIR]
 #
 # Environment variables:
-#   AA_DB_PATH      SQLite database path (default: data/sqlite/authoritative-demo.db)
+#   AA_DB_PATH      SQLite database path (default: data/sqlite/automatic-agent.db)
 #   BACKUP_DIR     Backup directory (default: backups)
 #   RETENTION_DAYS Number of days to retain backups (default: 7)
 #   AA_BACKUP_ENCRYPTION_KEY_FILE  Optional OpenSSL passphrase file for AES-256 encryption
@@ -17,15 +17,12 @@
 # =============================================================================
 set -euo pipefail
 
-DB_PATH="${AA_DB_PATH:-data/sqlite/authoritative-demo.db}"
+DB_PATH="${AA_DB_PATH:-data/sqlite/automatic-agent.db}"
 BACKUP_DIR="${BACKUP_DIR:-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 
-# Resolve absolute path
-DB_PATH="$(realpath "$DB_PATH" 2>/dev/null)" || {
-  echo "ERROR: Cannot resolve DB path: $DB_PATH" >&2
-  exit 1
-}
+mkdir -p "$(dirname "$DB_PATH")"
+DB_PATH="$(cd "$(dirname "$DB_PATH")" && pwd)/$(basename "$DB_PATH")"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="${BACKUP_DIR}/backup_${TIMESTAMP}.db"

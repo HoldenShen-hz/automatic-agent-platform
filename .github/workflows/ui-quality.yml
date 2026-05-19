@@ -14,9 +14,17 @@ on:
       - "docs_zh/reviews/ui-design-vs-implementation-review.md"
       - ".github/workflows/ui-quality.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ui-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ui
@@ -35,6 +43,33 @@ jobs:
       - run: npm run build
       - run: npm run bundle:analyze
       - run: npm run perf:budget
-      - run: npx playwright install --with-deps chromium
+      - name: Start preview server
+        run: |
+          npm --workspace @aa/web run preview -- --host 127.0.0.1 --port 4173 > /tmp/ui-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/ui-preview.log
+          exit 1
+      - name: Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://127.0.0.1:4173/
+          uploadArtifacts: true
+          temporaryPublicStorage: false
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:a11y
       - run: npm run test:visual
+      - name: Upload UI test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-quality-artifacts
+          path: |
+            ui/playwright-report/
+            ui/test-results/
+            /tmp/ui-preview.log

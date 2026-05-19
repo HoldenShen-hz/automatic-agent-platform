@@ -144,7 +144,7 @@ export function createWebRuntimeClients(
     DefaultRESTClient,
     (request) =>
       constructOrCall(HttpTransport, {
-        baseUrl: config.apiBaseUrl ?? "/api/v1",
+        baseUrl: config.apiBaseUrl ?? "/api",
         fallbackToMock: false,
       }).send(request),
     [
@@ -183,5 +183,25 @@ export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistrat
     return null;
   }
   const baseUrl = (import.meta as ImportMeta & { readonly env?: { readonly BASE_URL?: string } }).env?.BASE_URL ?? "/";
-  return navigator.serviceWorker.register(`${baseUrl}aa-sw.js`);
+  const registration = await navigator.serviceWorker.register(`${baseUrl}aa-sw.js`);
+  const notifyUpdateAvailable = () => {
+    window.dispatchEvent(new CustomEvent("aa-sw-update-available", {
+      detail: { registration },
+    }));
+  };
+
+  if (registration.waiting != null) {
+    notifyUpdateAvailable();
+  }
+
+  registration.addEventListener?.("updatefound", () => {
+    const installing = registration.installing;
+    installing?.addEventListener?.("statechange", () => {
+      if (installing.state === "installed" && navigator.serviceWorker.controller != null) {
+        notifyUpdateAvailable();
+      }
+    });
+  });
+
+  return registration;
 }

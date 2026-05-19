@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import * as domains from "../../src/domains/index.js";
+import * as interaction from "../../src/interaction/index.js";
+import * as interactionGovernance from "../../src/interaction-governance-runtime-catalog.js";
+import * as opsMaturity from "../../src/ops-maturity/index.js";
+import * as orgGovernance from "../../src/org-governance/index.js";
+import * as platform from "../../src/platform/index.js";
+import * as plugins from "../../src/plugins/index.js";
+import * as scaleEcosystem from "../../src/scale-ecosystem/index.js";
+import * as sdk from "../../src/sdk/index.js";
+test("root architecture barrels expose canonical top-level layers", () => {
+    assert.equal(typeof platform.registerPlatformSurfaceCatalog, "function");
+    assert.equal(typeof platform.listPlatformMainlineCapabilities, "function");
+    assert.equal(typeof domains.PackRegistryService, "function");
+    assert.equal(typeof interaction.GoalDecompositionService, "function");
+    assert.equal(typeof interaction.listInteractionCapabilityBaselines, "function");
+    assert.equal(typeof interaction.buildInteractionBootstrap, "function");
+    assert.equal(typeof interactionGovernance.buildInteractionGovernanceRuntimeCatalog, "function");
+    assert.equal(typeof orgGovernance.IdentitySyncService, "function");
+    assert.equal(typeof orgGovernance.listGovernanceCapabilityBaselines, "function");
+    assert.equal(typeof orgGovernance.buildGovernanceBootstrap, "function");
+    assert.equal(typeof scaleEcosystem.ResourcePoolService, "function");
+    assert.equal(typeof scaleEcosystem.listScaleCapabilityBaselines, "function");
+    assert.equal(typeof opsMaturity.ChaosExperimentScheduler, "function");
+    assert.equal(typeof opsMaturity.listOpsMaturityCapabilityBaselines, "function");
+    assert.equal(typeof plugins.createBasicPlannerPlugin, "function");
+    assert.equal(typeof sdk.PackScaffoldService, "function");
+});
+//# sourceMappingURL=root-architecture-barrels.test.js.map

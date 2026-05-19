@@ -31,9 +31,15 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- $imageRegistry := trimSuffix "/" (.Values.image.registry | default "") }}
+      {{- $imageRepository := trimPrefix "/" .Values.image.repository }}
+      {{- $resolvedImage := $imageRepository }}
+      {{- if ne $imageRegistry "" }}
+      {{- $resolvedImage = printf "%s/%s" $imageRegistry $imageRepository }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ $resolvedImage }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

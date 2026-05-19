@@ -217,7 +217,7 @@ test("real supply-chain audit script passes against current repository controls"
     encoding: "utf8",
   });
   assert.match(output, /ci supply-chain audit passed/);
-  assert.match(output, /ok ci npm audit/);
+  assert.match(output, /ok ci npm audit sarif pipeline/);
   assert.match(output, /ok package lock present/);
 });
 

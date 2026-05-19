@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import React, { Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   MemoryRouter,
@@ -31,12 +31,14 @@ type WebFeatureModule = Omit<FeatureModule, "subPages"> & {
   readonly subPages?: readonly FeatureSubPage[];
 };
 
-type ShellLifecyclePhase = "boot" | "auth" | "load" | "render" | "idle";
+type ShellLifecyclePhase = "render" | "idle";
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
   readonly client?: RESTClient;
   readonly wsClient?: WSClient;
+  readonly wsUrl?: string;
+  readonly wsToken?: string;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
   readonly authContext?: AuthContext;
@@ -60,14 +62,50 @@ function normalizePath(path: string): string {
   return path.replace(/\/+$/, "");
 }
 
-function AccessDeniedView({ reason }: { reason: string | null }): ReactElement {
+function withAlpha(hexColor: string, alpha: number): string {
+  const normalized = hexColor.replace("#", "");
+  const shorthand = normalized.length === 3
+    ? normalized.split("").map((segment) => `${segment}${segment}`).join("")
+    : normalized;
+  if (shorthand.length !== 6) {
+    return hexColor;
+  }
+  const red = Number.parseInt(shorthand.slice(0, 2), 16);
+  const green = Number.parseInt(shorthand.slice(2, 4), 16);
+  const blue = Number.parseInt(shorthand.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function LoadingFallback(): ReactElement {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      role="status"
+      style={{ padding: 24, color: designTokens.color.subtle }}
+    >
+      Loading...
+    </div>
+  );
+}
+
+function AccessDeniedView({ fallbackPath, reason }: { reason: string | null; fallbackPath: string }): ReactElement {
   const navigate = useNavigate();
 
   return (
-    <section>
-      <h2>Access denied</h2>
+    <section aria-live="assertive" role="alert">
+      <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Access denied</p>
       <p>{reason}</p>
-      <button onClick={() => navigate(-1)} type="button">
+      <button
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            navigate(-1);
+            return;
+          }
+          navigate(fallbackPath);
+        }}
+        type="button"
+      >
         Go Back
       </button>
     </section>
@@ -91,7 +129,7 @@ class FeatureErrorBoundary extends React.Component<
     if (this.state.error != null) {
       return (
         <section>
-          <h2>Something went wrong</h2>
+          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Something went wrong</p>
           <p>{this.state.error.message}</p>
           <div style={{ display: "flex", gap: 12 }}>
             <button
@@ -128,18 +166,22 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
 
   if (subPages.length === 0) {
     return (
-      <Suspense fallback={<div style={{ padding: 24, color: "#888" }}>Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <feature.Component />
       </Suspense>
     );
   }
 
   const basePath = normalizePath(feature.route.path);
-  const activeSubPage = subPages.find((subPage) => normalizePath(location.pathname) === `${basePath}/${subPage.path}`) ?? subPages[0]!;
+  const activeSubPage = subPages.find((subPage) => normalizePath(location.pathname) === `${basePath}/${subPage.path}`) ?? subPages[0] ?? null;
+
+  if (activeSubPage == null) {
+    return <section><h2>No sections available</h2></section>;
+  }
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <Suspense fallback={<div style={{ padding: 24, color: "#888" }}>Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <feature.Component />
       </Suspense>
       <nav aria-label={`${feature.manifest.title} sections`} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -151,7 +193,7 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
               textDecoration: "none",
               padding: "8px 10px",
               borderRadius: 10,
-              background: isActive ? "#12201a" : "transparent",
+              background: isActive ? withAlpha(designTokens.color.accent, 0.12) : "transparent",
             })}
             to={`${feature.route.path}/${subPage.path}`}
           >
@@ -159,7 +201,7 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
           </NavLink>
         ))}
       </nav>
-      <Suspense fallback={<div style={{ padding: 24, color: "#888" }}>Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <activeSubPage.Component />
       </Suspense>
     </div>
@@ -169,7 +211,14 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
 function GuardedFeatureRoute(
   { features, feature, authContext }: { features: readonly WebFeatureModule[]; feature: WebFeatureModule; authContext: FeatureGuardContext },
 ): ReactElement {
-  const resolvedFeature = features.find((candidate) => candidate.route.path === feature.route.path) ?? features[0]!;
+  const resolvedFeature = useMemo(
+    () => features.find((candidate) => candidate.route.path === feature.route.path) ?? features[0] ?? null,
+    [feature.route.path, features],
+  );
+
+  if (resolvedFeature == null) {
+    return <section><h2>No features available</h2></section>;
+  }
   const guard = useMemo(() => createRouteGuardChain(
     resolvedFeature.route.permission,
     resolvedFeature.manifest.kind === "planned" ? resolvedFeature.manifest.id : undefined,
@@ -182,7 +231,7 @@ function GuardedFeatureRoute(
   const result = guard.evaluate(authContext);
 
   if (!result.allowed) {
-    return <AccessDeniedView reason={result.reason} />;
+    return <AccessDeniedView fallbackPath={features[0]?.route.path ?? "/"} reason={result.reason} />;
   }
 
   return (
@@ -236,7 +285,7 @@ function AppFrame(
                     textDecoration: "none",
                     padding: "8px 10px",
                     borderRadius: 10,
-                    background: isActive ? "#12201a" : "transparent",
+                    background: isActive ? withAlpha(designTokens.color.accent, 0.12) : "transparent",
                   })}
                   to={feature.route.path}
                 >
@@ -265,19 +314,25 @@ function AppFrame(
         )}
         <SystemStatusBar status={systemStatus} />
         {(phase === "render" || phase === "idle") ? (
-          <Routes>
-            {features.map((feature) => (
-              <Route
-                key={feature.manifest.id}
-                element={<GuardedFeatureRoute authContext={authContext} feature={feature} features={features} />}
-                path={feature.subPages != null && feature.subPages.length > 0 ? `${feature.route.path}/*` : feature.route.path}
-              />
-            ))}
-            <Route element={<GuardedFeatureRoute authContext={authContext} feature={features[0]!} features={features} />} path="*" />
-          </Routes>
+          features.length === 0 ? (
+            <section role="status">
+              <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>No features available</p>
+            </section>
+          ) : (
+            <Routes>
+              {features.map((feature) => (
+                <Route
+                  key={feature.manifest.id}
+                  element={<GuardedFeatureRoute authContext={authContext} feature={feature} features={features} />}
+                  path={feature.subPages != null && feature.subPages.length > 0 ? `${feature.route.path}/*` : feature.route.path}
+                />
+              ))}
+              <Route element={<GuardedFeatureRoute authContext={authContext} feature={features[0]!} features={features} />} path="*" />
+            </Routes>
+          )
         ) : (
-          <section>
-            <h2>Preparing shell</h2>
+          <section aria-live="polite" role="status">
+            <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Preparing shell</p>
             <p>{phase}</p>
           </section>
         )}
@@ -287,14 +342,16 @@ function AppFrame(
 }
 
 export function WebAppShell(
-  { features, client, wsClient, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
+  { features, client, wsClient, wsUrl, wsToken, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
 ): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
+    ...(wsUrl == null ? {} : { wsUrl }),
+    ...(wsToken == null ? {} : { wsToken }),
   };
   const adapter = useMemo(() => createWebPlatformAdapter(), []);
-  const [phase, setPhase] = useState<ShellLifecyclePhase>("boot");
+  const [phase, setPhase] = useState<ShellLifecyclePhase>("render");
 
   const effectiveAuthContext = createFeatureGuardContext({
     authenticated: true,
@@ -307,12 +364,6 @@ export function WebAppShell(
     mode: "enterprise",
     ...authContext,
   });
-
-  useLayoutEffect(() => {
-    setPhase("auth");
-    setPhase("load");
-    setPhase("render");
-  }, []);
 
   useEffect(() => {
     if (phase === "render") {

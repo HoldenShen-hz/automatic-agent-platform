@@ -50,6 +50,9 @@ export interface HttpTransportOptions {
   readonly headers?: Readonly<Record<string, string>>;
   readonly fetchImplementation?: typeof fetch;
   readonly fallbackToMock?: boolean;
+  readonly credentials?: RequestCredentials;
+  readonly mode?: RequestMode;
+  readonly timeoutMs?: number;
 }
 
 export const DEFAULT_ACCEPT_VERSION_HEADER = "2026-04-01,2026-01-01";
@@ -226,9 +229,15 @@ export class HttpTransport {
     this.circuitBreaker = { failures: 0, lastFailure: 0, state: "closed" };
   }
 
-  private shouldRetry(error: unknown): boolean {
+  private shouldRetry(error: unknown, request: RestClientRequest): boolean {
+    if (!this.isRetryAllowed(request)) {
+      return false;
+    }
     if (error instanceof RestHttpError) {
       return error.status >= 500 || error.status === 429;
+    }
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return false;
     }
     return true;
   }
@@ -282,10 +291,27 @@ export class HttpTransport {
     return parsed as T;
   }
 
+  private isRetryAllowed(request: RestClientRequest): boolean {
+    if (request.method === "GET") {
+      return true;
+    }
+    if (request.method === "HEAD" || request.method === "OPTIONS") {
+      return true;
+    }
+    return request.headers.has("Idempotency-Key") || request.headers.has("x-idempotency-key");
+  }
+
+  private resolveRequestUrl(path: string): string {
+    const trimmed = path.replace(/^\uFEFF+/, "").trim();
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    const normalizedBaseUrl = this.options.baseUrl.replace(/\/$/, "");
+    return `${normalizedBaseUrl}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
+  }
+
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
-    const url = request.path.startsWith("http")
-      ? request.path
-      : `${this.options.baseUrl.replace(/\/$/, "")}${request.path.startsWith("/") ? request.path : `/${request.path}`}`;
+    const url = this.resolveRequestUrl(request.path);
     const requestBody = request.body == null ? null : JSON.stringify(request.body);
     const requestHeaders = new Headers({
       "content-type": "application/json",
@@ -301,11 +327,22 @@ export class HttpTransport {
       }
 
       try {
-        const response = await this.fetchImplementation(url, {
-          method: request.method,
-          headers: requestHeaders,
-          body: requestBody,
-        });
+        const abortController = new AbortController();
+        const timeoutMs = this.options.timeoutMs ?? 10_000;
+        const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+        let response: Response;
+        try {
+          response = await this.fetchImplementation(url, {
+            method: request.method,
+            headers: requestHeaders,
+            body: requestBody,
+            credentials: this.options.credentials ?? "include",
+            mode: this.options.mode ?? "cors",
+            signal: abortController.signal,
+          });
+        } finally {
+          clearTimeout(timeoutHandle);
+        }
 
         if (!response.ok) {
           const retryAfterHeader = response.headers.get("retry-after");
@@ -323,7 +360,7 @@ export class HttpTransport {
         };
       } catch (error) {
         lastError = error;
-        if (attempt < this.retryConfig.maxRetries && this.shouldRetry(error)) {
+        if (attempt < this.retryConfig.maxRetries && this.shouldRetry(error, request)) {
           await this.sleep(this.calculateBackoff(attempt));
           continue;
         }
@@ -397,12 +434,15 @@ export class DefaultRESTClient implements RESTClient {
 }
 
 export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>): RESTClient {
-  const baseUrl = options?.baseUrl ?? "/api/v1";
+  const baseUrl = options?.baseUrl ?? "/api";
   return new DefaultRESTClient((request) => new HttpTransport({
     baseUrl,
     ...(options?.headers == null ? {} : { headers: options.headers }),
     ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
     ...(options?.acceptVersion == null ? {} : { acceptVersion: options.acceptVersion }),
+    ...(options?.credentials == null ? {} : { credentials: options.credentials }),
+    ...(options?.mode == null ? {} : { mode: options.mode }),
+    ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
     fallbackToMock: options?.fallbackToMock ?? false,
   }).send(request));
 }

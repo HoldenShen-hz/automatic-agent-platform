@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createRuntimeRESTClient } from "../../packages/shared/api-client/src/rest-client";
 
 describe("runtime REST client defaults", () => {
-  it("prefers same-origin /api/v1 HTTP transport instead of mock fallback", async () => {
+  it("prefers same-origin version-negotiated /api HTTP transport instead of mock fallback", async () => {
     const requests: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
     const client = createRuntimeRESTClient({
       fetchImplementation: async (input, init) => {
@@ -18,6 +18,6 @@ describe("runtime REST client defaults", () => {
     const result = await client.get<{ ok: boolean }>("/health");
 
     expect(result.ok).toBe(true);
-    expect(String(requests[0]?.input)).toContain("/api/v1/health");
+    expect(String(requests[0]?.input)).toContain("/api/health");
   });
 });

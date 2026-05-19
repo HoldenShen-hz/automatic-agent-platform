@@ -17,6 +17,8 @@ interface PendingCodeFlow {
   readonly codeVerifier: string;
 }
 
+const PENDING_CODE_FLOW_STORAGE_KEY = "aa.auth.pending-code-flow";
+
 export class AuthService {
   private pendingCodeFlow: PendingCodeFlow | null = null;
 
@@ -51,7 +53,7 @@ export class AuthService {
     const roles = params.get("roles");
     const permissions = params.get("permissions");
     return {
-      locale: params.get("locale") ?? "zh-CN",
+      locale: params.get("locale") ?? "en-US",
       displayName: params.get("display_name") ?? "Platform Operator",
       userId: params.get("user_id") ?? "platform-operator",
       tenantId: params.get("tenant_id") ?? "default-tenant",
@@ -62,13 +64,13 @@ export class AuthService {
 
   public async initiateCodeFlow(redirectUri: string): Promise<string> {
     const state = crypto.randomUUID();
-    const codeVerifier = crypto.randomUUID().replace(/-/g, "");
+    const codeVerifier = createCodeVerifier();
     const codeChallenge = await deriveCodeChallenge(codeVerifier);
-    this.pendingCodeFlow = {
+    this.persistPendingCodeFlow({
       state,
       redirectUri,
       codeVerifier,
-    };
+    });
 
     const params = new URLSearchParams({
       client_id: this.options.clientId ?? "automatic-agent-platform-ui",
@@ -87,7 +89,7 @@ export class AuthService {
       throw new Error("auth.authorization_failed");
     }
 
-    const pendingFlow = this.pendingCodeFlow;
+    const pendingFlow = this.getPendingCodeFlow();
     if (pendingFlow == null) {
       throw new Error("auth.no_pending_flow");
     }
@@ -112,7 +114,7 @@ export class AuthService {
       codeVerifier: pendingFlow.codeVerifier,
     });
     this.tokenManager.setSession(session);
-    this.pendingCodeFlow = null;
+    this.persistPendingCodeFlow(null);
     return session;
   }
 
@@ -122,13 +124,89 @@ export class AuthService {
     }
     throw new Error("auth.redirecting");
   }
+
+  private getPendingCodeFlow(): PendingCodeFlow | null {
+    if (this.pendingCodeFlow != null) {
+      return this.pendingCodeFlow;
+    }
+    const storage = getSessionStorage();
+    if (storage == null) {
+      return null;
+    }
+    const raw = storage.getItem(PENDING_CODE_FLOW_STORAGE_KEY);
+    if (raw == null) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<PendingCodeFlow>;
+      if (
+        typeof parsed.state !== "string"
+        || typeof parsed.redirectUri !== "string"
+        || typeof parsed.codeVerifier !== "string"
+      ) {
+        storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+        return null;
+      }
+      this.pendingCodeFlow = {
+        state: parsed.state,
+        redirectUri: parsed.redirectUri,
+        codeVerifier: parsed.codeVerifier,
+      };
+      return this.pendingCodeFlow;
+    } catch {
+      storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+      return null;
+    }
+  }
+
+  private persistPendingCodeFlow(flow: PendingCodeFlow | null): void {
+    this.pendingCodeFlow = flow;
+    const storage = getSessionStorage();
+    if (storage == null) {
+      return;
+    }
+    if (flow == null) {
+      try {
+        storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+      } catch {
+        // Ignore storage cleanup failures in restricted browser contexts.
+      }
+      return;
+    }
+    try {
+      storage.setItem(PENDING_CODE_FLOW_STORAGE_KEY, JSON.stringify(flow));
+    } catch {
+      // Ignore storage persistence failures in restricted browser contexts.
+    }
+  }
 }
 
 async function deriveCodeChallenge(codeVerifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier));
-  return Buffer.from(digest)
-    .toString("base64")
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier)));
+  return base64UrlEncodeBytes(digest);
+}
+
+function createCodeVerifier(): string {
+  const bytes = new Uint8Array(48);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncodeBytes(bytes);
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
+}
+
+function getSessionStorage(): Storage | null {
+  try {
+    return globalThis.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
 }

@@ -9,7 +9,7 @@
 #   ./restore-sqlite.sh BACKUP_PATH [DB_PATH]
 #
 # Environment variables:
-#   AA_DB_PATH   Target database path (default: data/sqlite/authoritative-demo.db)
+#   AA_DB_PATH   Target database path (default: data/sqlite/automatic-agent.db)
 #   AA_BACKUP_ENCRYPTION_KEY_FILE  Required when restoring a .enc backup
 #
 # Arguments:
@@ -25,7 +25,7 @@ if [ $# -lt 1 ]; then
 fi
 
 BACKUP_PATH="$1"
-DB_PATH="${2:-${AA_DB_PATH:-data/sqlite/authoritative-demo.db}}"
+DB_PATH="${2:-${AA_DB_PATH:-data/sqlite/automatic-agent.db}}"
 DECRYPTED_BACKUP_PATH=""
 
 # Resolve absolute paths
@@ -34,8 +34,8 @@ BACKUP_PATH="$(realpath "$BACKUP_PATH" 2>/dev/null)" || {
   exit 1
 }
 DB_PATH="$(realpath "$DB_PATH" 2>/dev/null)" || {
-  echo "ERROR: Cannot resolve DB path: $DB_PATH" >&2
-  exit 1
+  mkdir -p "$(dirname "$DB_PATH")"
+  DB_PATH="$(cd "$(dirname "$DB_PATH")" && pwd)/$(basename "$DB_PATH")"
 }
 
 # Verify backup file exists
@@ -82,6 +82,7 @@ fi
 
 # Restore
 echo "Restoring: $BACKUP_PATH -> $DB_PATH"
+rm -f "${DB_PATH}-wal" "${DB_PATH}-shm"
 cp "$BACKUP_PATH" "$DB_PATH" || {
   echo "ERROR: Failed to copy backup to target DB path." >&2
   echo "Pre-restore snapshot available at: $PRE_RESTORE" >&2

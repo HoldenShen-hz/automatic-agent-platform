@@ -8,10 +8,8 @@ COPY scripts ./scripts
 RUN npm ci
 
 COPY src ./src
-COPY tests ./tests
 COPY config ./config
 COPY divisions ./divisions
-COPY AGENTS.md CLAUDE.md ./
 
 RUN npm run build
 
@@ -28,8 +26,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/config ./config
 COPY --from=build --chown=node:node /app/divisions ./divisions
-COPY --from=build --chown=node:node /app/AGENTS.md ./AGENTS.md
-COPY --from=build --chown=node:node /app/CLAUDE.md ./CLAUDE.md
 
 RUN mkdir -p /app/data /tmp && chown node:node /app/data /tmp
 

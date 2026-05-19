@@ -27,11 +27,11 @@ npm run build && node --test dist/tests/unit/platform/execution/execution-engine
 
 ```text
 src/platform/
-  interface/       # API, channel gateway, ingress, scheduler, console/webhook surfaces
-  control-plane/   # IAM, config-center, approval-center, incident control, rollout
-  orchestration/   # OAPEFLIR, routing, planner, HITL
-  execution/       # dispatcher, execution-engine, recovery, worker-pool, queue, locks
-  state-evidence/  # truth, events, checkpoints, artifacts, knowledge, memory
+  five-plane-interface/       # API, channel gateway, ingress, scheduler, console/webhook surfaces
+  five-plane-control-plane/   # IAM, config-center, approval-center, incident control, rollout
+  five-plane-orchestration/   # OAPEFLIR, routing, planner, HITL
+  five-plane-execution/       # dispatcher, execution-engine, recovery, worker-pool, queue, locks
+  five-plane-state-evidence/  # truth, events, checkpoints, artifacts, knowledge, memory
 ```
 
 Upper layers:
@@ -47,14 +47,14 @@ Upper layers:
 - `Task` — user-level work unit with terminal lifecycle
 - `Workflow` — multi-step execution plan attached to a task
 - `Execution` — individual runtime attempt with approval, sandbox, and retry state
-- `TransitionService` — authoritative status transition gate in `src/platform/execution/state-transition/transition-service.ts`
-- `runMultiStepOrchestration` — canonical multi-step orchestrator in `src/platform/execution/execution-engine/multi-step-orchestration.ts`
+- `TransitionService` — authoritative status transition gate in `src/platform/five-plane-execution/state-transition/transition-service.ts`
+- `runMultiStepOrchestration` — canonical multi-step orchestrator in `src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts`
 
 ## Storage & Evidence
 
-- Authoritative storage lives under `src/platform/state-evidence/truth/`
-- Durable events live under `src/platform/state-evidence/events/`
-- Workflow checkpoints and artifacts live under `src/platform/state-evidence/checkpoints/` and `src/platform/state-evidence/artifacts/`
+- Authoritative storage lives under `src/platform/five-plane-state-evidence/truth/`
+- Durable events live under `src/platform/five-plane-state-evidence/events/`
+- Workflow checkpoints and artifacts live under `src/platform/five-plane-state-evidence/checkpoints/` and `src/platform/five-plane-state-evidence/artifacts/`
 
 ## Important Notes
 

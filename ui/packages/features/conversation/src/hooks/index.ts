@@ -99,7 +99,11 @@ function persistState(state: PersistedConversationState): void {
   if (typeof sessionStorage === "undefined") {
     return;
   }
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Keep the query cache authoritative when browser session storage is unavailable.
+  }
 }
 
 function loadPersistedState(): PersistedConversationState | null {
@@ -158,11 +162,11 @@ function disposeSharedConversationClient(): void {
 }
 
 export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
-  const persisted = loadPersistedState();
+  const [persisted] = useState(() => loadPersistedState());
   const [messages, setMessages] = useState<readonly Message[]>(persisted?.messages ?? []);
   const [attachments, setAttachments] = useState<readonly AttachmentItem[]>(persisted?.attachments ?? []);
   const [status, setStatus] = useState<ConversationVm["status"]>(persisted?.status ?? "idle");
-  const [draft, setDraft] = useState("帮我发起营销活动");
+  const [draft, setDraft] = useState("Help me plan the next operation");
   const [planReady, setPlanReady] = useState(persisted?.planReady ?? false);
   const [executionReady, setExecutionReady] = useState(persisted?.executionReady ?? false);
   const [isStreaming, setIsStreaming] = useState(persisted?.isStreaming ?? false);

@@ -145,4 +145,29 @@ describe("ui-core chart regressions", () => {
       value: originalUserAgent,
     });
   });
+
+  it("recomputes aria metadata when the title changes across rerenders", () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
+    const originalUserAgent = window.navigator.userAgent;
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "vitest-browser",
+    });
+
+    const { rerender, unmount } = render(<EChartSurfaceRuntime title="Latency" values={[1, 2]} />);
+    rerender(<EChartSurfaceRuntime title="Throughput" values={[1, 2]} />);
+    unmount();
+    render(<EChartSurfaceRuntime title="Recovered" values={[3, 4]} />);
+
+    const latestOption = chartApi.setOption.mock.calls.at(-1)?.[0] as { aria: { description: string } };
+    expect(latestOption.aria.description).toContain("Recovered");
+
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: originalUserAgent,
+    });
+  });
 });

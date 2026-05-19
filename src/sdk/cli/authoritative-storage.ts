@@ -12,7 +12,6 @@
  * @see {@link docs_zh/contracts/storage_schema_contract.md} for schema definitions
  */
 
-import { mkdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import {
@@ -102,8 +101,8 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
 /**
  * Resolves the database path from environment or constructs a default.
  *
- * Checks AA_DB_PATH first, then falls back to data/sqlite/authoritative-demo.db
- * in the current working directory (creating directories as needed).
+ * Checks AA_DB_PATH first, then falls back to data/sqlite/automatic-agent.db
+ * in the current working directory without mutating the filesystem.
  *
  * @returns The resolved database path
  */
@@ -113,9 +112,7 @@ export function resolveCliDbPath(): string {
     return fromEnv;
   }
 
-  const sqliteDir = join(process.cwd(), "data", "sqlite");
-  mkdirSync(sqliteDir, { recursive: true });
-  return join(sqliteDir, "authoritative-demo.db");
+  return join(process.cwd(), "data", "sqlite", "automatic-agent.db");
 }
 
 /**

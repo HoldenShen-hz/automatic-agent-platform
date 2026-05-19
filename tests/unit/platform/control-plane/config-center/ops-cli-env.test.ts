@@ -215,6 +215,11 @@ test("loadAuthoritativeStorageAdminCliEnv accepts down action", () => {
   assert.equal(result.action, "down");
 });
 
+test("loadAuthoritativeStorageAdminCliEnv accepts argv action when env is absent", () => {
+  const result = loadAuthoritativeStorageAdminCliEnv({}, ["status"]);
+  assert.equal(result.action, "status");
+});
+
 test("loadAuthoritativeStorageAdminCliEnv throws on invalid action", () => {
   assert.throws(
     () => loadAuthoritativeStorageAdminCliEnv({ AA_AUTHORITATIVE_STORAGE_ACTION: "invalid" }),

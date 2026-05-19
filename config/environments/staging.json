@@ -1,6 +1,6 @@
 {
   "environment": "staging",
-  "registry": "ghcr.io/holdenshen-hz",
+  "registry": "ghcr.io/automatic-agent",
   "imageRepository": "automatic-agent-system",
   "deploymentNamespace": "automatic-agent-staging",
   "configPath": "config/runtime/default.json",

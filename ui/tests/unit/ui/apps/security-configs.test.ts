@@ -62,4 +62,13 @@ describe("desktop shell security configs", () => {
     expect(tauriMacosCsp).not.toContain("unsafe-inline");
     expect(tauriLinuxCsp).not.toContain("unsafe-inline");
   });
+
+  it("injects SRI hashes into built web assets", () => {
+    const webViteSource = readFileSync(webViteConfigPath, "utf8");
+
+    expect(webViteSource).toContain('createHash("sha384")');
+    expect(webViteSource).toContain("applySubresourceIntegrity(bundle");
+    expect(webViteSource).toContain('integrity="${integrity}"');
+    expect(webViteSource).toContain('crossorigin="anonymous"');
+  });
 });

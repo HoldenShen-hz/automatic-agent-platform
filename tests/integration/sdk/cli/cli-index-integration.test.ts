@@ -19,12 +19,12 @@ test("CLI_ENTRYPOINTS contains all expected operational commands", () => {
   const expectedCommands = [
     "acceptance-readiness",
     "api-server",
-    "authoritative-storage",
     "authoritative-storage-admin",
     "billing",
     "diagnostics",
     "doctor",
     "inspect",
+    "login",
     "platform-operator",
     "pmf",
     "worker-handshake",
@@ -61,7 +61,6 @@ test("CLI_ENTRYPOINTS contains all stability commands", () => {
     "stable-replay",
     "stable-restore",
     "stable-rollback",
-    "stable-runner-factory",
     "stable-sequence",
     "stable-soak",
     "stable-upgrade",
@@ -103,7 +102,6 @@ test("CLI_ENTRYPOINTS contains governance and ops commands", () => {
     "control-plane-balancer",
     "enterprise-capability",
     "enterprise-governance",
-    "governance-bootstrap",
     "ops-governance",
     "ops-program",
   ];
@@ -118,7 +116,6 @@ test("CLI_ENTRYPOINTS contains governance and ops commands", () => {
 
 test("CLI_ENTRYPOINTS contains data and memory commands", () => {
   const dataCommands = [
-    "authoritative-storage",
     "authoritative-storage-admin",
     "dlq-manager",
     "drain-events",
@@ -200,7 +197,7 @@ test("CLI_ENTRYPOINTS includes repair and maintenance commands", () => {
 });
 
 test("CLI_ENTRYPOINTS count matches documented total", () => {
-  assert.equal(CLI_ENTRYPOINTS.length, 82);
+  assert.equal(CLI_ENTRYPOINTS.length, 80);
 });
 
 test("CLI_ENTRYPOINTS are sorted alphabetically", () => {

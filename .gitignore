@@ -37,14 +37,15 @@ dist-test/
 .runtime/
 
 # TypeScript compiled output
-*.js
-*.js.map
-*.d.ts
+dist/**/*.js
+dist/**/*.js.map
+dist/**/*.d.ts
 
 # Generated/test directories
 artifacts/
 dist-checkpoints/
 session-replay/
+logs/
 
 # Legacy five-plane compatibility symlinks under src/platform/
 src/platform/control-plane
@@ -61,3 +62,7 @@ session-replay
 
 # UUID-named session-replay test artifacts
 *_????????-????-????-????-????????????.*
+
+# Local secrets and generated snapshots
+.env
+snapshot.json

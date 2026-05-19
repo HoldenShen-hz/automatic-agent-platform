@@ -1,8 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthService, TokenManager } from "@aa/shared-auth";
 import type { AuthIdentity } from "@aa/shared-auth";
 
 describe("AuthService", () => {
+  afterEach(() => {
+    window.sessionStorage.clear();
+  });
+
   it("login creates session and token manager stores it", () => {
     const tokenManager = new TokenManager();
     const authService = new AuthService(tokenManager);
@@ -53,7 +57,7 @@ describe("AuthService", () => {
     const params = new URLSearchParams();
     const identity = authService.resolveIdentity(params);
 
-    expect(identity.locale).toBe("zh-CN");
+    expect(identity.locale).toBe("en-US");
     expect(identity.displayName).toBe("Platform Operator");
   });
 
@@ -117,12 +121,16 @@ describe("AuthService", () => {
 
   it("handleAuthorizationCallback completes successfully with valid params", async () => {
     const tokenManager = new TokenManager();
+    let capturedCodeVerifier = "";
     const authService = new AuthService(tokenManager, {
-      exchangeCodeForTokens: async () => ({
+      exchangeCodeForTokens: async ({ codeVerifier }) => {
+        capturedCodeVerifier = codeVerifier;
+        return ({
         accessToken: "issued-access-token",
         refreshToken: "issued-refresh-token",
         expiresAt: Date.now() + 3600 * 1000,
-      }),
+        });
+      },
     });
 
     await authService.initiateCodeFlow("https://app.example.com/auth/callback");
@@ -135,6 +143,7 @@ describe("AuthService", () => {
 
     expect(session.accessToken).toBe("issued-access-token");
     expect(session.refreshToken).toBe("issued-refresh-token");
+    expect(capturedCodeVerifier.length).toBeGreaterThanOrEqual(43);
   });
 
   it("handleAuthorizationCallback clears code flow state after success", async () => {
@@ -155,6 +164,28 @@ describe("AuthService", () => {
 
     const params = new URLSearchParams(`state=${state}&code=auth-code`);
     await expect(authService.handleAuthorizationCallback(params)).rejects.toThrow(/auth.no_pending_flow/);
+  });
+
+  it("persists pending PKCE state in sessionStorage for the post-redirect callback", async () => {
+    const tokenManager = new TokenManager();
+    window.sessionStorage.clear();
+
+    const authService = new AuthService(tokenManager);
+    const authUrl = await authService.initiateCodeFlow("https://app.example.com/auth/callback");
+    const state = new URLSearchParams(authUrl.split("?")[1]!).get("state")!;
+
+    const resumedAuthService = new AuthService(tokenManager, {
+      exchangeCodeForTokens: async () => ({
+        accessToken: "issued-access-token",
+        refreshToken: "issued-refresh-token",
+        expiresAt: Date.now() + 3600 * 1000,
+      }),
+    });
+
+    const session = await resumedAuthService.handleAuthorizationCallback(new URLSearchParams(`state=${state}&code=auth-code`));
+
+    expect(session.accessToken).toBe("issued-access-token");
+    expect(window.sessionStorage.getItem("aa.auth.pending-code-flow")).toBeNull();
   });
 
   it("handleAuthorizationCallback fails closed when no token exchange handler is configured", async () => {

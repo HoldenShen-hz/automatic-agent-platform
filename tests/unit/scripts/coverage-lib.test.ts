@@ -80,6 +80,27 @@ test("buildCoverageReport ignores files outside src/", () => {
   assert.ok(!testDir, "tests should not be included");
 });
 
+test("buildCoverageReport normalizes dist/src coverage entries", () => {
+  const summary = {
+    total: {
+      lines: { covered: 10, total: 20, pct: 50 },
+      statements: { covered: 10, total: 20, pct: 50 },
+      functions: { covered: 2, total: 4, pct: 50 },
+      branches: { covered: 4, total: 8, pct: 50 },
+    },
+    [join(process.cwd(), "dist", "src", "platform", "index.js")]: {
+      lines: { covered: 10, total: 20, pct: 50 },
+      statements: { covered: 10, total: 20, pct: 50 },
+      functions: { covered: 2, total: 4, pct: 50 },
+      branches: { covered: 4, total: 8, pct: 50 },
+    },
+  };
+
+  const report = buildCoverageReport(summary);
+  const platformDir = report.directories.find((d) => d.directory === "src/platform");
+  assert.ok(platformDir, "dist/src entries should be normalized to src/");
+});
+
 test("buildBaseline creates valid baseline structure", () => {
   const report = {
     generatedAt: new Date().toISOString(),

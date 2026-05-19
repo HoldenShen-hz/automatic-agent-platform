@@ -24,6 +24,9 @@ coverage
 *.db-backup
 *.backup
 *.backup.db
+.env
+.env.example
+snapshot.json
 .DS_Store
 artifacts
 dist-checkpoints

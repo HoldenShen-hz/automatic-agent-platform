@@ -27,8 +27,6 @@ describe("useDomainWizardVm", () => {
       enableAutoRollback: false,
       savedAt: new Date().toISOString(),
     }));
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
-
     const { result } = renderHook(() => useDomainWizardVm());
 
     expect(result.current.currentStep).toBe("risk-profile");
@@ -46,7 +44,7 @@ describe("useDomainWizardVm", () => {
       result.current.submitConfig();
     });
 
-    expect(alertSpy).toHaveBeenCalled();
+    expect(result.current.submissionMessage).toBe("Domain configuration submitted");
     expect(localStorage.getItem("aa-domain-wizard-draft")).toBeNull();
   });
 

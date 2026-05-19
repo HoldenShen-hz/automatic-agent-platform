@@ -26,7 +26,7 @@ test("ci workflow runs install typecheck tests and stable validation", () => {
   assert.match(workflow, /\${{ matrix\.node-version }}/);
   assert.match(workflow, /run: npm ci/);
   assert.match(workflow, /run: npm run lint/);
-  assert.match(workflow, /run: npm audit --audit-level=high/);
+  assert.match(workflow, /npm audit --audit-level=high --omit=dev --json/);
   assert.match(workflow, /run: npm run typecheck/);
   assert.match(workflow, /run: npm run changelog:check/);
   assert.match(workflow, /run: npm run test:raw/);
@@ -64,7 +64,7 @@ test("publish and deploy workflows require secret refs and environment-scoped se
   assert.match(publishWorkflow, /environment:\s*\$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.environment \|\| 'prod' \}\}/);
   // publish-image.yml uses GITHUB_TOKEN for container registry auth
   assert.match(publishWorkflow, /secrets\.GITHUB_TOKEN/);
-  assert.match(publishWorkflow, /docker login ghcr\.io/);
+  assert.match(publishWorkflow, /docker login "\$\{REGISTRY_HOST\}"/);
   assert.match(deployWorkflow, /deployment_secret_ref:/);
   assert.match(deployWorkflow, /config_bundle_ref:/);
   assert.match(deployWorkflow, /DEPLOYMENT_AUTH_TOKEN/);

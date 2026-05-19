@@ -2,14 +2,14 @@
   "ci": {
     "collect": {
       "url": [
-        "http://localhost:3000/",
-        "http://localhost:3000/mission-control/dashboard",
-        "http://localhost:3000/mission-control/tasks",
-        "http://localhost:3000/mission-control/approvals"
+        "http://127.0.0.1:4173/",
+        "http://127.0.0.1:4173/mission-control/dashboard",
+        "http://127.0.0.1:4173/mission-control/tasks",
+        "http://127.0.0.1:4173/governance/approvals"
       ],
-      "startServerCommand": "npm --workspace @aa/web run dev",
-      "startServerReadyPattern": "Local:",
-      "startServerReadyTimeout": 30000,
+      "startServerCommand": "npm --workspace @aa/web run build && npm --workspace @aa/web run preview -- --host 127.0.0.1 --port 4173 --strictPort",
+      "startServerReadyPattern": "127.0.0.1:4173",
+      "startServerReadyTimeout": 120000,
       "settings": {
         "preset": "desktop",
         "throttlingMethod": "simulate",

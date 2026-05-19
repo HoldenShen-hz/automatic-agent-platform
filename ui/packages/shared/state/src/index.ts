@@ -126,6 +126,9 @@ export function UiRuntimeProvider(
     authStore.getState().setAuthenticated(authService.isAuthenticated() || accessToken != null);
     authStore.getState().setDisplayName(identity.displayName);
     authStore.getState().setLocale(identity.locale);
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = identity.locale;
+    }
     uiStore.getState().setActiveRoute("/mission-control/dashboard");
     uiStore.getState().setActiveFeature("dashboard");
     if (authContext?.tenantId != null) {

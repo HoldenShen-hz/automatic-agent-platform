@@ -25,7 +25,7 @@ if (comparison.untrackedDirectories.length > 0) {
   for (const directory of comparison.untrackedDirectories) {
     console.error(`- ${directory}`);
   }
-  process.exitCode = 1;
+  process.exit(1);
 }
 
 if (comparison.failures.length > 0) {
@@ -33,10 +33,8 @@ if (comparison.failures.length > 0) {
   for (const failure of comparison.failures) {
     console.error(`- ${failure}`);
   }
-  process.exitCode = 1;
+  process.exit(1);
 }
 
-if (process.exitCode !== 1) {
-  console.log("Coverage baseline gate passed.");
-  console.log(`Global lines: ${report.global.lines.pct.toFixed(1)}%`);
-}
+console.log("Coverage baseline gate passed.");
+console.log(`Global lines: ${report.global.lines.pct.toFixed(1)}%`);

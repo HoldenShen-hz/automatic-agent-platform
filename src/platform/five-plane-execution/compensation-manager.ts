@@ -202,7 +202,7 @@ export class CompensationManager {
     context: CompensationContext,
   ): CompensationPlan {
     return {
-      compensationId: `comp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      compensationId: newId("comp"),
       sideEffectId: sideEffect.sideEffectId,
       harnessRunId: sideEffect.harnessRunId,
       steps: this.deriveCompensationSteps(sideEffect),

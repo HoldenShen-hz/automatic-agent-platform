@@ -38,8 +38,8 @@ check(
   `platform/index.ts=${platformIndexLines}`,
 );
 check(
-  "remaining giant source files limited to harness/contracts pair",
-  harnessIndexLines > 1000 && executableContractsIndexLines > 1000,
+  "remaining giant source files stay below 1000 lines",
+  harnessIndexLines <= 1000 && executableContractsIndexLines <= 1000,
   `harness/index.ts=${harnessIndexLines}, executable-contracts/index.ts=${executableContractsIndexLines}`,
 );
 

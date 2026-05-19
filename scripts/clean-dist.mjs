@@ -1,53 +1,19 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const distPath = resolve(process.cwd(), "dist");
-const TEST_ANCESTOR_PATTERN = /\b(?:c8|node(?:\s+[^\n]*?)?\s+--test|npm\s+test|npm\s+run\s+test(?::[\w-]+)?|tap)\b/;
-
-function hasTestAncestor() {
-  try {
-    const output = execFileSync("ps", ["-axo", "pid=,ppid=,command="], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const processes = new Map();
-    for (const line of output.split("\n")) {
-      const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
-      if (!match) {
-        continue;
-      }
-      processes.set(Number(match[1]), {
-        ppid: Number(match[2]),
-        command: match[3],
-      });
-    }
-
-    let currentPid = process.ppid;
-    const visited = new Set();
-    while (currentPid > 1 && !visited.has(currentPid)) {
-      visited.add(currentPid);
-      const entry = processes.get(currentPid);
-      if (!entry) {
-        break;
-      }
-      if (TEST_ANCESTOR_PATTERN.test(entry.command)) {
-        return true;
-      }
-      currentPid = entry.ppid;
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
-
+const explicitPreserveDist = process.env.AA_PRESERVE_DIST;
 const preserveDist =
-  process.env.AA_PRESERVE_DIST === "1"
-  || process.env.AA_RUNNING_TESTS === "1"
+  explicitPreserveDist === "1"
+  || (
+    explicitPreserveDist !== "0"
+    && (
+      process.env.AA_RUNNING_TESTS === "1"
+      || (process.env.npm_lifecycle_event ?? "").startsWith("test")
+    )
+  )
   || process.env.C8_PROCESS_INFO != null
-  || process.env.NODE_V8_COVERAGE != null
-  || hasTestAncestor();
+  || process.env.NODE_V8_COVERAGE != null;
 
 const shouldPruneStaleDistTests =
   preserveDist
