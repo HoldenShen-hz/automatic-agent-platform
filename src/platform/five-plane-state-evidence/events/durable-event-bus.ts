@@ -894,6 +894,8 @@ export class DurableEventBus {
             });
           } finally {
             this.groupDeliveryCounts.set(subscriber.groupId, Math.max(0, (this.groupDeliveryCounts.get(subscriber.groupId) ?? 1) - 1));
+            // Wake other blocked partitions once a consumer-group slot is released.
+            this.scheduleFanOut();
           }
         });
 

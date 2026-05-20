@@ -160,6 +160,8 @@ test("edge integration: offline execution through sync envelope to receipt", () 
     edgeNodeId: "node-integrated",
     taskId: "task-offline-integrated",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, models, request);
@@ -191,6 +193,8 @@ test("edge integration: conflict resolution when cloud has newer digest", () => 
     edgeNodeId: "node-conflict",
     taskId: "task-conflict",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, [], request);
@@ -429,6 +433,8 @@ test("edge integration: restricted data upload blocked by policy", () => {
     edgeNodeId: "node-restrict",
     taskId: "task-restrict",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, [], request);

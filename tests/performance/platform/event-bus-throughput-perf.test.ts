@@ -423,8 +423,15 @@ test("performance: multiple consumers receive all events", async (t) => {
       });
     }
 
-    await bus.deliverPending(consumer1Id);
-    await bus.deliverPending(consumer2Id);
+    const deadline = Date.now() + 1_000;
+    while ((consumer1Count < eventCount || consumer2Count < eventCount) && Date.now() < deadline) {
+      await bus.deliverPending(consumer1Id);
+      await bus.deliverPending(consumer2Id);
+      if (consumer1Count >= eventCount && consumer2Count >= eventCount) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
 
     assert.strictEqual(consumer1Count, eventCount, `Consumer 1 should receive all ${eventCount} events`);
     assert.strictEqual(consumer2Count, eventCount, `Consumer 2 should receive all ${eventCount} events`);

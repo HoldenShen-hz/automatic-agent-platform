@@ -768,6 +768,8 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       taskId: "task_inventory_1",
       modality: "text",
       createdAt: "2026-04-20T00:00:00.000Z",
+      riskScore: 0.2,
+      taskType: "summarize",
     },
   );
   const restrictedEnvelope = service.buildSyncEnvelope(

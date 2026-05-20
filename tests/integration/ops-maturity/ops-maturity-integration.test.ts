@@ -125,7 +125,13 @@ test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", 
     { modelId: "model_local_001", modalities: ["text", "code"] as readonly string[], priority: 1 },
     { modelId: "model_local_002", modalities: ["text"] as readonly string[], priority: 2 },
   ];
-  const offlineRequest = { edgeNodeId: "edge_node_001", taskId: "task_offline_001", modality: "code" };
+  const offlineRequest = {
+    edgeNodeId: "edge_node_001",
+    taskId: "task_offline_001",
+    modality: "code",
+    riskScore: 0.2,
+    taskType: "code_edit",
+  };
   const receipt = service.executeOffline(profile, models, offlineRequest);
   assert.equal(receipt.record.edgeNodeId, "edge_node_001");
   assert.equal(receipt.record.taskId, "task_offline_001");
