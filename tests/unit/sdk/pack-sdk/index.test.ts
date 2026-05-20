@@ -242,8 +242,9 @@ test("PackScaffoldService.scaffold rejects empty owner", () => {
 
 test("PackScaffoldService.scaffold accepts valid pack ID starting with number", () => {
   const service = new PackScaffoldService();
+  const outputRoot = mkdtempSync(join(tmpdir(), "pack-scaffold-number-"));
   assert.doesNotThrow(
-    () =>
+    () => {
       service.scaffold({
         packId: "123-pack",
         name: "Test Pack",
@@ -251,14 +252,18 @@ test("PackScaffoldService.scaffold accepts valid pack ID starting with number", 
         domain: "testing",
         owner: "test@example.com",
         riskLevel: "low",
-      }),
+        outputRoot,
+      });
+    },
   );
+  rmSync(outputRoot, { recursive: true, force: true });
 });
 
 test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
   const service = new PackScaffoldService();
+  const outputRoot = mkdtempSync(join(tmpdir(), "pack-scaffold-underscore-"));
   assert.doesNotThrow(
-    () =>
+    () => {
       service.scaffold({
         packId: "test_pack",
         name: "Test Pack",
@@ -266,14 +271,18 @@ test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
         domain: "testing",
         owner: "test@example.com",
         riskLevel: "low",
-      }),
+        outputRoot,
+      });
+    },
   );
+  rmSync(outputRoot, { recursive: true, force: true });
 });
 
-test("PackScaffoldService.scaffold rejects dot in pack ID", () => {
+test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
   const service = new PackScaffoldService();
-  assert.throws(
-    () =>
+  const outputRoot = mkdtempSync(join(tmpdir(), "pack-scaffold-dot-"));
+  assert.doesNotThrow(
+    () => {
       service.scaffold({
         packId: "test.pack",
         name: "Test Pack",
@@ -281,9 +290,11 @@ test("PackScaffoldService.scaffold rejects dot in pack ID", () => {
         domain: "testing",
         owner: "test@example.com",
         riskLevel: "low",
-      }),
-    /Pack ID/i,
+        outputRoot,
+      });
+    },
   );
+  rmSync(outputRoot, { recursive: true, force: true });
 });
 
 test("PackScaffoldService.scaffold creates full template with all files", () => {

@@ -95,7 +95,7 @@ test("integration: getErrorCode returns fallback for non-AppError from other mod
   // This simulates an error thrown by a dependency that isn't converted
   const fallbackCode = getErrorCode(originalError);
 
-  assert.equal(fallbackCode, "E0000");
+  assert.equal(fallbackCode, "unknown.unclassified");
 });
 
 // =============================================================================
@@ -416,7 +416,7 @@ test("integration: Multiple error types can be distinguished in batch processing
   assert.deepEqual(retryable, [false, false, false, true]);  // ProviderError is retryable
 });
 
-test("integration: AppError.toJSON produces both camelCase and snake_case for API compatibility", () => {
+test("integration: AppError.toJSON exposes canonical camelCase API fields", () => {
   const err = new AppError("API_ERR", "API Error message", {
     statusCode: 422,
     category: "validation",
@@ -427,13 +427,13 @@ test("integration: AppError.toJSON produces both camelCase and snake_case for AP
 
   const json = err.toJSON();
 
-  // Both camelCase and snake_case should be present
   assert.equal(json.code, "API_ERR");
+  assert.equal(json.message, "API Error message");
   assert.equal(json.userMessage, "API Error message");
-  assert.equal(json.user_message, "API Error message");
   assert.equal(json.traceId, "trace-api");
-  assert.equal(json.trace_id, "trace-api");
   assert.equal(json.taskId, "task-api");
-  assert.equal(json.task_id, "task-api");
   assert.equal(json.statusCode, 422);
+  assert.equal("user_message" in json, false);
+  assert.equal("trace_id" in json, false);
+  assert.equal("task_id" in json, false);
 });

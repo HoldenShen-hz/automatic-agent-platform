@@ -10,7 +10,10 @@ test("createWorkspaceWritePolicy creates valid policy", () => {
     assert.equal(policy.mode, "workspace_write");
     assert.equal(policy.policyId, "workspace_write");
     assert.deepEqual(policy.allowedRoots, ["/workspace/root"]);
-    assert.deepEqual(policy.deniedRoots, []);
+    assert.ok(policy.deniedRoots.includes("/etc"));
+    assert.ok(policy.deniedRoots.includes("/proc"));
+    assert.ok(policy.deniedRoots.includes("/sys"));
+    assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
     assert.equal(policy.realpathEnforced, true);
     assert.equal(policy.symlinkPolicy, "deny");
     assert.equal(policy.processRuleMode, "allow");
@@ -31,10 +34,10 @@ test("createRestrictedExecPolicy creates valid policy", () => {
     assert.equal(policy.symlinkPolicy, "deny");
 });
 test("createConfigReadPolicy creates read-only policy", () => {
-    const policy = createConfigReadPolicy("/etc/config");
+    const policy = createConfigReadPolicy("/workspace/config");
     assert.equal(policy.mode, "read_only");
     assert.equal(policy.policyId, "config_read");
-    assert.deepEqual(policy.allowedRoots, ["/etc/config"]);
+    assert.deepEqual(policy.allowedRoots, ["/workspace/config"]);
     assert.equal(policy.realpathEnforced, true);
     assert.equal(policy.symlinkPolicy, "deny");
     assert.equal(policy.processRuleMode, "deny");
@@ -260,11 +263,11 @@ test("createWorkspaceWritePolicy with different root paths", () => {
     assert.equal(result2.allowed, false);
 });
 test("config read policy denies write operations context", () => {
-    const policy = createConfigReadPolicy("/etc/app/config");
+    const policy = createConfigReadPolicy("/workspace/app/config");
     // Mode is read_only which should work correctly with path checks
     assert.equal(policy.mode, "read_only");
     assert.equal(policy.processRuleMode, "deny");
-    const result = checkSandboxPath(policy, "/etc/app/config/settings.json");
+    const result = checkSandboxPath(policy, "/workspace/app/config/settings.json");
     assert.equal(result.allowed, true);
 });
 test("sandbox policy with empty denied roots array", () => {

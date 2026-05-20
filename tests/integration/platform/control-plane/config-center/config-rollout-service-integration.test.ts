@@ -325,10 +325,11 @@ test("rollout integration: cleanupRollouts removes old completed rollouts", () =
 test("rollout integration: cleanupRollouts removes old cancelled rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
-  service.cancelRollout(rollout.rolloutId);
+  const cancelled = service.cancelRollout(rollout.rolloutId);
 
   // Manually set updatedAt to old
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
+  assert.ok(cancelled);
+  cancelled!.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
 
   const cleaned = service.cleanupRollouts(86400000);
 

@@ -77,7 +77,7 @@ describe("R10-05: Field Encryption with PBKDF2", () => {
   describe("PBKDF2 Key Derivation", () => {
     it("same password produces same key (deterministic)", () => {
       const plaintext = "test";
-      const password = "password123";
+      const password = "password123456789";
       // Note: because we use random salt, same password produces different ciphertext
       // but the decryption will work because the salt is embedded in the output
       const encrypted = encryptField(plaintext, password);

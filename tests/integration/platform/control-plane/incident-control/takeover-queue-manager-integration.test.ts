@@ -91,7 +91,7 @@ test("TakeoverQueueManager integration: enqueue emits request_enqueued event", (
   }
 });
 
-test("TakeoverQueueManager integration: cancel emits no event but removes from queue", () => {
+test("TakeoverQueueManager integration: cancel emits cancellation event and removes from queue", () => {
   const workspace = createTempWorkspace("aa-queue-cancel-");
   const dbPath = join(workspace, "queue-cancel.db");
 
@@ -122,8 +122,8 @@ test("TakeoverQueueManager integration: cancel emits no event but removes from q
 
     assert.equal(cancelled, true);
     assert.equal(manager.getQueueDepth(), 0);
-    // Cancel does not emit an event
-    assert.equal(emitter.events.length, 1);
+    assert.equal(emitter.events.length, 2);
+    assert.equal(emitter.events[1]?.event, "takeover:cancelled");
 
     db.close();
   } finally {

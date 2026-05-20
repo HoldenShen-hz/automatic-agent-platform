@@ -101,7 +101,7 @@ test("createCacheSummaryMiddleware returns AfterAgentHook with name and priority
   assert.equal(hook.priority, 40);
 });
 
-test("createCacheSummaryMiddleware returns success true without metrics", async () => {
+test("createCacheSummaryMiddleware returns warning result when metrics are unavailable", async () => {
   const hook = createCacheSummaryMiddleware({
     cache: createMockCache({
       getMetricsSnapshot: () => undefined,
@@ -109,7 +109,14 @@ test("createCacheSummaryMiddleware returns success true without metrics", async 
   });
 
   const result = await hook.run({ taskId: "task-1" } as never, { response: null, toolsUsed: [] });
-  assert.deepEqual(result, { success: true });
+  assert.deepEqual(result, {
+    success: false,
+    error: {
+      code: "cache.metrics_snapshot_unavailable",
+      message: "Cache metrics snapshot is unavailable.",
+      warning: true,
+    },
+  });
 });
 
 test("createCacheGovernanceMiddleware run returns next() result for non-cacheable tools", async () => {

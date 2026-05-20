@@ -355,11 +355,11 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", asy
   let deadLetterInserted = false;
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    attempt: 2,
+    attempt: 3,
     latestErrorCode: "E1",
   });
   const store = createMockStore({
-    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 2, agentId: "agent-1" }],
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 3, agentId: "agent-1" }],
     tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
     operations: {
       buildRuntimeRecoveryView: () => [candidate],
@@ -613,7 +613,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
   const candidate = createMockCandidate({
     executionId: "exec-1",
     latestErrorCode: "E1",
-    attempt: 2,
+    attempt: 3,
     latestPrecheck: null,
   });
   const store = createMockStore({
@@ -1250,7 +1250,7 @@ test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to
   // This test verifies that execution is read inside the transaction,
   // preventing Time-of-Check-Time-of-Use bugs where data could change between read and write
   const executionOutsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU", lastErrorMessage: "TOCTOU error", attempt: 1, agentId: "agent-1" };
-  const executionInsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU_UPDATED", lastErrorMessage: "Updated error", attempt: 2, agentId: "agent-1" };
+  const executionInsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU_UPDATED", lastErrorMessage: "Updated error", attempt: 3, agentId: "agent-1" };
 
   const db = createMockDb();
   const store = createMockStore({
@@ -1260,7 +1260,7 @@ test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to
       buildRuntimeRecoveryView: () => [createMockCandidate({
         executionId: "exec-toctou",
         latestErrorCode: "E_TOCTOU_UPDATED",
-        attempt: 2,
+        attempt: 3,
       })],
     },
     execution: {
@@ -1295,7 +1295,7 @@ test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to
 
   // The decision should use the execution data read inside transaction
   assert.equal(result.applied, true);
-  assert.equal(result.deadLetter?.retryCount, 2); // Should use executionInsideTx.attempt
+  assert.equal(result.deadLetter?.retryCount, 3); // Should use executionInsideTx.attempt
 });
 
 test("RuntimeRecoveryDecisionService.apply uses in-transaction execution data for decision", async () => {

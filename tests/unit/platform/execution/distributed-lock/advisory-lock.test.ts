@@ -94,7 +94,7 @@ test("PgAdvisoryLockAdapter: backendKind is pg_advisory", () => {
 
 test("PgAdvisoryLockAdapter: acquireAsync returns lock record on success", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{ acquired: true }],
+    queryFn: async () => [{ acquired: true, fencing_token: 1 }],
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
@@ -111,7 +111,7 @@ test("PgAdvisoryLockAdapter: acquireAsync returns lock record on success", async
 
 test("PgAdvisoryLockAdapter: acquireAsync uses default ttlMs of 30000", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{ acquired: true }],
+    queryFn: async () => [{ acquired: true, fencing_token: 1 }],
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
@@ -133,8 +133,12 @@ test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false when lock unava
 });
 
 test("PgAdvisoryLockAdapter: acquireAsync increments fencing token on each call", async () => {
+  let fencingToken = 0;
   const mockDriver = createMockDriver({
-    queryFn: async () => [{ acquired: true }],
+    queryFn: async () => {
+      fencingToken += 1;
+      return [{ acquired: true, fencing_token: fencingToken }];
+    },
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
@@ -146,7 +150,7 @@ test("PgAdvisoryLockAdapter: acquireAsync increments fencing token on each call"
 
 test("PgAdvisoryLockAdapter: acquireAsync sets acquiredAt timestamp", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{ acquired: true }],
+    queryFn: async () => [{ acquired: true, fencing_token: 1 }],
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
@@ -193,9 +197,16 @@ test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false on generic data
 
 test("PgAdvisoryLockAdapter: releaseAsync returns true on success", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{}],
+    queryFn: async (strings) => {
+      const query = strings.join("?");
+      if (query.includes("pg_try_advisory_lock")) {
+        return [{ acquired: true, fencing_token: 1 }];
+      }
+      return [{ released: true }];
+    },
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
+  await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
 
   const result = await adapter.releaseAsync("test-key", "test-owner");
 
@@ -222,6 +233,11 @@ test("PgAdvisoryLockAdapter: releaseAsync throws when postgres module not found"
       throw new ReferenceError("Cannot find module 'postgres'");
     },
   });
+  (
+    adapter as unknown as {
+      heldLocks: Map<string, { owner: string }>;
+    }
+  ).heldLocks.set("test-key", { owner: "test-owner" });
 
   await assert.rejects(
     adapter.releaseAsync("test-key", "test-owner"),

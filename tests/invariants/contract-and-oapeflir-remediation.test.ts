@@ -510,11 +510,11 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr098, /awaiting_hitl/);
   assert.doesNotMatch(adr098, /run 进入 `waiting_hitl`/);
 
-  const adr066 = readFileSync("docs_zh/adr/066-plugin-spi-framework.md", "utf8");
-  assert.match(adr066, /Promise<PlanGraphBundle>/);
-  assert.match(adr066, /独立进程/);
-  assert.match(adr066, /IPC/);
-  assert.doesNotMatch(adr066, /独立 Worker 线程，通过 `plugin-runtime-host\.ts` 管理/);
+  const adr071 = readFileSync("docs_zh/adr/071-plugin-spi-framework.md", "utf8");
+  assert.match(adr071, /Promise<PlanGraphBundle>/);
+  assert.match(adr071, /独立进程/);
+  assert.match(adr071, /IPC/);
+  assert.doesNotMatch(adr071, /独立 Worker 线程，通过 `plugin-runtime-host\.ts` 管理/);
 
   const adr040 = readFileSync("docs_zh/adr/040-goal-decomposition-engine.md", "utf8");
   assert.match(adr040, /GoalProjection 与 HarnessRun 生命周期关系/);

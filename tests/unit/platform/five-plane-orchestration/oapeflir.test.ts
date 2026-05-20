@@ -77,9 +77,19 @@ test("OapeflirStageTimelineBuilder increments timestamps between entries", () =>
   assert.ok(record.startedAt < record.completedAt);
 });
 
-test("OAPEFLIR_STAGES contains all 8 stages in order", () => {
-  assert.equal(OAPEFLIR_STAGES.length, 8);
-  assert.deepEqual(OAPEFLIR_STAGES, ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"]);
+test("OAPEFLIR_STAGES contains all 9 stages in order", () => {
+  assert.equal(OAPEFLIR_STAGES.length, 9);
+  assert.deepEqual(OAPEFLIR_STAGES, [
+    "observe",
+    "assess",
+    "plan",
+    "execute",
+    "feedback",
+    "learn",
+    "improve",
+    "release",
+    "knowledge_promotion",
+  ]);
 });
 
 test("StageTransitionFSM initializes all stages as pending", () => {
@@ -87,6 +97,7 @@ test("StageTransitionFSM initializes all stages as pending", () => {
   assert.equal(fsm.getStageStatus("observe"), "pending");
   assert.equal(fsm.getStageStatus("assess"), "pending");
   assert.equal(fsm.getStageStatus("release"), "pending");
+  assert.equal(fsm.getStageStatus("knowledge_promotion"), "pending");
 });
 
 test("StageTransitionFSM.getCurrentStage returns observe initially", () => {
@@ -185,8 +196,9 @@ test("StageTransitionFSM.getExecutionSummary returns all stage statuses", () => 
   const fsm = new StageTransitionFSM();
   const summary = fsm.getExecutionSummary();
 
-  assert.equal(Object.keys(summary).length, 8);
+  assert.equal(Object.keys(summary).length, 9);
   assert.equal(summary.observe.status, "pending");
+  assert.equal(summary.knowledge_promotion.status, "pending");
 });
 
 test("StageTransitionFSM.reset clears all state", () => {

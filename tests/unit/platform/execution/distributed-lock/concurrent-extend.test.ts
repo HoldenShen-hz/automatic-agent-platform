@@ -24,6 +24,7 @@ function createAdapterWithMockRedis(mockRedis: any): RedisLockAdapter {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -36,6 +37,7 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -78,8 +80,8 @@ test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async 
 
   // Now run two concurrent extendAsync calls
   const results = await Promise.allSettled([
-    adapter.extendAsync("shared-lock", "worker-1", 20000),
-    adapter.extendAsync("shared-lock", "worker-2", 20000),
+    adapter.extendAsync("shared-lock", "original-owner", 20000),
+    adapter.extendAsync("shared-lock", "original-owner", 20000),
   ]);
 
   const succeeded = results.filter((r) => r.status === "fulfilled" && r.value !== null);
@@ -153,7 +155,7 @@ test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers", asyn
   await adapter.acquireAsync({ lockKey: "multi-extend-lock", owner: "original-owner", ttlMs: 10000 });
 
   const promises = Array.from({ length: workers }, (_, i) =>
-    adapter.extendAsync("multi-extend-lock", `worker-${i}`, 20000),
+    adapter.extendAsync("multi-extend-lock", "original-owner", 20000),
   );
 
   const results = await Promise.allSettled(promises);
@@ -194,42 +196,35 @@ test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval a
 
 test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", async () => {
   let stealCount = 0;
-  // Track what was actually stored via set()
-  let storedOwner = "original-owner";
+  let storedLockData = {
+    id: "lock_contested_0",
+    owner: "original-owner",
+    fencingToken: 0,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null as string | null,
+  };
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      stealCount += 1;
+      return stealCount;
+    },
     set: async (_key: string, value: string) => {
-      stealCount++;
-      // Extract owner from the data that was stored
-      try {
-        const data = JSON.parse(value);
-        storedOwner = data.owner;
-      } catch {
-        // ignore parse errors
-      }
+      storedLockData = JSON.parse(value);
       return "OK";
     },
-    get: async () => {
-      // Return the last stored owner (simulating what Redis would return)
-      return JSON.stringify({
-        id: `lock_contested_${stealCount}`,
-        owner: storedOwner,
-        fencingToken: stealCount,
-        ttlMs: 30000,
-        acquiredAt: new Date().toISOString(),
-        metadata: JSON.stringify({ forceStealReason: "race-condition-test" }),
-      });
-    },
-    eval: async () => {
-      // All steals succeed
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
+      storedLockData = JSON.parse(value);
       return 1;
     },
+    get: async () => JSON.stringify(storedLockData),
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey: "contested-lock", owner: "original-owner", ttlMs: 10000 });
 
-  // Simulate rapid concurrent steal operations
   const results = await Promise.allSettled([
     adapter.forceStealAsync("contested-lock", "attacker-1", "race-condition-test"),
     adapter.forceStealAsync("contested-lock", "attacker-2", "race-condition-test"),
@@ -274,10 +269,7 @@ test("[SYS-REL-2.2] runConcurrentInvariant helper for extend race detection", as
   await adapter.acquireAsync({ lockKey: "invariant-test-lock", owner: "original-owner", ttlMs: 10000 });
 
   const result = await runConcurrentInvariant(
-    async (workerId: number) => {
-      const res = await adapter.extendAsync("invariant-test-lock", `worker-${workerId}`, 20000);
-      return res;
-    },
+    async () => adapter.extendAsync("invariant-test-lock", "original-owner", 20000),
     { concurrency: 5 },
   );
 

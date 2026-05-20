@@ -13,13 +13,33 @@ import { DivisionRepository } from "../../../../../../../src/platform/five-plane
  * Creates a mock SqliteConnection for testing
  */
 function createMockConnection(rows: Record<string, unknown>[] = []): SqliteConnection {
-  let callCount = 0;
   return {
-    prepare: (_sql: string) => ({
+    prepare: (sql: string) => ({
       get: (..._params: unknown[]) => rows[0] ?? undefined,
-      all: (..._params: unknown[]) => {
-        callCount++;
-        return rows;
+      all: (...params: unknown[]) => {
+        let filtered = [...rows];
+        let paramIndex = 0;
+
+        if (sql.includes("tenant_id = ?")) {
+          const tenantId = params[paramIndex++];
+          filtered = filtered.filter((row) => row.tenantId === tenantId);
+        }
+        if (sql.includes("status = ?")) {
+          const status = params[paramIndex++];
+          filtered = filtered.filter((row) => row.status === status);
+        }
+        if (sql.includes("movement_type = ?")) {
+          const movementType = params[paramIndex++];
+          filtered = filtered.filter((row) => row.movementType === movementType);
+        }
+
+        const limit = Number(params[paramIndex] ?? filtered.length);
+        return filtered
+          .sort((left, right) =>
+            String(right.startedAt).localeCompare(String(left.startedAt))
+            || String(left.jobId).localeCompare(String(right.jobId))
+          )
+          .slice(0, limit);
       },
     }),
     exec: (_sql: string) => {},
@@ -68,11 +88,11 @@ test("DivisionRepository.listDataMovementJobRecords returns all records when no 
   const results = repo.listDataMovementJobRecords();
 
   assert.equal(results.length, 2);
-  assert.equal(results[0]!.jobId, "job_1");
-  assert.equal(results[0]!.movementType, "archive");
-  assert.equal(results[0]!.status, "completed");
-  assert.equal(results[1]!.jobId, "job_2");
-  assert.equal(results[1]!.movementType, "restore");
+  assert.equal(results[0]!.jobId, "job_2");
+  assert.equal(results[0]!.movementType, "restore");
+  assert.equal(results[0]!.status, "pending");
+  assert.equal(results[1]!.jobId, "job_1");
+  assert.equal(results[1]!.movementType, "archive");
 });
 
 test("DivisionRepository.listDataMovementJobRecords filters by tenantId", () => {

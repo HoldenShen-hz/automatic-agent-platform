@@ -180,18 +180,17 @@ test("DistributedRateLimiter - handles very large maxCalls", async () => {
   assert.equal(result.remaining, 999999);
 });
 
-test("DistributedRateLimiter - handles windowMs of 1ms", async () => {
+test("DistributedRateLimiter - handles very small windowMs", async () => {
   const limiter = new DistributedRateLimiter({
     maxCalls: 1,
-    windowMs: 1,
+    windowMs: 10,
   });
 
   await limiter.checkAndConsume("tiny-window");
   const blocked = await limiter.checkAndConsume("tiny-window");
   assert.equal(blocked.allowed, false);
 
-  // Window expires almost immediately
-  await new Promise((resolve) => setTimeout(resolve, 5));
+  await new Promise((resolve) => setTimeout(resolve, 20));
 
   const allowed = await limiter.checkAndConsume("tiny-window");
   assert.equal(allowed.allowed, true);

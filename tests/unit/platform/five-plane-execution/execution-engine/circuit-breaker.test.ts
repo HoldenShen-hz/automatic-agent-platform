@@ -111,10 +111,10 @@ test("circuit breaker closes after success threshold in half_open", async () => 
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
-  // In half_open state, record successes
-  cb.onSuccess();
+  // A probe execution performs the real open -> half_open transition.
+  await cb.execute(async () => "ok1");
   assert.equal(cb.getState(), "half_open");
-  cb.onSuccess();
+  await cb.execute(async () => "ok2");
   assert.equal(cb.getState(), "closed");
 });
 
@@ -137,8 +137,12 @@ test("circuit breaker returns to open on failure in half_open", async () => {
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
-  // Failure in half_open returns to open
-  cb.onFailure();
+  await assert.rejects(
+    () => cb.execute(async () => {
+      throw new Error("probe fail");
+    }),
+    { message: "probe fail" },
+  );
   assert.equal(cb.getState(), "open");
 });
 
@@ -238,14 +242,19 @@ test("circuit breaker failure resets consecutive successes in half_open", async 
   cb.onFailure();
   cb.onFailure();
   advanceCircuitBreakerTime(60);
-  cb.getState(); // half_open
+  assert.equal(cb.getState(), "half_open");
 
-  cb.onSuccess();
-  cb.onSuccess();
+  await cb.execute(async () => "ok1");
+  await cb.execute(async () => "ok2");
   assert.equal(cb.getMetrics().consecutiveSuccesses, 2);
 
   // Failure resets consecutive successes
-  cb.onFailure();
+  await assert.rejects(
+    () => cb.execute(async () => {
+      throw new Error("probe fail");
+    }),
+    { message: "probe fail" },
+  );
   assert.equal(cb.getMetrics().consecutiveSuccesses, 0);
 });
 
@@ -385,14 +394,14 @@ test("circuit breaker accepts custom halfOpenSuccessThreshold", async () => {
   cb.getState();
   assert.equal(cb.getState(), "half_open");
 
-  // Four successes should keep it half_open
+  // Four probe successes should keep it half_open
   for (let i = 0; i < 4; i++) {
-    cb.onSuccess();
+    await cb.execute(async () => `ok${i}`);
     assert.equal(cb.getState(), "half_open");
   }
 
   // Fifth success should close it
-  cb.onSuccess();
+  await cb.execute(async () => "ok-final");
   assert.equal(cb.getState(), "closed");
 });
 

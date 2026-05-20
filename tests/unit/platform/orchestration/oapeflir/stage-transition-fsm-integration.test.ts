@@ -82,7 +82,7 @@ test("StageTransitionFSM allows improve-to-plan backward transition (replan)", (
   assert.equal(result.allowed, true, "improve→plan must be allowed for replanning");
 });
 
-test("StageTransitionFSM blocks release-to-plan after pipeline completion", () => {
+test("StageTransitionFSM blocks knowledge-promotion completion from re-entering plan", () => {
   const fsm = new StageTransitionFSM();
 
   fsm.recordStageCompletion("observe");
@@ -93,6 +93,7 @@ test("StageTransitionFSM blocks release-to-plan after pipeline completion", () =
   fsm.recordStageCompletion("learn");
   fsm.recordStageCompletion("improve");
   fsm.recordStageCompletion("release");
+  fsm.recordStageCompletion("knowledge_promotion");
 
   const result = fsm.canTransitionTo("plan");
   assert.equal(result.allowed, false, "completed release→plan must not implicitly re-enter");
@@ -190,7 +191,17 @@ test("StageTransitionFSM linear forward progression still works", () => {
   const fsm = new StageTransitionFSM();
 
   // Verify all forward transitions work normally
-  const sequence: OapeflirStage[] = ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"];
+  const sequence: OapeflirStage[] = [
+    "observe",
+    "assess",
+    "plan",
+    "execute",
+    "feedback",
+    "learn",
+    "improve",
+    "release",
+    "knowledge_promotion",
+  ];
 
   for (const stage of sequence) {
     const canProceed = fsm.canTransitionTo(stage);
@@ -258,7 +269,7 @@ test("StageTransitionFSM execute from feedback is allowed (feedback-driven)", ()
   assert.equal(result.reasonCode, "fsm.feedback_driven_replan");
 });
 
-test("StageTransitionFSM all 8 stages have valid entry conditions", () => {
+test("StageTransitionFSM all 9 stages have valid entry conditions", () => {
   const fsm = new StageTransitionFSM();
 
   for (const stage of OAPEFLIR_STAGES) {

@@ -60,12 +60,11 @@ function createMockDb(rows: MockRow[] = []) {
               row.updated_at = String(_args[1]);
             }
           }
-          if (sql.includes("SET status = 'waiting', attempts = 0")) {
+          if (sql.includes("SET status = 'waiting', last_error = NULL")) {
             const jobId = String(_args[1]);
             const row = rowStore.find((r) => r.id === jobId);
             if (row) {
               row.status = "waiting";
-              row.attempts = 0;
               row.last_error = null;
               row.updated_at = String(_args[0]);
             }
@@ -191,4 +190,5 @@ test("SqliteQueueAdapter retryJob resets dead letter job", () => {
 
   const retried = adapter.retryJob(job.id);
   assert.equal(retried?.status, "waiting");
+  assert.equal(retried?.attempts, 0);
 });

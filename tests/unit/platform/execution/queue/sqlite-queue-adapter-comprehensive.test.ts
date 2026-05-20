@@ -250,7 +250,7 @@ test("SqliteQueueAdapter retryJob resets failed job to waiting", () => {
     const retried = adapter.retryJob(job.id);
     assert.ok(retried);
     assert.equal(retried.status, "waiting");
-    assert.equal(retried.attempts, 0);
+    assert.equal(retried.attempts, 3);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

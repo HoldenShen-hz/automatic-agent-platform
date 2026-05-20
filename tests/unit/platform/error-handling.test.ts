@@ -364,9 +364,9 @@ test("R25-10 WebSocketBridge configures a bounded max payload for inbound messag
 test("R25-12 HttpApiServer rate-limit endpoint keys normalize task identifiers", () => {
   const server = createHttpApiServer();
   const internal = server as unknown as { extractEndpointKey: (url: string) => string };
-  assert.equal(internal.extractEndpointKey("/api/v1/tasks/task-123"), "/api/v1/tasks/:id");
-  assert.equal(internal.extractEndpointKey("/api/v1/tasks/task-123/events"), "/api/v1/tasks/:id/events");
-  assert.equal(internal.extractEndpointKey("/v1/workflows/wf-123"), "/v1/workflows/:id");
+  assert.equal(internal.extractEndpointKey("/api/v1/tasks/task-1234567890"), "/api/v1/tasks/:id");
+  assert.equal(internal.extractEndpointKey("/api/v1/tasks/task-1234567890/events"), "/api/v1/tasks/:id/events");
+  assert.equal(internal.extractEndpointKey("/v1/workflows/wf-1234567890"), "/v1/workflows/:id");
 });
 
 test("R25-13 HttpApiServer applies the request timeout budget while reading the request body", async () => {

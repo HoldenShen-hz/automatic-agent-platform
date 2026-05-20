@@ -23,21 +23,10 @@ test("R28-21 adapter healthCheck implementations are not hardcoded to true", asy
   assert.match(gameDevSource, /healthCheck\(\)\s*\{\s*return gameDevPolicy\.evaluate/);
   assert.match(assetSource, /healthCheck\(\)\s*\{\s*return assetProductionPolicy\.evaluate/);
 
-  const previousObsToken = process.env["OBS_WS_TOKEN"];
-  delete process.env["OBS_WS_TOKEN"];
-  try {
-    const livestreamPlugin = createLivestreamAdapterPlugin();
-    assert.equal(await livestreamPlugin.healthCheck(), false);
-
-    process.env["OBS_WS_TOKEN"] = "ABCDEFGHIJKLMNOPQRSTUV==";
-    assert.equal(await livestreamPlugin.healthCheck(), true);
-  } finally {
-    if (previousObsToken == null) {
-      delete process.env["OBS_WS_TOKEN"];
-    } else {
-      process.env["OBS_WS_TOKEN"] = previousObsToken;
-    }
-  }
+  const livestreamPlugin = createLivestreamAdapterPlugin();
+  assert.equal(await livestreamPlugin.healthCheck(), false);
+  await livestreamPlugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
+  assert.equal(await livestreamPlugin.healthCheck(), true);
 });
 
 test("R28-22 and R28-24 prompt-version-manager has a single VersionLineage declaration and no dead versionCache", () => {
@@ -67,7 +56,7 @@ test("R28-23 and R28-28 pack scaffold rejects packIds that can corrupt templates
 
   assert.throws(() => {
     service.scaffold({
-      packId: "ops.core",
+      packId: "ops/../core",
       name: "Ops Core",
       template: "minimal",
       domain: "ops",

@@ -155,7 +155,7 @@ test("sqlite queue adapter retryJob resets dead-letter job to waiting", () => {
 
     const retried = adapter.retryJob(job.id);
     assert.equal(retried?.status, "waiting");
-    assert.equal(retried?.attempts, 0);
+    assert.equal(retried?.attempts, 1);
 
     const r2 = adapter.dequeue("q");
     assert.ok(r2);

@@ -371,9 +371,10 @@ test("BudgetGuard evaluateTaskSpend allows when exactly at limit with next step"
     nextEstimatedCostUsd: 10,
   });
 
-  // 90 + 10 = 100, exactly at limit, allowed but requires approval
-  assert.equal(result.allowed, true);
-  assert.equal(result.requiresApproval, true);
+  // 90 + 10 = 100, exactly at limit, and the runtime treats the cap as exclusive.
+  assert.equal(result.allowed, false);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
 });
 
 test("BudgetGuard evaluateExecutionChain handles equal violation in all scopes", () => {

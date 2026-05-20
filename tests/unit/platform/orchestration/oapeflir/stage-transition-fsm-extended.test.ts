@@ -1,6 +1,6 @@
 /**
  * Unit tests for OAPEFLIR stage-transition-fsm
- * Tests the StageTransitionFSM class for OAPEFLIR 8-stage transitions
+ * Tests the StageTransitionFSM class for OAPEFLIR 9-stage transitions
  */
 
 import assert from "node:assert/strict";
@@ -168,6 +168,7 @@ test("StageTransitionFSM getNextStage returns null after completion", () => {
   }
 
   assert.equal(fsm.getNextStage(), null);
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
 });
 
 test("StageTransitionFSM getNextStage returns stages in order", () => {
@@ -180,7 +181,7 @@ test("StageTransitionFSM getNextStage returns stages in order", () => {
   assert.equal(fsm.getNextStage(), "plan");
 });
 
-test("StageTransitionFSM getExecutionSummary contains all 8 stages", () => {
+test("StageTransitionFSM getExecutionSummary contains all 9 stages", () => {
   const fsm = new StageTransitionFSM();
 
   const summary = fsm.getExecutionSummary();
@@ -208,9 +209,19 @@ test("StageTransitionFSM reset restores initial state", () => {
   assert.equal(fsm.getStageTimestamp("observe"), undefined);
 });
 
-test("StageTransitionFSM all OAPEFLIR_STAGES contains 8 stages", () => {
-  assert.equal(OAPEFLIR_STAGES.length, 8);
-  assert.deepEqual(OAPEFLIR_STAGES, ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"]);
+test("StageTransitionFSM all OAPEFLIR_STAGES contains 9 stages", () => {
+  assert.equal(OAPEFLIR_STAGES.length, 9);
+  assert.deepEqual(OAPEFLIR_STAGES, [
+    "observe",
+    "assess",
+    "plan",
+    "execute",
+    "feedback",
+    "learn",
+    "improve",
+    "release",
+    "knowledge_promotion",
+  ]);
 });
 
 test("StageTransitionFSM recordStageSkipped advances current stage index", () => {

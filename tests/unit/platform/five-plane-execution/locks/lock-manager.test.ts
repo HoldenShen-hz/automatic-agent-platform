@@ -172,8 +172,9 @@ test("Same owner can re-acquire without releasing (extends lock)", () => {
     // Same owner re-acquires without releasing (extends)
     const result2 = h.adapter.acquire({ lockKey: "extendable-lock", owner: "worker-1" });
     assert.equal(result2.acquired, true, "Re-acquire by same owner should succeed");
-    // Same owner returns same fencing token on extension
-    assert.equal(result2.lock!.fencingToken, token1, "Same owner should get same token on extend");
+    // Extending refreshes the fencing token so downstream consumers can reject
+    // stale holders even when the owner string is unchanged.
+    assert.ok(result2.lock!.fencingToken > token1, "Same owner should get a newer token on extend");
   } finally {
     h.cleanup();
   }

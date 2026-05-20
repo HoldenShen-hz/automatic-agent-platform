@@ -196,7 +196,7 @@ test("Queue integration: dead letter workflow with manual intervention", () => {
     const retried = h.adapter.retryJob(job.id);
     assert.ok(retried);
     assert.equal(retried.status, "waiting");
-    assert.equal(retried.attempts, 0);
+    assert.equal(retried.attempts, 1);
 
     // Process again successfully
     const r2 = h.adapter.dequeue("dlq-queue");

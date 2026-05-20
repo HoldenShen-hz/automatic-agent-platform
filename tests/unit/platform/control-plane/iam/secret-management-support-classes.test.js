@@ -30,8 +30,7 @@ test("EnvironmentBackedManagedSecretProvider delegates to EnvSecretProvider", as
     const metadata = await wrapper.describeSecret("secret://test/key");
     assert.equal(metadata.secretRef, "secret://test/key");
     assert.equal(metadata.resolved, true);
-    // masked value depends on length of "secret-value"
-    assert.ok(metadata.maskedValue.endsWith("alue"));
+    assert.equal(metadata.maskedValue, "**********ue");
     const value = await wrapper.requireSecret("secret://test/key");
     assert.equal(value.value, "secret-value");
 });

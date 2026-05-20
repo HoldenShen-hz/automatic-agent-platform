@@ -22,7 +22,7 @@ test("loadEventOpsCliEnv uses default dbPath when not specified for drain-events
 
   assert.ok(config.dbPath.includes("data"));
   assert.ok(config.dbPath.includes("sqlite"));
-  assert.ok(config.dbPath.includes("authoritative-demo.db"));
+  assert.ok(config.dbPath.includes("automatic-agent.db"));
 });
 
 test("drain-events main function - no consumerId means drainDefaultConsumers", () => {

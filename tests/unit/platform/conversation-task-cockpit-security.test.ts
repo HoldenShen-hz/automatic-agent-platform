@@ -55,7 +55,7 @@ test("R28-49 getPlatformArchitectureServices does not re-register catalogs for t
   }
 });
 
-test("R28-50 service registry preserves initialized instances when a service is re-registered", async () => {
+test("R28-50 service registry drops stale initialized instances when a service is re-registered", async () => {
   const registry = ServiceRegistry.createScoped();
 
   try {
@@ -67,7 +67,7 @@ test("R28-50 service registry preserves initialized instances when a service is 
     registry.register("reaudit.service", {
       init: () => ({ version: 2 }),
     });
-    assert.deepEqual(registry.get<{ version: number }>("reaudit.service"), { version: 1 });
+    assert.deepEqual(registry.get<{ version: number }>("reaudit.service"), { version: 2 });
   } finally {
     await registry.reset();
   }

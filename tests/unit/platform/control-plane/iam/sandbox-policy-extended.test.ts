@@ -247,7 +247,10 @@ test("createWorkspaceWritePolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "workspace_write");
   assert.equal(policy.mode, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.includes("/proc"));
+  assert.ok(policy.deniedRoots.includes("/sys"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -259,8 +262,8 @@ test("createReadOnlyPolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "read_only");
   assert.equal(policy.mode, "read_only");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  // deniedRoots is empty array in implementation
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");
@@ -272,8 +275,8 @@ test("createScopedExternalAccessPolicy creates correct policy structure", () => 
   assert.equal(policy.policyId, "scoped_external_access");
   assert.equal(policy.mode, "scoped_external_access");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  // deniedRoots is empty array in implementation
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -285,21 +288,21 @@ test("createRestrictedExecPolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "restricted_exec");
   assert.equal(policy.mode, "restricted_exec");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  // deniedRoots is empty array in implementation
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
 });
 
 test("createConfigReadPolicy creates correct policy structure", () => {
-  const policy = createConfigReadPolicy("/etc/myapp");
+  const policy = createConfigReadPolicy("/workspace/myapp");
 
   assert.equal(policy.policyId, "config_read");
   assert.equal(policy.mode, "read_only");
-  assert.deepEqual(policy.allowedRoots, ["/etc/myapp"]);
-  // deniedRoots is empty array in implementation
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.allowedRoots, ["/workspace/myapp"]);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");

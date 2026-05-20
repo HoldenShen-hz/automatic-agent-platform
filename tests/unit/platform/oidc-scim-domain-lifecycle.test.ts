@@ -69,10 +69,13 @@ function createRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; def
     domainId: overrides.domainId ?? "domain-1",
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description ?? "Test recipe",
+    riskProfileRef: overrides.riskProfileRef ?? "risk-profile.default",
     triggerPhrases: overrides.triggerPhrases ?? ["run recipe"],
     archetype: overrides.archetype ?? "crud_heavy",
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? ["bundle-1"],
+    defaultPromptBundleRef: overrides.defaultPromptBundleRef ?? "prompt-bundle.default",
+    acceptanceChecklistRef: overrides.acceptanceChecklistRef ?? "acceptance-checklist.default",
   });
 }
 

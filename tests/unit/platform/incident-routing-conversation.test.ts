@@ -271,7 +271,7 @@ test("R29-37 task route paginates beyond 200 items by fetching the full summary 
   );
 });
 
-test("R29-39 prompt routes strip unknown request fields instead of forwarding them to the registry", async () => {
+test("R29-39 prompt routes reject unknown request fields instead of forwarding them to the registry", async () => {
   let capturedBundle: Record<string, unknown> | null = null;
   const routes = createPromptRoutes({
     authService: createAuthService(["operator"]),
@@ -284,26 +284,23 @@ test("R29-39 prompt routes strip unknown request fields instead of forwarding th
     } as never,
   });
 
-  const response = await callRoute(routes, createContext({
-    method: "POST",
-    url: "/v1/prompts",
-    pathname: "/v1/prompts",
-    segments: ["v1", "prompts"],
-    body: JSON.stringify({
-      name: "system.test",
-      version: 1,
-      taskType: "general",
-      systemPrompt: "hello",
-      rogueField: "should-not-pass-through",
-    }),
-  }));
-
-  if (!response) {
-    throw new Error("prompt route returned null");
-  }
-  assert.equal(response.statusCode, 201);
-  assert.ok(capturedBundle);
-  assert.equal("rogueField" in (capturedBundle as Record<string, unknown>), false);
+  await assert.rejects(
+    async () => callRoute(routes, createContext({
+      method: "POST",
+      url: "/v1/prompts",
+      pathname: "/v1/prompts",
+      segments: ["v1", "prompts"],
+      body: JSON.stringify({
+        name: "system.test",
+        version: 1,
+        taskType: "general",
+        systemPrompt: "hello",
+        rogueField: "should-not-pass-through",
+      }),
+    })),
+    /Unrecognized key/,
+  );
+  assert.equal(capturedBundle, null);
 });
 
 test("R29-40 pending stop-loss executions are persisted, visible, and executed on approval", async () => {

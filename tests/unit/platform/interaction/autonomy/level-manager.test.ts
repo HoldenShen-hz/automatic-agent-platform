@@ -21,23 +21,23 @@ test("compareAutonomyLevels returns 0 for same level", () => {
   assert.strictEqual(compareAutonomyLevels("full_auto", "full_auto"), 0);
 });
 
-test("compareAutonomyLevels frozen is highest", () => {
-  assert.ok(compareAutonomyLevels("frozen", "full_auto") > 0);
-  assert.ok(compareAutonomyLevels("frozen", "suggestion") > 0);
+test("compareAutonomyLevels frozen is lowest", () => {
+  assert.ok(compareAutonomyLevels("frozen", "full_auto") < 0);
+  assert.ok(compareAutonomyLevels("frozen", "suggestion") < 0);
 });
 
 test("compareAutonomyLevels suggestion is lowest non-frozen", () => {
   assert.ok(compareAutonomyLevels("suggestion", "supervised") < 0);
-  assert.ok(compareAutonomyLevels("suggestion", "frozen") < 0);
+  assert.ok(compareAutonomyLevels("suggestion", "frozen") > 0);
 });
 
 test("AUTONOMY_LEVEL_ORDER contains all levels in ascending order", () => {
   assert.deepStrictEqual(AUTONOMY_LEVEL_ORDER, [
+    "frozen",
     "suggestion",
     "supervised",
     "semi_auto",
     "full_auto",
-    "frozen",
   ]);
 });
 

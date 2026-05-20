@@ -1,8 +1,8 @@
 /**
  * Phase Routing Tests for OAPEFLIR Stage Transition FSM
  *
- * Tests the 8-stage OAPEFLIR pipeline transitions:
- * Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
+ * Tests the 9-stage OAPEFLIR pipeline transitions:
+ * Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release → Knowledge Promotion
  *
  * Architecture: §8 OAPEFLIR Design Principles
  */
@@ -53,7 +53,7 @@ function createWorkflow(taskId: string) {
 
 test("StageTransitionFSM initializes with correct stage order", () => {
   const fsm = new StageTransitionFSM();
-  assert.equal(OAPEFLIR_STAGES.length, 8);
+  assert.equal(OAPEFLIR_STAGES.length, 9);
   assert.deepStrictEqual(OAPEFLIR_STAGES, [
     "observe",
     "assess",
@@ -63,6 +63,7 @@ test("StageTransitionFSM initializes with correct stage order", () => {
     "learn",
     "improve",
     "release",
+    "knowledge_promotion",
   ]);
 });
 
@@ -117,7 +118,7 @@ test("complete forward transition sequence observe→assess→plan", () => {
   assert.ok(fsm.canTransitionTo("execute").allowed);
 });
 
-test("complete forward transition sequence execute→feedback→learn→improve→release", () => {
+test("complete forward transition sequence execute→feedback→learn→improve→release→knowledge_promotion", () => {
   const fsm = new StageTransitionFSM();
 
   // Complete through plan
@@ -137,6 +138,9 @@ test("complete forward transition sequence execute→feedback→learn→improve�
 
   assert.ok(fsm.canTransitionTo("release").allowed);
   fsm.recordStageCompletion("release");
+
+  assert.ok(fsm.canTransitionTo("knowledge_promotion").allowed);
+  fsm.recordStageCompletion("knowledge_promotion");
 
   assert.ok(fsm.isComplete());
   assert.equal(fsm.getNextStage(), null);
@@ -226,10 +230,7 @@ test("improve stage allows backward transition to execute", () => {
   assert.equal(result.reasonCode, "fsm.feedback_driven_replan");
 });
 
-test("release stage cannot transition backward to plan when FSM is complete", () => {
-  // When all stages including release are complete, the FSM is past the end (currentStageIndex = 8)
-  // Trying to transition to an earlier stage (plan = index 2) returns skip_not_allowed
-  // because the FSM treats it as attempting to skip stages rather than go backward
+test("knowledge promotion completion blocks backward transition to plan", () => {
   const fsm = new StageTransitionFSM();
   fsm.recordStageCompletion("observe");
   fsm.recordStageCompletion("assess");
@@ -239,6 +240,7 @@ test("release stage cannot transition backward to plan when FSM is complete", ()
   fsm.recordStageCompletion("learn");
   fsm.recordStageCompletion("improve");
   fsm.recordStageCompletion("release");
+  fsm.recordStageCompletion("knowledge_promotion");
 
   // After completion, implicit backward re-entry is blocked. Recovery must start a
   // new governed run/resume path rather than mutating a completed FSM.
@@ -507,7 +509,7 @@ test("isComplete returns true after all stages completed", () => {
   assert.ok(fsm.isComplete());
 });
 
-test("isComplete returns true after reaching release", () => {
+test("isComplete returns false after release until knowledge promotion completes", () => {
   const fsm = new StageTransitionFSM();
   fsm.recordStageCompletion("observe");
   fsm.recordStageCompletion("assess");
@@ -518,7 +520,8 @@ test("isComplete returns true after reaching release", () => {
   fsm.recordStageCompletion("improve");
   fsm.recordStageCompletion("release");
 
-  assert.ok(fsm.isComplete());
+  assert.equal(fsm.isComplete(), false);
+  assert.equal(fsm.getNextStage(), "knowledge_promotion");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

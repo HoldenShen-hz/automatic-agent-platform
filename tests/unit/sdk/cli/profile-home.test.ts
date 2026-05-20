@@ -32,11 +32,12 @@ test("loadProfileHomeCliEnv returns create true when AA_PROFILE_HOME_CREATE is 1
 });
 
 test("loadProfileHomeCliEnv returns create false for arbitrary values", () => {
-  const config = loadProfileHomeCliEnv({
-    AA_PROFILE_HOME_CREATE: "true",
-  });
-
-  assert.equal(config.create, false);
+  assert.throws(
+    () => loadProfileHomeCliEnv({
+      AA_PROFILE_HOME_CREATE: "maybe",
+    }),
+    /invalid_env:AA_PROFILE_HOME_CREATE/,
+  );
 });
 
 test("profile-home CLI create branch - when create is true", () => {

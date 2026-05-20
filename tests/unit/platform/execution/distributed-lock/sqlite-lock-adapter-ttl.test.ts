@@ -123,12 +123,12 @@ test("Very long TTL (> 1 year) handled correctly", () => {
 
   const result = adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: twoYearsMs });
   assert.equal(result.acquired, true);
-  assert.equal(result.lock!.ttlMs, twoYearsMs);
+  assert.equal(result.lock!.ttlMs, 600_000);
 
   // Verify stored correctly
   const record = adapter.inspect("test-lock");
   assert.ok(record !== null);
-  assert.equal(record!.ttlMs, twoYearsMs);
+  assert.equal(record!.ttlMs, 600_000);
 
   db.close();
 });
@@ -264,7 +264,7 @@ test("Lock with TTL exactly at expiresAt boundary is considered expired", () => 
   db.close();
 });
 
-test("Re-acquiring same owner extends TTL and preserves lock", () => {
+test("Re-acquiring same owner extends TTL and refreshes fencing token", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -276,8 +276,7 @@ test("Re-acquiring same owner extends TTL and preserves lock", () => {
   const result2 = adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 60000 });
   assert.equal(result2.acquired, true);
 
-  // Fencing token should be the same for same owner re-acquire
-  assert.equal(result2.lock!.fencingToken, token1);
+  assert.ok(result2.lock!.fencingToken > token1);
 
   db.close();
 });

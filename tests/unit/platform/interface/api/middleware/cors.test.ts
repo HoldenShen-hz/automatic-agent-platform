@@ -30,13 +30,15 @@ describe("CorsMiddleware", () => {
       );
     });
 
-    it("should allow wildcard subdomain pattern with credentials", () => {
-      const middleware = new CorsMiddleware({
-        allowedOrigins: ["*.example.com"],
-        allowCredentials: true,
-      });
-      ok(middleware.isOriginAllowed("app.example.com"));
-      ok(middleware.isOriginAllowed("api.example.com"));
+    it("should reject wildcard subdomain pattern even with credentials", () => {
+      assert.throws(
+        () =>
+          new CorsMiddleware({
+            allowedOrigins: ["*.example.com"],
+            allowCredentials: true,
+          }),
+        /Invalid origin '\*\.example\.com'/,
+      );
     });
 
     it("should allow wildcard origin without credentials", () => {
@@ -59,19 +61,11 @@ describe("CorsMiddleware", () => {
       strictEqual(middleware.isOriginAllowed("https://other.com"), false);
     });
 
-    it("should return true for subdomain match with wildcard pattern", () => {
-      const middleware = new CorsMiddleware({ allowedOrigins: ["*.example.com"] });
-      ok(middleware.isOriginAllowed("app.example.com"));
-    });
-
-    it("should return false for non-subdomain with wildcard pattern", () => {
-      const middleware = new CorsMiddleware({ allowedOrigins: ["*.example.com"] });
-      strictEqual(middleware.isOriginAllowed("notexample.com"), false);
-    });
-
-    it("should return false when subdomain has intermediate parts", () => {
-      const middleware = new CorsMiddleware({ allowedOrigins: ["*.example.com"] });
-      strictEqual(middleware.isOriginAllowed("deep.app.example.com"), false);
+    it("should reject wildcard subdomain pattern configuration", () => {
+      assert.throws(
+        () => new CorsMiddleware({ allowedOrigins: ["*.example.com"] }),
+        /Invalid origin '\*\.example\.com'/,
+      );
     });
 
     it("should return true for multiple allowed origins", () => {
@@ -100,7 +94,10 @@ describe("CorsMiddleware", () => {
     });
 
     it("should include Access-Control-Allow-Credentials when enabled", () => {
-      const middleware = new CorsMiddleware({ allowCredentials: true });
+      const middleware = new CorsMiddleware({
+        allowedOrigins: ["https://example.com"],
+        allowCredentials: true,
+      });
       const headers = middleware.getHeaders("https://example.com");
       strictEqual(headers["Access-Control-Allow-Credentials"], "true");
     });
@@ -185,7 +182,7 @@ describe("validateCorsConfig", () => {
 
 describe("DEFAULT_CORS_CONFIG", () => {
   it("should have secure defaults", () => {
-    strictEqual(DEFAULT_CORS_CONFIG.allowCredentials, true);
+    strictEqual(DEFAULT_CORS_CONFIG.allowCredentials, false);
     strictEqual(DEFAULT_CORS_CONFIG.allowedOrigins.length, 0);
     strictEqual(DEFAULT_CORS_CONFIG.maxAgeSeconds, 3600);
     strictEqual(DEFAULT_CORS_CONFIG.exposeTraceId, true);

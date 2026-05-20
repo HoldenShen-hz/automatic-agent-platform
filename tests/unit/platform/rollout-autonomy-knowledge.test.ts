@@ -61,12 +61,11 @@ test("R29-04 rollout state machine blocks paused rollouts from jumping directly 
   const stateMachine = new RolloutStateMachine();
   const candidate = makeCandidate();
 
-  const record = stateMachine.transition(candidate, "L5_full", {
+  assert.throws(() => stateMachine.transition(candidate, "L5_full", {
       currentStatus: "paused",
       targetStatus: "stable_100",
       strategyVersionId: "strategy-1",
-  });
-  assert.equal(record.status, "stable_100");
+  }), /Invalid rollout transition: paused -> stable_100/);
 });
 
 test("R29-05 autonomy boundary policy rejects empty learning object evidence sets", () => {

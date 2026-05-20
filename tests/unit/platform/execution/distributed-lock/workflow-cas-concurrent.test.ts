@@ -242,6 +242,7 @@ function createAdapterWithMockRedis(mockRedis: unknown): RedisLockAdapter {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -251,9 +252,14 @@ function createMockRedis(overrides: Partial<{
   quit: () => Promise<unknown>;
   disconnect: () => void;
 }> = {}): RedisLockAdapter["redis"] {
+  let fencingCounter = 0;
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => {
+      fencingCounter += 1;
+      return fencingCounter;
+    },
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -332,7 +338,16 @@ test("[SYS-REL-2.2] concurrent forceStealAsync - only one should win", async () 
       acquiredAt: new Date().toISOString(),
       metadata: JSON.stringify({ forceStealReason: "concurrent-steal-test" }),
     }),
-    eval: async () => 1, // All steals succeed in the Lua script
+    eval: async (_script: string, _numKeys: number, ...args: string[]) => {
+      stealCallCount++;
+      try {
+        const data = JSON.parse(args[1] ?? "{}");
+        storedOwner = data.owner ?? storedOwner;
+      } catch {
+        // ignore
+      }
+      return 1;
+    }, // All steals succeed in the Lua script
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);

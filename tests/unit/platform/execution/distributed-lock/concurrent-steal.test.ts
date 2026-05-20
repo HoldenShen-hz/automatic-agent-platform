@@ -25,6 +25,7 @@ function createAdapterWithMockRedis(mockRedis: any): RedisLockAdapter {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -37,6 +38,7 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -58,11 +60,12 @@ test("[SYS-REL-2.2] concurrent forceStealAsync - only one owner ends up with loc
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string) => {
+    incr: async () => storedFencingToken + 1,
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
       const data = JSON.parse(value);
       storedOwner = data.owner;
       storedFencingToken = data.fencingToken;
-      return "OK";
+      return 1;
     },
     get: async () => JSON.stringify({
       owner: storedOwner,
@@ -74,6 +77,7 @@ test("[SYS-REL-2.2] concurrent forceStealAsync - only one owner ends up with loc
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey, owner: "original-owner", ttlMs: 10000 });
 
   // Run 5 concurrent steal operations
   const results = await Promise.allSettled([
@@ -104,11 +108,12 @@ test("[SYS-REL-2.2] concurrent forceStealAsync race - verify fencing token monot
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string) => {
+    incr: async () => storedFencingToken + 1,
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
       const data = JSON.parse(value);
       storedOwner = data.owner;
       storedFencingToken = data.fencingToken;
-      return "OK";
+      return 1;
     },
     get: async () => JSON.stringify({
       owner: storedOwner,
@@ -152,10 +157,15 @@ test("[SYS-REL-2.2] forceStealAsync increments fencing counter per call", async 
 
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
   const initialCount = getFencingCounter();
+  let nextToken = initialCount;
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => "OK",
+    incr: async () => {
+      nextToken += 1;
+      return nextToken;
+    },
+    eval: async () => 1,
   });
   (adapter as unknown as { redis: any }).redis = mockRedis;
 
@@ -177,10 +187,11 @@ test("[SYS-REL-2.2] runConcurrentInvariant detects steal race violation", async 
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => {
+    incr: async () => {
       stealCallCount++;
-      return "OK";
+      return stealCallCount;
     },
+    eval: async () => 1,
     get: async () => JSON.stringify({
       owner: `owner-after-steal-${stealCallCount}`,
       fencingToken: stealCallCount,
@@ -191,6 +202,7 @@ test("[SYS-REL-2.2] runConcurrentInvariant detects steal race violation", async 
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey: "concurrent-steal-lock", owner: "baseline-owner", ttlMs: 10000 });
 
   const result = await runConcurrentInvariant(
     async (workerId: number) => {
@@ -219,14 +231,10 @@ test("[SYS-REL-2.2] multiple concurrent steals on same key - final state consist
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string) => {
-      // Parse and store what was set
-      try {
-        storedData = JSON.parse(value);
-      } catch {
-        // ignore
-      }
-      return "OK";
+    incr: async () => storedData.fencingToken + 1,
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
+      storedData = JSON.parse(value);
+      return 1;
     },
     get: async () => {
       // Return whatever was last stored (deterministic for inspect)
@@ -235,6 +243,7 @@ test("[SYS-REL-2.2] multiple concurrent steals on same key - final state consist
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey, owner: "original-owner", ttlMs: 10000 });
 
   // Launch 10 concurrent steals
   const stealPromises = Array.from({ length: 10 }, (_, i) =>
@@ -267,18 +276,16 @@ test("[SYS-REL-2.2] forceStealAsync with XX flag - returns record even when lock
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string) => {
-      try {
-        storedData = JSON.parse(value);
-      } catch {
-        // ignore
-      }
-      return "OK";
+    incr: async () => storedData.fencingToken + 1,
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
+      storedData = JSON.parse(value);
+      return 1;
     },
     get: async () => JSON.stringify(storedData),
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey: "existing-lock", owner: "original-owner", ttlMs: 10000 });
 
   const result = await adapter.forceStealAsync("existing-lock", "new-owner", "testing-XX-flag");
 
@@ -295,10 +302,11 @@ test("[SYS-REL-2.2] concurrent steal followed by inspect shows consistent state"
 
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string) => {
+    incr: async () => 2,
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
       const data = JSON.parse(value);
       currentOwner = data.owner;
-      return "OK";
+      return 1;
     },
     get: async () => JSON.stringify({
       owner: currentOwner,
@@ -310,6 +318,7 @@ test("[SYS-REL-2.2] concurrent steal followed by inspect shows consistent state"
   });
 
   const adapter = createAdapterWithMockRedis(mockRedis);
+  await adapter.acquireAsync({ lockKey, owner: "original-owner", ttlMs: 10000 });
 
   // Do a steal
   await adapter.forceStealAsync(lockKey, "stealer", "changing-owner");

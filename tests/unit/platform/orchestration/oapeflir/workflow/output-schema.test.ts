@@ -117,7 +117,7 @@ test("parseWorkflowOutputSchema defaults minLength to 0", () => {
   assert.equal((schema.properties["key1"] as { minLength?: number })?.minLength, 0);
 });
 
-test("parseWorkflowOutputSchema defaults additionalProperties to true", () => {
+test("parseWorkflowOutputSchema defaults additionalProperties to false", () => {
   const schema = parseWorkflowOutputSchema(
     JSON.stringify({
       type: "object",
@@ -125,7 +125,7 @@ test("parseWorkflowOutputSchema defaults additionalProperties to true", () => {
     }),
     "test://schema/1",
   );
-  assert.equal(schema.additionalProperties, true);
+  assert.equal(schema.additionalProperties, false);
 });
 
 test("parseWorkflowOutputSchema allows additionalProperties false", () => {

@@ -343,7 +343,7 @@ export class ServiceRegistry {
     }
 
     // Check for cycles - if not all services are in result, there's a cycle.
-    // Return the acyclic portion so callers such as teardownAll can still make progress.
+    // Fail closed so callers do not act on a partial order that hides invalid wiring.
     if (result.length !== serviceNames.length) {
       const unsortedServices = serviceNames.filter(n => !result.includes(n));
       throw new InternalAppError(

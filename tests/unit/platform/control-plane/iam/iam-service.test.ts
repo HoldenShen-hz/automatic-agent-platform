@@ -247,8 +247,7 @@ test("IamService resolves access profile with explicit capabilities", () => {
     roles: ["viewer"],
     capabilities: ["model:invoke", "tool:invoke"],
   });
-  assert.ok(profile.capabilities.includes("model:invoke"));
-  assert.ok(profile.capabilities.includes("tool:invoke"));
+  assert.deepEqual(profile.capabilities, []);
 });
 
 test("IamService deduplicates roles in profile", () => {
@@ -262,6 +261,7 @@ test("IamService deduplicates roles in profile", () => {
 test("IamService deduplicates capabilities in profile", () => {
   const profile = resolvePrincipalAccessProfile({
     principalType: "user",
+    roles: ["human_operator"],
     capabilities: ["model:invoke", "model:invoke", "tool:invoke"],
   });
   assert.equal(profile.capabilities.length, 2);
@@ -550,8 +550,8 @@ test("IamService returns correct constraints on plugin trust denial", () => {
 test("IamService handles non-production environment with exec_command", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
-      principalType: "agent",
-      roles: ["agent_runtime"],
+      principalType: "worker",
+      roles: ["worker_runtime"],
       action: "exec_command",
       context: makeMockContext({ environment: "workspace" }),
     }),
@@ -562,8 +562,8 @@ test("IamService handles non-production environment with exec_command", () => {
 test("IamService handles staging environment with exec_command", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
-      principalType: "agent",
-      roles: ["agent_runtime"],
+      principalType: "worker",
+      roles: ["worker_runtime"],
       action: "exec_command",
       context: makeMockContext({ environment: "staging" }),
     }),

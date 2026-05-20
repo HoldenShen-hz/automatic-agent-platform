@@ -749,36 +749,27 @@ test("LivestreamAdapter handles null parameters", async () => {
   assert.equal((result.output as Record<string, unknown>).streamId, null);
 });
 
-test("LivestreamAdapter healthCheck returns true", async () => {
-  const previousObsToken = process.env["OBS_WS_TOKEN"];
-  process.env["OBS_WS_TOKEN"] = "ABCDEFGHIJKLMNOPQRSTUV==";
+test("LivestreamAdapter healthCheck reflects authentication state", async () => {
   const plugin = createLivestreamAdapterPlugin();
-  try {
-    const health = await plugin.healthCheck();
-    assert.equal(health, true);
-  } finally {
-    if (previousObsToken == null) delete process.env["OBS_WS_TOKEN"];
-    else process.env["OBS_WS_TOKEN"] = previousObsToken;
-  }
+
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
+  assert.equal(await plugin.healthCheck(), true);
 });
 
 test("LivestreamAdapter lifecycle methods work", async () => {
-  const previousObsToken = process.env["OBS_WS_TOKEN"];
-  process.env["OBS_WS_TOKEN"] = "ABCDEFGHIJKLMNOPQRSTUV==";
   const plugin = createLivestreamAdapterPlugin();
-  try {
-    const initResult = await plugin.initialize();
-    assert.equal(initResult, undefined);
 
-    const healthResult = await plugin.healthCheck();
-    assert.equal(healthResult, true);
+  const initResult = await plugin.initialize();
+  assert.equal(initResult, undefined);
 
-    const shutdownResult = await plugin.shutdown();
-    assert.equal(shutdownResult, undefined);
-  } finally {
-    if (previousObsToken == null) delete process.env["OBS_WS_TOKEN"];
-    else process.env["OBS_WS_TOKEN"] = previousObsToken;
-  }
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
+  assert.equal(await plugin.healthCheck(), true);
+
+  const shutdownResult = await plugin.shutdown();
+  assert.equal(shutdownResult, undefined);
+  assert.equal(await plugin.healthCheck(), false);
 });
 
 // ---------------------------------------------------------------------------
@@ -1343,7 +1334,7 @@ test("OperationsRetriever lifecycle methods work", async () => {
   assert.equal(initResult, undefined);
 
   const healthResult = await plugin.healthCheck();
-  assert.equal(healthResult, true);
+  assert.equal(healthResult, false);
 
   const shutdownResult = await plugin.shutdown();
   assert.equal(shutdownResult, undefined);
@@ -1408,7 +1399,7 @@ test("GameDevRetriever lifecycle methods work", async () => {
   assert.equal(initResult, undefined);
 
   const healthResult = await plugin.healthCheck();
-  assert.equal(healthResult, true);
+  assert.equal(healthResult, false);
 
   const shutdownResult = await plugin.shutdown();
   assert.equal(shutdownResult, undefined);

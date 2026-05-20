@@ -238,7 +238,8 @@ test("PolicyEngine.evaluate allows when currentTaskCostUsd + estimatedCostUsd eq
   const result = engine.evaluate(
     makeRequest({ estimatedCostUsd: 2, metadata: { currentTaskCostUsd: 3 } }),
   );
-  assert.equal(result.decision, "allow_with_constraints");
+  assert.equal(result.decision, "deny");
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
 });
 
 // ---------------------------------------------------------------------------

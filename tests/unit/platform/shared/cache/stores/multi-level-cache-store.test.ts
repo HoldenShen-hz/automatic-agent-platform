@@ -131,7 +131,12 @@ test("get populates L1 on L2 hit", async () => {
   const { store: l3 } = createMockStore();
 
   l1Results.push({ hit: false, value: null, reason: "not_found" });
-  l2Results.push({ hit: true, value: "L2value", layer: "L2" });
+  l2Results.push({
+    hit: true,
+    value: "L2value",
+    layer: "L2",
+    meta: createTestMeta({ scope: "session" }),
+  });
 
   const multiStore = new MultiLevelCacheStore(l1, l2, l3);
   await multiStore.get("ns1", "key1");
@@ -165,14 +170,19 @@ test("get populates L1 on L3 hit", async () => {
 
   l1Results.push({ hit: false, value: null, reason: "not_found" });
   l2Results.push({ hit: false, value: null, reason: "not_found" });
-  l3Results.push({ hit: true, value: "L3value", layer: "L3" });
+  l3Results.push({
+    hit: true,
+    value: "L3value",
+    layer: "L3",
+    meta: createTestMeta({ scope: "persistent" }),
+  });
 
   const multiStore = new MultiLevelCacheStore(l1, l2, l3);
   await multiStore.get("ns1", "key1");
 
   assert.strictEqual(l1SetCalls.length, 1, "Should populate L1 on L3 hit");
   assert.strictEqual(l1SetCalls[0]?.value, "L3value");
-  assert.strictEqual(l1SetCalls[0]?.meta.scope, "persistent");
+  assert.strictEqual(l1SetCalls[0]?.meta.scope, "memory");
 });
 
 test("get returns miss when all layers miss", async () => {
@@ -305,7 +315,7 @@ test("invalidateByTag invalidates all layers", async () => {
   assert.strictEqual(l3Calls.length, 1);
 });
 
-test("invalidateByTag returns L1 count", async () => {
+test("invalidateByTag returns total invalidation count across all layers", async () => {
   const { store: l1 } = createMockStore();
   const { store: l2 } = createMockStore();
   const { store: l3 } = createMockStore();
@@ -313,7 +323,7 @@ test("invalidateByTag returns L1 count", async () => {
   const multiStore = new MultiLevelCacheStore(l1, l2, l3);
   const count = await multiStore.invalidateByTag("tag1");
 
-  assert.strictEqual(count, 1); // Returns L1 count
+  assert.strictEqual(count, 3);
 });
 
 // ---------------------------------------------------------------------------

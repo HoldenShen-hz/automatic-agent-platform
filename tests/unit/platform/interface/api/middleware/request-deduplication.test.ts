@@ -83,7 +83,7 @@ describe("DeduplicationMiddleware", () => {
   describe("generateKey", () => {
     it("should generate tenant key when perTenant enabled", () => {
       const key = middleware.generateKey({ tenantId: "tenant-123" });
-      strictEqual(key, "tenant:tenant-123");
+      strictEqual(key, "tenant:tenant-123:*:*");
     });
 
     it("should generate global key when perTenant disabled", () => {
@@ -93,7 +93,7 @@ describe("DeduplicationMiddleware", () => {
         perTenant: false,
       });
       const key = middlewareNoTenant.generateKey({ tenantId: "tenant-123" });
-      strictEqual(key, "global");
+      strictEqual(key, "global:*:*");
     });
   });
 

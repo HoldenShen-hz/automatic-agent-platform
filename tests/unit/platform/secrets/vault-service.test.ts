@@ -415,7 +415,7 @@ test("VaultHttpSecretProvider.requireSecret caches token and does not re-authent
 
 test("VaultHttpSecretProvider.requireSecret uses custom Vault mount point", async () => {
   const mockFetch = async (url: string, _init?: any) => {
-    assert.ok(url.includes("/v1/custom-mount/data/"), `Expected custom mount path, got: ${url}`);
+    assert.ok(url.includes("/v1/custom-mount/data"), `Expected custom mount path, got: ${url}`);
     return {
       ok: true,
       status: 200,
@@ -559,5 +559,5 @@ test("maskSecretValue handles exact 4-character values", () => {
 
 test("maskSecretValue trims whitespace before masking", () => {
   const result = maskSecretValue("  secret  ");
-  assert.equal(result, "**cret");
+  assert.equal(result, "******");
 });

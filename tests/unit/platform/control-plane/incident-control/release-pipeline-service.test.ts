@@ -102,7 +102,7 @@ test("release pipeline service lists environment configs and builds immutable bu
 
     assert.equal(bundle.environment, "staging");
     assert.equal(bundle.imageTag, "v1.2.3-abcdef123456");
-    assert.match(bundle.imageRef, /^ghcr\.io\/holdenshen-hz\/automatic-agent-system:v1\.2\.3-abcdef123456$/);
+    assert.match(bundle.imageRef, /^ghcr\.io\/automatic-agent\/automatic-agent-system:v1\.2\.3-abcdef123456$/);
     assert.equal(bundle.deployWorkflowPath, ".github/workflows/deploy-environment.yml");
     assert.equal(bundle.registryCredentialRef, "secret://system/registry/ghcr/staging");
     assert.equal(bundle.deploymentCredentialRef, "secret://system/deploy/kubeconfig/staging");

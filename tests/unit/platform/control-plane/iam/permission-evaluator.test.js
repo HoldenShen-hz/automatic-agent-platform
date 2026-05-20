@@ -24,8 +24,8 @@ test("PermissionEvaluator checks tool:invoke permission for agent", () => {
     const result = roleGrantsCapabilities(["agent_runtime"], ["tool:invoke"]);
     assert.equal(result, true);
 });
-test("PermissionEvaluator checks fs:write permission for agent", () => {
-    const result = roleGrantsCapabilities(["agent_runtime"], ["fs:write"]);
+test("PermissionEvaluator checks fs:write permission for worker", () => {
+    const result = roleGrantsCapabilities(["worker_runtime"], ["fs:write"]);
     assert.equal(result, true);
 });
 test("PermissionEvaluator checks exec:command permission for human_operator", () => {
@@ -103,8 +103,8 @@ test("PermissionEvaluator evaluates invoke_tool action context", () => {
 });
 test("PermissionEvaluator evaluates write_file action context", () => {
     const result = evaluateAuthorizationContext({
-        principalType: "agent",
-        roles: ["agent_runtime"],
+        principalType: "worker",
+        roles: ["worker_runtime"],
         action: "write_file",
         context: makeMockContext(),
         mode: "auto",
@@ -113,8 +113,8 @@ test("PermissionEvaluator evaluates write_file action context", () => {
 });
 test("PermissionEvaluator evaluates exec_command action in workspace", () => {
     const result = evaluateAuthorizationContext({
-        principalType: "agent",
-        roles: ["agent_runtime"],
+        principalType: "worker",
+        roles: ["worker_runtime"],
         action: "exec_command",
         context: makeMockContext({ environment: "workspace" }),
         mode: "auto",
@@ -305,15 +305,16 @@ test("PermissionEvaluator resolves profile with no explicit capabilities", () =>
         principalType: "agent",
         roles: ["agent_runtime"],
     });
+    assert.ok(profile.capabilities.includes("model:invoke"));
     assert.ok(profile.capabilities.includes("tool:invoke"));
-    assert.ok(profile.capabilities.includes("fs:write"));
-    assert.ok(profile.capabilities.includes("exec:command"));
     assert.ok(profile.capabilities.includes("network:access"));
+    assert.ok(!profile.capabilities.includes("fs:write"));
+    assert.ok(!profile.capabilities.includes("exec:command"));
 });
 test("PermissionEvaluator resolves profile with custom capabilities", () => {
     const profile = resolvePrincipalAccessProfile({
-        principalType: "user",
-        roles: ["viewer"],
+        principalType: "service",
+        roles: ["service_operator"],
         capabilities: ["model:invoke", "tool:invoke", "network:access"],
     });
     assert.ok(profile.capabilities.includes("model:invoke"));
@@ -358,10 +359,10 @@ test("PermissionEvaluator capabilitiesForRole covers all roles", () => {
         assert.ok(Array.isArray(caps), `Expected array for role ${role}`);
     }
 });
-test("PermissionEvaluator context environment staging allows exec_command for agent", () => {
+test("PermissionEvaluator context environment staging allows exec_command for worker", () => {
     const result = evaluateAuthorizationContext({
-        principalType: "agent",
-        roles: ["agent_runtime"],
+        principalType: "worker",
+        roles: ["worker_runtime"],
         action: "exec_command",
         context: makeMockContext({ environment: "staging" }),
         mode: "auto",

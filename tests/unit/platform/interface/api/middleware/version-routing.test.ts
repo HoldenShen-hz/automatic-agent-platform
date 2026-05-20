@@ -98,11 +98,12 @@ describe("VersionRoutingMiddleware", () => {
       strictEqual(decision.reasonCode, "version.below_minimum");
     });
 
-    it("should use fallback version when no match", () => {
+    it("should reject unsupported versions that are not below minimum", () => {
       const middleware = new VersionRoutingMiddleware();
       const decision = middleware.selectVersion(["2026-03-01"]);
-      strictEqual(decision.acceptable, true);
-      strictEqual(decision.reasonCode, "version.fallback");
+      strictEqual(decision.acceptable, false);
+      strictEqual(decision.statusCode, 406);
+      strictEqual(decision.reasonCode, "version.not_supported");
     });
 
     it("should include warning for unsupported versions", () => {

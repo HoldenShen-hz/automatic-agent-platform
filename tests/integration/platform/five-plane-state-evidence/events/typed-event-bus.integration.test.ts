@@ -328,9 +328,11 @@ test("integration: TypedEventBus handles high-risk command events", async () => 
       traceId: "trace-risk-001",
       traceContext: null,
       payload: {
-        status: "completed",
-        runId: "run-risk-001",
-        taskId: "task-risk-001",
+        aggregateType: "harness_run",
+        fromStatus: "executing",
+        toStatus: "completed",
+        reasonCode: "runtime.completed",
+        emittedBy: "typed-event-bus.integration",
         occurredAt: nowIso(),
       },
     });

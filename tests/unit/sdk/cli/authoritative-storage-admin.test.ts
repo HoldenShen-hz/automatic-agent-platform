@@ -64,7 +64,7 @@ test("loadAuthoritativeStorageAdminCliEnv uses AA_DB_PATH when set", () => {
 test("loadAuthoritativeStorageAdminCliEnv resolves default dbPath", () => {
   const result = loadAuthoritativeStorageAdminCliEnv({});
   assert.ok(result.dbPath.includes("sqlite"));
-  assert.ok(result.dbPath.includes("authoritative-demo.db"));
+  assert.ok(result.dbPath.includes("automatic-agent.db"));
 });
 
 test("loadAuthoritativeStorageAdminCliEnv returns correct interface shape", () => {

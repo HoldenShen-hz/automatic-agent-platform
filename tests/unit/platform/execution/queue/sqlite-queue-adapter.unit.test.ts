@@ -220,7 +220,7 @@ test("SqliteQueueAdapter retryJob resets dead-letter job to waiting", () => {
 
     const retried = h.adapter.retryJob(job.id);
     assert.equal(retried?.status, "waiting");
-    assert.equal(retried?.attempts, 0);
+    assert.equal(retried?.attempts, 1);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

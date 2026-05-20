@@ -204,10 +204,10 @@ test("ServiceRegistry.topologicalSort reports circular dependency", () => {
     dependsOn: ["circ-a"],
   });
 
-  const sorted = registry.topologicalSort();
-
-  // Circular dependencies result in not all services being sorted
-  assert.ok(sorted.length < 2);
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry\.circular_dependency/,
+  );
 });
 
 test("ServiceRegistry.get throws for non-existent service", () => {

@@ -539,7 +539,7 @@ test("RuntimeStateMachine seals HarnessRun terminal states (failed)", () => {
   );
 });
 
-test("RuntimeStateMachine allows compatibility reopen from aborted to paused", () => {
+test("RuntimeStateMachine rejects compatibility reopen from aborted to paused", () => {
   const machine = createMachine();
   const aborted = createHarnessRun({
     harnessRunId: "run-1",
@@ -554,21 +554,22 @@ test("RuntimeStateMachine allows compatibility reopen from aborted to paused", (
     currentSeq: 3,
   });
 
-  const result = machine.transition({
-    aggregateType: "HarnessRun",
-    aggregate: aborted,
-    fromStatus: "aborted",
-    toStatus: "paused",
-    expectedSeq: 3,
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "compatibility_resume",
-    emittedBy: "test",
-    fencingToken: "fence:run-1:3",
-    auditRef: "audit://run-1/compatibility-resume",
-  });
-
-  assert.equal(result.aggregate.status, "paused");
+  assert.throws(
+    () => machine.transition({
+      aggregateType: "HarnessRun",
+      aggregate: aborted,
+      fromStatus: "aborted",
+      toStatus: "paused",
+      expectedSeq: 3,
+      traceId: "trace-1",
+      tenantId: "tenant-1",
+      reasonCode: "compatibility_resume",
+      emittedBy: "test",
+      fencingToken: "fence:run-1:3",
+      auditRef: "audit://run-1/compatibility-resume",
+    }),
+    (error: unknown) => (error as { code?: string }).code === "runtime_state_machine.invalid_transition",
+  );
 });
 
 test("RuntimeStateMachine seals NodeRun terminal states", () => {
@@ -1404,7 +1405,7 @@ test("RuntimeStateMachine event includes runVersionLockId when provided", () => 
 // BudgetLedger Budget-Modifying Transitions
 // ---------------------------------------------------------------------------
 
-test("RuntimeStateMachine allows BudgetLedger budget-modifying transitions without lease or fencing", () => {
+test("RuntimeStateMachine requires lease and fencing for BudgetLedger budget-modifying transitions", () => {
   const machine = createMachine();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -1414,19 +1415,20 @@ test("RuntimeStateMachine allows BudgetLedger budget-modifying transitions witho
     version: 0,
   });
 
-  const result = machine.transition({
-    aggregateType: "BudgetLedger",
-    aggregate: ledger,
-    fromStatus: "open",
-    toStatus: "soft_cap_reached",
-    expectedVersion: 0,
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "soft_cap",
-    emittedBy: "budget-allocator",
-  });
-
-  assert.equal(result.aggregate.status, "soft_cap_reached");
+  assert.throws(
+    () => machine.transition({
+      aggregateType: "BudgetLedger",
+      aggregate: ledger,
+      fromStatus: "open",
+      toStatus: "soft_cap_reached",
+      expectedVersion: 0,
+      traceId: "trace-1",
+      tenantId: "tenant-1",
+      reasonCode: "soft_cap",
+      emittedBy: "budget-allocator",
+    }),
+    (error: unknown) => (error as { code?: string }).code === "runtime_state_machine.budget_ledger_fencing_required",
+  );
 });
 
 test("RuntimeStateMachine accepts alternate leaseId for BudgetLedger when required fields are present", () => {

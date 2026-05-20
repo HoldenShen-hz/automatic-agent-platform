@@ -38,6 +38,55 @@ function createTestNamespace(overrides?: Partial<KnowledgeNamespace>): Knowledge
   };
 }
 
+function createArchivedRecord(documentId: string, namespaceId: string, content: string) {
+  return {
+    source: {
+      sourceId: `${documentId}-source`,
+      type: "text" as const,
+      uri: `memory://${documentId}`,
+      contentHash: `${documentId}-hash`,
+      metadata: {},
+      ingestedAt: "2026-05-20T00:00:00.000Z",
+      namespace: namespaceId,
+      language: null,
+      tags: [],
+      trustLevel: "authoritative" as const,
+      freshnessTimestamp: "2026-05-20T00:00:00.000Z",
+      checksum: `${documentId}-checksum`,
+    },
+    document: {
+      documentId,
+      sourceId: `${documentId}-source`,
+      title: `Document ${documentId}`,
+      version: 1,
+      tags: [],
+      domainScope: [],
+      status: "archived" as const,
+      namespace: namespaceId,
+      mimeType: "text/plain",
+      rawText: content,
+      structuredText: null,
+      archived: true,
+      archivedAt: "2026-05-20T00:00:00.000Z",
+    },
+    chunks: [{
+      chunkId: `${documentId}-chunk-1`,
+      documentId,
+      content,
+      chunkType: "concept" as const,
+      metadata: { relevantFiles: [] },
+      embedding: null,
+      tokenCount: 3,
+      namespace: namespaceId,
+      ordinal: 0,
+      summary: `Summary for ${documentId}`,
+      keywords: [],
+      embeddingId: null,
+      locator: {},
+    }],
+  };
+}
+
 test("KnowledgeSnapshotStore rejects path traversal attempts", () => {
   assert.throws(
     () => new KnowledgeSnapshotStore({ snapshotPath: "/tmp/../etc/passwd" }),
@@ -72,8 +121,8 @@ test("KnowledgeSnapshotStore save and load roundtrip", () => {
 
     const namespaces = [createTestNamespace(), createTestNamespace({ namespaceId: "ns-test-2" })];
     const records = [
-      { knowledgeId: "knowledge-1", namespaceId: "ns-test-1", content: "Test knowledge content", archivedAt: null },
-      { knowledgeId: "knowledge-2", namespaceId: "ns-test-1", content: "More content", archivedAt: null },
+      createArchivedRecord("knowledge-1", "ns-test-1", "Test knowledge content"),
+      createArchivedRecord("knowledge-2", "ns-test-1", "More content"),
     ];
 
     const snapshot = store.save({ namespaces, records });
@@ -89,7 +138,7 @@ test("KnowledgeSnapshotStore save and load roundtrip", () => {
     assert.equal(loaded!.namespaces.length, 2);
     assert.equal(loaded!.records.length, 2);
     assert.equal(loaded!.namespaces[0]!.namespaceId, "ns-test-1");
-    assert.equal(loaded!.records[0]!.knowledgeId, "knowledge-1");
+    assert.equal(loaded!.records[0]!.document.documentId, "knowledge-1");
   } finally {
     rmSync(path, { recursive: true, force: true });
   }
@@ -120,18 +169,18 @@ test("KnowledgeSnapshotStore save makes defensive copies of arrays", () => {
 
     const namespaces = [createTestNamespace({ namespaceId: "ns-orig" })];
     const records = [
-      { knowledgeId: "k-1", namespaceId: "ns-orig", content: "Content", archivedAt: null },
+      createArchivedRecord("k-1", "ns-orig", "Content"),
     ];
 
-    const snapshot = store.save({ namespaces, records });
+    store.save({ namespaces, records });
 
     // Modify original arrays - should not affect saved snapshot
     namespaces[0]!.namespaceId = "ns-modified";
-    (records[0] as any).knowledgeId = "k-modified";
+    records[0]!.document.documentId = "k-modified";
 
     const loaded = store.load();
     assert.equal(loaded!.namespaces[0]!.namespaceId, "ns-orig");
-    assert.equal(loaded!.records[0]!.knowledgeId, "k-1");
+    assert.equal(loaded!.records[0]!.document.documentId, "k-1");
   } finally {
     rmSync(path, { recursive: true, force: true });
   }
@@ -193,17 +242,17 @@ test("KnowledgeSnapshotStore overwrites existing file on save", () => {
 
     store.save({
       namespaces: [createTestNamespace({ namespaceId: "ns-v1" })],
-      records: [{ knowledgeId: "k-v1", namespaceId: "ns-v1", content: "v1", archivedAt: null }],
+      records: [createArchivedRecord("k-v1", "ns-v1", "v1")],
     });
 
     store.save({
       namespaces: [createTestNamespace({ namespaceId: "ns-v2" })],
-      records: [{ knowledgeId: "k-v2", namespaceId: "ns-v2", content: "v2", archivedAt: null }],
+      records: [createArchivedRecord("k-v2", "ns-v2", "v2")],
     });
 
     const loaded = store.load();
     assert.equal(loaded!.namespaces[0]!.namespaceId, "ns-v2");
-    assert.equal(loaded!.records[0]!.knowledgeId, "k-v2");
+    assert.equal(loaded!.records[0]!.document.documentId, "k-v2");
   } finally {
     rmSync(path, { recursive: true, force: true });
   }

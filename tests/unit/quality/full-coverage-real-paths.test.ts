@@ -189,7 +189,7 @@ test("real Mission budget service reserves, settles, and rejects over-cap spend"
 
   assert.equal(budget.reserve("mission:test", 4).reservedAmount, 4);
   assert.equal(budget.settle("mission:test", 3).settledAmount, 3);
-  assert.throws(() => budget.reserve("mission:test", 8), /MISSION_BUDGET_EXHAUSTED/);
+  assert.throws(() => budget.reserve("mission:test", 8), /Mission budget hard cap would be exceeded/);
 });
 
 test("real Yono business path covers market review, social forecast, trade, dispute, and audit events", () => {

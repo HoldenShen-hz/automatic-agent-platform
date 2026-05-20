@@ -120,7 +120,7 @@ test("getNextStage returns null when complete", () => {
   }
   assert.equal(fsm.getNextStage(), null);
   assert.equal(fsm.isComplete(), true);
-  assert.equal(fsm.getCurrentStage(), "release");
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
 });
 
 test("getNextStage returns first stage initially", () => {

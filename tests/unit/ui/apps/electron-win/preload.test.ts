@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+function getChannelNames(
+  channels: ReadonlyArray<{ name: string; tier: string; permission: string }>,
+): string[] {
+  return channels.map((channel) => channel.name);
+}
+
 test.describe("electron preload module structure", () => {
   test("preload module exports electronPreloadApi and installElectronBridge", async () => {
     const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
@@ -105,21 +111,22 @@ test.describe("main/preload channel consistency", () => {
     };
 
     for (const channel of main.electronMainBaseline.channels) {
-      const apiPath = channelToApiPath[channel];
-      assert.ok(apiPath, `Missing API path mapping for ${channel}`);
+      const apiPath = channelToApiPath[channel.name];
+      assert.ok(apiPath, `Missing API path mapping for ${channel.name}`);
       const value = apiPath.reduce((obj: any, key) => obj?.[key], preload.electronPreloadApi);
-      assert.equal(value, channel, `Channel ${channel} should map to preload API`);
+      assert.equal(value, channel.name, `Channel ${channel.name} should map to preload API`);
     }
   });
 
   test("removed high-risk channels stay absent from both main and preload", async () => {
     const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
 
-    assert.equal(main.electronMainBaseline.channels.includes("shell:run"), false);
-    assert.equal(main.electronMainBaseline.channels.includes("shell:spawn"), false);
-    assert.equal(main.electronMainBaseline.channels.includes("files:read"), false);
-    assert.equal(main.electronMainBaseline.channels.includes("files:write"), false);
+    assert.equal(channelNames.includes("shell:run"), false);
+    assert.equal(channelNames.includes("shell:spawn"), false);
+    assert.equal(channelNames.includes("files:read"), false);
+    assert.equal(channelNames.includes("files:write"), false);
     assert.equal("run" in preload.electronPreloadApi.shell, false);
     assert.equal("spawn" in preload.electronPreloadApi.shell, false);
     assert.equal("files" in preload.electronPreloadApi, false);

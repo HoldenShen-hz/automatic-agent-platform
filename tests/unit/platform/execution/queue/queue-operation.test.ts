@@ -296,7 +296,7 @@ test("retryJob resets dead letter job to waiting", () => {
     const retried = adapter.retryJob(job.id);
     assert.ok(retried);
     assert.equal(retried.status, "waiting");
-    assert.equal(retried.attempts, 0);
+    assert.equal(retried.attempts, 1);
     assert.equal(retried.lastError, null);
   } finally {
     h.db.close();

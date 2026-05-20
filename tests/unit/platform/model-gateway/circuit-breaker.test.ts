@@ -111,12 +111,12 @@ test("CircuitBreaker closes after halfOpenSuccessThreshold successes in half_ope
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(cb.getState(), "half_open");
 
-  // Record successes via onSuccess callback
-  cb.onSuccess();
+  // The first probe transitions the internal state to half_open.
+  await cb.execute(async () => "ok1");
   const metrics1 = cb.getMetrics();
   assert.equal(metrics1.consecutiveSuccesses, 1);
 
-  cb.onSuccess();
+  await cb.execute(async () => "ok2");
   assert.equal(cb.getState(), "closed");
 });
 
@@ -135,9 +135,12 @@ test("CircuitBreaker any failure in half_open returns to open", async () => {
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(cb.getState(), "half_open");
 
-  // Record a success then a failure
-  cb.onSuccess();
-  cb.onFailure();
+  await assert.rejects(
+    () => cb.execute(async () => {
+      throw new Error("probe fail");
+    }),
+    { message: "probe fail" },
+  );
 
   assert.equal(cb.getState(), "open");
 });

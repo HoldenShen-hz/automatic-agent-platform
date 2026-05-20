@@ -191,14 +191,14 @@ test("SqliteLockAdapter: same owner re-acquiring extends the lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: same owner re-acquisition does not change fencing token", () => {
+test("SqliteLockAdapter: same owner re-acquisition refreshes fencing token", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
   const r1 = adapter.acquire({ lockKey: "resource-1", owner: "owner-a", ttlMs: 30_000 });
   const r2 = adapter.acquire({ lockKey: "resource-1", owner: "owner-a", ttlMs: 30_000 });
 
-  assert.equal(r1.lock!.fencingToken, r2.lock!.fencingToken);
+  assert.ok(r2.lock!.fencingToken > r1.lock!.fencingToken);
 
   db.close();
 });

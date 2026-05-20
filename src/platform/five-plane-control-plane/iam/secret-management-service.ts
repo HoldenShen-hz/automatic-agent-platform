@@ -685,7 +685,7 @@ export class SecretManagementService {
   /**
    * Marks all due secrets as rotation-requested.
    */
-  public requestDueRotations(asOf: string = nowIso(), requestedBy: string): SecretRotationEventRecord[] {
+  public requestDueRotations(asOf: string = nowIso(), requestedBy: string = "system.rotation"): SecretRotationEventRecord[] {
     const actor = assertNonEmpty(requestedBy, "secret.invalid_requested_by");
     const dueSecrets = this.listRotationDueSecrets(asOf);
     return dueSecrets.map((registry) => this.recordRotationEvent({

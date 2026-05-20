@@ -555,7 +555,7 @@ test("access policy: sandbox policy with restricted_exec mode enforces allowed_r
     const policy = createRestrictedExecPolicy(ctx.workspace);
     const result = checkSandboxPath(policy, "/etc/passwd");
     assert.strictEqual(result.allowed, false);
-    assert.strictEqual(result.reasonCode, "sandbox.path_outside_allowed_roots");
+    assert.strictEqual(result.reasonCode, "sandbox.path_in_denied_root");
   } finally {
     ctx.cleanup();
   }

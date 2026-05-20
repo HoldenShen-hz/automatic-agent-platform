@@ -30,7 +30,7 @@ test("R28-60 coding domain elevates shell execution workflows", () => {
   assert.equal(codingDomain.capabilities.securityLevel, "elevated");
 });
 
-test("R28-62 service registry topological sort returns acyclic portion on circular teardown graphs", () => {
+test("R28-62 service registry topological sort rejects circular teardown graphs", () => {
   const registry = new ServiceRegistry();
   registry.register("alpha", {
     init: () => ({ ok: true }),
@@ -41,7 +41,10 @@ test("R28-62 service registry topological sort returns acyclic portion on circul
     dependsOn: ["alpha"],
   });
 
-  assert.deepEqual(registry.topologicalSort(), []);
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry\.circular_dependency/,
+  );
 });
 
 test("R29-01 learning artifact creation always emits a valid sha256 checksum", async () => {

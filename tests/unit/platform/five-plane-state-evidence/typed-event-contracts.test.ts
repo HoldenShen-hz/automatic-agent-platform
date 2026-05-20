@@ -131,6 +131,7 @@ test("OIDC OAuth service uses PKCE challenge parameters by default", () => {
     tokenEndpoint: "https://issuer.example.com/token",
     jwksUri: "https://issuer.example.com/jwks",
     scopes: ["openid", "profile"],
+    allowedRedirectUris: ["https://example.com/callback"],
   }, "client-1", "https://example.com/callback", "state-1", challenge);
   const parsed = new URL(url);
 

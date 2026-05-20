@@ -127,15 +127,12 @@ test("quorum calculator: voting window not expired within window", () => {
   assert.strictEqual(status.isVotingWindowExpired, false);
 });
 
-test("quorum calculator: mergeVotes updates existing approver vote", () => {
+test("quorum calculator: mergeVotes rejects duplicate approver vote", () => {
   const existing: QuorumVote[] = [
     createVote("approver-1", VoteType.APPROVE),
   ];
   const newVote = createVote("approver-1", VoteType.REJECT);
-  const merged = mergeVotes(existing, newVote);
-
-  assert.strictEqual(merged.length, 1);
-  assert.strictEqual(merged[0]!.voteType, VoteType.REJECT);
+  assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
 });
 
 test("quorum calculator: mergeVotes adds new approver vote", () => {

@@ -1,8 +1,8 @@
 /**
  * OAPEFLIR Stage Transition Integration Tests
  *
- * Tests the 8-stage OAPEFLIR lifecycle: observe → assess → plan →
- * execute → feedback → learn → improve → release
+ * Tests the 9-stage OAPEFLIR lifecycle: observe → assess → plan →
+ * execute → feedback → learn → improve → release → knowledge promotion
  *
  * Validates stage transition FSM and integration with workflow execution.
  */
@@ -49,7 +49,7 @@ test("oapeflir-stage: Linear progression observe → assess → plan → execute
   // Note: We don't call recordStageCompletion here because that would advance to feedback
 });
 
-test("oapeflir-stage: Full linear 8-stage progression", () => {
+test("oapeflir-stage: Full linear 9-stage progression", () => {
   const fsm = new StageTransitionFSM();
 
   const expectedStages: OapeflirStage[] = [
@@ -61,6 +61,7 @@ test("oapeflir-stage: Full linear 8-stage progression", () => {
     "learn",
     "improve",
     "release",
+    "knowledge_promotion",
   ];
 
   // Progress through all stages linearly
@@ -78,7 +79,7 @@ test("oapeflir-stage: Full linear 8-stage progression", () => {
   }
 
   assert.ok(fsm.isComplete(), "FSM should be complete after all stages");
-  assert.equal(fsm.getCurrentStage(), "release", "Final stage should be release");
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion", "Final stage should be knowledge_promotion");
 });
 
 test("oapeflir-stage: Cannot skip stages", () => {
@@ -207,8 +208,8 @@ test("oapeflir-stage: Execution summary captures all stage statuses", () => {
   assert.equal(summary.execute.status, "pending", "Execute should be pending");
 });
 
-test("oapeflir-stage: OAPEFLIR_STAGES array contains all 8 stages", () => {
-  assert.equal(OAPEFLIR_STAGES.length, 8, "Should have 8 stages");
+test("oapeflir-stage: OAPEFLIR_STAGES array contains all 9 stages", () => {
+  assert.equal(OAPEFLIR_STAGES.length, 9, "Should have 9 stages");
   assert.deepEqual(OAPEFLIR_STAGES, [
     "observe",
     "assess",
@@ -218,6 +219,7 @@ test("oapeflir-stage: OAPEFLIR_STAGES array contains all 8 stages", () => {
     "learn",
     "improve",
     "release",
+    "knowledge_promotion",
   ]);
 });
 

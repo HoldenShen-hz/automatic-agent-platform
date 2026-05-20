@@ -35,7 +35,7 @@ test("EnvSecretProvider describeSecret returns metadata for valid secret ref", a
   assert.equal(metadata.scope, "test-service/api-key");
   assert.equal(metadata.source, "environment");
   assert.equal(metadata.resolved, true);
-  assert.equal(metadata.maskedValue, "*****t123");
+  assert.equal(metadata.maskedValue, "*******23");
 });
 
 test("EnvSecretProvider describeSecret returns unresolved for missing secret", async () => {

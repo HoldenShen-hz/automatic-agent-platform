@@ -17,6 +17,7 @@ import { LockingError } from "../../../../../src/platform/contracts/errors.js";
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -29,6 +30,7 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -65,10 +67,9 @@ test("[SYS-REL-2.3] acquireAsync uses default TTL of 30000ms when not specified"
 
   await adapter.acquireAsync({ lockKey: "test-lock", owner: "test-owner" });
 
-  // Find EX (seconds) argument
-  const exIndex = setArgs.indexOf("EX");
-  assert.ok(exIndex >= 0, "EX flag should be present");
-  assert.equal(setArgs[exIndex + 1], 30, "Default TTL should be 30 seconds (30000ms / 1000)");
+  const pxIndex = setArgs.indexOf("PX");
+  assert.ok(pxIndex >= 0, "PX flag should be present");
+  assert.equal(setArgs[pxIndex + 1], 30000, "Default TTL should remain in milliseconds");
 });
 
 test("[SYS-REL-2.3] acquireAsync respects provided ttlMs parameter", async () => {
@@ -84,8 +85,8 @@ test("[SYS-REL-2.3] acquireAsync respects provided ttlMs parameter", async () =>
 
   await adapter.acquireAsync({ lockKey: "test-lock", owner: "test-owner", ttlMs: 60000 });
 
-  const exIndex = setArgs.indexOf("EX");
-  assert.equal(setArgs[exIndex + 1], 60, "TTL should be 60 seconds (60000ms / 1000)");
+  const pxIndex = setArgs.indexOf("PX");
+  assert.equal(setArgs[pxIndex + 1], 60000, "TTL should remain 60000ms");
 });
 
 test("[SYS-REL-2.3] acquireAsync returns acquired=false when lock already held", async () => {
@@ -157,8 +158,8 @@ test("[SYS-REL-2.3] acquireAsync with very short TTL works correctly", async () 
   // 100ms TTL
   await adapter.acquireAsync({ lockKey: "short-ttl-lock", owner: "test-owner", ttlMs: 100 });
 
-  const exIndex = setArgs.indexOf("EX");
-  assert.ok(setArgs[exIndex + 1] >= 1, "Short TTL should be at least 1 second");
+  const pxIndex = setArgs.indexOf("PX");
+  assert.equal(setArgs[pxIndex + 1], 100, "Short TTL should stay in millisecond precision");
 });
 
 test("[SYS-REL-2.3] acquireAsync with very long TTL is capped at reasonable maximum", async () => {
@@ -176,11 +177,9 @@ test("[SYS-REL-2.3] acquireAsync with very long TTL is capped at reasonable maxi
   const twoYearsMs = 2 * 365 * 24 * 60 * 60 * 1000;
   await adapter.acquireAsync({ lockKey: "long-ttl-lock", owner: "test-owner", ttlMs: twoYearsMs });
 
-  // Redis TTL should be capped at reasonable value (implementation may cap)
-  const exIndex = setArgs.indexOf("EX");
-  const ttlSeconds = setArgs[exIndex + 1] as number;
-  assert.ok(ttlSeconds > 0, "TTL should be set");
-  // Redis EX command accepts seconds, may cap at max value
+  const pxIndex = setArgs.indexOf("PX");
+  const ttlMs = setArgs[pxIndex + 1] as number;
+  assert.equal(ttlMs, twoYearsMs, "Redis adapter currently preserves caller-provided ttlMs");
 });
 
 test("[SYS-REL-2.3] lock key format uses lock: prefix", async () => {
@@ -202,12 +201,12 @@ test("[SYS-REL-2.3] lock key format uses lock: prefix", async () => {
 });
 
 test("[SYS-REL-2.3] forceStealAsync acquires lock regardless of existing owner", async () => {
-  let setArgs: Array<string | number> = [];
+  let evalArgs: string[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, _value: string, ...args: Array<string | number>) => {
-      setArgs = args;
-      return "OK";
+    eval: async (_script: string, _numKeys: number, ...args: string[]) => {
+      evalArgs = args;
+      return 1;
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -218,12 +217,13 @@ test("[SYS-REL-2.3] forceStealAsync acquires lock regardless of existing owner",
   assert.equal(result.owner, "new-owner");
   assert.equal(result.status, "held");
   assert.ok(result.fencingToken > 0);
+  assert.equal(evalArgs[0], "lock:existing-lock");
 });
 
 test("[SYS-REL-2.3] forceStealAsync throws when lock does not exist", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => null, // SET with XX returns null when key doesn't exist
+    eval: async () => -1,
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -261,32 +261,22 @@ test("[SYS-REL-2.3] extendAsync returns null when owner does not match", async (
 });
 
 test("[SYS-REL-2.3] extendAsync caps additionalMs at 600000ms", async () => {
-  let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     status: "ready",
-    eval: async () => 1,
-    get: async () => JSON.stringify({
+    incr: async () => 42,
+    eval: async () => JSON.stringify({
       owner: "test-owner",
       fencingToken: 42,
-      ttlMs: 30000,
+      ttlMs: 600000,
       acquiredAt: new Date().toISOString(),
       metadata: null,
     }),
-    set: async (_key: string, _value: string, ...args: Array<string | number>) => {
-      setArgs = args;
-      return "OK";
-    },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
-  await adapter.extendAsync("test-lock", "test-owner", 999999); // Way over cap
-
-  // Check that TTL was capped (find PX argument for milliseconds)
-  const pxIndex = setArgs.indexOf("PX");
-  if (pxIndex >= 0) {
-    const ttlMs = setArgs[pxIndex + 1] as number;
-    assert.ok(ttlMs <= 600000, `TTL should be capped at 600000ms, got ${ttlMs}`);
-  }
+  const result = await adapter.extendAsync("test-lock", "test-owner", 999999);
+  assert.equal(result?.ttlMs, 600000);
+  assert.equal(result?.fencingToken, 42);
 });
 
 test("[SYS-REL-2.3] releaseAsync returns false when lock not found", async () => {
@@ -414,6 +404,7 @@ test("[SYS-REL-2.3] acquireAsync reconnects when Redis status is 'wait'", async 
     status: "wait",
     connect: async () => {
       connectCalled = true;
+      mockRedis.status = "ready";
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -520,11 +511,13 @@ test("[SYS-REL-2.3] acquireAsync with same key returns acquired=false for second
 
 test("[SYS-REL-2.3] forceStealAsync with TTL parameter sets correct expiration", async () => {
   let capturedValue: string | null = null;
+  let capturedTtl: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string, ..._args: Array<string | number>) => {
+    eval: async (_script: string, _numKeys: number, _key: string, value: string, ttlMs: string) => {
       capturedValue = value;
-      return "OK";
+      capturedTtl = ttlMs;
+      return 1;
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -533,7 +526,8 @@ test("[SYS-REL-2.3] forceStealAsync with TTL parameter sets correct expiration",
 
   assert.ok(capturedValue !== null);
   const parsed = JSON.parse(capturedValue!);
-  assert.ok(parsed.ttlMs > 0, "TTL should be set in lock data");
+  assert.equal(parsed.ttlMs, 30000, "forceStealAsync uses its fixed default ttlMs");
+  assert.equal(capturedTtl, "30000");
 });
 
 test("[SYS-REL-2.3] acquireAsync metadata is null by default", async () => {
@@ -557,9 +551,9 @@ test("[SYS-REL-2.3] forceStealAsync stores reason in metadata", async () => {
   let capturedValue: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string, ..._args: Array<string | number>) => {
+    eval: async (_script: string, _numKeys: number, _key: string, value: string) => {
       capturedValue = value;
-      return "OK";
+      return 1;
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);

@@ -200,16 +200,24 @@ export class ContextIsolator {
 
     // R26-01 fix: Guard against division by zero when parent has no actions
     const parentActionCount = parent.permissions.actions.length;
-    const requiredActionCount = spec.requiredPermissions.actions.length;
+    const effectiveActionCount = this.intersectLists(
+      parent.permissions.actions,
+      spec.requiredPermissions.actions,
+    ).length;
     const parentResourceCount = parent.permissions.resources.length;
-    const requiredResourceCount = spec.requiredPermissions.resources.length;
+    const effectiveResourceCount = this.intersectLists(
+      parent.permissions.resources,
+      spec.requiredPermissions.resources,
+    ).length;
 
     if (parentActionCount === 0 && parentResourceCount === 0) {
-      return requiredActionCount === 0 && requiredResourceCount === 0 ? IsolationLevel.FULL : IsolationLevel.MINIMAL;
+      return effectiveActionCount === 0 && effectiveResourceCount === 0
+        ? IsolationLevel.FULL
+        : IsolationLevel.MINIMAL;
     }
 
-    const actionRatio = parentActionCount === 0 ? 0 : requiredActionCount / parentActionCount;
-    const resourceRatio = parentResourceCount === 0 ? 0 : requiredResourceCount / parentResourceCount;
+    const actionRatio = parentActionCount === 0 ? 0 : effectiveActionCount / parentActionCount;
+    const resourceRatio = parentResourceCount === 0 ? 0 : effectiveResourceCount / parentResourceCount;
     const durationRatio = this.computeConstraintRatio(
       parent.permissions.constraints.maxDurationMs,
       spec.requiredPermissions.constraints.maxDurationMs,
@@ -385,7 +393,8 @@ export class ContextIsolator {
     if (childDomains == null || childDomains.length === 0) {
       return 0;
     }
-    return Math.min(1, childDomains.length / parentDomains.length);
+    const effectiveDomains = parentDomains.filter((domain) => childDomains.includes(domain));
+    return Math.min(1, effectiveDomains.length / parentDomains.length);
   }
 }
 

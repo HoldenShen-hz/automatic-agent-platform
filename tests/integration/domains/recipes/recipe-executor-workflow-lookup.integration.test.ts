@@ -37,6 +37,9 @@ function createRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
     defaultWorkflowId: "wf_valid",
     defaultToolBundleIds: ["bundle1"],
     archetype: "crud_heavy",
+    riskProfileRef: "risk-profile.default",
+    defaultPromptBundleRef: "prompt-bundle.default",
+    acceptanceChecklistRef: "acceptance-checklist.default",
     ...overrides,
   };
   return DomainRecipeSchema.parse(validRecipe);

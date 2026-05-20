@@ -56,7 +56,7 @@ test("integration: createStageTransitionFSM creates functional FSM", () => {
   assert.equal(fsm.canTransitionTo("assess").allowed, true);
 });
 
-test("integration: StageTransitionFSM completes full observe→release cycle", () => {
+test("integration: StageTransitionFSM completes full observe→knowledge_promotion cycle", () => {
   const fsm = createStageTransitionFSM();
 
   fsm.recordStageEntry("observe");
@@ -83,6 +83,9 @@ test("integration: StageTransitionFSM completes full observe→release cycle", (
   fsm.recordStageEntry("release");
   fsm.recordStageCompletion("release");
 
+  fsm.recordStageEntry("knowledge_promotion");
+  fsm.recordStageCompletion("knowledge_promotion");
+
   assert.equal(fsm.isComplete(), true);
   assert.equal(fsm.getNextStage(), null);
 });
@@ -91,9 +94,10 @@ test("integration: StageTransitionFSM getExecutionSummary returns all stages", (
   const fsm = createStageTransitionFSM();
   const summary = fsm.getExecutionSummary();
 
-  assert.equal(Object.keys(summary).length, 8);
+  assert.equal(Object.keys(summary).length, 9);
   assert.equal(summary.observe.status, "pending");
   assert.equal(summary.release.status, "pending");
+  assert.equal(summary.knowledge_promotion.status, "pending");
 });
 
 test("integration: StageTransitionFSM recordStageSkipped advances without completing", () => {

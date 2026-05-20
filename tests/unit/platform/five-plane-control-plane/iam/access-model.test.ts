@@ -56,9 +56,9 @@ describe("R10-01: Role Inheritance", () => {
       const caps = capabilitiesForRole("agent_runtime");
       expect(caps).toContain("model:invoke");
       expect(caps).toContain("tool:invoke");
-      expect(caps).toContain("fs:write");
-      expect(caps).toContain("exec:command");
       expect(caps).toContain("network:access");
+      expect(caps).not.toContain("fs:write");
+      expect(caps).not.toContain("exec:command");
       // Should NOT have capabilities that viewer doesn't have
       expect(caps).not.toContain("extension:install");
     });
@@ -150,13 +150,14 @@ describe("R10-01: Role Inheritance", () => {
       expect(profile.capabilities).toContain("network:access");
     });
 
-    it("adds explicit capabilities on top of role capabilities", () => {
+    it("filters explicit capabilities that are not granted by the resolved roles", () => {
       const profile = resolvePrincipalAccessProfile({
         principalType: "user",
         roles: ["viewer"],
         capabilities: ["extension:install"],
       });
-      expect(profile.capabilities).toContain("extension:install");
+      expect(profile.capabilities).not.toContain("extension:install");
+      expect(profile.capabilities).toHaveLength(0);
     });
   });
 });

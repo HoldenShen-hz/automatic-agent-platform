@@ -66,6 +66,43 @@ function normalizeAdminSdkPrincipal(config: AdminSdkConfig): NonNullable<ApiClie
   };
 }
 
+function resolveDirectiveTenantId(
+  config: AdminSdkConfig,
+  issuedBy: OperationalDirective["issuedBy"] | DecisionDirective["issuedBy"],
+  scopeTenantId?: string,
+): string {
+  const candidates = [
+    scopeTenantId,
+    issuedBy.tenantId,
+    config.principal?.tenantId,
+    config.tenantId,
+  ];
+  const tenantId = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return tenantId ?? issuedBy.tenantId;
+}
+
+function normalizeOperationalDirectiveScope(
+  config: AdminSdkConfig,
+  issuedBy: OperationalDirective["issuedBy"],
+  scope?: OperationalDirectiveScope,
+): OperationalDirectiveScope {
+  return {
+    ...(scope ?? {}),
+    tenantId: resolveDirectiveTenantId(config, issuedBy, scope?.tenantId),
+  };
+}
+
+function normalizeDecisionDirectiveScope(
+  config: AdminSdkConfig,
+  issuedBy: DecisionDirective["issuedBy"],
+  scope?: DecisionDirectiveScope,
+): DecisionDirectiveScope {
+  return {
+    ...(scope ?? {}),
+    tenantId: resolveDirectiveTenantId(config, issuedBy, scope?.tenantId),
+  };
+}
+
 const ADMIN_ROLE_ALLOWLIST = new Set(["admin", "operator"]);
 const ADMIN_PERMISSION_WILDCARDS = new Set(["admin:*", "platform:admin"]);
 
@@ -202,7 +239,9 @@ export class AdminSdk {
     }
     return createOperationalDirective({
       type: "pause",
-      scope: { harnessRunId: inputOrRunId.harnessRunId },
+      scope: normalizeOperationalDirectiveScope(this.config, inputOrRunId.issuedBy, {
+        harnessRunId: inputOrRunId.harnessRunId,
+      }),
       issuedBy: inputOrRunId.issuedBy,
       reason: inputOrRunId.reason,
     });
@@ -230,7 +269,9 @@ export class AdminSdk {
     }
     return createOperationalDirective({
       type: "kill",
-      scope: { harnessRunId: inputOrRunId.harnessRunId },
+      scope: normalizeOperationalDirectiveScope(this.config, inputOrRunId.issuedBy, {
+        harnessRunId: inputOrRunId.harnessRunId,
+      }),
       issuedBy: inputOrRunId.issuedBy,
       reason: inputOrRunId.reason,
     });
@@ -240,7 +281,7 @@ export class AdminSdk {
     assertAdminAccess(this.config, "resumeHarnessRun", ["admin:harness_runs:control"]);
     return createOperationalDirective({
       type: "resume",
-      scope: { harnessRunId: runId },
+      scope: normalizeOperationalDirectiveScope(this.config, issuedBy, { harnessRunId: runId }),
       issuedBy,
       reason: "Resume harness run",
     });
@@ -631,7 +672,10 @@ export class AdminSdk {
     params?: TParams;
     expiresAt?: string;
   }): OperationalDirective<TParams> {
-    return createOperationalDirective<TParams>(input);
+    return createOperationalDirective<TParams>({
+      ...input,
+      scope: normalizeOperationalDirectiveScope(this.config, input.issuedBy, input.scope),
+    });
   }
 
   /**
@@ -660,7 +704,10 @@ export class AdminSdk {
     riskAcknowledged?: boolean;
     expiresAt?: string;
   }): DecisionDirective<TPayload> {
-    return createDecisionDirective<TPayload>(input);
+    return createDecisionDirective<TPayload>({
+      ...input,
+      scope: normalizeDecisionDirectiveScope(this.config, input.issuedBy, input.scope),
+    });
   }
 
   /**

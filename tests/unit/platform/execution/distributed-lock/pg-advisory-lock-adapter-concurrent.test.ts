@@ -137,21 +137,21 @@ test("[SYS-REL-2.2] releaseAsync by non-owner returns false", async () => {
   // First acquire the lock
   await adapter.acquireAsync({ lockKey: "test-lock", owner: "owner-1", ttlMs: 30000 });
 
-  // Try to release with different owner - should still return true because
-  // pg_advisory_unlock returns true even if we don't own the lock
-  // (PostgreSQL releases the lock if the session owns it)
   const result = await adapter.releaseAsync("test-lock", "non-owner");
-  assert.equal(result, true, "releaseAsync returns true even for non-owner (PG behavior)");
+  assert.equal(result, false, "releaseAsync rejects non-owner before hitting PostgreSQL");
 });
 
 test("[SYS-REL-2.2] concurrent releaseAsync - only owner can release", async () => {
   let releaseCallCount = 0;
 
   const mockDriver = createMockDriver({
-    queryFn: async () => {
+    queryFn: async (strings: TemplateStringsArray) => {
+      const query = strings.join("?");
+      if (query.includes("pg_try_advisory_lock")) {
+        return [{ acquired: true, fencing_token: 1 }];
+      }
       releaseCallCount++;
-      // pg_advisory_unlock returns true if the lock was held by this session
-      return [{ pg_advisory_unlock: true }];
+      return [{ released: true }];
     },
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
@@ -163,10 +163,9 @@ test("[SYS-REL-2.2] concurrent releaseAsync - only owner can release", async () 
     adapter.releaseAsync("release-lock", "non-owner"),
   ]);
 
-  // Both releases will "succeed" from PG perspective since the session owns the lock
-  // But the behavior documents that proper ownership should be verified
-  const succeeded = results.filter((r) => r.status === "fulfilled");
-  assert.equal(succeeded.length, 2, "Both releases should fulfill (PG behavior)");
+  const fulfilled = results.filter((r) => r.status === "fulfilled") as Array<PromiseFulfilledResult<boolean>>;
+  assert.deepEqual(fulfilled.map((r) => r.value), [true, false]);
+  assert.equal(releaseCallCount, 1, "Only owner-matched release should reach pg_advisory_unlock");
 });
 
 test("[SYS-REL-2.2] releaseAsync by non-owner - release succeeds but lock may persist", async () => {
@@ -192,12 +191,10 @@ test("[SYS-REL-2.2] releaseAsync by non-owner - release succeeds but lock may pe
   const acquireResult = await adapter.acquireAsync({ lockKey: "persist-lock", owner: "owner-1", ttlMs: 30000 });
   assert.equal(acquireResult.acquired, true, "Initial acquire should succeed");
 
-  // Non-owner tries to release
   const releaseResult = await adapter.releaseAsync("persist-lock", "non-owner");
 
-  // PG advisory unlock always returns true (releases session's lock if held)
-  assert.equal(releaseResult, true, "releaseAsync returns true");
-  assert.equal(releaseCalled, true, "pg_advisory_unlock should have been called");
+  assert.equal(releaseResult, false, "releaseAsync returns false for non-owner");
+  assert.equal(releaseCalled, false, "pg_advisory_unlock should not have been called");
 });
 
 test("[SYS-REL-2.2] concurrent acquireAsync followed by releaseAsync - clean handover", async () => {
@@ -212,14 +209,13 @@ test("[SYS-REL-2.2] concurrent acquireAsync followed by releaseAsync - clean han
       if (query.includes("pg_try_advisory_lock")) {
         if (!lockState.held) {
           lockState = { held: true, owner: `worker-${queryCount}` };
-          return [{ acquired: true }];
+          return [{ acquired: true, fencing_token: queryCount }];
         }
         return [{ acquired: false }];
       }
       if (query.includes("pg_advisory_unlock")) {
-        // Release always succeeds (PG behavior - releases session's lock)
         lockState = { held: false, owner: null };
-        return [{ pg_advisory_unlock: true }];
+        return [{ released: true }];
       }
       return [{}];
     },

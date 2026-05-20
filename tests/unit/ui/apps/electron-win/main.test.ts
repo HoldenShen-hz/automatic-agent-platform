@@ -11,6 +11,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+function getChannelNames(
+  channels: ReadonlyArray<{ name: string; tier: string; permission: string }>,
+): string[] {
+  return channels.map((channel) => channel.name);
+}
+
 test.describe("electron-win main module structure", () => {
   test("main module exports electronMainBaseline", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
@@ -51,55 +57,81 @@ test.describe("electronMainBaseline security configuration", () => {
 test.describe("IPC channels configuration", () => {
   test("shell:openExternal is in channels list", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("shell:openExternal"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(channelNames.includes("shell:openExternal"));
   });
 
   test("Issue #2162: shell:run and shell:spawn remain removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(!main.electronMainBaseline.channels.includes("shell:run"));
-    assert.ok(!main.electronMainBaseline.channels.includes("shell:spawn"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(!channelNames.includes("shell:run"));
+    assert.ok(!channelNames.includes("shell:spawn"));
   });
 
   test("files:read remains removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(!main.electronMainBaseline.channels.includes("files:read"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(!channelNames.includes("files:read"));
   });
 
   test("files:write remains removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(!main.electronMainBaseline.channels.includes("files:write"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(!channelNames.includes("files:write"));
   });
 
   test("Issue #2165: unrestricted file channels stay disabled", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(!main.electronMainBaseline.channels.includes("files:read"));
-    assert.ok(!main.electronMainBaseline.channels.includes("files:write"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(!channelNames.includes("files:read"));
+    assert.ok(!channelNames.includes("files:write"));
   });
 
   test("window control channels are present", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("window:minimize"));
-    assert.ok(main.electronMainBaseline.channels.includes("window:maximize"));
-    assert.ok(main.electronMainBaseline.channels.includes("window:open"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(channelNames.includes("window:minimize"));
+    assert.ok(channelNames.includes("window:maximize"));
+    assert.ok(channelNames.includes("window:open"));
   });
 
   test("deep-link channel is present", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("deep-link:open"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(channelNames.includes("deep-link:open"));
   });
 
   test("secure-store channels are present", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("secure-store:read"));
-    assert.ok(main.electronMainBaseline.channels.includes("secure-store:write"));
-    assert.ok(main.electronMainBaseline.channels.includes("secure-store:delete"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(channelNames.includes("secure-store:read"));
+    assert.ok(channelNames.includes("secure-store:write"));
+    assert.ok(channelNames.includes("secure-store:delete"));
   });
 
   test("privacy channels are present", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("privacy:getAnalyticsConsent"));
-    assert.ok(main.electronMainBaseline.channels.includes("privacy:setAnalyticsConsent"));
-    assert.ok(main.electronMainBaseline.channels.includes("privacy:enableScreenSecurity"));
+    const channelNames = getChannelNames(main.electronMainBaseline.channels);
+    assert.ok(channelNames.includes("privacy:getAnalyticsConsent"));
+    assert.ok(channelNames.includes("privacy:setAnalyticsConsent"));
+    assert.ok(channelNames.includes("privacy:enableScreenSecurity"));
+  });
+
+  test("channel descriptors retain hardened permission metadata", async () => {
+    const main = await import("../../../../../ui/apps/electron-win/src/main.js");
+    assert.deepEqual(main.electronMainBaseline.channels, [
+      { name: "shell:openExternal", tier: "restricted", permission: "external-link:open" },
+      { name: "window:minimize", tier: "trusted-ui", permission: "window:control" },
+      { name: "window:maximize", tier: "trusted-ui", permission: "window:control" },
+      { name: "window:open", tier: "trusted-ui", permission: "window:spawn" },
+      { name: "deep-link:open", tier: "trusted-ui", permission: "deep-link:open" },
+      { name: "secure-store:read", tier: "restricted", permission: "secure-store:read" },
+      { name: "secure-store:write", tier: "restricted", permission: "secure-store:write" },
+      { name: "secure-store:delete", tier: "restricted", permission: "secure-store:delete" },
+      { name: "privacy:getAnalyticsConsent", tier: "trusted-ui", permission: "privacy:read" },
+      { name: "privacy:setAnalyticsConsent", tier: "trusted-ui", permission: "privacy:write" },
+      { name: "privacy:enableScreenSecurity", tier: "restricted", permission: "privacy:screen-security" },
+    ]);
   });
 });
 
@@ -149,14 +181,14 @@ test.describe("Security verification", () => {
   test("All channels in baseline are also in capabilities where applicable", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
     const baseline = main.electronMainBaseline;
-    const capabilities = main.electronBridgeCapabilities;
+    const channelNames = getChannelNames(baseline.channels);
 
     // Only openExternal remains available from the shell surface.
-    const shellChannels = baseline.channels.filter((ch: string) => ch.startsWith("shell:"));
+    const shellChannels = channelNames.filter((ch) => ch.startsWith("shell:"));
     assert.deepEqual(shellChannels, ["shell:openExternal"]);
 
     // Direct file read/write channels remain removed until scoped allowlists exist.
-    const filesChannels = baseline.channels.filter((ch: string) => ch.startsWith("files:"));
+    const filesChannels = channelNames.filter((ch) => ch.startsWith("files:"));
     assert.equal(filesChannels.length, 0);
   });
 

@@ -145,8 +145,6 @@ test("identity provider: capabilitiesForRole returns correct capabilities for ag
     const caps = capabilitiesForRole("agent_runtime");
     assert.ok(caps.includes("model:invoke"), "agent_runtime should have model:invoke");
     assert.ok(caps.includes("tool:invoke"), "agent_runtime should have tool:invoke");
-    assert.ok(caps.includes("fs:write"), "agent_runtime should have fs:write");
-    assert.ok(caps.includes("exec:command"), "agent_runtime should have exec:command");
     assert.ok(caps.includes("network:access"), "agent_runtime should have network:access");
   } finally {
     ctx.cleanup();

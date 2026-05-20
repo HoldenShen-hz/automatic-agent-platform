@@ -78,6 +78,7 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
   ];
 
   for (const [from, to] of validTransitions) {
+    const requiresHarnessFencing = ["planning", "ready", "running", "pausing", "paused", "resuming", "replanning"].includes(to);
     const run = createHarnessRun({
       harnessRunId: `run-${from}-${to}`,
       tenantId: "tenant-1",
@@ -105,6 +106,7 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
       policyGuard: { allowed: true, policyProofRef: "proof-1" },
       auditRef: "audit-1",
       occurredAt: "2026-04-27T00:00:00.000Z",
+      ...(requiresHarnessFencing ? { fencingToken: run.fencingToken } : {}),
     };
 
     // Should not throw
@@ -461,6 +463,7 @@ test("RuntimeStateMachine allows valid BudgetLedger transitions", () => {
   ];
 
   for (const [from, to] of validTransitions) {
+    const requiresLedgerFencing = ["soft_cap_reached", "hard_cap_reached", "closed"].includes(to);
     const ledger = createBudgetLedger({
       tenantId: "tenant-1",
       harnessRunId: "run-1",
@@ -480,6 +483,7 @@ test("RuntimeStateMachine allows valid BudgetLedger transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      ...(requiresLedgerFencing ? { leaseId: "lease:ledger-1", fencingToken: "fence:ledger-1:0" } : {}),
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);

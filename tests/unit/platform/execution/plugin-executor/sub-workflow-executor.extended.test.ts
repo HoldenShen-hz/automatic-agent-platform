@@ -323,7 +323,7 @@ test("SubWorkflowExecutor evaluates conditional equality correctly", async () =>
     createStepDefinition("step-2", "Second", "action-2", {
       conditional: {
         when: "step-1",
-        equals: { result: "Step First completed successfully" }, // This is what step-1 outputs
+        equals: { result: "different output" },
       },
     }),
   ]);
@@ -331,7 +331,7 @@ test("SubWorkflowExecutor evaluates conditional equality correctly", async () =>
   const executionId = executor.createWorkflow(definition, context);
   await executor.executeWorkflow(executionId);
 
-  // The conditional won't match because step output is not equal to the expected value
+  // The conditional should not match because step output differs from the expected value
   const step2 = executor.getStep(executionId, "step-2");
   assert.equal(step2!.status, "skipped");
 });

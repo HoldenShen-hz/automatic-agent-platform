@@ -4,7 +4,7 @@ import test from "node:test";
 import { createHarnessRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine permits missing auditRef on HarnessRun transitions when other guards pass", () => {
+test("RuntimeStateMachine requires auditRef on audited HarnessRun transitions", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => {} });
   const run = createHarnessRun({
     harnessRunId: "run-audit-required",
@@ -18,23 +18,23 @@ test("RuntimeStateMachine permits missing auditRef on HarnessRun transitions whe
     currentSeq: 0,
   });
 
-  const result = machine.transition({
-    commandId: "cmd-audit-required",
-    entityType: "HarnessRun",
-    entityId: run.harnessRunId,
-    principal: "operator-1",
-    aggregateType: "HarnessRun",
-    aggregate: run,
-    fromStatus: "created",
-    toStatus: "admitted",
-    tenantId: "tenant-1",
-    traceId: "trace-audit-required",
-    reasonCode: "admission_ok",
-    emittedBy: "admission-controller",
-    leaseId: "lease-1",
-    fencingToken: "fence-1",
-    runVersionLockId: "rvlock-1",
-  });
-
-  assert.equal(result.aggregate.status, "admitted");
+  assert.throws(() => {
+    machine.transition({
+      commandId: "cmd-audit-required",
+      entityType: "HarnessRun",
+      entityId: run.harnessRunId,
+      principal: "operator-1",
+      aggregateType: "HarnessRun",
+      aggregate: run,
+      fromStatus: "created",
+      toStatus: "admitted",
+      tenantId: "tenant-1",
+      traceId: "trace-audit-required",
+      reasonCode: "admission_ok",
+      emittedBy: "admission-controller",
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
+      runVersionLockId: "rvlock-1",
+    });
+  }, /audit ref is required/i);
 });

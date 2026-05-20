@@ -127,7 +127,7 @@ test("ServiceRegistry get returns cached instance during circular dependency res
   assert.equal(result.cachedValue, 42);
 });
 
-test("ServiceRegistry topologicalSort warns on circular dependencies", async () => {
+test("ServiceRegistry topologicalSort throws on circular dependencies", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
@@ -141,8 +141,5 @@ test("ServiceRegistry topologicalSort warns on circular dependencies", async () 
     dependsOn: ["sort-cycle-a"],
   });
 
-  const sorted = registry.topologicalSort();
-
-  // With a cycle, not all services will be in the result
-  assert.ok(sorted.length < 2, "Circular dependencies should result in partial sort");
+  assert.throws(() => registry.topologicalSort(), /circular dependency detected in topological sort/);
 });

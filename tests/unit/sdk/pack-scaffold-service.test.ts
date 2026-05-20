@@ -19,15 +19,18 @@ import {
 
 // Use temp directory for scaffold tests to avoid polluting the repo
 const TEST_PACKS_DIR = "/tmp/test-packs-scaffold-service";
+const ORIGINAL_CWD = process.cwd();
 
 test.beforeEach(() => {
   // Ensure test directory exists
   mkdirSync(TEST_PACKS_DIR, { recursive: true });
+  process.chdir(TEST_PACKS_DIR);
 });
 
 test.afterEach(() => {
   // Clean up test directory
   try {
+    process.chdir(ORIGINAL_CWD);
     rmSync(TEST_PACKS_DIR, { recursive: true, force: true });
   } catch {
     // Ignore cleanup errors
@@ -361,7 +364,7 @@ test("PackScaffoldService.scaffold allows packId starting with number", () => {
   assert.ok(result.files.length > 0);
 });
 
-test("PackScaffoldService.scaffold rejects packId with dots", () => {
+test("PackScaffoldService.scaffold accepts packId with dots", () => {
   const service = new PackScaffoldService();
   const config: ScaffoldConfig = {
     packId: "my.pack.id",
@@ -372,10 +375,8 @@ test("PackScaffoldService.scaffold rejects packId with dots", () => {
     riskLevel: "low",
   };
 
-  assert.throws(
-    () => service.scaffold(config),
-    /Pack ID must match pattern/,
-  );
+  const result = service.scaffold(config);
+  assert.ok(result.files.length > 0);
 });
 
 test("PackScaffoldService.scaffold handles valid packId with underscores", () => {

@@ -615,11 +615,11 @@ test("ScopedExternalAccessSandbox handles URL with special characters in path", 
 
 test("ScopedExternalAccessSandbox handles subdomain matching", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
-    allowedDomains: ["example.com"],
+    allowedDomains: ["*.example.com"],
     rateLimitPerMinute: 60,
   });
 
-  // Apex domains allow subdomains under the current sandbox contract.
+  // Subdomains require an explicit wildcard entry.
   const result = await sandbox.validateOutboundRequest("https://api.example.com/");
   assert.equal(result, true);
 });

@@ -30,7 +30,10 @@ test("sandbox-policy createWorkspaceWritePolicy creates valid policy", () => {
   assert.equal(policy.policyId, "workspace_write");
   assert.equal(policy.mode, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
+  assert.ok(policy.deniedRoots.includes("/etc"));
+  assert.ok(policy.deniedRoots.includes("/proc"));
+  assert.ok(policy.deniedRoots.includes("/sys"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -40,6 +43,7 @@ test("sandbox-policy createReadOnlyPolicy creates valid policy", () => {
   const policy = createReadOnlyPolicy("/workspace");
   assert.equal(policy.policyId, "read_only");
   assert.equal(policy.mode, "read_only");
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.processRuleMode, "deny");
 });
 
@@ -56,9 +60,11 @@ test("sandbox-policy createRestrictedExecPolicy creates valid policy", () => {
 });
 
 test("sandbox-policy createConfigReadPolicy creates valid policy", () => {
-  const policy = createConfigReadPolicy("/etc/config");
+  const policy = createConfigReadPolicy("/workspace/config");
   assert.equal(policy.policyId, "config_read");
   assert.equal(policy.mode, "read_only");
+  assert.deepEqual(policy.allowedRoots, ["/workspace/config"]);
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.processRuleMode, "deny");
 });
 

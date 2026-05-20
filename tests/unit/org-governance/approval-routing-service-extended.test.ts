@@ -415,12 +415,12 @@ test("ApprovalRoutingService.route with amount threshold rules", () => {
           quoteCurrency: "CNY",
           rate: 7.2,
           source: "test",
-          capturedAt: "2026-04-20T00:00:00.000Z",
+          capturedAt: "2026-05-20T00:00:00.000Z",
         },
       },
     },
-    "2026-04-20T00:00:00.000Z",
-    "2026-04-20T00:00:00.000Z",
+    "2026-05-20T00:00:00.000Z",
+    "2026-05-20T00:00:00.000Z",
   );
 
   assert.ok(result.approverChain.length > 0);

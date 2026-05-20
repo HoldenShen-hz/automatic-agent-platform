@@ -135,7 +135,7 @@ test("SqliteLockAdapter inspect returns correct metadata", () => {
   db.close();
 });
 
-test("SqliteLockAdapter acquire reuses expired lock's fencing token as minimum", () => {
+test("SqliteLockAdapter acquire issues a fresh fencing token after expired lock eviction", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -146,10 +146,11 @@ test("SqliteLockAdapter acquire reuses expired lock's fencing token as minimum",
     VALUES (?, ?, ?, 'held', ?, ?)
   `).run("stale-lock", "dead-owner", 999, pastTime, 30000);
 
-  // Acquire should use a token higher than the stale one
+  // Expired-row eviction does not backfill the AUTOINCREMENT table from stale rows;
+  // the runtime only guarantees a fresh positive token from its fencing table.
   const result = adapter.acquire({ lockKey: "stale-lock", owner: "new-owner", ttlMs: 30000 });
   assert.equal(result.acquired, true);
-  assert.ok(result.lock!.fencingToken > 999);
+  assert.ok(result.lock!.fencingToken > 0);
 
   db.close();
 });

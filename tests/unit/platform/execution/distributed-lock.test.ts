@@ -312,6 +312,11 @@ test("PgAdvisoryLockAdapter releaseAsync throws when postgres module not found",
       throw new ReferenceError("Cannot find module 'pg'");
     },
   });
+  (
+    adapter as unknown as {
+      heldLocks: Map<string, { owner: string }>;
+    }
+  ).heldLocks.set("test-key", { owner: "test-owner" });
 
   await assert.rejects(
     adapter.releaseAsync("test-key", "test-owner"),
@@ -387,6 +392,7 @@ test("RedisLockAdapter acquireAsync throws on connection error", async () => {
     redis: {
       status: string;
       connect: () => Promise<void>;
+      incr: () => Promise<number>;
       set: () => Promise<never>;
       get: () => Promise<null>;
       del: () => Promise<number>;
@@ -400,6 +406,7 @@ test("RedisLockAdapter acquireAsync throws on connection error", async () => {
   }).redis = {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => {
       throw new Error("Connection reset by peer");
     },
@@ -438,18 +445,18 @@ test("RedisLockAdapter releaseAsync throws on Lua script error", async () => {
 test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
-  let setArgs: unknown[] = [];
   const redis = (adapter as unknown as {
     redis: {
       status: string;
       connect: () => Promise<void>;
+      incr: () => Promise<number>;
       get: () => Promise<string>;
-      eval: () => Promise<number>;
-      set: (...args: unknown[]) => Promise<string>;
+      eval: () => Promise<string>;
     };
   }).redis;
   Object.defineProperty(redis, "status", { value: "ready", writable: true });
   redis.connect = async () => {};
+  redis.incr = async () => 2;
   redis.get = async () => JSON.stringify({
     owner: "test-owner",
     fencingToken: 1,
@@ -457,20 +464,18 @@ test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
     acquiredAt: new Date().toISOString(),
     metadata: null,
   });
-  redis.eval = async () => 1;
-  redis.set = async (...args: unknown[]) => {
-    setArgs = args;
-    return "OK";
-  };
+  redis.eval = async () => JSON.stringify({
+    owner: "test-owner",
+    fencingToken: 2,
+    ttlMs: 600000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+  });
 
-  await adapter.extendAsync("test-key", "test-owner", 999999);
+  const result = await adapter.extendAsync("test-key", "test-owner", 999999);
 
-  // Find PX argument and verify TTL is capped at 600000
-  const pxIndex = setArgs.indexOf("PX");
-  if (pxIndex >= 0) {
-    const ttlValue = Number(setArgs[pxIndex + 1]);
-    assert.ok(ttlValue <= 600000, `Expected TTL <= 600000, got ${ttlValue}`);
-  }
+  assert.equal(result?.ttlMs, 600000);
+  assert.equal(result?.fencingToken, 2);
 });
 
 // =============================================================================
