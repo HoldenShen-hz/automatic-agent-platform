@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
@@ -47,6 +47,8 @@ interface EvidenceCollectorSnapshot {
   readonly records: Record<string, ComplianceEvidenceRecord[]>;
   readonly schedules: EvidenceCollectionSchedule[];
 }
+
+const SNAPSHOT_LOCK_TIMEOUT_MS = 250;
 
 function firstNonBlank(...values: Array<string | null | undefined>): string | null {
   for (const value of values) {
@@ -109,6 +111,54 @@ function computeRecordHash(
   return createHash("sha256").update(payload).digest("hex");
 }
 
+function acquireSnapshotLock(lockPath: string): number {
+  mkdirSync(dirname(lockPath), { recursive: true });
+  const deadline = Date.now() + SNAPSHOT_LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      return openSync(lockPath, "wx");
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || (error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`compliance_evidence.snapshot_lock_timeout:${lockPath}`);
+      }
+    }
+  }
+}
+
+function releaseSnapshotLock(lockFd: number, lockPath: string): void {
+  try {
+    closeSync(lockFd);
+  } finally {
+    try {
+      rmSync(lockPath, { force: true });
+    } catch {
+      // Best effort cleanup for lock release.
+    }
+  }
+}
+
+function writeSnapshotAtomically(path: string, snapshot: EvidenceCollectorSnapshot): void {
+  mkdirSync(dirname(path), { recursive: true });
+  const tempPath = `${path}.${process.pid}.${Date.now()}.tmp`;
+  let renamed = false;
+  try {
+    writeFileSync(tempPath, JSON.stringify(snapshot, null, 2), "utf8");
+    renameSync(tempPath, path);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try {
+        rmSync(tempPath, { force: true });
+      } catch {
+        // Best effort cleanup for failed temp snapshot writes.
+      }
+    }
+  }
+}
+
 export class ComplianceEvidenceCollector {
   private readonly records = new Map<string, ComplianceEvidenceRecord[]>();
   private readonly schedules = new Map<string, EvidenceCollectionSchedule>();
@@ -135,8 +185,18 @@ export class ComplianceEvidenceCollector {
       ...recordBase,
       hash: computeRecordHash(recordBase),
     };
-    this.records.set(record.frameworkId, [...existing, record]);
-    this.persistSnapshot();
+    const nextRecords = [...existing, record];
+    this.records.set(record.frameworkId, nextRecords);
+    try {
+      this.persistSnapshot();
+    } catch (error) {
+      if (existing.length === 0) {
+        this.records.delete(record.frameworkId);
+      } else {
+        this.records.set(record.frameworkId, existing);
+      }
+      throw error;
+    }
     return record;
   }
 
@@ -185,7 +245,12 @@ export class ComplianceEvidenceCollector {
       active: true,
     };
     this.schedules.set(schedule.scheduleId, schedule);
-    this.persistSnapshot();
+    try {
+      this.persistSnapshot();
+    } catch (error) {
+      this.schedules.delete(schedule.scheduleId);
+      throw error;
+    }
     return schedule;
   }
 
@@ -208,7 +273,12 @@ export class ComplianceEvidenceCollector {
       ...schedule,
       active: false,
     });
-    this.persistSnapshot();
+    try {
+      this.persistSnapshot();
+    } catch (error) {
+      this.schedules.set(scheduleId, schedule);
+      throw error;
+    }
     return true;
   }
 
@@ -307,13 +377,18 @@ export class ComplianceEvidenceCollector {
     if (!this.storagePath) {
       return;
     }
-    mkdirSync(dirname(this.storagePath), { recursive: true });
     const snapshot: EvidenceCollectorSnapshot = {
       records: Object.fromEntries(
         [...this.records.entries()].map(([frameworkId, records]) => [frameworkId, records]),
       ),
       schedules: this.listScheduledCollections(),
     };
-    writeFileSync(this.storagePath, JSON.stringify(snapshot, null, 2), "utf8");
+    const lockPath = `${this.storagePath}.lock`;
+    const lockFd = acquireSnapshotLock(lockPath);
+    try {
+      writeSnapshotAtomically(this.storagePath, snapshot);
+    } finally {
+      releaseSnapshotLock(lockFd, lockPath);
+    }
   }
 }

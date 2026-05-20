@@ -598,6 +598,84 @@ test("RuntimeTruthRepository synthesizes auditRef for HarnessRun transitions whe
   assert.ok(repository.listAuditRefs().some((entry) => entry.startsWith("COMMIT_TXN_")));
 });
 
+test("RuntimeTruthRepository transaction markers stay unique across consecutive transitions", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const run = createHarnessRun({
+    harnessRunId: "hrun-txn-markers",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+  repository.seed("HarnessRun", run);
+
+  const admitted = repository.transition(makeHarnessRunTransitionCommand(run, "created", "admitted"));
+  repository.transition(makeHarnessRunTransitionCommand(admitted.aggregate, "admitted", "planning"));
+
+  const transactionMarkers = repository.listAuditRefs()
+    .filter((entry) => entry.startsWith("BEGIN_TXN_"))
+    .map((entry) => entry.replace("BEGIN_", ""));
+  assert.equal(transactionMarkers.length, 2);
+  assert.equal(new Set(transactionMarkers).size, 2);
+});
+
+test("RuntimeTruthRepository assigns monotonic fallback fencing tokens when commands omit them", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const firstNode = createNodeRun({
+    nodeRunId: "nrun-fence-1",
+    harnessRunId: "hrun-fence-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+    fencingToken: "",
+  });
+  const secondNode = createNodeRun({
+    nodeRunId: "nrun-fence-2",
+    harnessRunId: "hrun-fence-2",
+    planGraphBundleId: "pgb-2",
+    graphVersion: 1,
+    nodeId: "node-2",
+    fencingToken: "",
+  });
+
+  const first = repository.transition({
+    commandId: "cmd-fence-1",
+    entityType: "NodeRun" as const,
+    entityId: firstNode.nodeRunId,
+    aggregateType: "NodeRun",
+    aggregate: firstNode,
+    fromStatus: "created",
+    toStatus: "ready",
+    principal: "test",
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    reasonCode: "test",
+    emittedBy: "test",
+  });
+  const second = repository.transition({
+    commandId: "cmd-fence-2",
+    entityType: "NodeRun" as const,
+    entityId: secondNode.nodeRunId,
+    aggregateType: "NodeRun",
+    aggregate: secondNode,
+    fromStatus: "created",
+    toStatus: "ready",
+    principal: "test",
+    tenantId: "tenant-1",
+    traceId: "trace-2",
+    reasonCode: "test",
+    emittedBy: "test",
+  });
+
+  assert.equal(first.aggregate.fencingToken, "1");
+  assert.equal(second.aggregate.fencingToken, "2");
+});
+
 test("RuntimeTruthRepository appends events with correct aggregateSeq across different aggregates", () => {
   const repository = new RuntimeTruthRepository();
 
@@ -643,6 +721,105 @@ test("RuntimeTruthRepository appends events with correct aggregateSeq across dif
 
   const events = repository.listEvents();
   assert.equal(events.length, 2);
+});
+
+test("RuntimeTruthRepository CAS rejects protection field overwrite without expected protection hash", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const harnessRun = createHarnessRun({
+    harnessRunId: "hrun-protection-cas",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+    leaseId: "lease-a",
+    fencingToken: "fence-a",
+    ownership: { ownerId: "worker-a", ownerType: "agent" },
+  });
+  repository.seed("HarnessRun", harnessRun);
+
+  const overwriteAttempt = repository.upsertWithCas({
+    aggregateType: "HarnessRun",
+    aggregateId: harnessRun.harnessRunId,
+    expectedVersion: harnessRun.currentSeq,
+    aggregate: {
+      ...harnessRun,
+      leaseId: "lease-b",
+      fencingToken: "fence-b",
+      ownership: { ownerId: "worker-b", ownerType: "agent" },
+    },
+  });
+
+  assert.equal(overwriteAttempt.success, false);
+  assert.equal(typeof overwriteAttempt.actualProtectionHash, "string");
+  assert.equal(repository.getHarnessRun(harnessRun.harnessRunId)?.leaseId, "lease-a");
+});
+
+test("RuntimeTruthRepository CAS accepts protection field overwrite with matching protection hash", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const harnessRun = createHarnessRun({
+    harnessRunId: "hrun-protection-cas-ok",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+    leaseId: "lease-a",
+    fencingToken: "fence-a",
+    ownership: { ownerId: "worker-a", ownerType: "agent" },
+  });
+  repository.seed("HarnessRun", harnessRun);
+  const protectionHash = repository.getAggregateProtectionHash("HarnessRun", harnessRun.harnessRunId);
+
+  const overwriteAttempt = repository.upsertWithCas({
+    aggregateType: "HarnessRun",
+    aggregateId: harnessRun.harnessRunId,
+    expectedVersion: harnessRun.currentSeq,
+    expectedProtectionHash: protectionHash ?? undefined,
+    aggregate: {
+      ...harnessRun,
+      leaseId: "lease-b",
+      fencingToken: "fence-b",
+      ownership: { ownerId: "worker-b", ownerType: "agent" },
+    },
+  });
+
+  assert.equal(overwriteAttempt.success, true);
+  assert.equal(repository.getHarnessRun(harnessRun.harnessRunId)?.leaseId, "lease-b");
+});
+
+test("RuntimeTruthRepository replay reuses original events without populating outbox", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const harnessRun = createHarnessRun({
+    harnessRunId: "hrun-replay-safe",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+  repository.seed("HarnessRun", harnessRun);
+
+  const originalTransition = repository.transition(makeHarnessRunTransitionCommand(harnessRun, "created", "admitted"));
+  const replayRepository = new RuntimeTruthRepository();
+  replayRepository.seed("HarnessRun", harnessRun);
+  replayRepository.replayEvents([originalTransition.event]);
+
+  const replayedEvents = replayRepository.listEvents();
+  assert.equal(replayedEvents.length, 1);
+  assert.equal(replayRepository.listOutbox().length, 0);
+  assert.equal(replayedEvents[0]?.eventId, originalTransition.event.eventId);
+  assert.equal(replayedEvents[0]?.traceId, originalTransition.event.traceId);
+  assert.equal(replayRepository.getHarnessRun(harnessRun.harnessRunId)?.status, "admitted");
 });
 
 test("RuntimeTruthRepository allows initial aggregate transition without prior seed", () => {

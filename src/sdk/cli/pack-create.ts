@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { newId } from "../../platform/contracts/types/ids.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackCreateOptions {
   packId: string;
@@ -74,11 +75,11 @@ function buildManifest(opts: PackCreateOptions): BusinessPackManifest {
   return manifest;
 }
 
-function main(): void {
+function main(): number {
   const opts = parseArgs();
   if (!opts.packId || !opts.domain || !opts.owner) {
     process.stderr.write("Error: --pack-id, --domain, and --owner are required\n");
-    process.exit(1);
+    return CLI_EXIT_FAILURE;
   }
 
   const manifest = buildManifest(opts);
@@ -89,8 +90,9 @@ function main(): void {
     : JSON.stringify({ packId: validated.packId, version: validated.version, domainId: validated.domainId }, null, 2);
 
   process.stdout.write(`${output}\n`);
+  return CLI_EXIT_SUCCESS;
 }
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  void runCliMain(main);
 }

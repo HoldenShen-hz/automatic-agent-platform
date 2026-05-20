@@ -483,6 +483,43 @@ test("BillingService reads existing quota counter inside transaction during reco
   assert.equal(observedTransactionState, true);
 });
 
+test("BillingService uses repository atomic quota increment when available", async () => {
+  const trackedDb = createTrackedMockDb();
+  const store = createMockStore();
+  let incrementCalls = 0;
+  let upsertCalls = 0;
+  const originalUpsert = store.billing.upsertQuotaCounter;
+  store.billing.upsertQuotaCounter = (record) => {
+    upsertCalls += 1;
+    originalUpsert(record);
+  };
+  store.billing.incrementQuotaCounter = (counter, deltaQuantity) => {
+    incrementCalls += 1;
+    const existing = store.billing.getQuotaCounter(counter.accountId, counter.metricType, counter.windowStart, counter.windowEnd);
+    const next = {
+      ...counter,
+      counterId: existing?.counterId ?? counter.counterId,
+      usedQuantity: Math.round(((existing?.usedQuantity ?? 0) + deltaQuantity) * 100) / 100,
+    };
+    originalUpsert(next);
+    return next;
+  };
+
+  const service = new BillingService(trackedDb.db, store, { planCatalog: mockPlanCatalog });
+  service.createAccount({ accountId: "acct_atomic", ownerId: "owner_atomic", planId: "plan_basic" });
+
+  await service.recordUsage({
+    accountId: "acct_atomic",
+    metricType: "task_execution",
+    quantity: 5,
+    source: "api",
+  });
+
+  assert.equal(incrementCalls, 1);
+  assert.equal(upsertCalls, 0);
+  assert.equal(store.billing.listQuotaCounters("acct_atomic")[0]?.usedQuantity, 5);
+});
+
 test("BillingService buildAccountSummary returns correct plan", () => {
   const store = createMockStore();
   const db = createMockDb();

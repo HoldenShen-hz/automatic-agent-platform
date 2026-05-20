@@ -257,6 +257,30 @@ test("transition increments aggregateSeq for each event on same aggregate", () =
   assert.equal(repository.listEvents().length, 2);
 });
 
+test("replayEvents preserves original event identity and keeps outbox empty", () => {
+  const repository = new RuntimeTruthRepository();
+  const replayTarget = new RuntimeTruthRepository();
+  const run = createHarnessRun({
+    harnessRunId: "hrun-replay-identity",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+  repository.seed("HarnessRun", run);
+  replayTarget.seed("HarnessRun", run);
+
+  const transition = repository.transition(makeHarnessRunTransitionCommand(run, "created", "admitted"));
+  replayTarget.replayEvents([transition.event]);
+
+  assert.equal(replayTarget.listEvents()[0]?.eventId, transition.event.eventId);
+  assert.equal(replayTarget.listEvents()[0]?.traceId, transition.event.traceId);
+  assert.equal(replayTarget.listOutbox().length, 0);
+});
+
 test("transition stores event in both events list and outbox", () => {
   const repository = new RuntimeTruthRepository();
   const run = createHarnessRun({

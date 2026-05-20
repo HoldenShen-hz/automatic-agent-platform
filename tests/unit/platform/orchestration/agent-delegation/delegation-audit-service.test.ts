@@ -3,6 +3,9 @@
  */
 
 import assert from "node:assert/strict";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   DelegationAuditService,
@@ -304,4 +307,62 @@ test("R26-07: recordDelegationCompleted requires explicit depth", () => {
   });
 
   assert.equal(event.depth, 2, "Should preserve the supplied depth");
+});
+
+test("DelegationAuditService.record fails without mutating state when audit lock is held", () => {
+  const auditDir = mkdtempSync(join(tmpdir(), "delegation-audit-lock-"));
+  const eventFilePath = join(auditDir, "delegation-audit-events.json");
+  const lockPath = `${eventFilePath}.lock`;
+  const lockFd = openSync(lockPath, "wx");
+
+  try {
+    const service = new DelegationAuditService(auditDir);
+    assert.throws(() => service.recordDelegationCreated({
+      delegationId: "dlg-lock-1",
+      parentAgentId: "agent-lock-parent",
+      childAgentId: "agent-lock-child",
+      depth: 1,
+      actorId: "agent-lock-parent",
+      actorType: "agent",
+    }), /delegation_audit\.lock_timeout/);
+    assert.equal(service.listEvents().length, 0);
+  } finally {
+    closeSync(lockFd);
+    rmSync(lockPath, { force: true });
+    rmSync(auditDir, { recursive: true, force: true });
+  }
+});
+
+test("DelegationAuditService persists newline-delimited events and reloads them", () => {
+  const auditDir = mkdtempSync(join(tmpdir(), "delegation-audit-persist-"));
+
+  try {
+    const service = new DelegationAuditService(auditDir);
+    const created = service.recordDelegationCreated({
+      delegationId: "dlg-persist-1",
+      parentAgentId: "agent-parent",
+      childAgentId: "agent-child",
+      depth: 1,
+      actorId: "agent-parent",
+      actorType: "agent",
+    });
+    service.recordDelegationCompleted({
+      delegationId: "dlg-persist-1",
+      parentAgentId: "agent-parent",
+      childAgentId: "agent-child",
+      durationMs: 42,
+      depth: 1,
+      actorId: "agent-child",
+      actorType: "agent",
+    });
+
+    const raw = readFileSync(join(auditDir, "delegation-audit-events.json"), "utf8").trim().split("\n");
+    assert.equal(raw.length, 2);
+
+    const reloaded = new DelegationAuditService(auditDir);
+    assert.equal(reloaded.listEvents().length, 2);
+    assert.equal(reloaded.getByDelegation(created.delegationId ?? "").length, 2);
+  } finally {
+    rmSync(auditDir, { recursive: true, force: true });
+  }
 });

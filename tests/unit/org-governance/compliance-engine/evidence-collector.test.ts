@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { ComplianceEvidenceCollector } from "../../../../src/org-governance/compliance-engine/evidence-collector.js";
@@ -176,6 +176,29 @@ test("ComplianceEvidenceCollector.verifyChain detects tampered persisted evidenc
     const invalidEvidenceIds = tamperedCollector.verifyChain("SOC2");
     assert.equal(invalidEvidenceIds.length, 1);
   } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("ComplianceEvidenceCollector.collect fails without mutating state when snapshot lock is held", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "compliance-evidence-lock-"));
+  const storagePath = join(rootDir, "collector-snapshot.json");
+  const lockPath = `${storagePath}.lock`;
+  mkdirSync(dirname(lockPath), { recursive: true });
+  const lockFd = openSync(lockPath, "wx");
+
+  try {
+    const collector = new ComplianceEvidenceCollector({ storagePath });
+    assert.throws(() => collector.collect({
+      frameworkId: "SOC2",
+      controlId: "CC1.3",
+      source: "audit-log",
+      artifactRef: "artifact-789",
+    }), /compliance_evidence\.snapshot_lock_timeout/);
+    assert.equal(collector.list("SOC2").length, 0);
+  } finally {
+    closeSync(lockFd);
+    rmSync(lockPath, { force: true });
     rmSync(rootDir, { recursive: true, force: true });
   }
 });

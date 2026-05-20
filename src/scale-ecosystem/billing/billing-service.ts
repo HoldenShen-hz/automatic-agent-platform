@@ -333,6 +333,9 @@ export class BillingService {
     let settledBudget:
       | Awaited<ReturnType<BudgetAllocator["settle"]>>
       | null = null;
+    const counterRepository = this.store.billing as typeof this.store.billing & {
+      incrementQuotaCounter?: (counter: QuotaCounterRecord, deltaQuantity: number) => QuotaCounterRecord;
+    };
 
     try {
       // Persist all records atomically
@@ -340,9 +343,9 @@ export class BillingService {
         existingCounter = quota == null
           ? null
           : this.store.billing.getQuotaCounter(account.accountId, metricType, window.start, window.end);
-        quotaCounter = quota == null
-          ? null
-          : {
+        this.store.billing.insertUsageEvent(usageEvent);
+        if (quota != null) {
+          const counterBase: QuotaCounterRecord = {
             counterId:
               existingCounter?.counterId ??
               newId("quota"),
@@ -356,9 +359,12 @@ export class BillingService {
             resetPolicy: quota.resetPolicy,
             updatedAt: capturedAt,
           };
-        this.store.billing.insertUsageEvent(usageEvent);
-        if (quotaCounter != null) {
-          this.store.billing.upsertQuotaCounter(quotaCounter);
+          quotaCounter = counterRepository.incrementQuotaCounter != null
+            ? counterRepository.incrementQuotaCounter(counterBase, quantity)
+            : counterBase;
+          if (counterRepository.incrementQuotaCounter == null) {
+            this.store.billing.upsertQuotaCounter(counterBase);
+          }
         }
         this.store.billing.insertLedgerEntry(ledgerEntry);
         recordsPersisted = true;

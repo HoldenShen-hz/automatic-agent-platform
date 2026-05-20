@@ -245,6 +245,58 @@ test("BillingRepository getTask returns task by ID", () => {
   }
 });
 
+test("BillingRepository incrementQuotaCounter atomically accumulates usage", () => {
+  const workspace = createTempWorkspace("aa-billing-repo-");
+  const dbPath = join(workspace, "billing-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new BillingRepository(db.connection);
+    const now = "2026-04-14T10:00:00.000Z";
+    repo.upsertBillingAccount({
+      accountId: "acct-atomic",
+      ownerId: "owner-atomic",
+      workspaceId: null,
+      planId: "plan-basic",
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const first = repo.incrementQuotaCounter({
+      counterId: "quota-1",
+      accountId: "acct-atomic",
+      metricType: "task_execution",
+      windowStart: "2026-04-01T00:00:00.000Z",
+      windowEnd: "2026-05-01T00:00:00.000Z",
+      usedQuantity: 3,
+      limitQuantity: 100,
+      limitType: "soft",
+      resetPolicy: "monthly",
+      updatedAt: now,
+    }, 3);
+    const second = repo.incrementQuotaCounter({
+      counterId: "quota-2",
+      accountId: "acct-atomic",
+      metricType: "task_execution",
+      windowStart: "2026-04-01T00:00:00.000Z",
+      windowEnd: "2026-05-01T00:00:00.000Z",
+      usedQuantity: 5,
+      limitQuantity: 100,
+      limitType: "soft",
+      resetPolicy: "monthly",
+      updatedAt: "2026-04-14T10:05:00.000Z",
+    }, 5);
+
+    assert.equal(first.usedQuantity, 3);
+    assert.equal(second.usedQuantity, 8);
+    assert.equal(repo.listQuotaCounters("acct-atomic")[0]?.usedQuantity, 8);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("BillingRepository updateTaskStatus changes task status", () => {
   const workspace = createTempWorkspace("aa-billing-repo-");
   const dbPath = join(workspace, "billing-repo.db");

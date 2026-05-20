@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -346,6 +347,17 @@ test("StructuredLogger.configureGlobalFileSink accepts valid path options", () =
   assert.ok(path.endsWith("logs/options.log"));
 });
 
+test("StructuredLogger.configureGlobalFileSink defaults durability to fsync", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink({ filePath: "logs/durability-default.log" });
+
+  const loggerClass = StructuredLogger as unknown as {
+    globalFileSink: { durability: "buffered" | "fsync" } | null;
+  };
+  assert.equal(loggerClass.globalFileSink?.durability, "fsync");
+});
+
 test("StructuredLogger.configureGlobalFileSink clamps maxBytes to minimum 1", () => {
   StructuredLogger.configureGlobalFileSink(null);
 
@@ -362,6 +374,29 @@ test("StructuredLogger.configureGlobalFileSink clamps maxFiles to minimum 1", ()
 
   const path = StructuredLogger.getGlobalFileSinkPath();
   assert.ok(path !== null);
+});
+
+test("StructuredLogger fsync file sink persists log entries immediately", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-structured-logger-"));
+  const relativePath = join("logs", "fsync-immediate.log");
+  const sinkPath = join(workspace, relativePath);
+
+  try {
+    StructuredLogger.configureGlobalFileSink(null);
+    StructuredLogger.setGlobalFileSinkBaseDir(workspace);
+    StructuredLogger.configureGlobalFileSink({ filePath: relativePath });
+
+    const logger = new StructuredLogger({ retentionLimit: 10 });
+    logger.info("persist-now", { requestId: "req-fsync" });
+
+    const persisted = readFileSync(sinkPath, "utf8");
+    assert.ok(persisted.includes("\"message\":\"persist-now\""));
+    assert.ok(persisted.includes("\"requestId\":\"req-fsync\""));
+  } finally {
+    StructuredLogger.configureGlobalFileSink(null);
+    StructuredLogger.setGlobalFileSinkBaseDir(process.cwd());
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test("StructuredLogger uses shared rotation state across logger instances for the global file sink", async () => {

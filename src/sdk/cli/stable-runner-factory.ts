@@ -50,6 +50,8 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -149,7 +151,7 @@ export function createStableCli<TOptions = StableRunnerOptions, TReport = unknow
   // -------------------------------------------------------------------------
   // main
   // -------------------------------------------------------------------------
-  async function main(): Promise<void> {
+  async function main(): Promise<number> {
     const outputDir = resolveOutputDir();
 
     // prepare() allows callers like soak/validate to add extra arguments
@@ -165,17 +167,15 @@ export function createStableCli<TOptions = StableRunnerOptions, TReport = unknow
       writer(reportPath, report);
     }
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-
-    if (failed(report)) {
-      process.exitCode = 1;
-    }
+    return failed(report) ? CLI_EXIT_FAILURE : CLI_EXIT_SUCCESS;
   }
 
   // -------------------------------------------------------------------------
   // Entry point — always use .catch() so rejections don't silently disappear
   // -------------------------------------------------------------------------
-  main().catch((err) => {
-    process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
-    process.exitCode = 1;
+  void runCliMain(main, {
+    onError: (err) => {
+      process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+    },
   });
 }

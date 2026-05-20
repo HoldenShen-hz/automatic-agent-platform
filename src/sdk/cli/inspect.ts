@@ -24,6 +24,7 @@
  */
 import { pathToFileURL } from "node:url";
 import { withCliStorage } from "./authoritative-storage.js";
+import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { loadInspectCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import {
@@ -44,7 +45,7 @@ import {
  *
  * @throws Error if AA_INSPECT_KIND is not one of the supported types
  */
-function main(): void {
+function main(): number {
   const envConfig = loadInspectCliEnv();
   const output = withCliStorage((storage) => {
     const inspect = new InspectService(storage.store);
@@ -149,8 +150,13 @@ function main(): void {
   }, envConfig.dbPath != null ? { dbPath: envConfig.dbPath } : {});
 
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  return CLI_EXIT_SUCCESS;
 }
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    },
+  });
 }

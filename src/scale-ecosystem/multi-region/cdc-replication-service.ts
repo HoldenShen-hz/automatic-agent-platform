@@ -9,6 +9,7 @@
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createBackgroundTaskTraceContext } from "../../platform/shared/observability/background-task-trace.js";
 
 const cdcLogger = new StructuredLogger({ retentionLimit: 500 });
 
@@ -353,8 +354,23 @@ export class CDCReplicationService {
   ): void {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
     this.removeBatchFromQueue(key, batch.batchId);
-    cdcLogger.error(`CDC replication failed for ${key}: ${error}`, {
-      data: { sourceRegionId, targetRegionId, batchId: batch.batchId },
+    const traceContext = createBackgroundTaskTraceContext("cdc_replication_failure", [
+      sourceRegionId,
+      targetRegionId,
+      batch.batchId,
+    ]);
+    cdcLogger.log({
+      level: "error",
+      message: "cdc.replication_failed",
+      traceId: traceContext.traceId,
+      correlationId: traceContext.correlationId,
+      data: {
+        sourceRegionId,
+        targetRegionId,
+        batchId: batch.batchId,
+        replicationKey: key,
+        errorMessage: error,
+      },
     });
   }
 

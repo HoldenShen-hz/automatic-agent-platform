@@ -9,7 +9,7 @@
  * Architecture: §51 Delegation Governance
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
@@ -17,6 +17,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const delegationAuditLogger = new StructuredLogger({ retentionLimit: 100 });
+const AUDIT_LOCK_TIMEOUT_MS = 250;
 
 /** Default directory for delegation audit events */
 const DEFAULT_AUDIT_DIR = process.env.AA_DELEGATION_AUDIT_DIR?.trim() || join(process.cwd(), ".audit", "delegation");
@@ -81,6 +82,35 @@ function readPersistedEvents(path: string): DelegationAuditEvent[] {
   return events;
 }
 
+function acquireAuditLock(lockPath: string): number {
+  mkdirSync(dirname(lockPath), { recursive: true });
+  const deadline = Date.now() + AUDIT_LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      return openSync(lockPath, "wx");
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || (error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`delegation_audit.lock_timeout:${lockPath}`);
+      }
+    }
+  }
+}
+
+function releaseAuditLock(lockFd: number, lockPath: string): void {
+  try {
+    closeSync(lockFd);
+  } finally {
+    try {
+      rmSync(lockPath, { force: true });
+    } catch {
+      // Best effort cleanup for lock release.
+    }
+  }
+}
+
 export type DelegationAuditEventType =
   | "delegation.governance.evaluated"
   | "delegation.governance.approved"
@@ -118,11 +148,13 @@ export class DelegationAuditService {
   private readonly auditDir: string;
   private readonly persistent: boolean;
   private eventFilePath: string;
+  private readonly eventLockPath: string;
 
   public constructor(auditDir: string = DEFAULT_AUDIT_DIR) {
     this.auditDir = auditDir;
     this.persistent = auditDir !== DEFAULT_AUDIT_DIR || !isNodeTestRunner();
     this.eventFilePath = join(this.auditDir, "delegation-audit-events.json");
+    this.eventLockPath = `${this.eventFilePath}.lock`;
     if (this.persistent) {
       this.loadEvents();
     }
@@ -147,7 +179,12 @@ export class DelegationAuditService {
       return;
     }
     mkdirSync(dirname(this.eventFilePath), { recursive: true });
-    appendFileSync(this.eventFilePath, `${JSON.stringify(event)}\n`, "utf8");
+    const lockFd = acquireAuditLock(this.eventLockPath);
+    try {
+      appendFileSync(this.eventFilePath, `${JSON.stringify(event)}\n`, "utf8");
+    } finally {
+      releaseAuditLock(lockFd, this.eventLockPath);
+    }
   }
 
   public record(event: Omit<DelegationAuditEvent, "id" | "createdAt">): DelegationAuditEvent {
@@ -156,8 +193,8 @@ export class DelegationAuditService {
       id: newId("dlg_audit"),
       createdAt: nowIso(),
     };
-    this.events.push(record);
     this.persistEvent(record);
+    this.events.push(record);
     return record;
   }
 

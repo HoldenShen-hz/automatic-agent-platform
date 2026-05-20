@@ -419,6 +419,45 @@ export class BillingRepository {
       );
   }
 
+  public incrementQuotaCounter(counter: QuotaCounterRecord, deltaQuantity: number): QuotaCounterRecord {
+    this.conn
+      .prepare(
+        `INSERT INTO quota_counters (
+          counter_id, account_id, metric_type, window_start, window_end, used_quantity,
+          limit_quantity, limit_type, reset_policy, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(account_id, metric_type, window_start, window_end) DO UPDATE SET
+          used_quantity = ROUND(quota_counters.used_quantity + excluded.used_quantity, 2),
+          limit_quantity = excluded.limit_quantity,
+          limit_type = excluded.limit_type,
+          reset_policy = excluded.reset_policy,
+          updated_at = excluded.updated_at`,
+      )
+      .run(
+        counter.counterId,
+        counter.accountId,
+        counter.metricType,
+        counter.windowStart,
+        counter.windowEnd,
+        deltaQuantity,
+        counter.limitQuantity,
+        counter.limitType,
+        counter.resetPolicy,
+        counter.updatedAt,
+      );
+
+    const persisted = this.getQuotaCounter(
+      counter.accountId,
+      counter.metricType,
+      counter.windowStart,
+      counter.windowEnd,
+    );
+    if (persisted == null) {
+      throw new Error("billing_repository.increment_quota_counter_missing_after_upsert");
+    }
+    return persisted;
+  }
+
   public insertLedgerEntry(entry: LedgerEntryRecord): void {
     this.conn
       .prepare(

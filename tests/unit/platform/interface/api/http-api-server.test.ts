@@ -1842,13 +1842,13 @@ test("returns 503 when gateway target directory is not configured", async () => 
 
 // ─── Metrics Endpoint Tests ────────────────────────────────────────────────
 
-test("GET /metrics returns prometheus metrics when exporter configured", async () => {
+test("GET /v1/metrics returns prometheus metrics when exporter configured", async () => {
   const { server } = createTestServer();
 
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/metrics",
+      url: "/v1/metrics",
     });
 
     assert.equal(response.statusCode, 200);
@@ -1883,7 +1883,22 @@ test("HTTP prometheus metrics use templated paths instead of raw resource IDs", 
   }
 });
 
-test("GET /metrics returns 503 when exporter not configured", async () => {
+test("GET /metrics is not exposed by HttpApiServer to avoid standalone metrics endpoint duplication", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/metrics",
+    });
+
+    assert.equal(response.statusCode, 404);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /v1/metrics returns 503 when exporter not configured", async () => {
   const server = new HttpApiServer({
     approvalService: createMockApprovalService(),
     inspectService: createMockInspectService(),
@@ -1898,12 +1913,47 @@ test("GET /metrics returns 503 when exporter not configured", async () => {
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/metrics",
+      url: "/v1/metrics",
     });
 
     assert.equal(response.statusCode, 503);
     const body = response.json<{ requestId: string; error: { code: string } }>();
     assert.equal(body.error.code, "api.metrics_unavailable");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("rate-limited mutating requests do not populate idempotency storage", async () => {
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService: new ApiAuthService({
+      apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer"] }],
+      jwtSecret: "test-secret",
+    }),
+    rateLimiter: {
+      checkAndConsume: async () => ({ allowed: false, remaining: 0, retryAfterMs: 1_000 }),
+    } as never,
+  });
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/non-existent-write-endpoint",
+      headers: {
+        "idempotency-key": "idem-rate-limit-1",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ ok: true }),
+    });
+
+    assert.equal(response.statusCode, 429);
+    const idempotencyMiddleware = (server as unknown as {
+      idempotencyMiddleware: { size(): number };
+    }).idempotencyMiddleware;
+    assert.equal(idempotencyMiddleware.size(), 0);
   } finally {
     await server.stop();
   }

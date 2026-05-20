@@ -26,9 +26,12 @@
  *   1 - Campaign failed or evidence did not pass validation
  */
 
+import { pathToFileURL } from "node:url";
+
 import {
   runStableEvidenceCampaign,
 } from "../../platform/shared/stability/stable-evidence-campaign.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { loadStableCampaignCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 /**
@@ -38,7 +41,7 @@ import { loadStableCampaignCliEnv } from "../../platform/five-plane-control-plan
  * profile and timing parameters. Outputs the final report to console and sets
  * the process exit code based on whether the final evidence passed validation.
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const envConfig = loadStableCampaignCliEnv();
   const profile = envConfig.profile;
   const report = await runStableEvidenceCampaign({
@@ -52,12 +55,15 @@ async function main(): Promise<void> {
   });
 
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed) {
-    process.exitCode = 1;
-  }
+  return report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed
+    ? CLI_EXIT_FAILURE
+    : CLI_EXIT_SUCCESS;
 }
 
-main().catch((err) => {
-  process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runCliMain(main, {
+    onError: (err) => {
+      process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+    },
+  });
+}

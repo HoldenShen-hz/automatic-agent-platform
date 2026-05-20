@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { z } from "zod";
@@ -135,6 +135,7 @@ export interface RegisteredQuotaScope {
 }
 
 export interface QuotaStateSnapshot {
+  readonly revision?: number;
   readonly registrations: Readonly<Record<string, QuotaPolicy | MultiResourceQuotaVector>>;
 }
 
@@ -143,15 +144,30 @@ export interface QuotaStateStore {
   save(snapshot: QuotaStateSnapshot): void;
 }
 
+export class QuotaStateConflictError extends Error {
+  public constructor(message = "quota_state.version_conflict") {
+    super(message);
+    this.name = "QuotaStateConflictError";
+  }
+}
+
 export class InMemoryQuotaStateStore implements QuotaStateStore {
-  private snapshot: QuotaStateSnapshot = { registrations: {} };
+  private snapshot: QuotaStateSnapshot = { revision: 0, registrations: {} };
 
   public load(): QuotaStateSnapshot {
-    return this.snapshot;
+    return normalizeQuotaStateSnapshot(this.snapshot);
   }
 
   public save(snapshot: QuotaStateSnapshot): void {
-    this.snapshot = snapshot;
+    const expectedRevision = snapshot.revision ?? 0;
+    const current = normalizeQuotaStateSnapshot(this.snapshot);
+    if (current.revision !== expectedRevision) {
+      throw new QuotaStateConflictError();
+    }
+    this.snapshot = {
+      revision: current.revision + 1,
+      registrations: { ...snapshot.registrations },
+    };
   }
 }
 
@@ -161,27 +177,81 @@ export class FileQuotaStateStore implements QuotaStateStore {
   public load(): QuotaStateSnapshot {
     try {
       const raw = readFileSync(this.filePath, "utf8");
-      const parsed = JSON.parse(raw) as QuotaStateSnapshot;
-      return typeof parsed === "object" && parsed !== null && typeof parsed.registrations === "object" && parsed.registrations !== null
-        ? parsed
-        : { registrations: {} };
+      return normalizeQuotaStateSnapshot(JSON.parse(raw));
     } catch {
-      return { registrations: {} };
+      return { revision: 0, registrations: {} };
     }
   }
 
   public save(snapshot: QuotaStateSnapshot): void {
     mkdirSync(dirname(this.filePath), { recursive: true });
-    const serialized = JSON.stringify(snapshot, null, 2);
-    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
-    writeFileSync(tempPath, serialized, "utf8");
+    const lockPath = `${this.filePath}.lock`;
+    const lockFd = acquireQuotaStateLock(lockPath);
     try {
-      renameSync(tempPath, this.filePath);
+      const current = this.load();
+      const expectedRevision = snapshot.revision ?? 0;
+      if (current.revision !== expectedRevision) {
+        throw new QuotaStateConflictError();
+      }
+      const nextSnapshot: QuotaStateSnapshot = {
+        revision: current.revision + 1,
+        registrations: { ...snapshot.registrations },
+      };
+      const serialized = JSON.stringify(nextSnapshot, null, 2);
+      const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+      writeFileSync(tempPath, serialized, "utf8");
+      try {
+        renameSync(tempPath, this.filePath);
+      } finally {
+        try {
+          unlinkSync(tempPath);
+        } catch {
+          // Best effort cleanup after successful rename or interrupted write.
+        }
+      }
     } finally {
       try {
-        unlinkSync(tempPath);
+        closeSync(lockFd);
       } catch {
-        // Best effort cleanup after successful rename or interrupted write.
+        // Best effort close
+      }
+      try {
+        unlinkSync(lockPath);
+      } catch {
+        // Best effort cleanup for lock release.
+      }
+    }
+  }
+}
+
+function normalizeQuotaStateSnapshot(snapshot: unknown): QuotaStateSnapshot {
+  if (typeof snapshot !== "object" || snapshot == null) {
+    return { revision: 0, registrations: {} };
+  }
+  const parsed = snapshot as { revision?: unknown; registrations?: unknown };
+  const revision = typeof parsed.revision === "number" && Number.isFinite(parsed.revision) && parsed.revision >= 0
+    ? Math.trunc(parsed.revision)
+    : 0;
+  const registrations = typeof parsed.registrations === "object" && parsed.registrations != null
+    ? parsed.registrations as Record<string, QuotaPolicy | MultiResourceQuotaVector>
+    : {};
+  return {
+    revision,
+    registrations: { ...registrations },
+  };
+}
+
+function acquireQuotaStateLock(lockPath: string): number {
+  const deadline = Date.now() + 1_000;
+  while (true) {
+    try {
+      return openSync(lockPath, "wx");
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || (error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error("quota_state.lock_timeout");
       }
     }
   }
@@ -402,9 +472,7 @@ export class QuotaEnforcerService {
   private readonly registrations = new Map<string, QuotaPolicy | MultiResourceQuotaVector>();
 
   public constructor(private readonly stateStore: QuotaStateStore = new InMemoryQuotaStateStore()) {
-    for (const [key, value] of Object.entries(this.stateStore.load().registrations)) {
-      this.registrations.set(key, value);
-    }
+    this.replaceRegistrations(this.stateStore.load());
   }
 
   public registerTenant(tenantId: string, quota: Omit<MultiResourceQuotaVector, "scope" | "scopeId">): MultiResourceQuotaVector {
@@ -413,21 +481,23 @@ export class QuotaEnforcerService {
       scopeId: tenantId,
       ...quota,
     });
-    this.registrations.set(registrationKey("tenant", tenantId), registered);
-    this.persist();
+    this.mutatePersistedRegistrations((registrations) => {
+      registrations.set(registrationKey("tenant", tenantId), registered);
+    });
     return registered;
   }
 
   public registerQuota(scope: string, scopeId: string, policy: QuotaPolicy | MultiResourceQuotaVector): QuotaPolicy | MultiResourceQuotaVector {
     if (isCanonicalQuotaVector(policy)) {
-      // MultiResourceQuotaVector already has scope/scopeId baked in - store as-is
-      this.registrations.set(registrationKey(scope, scopeId), policy as QuotaPolicy);
-      this.persist();
+      this.mutatePersistedRegistrations((registrations) => {
+        registrations.set(registrationKey(scope, scopeId), policy as QuotaPolicy);
+      });
       return policy;
     }
     const normalized = QuotaPolicySchema.parse(policy);
-    this.registrations.set(registrationKey(scope, scopeId), normalized);
-    this.persist();
+    this.mutatePersistedRegistrations((registrations) => {
+      registrations.set(registrationKey(scope, scopeId), normalized);
+    });
     return normalized;
   }
 
@@ -508,47 +578,47 @@ export class QuotaEnforcerService {
 
   public updateUsage(scope: string, scopeId: string, usageDelta: Partial<Record<string, number>>): void {
     const key = registrationKey(scope, scopeId);
-    const quota = this.registrations.get(key);
-    if (quota == null) {
-      return;
-    }
+    this.mutatePersistedRegistrations((registrations) => {
+      const quota = registrations.get(key);
+      if (quota == null) {
+        return;
+      }
 
-    if (isCanonicalQuotaVector(quota)) {
-      const updated: MultiResourceQuotaVector = { ...quota };
-      for (const dimension of QUOTA_DIMENSIONS) {
-        const delta = usageDelta[dimension];
-        const current = updated[dimension];
-        if (delta == null || !isCanonicalQuotaDimension(current)) {
+      if (isCanonicalQuotaVector(quota)) {
+        const updated: MultiResourceQuotaVector = { ...quota };
+        for (const dimension of QUOTA_DIMENSIONS) {
+          const delta = usageDelta[dimension];
+          const current = updated[dimension];
+          if (delta == null || !isCanonicalQuotaDimension(current)) {
+            continue;
+          }
+          updated[dimension] = {
+            ...current,
+            currentUsage: current.currentUsage + delta,
+          };
+        }
+        registrations.set(key, updated);
+        return;
+      }
+
+      const nextMultiResourceUsage: LegacyQuotaVector = {
+        ...(quota.multiResourceQuota ?? {}),
+      };
+      let totalDelta = 0;
+      for (const [dimension, value] of Object.entries(usageDelta)) {
+        if (typeof value !== "number" || !LEGACY_DIMENSIONS.includes(dimension as LegacyQuotaDimensionKey)) {
           continue;
         }
-        updated[dimension] = {
-          ...current,
-          currentUsage: current.currentUsage + delta,
-        };
+        nextMultiResourceUsage[dimension as LegacyQuotaDimensionKey] = (nextMultiResourceUsage[dimension as LegacyQuotaDimensionKey] ?? 0) + value;
+        totalDelta += value;
       }
-      this.registrations.set(key, updated);
-      this.persist();
-      return;
-    }
 
-    const nextMultiResourceUsage: LegacyQuotaVector = {
-      ...(quota.multiResourceQuota ?? {}),
-    };
-    let totalDelta = 0;
-    for (const [dimension, value] of Object.entries(usageDelta)) {
-      if (typeof value !== "number" || !LEGACY_DIMENSIONS.includes(dimension as LegacyQuotaDimensionKey)) {
-        continue;
-      }
-      nextMultiResourceUsage[dimension as LegacyQuotaDimensionKey] = (nextMultiResourceUsage[dimension as LegacyQuotaDimensionKey] ?? 0) + value;
-      totalDelta += value;
-    }
-
-    this.registrations.set(key, {
-      ...quota,
-      currentUsage: quota.currentUsage + totalDelta,
-      multiResourceQuota: nextMultiResourceUsage,
+      registrations.set(key, {
+        ...quota,
+        currentUsage: quota.currentUsage + totalDelta,
+        multiResourceQuota: nextMultiResourceUsage,
+      });
     });
-    this.persist();
   }
 
   public exportSnapshot(): QuotaStateSnapshot {
@@ -556,10 +626,39 @@ export class QuotaEnforcerService {
     for (const [key, value] of this.registrations.entries()) {
       registrations[key] = value;
     }
-    return { registrations };
+    return { revision: 0, registrations };
   }
 
-  private persist(): void {
-    this.stateStore.save(this.exportSnapshot());
+  private mutatePersistedRegistrations(
+    mutator: (registrations: Map<string, QuotaPolicy | MultiResourceQuotaVector>) => void,
+  ): void {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const snapshot = this.stateStore.load();
+      const registrations = new Map<string, QuotaPolicy | MultiResourceQuotaVector>(Object.entries(snapshot.registrations));
+      mutator(registrations);
+      const nextSnapshot: QuotaStateSnapshot = {
+        revision: snapshot.revision ?? 0,
+        registrations: Object.fromEntries(registrations),
+      };
+      try {
+        this.stateStore.save(nextSnapshot);
+        this.replaceRegistrations(this.stateStore.load());
+        return;
+      } catch (error) {
+        lastError = error;
+        if (!(error instanceof QuotaStateConflictError)) {
+          throw error;
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new QuotaStateConflictError();
+  }
+
+  private replaceRegistrations(snapshot: QuotaStateSnapshot): void {
+    this.registrations.clear();
+    for (const [key, value] of Object.entries(snapshot.registrations)) {
+      this.registrations.set(key, value);
+    }
   }
 }

@@ -25,7 +25,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
@@ -75,12 +75,14 @@ interface StructuredLoggerFileSink {
   filePath: string;
   maxBytes: number | null;
   maxFiles: number;
+  durability: "buffered" | "fsync";
 }
 
 export interface StructuredLoggerFileSinkOptions {
   filePath: string;
   maxBytes?: number | null;
   maxFiles?: number;
+  durability?: "buffered" | "fsync";
 }
 
 export interface StructuredLoggerOptions {
@@ -194,6 +196,7 @@ export class StructuredLogger {
       filePath: safeFilePath,
       maxBytes,
       maxFiles,
+      durability: options.durability ?? "fsync",
     };
   }
 
@@ -455,19 +458,36 @@ export class StructuredLogger {
       // Track inflight writes so concurrent async appends do not all race against
       // the same stale file size.
       this.scheduleRotationIfNeeded(sink);
-      // Use async appendFile to avoid blocking the event loop
-      fsPromises.appendFile(sink.filePath, serialized, "utf8")
-        .catch((error) => {
-          process.stderr.write(`structured_logger.file_sink_error:${error instanceof Error ? error.message : String(error)}\n`);
-        })
-        .finally(() => {
-          const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);
-          if (latestState != null) {
-            latestState.pendingBytes = Math.max(0, latestState.pendingBytes - serializedBytes);
-          }
-        });
+      if (sink.durability === "fsync") {
+        this.appendFileWithFsync(sink.filePath, serialized);
+        const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);
+        if (latestState != null) {
+          latestState.pendingBytes = Math.max(0, latestState.pendingBytes - serializedBytes);
+        }
+      } else {
+        fsPromises.appendFile(sink.filePath, serialized, "utf8")
+          .catch((error) => {
+            process.stderr.write(`structured_logger.file_sink_error:${error instanceof Error ? error.message : String(error)}\n`);
+          })
+          .finally(() => {
+            const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);
+            if (latestState != null) {
+              latestState.pendingBytes = Math.max(0, latestState.pendingBytes - serializedBytes);
+            }
+          });
+      }
     } catch {
       // File sink failures must not take down the caller path.
+    }
+  }
+
+  private appendFileWithFsync(filePath: string, serialized: string): void {
+    const fd = openSync(filePath, "a");
+    try {
+      appendFileSync(fd, serialized, "utf8");
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
     }
   }
 

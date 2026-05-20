@@ -15,8 +15,10 @@
  *   - AA_OCCURRED_AT: Optional ISO timestamp for deterministic rehearsal/tests
  */
 import { existsSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 import { withCliStorage } from "./authoritative-storage.js";
+import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { loadLeaseHandoverCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
@@ -82,10 +84,10 @@ function resolveLegacyLeaseHandoverOutput(): unknown | null {
  * Transfers an active execution lease from one worker to another while preserving
  * lineage and incrementing the fencing token to prevent split-brain scenarios.
  */
-function main(): void {
+function main(): number {
   if (process.argv.includes("--help")) {
     printHelp();
-    return;
+    return CLI_EXIT_SUCCESS;
   }
 
   const legacyOutput = resolveLegacyLeaseHandoverOutput();
@@ -93,7 +95,7 @@ function main(): void {
     if ((legacyOutput as { mode?: string }).mode !== "help") {
       process.stdout.write(`${JSON.stringify(legacyOutput, null, 2)}\n`);
     }
-    return;
+    return CLI_EXIT_SUCCESS;
   }
 
   const envConfig = loadLeaseHandoverCliEnv();
@@ -110,12 +112,14 @@ function main(): void {
   });
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  return CLI_EXIT_SUCCESS;
 }
 
-try {
-  main();
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exitCode = 1;
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runCliMain(main, {
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`${message}\n`);
+    },
+  });
 }

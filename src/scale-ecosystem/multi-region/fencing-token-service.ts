@@ -10,6 +10,9 @@
  * - validateFencingToken(entityId, token): Validates token before allowing writes
  */
 
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 
@@ -45,6 +48,15 @@ export interface FencingTokenValidationResult {
   readonly tokenEpoch: number;
 }
 
+interface FencingTokenPersistenceSnapshot {
+  readonly epochCounter: number;
+  readonly entityLeadership: Record<string, LeadershipState>;
+}
+
+export interface FencingTokenServiceOptions {
+  readonly storagePath?: string | null;
+}
+
 /**
  * Service for managing fencing tokens across multi-region deployments.
  * Ensures only one region can hold leadership for an entity at a time.
@@ -52,7 +64,13 @@ export interface FencingTokenValidationResult {
 export class FencingTokenService {
   private readonly leaderships = new Map<string, LeadershipState>();
   private readonly entityLeadership = new Map<string, LeadershipState>();
+  private readonly storagePath: string | null;
   private epochCounter = 0;
+
+  public constructor(options: FencingTokenServiceOptions = {}) {
+    this.storagePath = resolveFencingTokenStoragePath(options.storagePath);
+    this.loadPersistedState();
+  }
 
   /**
    * §52.3: Acquire leadership for a region.
@@ -94,6 +112,7 @@ export class FencingTokenService {
 
     this.entityLeadership.set(key, leadershipState);
     this.leaderships.set(regionId, leadershipState);
+    this.persistState();
 
     return fencingToken;
   }
@@ -122,6 +141,7 @@ export class FencingTokenService {
 
     this.entityLeadership.set(key, released);
     this.leaderships.set(regionId, released);
+    this.persistState();
 
     return true;
   }
@@ -232,6 +252,60 @@ export class FencingTokenService {
   public getCurrentEpoch(): number {
     return this.epochCounter;
   }
+
+  private loadPersistedState(): void {
+    if (this.storagePath == null) {
+      return;
+    }
+    try {
+      const raw = readFileSync(this.storagePath, "utf8").trim();
+      if (raw.length === 0) {
+        return;
+      }
+      const snapshot = JSON.parse(raw) as Partial<FencingTokenPersistenceSnapshot>;
+      this.epochCounter = typeof snapshot.epochCounter === "number" && Number.isFinite(snapshot.epochCounter)
+        ? Math.max(0, Math.trunc(snapshot.epochCounter))
+        : 0;
+      const persistedLeadership = snapshot.entityLeadership ?? {};
+      for (const [key, state] of Object.entries(persistedLeadership)) {
+        if (!isLeadershipState(state)) {
+          continue;
+        }
+        this.entityLeadership.set(key, state);
+        this.leaderships.set(state.regionId, state);
+      }
+    } catch {
+      this.epochCounter = 0;
+      this.entityLeadership.clear();
+      this.leaderships.clear();
+    }
+  }
+
+  private persistState(): void {
+    if (this.storagePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.storagePath), { recursive: true });
+    const snapshot: FencingTokenPersistenceSnapshot = {
+      epochCounter: this.epochCounter,
+      entityLeadership: Object.fromEntries(this.entityLeadership.entries()),
+    };
+    const tempPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
+    let renamed = false;
+    try {
+      writeFileSync(tempPath, JSON.stringify(snapshot, null, 2), "utf8");
+      renameSync(tempPath, this.storagePath);
+      renamed = true;
+    } finally {
+      if (!renamed) {
+        try {
+          rmSync(tempPath, { force: true });
+        } catch {
+          // Best-effort cleanup for failed persistence.
+        }
+      }
+    }
+  }
 }
 
 // Singleton instance for global access
@@ -246,4 +320,43 @@ export function getFencingTokenService(): FencingTokenService {
 
 export function resetFencingTokenService(): void {
   GLOBAL_FENCING_TOKEN_SERVICE = null;
+}
+
+function resolveFencingTokenStoragePath(explicitPath: string | null | undefined): string | null {
+  if (typeof explicitPath === "string") {
+    const trimmed = explicitPath.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  const envPath = process.env.AA_FENCING_TOKEN_STATE_PATH?.trim();
+  if (envPath != null && envPath.length > 0) {
+    return envPath;
+  }
+  if (process.env.NODE_TEST_CONTEXT === "child-v8") {
+    return null;
+  }
+  return join(process.cwd(), "data", "multi-region", "fencing-token-state.json");
+}
+
+function isLeadershipState(value: unknown): value is LeadershipState {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<LeadershipState>;
+  return typeof candidate.regionId === "string"
+    && typeof candidate.epoch === "number"
+    && typeof candidate.acquiredAt === "string"
+    && typeof candidate.isActive === "boolean"
+    && isFencingToken(candidate.fencingToken);
+}
+
+function isFencingToken(value: unknown): value is FencingToken {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<FencingToken>;
+  return typeof candidate.tokenId === "string"
+    && typeof candidate.regionId === "string"
+    && typeof candidate.epoch === "number"
+    && typeof candidate.issuedAt === "string"
+    && (candidate.entityId == null || typeof candidate.entityId === "string");
 }

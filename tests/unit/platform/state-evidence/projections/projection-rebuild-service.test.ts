@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { StructuredLogger, type StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
 import {
   ProjectionRebuildService,
   ProjectionHandlerRegistry,
@@ -472,4 +473,33 @@ test("ProjectionRebuildService registers cost_dashboard and delegation_tree hand
   // These should not have "Unknown projection" error since they're registered
   assert.ok(!costResult.errors.some((e: string) => e.includes("Unknown projection")));
   assert.ok(!delegResult.errors.some((e: string) => e.includes("Unknown projection")));
+});
+
+test("ProjectionRebuildService logs trace and correlation ids when event fetch fails", () => {
+  const captured: StructuredLogEntry[] = [];
+  StructuredLogger.addTransport({
+    name: "projection-rebuild-capture",
+    write(entry) {
+      captured.push(entry);
+    },
+  });
+
+  try {
+    const service = new ProjectionRebuildService({
+      listAllEvents: () => {
+        throw new Error("db unavailable");
+      },
+    } as any);
+
+    service.rebuildProjection("task_summary");
+
+    const entry = captured.find((candidate) => candidate.message === "projection_rebuild.fetch_events_failed");
+    assert.ok(entry);
+    assert.equal(typeof entry.traceId, "string");
+    assert.equal(typeof entry.correlationId, "string");
+    assert.equal(entry.data?.["projectionName"], "task_summary");
+    assert.equal(entry.data?.["errorMessage"], "db unavailable");
+  } finally {
+    StructuredLogger.removeTransport("projection-rebuild-capture");
+  }
 });

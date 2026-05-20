@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { rmSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -49,6 +51,27 @@ test("QuotaEnforcerService persists usage across service restarts via file-backe
   rmSync(STATE_FILE, { force: true });
 });
 
+test("QuotaEnforcerService merges concurrent file-backed updates instead of last-write-wins overwrite", () => {
+  rmSync(STATE_FILE, { force: true });
+  const store = new FileQuotaStateStore(STATE_FILE);
+  const bootstrap = new QuotaEnforcerService(store);
+  bootstrap.registerTenant("tenant-charlie", makeQuotaVector("tenant-charlie"));
+
+  const serviceA = new QuotaEnforcerService(store);
+  const serviceB = new QuotaEnforcerService(store);
+  serviceA.updateUsage("tenant", "tenant-charlie", {
+    workerUnits: 4,
+  });
+  serviceB.updateUsage("tenant", "tenant-charlie", {
+    qps: 25,
+  });
+
+  const restored = new QuotaEnforcerService(store).getQuota("tenant", "tenant-charlie");
+  assert.equal(restored?.workerUnits?.currentUsage, 4);
+  assert.equal(restored?.qps?.currentUsage, 25);
+  rmSync(STATE_FILE, { force: true });
+});
+
 test("QuotaEnforcerService enforces quota per tenant instead of using stateless global checks", () => {
   const service = new QuotaEnforcerService();
   service.registerTenant("tenant-low", {
@@ -64,4 +87,43 @@ test("QuotaEnforcerService enforces quota per tenant instead of using stateless 
   assert.equal(lowDecision.passed, false);
   assert.ok(lowDecision.failedDimensions.includes("workerUnits"));
   assert.equal(highDecision.passed, true);
+});
+
+test("FileQuotaStateStore fails closed under held lock without corrupting persisted snapshot", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "quota-state-lock-"));
+  const stateFile = join(rootDir, "quota-state.json");
+  const store = new FileQuotaStateStore(stateFile);
+
+  try {
+    store.save({
+      revision: 0,
+      registrations: {
+        "tenant:tenant-delta": {
+          scope: "tenant",
+          scopeId: "tenant-delta",
+          ...makeQuotaVector("tenant-delta"),
+        },
+      },
+    });
+    const originalContents = readFileSync(stateFile, "utf8");
+    const lockFd = openSync(`${stateFile}.lock`, "wx");
+    try {
+      const snapshot = store.load();
+      snapshot.registrations["tenant:tenant-delta"] = {
+        scope: "tenant",
+        scopeId: "tenant-delta",
+        ...makeQuotaVector("tenant-delta"),
+        workerUnits: { hardLimit: 10, softLimit: 8, currentUsage: 3 },
+      };
+      assert.throws(() => store.save(snapshot), /quota_state\.lock_timeout/);
+    } finally {
+      closeSync(lockFd);
+      rmSync(`${stateFile}.lock`, { force: true });
+    }
+
+    assert.equal(readFileSync(stateFile, "utf8"), originalContents);
+    assert.equal(readdirSync(rootDir).filter((entry) => entry.endsWith(".tmp")).length, 0);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });

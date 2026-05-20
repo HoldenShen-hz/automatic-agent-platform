@@ -34,6 +34,8 @@ export interface CasResult<TAggregate> {
   readonly aggregate?: TAggregate;
   readonly expectedVersion?: number;
   readonly actualVersion?: number;
+  readonly expectedProtectionHash?: string;
+  readonly actualProtectionHash?: string;
 }
 
 export interface RuntimeTruthRepositorySnapshot {
@@ -83,13 +85,21 @@ interface RuntimeTruthRepositoryState {
   readonly events: PlatformFactEvent[];
   readonly outbox: PlatformFactEvent[];
   readonly auditRefs: string[];
+  readonly eventSequenceByAggregate: Map<string, number>;
   /** R11-12: Current snapshot version for CAS */
   snapshotVersion: number;
+  transactionCounter: number;
+  fencingCounter: number;
+}
+
+interface TransactionContext {
+  readonly undoOperations: Array<() => void>;
 }
 
 export class RuntimeTruthRepository implements RuntimeRepository {
   private state: RuntimeTruthRepositoryState = createEmptyState();
   private readonly stateMachine: RuntimeStateMachine;
+  private activeTransaction: TransactionContext | null = null;
 
   public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine({ persistEvent: () => undefined });
@@ -108,14 +118,35 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     aggregateId: string;
     aggregate: TAggregate;
     expectedVersion: number;
+    expectedProtectionHash?: string;
   }): CasResult<TAggregate> {
     const currentVersion = this.getAggregateVersion(params.aggregateType, params.aggregateId);
+    const currentAggregate = this.getAggregate(params.aggregateType, params.aggregateId);
+    const currentProtectionHash = currentAggregate == null
+      ? null
+      : computeAggregateProtectionHash(params.aggregateType, currentAggregate);
+    const nextProtectionHash = computeAggregateProtectionHash(params.aggregateType, params.aggregate);
 
     if (currentVersion !== null && currentVersion !== params.expectedVersion) {
       return {
         success: false,
         expectedVersion: params.expectedVersion,
         actualVersion: currentVersion,
+      };
+    }
+
+    if (
+      currentProtectionHash != null
+      && nextProtectionHash != null
+      && currentProtectionHash !== nextProtectionHash
+      && params.expectedProtectionHash !== currentProtectionHash
+    ) {
+      return {
+        success: false,
+        expectedVersion: params.expectedVersion,
+        ...(currentVersion != null ? { actualVersion: currentVersion } : {}),
+        ...(params.expectedProtectionHash != null ? { expectedProtectionHash: params.expectedProtectionHash } : {}),
+        actualProtectionHash: currentProtectionHash,
       };
     }
 
@@ -145,6 +176,17 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       default:
         return 0;
     }
+  }
+
+  public getAggregateProtectionHash(
+    aggregateType: RuntimeStateAggregateType,
+    aggregateId: string,
+  ): string | null {
+    const aggregate = this.getAggregate(aggregateType, aggregateId);
+    if (aggregate == null) {
+      return null;
+    }
+    return computeAggregateProtectionHash(aggregateType, aggregate);
   }
 
   /**
@@ -213,22 +255,22 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         }
       }
 
-      const transactionMarker = `TXN_${Date.now()}_${this.state.auditRefs.length + 1}`;
-      this.state.auditRefs.push(`BEGIN_${transactionMarker}`);
+      const transactionMarker = `TXN_${++this.state.transactionCounter}`;
+      this.appendAuditRef(`BEGIN_${transactionMarker}`);
       const aggregateId = getAggregateId(command.aggregateType, command.aggregate);
       const existingAggregate = this.getAggregate(command.aggregateType, aggregateId);
       const stored = existingAggregate ?? bindInitialCommandLeaseAndFencing(command);
       const inheritedLeaseId =
-        command.leaseId
-        ?? ("leaseId" in stored && typeof stored.leaseId === "string" ? stored.leaseId : undefined)
+        normalizeOptionalToken(command.leaseId)
+        ?? ("leaseId" in stored ? normalizeOptionalToken(stored.leaseId) : undefined)
         ?? `lease://runtime-truth/${aggregateId}`;
       const inheritedFencingToken =
-        command.fencingToken
-        ?? ("fencingToken" in stored && typeof stored.fencingToken === "string" ? stored.fencingToken : undefined)
-        ?? `fence://runtime-truth/${aggregateId}`;
+        normalizeOptionalToken(command.fencingToken)
+        ?? ("fencingToken" in stored ? normalizeOptionalToken(stored.fencingToken) : undefined)
+        ?? this.nextFallbackFencingToken();
       const result = this.stateMachine.transition({
         ...command,
-        auditRef: command.auditRef ?? `audit://runtime-truth/${command.aggregateType}/${aggregateId}/${Date.now()}`,
+        auditRef: command.auditRef ?? `audit://runtime-truth/${command.aggregateType}/${aggregateId}/${transactionMarker}`,
         leaseId: inheritedLeaseId,
         fencingToken: inheritedFencingToken,
         aggregate: stored as TAggregate,
@@ -236,9 +278,9 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       this.storeAggregate(command.aggregateType, result.aggregate);
       const event = this.appendEvent(result.event);
       if (command.auditRef != null) {
-        this.state.auditRefs.push(command.auditRef);
+        this.appendAuditRef(command.auditRef);
       }
-      this.state.auditRefs.push(`COMMIT_${transactionMarker}`);
+      this.appendAuditRef(`COMMIT_${transactionMarker}`);
       return { ...result, event };
     });
   }
@@ -251,7 +293,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
           "NodeAttemptReceipt is append-only and cannot be overwritten.",
         );
       }
-      this.state.nodeAttemptReceipts.set(receipt.nodeAttemptReceiptId, receipt);
+      this.storeAppendOnlyEntry(this.state.nodeAttemptReceipts, receipt.nodeAttemptReceiptId, receipt);
     });
   }
 
@@ -263,7 +305,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
           "RunVersionLock is append-only and cannot be overwritten.",
         );
       }
-      this.state.runVersionLocks.set(lock.runVersionLockId, lock);
+      this.storeAppendOnlyEntry(this.state.runVersionLocks, lock.runVersionLockId, lock);
     });
   }
 
@@ -305,52 +347,46 @@ export class RuntimeTruthRepository implements RuntimeRepository {
    * This enables event-sourced reconstruction when state needs to be rebuilt from events.
    */
   public replayEvents(events: readonly PlatformFactEvent[]): void {
-    for (const event of events) {
-      // Get the current aggregate state
-      const aggregateId = event.aggregateId;
-      const aggregateType = event.aggregateType as RuntimeStateAggregateType;
-      const currentAggregate = this.getAggregate(aggregateType, aggregateId);
-
-      if (currentAggregate == null) {
-        // Cannot replay event for aggregate that doesn't exist - skip
-        continue;
+    this.transaction(() => {
+      for (const event of events) {
+        const aggregateId = event.aggregateId;
+        const aggregateType = event.aggregateType as RuntimeStateAggregateType;
+        const currentAggregate = this.getAggregate(aggregateType, aggregateId);
+        if (currentAggregate == null) {
+          continue;
+        }
+        const payload = asRuntimeEventPayload(event.payload);
+        const fromStatus = toRuntimeStatus(payload?.fromStatus);
+        const toStatus = toRuntimeStatus(payload?.toStatus);
+        if (toStatus == null) {
+          continue;
+        }
+        const leaseId = readAggregateLeaseId(currentAggregate);
+        const fencingToken = readAggregateFencingToken(currentAggregate);
+        const command: RuntimeTransitionCommand<RuntimeStateAggregate> = {
+          commandId: event.eventId,
+          entityType: aggregateType,
+          entityId: aggregateId,
+          aggregateType,
+          aggregate: currentAggregate,
+          fromStatus: fromStatus ?? statusOf(currentAggregate),
+          toStatus,
+          principal: "system",
+          traceId: event.traceId,
+          tenantId: event.tenantId,
+          reasonCode: payload?.reasonCode ?? "event_replay",
+          emittedBy: payload?.emittedBy ?? "runtime_truth_repository.replay",
+          occurredAt: event.occurredAt,
+          auditRef: payload?.auditRef ?? `audit://runtime-truth/replay/${aggregateType}/${aggregateId}/${event.eventId}`,
+          ...(payload?.runVersionLockId != null ? { runVersionLockId: payload.runVersionLockId } : {}),
+          ...(leaseId != null ? { leaseId } : {}),
+          ...(fencingToken != null ? { fencingToken } : {}),
+        };
+        const result = this.stateMachine.transition(command);
+        this.storeAggregate(aggregateType, result.aggregate);
+        this.appendReplayedEvent(event);
       }
-
-      // Apply event to reconstruct state - we extract the toStatus from the event payload
-      const payload = event.payload as { toStatus?: unknown; fromStatus?: unknown } | null;
-      const fromStatus = toRuntimeStatus(payload?.fromStatus);
-      const toStatus = toRuntimeStatus(payload?.toStatus);
-      if (toStatus == null) {
-        continue;
-      }
-
-      // Create a transition command to apply the event's status change
-      // R5-44 fix: Generate synthetic auditRef for internal transitions that don't have one.
-      const auditRef = `audit://synthetic/${aggregateType}/${aggregateId}/${Date.now()}`;
-      const command: RuntimeTransitionCommand<RuntimeStateAggregate> = {
-        commandId: newId("replay"),
-        entityType: aggregateType,
-        entityId: aggregateId,
-        aggregateType: aggregateType,
-        aggregate: currentAggregate,
-        fromStatus: fromStatus ?? statusOf(currentAggregate),
-        toStatus,
-        principal: "system",
-        traceId: event.traceId ?? newId("trace"),
-        tenantId: event.tenantId,
-        reasonCode: "event_replay",
-        emittedBy: "runtime_truth_repository.replay",
-        occurredAt: event.occurredAt,
-        auditRef,
-      };
-
-      // Apply the transition which will update the aggregate and emit a new event
-      const result = this.stateMachine.transition(command);
-      this.storeAggregate(aggregateType, result.aggregate);
-
-      // Also append to outbox for event sourcing integrity
-      this.appendEvent(result.event);
-    }
+    });
   }
 
   public snapshot(): RuntimeTruthRepositorySnapshot {
@@ -383,12 +419,22 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   private transaction<TResult>(operation: () => TResult): TResult {
-    const before = cloneState(this.state);
+    if (this.activeTransaction != null) {
+      return operation();
+    }
+    const context: TransactionContext = {
+      undoOperations: [],
+    };
+    this.activeTransaction = context;
     try {
       return operation();
     } catch (error) {
-      this.state = before;
+      for (let index = context.undoOperations.length - 1; index >= 0; index--) {
+        context.undoOperations[index]?.();
+      }
       throw error;
+    } finally {
+      this.activeTransaction = null;
     }
   }
 
@@ -424,19 +470,20 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   private storeAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
     switch (aggregateType) {
       case "HarnessRun":
-        this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
+        this.storeEntry(this.state.harnessRuns, (aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
         return;
       case "NodeRun":
-        this.state.nodeRuns.set((aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
+        this.storeEntry(this.state.nodeRuns, (aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
         return;
       case "SideEffectRecord":
-        this.state.sideEffects.set((aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
+        this.storeEntry(this.state.sideEffects, (aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
         return;
       case "BudgetLedger":
-        this.state.budgetLedgers.set((aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
+        this.storeEntry(this.state.budgetLedgers, (aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
         return;
       case "BudgetReservation":
-        this.state.budgetReservations.set(
+        this.storeEntry(
+          this.state.budgetReservations,
           (aggregate as BudgetReservation).budgetReservationId,
           aggregate as BudgetReservation,
         );
@@ -445,29 +492,101 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   private appendEvent(event: PlatformFactEvent): PlatformFactEvent {
-    const nextSeq = this.state.events.filter((existing) => {
-      return existing.aggregateType === event.aggregateType && existing.aggregateId === event.aggregateId;
-    }).length + 1;
+    const aggregateKey = buildAggregateEventKey(event.aggregateType as RuntimeStateAggregateType, event.aggregateId);
+    const previousSeq = this.state.eventSequenceByAggregate.get(aggregateKey) ?? 0;
+    const nextSeq = previousSeq + 1;
     const normalizedEvent: PlatformFactEvent = {
       ...event,
       aggregateSeq: nextSeq,
     };
-    const duplicate = this.state.events.some((existing) => {
-      return (
-        existing.aggregateType === normalizedEvent.aggregateType &&
-        existing.aggregateId === normalizedEvent.aggregateId &&
-        existing.aggregateSeq === normalizedEvent.aggregateSeq
-      );
+    return this.appendPersistedEvent(normalizedEvent, {
+      aggregateKey,
+      previousSeq,
+      includeOutbox: true,
     });
-    if (duplicate) {
+  }
+
+  private appendReplayedEvent(event: PlatformFactEvent): PlatformFactEvent {
+    const aggregateKey = buildAggregateEventKey(event.aggregateType as RuntimeStateAggregateType, event.aggregateId);
+    const previousSeq = this.state.eventSequenceByAggregate.get(aggregateKey) ?? 0;
+    if (event.aggregateSeq <= previousSeq) {
       throw new ValidationError(
         "runtime_truth_repository.duplicate_event_sequence",
-        "Platform fact event aggregate sequence must be unique.",
+        "Replay event aggregate sequence must advance monotonically.",
       );
     }
-    this.state.events.push(normalizedEvent);
-    this.state.outbox.push(normalizedEvent);
-    return normalizedEvent;
+    return this.appendPersistedEvent(event, {
+      aggregateKey,
+      previousSeq,
+      includeOutbox: false,
+    });
+  }
+
+  private appendPersistedEvent(
+    event: PlatformFactEvent,
+    options: {
+      aggregateKey: string;
+      previousSeq: number;
+      includeOutbox: boolean;
+    },
+  ): PlatformFactEvent {
+    this.recordUndo(() => {
+      this.state.events.pop();
+      if (options.includeOutbox) {
+        this.state.outbox.pop();
+      }
+      if (options.previousSeq === 0) {
+        this.state.eventSequenceByAggregate.delete(options.aggregateKey);
+      } else {
+        this.state.eventSequenceByAggregate.set(options.aggregateKey, options.previousSeq);
+      }
+    });
+    this.state.events.push(event);
+    if (options.includeOutbox) {
+      this.state.outbox.push(event);
+    }
+    this.state.eventSequenceByAggregate.set(options.aggregateKey, event.aggregateSeq);
+    return event;
+  }
+
+  private appendAuditRef(auditRef: string): void {
+    this.recordUndo(() => {
+      this.state.auditRefs.pop();
+    });
+    this.state.auditRefs.push(auditRef);
+  }
+
+  private nextFallbackFencingToken(): string {
+    const next = this.state.fencingCounter + 1;
+    this.recordUndo(() => {
+      this.state.fencingCounter = next - 1;
+    });
+    this.state.fencingCounter = next;
+    return String(next);
+  }
+
+  private storeEntry<TValue>(map: Map<string, TValue>, key: string, value: TValue): void {
+    const hadPrevious = map.has(key);
+    const previousValue = map.get(key);
+    this.recordUndo(() => {
+      if (hadPrevious) {
+        map.set(key, previousValue as TValue);
+      } else {
+        map.delete(key);
+      }
+    });
+    map.set(key, value);
+  }
+
+  private storeAppendOnlyEntry<TValue>(map: Map<string, TValue>, key: string, value: TValue): void {
+    this.recordUndo(() => {
+      map.delete(key);
+    });
+    map.set(key, value);
+  }
+
+  private recordUndo(undo: () => void): void {
+    this.activeTransaction?.undoOperations.push(undo);
   }
 }
 
@@ -491,24 +610,11 @@ function createEmptyState(): RuntimeTruthRepositoryState {
     events: [],
     outbox: [],
     auditRefs: [],
+    eventSequenceByAggregate: new Map(),
     // R11-12: Initialize snapshot version
     snapshotVersion: 0,
-  };
-}
-
-function cloneState(state: RuntimeTruthRepositoryState): RuntimeTruthRepositoryState {
-  return {
-    harnessRuns: new Map(state.harnessRuns),
-    nodeRuns: new Map(state.nodeRuns),
-    sideEffects: new Map(state.sideEffects),
-    budgetLedgers: new Map(state.budgetLedgers),
-    budgetReservations: new Map(state.budgetReservations),
-    nodeAttemptReceipts: new Map(state.nodeAttemptReceipts),
-    runVersionLocks: new Map(state.runVersionLocks),
-    events: [...state.events],
-    outbox: [...state.outbox],
-    auditRefs: [...state.auditRefs],
-    snapshotVersion: state.snapshotVersion,
+    transactionCounter: 0,
+    fencingCounter: 0,
   };
 }
 
@@ -543,4 +649,95 @@ function bindInitialCommandLeaseAndFencing<TAggregate extends RuntimeStateAggreg
     ...(command.leaseId != null ? { leaseId: command.leaseId } : {}),
     ...(command.fencingToken != null ? { fencingToken: command.fencingToken } : {}),
   } as TAggregate;
+}
+
+function buildAggregateEventKey(aggregateType: RuntimeStateAggregateType, aggregateId: string): string {
+  return `${aggregateType}:${aggregateId}`;
+}
+
+function computeAggregateProtectionHash(
+  aggregateType: RuntimeStateAggregateType,
+  aggregate: RuntimeStateAggregate,
+): string | null {
+  const protectionState = readAggregateProtectionState(aggregateType, aggregate);
+  if (protectionState == null) {
+    return null;
+  }
+  return createHash("sha256").update(JSON.stringify(protectionState)).digest("hex");
+}
+
+function readAggregateProtectionState(
+  aggregateType: RuntimeStateAggregateType,
+  aggregate: RuntimeStateAggregate,
+): Record<string, unknown> | null {
+  switch (aggregateType) {
+    case "HarnessRun": {
+      const harnessRun = aggregate as HarnessRun;
+      return {
+        leaseId: normalizeOptionalToken(harnessRun.leaseId) ?? null,
+        fencingToken: normalizeOptionalToken(harnessRun.fencingToken) ?? null,
+        ownershipOwnerId: harnessRun.ownership.ownerId,
+        ownershipOwnerType: harnessRun.ownership.ownerType,
+      };
+    }
+    case "NodeRun": {
+      const nodeRun = aggregate as NodeRun;
+      return {
+        leaseId: normalizeOptionalToken(nodeRun.leaseId) ?? null,
+        fencingToken: normalizeOptionalToken(nodeRun.fencingToken) ?? null,
+      };
+    }
+    case "SideEffectRecord": {
+      const sideEffect = aggregate as SideEffectRecord;
+      return {
+        leaseId: normalizeOptionalToken(sideEffect.leaseId) ?? null,
+        fencingToken: normalizeOptionalToken(sideEffect.fencingToken) ?? null,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function asRuntimeEventPayload(value: unknown): {
+  readonly toStatus?: unknown;
+  readonly fromStatus?: unknown;
+  readonly reasonCode?: string;
+  readonly emittedBy?: string;
+  readonly auditRef?: string;
+  readonly runVersionLockId?: string;
+} | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as {
+    readonly toStatus?: unknown;
+    readonly fromStatus?: unknown;
+    readonly reasonCode?: string;
+    readonly emittedBy?: string;
+    readonly auditRef?: string;
+    readonly runVersionLockId?: string;
+  };
+}
+
+function readAggregateLeaseId(aggregate: RuntimeStateAggregate): string | undefined {
+  if ("leaseId" in aggregate) {
+    return normalizeOptionalToken(aggregate.leaseId);
+  }
+  return undefined;
+}
+
+function readAggregateFencingToken(aggregate: RuntimeStateAggregate): string | undefined {
+  if ("fencingToken" in aggregate) {
+    return normalizeOptionalToken(aggregate.fencingToken);
+  }
+  return undefined;
+}
+
+function normalizeOptionalToken(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
 }

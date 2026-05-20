@@ -14,7 +14,10 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for event consumer terminology
  * @see {@link docs_zh/contracts/} for event-related contracts
  */
+import { pathToFileURL } from "node:url";
+
 import { withCliStorageAsync } from "./authoritative-storage.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { loadEventOpsCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { EventOpsService } from "../../platform/five-plane-state-evidence/events/event-ops-service.js";
 
@@ -25,7 +28,7 @@ import { EventOpsService } from "../../platform/five-plane-state-evidence/events
  * specific consumer (if AA_EVENT_CONSUMER_ID is set) or all registered default consumers.
  * Prints results to stdout and sets exit code to 1 if any replay outcomes failed.
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const envConfig = loadEventOpsCliEnv();
   const results = await withCliStorageAsync(async (storage) => {
     const ops = new EventOpsService(storage.sql, storage.store);
@@ -37,9 +40,15 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);
 
   // Set non-zero exit code if any replay operation encountered a failure
-  if (results.some((result) => result.outcome === "failed")) {
-    process.exitCode = 1;
-  }
+  return results.some((result) => result.outcome === "failed")
+    ? CLI_EXIT_FAILURE
+    : CLI_EXIT_SUCCESS;
 }
 
-void main();
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+    },
+  });
+}

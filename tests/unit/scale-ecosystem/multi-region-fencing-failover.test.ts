@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { StructuredLogger, type StructuredLogEntry } from "../../../src/platform/shared/observability/structured-logger.js";
 import { CDCReplicationService } from "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
 import { CrossBorderTransferComplianceService } from "../../../src/scale-ecosystem/multi-region/cross-border-transfer-compliance-service.js";
 import { DataReplicatorService } from "../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
@@ -360,6 +361,98 @@ test("R15-67 failover orchestration records failover history and fencing epoch e
     orchestrator.getFailoverEvents().map((event) => event.eventType),
     ["multi_region.failover_recorded", "multi_region.fencing_epoch_changed"],
   );
+});
+
+test("R15-67a CDC replication failure logs carry explicit trace and correlation ids", () => {
+  const captured: StructuredLogEntry[] = [];
+  StructuredLogger.addTransport({
+    name: "cdc-failure-capture",
+    write(entry) {
+      captured.push(entry);
+    },
+  });
+
+  try {
+    const service = new CDCReplicationService();
+    service.registerReplication({
+      sourceRegionId: "us-east-1",
+      targetRegionId: "eu-west-1",
+      batchSize: 10,
+      replicationIntervalMs: 1_000,
+      enabled: true,
+      retryPolicy: {
+        maxRetries: 1,
+        backoffMs: 100,
+      },
+    });
+    const batch = service.prepareBatch("us-east-1", "eu-west-1", [
+      {
+        id: "evt-1",
+        sequence: 1,
+        eventType: "task.updated",
+        taskId: "task-1",
+        payloadJson: "{}",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    assert.ok(batch);
+
+    service.recordFailure("us-east-1", "eu-west-1", batch!, "replica write failed");
+
+    const entry = captured.find((candidate) => candidate.message === "cdc.replication_failed");
+    assert.ok(entry);
+    assert.equal(typeof entry.traceId, "string");
+    assert.equal(typeof entry.correlationId, "string");
+    assert.equal(entry.data?.["batchId"], batch!.batchId);
+    assert.equal(entry.data?.["errorMessage"], "replica write failed");
+  } finally {
+    StructuredLogger.removeTransport("cdc-failure-capture");
+  }
+});
+
+test("R15-67b failover listener errors log explicit trace and correlation ids", async () => {
+  const captured: StructuredLogEntry[] = [];
+  StructuredLogger.addTransport({
+    name: "failover-log-capture",
+    write(entry) {
+      captured.push(entry);
+    },
+  });
+
+  try {
+    const orchestrator = new RegionFailoverOrchestrator();
+    orchestrator.registerRegion({
+      regionId: "us-west-2",
+      endpoint: "https://usw2.example.com",
+      checkIntervalMs: 1_000,
+      timeoutMs: 500,
+      retryCount: 2,
+      metricSnapshot: { latencyMs: 20, errorRate: 0, cpuUsage: 0.2, memoryUsage: 0.2 },
+      thresholds: {
+        maxLatencyMs: 100,
+        maxErrorRate: 0.1,
+        maxCpuUsage: 0.9,
+        maxMemoryUsage: 0.9,
+      },
+    });
+    await orchestrator.getHealthCheckService().checkRegion("us-west-2");
+    orchestrator.addFailoverListener(() => {
+      throw new Error("listener exploded");
+    });
+
+    const result = await orchestrator.orchestrateFailover("us-east-1", ["us-east-1", "us-west-2"]);
+    assert.equal(result.success, true);
+
+    const entry = captured.find((candidate) => candidate.message === "multi_region.failover_listener_failed");
+    assert.ok(entry);
+    assert.equal(typeof entry.traceId, "string");
+    assert.equal(typeof entry.correlationId, "string");
+    assert.equal(entry.data?.["sourceRegionId"], "us-east-1");
+    assert.equal(entry.data?.["targetRegionId"], "us-west-2");
+    assert.equal(entry.data?.["errorMessage"], "listener exploded");
+  } finally {
+    StructuredLogger.removeTransport("failover-log-capture");
+  }
 });
 
 test("R15-68 fair scheduling enforces per-tenant promotion budgets", () => {

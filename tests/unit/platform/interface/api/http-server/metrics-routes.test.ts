@@ -20,9 +20,9 @@ function createMockContext(): RouteContext {
   };
 }
 
-test("createMetricsRoutes returns metrics and prometheus endpoints", () => {
+test("createMetricsRoutes returns versioned metrics and prometheus endpoints", () => {
   const routes = createMetricsRoutes({ prometheusMetricsExporter: createMockMetricsExporter() });
-  assert.deepEqual(routes.map((route) => route.pathname), ["/metrics", "/v1/metrics", "/prometheus"]);
+  assert.deepEqual(routes.map((route) => route.pathname), ["/v1/metrics", "/prometheus"]);
 });
 
 test("GET /prometheus returns metrics when exporter is configured", async () => {
@@ -41,7 +41,7 @@ test("GET /prometheus returns metrics when exporter is configured", async () => 
 
 test("metrics routes fail closed without exporter", async () => {
   const routes = createMetricsRoutes({ prometheusMetricsExporter: null });
-  const route = routes.find((candidate) => candidate.pathname === "/metrics");
+  const route = routes.find((candidate) => candidate.pathname === "/v1/metrics");
   assert.ok(route);
   await assert.rejects(async () => {
     await route.handler(createMockContext());

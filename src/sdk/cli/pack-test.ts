@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackTestOptions {
   manifest: string;
@@ -38,11 +39,11 @@ interface TestResult {
   errors: string[];
 }
 
-function main(): void {
+function main(): number {
   const opts = parseArgs();
   if (!opts.manifest) {
     process.stderr.write("Error: --manifest is required\n");
-    process.exit(1);
+    return CLI_EXIT_FAILURE;
   }
 
   const result: TestResult = { passed: true, checks: [], errors: [] };
@@ -86,9 +87,9 @@ function main(): void {
   }
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  process.exit(result.passed ? 0 : 1);
+  return result.passed ? CLI_EXIT_SUCCESS : CLI_EXIT_FAILURE;
 }
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  void runCliMain(main);
 }

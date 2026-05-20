@@ -1,7 +1,10 @@
+import { pathToFileURL } from "node:url";
+
 import {
   runStableEvidenceSequence,
   runStableEvidenceSequenceUntilComplete,
 } from "../../platform/shared/stability/stable-evidence-sequence.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { loadStableSequenceCliEnv } from "../../platform/five-plane-control-plane/config-center/stable-cli-env.js";
 
 /**
@@ -9,7 +12,7 @@ import { loadStableSequenceCliEnv } from "../../platform/five-plane-control-plan
  * Runs evidence collection profiles in sequence, optionally running until complete.
  * Outputs the final report to console and sets exit code based on blocking status.
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const envConfig = loadStableSequenceCliEnv();
   const options = {
     evidenceRootDir: envConfig.evidenceRootDir,
@@ -28,12 +31,13 @@ async function main(): Promise<void> {
     : await runStableEvidenceSequence(options);
 
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (report.state.blocked) {
-    process.exitCode = 1;
-  }
+  return report.state.blocked ? CLI_EXIT_FAILURE : CLI_EXIT_SUCCESS;
 }
 
-main().catch((err) => {
-  process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runCliMain(main, {
+    onError: (err) => {
+      process.stderr.write(`${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+    },
+  });
+}

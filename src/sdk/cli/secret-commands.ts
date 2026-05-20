@@ -22,6 +22,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, isCliEntryPoint, runCliMain } from "./cli-exit.js";
 import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError, PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { SecretManagementService, type SecretAuthorizationContext } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
@@ -284,24 +285,26 @@ async function executeSecretCommand(
 /**
  * Main CLI entry point
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const envConfig = loadSecretManagementCliEnv();
   const authConfig = loadAuthTokenConfig();
 
   const result = await executeSecretCommand(envConfig.action, envConfig, authConfig);
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  return result.success ? CLI_EXIT_SUCCESS : CLI_EXIT_FAILURE;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    const errorResult: SecretCommandResult = {
-      success: false,
-      action: "unknown",
-      error: error instanceof Error ? error.message : String(error),
-      errorCode: error instanceof Error ? error.constructor.name : "UnknownError",
-    };
-    process.stdout.write(`${JSON.stringify(errorResult, null, 2)}\n`);
-    process.exit(1);
+if (isCliEntryPoint(import.meta.url)) {
+  void runCliMain(main, {
+    onError: (error) => {
+      const errorResult: SecretCommandResult = {
+        success: false,
+        action: "unknown",
+        error: error instanceof Error ? error.message : String(error),
+        errorCode: error instanceof Error ? error.constructor.name : "UnknownError",
+      };
+      process.stdout.write(`${JSON.stringify(errorResult, null, 2)}\n`);
+    },
   });
 }

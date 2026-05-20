@@ -31,7 +31,6 @@ function buildMetricsHandler(exporter: PrometheusMetricsExporter | null): RouteD
 export function createMetricsRoutes(deps: MetricsRouteDeps): RouteDefinition[] {
   const handler = buildMetricsHandler(deps.prometheusMetricsExporter);
   return [
-    { method: "GET", pathname: "/metrics", handler },
     { method: "GET", pathname: "/v1/metrics", handler },
     { method: "GET", pathname: "/prometheus", handler },
   ];

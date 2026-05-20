@@ -19,6 +19,7 @@
 
 import { pathToFileURL } from "node:url";
 import { withCliStorage } from "./authoritative-storage.js";
+import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { bootstrapGovernanceServices } from "./governance-bootstrap.js";
 
 export function installBrokenPipeHandler(): void {
@@ -43,7 +44,7 @@ export function installBrokenPipeHandler(): void {
  * outputs the results as formatted JSON, and ensures the database connection
  * is properly closed before exiting.
  */
-export function main(): void {
+export function main(): number {
   installBrokenPipeHandler();
 
   const output = withCliStorage((storage) => {
@@ -53,8 +54,9 @@ export function main(): void {
   });
 
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  return CLI_EXIT_SUCCESS;
 }
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  void runCliMain(main);
 }

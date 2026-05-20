@@ -22,6 +22,7 @@ import type { EventRecord } from "../../contracts/types/domain.js";
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { ProjectionRecord } from "./index.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { createBackgroundTaskTraceContext } from "../../shared/observability/background-task-trace.js";
 
 const projectionLogger = new StructuredLogger({ retentionLimit: 500 });
 
@@ -337,7 +338,7 @@ export class ProjectionRebuildService {
     let accumulatedState: Record<string, unknown> | null = null;
 
     while (hasMore) {
-      const events = this.fetchEvents(options, batchSize, offset);
+      const events = this.fetchEvents(projectionName, options, batchSize, offset);
 
       if (events.length === 0) {
         hasMore = false;
@@ -422,6 +423,7 @@ export class ProjectionRebuildService {
    * Fetch events from the event repository
    */
   private fetchEvents(
+    projectionName: string,
     options: ProjectionRebuildOptions,
     limit: number,
     offset: number,
@@ -430,7 +432,23 @@ export class ProjectionRebuildService {
       const events = this.eventRepository.listAllEvents(limit, offset);
       return events;
     } catch (error) {
-      projectionLogger.error(`Error fetching events: ${error}`);
+      const traceContext = createBackgroundTaskTraceContext("projection_rebuild_fetch", [
+        projectionName,
+        offset,
+        limit,
+      ]);
+      projectionLogger.log({
+        level: "error",
+        message: "projection_rebuild.fetch_events_failed",
+        traceId: traceContext.traceId,
+        correlationId: traceContext.correlationId,
+        data: {
+          projectionName,
+          offset,
+          limit,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+      });
       return [];
     }
   }

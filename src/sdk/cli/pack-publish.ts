@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackPublishOptions {
   manifest: string;
@@ -127,18 +128,18 @@ export async function publishPack(args = process.argv.slice(2)): Promise<Publish
   return result;
 }
 
-export async function main(): Promise<void> {
+export async function main(): Promise<number> {
   const opts = parseArgs();
   if (!opts.manifest) {
     process.stderr.write("Error: --manifest is required\n");
-    process.exit(1);
+    return CLI_EXIT_FAILURE;
   }
 
   const result = await publishPack(process.argv.slice(2));
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  process.exit(result.published ? 0 : 1);
+  return result.published ? CLI_EXIT_SUCCESS : CLI_EXIT_FAILURE;
 }
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  void main();
+  void runCliMain(main);
 }

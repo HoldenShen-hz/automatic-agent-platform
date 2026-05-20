@@ -2,7 +2,10 @@
 // Provides secret lifecycle management: registration, resolution, rotation, leasing, and revocation.
 // Supports audit reporting and rotation scheduling for credential management.
 
+import { pathToFileURL } from "node:url";
+
 import { withCliStorageAsync } from "./authoritative-storage.js";
+import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type {
@@ -35,7 +38,7 @@ function buildSecretAuthorizationContext(envConfig: ReturnType<typeof loadSecret
   };
 }
 
-(async () => {
+export async function main(): Promise<number> {
   const envConfig = loadSecretManagementCliEnv();
   await withCliStorageAsync(async (storage) => {
     const service = new SecretManagementService(storage.sql, storage.store);
@@ -148,4 +151,13 @@ function buildSecretAuthorizationContext(envConfig: ReturnType<typeof loadSecret
 
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   }, { dbPath: envConfig.dbPath });
-})();
+  return CLI_EXIT_SUCCESS;
+}
+
+if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    },
+  });
+}

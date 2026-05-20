@@ -11,6 +11,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { CircuitBreaker, CircuitState } from "../../platform/stability/circuit-breaker.js";
 import { getRpoRtoTrackingService } from "./rpo-rto-tracking.js";
+import { createBackgroundTaskTraceContext } from "../../platform/shared/observability/background-task-trace.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -678,6 +679,11 @@ export class RegionFailoverOrchestrator {
       reason: "health_check_failover",
       status: "committed",
     };
+    const failoverTraceContext = createBackgroundTaskTraceContext("region_failover", [
+      sourceRegionId,
+      targetRegionId,
+      record.failoverId,
+    ]);
     this.failoverRecords.push(record);
     this.failoverEvents.push({
       eventId: newId("failover_event"),
@@ -701,7 +707,18 @@ export class RegionFailoverOrchestrator {
       try {
         listener(sourceRegionId, targetRegionId);
       } catch (error) {
-        logger.error(`Failover listener error`, { error: String(error) });
+        logger.log({
+          level: "error",
+          message: "multi_region.failover_listener_failed",
+          traceId: failoverTraceContext.traceId,
+          correlationId: failoverTraceContext.correlationId,
+          data: {
+            sourceRegionId,
+            targetRegionId,
+            failoverId: record.failoverId,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+        });
       }
     }
 
@@ -714,7 +731,19 @@ export class RegionFailoverOrchestrator {
     try {
       rpoRtoService.assertSlaCompliance(regionPairId);
     } catch (slaError) {
-      logger.error(`RTO SLA breach detected for ${regionPairId}`, { error: String(slaError) });
+      logger.log({
+        level: "error",
+        message: "multi_region.rto_sla_breach_detected",
+        traceId: failoverTraceContext.traceId,
+        correlationId: failoverTraceContext.correlationId,
+        data: {
+          sourceRegionId,
+          targetRegionId,
+          failoverId: record.failoverId,
+          regionPairId,
+          errorMessage: slaError instanceof Error ? slaError.message : String(slaError),
+        },
+      });
     }
 
     return {
