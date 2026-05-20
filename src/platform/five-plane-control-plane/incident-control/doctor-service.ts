@@ -28,12 +28,6 @@ import {
   inspectStorageBackendConfig,
   type StorageBackendRuntimeProfile,
 } from "../../five-plane-state-evidence/truth/storage-backend-config.js";
-import { ExecutionResourceMonitor } from "../../five-plane-execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service-root.js";
-import { StalledExecutionDetector } from "../../five-plane-execution/recovery/stalled-execution-detector.js";
-import { StalledExecutionEscalationService } from "../../five-plane-execution/recovery/stalled-execution-escalation-service.js";
-import { StartupConsistencyChecker } from "../../five-plane-execution/startup/startup-consistency-checker.js";
-import { WorkerRegistryService } from "../../five-plane-execution/worker-pool/worker-registry-service.js";
 import {
   resolveConfigEnvironment,
   resolveConfigRoot,
@@ -46,6 +40,33 @@ import type { ObservabilityRetentionReport } from "../../shared/observability/ob
 import { ObservabilityRetentionService } from "../../shared/observability/observability-retention-service.js";
 import type { Tier1AuditIntegrityReport } from "../iam/audit-event-integrity.js";
 import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "./runtime-version-snapshot.js";
+
+interface StartupConsistencyCheckerLike {
+  run(): any;
+}
+
+interface RuntimeRecoveryServiceLike {
+  listRecoverableExecutingRuns(): any;
+  listBlockedRunsAwaitingApproval(): any;
+  listDivisionRecoveryOverview(staleBefore?: string): any;
+}
+
+interface StalledExecutionDetectorLike {
+  detect(): any;
+}
+
+interface StalledExecutionEscalationServiceLike {
+  buildPackages(): any;
+}
+
+interface ExecutionResourceMonitorLike {
+  detect(): any;
+}
+
+interface WorkerRegistryServiceLike {
+  listWorkers(): any[];
+  listStaleWorkers(now: string, heartbeatTtlMs: number): any[];
+}
 
 export type DoctorCheckId =
   | "db"
@@ -164,14 +185,14 @@ export interface DoctorReport {
   };
   health: ReturnType<HealthService["getReport"]>;
   auditIntegrity: Tier1AuditIntegrityReport | null;
-  startupConsistency: ReturnType<StartupConsistencyChecker["run"]>;
-  stalledExecutions: ReturnType<StalledExecutionDetector["detect"]>;
-  stalledEscalations: ReturnType<StalledExecutionEscalationService["buildPackages"]>;
-  resourceCeilings: ReturnType<ExecutionResourceMonitor["detect"]>;
+  startupConsistency: ReturnType<StartupConsistencyCheckerLike["run"]>;
+  stalledExecutions: ReturnType<StalledExecutionDetectorLike["detect"]>;
+  stalledEscalations: ReturnType<StalledExecutionEscalationServiceLike["buildPackages"]>;
+  resourceCeilings: ReturnType<ExecutionResourceMonitorLike["detect"]>;
   runtimeRecovery: {
-    recoverableRuns: ReturnType<RuntimeRecoveryService["listRecoverableExecutingRuns"]>;
-    blockedRunsAwaitingApproval: ReturnType<RuntimeRecoveryService["listBlockedRunsAwaitingApproval"]>;
-    divisionOverview: ReturnType<RuntimeRecoveryService["listDivisionRecoveryOverview"]>;
+    recoverableRuns: ReturnType<RuntimeRecoveryServiceLike["listRecoverableExecutingRuns"]>;
+    blockedRunsAwaitingApproval: ReturnType<RuntimeRecoveryServiceLike["listBlockedRunsAwaitingApproval"]>;
+    divisionOverview: ReturnType<RuntimeRecoveryServiceLike["listDivisionRecoveryOverview"]>;
   };
   sqliteReliability: ReturnType<SqliteReliabilityService["getReport"]> & { backup: SqliteBackupReport | null };
   protectedGovernance: ProtectedGovernanceDriftReport;
@@ -187,17 +208,17 @@ export interface DoctorReport {
 export class DoctorService {
   public constructor(
     private readonly healthService: HealthService,
-    private readonly startupChecker: StartupConsistencyChecker,
-    private readonly runtimeRecovery: RuntimeRecoveryService | null = null,
-    private readonly stalledDetector: StalledExecutionDetector | null = null,
+    private readonly startupChecker: StartupConsistencyCheckerLike,
+    private readonly runtimeRecovery: RuntimeRecoveryServiceLike | null = null,
+    private readonly stalledDetector: StalledExecutionDetectorLike | null = null,
     private readonly sqliteReliability: SqliteReliabilityService | null = null,
     private readonly backupPath: string | null = null,
     private readonly protectedGovernance: ProtectedGovernanceIntegrityService | null = null,
     private readonly storageQuota: StorageQuotaService | null = null,
-    private readonly workerRegistry: WorkerRegistryService | null = null,
+    private readonly workerRegistry: WorkerRegistryServiceLike | null = null,
     private readonly observabilityRetention: ObservabilityRetentionService | null = null,
-    private readonly stalledEscalationService: StalledExecutionEscalationService | null = null,
-    private readonly resourceMonitor: ExecutionResourceMonitor | null = null,
+    private readonly stalledEscalationService: StalledExecutionEscalationServiceLike | null = null,
+    private readonly resourceMonitor: ExecutionResourceMonitorLike | null = null,
     private readonly options: DoctorServiceOptions = {},
   ) {}
 
@@ -458,7 +479,7 @@ function buildLockSummary(
  */
 function buildDoctorChecks(input: {
   health: ReturnType<HealthService["getReport"]>;
-  startupConsistency: ReturnType<StartupConsistencyChecker["run"]>;
+  startupConsistency: ReturnType<StartupConsistencyCheckerLike["run"]>;
   sqliteReliability: ReturnType<SqliteReliabilityService["getReport"]> & { backup: SqliteBackupReport | null };
   protectedGovernance: ProtectedGovernanceDriftReport;
   storageQuota: StorageQuotaEnforcementReport | null;
@@ -476,11 +497,14 @@ function buildDoctorChecks(input: {
   storageBackend: StorageBackendRuntimeProfile;
 }): DoctorCheckReport[] {
   // Categorize findings from startup consistency check
-  const databaseFindings = input.startupConsistency.findings.filter((finding) => finding.entityType === "database");
-  const configFindings = input.startupConsistency.findings.filter((finding) => finding.entityType === "config");
-  const providerFindings = input.startupConsistency.findings.filter((finding) => finding.entityType === "provider");
-  const eventFindings = input.startupConsistency.findings.filter((finding) => finding.entityType === "event");
-  const fileLockFindings = input.startupConsistency.findings.filter((finding) => finding.entityType === "file_lock");
+  const startupFindings = Array.isArray(input.startupConsistency.findings)
+    ? input.startupConsistency.findings as Array<{ entityType?: string; message?: string }>
+    : [];
+  const databaseFindings = startupFindings.filter((finding: { entityType?: string }) => finding.entityType === "database");
+  const configFindings = startupFindings.filter((finding: { entityType?: string }) => finding.entityType === "config");
+  const providerFindings = startupFindings.filter((finding: { entityType?: string }) => finding.entityType === "provider");
+  const eventFindings = startupFindings.filter((finding: { entityType?: string }) => finding.entityType === "event");
+  const fileLockFindings = startupFindings.filter((finding: { entityType?: string }) => finding.entityType === "file_lock");
   const backupQuota = input.storageQuota?.categories.find((category) => category.categoryId === "backup") ?? null;
   const backlogHealthFindings = input.health.findings.filter(
     (finding) => finding.startsWith("queue_") || finding.startsWith("tier1_ack_backlog"),
@@ -509,7 +533,7 @@ function buildDoctorChecks(input: {
             : "ok",
     summary: `dbWritable=${input.health.dbWritable}; integrity=${input.sqliteReliability.integrityPassed}; schemaUpToDate=${input.sqliteReliability.schemaStatus.upToDate}`,
     findings: dedupeStrings([
-      ...databaseFindings.map((finding) => finding.message),
+      ...databaseFindings.map((finding: { message?: string }) => finding.message ?? "database_issue"),
       ...input.sqliteReliability.integrity.filter((result) => result !== "ok").map((result) => `integrity_check: ${result}`),
       ...input.sqliteReliability.schemaStatus.pendingVersions.map((version) => `pending_migration:${version}`),
       ...input.sqliteReliability.schemaStatus.checksumMismatches.map((item) => `checksum_mismatch:${item}`),
@@ -533,7 +557,7 @@ function buildDoctorChecks(input: {
       `startupConfigFindings=${configFindings.length}; governanceTampered=${input.protectedGovernance.tampered}; ` +
       `storageDriver=${input.storageBackend.driver}; storageIssues=${input.storageBackend.issues.length}`,
     findings: dedupeStrings([
-      ...configFindings.map((finding) => finding.message),
+      ...configFindings.map((finding: { message?: string }) => finding.message ?? "config_issue"),
       ...input.protectedGovernance.issues,
     ]),
     metrics: {
@@ -603,7 +627,7 @@ function buildDoctorChecks(input: {
         : `totalLocks=${input.lockSummary.totalLocks}; expiredLocks=${input.lockSummary.expiredLockCount}`,
     findings: dedupeStrings([
       ...(input.lockSummary.checked ? [] : ["lock_inventory_unavailable"]),
-      ...fileLockFindings.map((finding) => finding.message),
+      ...fileLockFindings.map((finding: { message?: string }) => finding.message ?? "file_lock_issue"),
     ]),
     metrics: {
       checked: input.lockSummary.checked,
@@ -675,7 +699,7 @@ function buildDoctorChecks(input: {
       + `queueBacklog=${input.eventBacklogSummary.queueBacklogSize}`,
     findings: dedupeStrings([
       ...backlogHealthFindings,
-      ...eventFindings.map((finding) => finding.message),
+      ...eventFindings.map((finding: { message?: string }) => finding.message ?? "event_issue"),
     ]),
     metrics: {
       pendingTier1Acks: input.eventBacklogSummary.pendingTier1Acks,
@@ -733,7 +757,7 @@ function buildDoctorChecks(input: {
       `providerHealth=${input.health.providerHealth}; `
       + `successRate=${input.health.providerSuccessRate}; recentCalls=${input.health.providerRecentCalls}`,
     findings: dedupeStrings([
-      ...providerFindings.map((finding) => finding.message),
+      ...providerFindings.map((finding: { message?: string }) => finding.message ?? "provider_issue"),
       ...(input.health.providerHealth === "healthy" ? [] : [`provider_health_${input.health.providerHealth}`]),
     ]),
     metrics: {

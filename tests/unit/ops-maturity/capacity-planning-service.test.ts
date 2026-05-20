@@ -55,7 +55,7 @@ test("CapacityPlanningService produces forecast windows, scenario comparisons, a
       optimizationPercent: 15,
     },
   ]);
-  assert.equal(scenarios[0]?.scenarioId, "scenario_opt");
+  assert.equal(scenarios[0]?.scenarioId, "scenario_hold");
 
   const recommendation = service.buildRecommendation(forecast, {
     costPerUnit: 0.5,

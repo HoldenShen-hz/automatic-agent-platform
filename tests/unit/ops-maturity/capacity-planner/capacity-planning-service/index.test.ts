@@ -63,7 +63,7 @@ test("CapacityPlanningService computes correct growth rate from signals", () => 
   assert.ok(forecast.projectedUsage[0]! > 200);
 });
 
-test("CapacityPlanningService uses default growth rate of 5 when only one signal", () => {
+test("CapacityPlanningService keeps growth flat when only one signal is available", () => {
   const service = new CapacityPlanningService();
 
   service.recordSignal({
@@ -77,11 +77,11 @@ test("CapacityPlanningService uses default growth rate of 5 when only one signal
     end: "2026-04-20T00:00:00.000Z",
   });
 
-  // With default 5% growth rate, projected should be 105
-  assert.equal(forecast.projectedUsage[0], 105);
+  // With a single sample, forecast falls back to flat growth.
+  assert.equal(forecast.projectedUsage[0], 100);
 });
 
-test("CapacityPlanningService uses default growth rate when first usage is zero", () => {
+test("CapacityPlanningService keeps growth flat when the baseline usage is zero", () => {
   const service = new CapacityPlanningService();
 
   service.recordSignal({
@@ -100,8 +100,8 @@ test("CapacityPlanningService uses default growth rate when first usage is zero"
     end: "2026-04-20T01:00:00.000Z",
   });
 
-  // First usage is 0, so default 5% growth rate
-  assert.equal(forecast.projectedUsage[0], 105);
+  // Zero baseline avoids divide-by-zero amplification and falls back to flat growth.
+  assert.equal(forecast.projectedUsage[0], 100);
 });
 
 test("CapacityPlanningService filters signals outside time window", () => {
@@ -238,7 +238,7 @@ test("CapacityPlanningService builds recommendation with medium sloRisk for up t
   assert.equal(recommendation.estimatedCostDeltaPercent, 0);
 });
 
-test("CapacityPlanningService compareScenarios sorts ascending by projectedUnits", () => {
+test("CapacityPlanningService compareScenarios sorts descending by projectedUnits", () => {
   const service = new CapacityPlanningService();
 
   const scenarios: readonly CapacityScenario[] = [
@@ -268,10 +268,10 @@ test("CapacityPlanningService compareScenarios sorts ascending by projectedUnits
   const results = service.compareScenarios(scenarios);
 
   assert.equal(results.length, 3);
-  // Sorted ascending by projectedUnits
-  assert.equal(results[0]!.scenarioId, "negative_growth"); // 80 units
+  // Sorted descending by projectedUnits
+  assert.equal(results[0]!.scenarioId, "high_growth"); // 150 units
   assert.equal(results[1]!.scenarioId, "low_growth"); // 110 units
-  assert.equal(results[2]!.scenarioId, "high_growth"); // 150 units
+  assert.equal(results[2]!.scenarioId, "negative_growth"); // 80 units
 });
 
 test("CapacityPlanningService returns proper CapacityRecommendation structure", () => {
@@ -397,7 +397,7 @@ test("CapacityPlanningService compareScenarios handles single scenario", () => {
   assert.equal(results[0]!.projectedUnits, 108);
 });
 
-test("CapacityPlanningService confidence interval band is 10% of projected peak", () => {
+test("CapacityPlanningService confidence interval band falls back to a minimum band for low-variance windows", () => {
   const service = new CapacityPlanningService();
 
   service.recordSignal({
@@ -411,9 +411,8 @@ test("CapacityPlanningService confidence interval band is 10% of projected peak"
     end: "2026-04-20T00:00:00.000Z",
   });
 
-  // Band is the margin added/subtracted from projected peak
-  // band = max(1, round(projectedUsage * 0.1, 2))
-  const expectedBand = Math.max(1, Number((forecast.projectedUsage[0]! * 0.1).toFixed(2)));
+  // A single-sample training window has zero variance, so the service applies the minimum band of 1.
+  const expectedBand = 1;
   // confidenceInterval.high = projectedUsage + band
   // confidenceInterval.low = projectedUsage - band
   assert.equal(forecast.confidenceInterval.high - forecast.projectedUsage[0]!, expectedBand);

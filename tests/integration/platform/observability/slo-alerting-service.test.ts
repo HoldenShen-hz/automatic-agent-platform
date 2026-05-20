@@ -243,7 +243,7 @@ test("SloAlertingService listAlertEvents returns firing alerts", () => {
       condition: "latency_p95 > 500",
       severity: "critical",
       channelKind: "log",
-      cooldownMinutes: 10,
+      cooldownMinutes: 0,
       enabled: true,
       channelConfig: "",
     });

@@ -4,12 +4,12 @@ import test from "node:test";
 import { createHarnessRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine accepts empty auditRef as a no-op audit reference", () => {
+test("RuntimeStateMachine rejects empty auditRef for audited transitions", () => {
   const machine = new RuntimeStateMachine({
     persistEvent: () => {},
   });
   const run = createHarnessRun({
-    harnessRunId: "run-audit-null",
+    harnessRunId: "run-audit-empty",
     tenantId: "tenant-1",
     confirmedTaskSpecId: "ctspec-1",
     requestEnvelopeId: "request-1",
@@ -20,7 +20,7 @@ test("RuntimeStateMachine accepts empty auditRef as a no-op audit reference", ()
     currentSeq: 0,
   });
 
-  assert.doesNotThrow(
+  assert.throws(
     () =>
       machine.transition({
         aggregateType: "HarnessRun",
@@ -28,7 +28,7 @@ test("RuntimeStateMachine accepts empty auditRef as a no-op audit reference", ()
         fromStatus: "created",
         toStatus: "admitted",
         expectedSeq: 0,
-        traceId: "trace-audit-null",
+        traceId: "trace-audit-empty",
         tenantId: "tenant-1",
         reasonCode: "admission_ok",
         emittedBy: "admission-controller",
@@ -38,5 +38,6 @@ test("RuntimeStateMachine accepts empty auditRef as a no-op audit reference", ()
         policyGuard: { allowed: true, policyProofRef: "policy-proof-1" },
         auditRef: "",
       }),
+    /Audit ref is required for audited transitions\./,
   );
 });

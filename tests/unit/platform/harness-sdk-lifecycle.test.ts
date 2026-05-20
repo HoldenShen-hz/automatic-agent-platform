@@ -312,6 +312,9 @@ test("2303: runtime state machine refuses transitions when event persistence is 
         tenantId: "tenant-1",
         reasonCode: "budget.cap",
         emittedBy: "test",
+        leaseId: "lease-1",
+        fencingToken: "fence-1",
+        auditRef: "audit://runtime/persistence-required",
       }),
     /event persistence callback/,
   );

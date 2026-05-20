@@ -53,6 +53,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     tenantId: "tenant-1",
     reasonCode: "manual.cancel",
     emittedBy: "operator",
+    auditRef: "audit://node-run/cancel",
   };
 
   assert.throws(
@@ -85,10 +86,13 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     fromStatus: "created",
     toStatus: "aborted",
     expectedSeq: 0,
+    leaseId: "lease-2",
+    fencingToken: "node-2-fence",
     traceId: "trace-2",
     tenantId: "tenant-1",
     reasonCode: "pre_execution_abort",
     emittedBy: "scheduler",
+    auditRef: "audit://node-run/aborted",
   });
   assert.equal(aborted.aggregate.status, "aborted");
 
@@ -137,6 +141,7 @@ test("1899/1903/1909: execution-state terminal NodeRun transitions require lease
     tenantId: "tenant-1",
     reasonCode: "budget.settled",
     emittedBy: "budget-allocator",
+    auditRef: "audit://budget-reservation/settled",
   });
   assert.equal(reservationResult.aggregate.version, 3);
   assert.equal(typeof reservationResult.event.eventType, "string");

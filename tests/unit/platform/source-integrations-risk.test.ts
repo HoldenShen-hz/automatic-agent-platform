@@ -68,8 +68,8 @@ test("R31-54/R31-55/R31-57/R31-60/R31-62/R32-01/R32-02/R32-03/R32-04/R32-05/R32-
 
   assert.match(evaluatorSource, /new RiskEvaluationEngine/);
   assert.match(evaluatorSource, /this\.riskEvaluationEngine\.evaluate/);
-  assert.match(outcomeEvaluatorSource, /new RiskEvaluationEngine/);
-  assert.match(outcomeEvaluatorSource, /this\.riskEvaluationEngine\.evaluate/);
+  assert.match(outcomeEvaluatorSource, /new DefaultRiskEvaluationProvider/);
+  assert.match(outcomeEvaluatorSource, /this\.riskEvaluationProvider\.evaluate/);
   assert.match(managerSource, /delegation\.error = error/);
   assert.match(managerSource, /resolveParentBudgetRemaining/);
   assert.match(managerSource, /this\.delegationTracker\.recordDelegation/);

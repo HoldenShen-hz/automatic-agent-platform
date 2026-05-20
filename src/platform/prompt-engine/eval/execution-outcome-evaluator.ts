@@ -15,9 +15,11 @@ import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import type { FeedbackBatch } from "../../contracts/types/feedback.js";
 import type { QualityGateConfig } from "./types.js";
-import { RiskEvaluationEngine } from "../../five-plane-control-plane/risk-control/risk-evaluation-engine.js";
-import { loadRiskConfig } from "../../five-plane-control-plane/risk-control/risk-config-loader.js";
-import type { RiskFactors } from "../../five-plane-control-plane/risk-control/types.js";
+import {
+  DefaultRiskEvaluationProvider,
+  type RiskEvaluationProvider,
+  type RiskFactors,
+} from "./risk-evaluation-port.js";
 
 /**
  * R5-7: EvaluationReport - the canonical output format for execution outcome evaluation.
@@ -110,7 +112,7 @@ export interface ExecutionOutcomeEvaluation {
 
 export interface ExecutionOutcomeEvaluatorOptions {
   readonly config?: QualityGateConfig;
-  readonly riskEvaluationEngine?: RiskEvaluationEngine;
+  readonly riskEvaluationProvider?: RiskEvaluationProvider;
 }
 
 export type EvaluationOutcome = EvaluationReport & ExecutionOutcomeEvaluation;
@@ -191,14 +193,12 @@ function mapVerdictToRecommendation(verdict: EvaluationReport["verdict"]): Evalu
 export class ExecutionOutcomeEvaluator {
   private readonly config: QualityGateConfig;
   private readonly riskThresholds: RiskAdjustedQualityThresholds;
-  private readonly riskEvaluationEngine: RiskEvaluationEngine;
+  private readonly riskEvaluationProvider: RiskEvaluationProvider;
 
   public constructor(options: ExecutionOutcomeEvaluatorOptions = {}) {
     this.config = options.config ?? DEFAULT_QUALITY_GATE_CONFIG;
     this.riskThresholds = DEFAULT_RISK_ADJUSTED_THRESHOLDS;
-    this.riskEvaluationEngine = options.riskEvaluationEngine ?? new RiskEvaluationEngine({
-      config: loadRiskConfig(),
-    });
+    this.riskEvaluationProvider = options.riskEvaluationProvider ?? new DefaultRiskEvaluationProvider();
   }
 
   /**
@@ -342,7 +342,7 @@ export class ExecutionOutcomeEvaluator {
   ): RiskEvaluationResult {
     const baselineRiskClass = planGraphBundle.riskProfile?.riskClass ?? "medium";
     const baselineRiskScore = this.riskClassToScore(baselineRiskClass);
-    const evaluated = this.riskEvaluationEngine.evaluate({
+    const evaluated = this.riskEvaluationProvider.evaluate({
       taskId: planGraphBundle.planGraphBundleId,
       factors: this.buildRiskFactors(planGraphBundle, feedback),
     });

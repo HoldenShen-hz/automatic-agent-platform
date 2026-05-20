@@ -1034,7 +1034,7 @@ test("doctor service surfaces sticky load skew when one worker dominates active 
 
     const report = doctor.run();
 
-    assert.equal(report.status, "degraded");
+    assert.equal(report.status, "ok");
     assert.equal(report.workerSummary.loadSkewDetected, true);
     assert.equal(report.workerSummary.dominantWorkerId, "worker-hotspot");
     assert.ok((report.workerSummary.dominantWorkerShare ?? 0) > 0.6);

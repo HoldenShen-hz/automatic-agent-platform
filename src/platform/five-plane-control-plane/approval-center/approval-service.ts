@@ -42,7 +42,6 @@ import {
   type RuntimeLifecycleRepository,
 } from "../../five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { TransitionService } from "../../five-plane-execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 import {
   type ControlPlaneDirectiveSink,
@@ -317,7 +316,6 @@ function deriveDefaultHarnessRunId(input: Pick<ApprovalRequest, "taskId" | "exec
  * are atomic, ensuring consistent state in the database.
  */
 export class ApprovalService {
-  private readonly transitions: TransitionService;
   private readonly repository: RuntimeLifecycleRepository;
   private readonly directiveSink: ControlPlaneDirectiveSink;
 
@@ -328,7 +326,6 @@ export class ApprovalService {
     directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
   ) {
     this.repository = repository;
-    this.transitions = new TransitionService(db, store, repository);
     this.directiveSink = directiveSink;
   }
 
@@ -474,17 +471,12 @@ export class ApprovalService {
           : "approved";
       const existingRequest = parseApprovalRequest(existing.requestJson);
 
-      this.transitions.transitionApprovalStatus({
-        entityKind: "approval",
-        entityId: decision.approvalId,
+      transitionApprovalStatus(this.repository, {
+        approvalId: decision.approvalId,
         fromStatus: existing.status,
         toStatus: nextStatus,
         responseJson: JSON.stringify(decision),
-        reasonCode: `approval.${nextStatus}`,
-        traceId: existing.executionId ?? existing.taskId,
-        actorType: decision.respondedBy === "system" ? "system" : "user",
-        actorId: decision.respondedBy,
-        occurredAt: decision.respondedAt,
+        respondedAt: decision.respondedAt,
       });
       this.repository.insertEvent({
         id: newId("evt"),
@@ -520,20 +512,15 @@ export class ApprovalService {
               continue;
             }
 
-            this.transitions.transitionApprovalStatus({
-              entityKind: "approval",
-              entityId: sibling.id,
+            transitionApprovalStatus(this.repository, {
+              approvalId: sibling.id,
               fromStatus: sibling.status,
               toStatus: "rejected",
               responseJson: JSON.stringify({
                 ...cascadeDecision,
                 approvalId: sibling.id,
               }),
-              reasonCode: "approval.cascade_rejected",
-              traceId: sibling.executionId ?? sibling.taskId,
-              actorType: decision.respondedBy === "system" ? "system" : "user",
-              actorId: decision.respondedBy,
-              occurredAt: decision.respondedAt,
+              respondedAt: decision.respondedAt,
             });
             this.repository.insertEvent({
               id: newId("evt"),
@@ -609,4 +596,58 @@ function toLegacyApprovalView(record: ApprovalRecord): LegacyApprovalView {
     request,
     response,
   };
+}
+
+const ALLOWED_APPROVAL_TRANSITIONS = new Map<string, ReadonlySet<string>>([
+  ["requested", new Set(["approved", "rejected", "expired", "cancelled"])],
+  ["approved", new Set()],
+  ["rejected", new Set()],
+  ["expired", new Set()],
+  ["cancelled", new Set()],
+]);
+
+function transitionApprovalStatus(
+  repository: RuntimeLifecycleRepository,
+  input: {
+    approvalId: string;
+    fromStatus: string;
+    toStatus: string;
+    responseJson: string;
+    respondedAt: string;
+  },
+): void {
+  const allowed = ALLOWED_APPROVAL_TRANSITIONS.get(input.fromStatus) ?? new Set<string>();
+  if (!allowed.has(input.toStatus)) {
+    throw new ValidationError(
+      "approval.invalid_transition",
+      `Invalid approval transition: ${input.fromStatus} -> ${input.toStatus}`,
+      {
+        details: {
+          approvalId: input.approvalId,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+        },
+      },
+    );
+  }
+  const affected = repository.updateApprovalDecisionCas({
+    approvalId: input.approvalId,
+    expectedStatus: input.fromStatus as "requested" | "approved" | "rejected" | "expired" | "cancelled",
+    status: input.toStatus as "requested" | "approved" | "rejected" | "expired" | "cancelled",
+    responseJson: input.responseJson,
+    respondedAt: input.respondedAt,
+  });
+  if (affected === 0) {
+    throw new ValidationError(
+      "approval.transition_cas_failed",
+      `Approval transition CAS failed: ${input.approvalId}:${input.fromStatus}->${input.toStatus}`,
+      {
+        details: {
+          approvalId: input.approvalId,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+        },
+      },
+    );
+  }
 }

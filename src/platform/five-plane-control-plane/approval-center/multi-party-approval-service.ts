@@ -11,7 +11,6 @@ import { validateApprovalDecision } from "./approval-service.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { createRuntimeLifecycleRepository, type RuntimeLifecycleRepository } from "../../five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { TransitionService } from "../../five-plane-execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 
 export interface MultiPartyApprovalOptions {
@@ -31,7 +30,6 @@ export interface PendingApprovalRecord {
 
 export class MultiPartyApprovalService {
   private readonly repository: RuntimeLifecycleRepository;
-  private readonly transitions: TransitionService;
   private readonly pendingApprovals = new Map<string, PendingApprovalRecord>();
 
   public constructor(
@@ -39,7 +37,6 @@ export class MultiPartyApprovalService {
     store: AuthoritativeTaskStore,
   ) {
     this.repository = createRuntimeLifecycleRepository(store);
-    this.transitions = new TransitionService(db, store, this.repository);
   }
 
   public createMultiPartyRequest(
@@ -181,18 +178,26 @@ export class MultiPartyApprovalService {
     decision: ApprovalDecision,
     finalStatus: "approved" | "rejected",
   ): void {
-    this.transitions.transitionApprovalStatus({
-      entityKind: "approval",
-      entityId: approvalId,
-      fromStatus: existing.status as "approved" | "rejected" | "requested" | "expired" | "cancelled",
-      toStatus: finalStatus,
+    const affected = this.repository.updateApprovalDecisionCas({
+      approvalId,
+      expectedStatus: existing.status as "approved" | "rejected" | "requested" | "expired" | "cancelled",
+      status: finalStatus,
       responseJson: JSON.stringify(decision),
-      reasonCode: `approval.multi_party_${finalStatus}`,
-      traceId: existing.executionId ?? existing.taskId,
-      actorType: decision.respondedBy === "system" ? "system" : "user",
-      actorId: decision.respondedBy,
-      occurredAt: decision.respondedAt,
+      respondedAt: decision.respondedAt,
     });
+    if (affected === 0) {
+      throw new ValidationError(
+        "approval.transition_cas_failed",
+        `Approval transition CAS failed: ${approvalId}:${existing.status}->${finalStatus}`,
+        {
+          details: {
+            approvalId,
+            fromStatus: existing.status,
+            toStatus: finalStatus,
+          },
+        },
+      );
+    }
 
     this.repository.insertEvent({
       id: newId("evt"),

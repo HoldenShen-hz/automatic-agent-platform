@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -77,7 +78,7 @@ test("enterprise capability CLI fail-closes on invalid component identifiers", (
 test("enterprise capability service factory routes postgres dual-run sync access through shadow sqlite", () => {
   const workspace = createTempWorkspace("aa-enterprise-security-");
   const dbPath = join(workspace, "enterprise-security-factory.db");
-  const shadowPath = join(workspace, "shadow.db");
+  const shadowPath = join(realpathSync(workspace), "shadow.db");
   const previousEnv = {
     AA_STORAGE_DRIVER: process.env.AA_STORAGE_DRIVER,
     AA_STORAGE_POSTGRES_DSN: process.env.AA_STORAGE_POSTGRES_DSN,

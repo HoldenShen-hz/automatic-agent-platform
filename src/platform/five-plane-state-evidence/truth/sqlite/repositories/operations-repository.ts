@@ -32,6 +32,29 @@ import { EvolutionRepository } from "./evolution-repository.js";
 import { TaskRepository } from "./task-repository.js";
 import { WorkflowRepository } from "./workflow-repository.js";
 
+const AUTHORITATIVE_SNAPSHOT_MAX_RETRIES = 2;
+
+interface AuthoritativeSnapshotWatermark {
+  readonly taskUpdatedAt: string | null;
+  readonly executionUpdatedAt: string | null;
+  readonly latestTaskEventAt: string | null;
+  readonly latestTaskArtifactAt: string | null;
+  readonly latestStepOutputAt: string | null;
+}
+
+function areAuthoritativeWatermarksEqual(
+  left: AuthoritativeSnapshotWatermark,
+  right: AuthoritativeSnapshotWatermark,
+): boolean {
+  return (
+    left.taskUpdatedAt === right.taskUpdatedAt
+    && left.executionUpdatedAt === right.executionUpdatedAt
+    && left.latestTaskEventAt === right.latestTaskEventAt
+    && left.latestTaskArtifactAt === right.latestTaskArtifactAt
+    && left.latestStepOutputAt === right.latestStepOutputAt
+  );
+}
+
 /**
  * Standalone repository boundary for analytics / archive / replay / data-movement
  * records plus runtime consistency and recovery read models.
@@ -685,7 +708,7 @@ export class OperationsRepository {
   }
 
   public loadTaskSnapshot(taskId: string, tenantId?: string | null): TaskSnapshot {
-    return this.db.readTransaction(() => {
+    return this.withStableAuthoritativeSnapshot(() => {
       const observedAt = nowIso();
       const scopedTenantId = resolveTenantScope(tenantId);
       const task = this.taskRepository.getTask(taskId, scopedTenantId);
@@ -784,6 +807,9 @@ export class OperationsRepository {
         consistency: "authoritative",
         observedAt,
       };
+    }, {
+      taskId,
+      executionId: null,
     });
   }
 
@@ -791,7 +817,7 @@ export class OperationsRepository {
     executionId: string,
     tenantId?: string | null,
   ): ExecutionAuthoritativeView | null {
-    return this.db.readTransaction(() => {
+    return this.withStableAuthoritativeSnapshot(() => {
       const execution = this.dispatchRepository.getExecution(executionId, tenantId);
       if (!execution) {
         return null;
@@ -805,7 +831,68 @@ export class OperationsRepository {
         consistency: "authoritative",
         observedAt: nowIso(),
       };
+    }, {
+      taskId: null,
+      executionId,
     });
+  }
+
+  private withStableAuthoritativeSnapshot<TResult>(
+    reader: () => TResult,
+    scope: { taskId: string | null; executionId: string | null },
+  ): TResult {
+    for (let attempt = 0; attempt <= AUTHORITATIVE_SNAPSHOT_MAX_RETRIES; attempt += 1) {
+      const before = this.captureAuthoritativeWatermark(scope);
+      const result = this.db.readTransaction(() => reader());
+      const after = this.captureAuthoritativeWatermark(scope);
+      if (areAuthoritativeWatermarksEqual(before, after)) {
+        return result;
+      }
+    }
+    throw new StorageError(
+      "storage.authoritative_snapshot_expired",
+      "Authoritative snapshot changed while the read model was being assembled.",
+      {
+        retryable: true,
+        details: scope,
+      },
+    );
+  }
+
+  private captureAuthoritativeWatermark(scope: {
+    taskId: string | null;
+    executionId: string | null;
+  }): AuthoritativeSnapshotWatermark {
+    const taskId = scope.taskId;
+    const executionId = scope.executionId;
+    const taskWatermark = taskId == null
+      ? null
+      : queryOne<{ updatedAt: string | null; latestEventAt: string | null; latestArtifactAt: string | null; latestStepOutputAt: string | null }>(
+        this.db.connection,
+        `SELECT
+          (SELECT updated_at FROM tasks WHERE id = ?) AS updatedAt,
+          (SELECT MAX(created_at) FROM events WHERE task_id = ?) AS latestEventAt,
+          (SELECT MAX(created_at) FROM artifacts WHERE task_id = ?) AS latestArtifactAt,
+          (SELECT MAX(produced_at) FROM workflow_step_outputs WHERE task_id = ?) AS latestStepOutputAt`,
+        taskId,
+        taskId,
+        taskId,
+        taskId,
+      ) ?? null;
+    const executionWatermark = executionId == null
+      ? null
+      : queryOne<{ updatedAt: string | null }>(
+        this.db.connection,
+        `SELECT updated_at AS updatedAt FROM executions WHERE id = ?`,
+        executionId,
+      ) ?? null;
+    return {
+      taskUpdatedAt: taskWatermark?.updatedAt ?? null,
+      executionUpdatedAt: executionWatermark?.updatedAt ?? null,
+      latestTaskEventAt: taskWatermark?.latestEventAt ?? null,
+      latestTaskArtifactAt: taskWatermark?.latestArtifactAt ?? null,
+      latestStepOutputAt: taskWatermark?.latestStepOutputAt ?? null,
+    };
   }
 
   public listRuntimeRecoveryRecords(whereClause: string, params: string[] = []): RuntimeRecoveryRecord[] {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -106,8 +107,9 @@ test("cli authoritative storage async context fail-closes postgres-backed author
 
 test("cli authoritative storage sync context uses postgres dual-run shadow sqlite for authoritative access", () => {
   const workspace = createTempWorkspace("aa-cli-storage-context-shadow-");
-  const dbPath = join(workspace, "runtime.db");
-  const shadowDbPath = join(workspace, "shadow.db");
+  const workspaceRoot = realpathSync.native(workspace);
+  const dbPath = join(workspaceRoot, "runtime.db");
+  const shadowDbPath = join(workspaceRoot, "shadow.db");
   const previousEnv = {
     AA_DB_PATH: process.env.AA_DB_PATH,
     AA_STORAGE_DRIVER: process.env.AA_STORAGE_DRIVER,

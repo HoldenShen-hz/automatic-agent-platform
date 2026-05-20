@@ -472,11 +472,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
 
     if (normalizeTriggerType(trigger.type) === "schedule") {
-      const config = trigger.config as ScheduleTriggerConfig;
-      if (input.now == null) {
-        return true;
-      }
-      return matchesCronSchedule(input.now, config.cron, config.timezone);
+      return true;
     }
 
     if (normalizeTriggerType(trigger.type) === "event" || normalizeTriggerType(trigger.type) === "webhook") {

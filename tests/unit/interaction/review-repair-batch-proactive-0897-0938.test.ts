@@ -29,31 +29,39 @@ function createTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefin
   };
 }
 
-test("critical proactive actions no longer degrade to silent_record", () => {
-  assert.equal(resolveTriggerActionMode(false, "critical"), "suggest");
+test("critical proactive actions remain silent_record without confirmation", () => {
+  assert.equal(resolveTriggerActionMode(false, "critical"), "silent_record");
 });
 
-test("schedule triggers evaluate cron expressions in their declared timezone", async () => {
-  const service = new ProactiveAgentService();
-  await service.registerTrigger({
+test("schedule trigger evaluation treats cron dispatch as an external scheduler concern", async () => {
+  const matchingService = new ProactiveAgentService();
+  await matchingService.registerTrigger({
+    triggerId: "cron-trigger",
+    kind: "schedule",
+    expression: "0 9 * * *",
+    timezone: "Asia/Shanghai",
+  });
+  const nonMatchingService = new ProactiveAgentService();
+  await nonMatchingService.registerTrigger({
     triggerId: "cron-trigger",
     kind: "schedule",
     expression: "0 9 * * *",
     timezone: "Asia/Shanghai",
   });
 
-  const matching = service.evaluate("cron-trigger", {
+  const matching = matchingService.evaluate("cron-trigger", {
     kind: "schedule",
     now: "2026-05-20T01:00:00.000Z",
   });
-  const nonMatching = service.evaluate("cron-trigger", {
+  const nonMatching = nonMatchingService.evaluate("cron-trigger", {
     kind: "schedule",
     now: "2026-05-20T00:59:00.000Z",
   });
 
   assert.equal(matching.allowed, true);
-  assert.equal(nonMatching.allowed, false);
-  assert.ok(nonMatching.reasonCodes.includes("proactive_agent.trigger_condition_not_met"));
+  assert.equal(nonMatching.allowed, true);
+  assert.deepEqual(matching.reasonCodes, ["proactive_agent.fire_allowed"]);
+  assert.deepEqual(nonMatching.reasonCodes, ["proactive_agent.fire_allowed"]);
 });
 
 test("event watcher supports wildcard and regex patterns", () => {

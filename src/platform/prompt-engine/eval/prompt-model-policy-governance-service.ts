@@ -6,19 +6,17 @@
  * Integrates with LLM evaluation service to gate releases based on quality verdicts.
  */
 
-import type {
-  AuthoritativeSqlDatabase,
-} from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 export { PROMPT_MODEL_POLICY_GOVERNANCE_DDL } from "./prompt-model-policy-governance-schema.js";
+import type { EvalSqlDatabase } from "./eval-storage-port.js";
 import type {
   CiGateOptions,
   CiGateResult,
   EvalCaseEvaluator,
-  LlmEvalService,
   QualityVerdict,
-} from "./llm-eval-service.js";
+} from "./llm-eval-types.js";
+import type { LlmEvalService } from "./llm-eval-service.js";
 
 /** Type of release being governed */
 export type GovernanceReleaseType = "prompt" | "model" | "policy";
@@ -133,7 +131,7 @@ type RawRow = Record<string, unknown>;
  */
 export class PromptModelPolicyGovernanceService {
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
+    private readonly db: EvalSqlDatabase,
     private readonly evalService: LlmEvalService,
   ) {}
 
@@ -350,7 +348,7 @@ export class PromptModelPolicyGovernanceService {
       }),
     };
 
-    this.db.transaction(() => {
+    const persistGovernanceEvent = () => {
       this.db.connection
         .prepare(`INSERT INTO governance_gate_events (id, release_id, suite_id, model_id, prompt_version, baseline_prompt_version, decision, verdict, passed, should_degrade, recommended_fallback_key, summary, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(
@@ -375,7 +373,12 @@ export class PromptModelPolicyGovernanceService {
       this.db.connection
         .prepare(`UPDATE governance_releases SET status = ?, updated_at = ? WHERE id = ?`)
         .run(nextStatus, createdAt, release.id);
-    });
+    };
+    if (this.db.transaction != null) {
+      this.db.transaction(persistGovernanceEvent);
+    } else {
+      persistGovernanceEvent();
+    }
 
     return {
       gate,

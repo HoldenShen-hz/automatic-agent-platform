@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
-import { checkSandboxPath, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, type SandboxPolicy } from "../../shared/sandbox-path-policy.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const storageConfigLogger = new StructuredLogger({ retentionLimit: 50 });

@@ -83,7 +83,7 @@ test("CapacityPlanningService.compareScenarios sorts by projected units", () => 
   assert.ok(Array.isArray(results));
   assert.ok(results.length > 0);
   assert.ok(results[0] != null);
-  assert.strictEqual(results[0].scenarioId, "s2");
+  assert.strictEqual(results[0].scenarioId, "s1");
 });
 
 test("CapacityPlanningService.buildRecommendation throws on empty training window", () => {

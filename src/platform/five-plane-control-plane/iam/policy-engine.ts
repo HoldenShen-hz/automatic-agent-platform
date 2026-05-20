@@ -31,10 +31,11 @@
  * @see docs_zh/contracts/policy_engine_contract.md
  */
 
-import type { ToolRiskLevel } from "../../five-plane-execution/tool-executor/tool-metadata.js";
 import { createHash, randomUUID } from "node:crypto";
 import { BudgetGuard, type BudgetGuardResult, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import type { UnifiedRuntimeMode } from "../../contracts/types/unified-runtime-mode.js";
+
+type ToolRiskLevel = "low" | "medium" | "high" | "critical";
 
 export type {
   PolicyAction,

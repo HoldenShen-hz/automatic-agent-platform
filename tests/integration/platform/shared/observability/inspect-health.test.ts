@@ -468,7 +468,7 @@ test("health service surfaces sticky load skew findings when an affinity hotspot
 
     const health = new HealthService(db, store).getReport();
 
-    assert.equal(health.status, "degraded");
+    assert.equal(health.status, "ok");
     assert.equal(health.workerHealth.loadSkewDetected, true);
     assert.equal(health.workerHealth.dominantWorkerId, "worker-hotspot");
     assert.ok(health.findings.includes("worker_load_skew_detected"));

@@ -13,6 +13,7 @@ import {
 function createTestProvider(overrides: Partial<SamlProviderConfig> = {}): SamlProviderConfig {
   const providerId = overrides.providerId ?? "test-idp";
   const issuer = overrides.issuer ?? "https://idp.example.com";
+  const allowUnsignedAssertions = overrides.allowUnsignedAssertions ?? true;
   return {
     providerId,
     entryPoint: "https://idp.example.com/saml/login",
@@ -21,7 +22,9 @@ function createTestProvider(overrides: Partial<SamlProviderConfig> = {}): SamlPr
     entityId: "https://app.example.com/saml/metadata",
     acsUrl: "https://app.example.com/saml/acs",
     allowedAudiences: overrides.allowedAudiences ?? [`${issuer}:${providerId}`],
-    allowUnsignedAssertions: true,
+    allowUnsignedAssertions,
+    allowIdpInitiated: overrides.allowIdpInitiated ?? true,
+    ...(allowUnsignedAssertions ? { unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions" } : {}),
     attributeMapping: { email: "mail", name: "displayName" },
     ...overrides,
   };

@@ -9,6 +9,12 @@ import {
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeTruthRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 
+function isContentionExhaustedFor(error: unknown, causeCode: string): boolean {
+  return error instanceof ValidationError
+    && error.code === "runtime_truth_repository.contention_retry_exhausted"
+    && (error.details as { causeCode?: string } | undefined)?.causeCode === causeCode;
+}
+
 // ---------------------------------------------------------------------------
 // Test fixture helpers
 // ---------------------------------------------------------------------------
@@ -61,6 +67,9 @@ function makeSideEffectTransitionCommand(
             : extra?.humanApprovalRef ?? "human-approval-ref-1"
         )
       : undefined;
+  const idempotencyKey = toStatus === "committing"
+    ? aggregate.idempotencyKey
+    : undefined;
 
   return {
     aggregateType: "SideEffectRecord" as const,
@@ -74,6 +83,7 @@ function makeSideEffectTransitionCommand(
     ...(leaseId != null ? { leaseId } : {}),
     ...(fencingToken != null ? { fencingToken } : {}),
     sideEffectSafety: {
+      ...(idempotencyKey != null ? { idempotencyKey } : {}),
       preCommitPolicyProofRef: extra?.preCommitPolicyProofRef ?? "policy-proof-ref",
       ...(humanApprovalRef != null ? { humanApprovalRef } : {}),
     },
@@ -512,7 +522,7 @@ test("SideEffectRecord commit-affecting transition auto-synthesizes leaseId and 
 
   assert.equal(result.aggregate.status, "committing");
   assert.equal(result.aggregate.leaseId, "lease://runtime-truth/seffect-fence-1");
-  assert.equal(result.aggregate.fencingToken, "fence://runtime-truth/seffect-fence-1");
+  assert.equal(result.aggregate.fencingToken, "1");
 });
 
 test("SideEffectRecord commit-affecting transition succeeds with valid leaseId and fencingToken", () => {
@@ -550,7 +560,7 @@ test("SideEffectRecord throws when leaseId does not match stored leaseId", () =>
           fencingToken: "fence-token-1",
         }),
       ),
-    WorkflowStateError,
+    (error: unknown) => isContentionExhaustedFor(error, "runtime_state_machine.side_effect_lease_mismatch"),
   );
 });
 
@@ -572,7 +582,7 @@ test("SideEffectRecord throws when fencingToken does not match stored fencingTok
           fencingToken: "wrong-fence-token",
         }),
       ),
-    WorkflowStateError,
+    (error: unknown) => isContentionExhaustedFor(error, "runtime_state_machine.side_effect_fencing_token_mismatch"),
   );
 });
 

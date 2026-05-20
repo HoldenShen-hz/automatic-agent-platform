@@ -11,8 +11,8 @@
  * @see docs_zh/contracts/prompt_model_policy_governance_contract.md
  */
 
-import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { EvalSqlDatabase } from "./eval-storage-port.js";
 import type {
   AbTestCaseEvaluation,
   AbTestConfig,
@@ -88,7 +88,7 @@ function inferProviderFamilyFromModel(modelId: string): string {
  * A/B testing, and CI gate evaluation for prompt/model releases.
  */
 export class LlmEvalService {
-  constructor(private readonly db: AuthoritativeSqlDatabase) {}
+  constructor(private readonly db: EvalSqlDatabase) {}
 
   // ── Suite Management ───────────────────────────────────────────────
 

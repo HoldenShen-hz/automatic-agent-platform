@@ -363,7 +363,7 @@ test("integration: SCIM listUsers with pagination", () => {
   assert.equal(page3.startIndex, 5, "page3 startIndex should be 5");
 });
 
-test("integration: SCIM listUsers with invalid filter returns all users", () => {
+test("integration: SCIM listUsers with invalid filter fails closed", () => {
   const service = createScimProvisionService();
 
   service.createUser({
@@ -384,10 +384,10 @@ test("integration: SCIM listUsers with invalid filter returns all users", () => 
     groups: [],
   }, "tenant-bad-filter");
 
-  // Invalid filter syntax - should return all
-  const result = service.listUsers({ filter: "invalid filter syntax" });
-
-  assert.equal(result.totalResults, 2, "should return all 2 users with invalid filter");
+  assert.throws(
+    () => service.listUsers({ filter: "invalid filter syntax" }),
+    /scim\.filter\.unsupported:invalid filter syntax/,
+  );
 });
 
 // ============================================================================

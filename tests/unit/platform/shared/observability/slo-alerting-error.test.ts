@@ -90,12 +90,24 @@ async function flushAlertDeliveryFailure(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+}
+
+async function waitForFailureCounter(channel: string, expectedValue: number): Promise<void> {
+  const deadline = Date.now() + 250;
+  while (Date.now() <= deadline) {
+    if (getCounterValue("alert_delivery_failures_total", { channel }) >= expectedValue) {
+      return;
+    }
+    await flushAlertDeliveryFailure();
+  }
+  assert.fail(`Timed out waiting for alert_delivery_failures_total(${channel}) >= ${expectedValue}`);
 }
 
 // ── PagerDuty Delivery Failure Tests ─────────────────────────────────
 
 test("[SYS-REL-2.5] PagerDuty delivery failure increments failure counter", async () => {
-  const initialCount = getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   const mockFetch = async () => {
     throw new Error("ETIMEDOUT");
@@ -107,14 +119,8 @@ test("[SYS-REL-2.5] PagerDuty delivery failure increments failure counter", asyn
   // Trigger delivery (fire-and-forget, but async handler will run)
   channel.deliver(event, { routingKey: "test-key" });
 
-  await flushAlertDeliveryFailure();
-
-  const afterCount = getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" });
-  assert.equal(
-    afterCount,
-    initialCount + 1,
-    "PagerDuty failure must increment alert_delivery_failures_total counter",
-  );
+  await waitForFailureCounter("pagerduty", 1);
+  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" }), 1);
 });
 
 test("[SYS-REL-2.5] PagerDuty delivery failure logs error via StructuredLogger", async () => {
@@ -153,7 +159,7 @@ test("[SYS-REL-2.5] PagerDuty delivery returns delivered=true despite async fail
 // ── Slack Delivery Failure Tests ────────────────────────────────────
 
 test("[SYS-REL-2.5] Slack delivery failure increments failure counter", async () => {
-  const initialCount = getCounterValue("alert_delivery_failures_total", { channel: "slack" });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   const mockFetch = async () => {
     throw new Error("ECONNREFUSED");
@@ -164,14 +170,8 @@ test("[SYS-REL-2.5] Slack delivery failure increments failure counter", async ()
 
   channel.deliver(event, { webhookUrl: "https://hooks.slack.test/services/abc" });
 
-  await flushAlertDeliveryFailure();
-
-  const afterCount = getCounterValue("alert_delivery_failures_total", { channel: "slack" });
-  assert.equal(
-    afterCount,
-    initialCount + 1,
-    "Slack failure must increment alert_delivery_failures_total counter",
-  );
+  await waitForFailureCounter("slack", 1);
+  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "slack" }), 1);
 });
 
 test("[SYS-REL-2.5] Slack delivery failure logs error", async () => {
@@ -206,7 +206,7 @@ test("[SYS-REL-2.5] Slack delivery returns delivered=true immediately", () => {
 // ── OpsGenie Delivery Failure Tests ──────────────────────────────────
 
 test("[SYS-REL-2.5] OpsGenie delivery failure increments failure counter", async () => {
-  const initialCount = getCounterValue("alert_delivery_failures_total", { channel: "opsgenie" });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   const mockFetch = async () => {
     throw new Error("ENOTFOUND");
@@ -217,14 +217,8 @@ test("[SYS-REL-2.5] OpsGenie delivery failure increments failure counter", async
 
   channel.deliver(event, { apiKey: "test-api-key" });
 
-  await flushAlertDeliveryFailure();
-
-  const afterCount = getCounterValue("alert_delivery_failures_total", { channel: "opsgenie" });
-  assert.equal(
-    afterCount,
-    initialCount + 1,
-    "OpsGenie failure must increment alert_delivery_failures_total counter",
-  );
+  await waitForFailureCounter("opsgenie", 1);
+  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "opsgenie" }), 1);
 });
 
 test("[SYS-REL-2.5] OpsGenie delivery failure logs error", async () => {
@@ -259,7 +253,7 @@ test("[SYS-REL-2.5] OpsGenie delivery returns delivered=true immediately", () =>
 // ── Webhook Delivery Failure Tests ──────────────────────────────────
 
 test("[SYS-REL-2.5] Webhook delivery failure increments failure counter", async () => {
-  const initialCount = getCounterValue("alert_delivery_failures_total", { channel: "webhook" });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   const mockFetch = async () => {
     throw new Error("ECONNRESET");
@@ -270,14 +264,8 @@ test("[SYS-REL-2.5] Webhook delivery failure increments failure counter", async 
 
   channel.deliver(event, { url: "https://webhook.example.com/test" });
 
-  await flushAlertDeliveryFailure();
-
-  const afterCount = getCounterValue("alert_delivery_failures_total", { channel: "webhook" });
-  assert.equal(
-    afterCount,
-    initialCount + 1,
-    "Webhook failure must increment alert_delivery_failures_total counter",
-  );
+  await waitForFailureCounter("webhook", 1);
+  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "webhook" }), 1);
 });
 
 test("[SYS-REL-2.5] Webhook delivery failure logs error", async () => {
@@ -371,7 +359,7 @@ test("[SYS-REL-2.5] HTTP 5xx errors are logged as delivery failures", async () =
 // ── Concurrent Delivery Failures Test ──────────────────────────────
 
 test("[SYS-REL-2.5] Multiple concurrent delivery failures all increment counter", async () => {
-  const initialCount = getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" });
+  runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
 
   const mockFetch = async () => {
     throw new Error("CONCURRENT_FAILURE");
@@ -388,12 +376,6 @@ test("[SYS-REL-2.5] Multiple concurrent delivery failures all increment counter"
     channel.deliver(event, { routingKey: "test-key" });
   });
 
-  await flushAlertDeliveryFailure();
-
-  const afterCount = getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" });
-  assert.equal(
-    afterCount,
-    initialCount + 5,
-    "All 5 concurrent failures must increment counter (actual delta: " + (afterCount - initialCount) + ")",
-  );
+  await waitForFailureCounter("pagerduty", 5);
+  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" }), 5);
 });

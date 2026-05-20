@@ -654,7 +654,7 @@ test("TimeTravelDebugService getVariableState captures type correctly", () => {
   assert.ok(objVar);
   assert.equal(objVar.type, "object");
   assert.ok(nilVar);
-  assert.equal(nilVar.type, "object");
+  assert.equal(nilVar.type, "null");
 });
 
 test("TimeTravelDebugService replayStep captures snapshot when breakpoint hit", () => {

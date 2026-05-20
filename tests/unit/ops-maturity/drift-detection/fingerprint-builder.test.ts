@@ -21,7 +21,7 @@ test.describe("BehaviorFingerprintBuilder", () => {
       averageCostUsd: 0.01,
     });
 
-    assert.equal(result.fingerprintId, "fingerprint:agent-abc");
+    assert.equal(result.fingerprintId, "fingerprint:agent:agent-abc:none:none");
   });
 
   test("build generates SHA-256 hash (64 hex characters)", () => {

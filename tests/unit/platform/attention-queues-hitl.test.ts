@@ -356,8 +356,10 @@ test("R26-38 and R26-43 metrics summary exposes canonical observability dimensio
   runtimeMetricsRegistry.reset();
   runtimeMetricsRegistry.recordOapeflirStage("Observe", "completed", 120);
   runtimeMetricsRegistry.recordOapeflirStageEntry("Plan");
-  assert.equal(runtimeMetricsRegistry.getHistograms("oapeflir_observe_duration_ms").length, 1);
-  assert.equal(runtimeMetricsRegistry.getCounters("oapeflir_plan_entry_total").length, 1);
+  assert.equal(runtimeMetricsRegistry.getHistograms("oapeflir_stage_duration_ms").length, 1);
+  assert.equal(runtimeMetricsRegistry.getHistograms("oapeflir_stage_duration_ms")[0]?.labels.stage, "Observe");
+  assert.equal(runtimeMetricsRegistry.getCounters("oapeflir_stage_entry_total").length, 1);
+  assert.equal(runtimeMetricsRegistry.getCounters("oapeflir_stage_entry_total")[0]?.labels.stage, "Plan");
 });
 
 test("R26-39 ADR-096 uses Ring terminology and no longer references phase 8b", () => {

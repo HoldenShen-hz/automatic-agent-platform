@@ -544,7 +544,7 @@ test("GoalDecompositionService constructs task graph with correct dependency str
   assert.equal(result.topologicallySortedTaskIds.length, result.tasks.length);
 });
 
-test("GoalDecompositionService detects cycles in dependency graph", async () => {
+test("GoalDecompositionService rejects cyclic dependency graphs from llm_plan generators", async () => {
   const llmPlanGenerator: LlmPlanGenerator = {
     async generate(goal) {
       return {
@@ -590,18 +590,18 @@ test("GoalDecompositionService detects cycles in dependency graph", async () => 
   };
 
   const service = new GoalDecompositionService({ llmPlanGenerator });
-  const result = await service.decompose({
-    goalId: "cycle_goal",
-    description:
-      "这是一个需要多个相互依赖步骤、跨多个执行阶段持续协作并带有复杂依赖关系的任务，用于验证 LLM 规划分支中的循环检测逻辑是否生效。",
-    owner: "user_1",
-    successCriteria: [],
-    constraints: [],
-    priority: "normal",
-  });
-
-  assert.equal(result.decompositionStrategy, "llm_plan");
-  assert.equal(result.taskGraphDraft.validationMessages.some((m) => m.includes("cycle")), true);
+  await assert.rejects(
+    () => service.decompose({
+      goalId: "cycle_goal",
+      description:
+        "这是一个需要多个相互依赖步骤、跨多个执行阶段持续协作并带有复杂依赖关系的任务，用于验证 LLM 规划分支中的循环检测逻辑是否生效。",
+      owner: "user_1",
+      successCriteria: [],
+      constraints: [],
+      priority: "normal",
+    }),
+    /goal_decomposer\.cycle_detected:cycle_goal/,
+  );
 });
 
 test("GoalDecompositionService calculates critical path in task graph", async () => {

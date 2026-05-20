@@ -81,12 +81,13 @@ test("INV-STATE-001: RuntimeStateMachine requires event emission for state trans
       tenantId: "tenant-test",
     },
     fromStatus: "created",
-    toStatus: "failed",
+    toStatus: "admitted",
     tenantId: "tenant-test",
     traceId: "trace-test",
     reasonCode: "test.transition",
     emittedBy: "INV-STATE-001-test",
-    auditRef: "audit://harness/hrn_test/failed",
+    runVersionLockId: "rvl-test",
+    auditRef: "audit://harness/hrn_test/admitted",
   });
 
   assert.ok(result.event !== undefined, "State transition must emit event");

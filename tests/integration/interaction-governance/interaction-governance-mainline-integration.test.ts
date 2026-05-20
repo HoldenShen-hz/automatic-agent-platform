@@ -81,11 +81,15 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
     );
     const groupRoleMapping = new GroupRoleMappingService();
     groupRoleMapping.register({
+      tenantId: "tenant_finance",
       groupName: "finance-approvers",
       roleIds: ["finance_manager", "budget_approver"],
     });
     assert.deepEqual(identitySnapshot.activeSubjects, ["manager_finance"]);
-    assert.deepEqual(groupRoleMapping.resolve(["finance-approvers"]), ["finance_manager", "budget_approver"]);
+    assert.deepEqual(
+      groupRoleMapping.resolve(["finance-approvers"], "tenant_finance"),
+      ["finance_manager", "budget_approver"],
+    );
 
     const ux = new UserExperienceOrchestrationService();
     const uxBootstrap = await ux.bootstrap({

@@ -59,7 +59,7 @@ test("HierarchicalPromptRegistryService.deprecateBundle does not mutate original
   const originalUpdatedAt = bundle.updatedAt;
 
   // Deprecate the bundle
-  registry.deprecateBundle("immutable-test", 1, "global");
+  registry.deprecateBundle("immutable-test", bundle.displayVersion, "global");
 
   // Issue #1955: Original bundle reference should not be mutated
   // The deprecateBundle should create a new copy, not mutate the original
@@ -257,9 +257,9 @@ test("HierarchicalPromptRegistryService.listBundles filters by level", () => {
 
 test("HierarchicalPromptRegistryService.removeBundle returns boolean", () => {
   const registry = new HierarchicalPromptRegistryService();
-  registry.registerBundle(createTestBundle("remove-test", 1), "global");
+  const bundle = registry.registerBundle(createTestBundle("remove-test", 1), "global");
 
-  const removed = registry.removeBundle("remove-test", 1, "global");
+  const removed = registry.removeBundle("remove-test", bundle.displayVersion, "global");
 
   // Should return boolean indicating success
   assert.equal(typeof removed, "boolean");

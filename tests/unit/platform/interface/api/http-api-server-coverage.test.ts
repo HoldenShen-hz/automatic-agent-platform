@@ -408,7 +408,7 @@ test("HttpApiServer inject records Prometheus metrics", async () => {
 
   try {
     const response = await server.inject({
-      url: "/metrics",
+      url: "/prometheus",
       method: "GET",
       headers: {},
     });

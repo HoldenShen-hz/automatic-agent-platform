@@ -20,6 +20,8 @@ function createProvider(overrides: Partial<SamlProviderConfig> = {}): SamlProvid
     entityId: "https://app.example.com/saml/metadata",
     acsUrl: "https://app.example.com/saml/acs",
     attributeMapping: { email: "mail" },
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
     ...overrides,
   };
 }

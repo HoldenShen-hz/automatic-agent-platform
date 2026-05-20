@@ -7,19 +7,37 @@
  * @see docs_zh/architecture/00-platform-architecture.md §17.4
  */
 
-import type { ArtifactStore, ArtifactWriteInput } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import type { QualityGateConfig, QualityEvaluationEvidence } from "./types.js";
 import type { ExecutionOutcomeEvaluation } from "./execution-outcome-evaluator.js";
 import type { PostExecutionQualityGateDecision } from "./post-execution-quality-gate.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
+export interface QualityGateArtifactWriteInput {
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly stepId: string | null;
+  readonly kind: string;
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly content: string;
+  readonly lineage: Record<string, unknown>;
+}
+
+export interface QualityGateArtifactWriter {
+  writeTextArtifact(input: QualityGateArtifactWriteInput): {
+    readonly record: {
+      readonly artifactId: string;
+    };
+  };
+}
+
 export interface QualityGateEvidenceOptions {
-  readonly artifactStore: ArtifactStore;
+  readonly artifactStore: QualityGateArtifactWriter;
   readonly config: QualityGateConfig;
 }
 
 export class QualityGateEvidenceService {
-  private readonly artifactStore: ArtifactStore;
+  private readonly artifactStore: QualityGateArtifactWriter;
   private readonly config: QualityGateConfig;
 
   public constructor(options: QualityGateEvidenceOptions) {
@@ -47,7 +65,7 @@ export class QualityGateEvidenceService {
     const verdict = this.computeVerdict(evaluation, decision);
     const evidence = this.buildEvidence(evaluation, decision, verdict, executionId);
 
-    const artifactInput: ArtifactWriteInput = {
+    const artifactInput: QualityGateArtifactWriteInput = {
       taskId: evaluation.taskId,
       executionId: executionId ?? null,
       stepId: null,

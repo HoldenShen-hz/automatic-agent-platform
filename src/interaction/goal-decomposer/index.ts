@@ -266,7 +266,12 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     // R5-19: Calculate risk early for propagation to subtasks
     const riskSummary = buildRiskSummary(goal, matchedTemplate);
     // R5-19: Pass proportional budget and risk for propagation
-    let tasks = this.buildTasks(goal, matchedTemplate, constraintEnvelope.budgetLimitUsd ?? undefined, riskSummary.overallRisk);
+    let tasks = this.buildTasks(
+      goal,
+      matchedTemplate,
+      constraintEnvelope.budgetLimitUsd ?? undefined,
+      constraintEnvelope.riskTolerance,
+    );
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
 
     // R5-28: Validate domain capabilities before returning decomposition
@@ -521,14 +526,19 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     return null;
   }
 
-  private buildTasks(goal: Goal, template: ReturnType<GoalDecompositionService["detectTemplate"]>, proportionalBudget?: number, parentRisk?: "low" | "medium" | "high" | "critical"): PlannedTask[] {
+  private buildTasks(
+    goal: Goal,
+    template: ReturnType<GoalDecompositionService["detectTemplate"]>,
+    proportionalBudget?: number,
+    parentRiskTolerance?: GoalConstraintEnvelope["riskTolerance"],
+  ): PlannedTask[] {
     // R5-19: Build initial tasks to calculate base costs for proportional allocation
     const initialTasks = this.buildTasksInternal(goal, template);
     const baseCosts = initialTasks.map((t) => t.estimatedCost.estimatedCostUsd);
     const totalBaseCost = baseCosts.reduce((sum, cost) => sum + cost, 0);
 
     // R5-19: Proportional budget allocation - distribute parent budget proportionally based on estimated costs
-    const inheritedRiskTolerance = parentRisk == null ? null : this.propagateRisk(parentRisk);
+    const inheritedRiskTolerance = parentRiskTolerance == null ? null : this.propagateRisk(parentRiskTolerance);
 
     return initialTasks.map((task, index) => {
       const domainPermissions = DEFAULT_DOMAIN_PERMISSIONS[task.domainId] ?? [];
@@ -657,10 +667,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
    * R5-19: Risk propagation - risk is propagated down the delegation chain
    * Each subtask inherits parent risk but can only be one level lower at most
    */
-  private propagateRisk(parentRisk: "low" | "medium" | "high" | "critical"): "low" | "medium" | "high" {
-    switch (parentRisk) {
-      case "critical":
-        return "high";
+  private propagateRisk(parentRiskTolerance: GoalConstraintEnvelope["riskTolerance"]): GoalConstraintEnvelope["riskTolerance"] {
+    switch (parentRiskTolerance) {
       case "high":
         return "medium";
       case "medium":

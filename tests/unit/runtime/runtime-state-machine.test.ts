@@ -289,6 +289,7 @@ test("NodeRun valid transition: created -> ready", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-soft-cap",
   });
 
   assert.equal(result.aggregate.status, "ready");
@@ -313,6 +314,7 @@ test("NodeRun valid transition: ready -> leased", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-hard-cap",
   });
 
   assert.equal(result.aggregate.status, "leased");
@@ -337,6 +339,7 @@ test("NodeRun valid transition: leased -> running", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-closed",
   });
 
   assert.equal(result.aggregate.status, "running");
@@ -552,6 +555,7 @@ test("BudgetLedger valid transition: open -> soft_cap_reached", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-soft-cap",
   });
 
   assert.equal(result.aggregate.status, "soft_cap_reached");
@@ -576,6 +580,7 @@ test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () =
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-hard-cap",
   });
 
   assert.equal(result.aggregate.status, "hard_cap_reached");
@@ -600,6 +605,7 @@ test("BudgetLedger valid transition: open -> closed", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-closed",
   });
 
   assert.equal(result.aggregate.status, "closed");
@@ -628,6 +634,7 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
     reasonCode: "test",
     emittedBy: "test-emitter",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/reservation-settled",
   });
 
   assert.equal(result.aggregate.status, "settled");
@@ -651,6 +658,7 @@ test("BudgetReservation valid transition: reserved -> released", () => {
     reasonCode: "test",
     emittedBy: "test-emitter",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/reservation-released",
   });
 
   assert.equal(result.aggregate.status, "released");
@@ -742,6 +750,7 @@ test("BudgetLedger CAS validation with correct version", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit://runtime-test/budget-cas",
   });
 
   assert.equal(result.aggregate.status, "soft_cap_reached");

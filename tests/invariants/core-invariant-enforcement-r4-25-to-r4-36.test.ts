@@ -68,6 +68,7 @@ test("R4-25 (INV-BUDGET-001): Budget reservation must precede cost operations", 
       reservationId: reservation.budgetReservationId,
       hardCapSatisfied: true,
     },
+    auditRef: "audit://budget-reservation/settle-test",
   });
 
   assert.ok(result.aggregate !== undefined, "Settlement must succeed with prior reservation");
@@ -393,6 +394,8 @@ test("R4-28 (INV-STATE-001): Every truth mutation must append platform fact even
     traceId: harnessRun.traceId,
     reasonCode: "test.state_mutation",
     emittedBy: "R4-28-test",
+    principal: "test-principal",
+    fencingToken: harnessRun.fencingToken,
     auditRef: "audit://harness/state-001/failed",
   });
 
@@ -432,6 +435,7 @@ test("R4-28 (INV-STATE-001): NodeRun transitions emit platform fact events", () 
     emittedBy: "R4-28-test",
     leaseId,
     fencingToken,
+    auditRef: "audit://node-run/ndr-state-001/ready",
   });
 
   assert.ok(result.event !== undefined, "NodeRun transition must emit event");
@@ -461,12 +465,14 @@ test("R4-28 (INV-STATE-001): BudgetLedger transitions emit budget events", () =>
     traceId: "trace-budget-state",
     reasonCode: "budget.soft_cap",
     emittedBy: "R4-28-test",
+    principal: "test-principal",
     budgetPrecondition: {
       reservationId: "res-state-001",
       hardCapSatisfied: true,
     },
     leaseId: "lease-budget-state",
     fencingToken: "fence-budget-state",
+    auditRef: "audit://budget-ledger/budget-state-001/soft-cap",
   });
 
   assert.ok(result.event !== undefined, "BudgetLedger transition must emit event");
@@ -616,6 +622,7 @@ test("R4-30 (INV-FENCING): NodeRun execution transitions require lease and fenci
     emittedBy: "R4-30-test",
     leaseId,
     fencingToken,
+    auditRef: "audit://node-run/ndr-fencing-001/leased",
   });
   assert.equal(leased.aggregate.status, "leased");
 
@@ -636,6 +643,7 @@ test("R4-30 (INV-FENCING): NodeRun execution transitions require lease and fenci
         traceId: "trace-fencing-001",
         reasonCode: "node.running",
         emittedBy: "R4-30-test",
+        auditRef: "audit://node-run/ndr-fencing-001/running",
         // Missing leaseId and fencingToken
       }),
     /lease.*fencing|lease_and_fencing/i,
@@ -658,10 +666,10 @@ test("R4-30 (INV-FENCING): HarnessRun critical transitions require fencing", () 
     constraintPackRef: "cp://default/test",
     versionLockId: "vl-fencing-002",
     budgetLedgerId: "bledger-fencing-002",
-    status: "admitted",
+    status: "ready",
   });
 
-  // Transition to planning without fencingToken - should fail
+  // Transition to running without fencingToken - should fail
   assert.throws(
     () =>
       stateMachine.transition({
@@ -670,14 +678,14 @@ test("R4-30 (INV-FENCING): HarnessRun critical transitions require fencing", () 
         entityId: harnessRun.harnessRunId,
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
-        fromStatus: "admitted",
-        toStatus: "planning",
+        fromStatus: "ready",
+        toStatus: "running",
         principal: "test-principal",
         tenantId: "tenant-fencing-002",
         traceId: "trace-fencing-002",
-        reasonCode: "harness.planning",
+        reasonCode: "harness.running",
         emittedBy: "R4-30-test",
-        auditRef: "audit://harness/fencing/planning",
+        auditRef: "audit://harness/fencing/running",
         // Missing fencingToken
       }),
     /fencing|token.*required/i,

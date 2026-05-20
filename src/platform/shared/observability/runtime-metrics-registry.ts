@@ -1,6 +1,32 @@
 const DEFAULT_HISTOGRAM_BUCKETS = [10, 50, 100, 250, 500, 1_000, 5_000];
 const METRIC_NAME_ALIASES = new Map<string, string>([
+  ["http_requests_total", "platform_http_requests_total"],
+  ["http_request_duration_ms", "platform_http_request_duration_ms"],
+  ["redis_connection_errors", "platform_redis_connection_errors"],
+  ["queue_enqueue_failures_total", "platform_queue_enqueue_failures_total"],
+  ["alert_delivery_failures_total", "platform_alert_delivery_failures_total"],
   ["oapeflir_loop_duration_ms", "oapeflir_stage_duration_ms"],
+  ["oapeflir_stage_duration_ms", "platform_oapeflir_stage_duration_ms"],
+  ["oapeflir_stage_outcome_total", "platform_oapeflir_stage_outcome_total"],
+  ["oapeflir_stage_entry_total", "platform_oapeflir_stage_entry_total"],
+  ["llm_ttfb_seconds", "platform_llm_ttfb_seconds"],
+  ["llm_total_seconds", "platform_llm_total_seconds"],
+  ["knowledge_query_duration_ms", "platform_knowledge_query_duration_ms"],
+  ["knowledge_query_total", "platform_knowledge_query_total"],
+  ["harness_run_total", "platform_harness_run_total"],
+  ["harness_run_duration_ms", "platform_harness_run_duration_ms"],
+  ["harness_steps", "platform_harness_steps"],
+  ["harness_budget_consumed_total_units", "platform_harness_budget_consumed_total_units"],
+  ["harness_budget_total_units", "platform_harness_budget_total_units"],
+  ["harness_budget_utilization_ratio", "platform_harness_budget_utilization_ratio"],
+  ["harness_execution_latency_ms", "platform_harness_execution_latency_ms"],
+  ["harness_task_started_total", "platform_harness_task_started_total"],
+  ["harness_task_completed_total", "platform_harness_task_completed_total"],
+  ["harness_plugin_invoked_total", "platform_harness_plugin_invoked_total"],
+  ["harness_policy_decision_total", "platform_harness_policy_decision_total"],
+  ["event_bus_backpressure_pending", "platform_event_bus_backpressure_pending"],
+  ["event_bus_backpressure_high_water", "platform_event_bus_backpressure_high_water"],
+  ["otel_runtime_available", "platform_otel_runtime_available"],
 ]);
 
 interface HistogramSeries {
@@ -63,7 +89,13 @@ function normalizeHttpPath(path: string): string {
 }
 
 function resolveMetricName(name: string): string {
-  return METRIC_NAME_ALIASES.get(name) ?? name;
+  let resolved = name;
+  const visited = new Set<string>();
+  while (METRIC_NAME_ALIASES.has(resolved) && !visited.has(resolved)) {
+    visited.add(resolved);
+    resolved = METRIC_NAME_ALIASES.get(resolved) ?? resolved;
+  }
+  return resolved;
 }
 
 function assertValidHistogramBuckets(buckets: readonly number[]): void {

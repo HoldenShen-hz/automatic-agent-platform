@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ValidationError } from "../../contracts/errors.js";
+import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
 import {
   type BudgetLedger,
@@ -17,8 +17,8 @@ import {
   type RuntimeStateAggregateType,
   type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
-} from "../../five-plane-execution/runtime-state-machine.js";
-import type { RuntimeStatus } from "../../five-plane-execution/runtime-state-machine-model.js";
+} from "../../shared/runtime-state-machine.js";
+import type { RuntimeStatus } from "../../shared/runtime-state-machine-model.js";
 
 /** R11-12: Snapshot version for CAS operations */
 export interface SnapshotVersion {
@@ -94,6 +94,38 @@ interface RuntimeTruthRepositoryState {
 
 interface TransactionContext {
   readonly undoOperations: Array<() => void>;
+}
+
+const MAX_CONTENTION_RETRIES = 3;
+const CONTENTION_BACKOFF_MS = [1, 5, 10] as const;
+const RETRYABLE_CONTENTION_CODES = new Set([
+  "runtime_truth_repository.lease_fencing_required",
+  "runtime_truth_repository.stale_lease_id",
+  "runtime_truth_repository.stale_fencing_token",
+  "runtime_state_machine.lease_and_fencing_required",
+  "runtime_state_machine.lease_mismatch",
+  "runtime_state_machine.fencing_token_mismatch",
+  "runtime_state_machine.harness_fencing_required",
+  "runtime_state_machine.harness_fencing_token_mismatch",
+  "runtime_state_machine.side_effect_fencing_required",
+  "runtime_state_machine.side_effect_lease_mismatch",
+  "runtime_state_machine.side_effect_fencing_token_mismatch",
+]);
+
+function sleepMs(durationMs: number): void {
+  if (durationMs <= 0) {
+    return;
+  }
+  const shared = new SharedArrayBuffer(4);
+  const buffer = new Int32Array(shared);
+  Atomics.wait(buffer, 0, 0, durationMs);
+}
+
+function isRetryableRuntimeContentionError(error: unknown): error is ValidationError | WorkflowStateError {
+  return (
+    (error instanceof ValidationError || error instanceof WorkflowStateError)
+    && RETRYABLE_CONTENTION_CODES.has(error.code)
+  );
 }
 
 export class RuntimeTruthRepository implements RuntimeRepository {
@@ -214,6 +246,40 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
+    command: RuntimeTransitionCommand<TAggregate>,
+  ): RuntimeTransitionResult<TAggregate> {
+    for (let attempt = 0; attempt <= MAX_CONTENTION_RETRIES; attempt += 1) {
+      try {
+        return this.transitionOnce(command);
+      } catch (error) {
+        if (!isRetryableRuntimeContentionError(error) || attempt >= MAX_CONTENTION_RETRIES) {
+          if (isRetryableRuntimeContentionError(error) && attempt >= MAX_CONTENTION_RETRIES) {
+            throw new ValidationError(
+              "runtime_truth_repository.contention_retry_exhausted",
+              "Runtime truth repository contention retry budget exhausted.",
+              {
+                details: {
+                  aggregateType: command.aggregateType,
+                  aggregateId: getAggregateId(command.aggregateType, command.aggregate),
+                  attempts: attempt + 1,
+                  causeCode: error.code,
+                },
+                cause: error,
+              },
+            );
+          }
+          throw error;
+        }
+        sleepMs(CONTENTION_BACKOFF_MS[attempt] ?? CONTENTION_BACKOFF_MS[CONTENTION_BACKOFF_MS.length - 1]!);
+      }
+    }
+    throw new ValidationError(
+      "runtime_truth_repository.contention_retry_exhausted",
+      "Runtime truth repository contention retry budget exhausted.",
+    );
+  }
+
+  private transitionOnce<TAggregate extends RuntimeStateAggregate>(
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
     return this.transaction(() => {

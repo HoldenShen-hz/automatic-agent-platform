@@ -11,6 +11,8 @@ function createService(): SamlService {
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   });
   return service;
 }

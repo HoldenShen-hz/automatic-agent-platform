@@ -289,16 +289,14 @@ test("ApprovalRoutingService.route applies SoD policy to filter initiator", () =
     escalationRules: [],
   });
 
-  // Requester is "director" who is also the approver - should be filtered
-  const result = service.route({
-    requesterId: "director",
-    orgNodeId: "dept_1",
-    riskLevel: "low",
-    amountUsd: 0,
-  }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
-
-  // Director is filtered out by SoD policy
-  assert.ok(!result.approverChain.includes("director"));
+  assert.throws(() => {
+    service.route({
+      requesterId: "director",
+      orgNodeId: "dept_1",
+      riskLevel: "low",
+      amountUsd: 0,
+    }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+  }, /approval_route\.empty_approver_chain:dept_1|approval_route.empty_approver_chain:dept_1/);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

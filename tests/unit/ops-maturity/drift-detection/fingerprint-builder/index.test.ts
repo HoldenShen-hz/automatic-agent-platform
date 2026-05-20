@@ -17,7 +17,7 @@ test("BehaviorFingerprintBuilder produces a stable normalized fingerprint", () =
     windowPreset: "30d",
   });
 
-  assert.equal(fingerprint.fingerprintId, "fingerprint:agent-a");
+  assert.equal(fingerprint.fingerprintId, "fingerprint:workflow:agent-a:baseline:v1:30d");
   assert.equal(fingerprint.subjectType, "workflow");
   assert.equal(fingerprint.baselineRef, "baseline:v1");
   assert.equal(fingerprint.window, "30d");

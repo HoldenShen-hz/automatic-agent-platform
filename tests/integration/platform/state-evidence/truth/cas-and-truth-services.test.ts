@@ -978,6 +978,9 @@ test("RuntimeTruthRepository: transition records events in append-only fashion",
     reasonCode: "admission_ok",
     emittedBy: "test",
     runVersionLockId: "rvlock-1",
+    leaseId: harnessRun.ownership.ownerId,
+    fencingToken: harnessRun.fencingToken,
+    auditRef: "audit://runtime-truth/hrun-transition-001/admitted",
   });
 
   assert.equal(t1.event.aggregateSeq, 1, "First event should have seq 1");
@@ -996,6 +999,9 @@ test("RuntimeTruthRepository: transition records events in append-only fashion",
     traceId: "trace-2",
     reasonCode: "start_planning",
     emittedBy: "test",
+    leaseId: t1.aggregate.leaseId,
+    fencingToken: t1.aggregate.fencingToken,
+    auditRef: "audit://runtime-truth/hrun-transition-001/planning",
   });
 
   assert.equal(t2.event.aggregateSeq, 2, "Second event should have seq 2");

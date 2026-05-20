@@ -104,7 +104,7 @@ test("CapacityPlanningService detects downward trend and produces flat trend", (
   assert.equal(flatForecast.trend, "flat");
 });
 
-test("CapacityPlanningService compares scenarios and sorts by projected units", () => {
+test("CapacityPlanningService compares scenarios and sorts by projected units descending", () => {
   const service = new CapacityPlanningService();
 
   const scenarios = service.compareScenarios([
@@ -132,9 +132,9 @@ test("CapacityPlanningService compares scenarios and sorts by projected units", 
   ]);
 
   assert.equal(scenarios.length, 3);
-  assert.equal(scenarios[0]!.scenarioId, "scenario_optimize");
+  assert.equal(scenarios[0]!.scenarioId, "scenario_scale");
   assert.equal(scenarios[1]!.scenarioId, "scenario_hold");
-  assert.equal(scenarios[2]!.scenarioId, "scenario_scale");
+  assert.equal(scenarios[2]!.scenarioId, "scenario_optimize");
 });
 
 test("CapacityPlanningService builds recommendation with scale_up action for high SLO risk", () => {

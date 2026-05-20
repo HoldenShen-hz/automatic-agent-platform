@@ -32,13 +32,13 @@ test("isPromptRolloutStage returns false for invalid stages", () => {
 test("comparePromptRolloutStage returns negative when left comes before right", () => {
   assert.ok(comparePromptRolloutStage("canary_5", "canary_20") < 0);
   assert.ok(comparePromptRolloutStage("canary_20", "stable") < 0);
-  assert.ok(comparePromptRolloutStage("stable", "rolled_back") < 0);
+  assert.ok(comparePromptRolloutStage("rolled_back", "canary_5") < 0);
 });
 
 test("comparePromptRolloutStage returns positive when left comes after right", () => {
   assert.ok(comparePromptRolloutStage("canary_20", "canary_5") > 0);
   assert.ok(comparePromptRolloutStage("stable", "canary_20") > 0);
-  assert.ok(comparePromptRolloutStage("rolled_back", "stable") > 0);
+  assert.ok(comparePromptRolloutStage("stable", "rolled_back") > 0);
 });
 
 test("comparePromptRolloutStage returns zero for same stage", () => {

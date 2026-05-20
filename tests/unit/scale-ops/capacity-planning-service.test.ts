@@ -76,8 +76,8 @@ test("CapacityPlanningService compareScenarios sorts by projected units", async 
   const results = service.compareScenarios(scenarios);
 
   assert.equal(results.length, 3);
-  assert.ok(results[0].projectedUnits <= results[1].projectedUnits);
-  assert.ok(results[1].projectedUnits <= results[2].projectedUnits);
+  assert.ok(results[0].projectedUnits >= results[1].projectedUnits);
+  assert.ok(results[1].projectedUnits >= results[2].projectedUnits);
 });
 
 test("CapacityPlanningService buildRecommendation returns recommendation", async () => {

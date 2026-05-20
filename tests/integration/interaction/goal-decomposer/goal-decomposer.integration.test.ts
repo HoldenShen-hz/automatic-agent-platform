@@ -378,18 +378,15 @@ test("integration: Goal decomposition handles cycle detection", async () => {
     priority: "normal",
   };
 
-  const result = await service.decompose(goal);
-
-  // Should detect cycle
-  assert.ok(result.taskGraphDraft.validationMessages.some(msg => msg.includes("cycle")));
-  // Graph should be marked as not normalized
-  assert.equal(result.taskGraphDraft.normalized, false);
-  // Should require human review
-  assert.equal(result.requiresHumanReview, true);
+  await assert.rejects(
+    () => service.decompose(goal),
+    /goal_decomposer\.cycle_detected:goal_cycle_test/,
+  );
 });
 
 test("integration: Validator detects cycle from decomposition result", async () => {
-  const service = new GoalDecompositionService({ llmPlanGenerator: createCyclicGenerator() });
+  const service = new GoalDecompositionService();
+  const cyclicGenerator = createCyclicGenerator();
 
   const goal: Goal = {
     goalId: "goal_validator_cycle",
@@ -400,8 +397,14 @@ test("integration: Validator detects cycle from decomposition result", async () 
     priority: "normal",
   };
 
-  const result = await service.decompose(goal);
-  const findings = validateGoalDecomposition(result);
+  const baseline = await service.decompose(createTestGoal({ goalId: "goal_validator_baseline" }));
+  const cyclicPlan = await cyclicGenerator.generate(goal);
+  const findings = validateGoalDecomposition({
+    ...baseline,
+    goalId: goal.goalId,
+    tasks: cyclicPlan.tasks,
+    dependencyGraph: cyclicPlan.dependencyGraph,
+  });
 
   // Validator should catch the cycle
   assert.ok(findings.some(f => f.includes("cycle")));
@@ -759,9 +762,8 @@ test("integration: Goal decomposition with self-dependency creates cycle", async
     priority: "normal",
   };
 
-  const result = await service.decompose(goal);
-
-  // Self-cycle should be detected
-  assert.ok(result.taskGraphDraft.validationMessages.some(msg => msg.includes("cycle")));
-  assert.equal(result.taskGraphDraft.normalized, false);
+  await assert.rejects(
+    () => service.decompose(goal),
+    /goal_decomposer\.cycle_detected:goal_self_cycle/,
+  );
 });

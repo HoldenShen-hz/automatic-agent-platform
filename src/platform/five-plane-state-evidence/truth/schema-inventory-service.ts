@@ -1,4 +1,4 @@
-import { ENTERPRISE_GOVERNANCE_DDL } from "../../five-plane-control-plane/incident-control/enterprise-governance-schema.js";
+import { ENTERPRISE_GOVERNANCE_DDL } from "../../shared/enterprise-governance-ddl.js";
 import { OUTBOX_SCHEMA_SQL } from "./sql/outbox-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "./sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "./sql/authoritative-schema.js";

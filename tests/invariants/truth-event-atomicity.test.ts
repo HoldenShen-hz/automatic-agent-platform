@@ -15,8 +15,11 @@ import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/run
 test("INV-STATE-001: State transitions require platform fact event append", () => {
   const stateMachine = new RuntimeStateMachine();
 
-  // Attempt a HarnessRun status transition without event context
   const result = stateMachine.transition({
+    commandId: "cmd-state-001",
+    entityType: "HarnessRun",
+    entityId: "run-state-001",
+    principal: "test-principal",
     aggregateType: "HarnessRun",
     aggregate: {
       harnessRunId: "run-state-001",
@@ -30,11 +33,12 @@ test("INV-STATE-001: State transitions require platform fact event append", () =
     reasonCode: "test.transition",
     emittedBy: "INV-STATE-001-test",
     runVersionLockId: "rvl-state-001",
+    auditRef: "audit://harness/run-state-001/admitted",
   });
 
   // Transition must produce event
   assert.ok(result.aggregate !== undefined);
-  assert.ok(result.emitted === true || result.emitted !== false);
+  assert.ok(result.event !== undefined);
 });
 
 test("INV-STATE-001: Reject truth mutation without event append", () => {
@@ -45,6 +49,10 @@ test("INV-STATE-001: Reject truth mutation without event append", () => {
   assert.throws(
     () => {
       stateMachine.transition({
+        commandId: "cmd-state-002",
+        entityType: "HarnessRun",
+        entityId: "run-state-002",
+        principal: "test-principal",
         aggregateType: "HarnessRun",
         aggregate: {
           harnessRunId: "run-state-002",
@@ -58,10 +66,11 @@ test("INV-STATE-001: Reject truth mutation without event append", () => {
         reasonCode: "test.mutation_without_event",
         emittedBy: "INV-STATE-001-test",
         runVersionLockId: "rvl-state-002",
+        auditRef: "audit://harness/run-state-002/admitted",
         // Intentionally not providing event append capability
       });
     },
-    /persistence callback/,
+    /event persistence callback|persistence callback/i,
     "Truth mutation without event append must be rejected",
   );
 });
@@ -70,6 +79,10 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
   const stateMachine = new RuntimeStateMachine();
 
   const result = stateMachine.transition({
+    commandId: "cmd-state-003",
+    entityType: "NodeRun",
+    entityId: "node-state-001",
+    principal: "test-principal",
     aggregateType: "NodeRun",
     aggregate: {
       nodeRunId: "node-state-001",
@@ -87,6 +100,7 @@ test("INV-STATE-001: NodeRun transitions require platform fact events", () => {
     emittedBy: "INV-STATE-001-test",
     leaseId: "lease-node-state",
     fencingToken: "fence-node-state",
+    auditRef: "audit://node-run/node-state-001/ready",
   });
 
   // NodeRun transitions must emit events
@@ -97,6 +111,10 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
   const stateMachine = new RuntimeStateMachine();
 
   const result = stateMachine.transition({
+    commandId: "cmd-state-004",
+    entityType: "SideEffectRecord",
+    entityId: "se-state-001",
+    principal: "test-principal",
     aggregateType: "SideEffectRecord",
     aggregate: {
       sideEffectId: "se-state-001",
@@ -104,6 +122,7 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
       nodeRunId: "node-state-002",
       status: "proposed",
       tenantId: "tenant-state",
+      riskClass: "low",
     },
     fromStatus: "proposed",
     toStatus: "approved",
@@ -113,7 +132,7 @@ test("INV-STATE-001: SideEffectRecord transitions emit audit events", () => {
     emittedBy: "INV-STATE-001-test",
     sideEffectSafety: {
       idempotencyKey: "se-key-001",
-      preCommitPolicyProofRef: { uri: "policy://test" },
+      preCommitPolicyProofRef: "policy://test",
     },
     auditRef: "audit://side-effects/se-state-001/commit",
     leaseId: "lease-se-state",
@@ -128,15 +147,22 @@ test("INV-STATE-001: BudgetLedger transitions emit budget events", () => {
   const stateMachine = new RuntimeStateMachine();
 
   const result = stateMachine.transition({
+    commandId: "cmd-state-005",
+    entityType: "BudgetLedger",
+    entityId: "ledger-state-001",
+    principal: "test-principal",
     aggregateType: "BudgetLedger",
     aggregate: {
-      ledgerId: "ledger-state-001",
+      budgetLedgerId: "ledger-state-001",
       tenantId: "tenant-state",
       harnessRunId: "run-state-005",
+      currency: "USD",
+      hardCap: 100,
       status: "open",
       reservedAmount: 50,
       settledAmount: 0,
       releasedAmount: 0,
+      version: 0,
     },
     fromStatus: "open",
     toStatus: "soft_cap_reached",
@@ -144,12 +170,9 @@ test("INV-STATE-001: BudgetLedger transitions emit budget events", () => {
     traceId: "trace-state-005",
     reasonCode: "budget.reserve",
     emittedBy: "INV-STATE-001-test",
-    budgetChange: {
-      amount: 50,
-      resourceKind: "llm",
-    },
     leaseId: "lease-ledger-state",
     fencingToken: "fence-ledger-state",
+    auditRef: "audit://budget-ledger/ledger-state-001/soft-cap-reached",
   });
 
   // Budget transitions must emit financial events

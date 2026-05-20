@@ -199,6 +199,8 @@ test("SamlService.consumeAssertion detects replay attacks", () => {
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   });
 
   const validAssertion = {
@@ -224,6 +226,8 @@ test("SamlService.consumeAssertion creates valid session", () => {
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   });
 
   const session = service.consumeAssertion("okta", {
@@ -249,6 +253,8 @@ test("SamlService.consumeAssertion allows unsigned assertions when configured", 
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   });
 
   const session = service.consumeAssertion("okta", {

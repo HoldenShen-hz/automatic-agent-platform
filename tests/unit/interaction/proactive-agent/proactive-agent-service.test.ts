@@ -218,7 +218,7 @@ test("ProactiveAgentService.acknowledgeSuggestion removes suggestion", () => {
   assert.equal(service.listSuggestions().length, 0);
 });
 
-test("ProactiveAgentService.evaluate returns suggest for critical risk triggers", () => {
+test("ProactiveAgentService.evaluate returns silent_record for critical risk triggers", () => {
   const service = new ProactiveAgentService();
   const trigger: TriggerDefinition = {
     ...makeTriggerDefinition("trigger-critical", "schedule"),
@@ -230,7 +230,7 @@ test("ProactiveAgentService.evaluate returns suggest for critical risk triggers"
   const decision = service.evaluate("trigger-critical", { kind: "schedule" });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.actionMode, "suggest");
+  assert.equal(decision.actionMode, "silent_record");
 });
 
 test("ProactiveAgentService.evaluate returns suggest when requireConfirmation is true", () => {

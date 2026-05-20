@@ -139,9 +139,9 @@ test("R28-17 nextPromptRolloutStage returns null for terminal stages", () => {
 test("R28-18 hierarchical registry honors requested version when mutating bundles", () => {
   const registry = new HierarchicalPromptRegistryService();
 
-  registry.registerBundle(createPromptRegistrationInput(1), "global");
+  const bundle1 = registry.registerBundle(createPromptRegistrationInput(1), "global");
   registry.registerBundle(createPromptRegistrationInput(2), "global");
-  registry.deprecateBundle("triage-assistant", "1", "global");
+  registry.deprecateBundle("triage-assistant", bundle1.displayVersion, "global");
 
   const versions = registry.listBundleVersions("triage-assistant");
   const version1 = versions.find((entry) => entry.version === 1);

@@ -43,6 +43,9 @@ function makeHarnessRunTransitionCommand(
     traceId: "test-trace",
     reasonCode: "test",
     emittedBy: "test-suite",
+    leaseId: aggregate.ownership.ownerId,
+    fencingToken: aggregate.fencingToken,
+    auditRef: `audit://runtime-truth/${aggregate.harnessRunId}/${toStatus}`,
     ...(toStatus === "admitted" ? { runVersionLockId: "rvlock-1" } : {}),
   };
 }
@@ -470,6 +473,8 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
     constraintPackRef: "cp-1",
     versionLockId: "rvlock-1",
     budgetLedgerId: "bledger-1",
+    leaseId: "tenant-1",
+    ownership: { ownerId: "tenant-1", ownerType: "tenant" },
   });
   repository.seed("HarnessRun", harnessRun);
 
@@ -493,6 +498,9 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
     traceId: "trace-2",
     reasonCode: "start_planning",
     emittedBy: "test",
+    leaseId: t1.aggregate.leaseId,
+    fencingToken: t1.aggregate.fencingToken,
+    auditRef: "audit://runtime-truth/hrun-seq-1/planning",
   });
   assert.equal(t2.event.aggregateSeq, 2);
 
@@ -510,6 +518,9 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
     traceId: "trace-3",
     reasonCode: "plan_complete",
     emittedBy: "test",
+    leaseId: t2.aggregate.leaseId,
+    fencingToken: t2.aggregate.fencingToken,
+    auditRef: "audit://runtime-truth/hrun-seq-1/ready",
   });
   assert.equal(t3.event.aggregateSeq, 3);
 

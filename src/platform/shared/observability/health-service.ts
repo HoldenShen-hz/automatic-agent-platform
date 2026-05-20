@@ -86,6 +86,10 @@ export interface HealthServiceOptions {
   weakSignalEscalationWindow?: number;
   /** Consecutive clean reports required before clearing a degraded status */
   recoveryWindowReports?: number;
+  /** Max age for reusing cached sync health reports before attempting live collection */
+  syncSnapshotMaxAgeMs?: number;
+  /** Allow synchronous runtime sampling in getReport(); when false, getReport falls back to cached/degraded data */
+  allowSynchronousSampling?: boolean;
 }
 
 export interface QueueGovernanceHealthSummary {
@@ -165,6 +169,8 @@ export class HealthService {
   private previousWeakSignalDetected = false;
   private previousStatus: HealthStatusReport["status"] = "ok";
   private cleanRecoveryStreak = 0;
+  private cachedReport: HealthStatusReport | null = null;
+  private cachedReportAtMs: number | null = null;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -188,6 +194,8 @@ export class HealthService {
       degradedScoreThreshold: options.degradedScoreThreshold ?? 2,
       weakSignalEscalationWindow: options.weakSignalEscalationWindow ?? 2,
       recoveryWindowReports: options.recoveryWindowReports ?? 2,
+      syncSnapshotMaxAgeMs: options.syncSnapshotMaxAgeMs ?? 5_000,
+      allowSynchronousSampling: options.allowSynchronousSampling ?? true,
     };
   }
 
@@ -199,7 +207,15 @@ export class HealthService {
    */
   public getReport(): HealthStatusReport {
     const nowMs = this.options.nowMsSupplier();
-    return this.buildReport(nowMs, this.checkDbWritableSync());
+    if (!this.options.allowSynchronousSampling || this.db.backendType === "postgres") {
+      if (this.isCachedReportFresh(nowMs)) {
+        return this.cachedReport!;
+      }
+      return this.buildCachedFallbackReport(nowMs, this.checkDbWritableSync());
+    }
+    const report = this.buildReport(nowMs, this.checkDbWritableSync());
+    this.cacheReport(nowMs, report);
+    return report;
   }
 
   /**
@@ -211,7 +227,127 @@ export class HealthService {
 
   public async getReportAsync(): Promise<HealthStatusReport> {
     const nowMs = this.options.nowMsSupplier();
-    return this.buildReport(nowMs, await this.checkDbWritableAsync());
+    const report = this.buildReport(nowMs, await this.checkDbWritableAsync());
+    this.cacheReport(nowMs, report);
+    return report;
+  }
+
+  private isCachedReportFresh(nowMs: number): boolean {
+    return this.cachedReport != null
+      && this.cachedReportAtMs != null
+      && (nowMs - this.cachedReportAtMs) <= this.options.syncSnapshotMaxAgeMs;
+  }
+
+  private cacheReport(nowMs: number, report: HealthStatusReport): void {
+    this.cachedReport = report;
+    this.cachedReportAtMs = nowMs;
+  }
+
+  private buildCachedFallbackReport(nowMs: number, dbWritable: boolean): HealthStatusReport {
+    if (this.cachedReport != null) {
+      const findings = new Set(this.cachedReport.findings);
+      findings.add("health_signal_collection_degraded");
+      const status =
+        !dbWritable
+          ? "unhealthy"
+          : this.cachedReport.status === "ok"
+            ? "degraded"
+            : this.cachedReport.status;
+      const degradationMode =
+        !dbWritable
+          ? "read_only_operations_only"
+          : this.cachedReport.degradationMode === "none"
+            ? "queue_only"
+            : this.cachedReport.degradationMode;
+      return {
+        ...this.cachedReport,
+        status,
+        dbWritable,
+        findings: [...findings],
+        degradationMode,
+        backpressure: {
+          ...this.cachedReport.backpressure,
+          status,
+          degradationMode,
+        },
+        uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+      };
+    }
+
+    const providerSummary =
+      this.options.providerTracker?.getSummary(this.options.providerWindowMs) ?? {
+        status: "healthy" as const,
+        successRate: 1,
+        totalCalls: 0,
+      };
+    const memoryRssMb = Math.round((process.memoryUsage().rss / 1024 / 1024) * 100) / 100;
+    const eventLoopLagMs = Math.round(this.options.eventLoopLagSampler() * 100) / 100;
+    const status: HealthStatusReport["status"] = dbWritable ? "degraded" : "unhealthy";
+    const degradationMode: HealthStatusReport["degradationMode"] = dbWritable
+      ? "queue_only"
+      : "read_only_operations_only";
+    return {
+      status,
+      uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+      dbWritable,
+      providerHealth: providerSummary.status,
+      providerSuccessRate: providerSummary.successRate,
+      providerRecentCalls: providerSummary.totalCalls,
+      activeExecutions: 0,
+      queuedTasks: 0,
+      eventLoopLagMs,
+      memoryRssMb,
+      tier1AckBacklog: 0,
+      degradationMode,
+      queueGovernance: {
+        backlogSize: 0,
+        dispatchableBacklogSize: 0,
+        claimedBacklogSize: 0,
+        oldestWaitSeconds: null,
+        oldestClaimAgeSeconds: null,
+        queueNames: [],
+        starvationDetected: false,
+      },
+      workerHealth: {
+        totalWorkers: 0,
+        healthyWorkers: 0,
+        busyWorkers: 0,
+        drainingWorkers: 0,
+        degradedWorkers: 0,
+        quarantinedWorkers: 0,
+        offlineWorkers: 0,
+        remoteWorkers: 0,
+        remoteConnectedWorkers: 0,
+        remoteReconnectingWorkers: 0,
+        remoteDegradedSessions: 0,
+        remoteFailedSessions: 0,
+        remoteViewerOnlyWorkers: 0,
+        remoteConsistencyMismatchWorkers: 0,
+        remoteWorkspaceSyncConflictWorkers: 0,
+        remoteOffsetMissingWorkers: 0,
+        staleWorkers: 0,
+        staleBusyWorkers: 0,
+        loadSkewDetected: false,
+        dominantWorkerId: null,
+        dominantWorkerShare: null,
+        skewedWorkerIds: [],
+      },
+      backpressure: {
+        status,
+        degradationMode,
+        tier1AckBacklog: 0,
+        queueGovernance: {
+          backlogSize: 0,
+          dispatchableBacklogSize: 0,
+          claimedBacklogSize: 0,
+          oldestWaitSeconds: null,
+          oldestClaimAgeSeconds: null,
+          queueNames: [],
+          starvationDetected: false,
+        },
+      },
+      findings: ["health_signal_collection_degraded"],
+    };
   }
 
   private buildQueueGovernanceSummary(nowMs: number): QueueGovernanceHealthSummary {

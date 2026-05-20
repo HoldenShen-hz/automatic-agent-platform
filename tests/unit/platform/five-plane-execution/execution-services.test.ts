@@ -170,6 +170,7 @@ test("RuntimeStateMachine transitions NodeRun correctly", () => {
     emittedBy: "test",
     leaseId: "lease_1",
     fencingToken: "fence_1",
+    auditRef: "audit://test/node-ready",
   });
 
   assert.equal(result.aggregate.status, "ready");
@@ -205,6 +206,7 @@ test("RuntimeStateMachine rejects NodeRun without lease for execution transition
         traceId: newId("trace"),
         reasonCode: "test",
         emittedBy: "test",
+        auditRef: "audit://test/node-running",
         // Intentionally not providing leaseId and fencingToken
       }),
     (error: any) => error.message.includes("lease"),
@@ -239,6 +241,7 @@ test("RuntimeStateMachine transitions BudgetLedger correctly", () => {
     emittedBy: "test",
     leaseId: "lease_1",
     fencingToken: "fence_1",
+    auditRef: "audit://test/budget-ledger",
   });
 
   assert.equal(result.aggregate.status, "soft_cap_reached");
@@ -272,6 +275,7 @@ test("RuntimeStateMachine transitions BudgetReservation correctly", () => {
     reasonCode: "budget.settled",
     emittedBy: "test",
     budgetPrecondition: { reservationId: aggregate.budgetReservationId, hardCapSatisfied: true },
+    auditRef: "audit://test/budget-reservation",
   });
 
   assert.equal(result.aggregate.status, "settled");
@@ -404,6 +408,7 @@ test("BudgetAllocator reserves budget successfully", () => {
     emittedBy: "test",
     leaseId: "lease_1",
     fencingToken: "fence_1",
+    auditRef: "audit://test/ledger-transition",
   });
 
   // Now use this ledger for reserve - soft_cap_reached with small amount should stay at soft_cap_reached (noop)

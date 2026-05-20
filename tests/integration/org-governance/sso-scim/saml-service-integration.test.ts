@@ -74,14 +74,16 @@ test("SSO-SCIM SAML: SamlService consumes valid assertion and creates session", 
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:valid-fingerprint",
       allowUnsignedAssertions: true,
+      unsafeAllowUnsignedAssertionsReason: "integration-test unsigned assertion fixture",
     };
 
     samlService.registerProvider(config);
+    const loginRequest = samlService.buildLoginRequest("saml-assertion-provider");
 
     const assertion: SamlAssertionInput = {
       assertionId: "assertion-valid-integration",
       issuer: "https://idp.example.com",
-      audience: buildSamlAudience(config),
+      audience: loginRequest.audience,
       nameId: "user@example.com",
       fingerprint: "sha256:valid-fingerprint",
       attributes: {
@@ -89,6 +91,7 @@ test("SSO-SCIM SAML: SamlService consumes valid assertion and creates session", 
         displayName: "Test User",
         department: "Engineering",
       },
+      inResponseTo: loginRequest.requestId,
       notBefore: "2026-04-01T00:00:00.000Z",
       notOnOrAfter: "2026-04-30T23:59:59.000Z",
     };
@@ -129,6 +132,7 @@ test("SSO-SCIM SAML: SamlService rejects assertion with wrong issuer", () => {
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp123",
       allowUnsignedAssertions: true,
+      unsafeAllowUnsignedAssertionsReason: "integration-test unsigned assertion fixture",
     };
 
     samlService.registerProvider(config);
@@ -174,6 +178,7 @@ test("SSO-SCIM SAML: SamlService rejects assertion with wrong fingerprint", () =
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:correct-fingerprint",
       allowUnsignedAssertions: true,
+      unsafeAllowUnsignedAssertionsReason: "integration-test unsigned assertion fixture",
     };
 
     samlService.registerProvider(config);
@@ -219,6 +224,7 @@ test("SSO-SCIM SAML: SamlService rejects expired assertion", () => {
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp-expired",
       allowUnsignedAssertions: true,
+      unsafeAllowUnsignedAssertionsReason: "integration-test unsigned assertion fixture",
     };
 
     samlService.registerProvider(config);
@@ -265,6 +271,7 @@ test("SSO-SCIM SAML: SamlService rejects assertion not yet valid (clock skew)", 
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp-clock",
       allowUnsignedAssertions: true,
+      unsafeAllowUnsignedAssertionsReason: "integration-test unsigned assertion fixture",
     };
 
     samlService.registerProvider(config);

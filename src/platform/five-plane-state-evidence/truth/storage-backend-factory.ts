@@ -1,9 +1,9 @@
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 
-import { resolveConfigEnvironment } from "../../five-plane-control-plane/config-center/runtime-env.js";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
-import { createWorkspaceWritePolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { resolveConfigEnvironment } from "../../shared/runtime-env.js";
+import { createWorkspaceWritePolicy, type SandboxPolicy } from "../../shared/sandbox-path-policy.js";
 import {
   inspectStorageBackendConfig,
   type StorageBackendRuntimeProfile,

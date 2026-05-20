@@ -91,7 +91,7 @@ test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecat
     "global"
   );
 
-  registry.deprecateBundle("deprecated-test-bundle", bundle.version, "global");
+  registry.deprecateBundle("deprecated-test-bundle", bundle.displayVersion, "global");
 
   const retrieved = registry.getBundle("deprecated-test-bundle", "classification");
   assert.equal(retrieved, null, "Deprecated bundle should not be retrievable");
@@ -268,7 +268,7 @@ test("HierarchicalPromptRegistryService removeBundle completely removes deprecat
     "global"
   );
 
-  const removed = registry.removeBundle("remove-bundle-test", bundle.version, "global");
+  const removed = registry.removeBundle("remove-bundle-test", bundle.displayVersion, "global");
 
   assert.equal(removed, true, "Bundle should be removed");
 

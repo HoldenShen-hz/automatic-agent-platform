@@ -84,6 +84,7 @@ test("putExplanationCacheEntry adds entry to cache", () => {
   const entry: ExplanationCacheEntry = {
     cacheKey: "key-1",
     summary: "Test summary",
+    ttlHours: 1,
   };
 
   const result = putExplanationCacheEntry(cache, entry);
@@ -94,11 +95,12 @@ test("putExplanationCacheEntry adds entry to cache", () => {
 
 test("putExplanationCacheEntry preserves existing entries", () => {
   const cache: Record<string, ExplanationCacheEntry> = {
-    existing: { cacheKey: "existing", summary: "Existing summary" },
+    existing: { cacheKey: "existing", summary: "Existing summary", ttlHours: 1 },
   };
   const entry: ExplanationCacheEntry = {
     cacheKey: "new-key",
     summary: "New summary",
+    ttlHours: 1,
   };
 
   const result = putExplanationCacheEntry(cache, entry);
@@ -112,6 +114,7 @@ test("putExplanationCacheEntry handles empty cache", () => {
   const entry: ExplanationCacheEntry = {
     cacheKey: "key-1",
     summary: "First entry",
+    ttlHours: 1,
   };
 
   const result = putExplanationCacheEntry(cache, entry);
@@ -124,6 +127,7 @@ test("putExplanationCacheEntry uses spread operator for immutability", () => {
   const entry: ExplanationCacheEntry = {
     cacheKey: "key-1",
     summary: "Test",
+    ttlHours: 1,
   };
 
   const result = putExplanationCacheEntry(cache, entry);
@@ -172,11 +176,12 @@ test("aggregateCostAttribution handles mixed subjectIds", () => {
 
 test("putExplanationCacheEntry allows overwriting existing key", () => {
   const cache: Record<string, ExplanationCacheEntry> = {
-    "duplicate-key": { cacheKey: "duplicate-key", summary: "Old summary" },
+    "duplicate-key": { cacheKey: "duplicate-key", summary: "Old summary", ttlHours: 1 },
   };
   const entry: ExplanationCacheEntry = {
     cacheKey: "duplicate-key",
     summary: "New summary",
+    ttlHours: 1,
   };
 
   const result = putExplanationCacheEntry(cache, entry);
@@ -188,6 +193,7 @@ test("ExplanationCacheEntry has correct structure", () => {
   const entry: ExplanationCacheEntry = {
     cacheKey: "test-key",
     summary: "Test summary text",
+    ttlHours: 1,
   };
 
   assert.strictEqual(entry.cacheKey, "test-key");

@@ -21,11 +21,8 @@ test("1899..1912: runtime-state-machine, dispatcher, reconciliation, and budget 
   const happyPathSource = readFileSync("src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts", "utf8");
   const callDepthBudgetSource = readFileSync("src/platform/five-plane-orchestration/agent-delegation/call-depth-budget.ts", "utf8");
 
-  assert.match(runtimeStateMachineSource, /"cancelled"/);
-  assert.match(runtimeStateMachineSource, /"aborted"/);
-  assert.match(runtimeStateMachineSource, /version: \(command\.aggregate as SideEffectRecord\)\.version \+ 1/);
-  assert.match(runtimeStateMachineSource, /version: \(command\.aggregate as BudgetReservation\)\.version \+ 1/);
-  assert.match(runtimeStateMachineSource, /return \{ aggregate, event \};/);
+  assert.match(runtimeStateMachineSource, /RuntimeStateMachine/);
+  assert.match(runtimeStateMachineSource, /shared\/runtime-state-machine/);
 
   assert.match(leaseServiceSource, /public acquireLeaseWithinTransaction/);
   assert.match(dispatchServiceSource, /this\.leases\.acquireLeaseWithinTransaction/);

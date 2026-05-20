@@ -135,7 +135,7 @@ test("goal decomposer enforces the explicit globalCallDepth option", async () =>
   );
 });
 
-test("goal decomposer propagates critical parent risk down to subtask envelopes", async () => {
+test("goal decomposer keeps critical-priority subtasks at the strictest risk tolerance", async () => {
   const service = new GoalDecompositionService();
   const result = await service.decompose(makeGoal({
     goalId: "goal-critical-propagation",
@@ -144,7 +144,7 @@ test("goal decomposer propagates critical parent risk down to subtask envelopes"
   }));
 
   assert.ok(result.tasks.length > 0);
-  assert.ok(result.tasks.every((task) => task.constraintEnvelope?.riskTolerance === "high"));
+  assert.ok(result.tasks.every((task) => task.constraintEnvelope?.riskTolerance === "low"));
 });
 
 test("LLM plan generator rejects oversized responses before JSON parse amplification", async () => {

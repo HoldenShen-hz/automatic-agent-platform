@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readdirSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 
-import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../shared/sandbox-path-policy.js";
 import { SandboxError } from "../../contracts/errors.js";
 
 /**

@@ -163,7 +163,7 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
     ["observe -> execute: incident threshold exceeded"],
   );
   assert.deepEqual(collectExplanationEvidenceIds([{ evidenceId: "ev_1", category: "trace" }]), ["ev_1"]);
-  assert.equal(putExplanationCacheEntry({}, { cacheKey: "task_1", summary: "ok" }).task_1?.summary, "ok");
+  assert.equal(putExplanationCacheEntry({}, { cacheKey: "task_1", summary: "ok", ttlHours: 1 }).task_1?.summary, "ok");
   assert.match(renderStageExplanation("assess", "risk detected", ["ev_1"]), /assess/);
 
   assert.equal(countDocumentPages(["p1", "p2"]), 2);

@@ -32,7 +32,7 @@ function makeHarnessRunTransitionCommand(
   toStatus: string,
   overrides: Record<string, unknown> = {},
 ) {
-  const leaseId = aggregate.leaseId ?? "lease-1";
+  const leaseId = aggregate.leaseId ?? aggregate.ownership.ownerId;
   const fencingToken = aggregate.fencingToken ?? "fence-1";
   return {
     commandId: `cmd-${aggregate.harnessRunId}-${fromStatus}-${toStatus}`,
@@ -447,6 +447,7 @@ test("RuntimeTruthRepository validates lease for HarnessRun mutations", () => {
     currentSeq: 1,
     leaseId: "lease-current",
     fencingToken: "fence-current",
+    ownership: { ownerId: "lease-current", ownerType: "worker" },
   });
   repository.seed("HarnessRun", harnessRun);
 
@@ -464,7 +465,10 @@ test("RuntimeTruthRepository validates lease for HarnessRun mutations", () => {
       leaseId: "lease-stale",
       fencingToken: "fence-current",
     }),
-    (error: unknown) => error instanceof ValidationError && error.code === "runtime_truth_repository.stale_lease_id",
+    (error: unknown) =>
+      error instanceof ValidationError
+      && error.code === "runtime_truth_repository.contention_retry_exhausted"
+      && (error.details as { causeCode?: string } | undefined)?.causeCode === "runtime_truth_repository.stale_lease_id",
   );
 });
 
@@ -484,6 +488,7 @@ test("RuntimeTruthRepository validates fencing token for HarnessRun mutations", 
     currentSeq: 1,
     leaseId: "lease-current",
     fencingToken: "fence-current",
+    ownership: { ownerId: "lease-current", ownerType: "worker" },
   });
   repository.seed("HarnessRun", harnessRun);
 
@@ -501,7 +506,10 @@ test("RuntimeTruthRepository validates fencing token for HarnessRun mutations", 
       leaseId: "lease-current",
       fencingToken: "fence-stale",
     }),
-    (error: unknown) => error instanceof ValidationError && error.code === "runtime_truth_repository.stale_fencing_token",
+    (error: unknown) =>
+      error instanceof ValidationError
+      && error.code === "runtime_truth_repository.contention_retry_exhausted"
+      && (error.details as { causeCode?: string } | undefined)?.causeCode === "runtime_truth_repository.stale_fencing_token",
   );
 });
 
@@ -521,6 +529,7 @@ test("RuntimeTruthRepository requires leaseId and fencingToken when HarnessRun h
     currentSeq: 1,
     leaseId: "lease-set",
     fencingToken: "fence-set",
+    ownership: { ownerId: "lease-set", ownerType: "worker" },
   });
   repository.seed("HarnessRun", harnessRun);
 
@@ -538,7 +547,10 @@ test("RuntimeTruthRepository requires leaseId and fencingToken when HarnessRun h
       // Missing leaseId
       fencingToken: "fence-set",
     }),
-    (error: unknown) => error instanceof ValidationError && error.code === "runtime_truth_repository.lease_fencing_required",
+    (error: unknown) =>
+      error instanceof ValidationError
+      && error.code === "runtime_truth_repository.contention_retry_exhausted"
+      && (error.details as { causeCode?: string } | undefined)?.causeCode === "runtime_truth_repository.lease_fencing_required",
   );
 });
 
@@ -626,22 +638,26 @@ test("RuntimeTruthRepository transaction markers stay unique across consecutive 
 test("RuntimeTruthRepository assigns monotonic fallback fencing tokens when commands omit them", () => {
   const repository = new RuntimeTruthRepository();
 
-  const firstNode = createNodeRun({
-    nodeRunId: "nrun-fence-1",
-    harnessRunId: "hrun-fence-1",
-    planGraphBundleId: "pgb-1",
-    graphVersion: 1,
-    nodeId: "node-1",
-    fencingToken: "",
-  });
-  const secondNode = createNodeRun({
-    nodeRunId: "nrun-fence-2",
-    harnessRunId: "hrun-fence-2",
-    planGraphBundleId: "pgb-2",
-    graphVersion: 1,
-    nodeId: "node-2",
-    fencingToken: "",
-  });
+  const firstNode = {
+    ...createNodeRun({
+      nodeRunId: "nrun-fence-1",
+      harnessRunId: "hrun-fence-1",
+      planGraphBundleId: "pgb-1",
+      graphVersion: 1,
+      nodeId: "node-1",
+    }),
+    fencingToken: undefined,
+  };
+  const secondNode = {
+    ...createNodeRun({
+      nodeRunId: "nrun-fence-2",
+      harnessRunId: "hrun-fence-2",
+      planGraphBundleId: "pgb-2",
+      graphVersion: 1,
+      nodeId: "node-2",
+    }),
+    fencingToken: undefined,
+  };
 
   const first = repository.transition({
     commandId: "cmd-fence-1",
@@ -656,6 +672,7 @@ test("RuntimeTruthRepository assigns monotonic fallback fencing tokens when comm
     traceId: "trace-1",
     reasonCode: "test",
     emittedBy: "test",
+    auditRef: "audit://runtime-truth/node-fence-1",
   });
   const second = repository.transition({
     commandId: "cmd-fence-2",
@@ -670,6 +687,7 @@ test("RuntimeTruthRepository assigns monotonic fallback fencing tokens when comm
     traceId: "trace-2",
     reasonCode: "test",
     emittedBy: "test",
+    auditRef: "audit://runtime-truth/node-fence-2",
   });
 
   assert.equal(first.aggregate.fencingToken, "1");

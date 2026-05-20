@@ -52,6 +52,8 @@ test("buildSamlAudience constructs correct audience format", () => {
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
 
   const audience = buildSamlAudience(provider);
@@ -360,6 +362,8 @@ test("SamlService consumeAssertion accepts valid assertion and creates session",
     entityId: "https://app.example.com/saml/metadata",
     acsUrl: "https://app.example.com/saml/acs",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -399,6 +403,8 @@ test("SamlService consumeAssertion handles missing optional fields", () => {
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -428,6 +434,8 @@ test("SamlService consumeAssertion validates signature when provided with rawXml
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -484,6 +492,8 @@ test("SamlService consumeAssertion allows unsigned assertion only when provider 
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -509,6 +519,8 @@ test("SamlService consumeAssertion rejects recipient mismatch", () => {
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
     acsUrl: "https://app.example.com/saml/acs",
   };
   service.registerProvider(provider);
@@ -536,6 +548,8 @@ test("SamlService consumeAssertion rejects replayed assertion id", () => {
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -680,6 +694,8 @@ test("SamlService consumeAssertion accepts assertion within valid time window", 
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 
@@ -709,6 +725,8 @@ test("SamlService consumeAssertion handles exact boundary of notBefore", () => {
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
     allowUnsignedAssertions: true,
+    allowIdpInitiated: true,
+    unsafeAllowUnsignedAssertionsReason: "test coverage for unsigned assertions",
   };
   service.registerProvider(provider);
 

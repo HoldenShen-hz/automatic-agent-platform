@@ -303,7 +303,7 @@ test("ProactiveAgentService evaluate handles silent_record for dashboard updates
   assert.equal(decision.actionMode, "silent_record");
 });
 
-test("ProactiveAgentService evaluate suggests for critical-risk without confirmation", () => {
+test("ProactiveAgentService evaluate records silently for critical-risk without confirmation", () => {
   const service = new ProactiveAgentService();
   service.registerTrigger(makeTrigger({
     riskLevel: "critical",
@@ -313,7 +313,7 @@ test("ProactiveAgentService evaluate suggests for critical-risk without confirma
   const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.actionMode, "suggest");
+  assert.equal(decision.actionMode, "silent_record");
 });
 
 test("ProactiveAgentService recordExecutionOutcome does not open circuit before max threshold", () => {

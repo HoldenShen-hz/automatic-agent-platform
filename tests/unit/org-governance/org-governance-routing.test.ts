@@ -70,19 +70,19 @@ test("ApprovalRoutingService.route returns approver chain from org hierarchy", (
 
 test("ApprovalRoutingService.route applies SOD policy to filter conflicted approvers", () => {
   const service = new ApprovalRoutingService({ orgNodes });
-  const result = service.route(
-    {
-      requesterId: "lead-runtime",
-      orgNodeId: "team",
-      riskLevel: "medium",
-      requesterManagerIds: ["dir-platform"],
-      conflictedApproverIds: ["vp-eng"],
-    },
-    new Date().toISOString(),
-    new Date().toISOString(),
-  );
-  assert.ok(!result.approverChain.includes("lead-runtime"));
-  assert.ok(!result.approverChain.includes("vp-eng"));
+  assert.throws(() => {
+    service.route(
+      {
+        requesterId: "lead-runtime",
+        orgNodeId: "team",
+        riskLevel: "medium",
+        requesterManagerIds: ["dir-platform"],
+        conflictedApproverIds: ["vp-eng"],
+      },
+      new Date().toISOString(),
+      new Date().toISOString(),
+    );
+  }, /approval_route\.empty_approver_chain:team|approval_route.empty_approver_chain:team/);
 });
 
 test("ApprovalRoutingService.route includes audit record with reason codes", () => {

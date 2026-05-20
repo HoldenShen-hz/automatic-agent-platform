@@ -22,7 +22,7 @@ test("BehaviorFingerprintBuilder build creates fingerprint with correct structur
   const builder = new BehaviorFingerprintBuilder();
   const fingerprint = builder.build(input);
 
-  assert.strictEqual(fingerprint.fingerprintId, "fingerprint:agent_test");
+  assert.strictEqual(fingerprint.fingerprintId, "fingerprint:agent:agent_test:none:none");
   assert.ok(Array.isArray(fingerprint.normalizedFeatures));
   assert.ok(fingerprint.hash.length > 0);
 });

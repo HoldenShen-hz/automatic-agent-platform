@@ -201,7 +201,7 @@ test("1959..1968: prompt eval, versioning, traffic split, and tamper-evident pro
   assert.match(outcomeEvaluatorSource, /failureSignal: 0\.2/);
   assert.match(outcomeEvaluatorSource, /partialSignal: 0\.1/);
   assert.match(registrySource, /if \(version !== undefined && version !== ""\)/);
-  assert.match(registrySource, /const slot = totalWeight > 0 \? Math\.floor\(\(rawSlot \* totalWeight\) \/ 100\) : 0;/);
+  assert.match(registrySource, /const slot = this\.computeTrafficSlot\(effectiveTrafficKey, totalWeight\);/);
   assert.equal((versionManagerSource.match(/export interface VersionLineage/g) ?? []).length, 1);
   assert.match(judgeSource, /consensusDecision === "rollback"\s*\?\s*rollbackCount/);
   assert.match(stableEvidenceSupportSource, /"name" in overrides/);
