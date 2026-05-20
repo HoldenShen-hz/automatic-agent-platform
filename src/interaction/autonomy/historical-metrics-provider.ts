@@ -30,10 +30,6 @@ export interface HistoricalMetricsProvider {
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionStatus } from "../../platform/contracts/types/status.js";
 
-function isIncidentExecution(row: { status: ExecutionStatus; last_error_code: string | null }): boolean {
-  return row.status === "failed" && row.last_error_code !== null;
-}
-
 export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
   public constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
@@ -65,11 +61,9 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
     const successfulExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "succeeded").length;
     const failedExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
     const humanOverrides = rows.filter((r: { requires_approval: number }) => r.requires_approval === 1).length;
-    const incidentRows = rows.filter(isIncidentExecution);
+    const incidentRows = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed");
     const incidents = incidentRows.length;
-
-    const lastErrorRow = incidentRows[0];
-    const lastIncidentAt = lastErrorRow?.created_at ?? null;
+    const lastIncidentAt = incidentRows[0]?.created_at ?? null;
 
     return {
       totalExecutions,

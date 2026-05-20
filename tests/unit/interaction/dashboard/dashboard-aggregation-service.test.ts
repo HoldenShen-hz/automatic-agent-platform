@@ -225,6 +225,27 @@ test("buildOperatorDashboard marks agent as healthy when all tasks succeed", () 
   assert.ok(opsCard!.trend === "improving" || opsCard!.trend === "stable");
 });
 
+test("buildOperatorDashboard success rate excludes pending and in_progress tasks from denominator", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "done", "ops"),
+        makeTask("task_2", "failed", "ops"),
+        makeTask("task_3", "pending", "ops"),
+        makeTask("task_4", "in_progress", "ops"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation(),
+    },
+  });
+
+  const dashboard = service.buildOperatorDashboard();
+  const opsCard = dashboard.agentHealthCards.find((card) => card.domainId === "ops");
+
+  assert.equal(opsCard!.successRate7d, 0.5);
+});
+
 test("buildOperatorDashboard calculates cost7d per agent card", () => {
   const service = new DashboardAggregationService({
     taskSource: {

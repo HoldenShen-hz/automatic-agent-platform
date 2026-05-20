@@ -82,11 +82,11 @@ test("SqlExecutionMetricsProvider counts human overrides via requires_approval",
   assert.equal(result.humanOverrides, 2);
 });
 
-test("SqlExecutionMetricsProvider counts incidents via last_error_code", async () => {
+test("SqlExecutionMetricsProvider counts all failed executions as incidents", async () => {
   const db = createMockDb([
     { status: "succeeded", requires_approval: 0, last_error_code: null, created_at: "2026-04-01T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_NETWORK", created_at: "2026-04-02T00:00:00Z" },
-    { status: "failed", requires_approval: 0, last_error_code: "ERR_NETWORK", created_at: "2026-04-03T00:00:00Z" },
+    { status: "failed", requires_approval: 0, last_error_code: null, created_at: "2026-04-03T00:00:00Z" },
   ]);
   const provider = new SqlExecutionMetricsProvider(db);
   const result = await provider.fetchMetrics(makeInput());
@@ -94,16 +94,14 @@ test("SqlExecutionMetricsProvider counts incidents via last_error_code", async (
   assert.equal(result.incidents, 2);
 });
 
-test("SqlExecutionMetricsProvider captures last incident timestamp", async () => {
-  // Rows are returned in the order they appear in the mock - first error found is returned
+test("SqlExecutionMetricsProvider captures latest failed execution timestamp as last incident", async () => {
   const db = createMockDb([
-    { status: "failed", requires_approval: 0, last_error_code: "ERR_001", created_at: "2026-04-15T00:00:00Z" },
+    { status: "failed", requires_approval: 0, last_error_code: null, created_at: "2026-04-15T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_002", created_at: "2026-04-01T00:00:00Z" },
   ]);
   const provider = new SqlExecutionMetricsProvider(db);
   const result = await provider.fetchMetrics(makeInput());
 
-  // Returns first row with error code (April 15 in this case, since it appears first in the array)
   assert.equal(result.lastIncidentAt, "2026-04-15T00:00:00Z");
 });
 
@@ -167,5 +165,5 @@ test("SqlExecutionMetricsProvider calculates correct totals from mixed statuses"
   assert.equal(result.successfulExecutions, 3);
   assert.equal(result.failedExecutions, 2);
   assert.equal(result.humanOverrides, 1);
-  assert.equal(result.incidents, 1);
+  assert.equal(result.incidents, 2);
 });

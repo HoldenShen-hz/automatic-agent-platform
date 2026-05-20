@@ -186,16 +186,16 @@ test("R32-32: slot resolution does not treat prototype-chain names as already re
   assert.equal(Object.getPrototypeOf(result.resolved), Object.prototype);
 });
 
-test("R32-35: historical metrics count only failed executions with real error codes as incidents", async () => {
+test("R32-35: historical metrics count all failed executions as incidents", async () => {
   const provider = new SqlExecutionMetricsProvider({
     connection: {
       prepare() {
         return {
           all() {
             return [
-              { status: "succeeded", requires_approval: 0, last_error_code: "transient", created_at: "2026-05-11T00:00:00.000Z" },
-              { status: "failed", requires_approval: 1, last_error_code: "incident.timeout", created_at: "2026-05-11T01:00:00.000Z" },
               { status: "failed", requires_approval: 0, last_error_code: null, created_at: "2026-05-11T02:00:00.000Z" },
+              { status: "failed", requires_approval: 1, last_error_code: "incident.timeout", created_at: "2026-05-11T01:00:00.000Z" },
+              { status: "succeeded", requires_approval: 0, last_error_code: "transient", created_at: "2026-05-11T00:00:00.000Z" },
             ];
           },
         };
@@ -210,8 +210,8 @@ test("R32-35: historical metrics count only failed executions with real error co
     windowDays: 30,
   });
 
-  assert.equal(metrics.incidents, 1);
-  assert.equal(metrics.lastIncidentAt, "2026-05-11T01:00:00.000Z");
+  assert.equal(metrics.incidents, 2);
+  assert.equal(metrics.lastIncidentAt, "2026-05-11T02:00:00.000Z");
 });
 
 test("R32-40: loadNlGatewayConfig rejects malformed schema instead of silently accepting it", () => {

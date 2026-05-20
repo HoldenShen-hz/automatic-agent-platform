@@ -199,7 +199,8 @@ function buildAgentCards(items: readonly TaskBoardItem[]): AgentHealthCard[] {
     const failures = groupedItems.filter((item) => item.taskStatus === "failed").length;
     const completed = groupedItems.filter((item) => item.taskStatus === "done").length;
     const total = groupedItems.length;
-    const successRate = total === 0 ? 1 : completed / total;
+    const settled = completed + failures;
+    const successRate = settled === 0 ? 1 : completed / settled;
     return {
       agentId: `agent:${domainId}:${index + 1}`,
       domainId,
