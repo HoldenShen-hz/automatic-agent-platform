@@ -98,6 +98,24 @@ test("RuntimeRecoveryReplayService.buildExecutionReplayReport throws when execut
   );
 });
 
+test("RuntimeRecoveryReplayService.buildExecutionReplayReport fails closed when task report omits execution", () => {
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: null, status: "pending" }],
+    executions: [{ id: "exec-hidden", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" }],
+  });
+  const service = new RuntimeRecoveryReplayService(store as never);
+  const originalBuildTaskReplayReport = service.buildTaskReplayReport.bind(service);
+  service.buildTaskReplayReport = ((taskId: string, generatedAt?: string) => ({
+    ...originalBuildTaskReplayReport(taskId, generatedAt),
+    executions: [],
+  })) as RuntimeRecoveryReplayService["buildTaskReplayReport"];
+
+  assert.throws(
+    () => service.buildExecutionReplayReport("exec-hidden"),
+    (err: unknown) => (err as Error).message.includes("Execution replay report not found"),
+  );
+});
+
 test("RecoveryReplayExecutionOutcome type accepts all valid values", () => {
   const outcomes: RecoveryReplayExecutionOutcome[] = [
     "active",
@@ -337,4 +355,60 @@ test("RuntimeRecoveryReplayService handles task with multiple executions and mix
 
   assert.equal(report.outcome, "mixed");
   assert.ok(report.executions.some((execution) => execution.executionId === "exec-2" && execution.latestErrorCode === "E1"));
+});
+
+test("RuntimeRecoveryReplayService does not attach dead-letter targetId events to unrelated execution", () => {
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: "division-1", status: "failed" }],
+    executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" }],
+    events: [
+      {
+        id: "evt-dead-letter",
+        taskId: "task-1",
+        executionId: null,
+        eventType: "recovery:dead_lettered",
+        payloadJson: JSON.stringify({ targetId: "exec-1", deadLetterId: "dlq-1" }),
+        createdAt: "2026-04-24T00:00:00.000Z",
+        traceId: "trace-1",
+      },
+    ],
+  });
+  const service = new RuntimeRecoveryReplayService(store as never);
+
+  const report = service.buildExecutionReplayReport("exec-1");
+
+  assert.equal(report.timeline.length, 0);
+  assert.equal(report.finalOutcome, "no_recovery_activity");
+});
+
+test("RuntimeRecoveryReplayService orders timeline by parsed timestamp before lexical timestamp", () => {
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: "division-1", status: "failed" }],
+    executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" }],
+    events: [
+      {
+        id: "evt-late",
+        taskId: "task-1",
+        executionId: "exec-1",
+        eventType: "recovery:repair_applied",
+        payloadJson: JSON.stringify({ repairAction: "late", targetId: "exec-1" }),
+        createdAt: "2026-04-24T00:00:10.000+08:00",
+        traceId: "trace-1",
+      },
+      {
+        id: "evt-early",
+        taskId: "task-1",
+        executionId: "exec-1",
+        eventType: "recovery:repair_applied",
+        payloadJson: JSON.stringify({ repairAction: "early", targetId: "exec-1" }),
+        createdAt: "2026-04-23T16:00:09.000Z",
+        traceId: "trace-1",
+      },
+    ],
+  });
+  const service = new RuntimeRecoveryReplayService(store as never);
+
+  const report = service.buildExecutionReplayReport("exec-1");
+
+  assert.deepEqual(report.timeline.map((event) => event.eventId), ["evt-early", "evt-late"]);
 });

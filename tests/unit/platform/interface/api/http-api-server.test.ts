@@ -1859,6 +1859,30 @@ test("GET /metrics returns prometheus metrics when exporter configured", async (
   }
 });
 
+test("HTTP prometheus metrics use templated paths instead of raw resource IDs", async () => {
+  const recorded: Array<{ method: string; route: string; statusCode: number }> = [];
+  const { server } = createTestServer({
+    prometheusMetricsExporter: {
+      export: () => "",
+      recordHttpRequest: (method: string, route: string, statusCode: number) => {
+        recorded.push({ method, route, statusCode });
+      },
+    } as unknown as PrometheusMetricsExporter,
+  });
+
+  try {
+    await server.inject({
+      method: "GET",
+      url: "/v1/tasks/task_123456789abcdef/events",
+    });
+
+    assert.ok(recorded.some((entry) => entry.route === "/v1/tasks/:id/events"));
+    assert.ok(!recorded.some((entry) => entry.route.includes("task_123456789abcdef")));
+  } finally {
+    await server.stop();
+  }
+});
+
 test("GET /metrics returns 503 when exporter not configured", async () => {
   const server = new HttpApiServer({
     approvalService: createMockApprovalService(),

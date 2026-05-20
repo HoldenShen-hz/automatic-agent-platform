@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute } from "node:path";
 
@@ -67,14 +67,7 @@ export class KnowledgeSnapshotStore {
       // Corrupted JSON - return null rather than invalid data
       return null;
     }
-    if (
-      typeof parsed !== "object"
-      || parsed === null
-      || !("generatedAt" in (parsed as Record<string, unknown>))
-      || !("namespaces" in (parsed as Record<string, unknown>))
-      || !("records" in (parsed as Record<string, unknown>))
-    ) {
-      // Invalid schema structure - return null rather than invalid data
+    if (!isKnowledgePlaneSnapshot(parsed)) {
       return null;
     }
     return parsed as KnowledgePlaneSnapshot;
@@ -87,7 +80,49 @@ export class KnowledgeSnapshotStore {
       records: [...input.records],
     };
     mkdirSync(dirname(this.snapshotPath), { recursive: true });
-    writeFileSync(this.snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
+    const tmpPath = `${this.snapshotPath}.${process.pid}.${Date.now()}.tmp`;
+    try {
+      writeFileSync(tmpPath, JSON.stringify(snapshot, null, 2), "utf8");
+      renameSync(tmpPath, this.snapshotPath);
+    } catch (error) {
+      try {
+        if (existsSync(tmpPath)) {
+          unlinkSync(tmpPath);
+        }
+      } catch {
+        // Best effort cleanup only; preserve original write error.
+      }
+      throw error;
+    }
     return snapshot;
   }
+}
+
+function isKnowledgePlaneSnapshot(value: unknown): value is KnowledgePlaneSnapshot {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.generatedAt === "string"
+    && Array.isArray(candidate.namespaces)
+    && candidate.namespaces.every((namespace) => namespace != null && typeof namespace === "object" && !Array.isArray(namespace))
+    && Array.isArray(candidate.records)
+    && candidate.records.every(isArchivedKnowledgeRecordLike);
+}
+
+function isArchivedKnowledgeRecordLike(value: unknown): boolean {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  const source = candidate.source;
+  const document = candidate.document;
+  return source != null
+    && typeof source === "object"
+    && !Array.isArray(source)
+    && document != null
+    && typeof document === "object"
+    && !Array.isArray(document)
+    && Array.isArray(candidate.chunks)
+    && candidate.chunks.every((chunk) => chunk != null && typeof chunk === "object" && !Array.isArray(chunk));
 }

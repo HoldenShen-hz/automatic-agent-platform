@@ -486,18 +486,11 @@ export class HttpApiServer {
         ? 1
         : 0;
     if (prefixLength > 0) {
-      if (segments[prefixLength] === "tasks" && segments.length >= prefixLength + 2) {
-        const tail = segments[prefixLength + 2];
-        if (
-          segments.length === prefixLength + 2
-          || tail === "events"
-          || tail === "inspect"
-        ) {
-          segments[prefixLength + 1] = ":id";
+      for (let index = prefixLength; index < segments.length; index++) {
+        const segment = segments[index];
+        if (segment != null && isLikelyPathIdentifier(segment)) {
+          segments[index] = ":id";
         }
-      }
-      if (segments[prefixLength] === "workflows" && segments.length === prefixLength + 2) {
-        segments[prefixLength + 1] = ":id";
       }
     }
     return `/${segments.join("/")}`;
@@ -1092,8 +1085,18 @@ export class HttpApiServer {
       return;
     }
     const route = parseUrl(url ?? "/", true);
-    exporter.recordHttpRequest(method, route.pathname ?? "/", statusCode, durationMs);
+    exporter.recordHttpRequest(method, this.normalizeRateLimitPath(route.pathname ?? "/"), statusCode, durationMs);
   }
+}
+
+function isLikelyPathIdentifier(segment: string): boolean {
+  if (segment.length >= 12 && /^[A-Za-z0-9_-]+$/.test(segment)) {
+    return true;
+  }
+  if (/^[0-9]+$/.test(segment)) {
+    return true;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment);
 }
 
 function normalizeApiTimeout(value: number | undefined, fallback: number, max: number): number {

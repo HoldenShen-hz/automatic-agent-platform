@@ -97,7 +97,7 @@ export class TopologyValidator {
    * @throws DelegationDepthExceededError if depth exceeds maximum
    */
   public validateDepth(currentDepth: number): void {
-    if (currentDepth >= this.maxDepth) {
+    if (currentDepth > this.maxDepth) {
       throw new DelegationDepthExceededError(currentDepth, this.maxDepth);
     }
   }

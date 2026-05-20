@@ -65,17 +65,18 @@ test("createTopologyValidator applies custom config", () => {
   assert.equal(validator.getMaxFanout(), 20);
 });
 
-test("TopologyValidator.validateDepth throws when at max depth", () => {
+test("TopologyValidator.validateDepth throws when depth exceeds max depth", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
   assert.throws(
-    () => validator.validateDepth(3),
+    () => validator.validateDepth(4),
     DelegationDepthExceededError,
   );
 });
 
-test("TopologyValidator.validateDepth does not throw below max depth", () => {
+test("TopologyValidator.validateDepth does not throw at or below max depth", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
   validator.validateDepth(2); // Should not throw
+  validator.validateDepth(3); // Max depth is allowed; only greater depths are rejected.
 });
 
 test("TopologyValidator.validateFanout throws when at max fanout", () => {
@@ -133,9 +134,9 @@ test("TopologyValidator.getMaxFanout returns configured fanout", () => {
 
 test("TopologyValidator.validate runs all checks", () => {
   const validator = createTopologyValidator({ maxDepth: 3, maxFanout: 5, allowedPackIds: ["allowed"] });
-  // depth 3 is at max, should fail
+  // depth beyond max should fail
   assert.throws(
-    () => validator.validate({ currentDepth: 3, activeDelegations: 3, targetPackId: "allowed", delegationChain: [] }),
+    () => validator.validate({ currentDepth: 4, activeDelegations: 3, targetPackId: "allowed", delegationChain: [] }),
     DelegationDepthExceededError,
   );
 });

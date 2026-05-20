@@ -26,7 +26,7 @@ export class DivisionRepository {
     const conditions: string[] = [];
     const parameters: Array<string | number | null> = [];
 
-    if (options.tenantId !== undefined) {
+    if (options.tenantId != null) {
       conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
@@ -65,10 +65,6 @@ export class DivisionRepository {
        ORDER BY started_at DESC, job_id ASC
       LIMIT ?`,
       ...parameters,
-    )
-      .filter((record) => options.tenantId === undefined || record.tenantId === options.tenantId)
-      .filter((record) => options.status == null || record.status === options.status)
-      .filter((record) => options.movementType == null || record.movementType === options.movementType)
-      .slice(0, safeLimit);
+    );
   }
 }

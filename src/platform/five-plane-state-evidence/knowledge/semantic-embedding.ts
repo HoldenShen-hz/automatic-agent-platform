@@ -55,10 +55,11 @@ function canonicalizeToken(token: string): string {
 
 export function tokenizeSemantically(input: string): string[] {
   const rawTokens = input
+    .normalize("NFKC")
     .toLowerCase()
-    .split(/[^a-z0-9_]+/i)
+    .split(/[^\p{L}\p{N}_]+/u)
     .map((token) => canonicalizeToken(token))
-    .filter((token) => token.length >= 3);
+    .filter((token) => token.length >= 3 || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(token));
   return Array.from(new Set(rawTokens));
 }
 

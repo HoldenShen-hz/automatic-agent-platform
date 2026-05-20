@@ -84,8 +84,8 @@ test("DeduplicationMiddleware.generateKey returns global by default", () => {
     maxFingerprints: 100,
   });
 
-  const key = middleware.generateKey({});
-  assert.equal(key, "global");
+  const key = middleware.generateKey({ method: "POST", path: "/v1/tasks" });
+  assert.equal(key, "global:POST:/v1/tasks");
 });
 
 test("DeduplicationMiddleware.generateKey returns tenant key when perTenant enabled", () => {
@@ -95,8 +95,21 @@ test("DeduplicationMiddleware.generateKey returns tenant key when perTenant enab
     perTenant: true,
   });
 
-  const key = middleware.generateKey({ tenantId: "tenant-abc" });
-  assert.equal(key, "tenant:tenant-abc");
+  const key = middleware.generateKey({ tenantId: "tenant-abc", method: "POST", path: "/v1/tasks" });
+  assert.equal(key, "tenant:tenant-abc:POST:/v1/tasks");
+});
+
+test("DeduplicationMiddleware.generateKey isolates method and path buckets", () => {
+  const middleware = new DeduplicationMiddleware({
+    windowMs: 60_000,
+    maxFingerprints: 100,
+    perTenant: true,
+  });
+
+  assert.notEqual(
+    middleware.generateKey({ tenantId: "tenant-abc", method: "POST", path: "/v1/tasks" }),
+    middleware.generateKey({ tenantId: "tenant-abc", method: "PATCH", path: "/v1/tasks/task-1" }),
+  );
 });
 
 test("DeduplicationMiddleware.clear removes all entries", () => {

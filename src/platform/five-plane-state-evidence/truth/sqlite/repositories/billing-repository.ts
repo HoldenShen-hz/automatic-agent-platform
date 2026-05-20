@@ -805,11 +805,16 @@ export class BillingRepository {
    * List recent executions for a tenant.
    */
   public listRecentExecutionsByTenant(tenantId: string, limit?: number): unknown[] {
+    const params: Array<string | number> = [tenantId];
+    const limitClause = Number.isFinite(limit) ? " LIMIT ?" : "";
+    if (limitClause.length > 0) {
+      params.push(Math.max(1, Math.trunc(limit!)));
+    }
     const sql = `SELECT e.* FROM executions e
        INNER JOIN tasks t ON e.task_id = t.id
        WHERE t.tenant_id = ?
-       ORDER BY e.created_at DESC${limit ? ` LIMIT ${limit}` : ""}`;
-    return queryAll(this.conn, sql, tenantId);
+       ORDER BY e.created_at DESC${limitClause}`;
+    return queryAll(this.conn, sql, ...params);
   }
 
   /**

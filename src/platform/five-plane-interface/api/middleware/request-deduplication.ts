@@ -5,6 +5,8 @@
  * Uses a sliding window cache with request fingerprinting.
  */
 
+import { createHash } from "node:crypto";
+
 /**
  * Request fingerprint for deduplication.
  * Combines method, path, and optionally body hash.
@@ -68,6 +70,7 @@ export class DeduplicationMiddleware {
   private readonly includeBody: boolean;
   private readonly perTenant: boolean;
   private readonly entries = new Map<DeduplicationKey, DeduplicationEntry[]>();
+  private readonly maxBuckets: number;
   private requestCounter = 0;
 
   constructor(config: DeduplicationConfig) {
@@ -78,6 +81,7 @@ export class DeduplicationMiddleware {
     this.maxFingerprints = config.maxFingerprints;
     this.includeBody = config.includeBody ?? false;
     this.perTenant = config.perTenant ?? false;
+    this.maxBuckets = Math.max(1, Math.trunc(config.maxFingerprints));
   }
 
   /**
@@ -109,6 +113,7 @@ export class DeduplicationMiddleware {
    */
   public check(key: DeduplicationKey, fingerprint: RequestFingerprint): DeduplicationDecision {
     const now = Date.now();
+    this.evictExpiredBuckets(now);
     const entries = this.entries.get(key) ?? [];
 
     // Clean expired entries
@@ -143,6 +148,7 @@ export class DeduplicationMiddleware {
     }
 
     this.entries.set(key, validEntries);
+    this.enforceBucketLimit();
 
     return {
       allowed: true,
@@ -160,10 +166,12 @@ export class DeduplicationMiddleware {
     method?: string;
     path?: string;
   }): DeduplicationKey {
+    const method = (options.method ?? "*").toUpperCase();
+    const path = options.path ?? "*";
     if (this.perTenant && options.tenantId) {
-      return `tenant:${options.tenantId}`;
+      return `tenant:${options.tenantId}:${method}:${path}`;
     }
-    return "global";
+    return `global:${method}:${path}`;
   }
 
   /**
@@ -184,13 +192,36 @@ export class DeduplicationMiddleware {
    * Simple hash function for request body.
    */
   private hashBody(body: string): string {
-    let hash = 0;
-    for (let i = 0; i < body.length; i++) {
-      const char = body.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
+    return createHash("sha256").update(body, "utf8").digest("hex");
+  }
+
+  private evictExpiredBuckets(now: number): void {
+    for (const [key, entries] of this.entries.entries()) {
+      const validEntries = entries.filter((entry) => entry.expiresAt > now);
+      if (validEntries.length === 0) {
+        this.entries.delete(key);
+      } else if (validEntries.length !== entries.length) {
+        this.entries.set(key, validEntries);
+      }
     }
-    return hash.toString(16);
+  }
+
+  private enforceBucketLimit(): void {
+    while (this.entries.size > this.maxBuckets) {
+      let oldestKey: string | null = null;
+      let oldestExpiresAt = Number.POSITIVE_INFINITY;
+      for (const [key, entries] of this.entries.entries()) {
+        const candidate = entries.reduce((min, entry) => Math.min(min, entry.expiresAt), Number.POSITIVE_INFINITY);
+        if (candidate < oldestExpiresAt) {
+          oldestKey = key;
+          oldestExpiresAt = candidate;
+        }
+      }
+      if (oldestKey == null) {
+        return;
+      }
+      this.entries.delete(oldestKey);
+    }
   }
 }
 

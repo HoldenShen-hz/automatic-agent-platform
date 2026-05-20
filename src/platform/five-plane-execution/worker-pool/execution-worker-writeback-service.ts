@@ -516,7 +516,7 @@ export class ExecutionWorkerWritebackService {
               ? (this.store.worker.getAgentExecutionRecord(execution.id)?.toolCallCount ?? 0)
               : input.toolCallCount,
           progressMessage: input.progressMessage ?? `worker writeback ${input.terminalStatus}`,
-          lastErrorCode: input.reasonCode ?? execution.lastErrorCode,
+          lastErrorCode: executionTerminalStatus === "succeeded" ? null : input.reasonCode ?? execution.lastErrorCode,
           completedAt: occurredAt,
         });
         this.store.worker.closeExecutionLease({

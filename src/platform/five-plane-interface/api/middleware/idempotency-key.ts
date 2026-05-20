@@ -308,21 +308,31 @@ export class IdempotencyKeyMiddleware {
    * Clear all idempotency key entries.
    */
   public clearAll(): void {
-    const storage = this.storage as InMemoryIdempotencyStorage;
-    if (typeof storage.clear === "function") {
-      storage.clear();
+    if (this.storage instanceof InMemoryIdempotencyStorage) {
+      this.storage.clear();
+      return;
     }
+    throw new AppError("api.idempotency_clear_all_unsupported", "clearAll is only supported by in-memory idempotency storage.", {
+      statusCode: 501,
+      category: "validation",
+      source: "runtime",
+      retryable: false,
+    });
   }
 
   /**
    * Get the current entry count.
    */
   public size(): number {
-    const storage = this.storage as InMemoryIdempotencyStorage;
-    if (typeof storage.size === "function") {
-      return storage.size();
+    if (this.storage instanceof InMemoryIdempotencyStorage) {
+      return this.storage.size();
     }
-    return 0;
+    throw new AppError("api.idempotency_size_unsupported", "size is only supported by in-memory idempotency storage.", {
+      statusCode: 501,
+      category: "validation",
+      source: "runtime",
+      retryable: false,
+    });
   }
 }
 

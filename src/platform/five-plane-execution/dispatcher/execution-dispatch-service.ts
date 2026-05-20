@@ -577,7 +577,11 @@ export class ExecutionDispatchService {
     return candidates.map((worker) => {
         // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
         const heartbeatStalenessThresholdMs = 30_000; // 30 seconds per §14 gap detection
-        const lastHeartbeatAgeMs = Date.parse(occurredAt) - Date.parse(worker.lastHeartbeatAt);
+        const lastHeartbeatMs = Date.parse(worker.lastHeartbeatAt);
+        const occurredAtMs = Date.parse(occurredAt);
+        const lastHeartbeatAgeMs = Number.isFinite(lastHeartbeatMs) && Number.isFinite(occurredAtMs)
+          ? occurredAtMs - lastHeartbeatMs
+          : Number.POSITIVE_INFINITY;
         if (lastHeartbeatAgeMs > heartbeatStalenessThresholdMs) {
           return this.toWorkerEvaluation(worker, false, "worker_heartbeat_missing", []);
         }

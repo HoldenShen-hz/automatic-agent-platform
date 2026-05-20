@@ -37,9 +37,17 @@ export interface BillingRouteDeps {
 const MAX_WEBHOOK_AGE_MS = 5 * 60 * 1000;
 
 function isTimingSafeHexEqual(left: string, right: string): boolean {
+  if (!/^[a-f0-9]{64}$/i.test(left) || !/^[a-f0-9]{64}$/i.test(right)) {
+    return false;
+  }
   const leftBuffer = Buffer.from(left, "hex");
   const rightBuffer = Buffer.from(right, "hex");
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function normalizeWebhookSignature(value: string): string {
+  const trimmed = value.trim();
+  return trimmed.startsWith("sha256=") ? trimmed.slice("sha256=".length) : trimmed;
 }
 
 function verifyWebhookSignature(
@@ -64,7 +72,8 @@ function verifyWebhookSignature(
     .update(payload)
     .digest("hex");
 
-  if (!/^[a-f0-9]{64}$/i.test(signatureHeader) || !isTimingSafeHexEqual(signatureHeader.toLowerCase(), expected)) {
+  const normalizedSignature = normalizeWebhookSignature(signatureHeader);
+  if (!isTimingSafeHexEqual(normalizedSignature.toLowerCase(), expected)) {
     throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
   }
 }

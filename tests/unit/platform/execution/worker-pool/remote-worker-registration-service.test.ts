@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash, createHmac } from "node:crypto";
 import test from "node:test";
 
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
@@ -42,6 +43,25 @@ test("issueChallenge returns issued=true for valid request", () => {
   assert.ok(decision.challengeId !== null);
   assert.ok(decision.challengeToken !== null);
   assert.ok(decision.expiresAt !== null);
+});
+
+test("issueChallenge stores challenge token as challenge-scoped HMAC", () => {
+  const db = createTestDb();
+  const service = createService(db);
+
+  const decision = service.issueChallenge({
+    workerId: "worker-1",
+    requestedCapabilities: ["bash"],
+  });
+
+  const row = db.connection
+    .prepare(`SELECT challenge_token_hash AS challengeTokenHash FROM worker_registration_challenges WHERE id = ?`)
+    .get(decision.challengeId!) as { challengeTokenHash: string };
+  const expected = createHmac("sha256", decision.challengeId!).update(decision.challengeToken!, "utf8").digest("hex");
+  const legacy = createHash("sha256").update(decision.challengeToken!, "utf8").digest("hex");
+
+  assert.equal(row.challengeTokenHash, expected);
+  assert.notEqual(row.challengeTokenHash, legacy);
 });
 
 test("issueChallenge includes allowed capabilities in response", () => {
@@ -294,6 +314,30 @@ test("completeRegistration returns accepted=false when token invalid", () => {
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.reasonCode, "challenge_token_invalid");
+});
+
+test("completeRegistration accepts legacy sha256 challenge hashes with timing-safe migration compatibility", () => {
+  const db = createTestDb();
+  const service = createService(db);
+
+  const challenge = service.issueChallenge({
+    workerId: "worker-1",
+    requestedCapabilities: ["bash"],
+  });
+  const legacyHash = createHash("sha256").update(challenge.challengeToken!, "utf8").digest("hex");
+  db.connection.prepare(`UPDATE worker_registration_challenges SET challenge_token_hash = ? WHERE id = ?`)
+    .run(legacyHash, challenge.challengeId!);
+
+  const decision = service.completeRegistration({
+    workerId: "worker-1",
+    challengeId: challenge.challengeId!,
+    challengeToken: challenge.challengeToken!,
+    capabilities: ["bash"],
+    maxConcurrency: 5,
+  });
+
+  assert.equal(decision.accepted, true);
+  assert.equal(decision.reasonCode, null);
 });
 
 test("completeRegistration returns accepted=false when capability not allowed", () => {

@@ -60,6 +60,11 @@ export interface IdempotencyStorage {
  */
 export class InMemoryIdempotencyStorage implements IdempotencyStorage {
   private readonly entries = new Map<string, IdempotencyEntry>();
+  private readonly maxEntries: number;
+
+  public constructor(options: { maxEntries?: number } = {}) {
+    this.maxEntries = Math.max(1, Math.trunc(options.maxEntries ?? 10_000));
+  }
 
   async get(key: string): Promise<IdempotencyEntry | null> {
     const entry = this.entries.get(key);
@@ -72,6 +77,10 @@ export class InMemoryIdempotencyStorage implements IdempotencyStorage {
   }
 
   async set(key: string, entry: Omit<IdempotencyEntry, "expiresAt">, ttlMs: number): Promise<void> {
+    this.cleanupExpired(Date.now());
+    if (!this.entries.has(key) && this.entries.size >= this.maxEntries) {
+      this.evictOldestEntry();
+    }
     this.entries.set(key, {
       ...entry,
       expiresAt: Date.now() + ttlMs,
@@ -83,7 +92,10 @@ export class InMemoryIdempotencyStorage implements IdempotencyStorage {
   }
 
   async cleanup(maxDelete = 0): Promise<number> {
-    const now = Date.now();
+    return this.cleanupExpired(Date.now(), maxDelete);
+  }
+
+  private cleanupExpired(now: number, maxDelete = 0): number {
     let deleted = 0;
     for (const [key, entry] of this.entries.entries()) {
       if (now >= entry.expiresAt) {
@@ -93,6 +105,20 @@ export class InMemoryIdempotencyStorage implements IdempotencyStorage {
       }
     }
     return deleted;
+  }
+
+  private evictOldestEntry(): void {
+    let oldestKey: string | null = null;
+    let oldestExpiresAt = Number.POSITIVE_INFINITY;
+    for (const [key, entry] of this.entries.entries()) {
+      if (entry.expiresAt < oldestExpiresAt) {
+        oldestKey = key;
+        oldestExpiresAt = entry.expiresAt;
+      }
+    }
+    if (oldestKey != null) {
+      this.entries.delete(oldestKey);
+    }
   }
 
   /**
@@ -175,7 +201,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
 
   constructor(db: AuthoritativeSqlDatabase, tableName = "idempotency_keys") {
     this.db = db;
-    this.tableName = tableName;
+    this.tableName = validateSqlIdentifier(tableName);
     this.ensureTable();
   }
 
@@ -188,7 +214,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
           status_code INTEGER NOT NULL,
           response_body TEXT,
           request_hash TEXT,
-          expires_at INTEGER NOT NULL
+          expires_at TEXT NOT NULL
         )
       `);
       this.db.connection.exec(`
@@ -199,7 +225,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
   }
 
   async get(key: string): Promise<IdempotencyEntry | null> {
-    return this.db.readTransaction(() => {
+    return this.db.transaction(() => {
       const stmt = this.db.connection.prepare(`
         SELECT method, status_code, response_body, request_hash, expires_at
         FROM ${this.tableName}
@@ -210,10 +236,11 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
         status_code: number;
         response_body: string | null;
         request_hash: string | null;
-        expires_at: number;
+        expires_at: number | string;
       } | undefined;
       if (row == null) return null;
-      if (Date.now() >= row.expires_at) {
+      const expiresAtMs = parseSqliteExpiresAt(row.expires_at);
+      if (Date.now() >= expiresAtMs) {
         this.db.connection.prepare(`DELETE FROM ${this.tableName} WHERE key = ?`).run(key);
         return null;
       }
@@ -221,7 +248,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
         method: row.method,
         statusCode: row.status_code,
         responseBody: row.response_body,
-        expiresAt: row.expires_at,
+        expiresAt: expiresAtMs,
         requestHash: row.request_hash,
       };
     });
@@ -240,7 +267,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
         entry.statusCode,
         entry.responseBody,
         entry.requestHash,
-        Date.now() + ttlMs,
+        new Date(Date.now() + ttlMs).toISOString(),
       );
     });
   }
@@ -252,18 +279,45 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
   }
 
   async cleanup(maxDelete = 0): Promise<number> {
-    const now = Date.now();
+    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
     return this.db.transaction(() => {
-      const limitClause = maxDelete > 0 ? `LIMIT ${maxDelete}` : "";
-      const stmt = this.db.connection.prepare(`
+      if (maxDelete > 0) {
+        const keys = this.db.connection.prepare(`
+          SELECT key FROM ${this.tableName}
+          WHERE (typeof(expires_at) = 'integer' AND expires_at <= ?)
+             OR (typeof(expires_at) != 'integer' AND expires_at <= ?)
+          ORDER BY expires_at ASC, key ASC
+          LIMIT ?
+        `).all(nowMs, nowIso, Math.trunc(maxDelete)) as Array<{ key: string }>;
+        for (const row of keys) {
+          this.db.connection.prepare(`DELETE FROM ${this.tableName} WHERE key = ?`).run(row.key);
+        }
+        return keys.length;
+      }
+      const result = this.db.connection.prepare(`
         DELETE FROM ${this.tableName}
-        WHERE expires_at <= ?
-        ${limitClause}
-      `);
-      const result = stmt.run(now);
+        WHERE (typeof(expires_at) = 'integer' AND expires_at <= ?)
+           OR (typeof(expires_at) != 'integer' AND expires_at <= ?)
+      `).run(nowMs, nowIso);
       return Number(result.changes);
     });
   }
+}
+
+function validateSqlIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(value)) {
+    throw new Error("SqliteIdempotencyStorage tableName must be a safe SQL identifier");
+  }
+  return value;
+}
+
+function parseSqliteExpiresAt(value: number | string): number {
+  if (typeof value === "number") {
+    return value;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**

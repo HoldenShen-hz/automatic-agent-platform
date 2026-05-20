@@ -21,6 +21,7 @@ export interface KnowledgeQueryOptions {
   accessPrincipal?: KnowledgeAccessPrincipal | null;
   includeUnverified?: boolean;
   limit?: number;
+  maxContextTokens?: number;
 }
 
 function countOccurrences(content: string, keyword: string): number {
@@ -39,14 +40,14 @@ function countOccurrences(content: string, keyword: string): number {
 }
 
 function normalizeQueryTerms(keyword: string): string[] {
-  const trimmed = keyword.trim().toLowerCase();
+  const trimmed = keyword.normalize("NFKC").trim().toLowerCase();
   if (trimmed.length === 0) {
     return [];
   }
   const tokens = trimmed
-    .split(/[^a-z0-9_]+/i)
+    .split(/[^\p{L}\p{N}_]+/u)
     .map((token) => token.trim())
-    .filter((token) => token.length >= 3);
+    .filter((token) => token.length >= 3 || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(token));
   const terms = new Set<string>();
   if (trimmed.length >= 3) {
     terms.add(trimmed);
@@ -293,32 +294,6 @@ export class KnowledgeRetrievalService {
     keyword: string,
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
-    // R24-18 fix: When vector store exists, use it for semantic search
-    // Previously this method returned [] when semanticVectorStore existed, which
-    // caused semantic search to be skipped entirely for synchronous queries
-    if (this.semanticVectorStore) {
-      const queryEmbedding = buildSemanticEmbedding(keyword);
-      if (!queryEmbedding) {
-        return [];
-      }
-      const candidates: Array<[string, number]> = [];
-      for (const record of this.archive.list(options.namespace)) {
-        if (record.document.status !== "indexed" || record.document.archived) {
-          continue;
-        }
-        for (const chunk of record.chunks) {
-          const similarity = cosineSimilarity(chunk.embedding, queryEmbedding);
-          if (similarity < SEMANTIC_MATCH_THRESHOLD) {
-            continue;
-          }
-          const knowledgeRef = `knowledge:${chunk.chunkId}`;
-          candidates.push([knowledgeRef, similarity]);
-        }
-      }
-      return candidates
-        .sort((left, right) => right[1] - left[1])
-        .slice(0, SEMANTIC_CANDIDATE_LIMIT);
-    }
     const queryEmbedding = buildSemanticEmbedding(keyword);
     if (!queryEmbedding) {
       return [];
@@ -349,13 +324,17 @@ export class KnowledgeRetrievalService {
     if (!this.semanticVectorStore) {
       return this.collectSemanticCandidates(keyword, options);
     }
-    const candidates = await this.semanticVectorStore.querySimilar({
-      query: keyword,
-      ...(options.namespace != null ? { namespace: options.namespace } : {}),
-      limit: SEMANTIC_CANDIDATE_LIMIT,
-      minSimilarity: SEMANTIC_MATCH_THRESHOLD,
-    });
-    return dedupeSemanticCandidates(candidates);
+    try {
+      const candidates = await this.semanticVectorStore.querySimilar({
+        query: keyword,
+        ...(options.namespace != null ? { namespace: options.namespace } : {}),
+        limit: SEMANTIC_CANDIDATE_LIMIT,
+        minSimilarity: SEMANTIC_MATCH_THRESHOLD,
+      });
+      return dedupeSemanticCandidates(candidates);
+    } catch {
+      return this.collectSemanticCandidates(keyword, options);
+    }
   }
 
   private getAccessContext(

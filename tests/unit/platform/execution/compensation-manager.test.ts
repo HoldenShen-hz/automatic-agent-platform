@@ -241,10 +241,10 @@ test("CompensationManager: requiresHumanApproval high -> true", () => {
   assert.equal(manager.requiresHumanApproval("high"), true);
 });
 
-test("CompensationManager: requiresHumanApproval medium -> false", () => {
+test("CompensationManager: requiresHumanApproval medium -> true", () => {
   const manager = new CompensationManager();
 
-  assert.equal(manager.requiresHumanApproval("medium"), false);
+  assert.equal(manager.requiresHumanApproval("medium"), true);
 });
 
 test("CompensationManager: requiresHumanApproval low -> false", () => {

@@ -403,9 +403,8 @@ export class CheckpointGCService {
     const ageMs = referenceTimestamp - stats.mtimeMs;
     const maxAge = this.retentionPolicy.maxAgeMs;
     const isExpired = ageMs > maxAge;
-    const isSmall = stats.size < this.retentionPolicy.minSizeBytes;
 
-    if (!isExpired && !isSmall) {
+    if (!isExpired) {
       // Check version limit separately
       return null;
     }
@@ -421,9 +420,7 @@ export class CheckpointGCService {
       createdAt: stats.birthtime.toISOString(),
       executionId,
       isOrphaned: false,
-      reason: isExpired
-        ? `expired: age ${ageMs}ms exceeds max ${maxAge}ms`
-        : "size_below_threshold",
+      reason: `expired: age ${ageMs}ms exceeds max ${maxAge}ms`,
     };
   }
 }

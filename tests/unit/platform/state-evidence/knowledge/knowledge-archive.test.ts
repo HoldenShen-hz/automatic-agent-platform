@@ -80,7 +80,7 @@ test("KnowledgeArchive upsert adds new record when checksum does not exist", () 
   assert.equal(result.document.version, 1);
 });
 
-test("KnowledgeArchive upsert updates existing record when checksum exists", () => {
+test("KnowledgeArchive upsert is idempotent when checksum exists", () => {
   const archive = new KnowledgeArchive();
   const record1 = createArchivedRecord({
     source: createMinimalSource({ checksum: "same_checksum" }),
@@ -96,9 +96,8 @@ test("KnowledgeArchive upsert updates existing record when checksum exists", () 
   archive.upsert(record1);
   const result = archive.upsert(record2);
 
-  // Should return updated record with version incremented
-  assert.equal(result.document.version, 2);
-  assert.equal(result.document.rawText, "Updated content");
+  assert.equal(result.document.version, 1);
+  assert.notEqual(result.document.rawText, "Updated content");
   assert.equal(result.document.status, "indexed");
   assert.equal(result.document.archived, false);
 });

@@ -121,8 +121,8 @@ export class ExecutionRepository {
     }
     sql += ` ORDER BY created_at DESC, id DESC`;
     if (typeof limit === "number") {
-      sql += ` LIMIT ${limit}`;
-      params.push(limit);
+      sql += ` LIMIT ?`;
+      params.push(Math.max(1, Math.trunc(limit)));
     }
     return queryAll<ExecutionRecord>(this.conn, sql, ...params);
   }

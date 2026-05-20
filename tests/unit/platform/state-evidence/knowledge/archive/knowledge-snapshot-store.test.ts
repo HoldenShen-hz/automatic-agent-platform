@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
+import { writeFileSync } from "node:fs";
 
 import { KnowledgeSnapshotStore } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 import type { ArchivedKnowledgeRecord } from "../../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
@@ -158,6 +159,18 @@ test("KnowledgeSnapshotStore load returns null for non-existent file", () => {
   const result = store.load();
 
   assert.equal(result, null);
+});
+
+test("KnowledgeSnapshotStore load rejects malformed nested snapshot records", () => {
+  const snapshotPath = SANDBOX_BASE + "/malformed-" + Date.now() + ".json";
+  writeFileSync(snapshotPath, JSON.stringify({
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    namespaces: [{}],
+    records: [{ source: {}, document: {}, chunks: "not-array" }],
+  }), "utf8");
+  const store = new KnowledgeSnapshotStore({ snapshotPath });
+
+  assert.equal(store.load(), null);
 });
 
 test("KnowledgeSnapshotStore save creates intermediate directories", () => {

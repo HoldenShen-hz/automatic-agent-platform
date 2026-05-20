@@ -231,11 +231,11 @@ test("requiresHumanApproval: low impact returns false", () => {
   assert.equal(requiresApproval, false);
 });
 
-test("requiresHumanApproval: medium impact returns false", () => {
+test("requiresHumanApproval: medium impact returns true", () => {
   const manager = new CompensationManager();
   const requiresApproval = manager.requiresHumanApproval("medium");
 
-  assert.equal(requiresApproval, false);
+  assert.equal(requiresApproval, true);
 });
 
 test("requiresHumanApproval: high impact returns true", () => {

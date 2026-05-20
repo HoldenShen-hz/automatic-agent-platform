@@ -12,6 +12,7 @@ import {
   DEFAULT_IDEMPOTENCY_KEY_CONFIG,
   type IdempotencyKeyConfig,
 } from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key.js";
+import { InMemoryIdempotencyStorage } from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key-storage.js";
 
 test("WRITE_METHODS contains correct methods", () => {
   assert.ok(WRITE_METHODS.has("POST"));
@@ -117,6 +118,15 @@ test("IdempotencyKeyMiddleware.size returns entry count", async () => {
 
   await middleware.check({ method: "POST", idempotencyKey: "key-2" });
   assert.equal(middleware.size(), 2);
+});
+
+test("InMemoryIdempotencyStorage evicts oldest entry when maxEntries is reached", async () => {
+  const storage = new InMemoryIdempotencyStorage({ maxEntries: 1 });
+  await storage.set("old", { method: "POST", statusCode: 200, responseBody: "{}", requestHash: null }, 60_000);
+  await storage.set("new", { method: "POST", statusCode: 201, responseBody: "{}", requestHash: null }, 60_000);
+
+  assert.equal(await storage.get("old"), null);
+  assert.equal((await storage.get("new"))?.statusCode, 201);
 });
 
 test("extractIdempotencyKey returns header value", () => {

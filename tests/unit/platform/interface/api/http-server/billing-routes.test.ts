@@ -61,6 +61,30 @@ test("POST /v1/billing/webhooks/reconcile returns result when billing service av
   assert.ok(response.body.includes("sess-abc"));
 });
 
+test("POST /v1/billing/webhooks/reconcile accepts sha256-prefixed hex signature", async () => {
+  const body = JSON.stringify({
+    gatewayKind: "stripe",
+    gatewaySessionRef: "sess-prefixed",
+    status: "paid",
+  });
+  const deps = {
+    billingService: createMockBillingService({ sessionRef: "sess-prefixed", status: "paid" }),
+    webhookSecret: "test-webhook-secret",
+  };
+  const routes = createBillingRoutes(deps);
+  const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
+  const headers = createSignedHeaders(body, deps.webhookSecret);
+  const ctx = createMockContext({
+    ...headers,
+    "x-webhook-signature": `sha256=${headers["x-webhook-signature"]}`,
+  }, body);
+  const response = await route.handler(ctx);
+
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("sess-prefixed"));
+});
+
 test("POST /v1/billing/webhooks/reconcile throws 503 when billing service not configured", async () => {
   const body = JSON.stringify({
     gatewayKind: "stripe",

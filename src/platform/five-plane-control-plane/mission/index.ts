@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { AppError } from "../../contracts/errors.js";
 import {
   buildMissionEtag,
   DEFAULT_RUNTIME_CONSTRAINT_SET,
@@ -60,13 +61,21 @@ export class MissionLifecycleService {
   public transition(command: MissionTransitionCommand): MissionRecord {
     const current = this.repository.getMission(command.missionId);
     if (current == null) {
-      throw new Error("MISSION_NOT_FOUND");
+      throwMissionError("mission.not_found", "Mission was not found", { missionId: command.missionId });
     }
     if (current.version !== command.expectedVersion || current.etag !== command.ifMatch) {
-      throw new Error("MISSION_VERSION_CONFLICT");
+      throwMissionError("mission.version_conflict", "Mission version precondition failed", {
+        missionId: command.missionId,
+        expectedVersion: command.expectedVersion,
+        actualVersion: current.version,
+      });
     }
     if (!nextMissionStatus(current.status, command.targetStatus)) {
-      throw new Error("MISSION_STATE_CONFLICT");
+      throwMissionError("mission.state_conflict", "Mission status transition is not allowed", {
+        missionId: command.missionId,
+        fromStatus: current.status,
+        toStatus: command.targetStatus,
+      });
     }
     const timestamp = nowIso();
     const version = current.version + 1;
@@ -103,13 +112,17 @@ export class MissionGovernanceService {
   public assertPermission(missionId: string, principal: { readonly principalId: string }, permission: MissionPermission): void {
     const mission = this.repository.getMission(missionId);
     if (mission == null) {
-      throw new Error("MISSION_NOT_FOUND");
+      throwMissionError("mission.not_found", "Mission was not found", { missionId });
     }
     const membership = this.repository.listMemberships(missionId).find((item) =>
       item.principalId === principal.principalId && item.status === "active"
     );
     if (membership == null || membership.deniedPermissions.includes(permission) || !membership.permissions.includes(permission)) {
-      throw new Error("MISSION_ACCESS_DENIED");
+      throwMissionError("mission.access_denied", "Mission permission was denied", {
+        missionId,
+        principalId: principal.principalId,
+        permission,
+      });
     }
   }
 
@@ -254,10 +267,16 @@ export class MissionBudgetService {
   public reserve(missionId: string, amount: number): MissionBudgetEnvelope {
     const current = this.envelopes.get(missionId);
     if (current == null) {
-      throw new Error("MISSION_BUDGET_NOT_FOUND");
+      throwMissionError("mission.budget_not_found", "Mission budget envelope was not found", { missionId });
     }
     if (current.reservedAmount + current.settledAmount + amount > current.hardCap) {
-      throw new Error("MISSION_BUDGET_EXHAUSTED");
+      throwMissionError("mission.budget_exhausted", "Mission budget hard cap would be exceeded", {
+        missionId,
+        amount,
+        hardCap: current.hardCap,
+        reservedAmount: current.reservedAmount,
+        settledAmount: current.settledAmount,
+      });
     }
     const updated = { ...current, reservedAmount: current.reservedAmount + amount, version: current.version + 1 };
     this.envelopes.set(missionId, updated);
@@ -267,7 +286,7 @@ export class MissionBudgetService {
   public settle(missionId: string, amount: number): MissionBudgetEnvelope {
     const current = this.envelopes.get(missionId);
     if (current == null) {
-      throw new Error("MISSION_BUDGET_NOT_FOUND");
+      throwMissionError("mission.budget_not_found", "Mission budget envelope was not found", { missionId });
     }
     const updated = {
       ...current,
@@ -347,7 +366,10 @@ export class MissionRuntimeBindingService {
     readonly actorId: string;
   }): MissionBinding {
     if (input.harnessRun.missionBinding != null && input.harnessRun.missionBinding.missionId !== input.snapshot.missionId) {
-      throw new Error("MISSION_RUN_SINGLE_BINDING_VIOLATION");
+      throwMissionError("mission.run_single_binding_violation", "Harness run is already bound to another Mission", {
+        existingMissionId: input.harnessRun.missionBinding.missionId,
+        requestedMissionId: input.snapshot.missionId,
+      });
     }
     return {
       missionId: input.snapshot.missionId,
@@ -459,9 +481,23 @@ export class MissionHomeRegionService {
   public assertWriteEpoch(missionId: string, epoch: number): void {
     const current = this.epochs.get(missionId);
     if (current != null && epoch < current) {
-      throw new Error("MISSION_REGION_EPOCH_STALE");
+      throwMissionError("mission.region_epoch_stale", "Mission region epoch is stale", {
+        missionId,
+        currentEpoch: current,
+        requestedEpoch: epoch,
+      });
     }
   }
+}
+
+function throwMissionError(code: string, message: string, details: Record<string, unknown>): never {
+  throw new AppError(code, message, {
+    category: "business-rule",
+    source: "policy",
+    statusCode: code.endsWith("not_found") ? 404 : 409,
+    retryable: code.endsWith("version_conflict") || code.endsWith("region_epoch_stale"),
+    details,
+  });
 }
 
 export class MissionTemplateIntegrationService {

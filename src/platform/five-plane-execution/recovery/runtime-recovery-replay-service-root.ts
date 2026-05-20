@@ -300,9 +300,16 @@ export class RuntimeRecoveryReplayService {
       });
     }
 
-    // Build task report and find the specific execution's report
+    // Build task report and find the specific execution's report.
     const taskReport = this.buildTaskReplayReport(execution.taskId, generatedAt);
-    return taskReport.executions.find((report) => report.executionId === executionId)!;
+    const executionReport = taskReport.executions.find((report) => report.executionId === executionId);
+    if (executionReport == null) {
+      throw new StorageError("storage.execution_replay_report_missing", `Execution replay report not found: ${executionId}`, {
+        details: { executionId, taskId: execution.taskId },
+        executionId,
+      });
+    }
+    return executionReport;
   }
 
   /**
@@ -383,7 +390,12 @@ function matchesExecution(event: EventRecord, executionId: string): boolean {
     return true;
   }
 
-  // Check if the event targets this execution in its payload
+  // Check if the event explicitly targets this execution in its payload.
+  // Dead-letter events often target the deadLetterId, so they must not fall
+  // through to a generic targetId match unless they also carry executionId.
+  if (event.eventType === "recovery:dead_lettered") {
+    return false;
+  }
   const payload = safeParseRecord(event.payloadJson);
   return typeof payload?.targetId === "string" && payload.targetId === executionId;
 }
@@ -474,8 +486,13 @@ function summarizeEvent(
  * @returns Sort order indicator (-1, 0, or 1)
  */
 function compareRecoveryEventOrder(left: EventRecord, right: EventRecord): number {
-  // Primary sort: by creation time
-  const byCreatedAt = left.createdAt.localeCompare(right.createdAt);
+  // Primary sort: by normalized creation time. Fall back to lexical order only
+  // when either side is not parseable, preserving deterministic output.
+  const leftTime = Date.parse(left.createdAt);
+  const rightTime = Date.parse(right.createdAt);
+  const byCreatedAt = Number.isFinite(leftTime) && Number.isFinite(rightTime)
+    ? leftTime - rightTime
+    : left.createdAt.localeCompare(right.createdAt);
   if (byCreatedAt !== 0) {
     return byCreatedAt;
   }
@@ -652,7 +669,7 @@ function safeParseStringArray(raw: string | null): string[] {
     logger.log({
       level: "warn",
       message: "Failed to parse string array",
-      data: { error: err instanceof Error ? err.message : String(err), raw: raw.substring(0, 100) },
+      data: { error: err instanceof Error ? err.message : String(err), rawPreview: redactParsePreview(raw) },
     });
     return [];
   }
@@ -676,10 +693,16 @@ function safeParseRecord(raw: string): Record<string, unknown> | null {
     logger.log({
       level: "warn",
       message: "Failed to parse record",
-      data: { error: err instanceof Error ? err.message : String(err), raw: raw.substring(0, 100) },
+      data: { error: err instanceof Error ? err.message : String(err), rawPreview: redactParsePreview(raw) },
     });
     return null;
   }
+}
+
+function redactParsePreview(raw: string): string {
+  return raw
+    .slice(0, 100)
+    .replace(/([A-Za-z0-9_-]{16,})/g, "[redacted]");
 }
 
 /**

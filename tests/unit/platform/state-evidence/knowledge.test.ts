@@ -18,6 +18,7 @@ import { KnowledgeAccessControl } from "../../../../src/platform/five-plane-stat
 import { SourceTrustPolicyRegistry } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/source-trust-policy.js";
 import { KnowledgeAuditLogger } from "../../../../src/platform/five-plane-state-evidence/knowledge/governance/knowledge-audit-logger.js";
 import { KnowledgeIngestionPipeline } from "../../../../src/platform/five-plane-state-evidence/knowledge/knowledge-ingestion-pipeline.js";
+import type { SemanticVectorStore } from "../../../../src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
 import type {
   KnowledgeChunk,
   KnowledgeSource,
@@ -104,6 +105,12 @@ test("tokenizeSemantically filters short tokens", () => {
 test("tokenizeSemantically removes duplicates", () => {
   const tokens = tokenizeSemantically("build build build");
   assert.equal(tokens.filter((t: string) => t === "build").length, 1, "should dedupe tokens");
+});
+
+test("tokenizeSemantically keeps CJK tokens for multilingual knowledge", () => {
+  const tokens = tokenizeSemantically("构建失败 需要 清理缓存");
+  assert.ok(tokens.includes("构建失败"));
+  assert.ok(tokens.includes("清理缓存"));
 });
 
 test("buildSemanticEmbedding returns null for empty input", () => {
@@ -245,7 +252,7 @@ test("KnowledgeArchive.upsert stores and returns record", () => {
   assert.equal(record.source, source);
 });
 
-test("KnowledgeArchive.upsert increments version on duplicate checksum", () => {
+test("KnowledgeArchive.upsert is idempotent on duplicate checksum", () => {
   const archive = new KnowledgeArchive();
   const doc1 = makeDocument({ documentId: "d1" });
   const doc2 = makeDocument({ documentId: "d2" });
@@ -256,7 +263,8 @@ test("KnowledgeArchive.upsert increments version on duplicate checksum", () => {
   archive.upsert({ source: source1, document: doc1, chunks: [] });
   const updated = archive.upsert({ source: source2, document: doc2, chunks: [] });
 
-  assert.equal(updated.document.version, 2);
+  assert.equal(updated.document.documentId, "d1");
+  assert.equal(updated.document.version, 1);
 });
 
 test("KnowledgeArchive.getChunk retrieves chunk record", () => {
@@ -835,6 +843,47 @@ test("KnowledgeRetrievalService.filterAuthorizedHits removes unauthorized", () =
   const filtered = retrieval.filterAuthorizedHits(hits);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0]!.chunkId, "c1");
+});
+
+test("KnowledgeRetrievalService.queryAsync falls back to local semantic search when vector store fails", async () => {
+  const index = new KeywordKnowledgeIndex();
+  const archive = new KnowledgeArchive();
+  const namespaces = new NamespacePolicyStore();
+  const content = "Build failures recover after clearing stale caches before retrying the pipeline";
+  const chunk = makeChunk({
+    chunkId: "semantic-fallback",
+    keywords: [],
+    namespace: "test",
+    content,
+    summary: content,
+    embedding: buildSemanticEmbedding(content),
+  });
+  const failingVectorStore: SemanticVectorStore = {
+    backend: "local_hash",
+    upsertChunks: async () => undefined,
+    querySimilar: async () => {
+      throw new Error("vector unavailable");
+    },
+    inspect: () => ({ backend: "local_hash", ready: false, details: {} }),
+  };
+
+  namespaces.register({
+    namespaceId: "ns1",
+    path: "test",
+    description: "Test",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: { maxAgeDays: 30, staleAction: "warn", refreshStrategy: "manual", refreshIntervalHours: null },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+  archive.upsert({ source: makeSource(), document: makeDocument({ namespace: "test" }), chunks: [chunk] });
+
+  const retrieval = new KnowledgeRetrievalService(index, archive, namespaces, null, failingVectorStore);
+  const hits = await retrieval.queryAsync("compilation cache retry", { namespace: "test" });
+
+  assert.equal(hits[0]?.chunkId, "semantic-fallback");
 });
 
 // ─────────────────────────────────────────────────────────

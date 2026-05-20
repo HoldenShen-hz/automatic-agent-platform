@@ -201,7 +201,7 @@ export function parseWorkflowOutputSchema(
     type: "object",
     required,
     properties,
-    additionalProperties: additionalPropertiesCandidate === false ? false : true,
+    additionalProperties: additionalPropertiesCandidate === true,
   };
 }
 

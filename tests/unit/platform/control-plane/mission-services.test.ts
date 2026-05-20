@@ -12,6 +12,7 @@ import {
   type PlanGraph,
   type PrincipalRef,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
+import { AppError } from "../../../../src/platform/contracts/errors.js";
 import { InMemoryMissionRepository } from "../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
 import {
   MissionBudgetService,
@@ -66,16 +67,18 @@ function createActiveMission(repository = new InMemoryMissionRepository()) {
 test("MissionLifecycleService enforces CAS status transitions", () => {
   const { lifecycle, mission } = createActiveMission();
 
-  assert.throws(() =>
-    lifecycle.transition({
-      missionId: mission.missionId,
-      expectedVersion: 0,
-      ifMatch: buildMissionEtag(mission.missionId, 0),
-      targetStatus: "paused",
-      actorId: principal.principalId,
-      traceId: "trace_002",
-      correlationId: "corr_002",
-    }),
+  assert.throws(
+    () =>
+      lifecycle.transition({
+        missionId: mission.missionId,
+        expectedVersion: 0,
+        ifMatch: buildMissionEtag(mission.missionId, 0),
+        targetStatus: "paused",
+        actorId: principal.principalId,
+        traceId: "trace_002",
+        correlationId: "corr_002",
+      }),
+    (error: unknown) => error instanceof AppError && error.code === "mission.version_conflict",
   );
 
   const paused = lifecycle.transition({

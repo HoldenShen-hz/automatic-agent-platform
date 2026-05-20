@@ -88,13 +88,15 @@ export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueReposit
 
 export class DeadLetterQueueService {
   private readonly repo: DeadLetterQueueRepository;
+  private readonly maxRetries: number;
 
   /**
    * Create a DLQ service with an optional repository.
    * @param repo - Optional repository for persistence. Defaults to in-memory storage.
    */
-  public constructor(repo?: DeadLetterQueueRepository) {
+  public constructor(repo?: DeadLetterQueueRepository, options: { maxRetries?: number } = {}) {
     this.repo = repo ?? new InMemoryDeadLetterQueueRepository();
+    this.maxRetries = Math.max(0, Math.trunc(options.maxRetries ?? 5));
   }
 
   public enqueue(input: {
@@ -136,6 +138,9 @@ export class DeadLetterQueueService {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
     const record = this.getRequired(deadLetterId);
+    if (record.retryExhaustedAt != null || record.retryCount >= this.maxRetries) {
+      throw new ValidationError("dlq.retry_exhausted", "DLQ retry limit has been exhausted.");
+    }
     const now = nowIso();
     const updated: DeadLetterRecord = {
       ...record,

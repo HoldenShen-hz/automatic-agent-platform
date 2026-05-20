@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { newId, nowIso } from "../../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -68,8 +68,27 @@ function normalizeCapabilities(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))).sort();
 }
 
-function hashToken(token: string): string {
+function hashTokenLegacy(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+function hashToken(token: string, challengeId: string): string {
+  return createHmac("sha256", challengeId).update(token, "utf8").digest("hex");
+}
+
+function timingSafeHexEqual(left: string, right: string): boolean {
+  if (!/^[a-f0-9]+$/i.test(left) || !/^[a-f0-9]+$/i.test(right) || left.length !== right.length) {
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+}
+
+function verifyChallengeToken(storedHash: string, token: string, challengeId: string): boolean {
+  if (timingSafeHexEqual(storedHash, hashToken(token, challengeId))) {
+    return true;
+  }
+  // Compatibility for challenges issued before the HMAC hardening landed.
+  return timingSafeHexEqual(storedHash, hashTokenLegacy(token));
 }
 
 function addMs(iso: string, ms: number): string {
@@ -131,7 +150,7 @@ export class RemoteWorkerRegistrationService {
     this.store.worker.insertWorkerRegistrationChallenge({
       id: challengeId,
       workerId: input.workerId,
-      challengeTokenHash: hashToken(challengeToken),
+      challengeTokenHash: hashToken(challengeToken, challengeId),
       allowedCapabilitiesJson: JSON.stringify(allowedCapabilities),
       expiresAt,
       usedAt: null,
@@ -204,7 +223,7 @@ export class RemoteWorkerRegistrationService {
         rejectedCapabilities,
       };
     }
-    if (challenge.challengeTokenHash !== hashToken(input.challengeToken)) {
+    if (!verifyChallengeToken(challenge.challengeTokenHash, input.challengeToken, challenge.id)) {
       return {
         accepted: false,
         reasonCode: "challenge_token_invalid",

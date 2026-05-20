@@ -129,12 +129,11 @@ export class VersionRoutingMiddleware {
       };
     }
 
-    // Return lowest supported version as fallback
     return {
-      acceptable: true,
-      version: this.config.supportedVersions[this.config.supportedVersions.length - 1]!,
-      statusCode: 200,
-      reasonCode: "version.fallback",
+      acceptable: false,
+      version: this.config.defaultVersion,
+      statusCode: 406,
+      reasonCode: "version.not_supported",
       warnings,
     };
   }

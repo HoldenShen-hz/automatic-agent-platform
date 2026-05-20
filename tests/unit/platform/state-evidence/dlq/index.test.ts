@@ -93,6 +93,22 @@ test("DeadLetterQueueService markRetryExhausted sets retryExhaustedAt", () => {
   assert.equal(exhausted.nextRetryAt, null);
 });
 
+test("DeadLetterQueueService rejects retry scheduling after retry exhaustion", () => {
+  const service = new DeadLetterQueueService(undefined, { maxRetries: 1 });
+  const record = service.enqueue({
+    sourceEventId: "evt-exhausted",
+    consumerId: "consumer-a",
+    errorCode: "boom",
+    payloadJson: "{}",
+  });
+
+  service.scheduleRetry(record.deadLetterId, 0);
+  assert.throws(
+    () => service.scheduleRetry(record.deadLetterId, 0),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "dlq.retry_exhausted",
+  );
+});
+
 test("DeadLetterQueueService markRetryExhausted throws for unknown id", () => {
   const service = new DeadLetterQueueService();
   assert.throws(

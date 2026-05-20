@@ -451,8 +451,19 @@ export function compareWorkflowStepCheckpointVersions(
     outputKeysAdded: [...nextOutputKeys].filter((key) => !previousOutputKeys.has(key)).sort(),
     outputKeysRemoved: [...previousOutputKeys].filter((key) => !nextOutputKeys.has(key)).sort(),
     nextStepChanged: previous.resumeContext.nextStepId !== next.resumeContext.nextStepId,
-    compensationChanged: JSON.stringify(previous.compensationModel) !== JSON.stringify(next.compensationModel),
+    compensationChanged: stableStringify(previous.compensationModel) !== stableStringify(next.compensationModel),
   };
+}
+
+function stableStringify(value: unknown): string {
+  if (value == null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
 function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoint {

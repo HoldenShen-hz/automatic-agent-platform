@@ -53,7 +53,7 @@ test("KnowledgeArchive.upsert adds new record", () => {
   assert.equal(result.document.version, 1);
 });
 
-test("KnowledgeArchive.upsert increments version on update", () => {
+test("KnowledgeArchive.upsert is idempotent on same-checksum update", () => {
   const archive = new KnowledgeArchive();
   const source = createMockKnowledgeSource({ checksum: "checksum_1" });
   const document = createMockKnowledgeDocument({ documentId: "doc_1", version: 1 });
@@ -65,8 +65,8 @@ test("KnowledgeArchive.upsert increments version on update", () => {
   const updatedChunks = [createMockKnowledgeChunk({ chunkId: "chunk_1", documentId: "doc_1", content: "Updated content" })];
   const result = archive.upsert({ source, document: updatedDocument, chunks: updatedChunks });
 
-  assert.equal(result.document.version, 2);
-  assert.equal(result.document.rawText, "Updated content");
+  assert.equal(result.document.version, 1);
+  assert.notEqual(result.document.rawText, "Updated content");
   assert.equal(result.document.status, "indexed");
 });
 
@@ -218,7 +218,7 @@ test("KnowledgeArchive.upsert handles multiple chunks per document", () => {
   assert.equal(archive.list().length, 1);
 });
 
-test("KnowledgeArchive.upsert updates chunks when document exists", () => {
+test("KnowledgeArchive.upsert preserves chunks when checksum is unchanged", () => {
   const archive = new KnowledgeArchive();
   const source = createMockKnowledgeSource({ checksum: "checksum_1" });
   const document = createMockKnowledgeDocument({ documentId: "doc_1" });
@@ -229,7 +229,7 @@ test("KnowledgeArchive.upsert updates chunks when document exists", () => {
 
   archive.upsert({ source, document, chunks });
 
-  // Update with new chunks
+  // Same checksum means the content has not changed, so upsert must be idempotent.
   const updatedChunks = [
     createMockKnowledgeChunk({ chunkId: "chunk_1", documentId: "doc_1", content: "Updated chunk 1" }),
     createMockKnowledgeChunk({ chunkId: "chunk_2", documentId: "doc_1", content: "Updated chunk 2" }),
@@ -243,6 +243,6 @@ test("KnowledgeArchive.upsert updates chunks when document exists", () => {
   });
 
   const result = archive.getChunk("chunk_3");
-  assert.ok(result);
-  assert.equal(result!.chunk.content, "New chunk 3");
+  assert.equal(result, null);
+  assert.notEqual(archive.getChunk("chunk_1")!.chunk.content, "Updated chunk 1");
 });

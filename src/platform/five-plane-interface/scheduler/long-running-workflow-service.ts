@@ -21,6 +21,14 @@ export interface WorkflowSuspensionRequest {
   readonly metadata?: Record<string, unknown>;
 }
 
+function compareIsoInstant(left: string, right: string, parsedRight = Date.parse(right)): number {
+  const parsedLeft = Date.parse(left);
+  if (Number.isFinite(parsedLeft) && Number.isFinite(parsedRight)) {
+    return parsedLeft - parsedRight;
+  }
+  return left.localeCompare(right);
+}
+
 export interface WorkflowSuspensionRecord {
   readonly suspensionId: string;
   readonly taskId: string;
@@ -104,11 +112,12 @@ export class LongRunningWorkflowService {
 
   public markDue(now: string = nowIso()): WorkflowSuspensionRecord[] {
     const due: WorkflowSuspensionRecord[] = [];
+    const nowMs = Date.parse(now);
     for (const record of this.suspensions.values()) {
-      if (record.status !== "active" || record.resumeAfter == null || record.resumeAfter > now) {
+      if (record.status !== "active" || record.resumeAfter == null || compareIsoInstant(record.resumeAfter, now, nowMs) > 0) {
         continue;
       }
-      if (record.expiresAt != null && record.expiresAt <= now) {
+      if (record.expiresAt != null && compareIsoInstant(record.expiresAt, now, nowMs) <= 0) {
         continue;
       }
       const updated = { ...record, status: "resumable" as const };

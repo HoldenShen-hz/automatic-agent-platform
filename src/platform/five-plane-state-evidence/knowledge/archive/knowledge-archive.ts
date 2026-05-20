@@ -21,29 +21,7 @@ export class KnowledgeArchive {
     // Check if this exact checksum already exists
     const existing = this.documentsByChecksum.get(record.source.checksum);
     if (existing) {
-      this.appendHistory(existing.document.documentId, existing);
-      // Remove old chunk records to prevent stale entries
-      for (const oldChunk of existing.chunks) {
-        this.recordsByChunkId.delete(oldChunk.chunkId);
-      }
-      const updated: ArchivedKnowledgeRecord = {
-        ...existing,
-        document: {
-          ...existing.document,
-          version: existing.document.version + 1,
-          status: record.document.status,
-          rawText: record.document.rawText,
-          archived: false,
-          archivedAt: null,
-        },
-        chunks: record.chunks,
-      };
-      this.documentsByChecksum.set(record.source.checksum, updated);
-      this.recordsByDocumentId.set(updated.document.documentId, updated);
-      for (const chunk of updated.chunks) {
-        this.recordsByChunkId.set(chunk.chunkId, { record: updated, chunk });
-      }
-      return updated;
+      return existing;
     }
 
     // New checksum for a potentially existing documentId - clean up old checksum entry

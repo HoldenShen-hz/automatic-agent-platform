@@ -19,16 +19,16 @@ export function sortTicketsForDeterministicDispatch(
   tickets: ExecutionTicketRecord[],
 ): ExecutionTicketRecord[] {
   return [...tickets].sort((left, right) => {
-    const leftRank = left.criticalPathRank ?? 0;
-    const rightRank = right.criticalPathRank ?? 0;
-    if (leftRank !== rightRank) {
-      return rightRank - leftRank;
-    }
-
     const leftPriority = PRIORITY_ORDER[left.priority] ?? 0;
     const rightPriority = PRIORITY_ORDER[right.priority] ?? 0;
     if (leftPriority !== rightPriority) {
       return rightPriority - leftPriority;
+    }
+
+    const leftRank = left.criticalPathRank ?? 0;
+    const rightRank = right.criticalPathRank ?? 0;
+    if (leftRank !== rightRank) {
+      return rightRank - leftRank;
     }
 
     const leftRisk = RISK_CLASS_ORDER[left.riskClass ?? "low"] ?? 0;

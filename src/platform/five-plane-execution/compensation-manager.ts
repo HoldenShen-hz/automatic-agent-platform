@@ -162,10 +162,12 @@ export class CompensationManager {
   /**
    * Check if a compensation action requires human approval.
    *
-   * High-risk or high-impact compensations require human approval before execution.
+   * Medium/high impact compensations require human approval before execution.
+   * Irreversible actions are represented as at least medium impact by compensation
+   * planning, so this stays fail-closed when reversibility metadata is unavailable.
    */
   public requiresHumanApproval(impact: CompensationStep["estimatedImpact"]): boolean {
-    return impact === "high";
+    return impact === "high" || impact === "medium";
   }
 
   /**

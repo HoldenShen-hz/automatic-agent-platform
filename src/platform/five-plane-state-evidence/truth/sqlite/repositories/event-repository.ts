@@ -219,11 +219,18 @@ export class EventRepository {
   }
 
   public listEventsByType(eventType: string, limit?: number): EventRecord[] {
+    const params: Array<string | number> = [eventType];
+    const limitClause = Number.isFinite(limit)
+      ? " LIMIT ?"
+      : "";
+    if (limitClause.length > 0) {
+      params.push(Math.max(1, Math.trunc(limit!)));
+    }
     const sql = `SELECT ${EVENT_COLS}
        FROM events
        WHERE event_type = ?
-       ORDER BY created_at DESC${limit ? ` LIMIT ${limit}` : ""}`;
-    return queryAll<EventRecord>(this.conn, sql, eventType);
+       ORDER BY created_at DESC${limitClause}`;
+    return queryAll<EventRecord>(this.conn, sql, ...params);
   }
 
   /**

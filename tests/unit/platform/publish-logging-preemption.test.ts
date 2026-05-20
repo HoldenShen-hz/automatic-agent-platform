@@ -449,3 +449,42 @@ test("R24-27/R24-28: workflow step checkpoints expose restore state and version 
   assert.deepEqual(diff.outputKeysAdded, ["diagnostics"]);
   assert.equal(diff.nextStepChanged, true);
 });
+
+test("workflow checkpoint diff treats compensation model key order as stable", () => {
+  const previous = createWorkflowStepCheckpoint({
+    taskId: "task-1",
+    executionId: "exec-1",
+    workflowId: "workflow-1",
+    divisionId: "division-1",
+    harnessRunId: "harness-1",
+    nodeRunId: "node-1",
+    planGraphId: "graph-1",
+    stepId: "step-1",
+    roleId: "role-1",
+    outputKey: "result",
+    status: "completed",
+    producedAt: "2026-05-09T00:00:00.000Z",
+    output: { summary: "done" },
+    decisionContext: {
+      source: "planner",
+      request: "run",
+      routeReason: null,
+      priorStepSummaries: [],
+      dependsOnStepIds: [],
+    },
+    resumeContext: {
+      completedStepIds: ["step-1"],
+      nextStepId: "step-2",
+      outputKeys: ["result"],
+    },
+    compensationModel: { b: 2, a: 1 },
+  });
+  const next = createWorkflowStepCheckpoint({
+    ...previous,
+    compensationModel: { a: 1, b: 2 },
+  });
+
+  const diff = compareWorkflowStepCheckpointVersions(previous, next);
+
+  assert.equal(diff.compensationChanged, false);
+});

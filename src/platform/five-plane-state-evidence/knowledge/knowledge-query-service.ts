@@ -58,6 +58,10 @@ interface L1CacheEntry {
   queryLevel: QueryLevel;
 }
 
+type L1CacheContext = Pick<KnowledgeQueryOptions, "namespace" | "domainId" | "limit" | "maxContextTokens"> & {
+  principalId?: string;
+};
+
 /**
  * L1 in-memory cache for Quick query mode.
  * Simple Map-based LRU cache with TTL.
@@ -72,12 +76,19 @@ class L1QueryCache {
     this.ttlMs = ttlMs;
   }
 
-  private cacheKey(keyword: string, namespace: string | undefined): string {
-    return `${namespace ?? ""}:${keyword}`;
+  private cacheKey(keyword: string, context: L1CacheContext): string {
+    return JSON.stringify({
+      keyword,
+      namespace: context.namespace ?? null,
+      domainId: context.domainId ?? null,
+      limit: context.limit ?? null,
+      maxContextTokens: context.maxContextTokens ?? null,
+      principalId: context.principalId ?? null,
+    });
   }
 
-  public get(keyword: string, namespace: string | undefined): RetrievalHit[] | null {
-    const key = this.cacheKey(keyword, namespace);
+  public get(keyword: string, context: L1CacheContext): RetrievalHit[] | null {
+    const key = this.cacheKey(keyword, context);
     const entry = this.cache.get(key);
     if (!entry) {
       return null;
@@ -89,7 +100,7 @@ class L1QueryCache {
     return entry.hits;
   }
 
-  public set(keyword: string, namespace: string | undefined, hits: RetrievalHit[], level: QueryLevel): void {
+  public set(keyword: string, context: L1CacheContext, hits: RetrievalHit[], level: QueryLevel): void {
     if (this.cache.size >= this.maxEntries) {
       // Evict oldest entry
       const oldestKey = this.cache.keys().next().value;
@@ -97,7 +108,7 @@ class L1QueryCache {
         this.cache.delete(oldestKey);
       }
     }
-    const key = this.cacheKey(keyword, namespace);
+    const key = this.cacheKey(keyword, context);
     this.cache.set(key, { hits, timestamp: Date.now(), queryLevel: level });
   }
 
@@ -279,9 +290,10 @@ export class KnowledgeQueryService {
     const deduped = new Map<string, RetrievalHit>();
     for (const hits of hitGroups) {
       for (const hit of hits) {
-        const existing = deduped.get(hit.knowledgeRef);
+        const key = this.hitDedupKey(hit);
+        const existing = deduped.get(key);
         if (existing == null || hit.score > existing.score) {
-          deduped.set(hit.knowledgeRef, hit);
+          deduped.set(key, hit);
         }
       }
     }
@@ -290,9 +302,23 @@ export class KnowledgeQueryService {
         if (right.score !== left.score) {
           return right.score - left.score;
         }
-        return left.knowledgeRef.localeCompare(right.knowledgeRef);
+        return this.hitDedupKey(left).localeCompare(this.hitDedupKey(right));
       })
       .slice(0, limit ?? 10);
+  }
+
+  private cacheContext(options: KnowledgeQueryOptions): L1CacheContext {
+    return {
+      namespace: options.namespace,
+      domainId: options.domainId,
+      limit: options.limit,
+      maxContextTokens: options.maxContextTokens,
+      principalId: options.accessPrincipal?.principalId,
+    };
+  }
+
+  private hitDedupKey(hit: RetrievalHit): string {
+    return `${hit.namespace}:${hit.documentId}:${hit.chunkId}`;
   }
 
   /**
@@ -314,7 +340,7 @@ export class KnowledgeQueryService {
    * Returns cached hits or empty with quickMiss marker.
    */
   private executeQuickQuery(keyword: string, options: KnowledgeQueryOptions): RetrievalHit[] {
-    const cached = this.l1Cache.get(keyword, options.namespace);
+    const cached = this.l1Cache.get(keyword, this.cacheContext(options));
     if (cached) {
       this.lastConfidence = this.computeConfidence(cached);
       return this.truncateHits(cached, this.config.quickMaxTokens);
@@ -332,8 +358,8 @@ export class KnowledgeQueryService {
     const limit = options.limit ?? 10;
     const hits = this.retrievalService.query(keyword, { ...options, limit });
     this.lastConfidence = this.computeConfidence(hits);
-    this.l1Cache.set(keyword, options.namespace, hits, QueryLevel.Standard);
-    return this.truncateHits(hits, this.config.standardMaxTokens);
+    this.l1Cache.set(keyword, this.cacheContext(options), hits, QueryLevel.Standard);
+    return this.truncateHits(hits, options.maxContextTokens ?? this.config.standardMaxTokens);
   }
 
   /**
@@ -343,8 +369,8 @@ export class KnowledgeQueryService {
     const limit = options.limit ?? 10;
     const hits = await this.retrievalService.queryAsync(keyword, { ...options, limit });
     this.lastConfidence = this.computeConfidence(hits);
-    this.l1Cache.set(keyword, options.namespace, hits, QueryLevel.Standard);
-    return this.truncateHits(hits, this.config.standardMaxTokens);
+    this.l1Cache.set(keyword, this.cacheContext(options), hits, QueryLevel.Standard);
+    return this.truncateHits(hits, options.maxContextTokens ?? this.config.standardMaxTokens);
   }
 
   /**
@@ -366,8 +392,8 @@ export class KnowledgeQueryService {
     const mergedHits = this.mergeHits(expandedHits, structuralHits, limit);
 
     this.lastConfidence = this.computeConfidence(mergedHits);
-    this.l1Cache.set(keyword, options.namespace, mergedHits, QueryLevel.Deep);
-    return this.truncateHits(mergedHits, this.config.deepMaxTokens);
+    this.l1Cache.set(keyword, this.cacheContext(options), mergedHits, QueryLevel.Deep);
+    return this.truncateHits(mergedHits, options.maxContextTokens ?? this.config.deepMaxTokens);
   }
 
   /**
@@ -426,9 +452,9 @@ export class KnowledgeQueryService {
   private mergeHits(primary: readonly RetrievalHit[], secondary: readonly RetrievalHit[], limit: number): RetrievalHit[] {
     const merged = new Map<string, RetrievalHit>();
     for (const hit of [...primary, ...secondary]) {
-      const current = merged.get(hit.knowledgeRef);
+      const current = merged.get(this.hitDedupKey(hit));
       if (!current || hit.score > current.score) {
-        merged.set(hit.knowledgeRef, hit);
+        merged.set(this.hitDedupKey(hit), hit);
       }
     }
     return [...merged.values()]
