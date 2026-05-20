@@ -239,6 +239,18 @@ test("SplitBrainProtectionService.getQuorumState returns null for unknown region
   assert.equal(state, null);
 });
 
+test("SplitBrainProtectionService.acquireLeadershipWithFencing rejects blank entity ids", () => {
+  const service = new SplitBrainProtectionService();
+  assert.throws(
+    () => service.acquireLeadershipWithFencing("us-east", "   "),
+    /split_brain_protection\.entity_id_required/,
+  );
+  assert.throws(
+    () => service.acquireLeadershipWithFencing("us-east", null),
+    /split_brain_protection\.entity_id_required/,
+  );
+});
+
 test("SplitBrainProtectionService.setQuorumWeight updates weight", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");

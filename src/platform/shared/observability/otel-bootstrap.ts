@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 
 import { StructuredLogger } from "./structured-logger.js";
 import { ServiceRegistry } from "../lifecycle/service-registry.js";
+import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
 
 export interface OtelBootstrapConfig {
   enabled: boolean;
@@ -32,14 +33,17 @@ class OtelBootstrapManager {
 
   public async init(config: OtelBootstrapConfig): Promise<boolean> {
     if (!config.enabled) {
+      runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 0);
       return false;
     }
     if (config.endpoint == null || config.endpoint.trim().length === 0) {
+      runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 0);
       logger.warn("otel bootstrap skipped: missing endpoint");
       return false;
     }
     const modules = loadOtelModules();
     if (modules == null) {
+      runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 0);
       logger.warn("otel bootstrap skipped: OpenTelemetry packages are not installed");
       return false;
     }
@@ -60,8 +64,9 @@ class OtelBootstrapManager {
       instrumentations,
     });
     await Promise.resolve(this.sdk.start());
+    runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 1);
     logger.info("otel bootstrap initialized", {
-      endpoint: config.endpoint,
+      endpoint: redactOtelEndpoint(config.endpoint),
       serviceName: config.serviceName,
     });
     return true;
@@ -74,6 +79,18 @@ class OtelBootstrapManager {
     const activeSdk = this.sdk;
     this.sdk = null;
     await activeSdk.shutdown();
+  }
+}
+
+function redactOtelEndpoint(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    return url.toString();
+  } catch {
+    return endpoint;
   }
 }
 

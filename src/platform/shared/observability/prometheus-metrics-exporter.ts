@@ -39,7 +39,7 @@ export class PrometheusMetricsExporter {
     metricsService: MetricsService,
     options: PrometheusMetricsExporterOptions = {},
   ) {
-    this.metricPrefix = options.metricPrefix ?? "";
+    this.metricPrefix = sanitizeMetricPrefix(options.metricPrefix ?? "");
     this.db = db;
     this.metricsService = metricsService;
     this.processStartTime = Date.now();
@@ -56,7 +56,7 @@ export class PrometheusMetricsExporter {
    * Reset HTTP request counters (typically called after scraping).
    */
   public resetHttpRequestCounts(): void {
-    runtimeMetricsRegistry.reset();
+    runtimeMetricsRegistry.reset(["http_requests_total", "http_request_duration_ms"]);
   }
 
   /**
@@ -209,12 +209,12 @@ export class PrometheusMetricsExporter {
     lines.push(`${this.metricName("disk_used_ratio")} ${diskUsage.usedRatio}`);
 
     lines.push("");
-    lines.push(`# HELP ${this.metricName("oapeflir_loop_duration_ms")} OAPEFLIR stage duration in milliseconds.`);
-    lines.push(`# TYPE ${this.metricName("oapeflir_loop_duration_ms")} histogram`);
-    for (const line of this.renderHistogramSeries("oapeflir_loop_duration_ms")) {
+    lines.push(`# HELP ${this.metricName("oapeflir_stage_duration_ms")} OAPEFLIR stage duration in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("oapeflir_stage_duration_ms")} histogram`);
+    for (const line of this.renderHistogramSeries("oapeflir_stage_duration_ms")) {
       lines.push(line);
     }
-    renderedHistograms.add("oapeflir_loop_duration_ms");
+    renderedHistograms.add("oapeflir_stage_duration_ms");
 
     lines.push("");
     lines.push(`# HELP ${this.metricName("oapeflir_stage_outcome_total")} OAPEFLIR stage outcomes by result.`);
@@ -231,14 +231,6 @@ export class PrometheusMetricsExporter {
       lines.push(line);
     }
     renderedCounters.add("oapeflir_stage_entry_total");
-
-    lines.push("");
-    lines.push(`# HELP ${this.metricName("stage_duration_seconds")} OAPEFLIR stage duration in seconds (entry to exit).`);
-    lines.push(`# TYPE ${this.metricName("stage_duration_seconds")} histogram`);
-    for (const line of this.renderHistogramSeries("stage_duration_seconds")) {
-      lines.push(line);
-    }
-    renderedHistograms.add("stage_duration_seconds");
 
     lines.push("");
     lines.push(`# HELP ${this.metricName("llm_ttfb_seconds")} LLM time-to-first-token latency in seconds.`);
@@ -276,6 +268,9 @@ export class PrometheusMetricsExporter {
       if (renderedCounters.has(name)) {
         continue;
       }
+      if (!isRuntimeMetricNameAllowed(name)) {
+        continue;
+      }
       lines.push("");
       lines.push(`# HELP ${this.metricName(name)} Runtime counter metric.`);
       lines.push(`# TYPE ${this.metricName(name)} counter`);
@@ -286,6 +281,9 @@ export class PrometheusMetricsExporter {
 
     for (const name of runtimeMetricsRegistry.listHistogramNames()) {
       if (renderedHistograms.has(name)) {
+        continue;
+      }
+      if (!isRuntimeMetricNameAllowed(name)) {
         continue;
       }
       lines.push("");
@@ -378,6 +376,47 @@ export class PrometheusMetricsExporter {
     }
     return lines;
   }
+}
+
+function sanitizeMetricPrefix(prefix: string): string {
+  if (prefix.length === 0) {
+    return "";
+  }
+  const normalized = prefix.replace(/[^a-zA-Z0-9_:]/g, "_");
+  return /^[a-zA-Z_:]/.test(normalized) ? normalized : `metric_${normalized}`;
+}
+
+const ALLOWED_RUNTIME_METRIC_NAMES = new Set([
+  "http_requests_total",
+  "http_request_duration_ms",
+  "redis_connection_errors",
+  "queue_enqueue_failures_total",
+  "alert_delivery_failures_total",
+  "oapeflir_stage_duration_ms",
+  "oapeflir_stage_outcome_total",
+  "oapeflir_stage_entry_total",
+  "llm_ttfb_seconds",
+  "llm_total_seconds",
+  "knowledge_query_duration_ms",
+  "knowledge_query_total",
+  "harness_run_total",
+  "harness_run_duration_ms",
+  "harness_steps",
+  "harness_budget_consumed_total_units",
+  "harness_budget_total_units",
+  "harness_budget_utilization_ratio",
+  "harness_execution_latency_ms",
+  "harness_task_started_total",
+  "harness_task_completed_total",
+  "harness_plugin_invoked_total",
+  "harness_policy_decision_total",
+  "event_bus_backpressure_pending",
+  "event_bus_backpressure_high_water",
+  "otel_runtime_available",
+]);
+
+function isRuntimeMetricNameAllowed(name: string): boolean {
+  return ALLOWED_RUNTIME_METRIC_NAMES.has(name);
 }
 
 /**

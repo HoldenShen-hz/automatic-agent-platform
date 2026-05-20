@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { z } from "zod";
@@ -172,7 +172,18 @@ export class FileQuotaStateStore implements QuotaStateStore {
 
   public save(snapshot: QuotaStateSnapshot): void {
     mkdirSync(dirname(this.filePath), { recursive: true });
-    writeFileSync(this.filePath, JSON.stringify(snapshot, null, 2), "utf8");
+    const serialized = JSON.stringify(snapshot, null, 2);
+    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    writeFileSync(tempPath, serialized, "utf8");
+    try {
+      renameSync(tempPath, this.filePath);
+    } finally {
+      try {
+        unlinkSync(tempPath);
+      } catch {
+        // Best effort cleanup after successful rename or interrupted write.
+      }
+    }
   }
 }
 

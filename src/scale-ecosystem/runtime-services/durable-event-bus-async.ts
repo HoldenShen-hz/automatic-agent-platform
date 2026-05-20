@@ -150,6 +150,7 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
   // Event batching
   private readonly publishBatch: BatchPublishItem[] = [];
   private batchFlushTimer: ReturnType<typeof setInterval> | null = null;
+  private publishBatchFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Circuit breaker state
   private failureCount = 0;
@@ -371,9 +372,7 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
       if (this.publishBatch.length >= this.options.maxBatchSize) {
         this.flushBatch();
       } else if (!this.batchProcessingPromise) {
-        // Schedule a flush
-        const timer = setTimeout(() => this.flushBatch(), this.options.batchFlushIntervalMs);
-        timer.unref?.();
+        this.schedulePublishBatchFlush();
       }
     });
   }
@@ -488,6 +487,10 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
     if (this.batchFlushTimer) {
       clearInterval(this.batchFlushTimer);
       this.batchFlushTimer = null;
+    }
+    if (this.publishBatchFlushTimer) {
+      clearTimeout(this.publishBatchFlushTimer);
+      this.publishBatchFlushTimer = null;
     }
 
     // Clear batch
@@ -618,6 +621,10 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
    * Flushes the publish batch.
    */
   private async flushBatch(): Promise<void> {
+    if (this.publishBatchFlushTimer) {
+      clearTimeout(this.publishBatchFlushTimer);
+      this.publishBatchFlushTimer = null;
+    }
     if (this.batchProcessingPromise) {
       return;
     }
@@ -632,6 +639,9 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
       await this.batchProcessingPromise;
     } finally {
       this.batchProcessingPromise = null;
+      if (this.publishBatch.length > 0 && !this.disposed) {
+        this.schedulePublishBatchFlush();
+      }
     }
   }
 
@@ -652,6 +662,17 @@ export class DurableEventBusAsync extends LocalTypedEventEmitter<Record<string, 
 
     const durationMs = Date.now() - startedAt;
     this.emit("batch_flush", { type: "batch_flush", batchSize: batch.length, durationMs });
+  }
+
+  private schedulePublishBatchFlush(): void {
+    if (this.publishBatchFlushTimer != null || this.publishBatch.length === 0 || this.disposed) {
+      return;
+    }
+    this.publishBatchFlushTimer = setTimeout(() => {
+      this.publishBatchFlushTimer = null;
+      void this.flushBatch();
+    }, this.options.batchFlushIntervalMs);
+    this.publishBatchFlushTimer.unref?.();
   }
 
   /**

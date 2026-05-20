@@ -10,6 +10,7 @@ import { KnowledgeRetrievalService, type KnowledgeQueryOptions } from "./retriev
 import { SemanticKnowledgeGraph } from "./semantic-knowledge-graph.js";
 import type { SemanticVectorStore } from "./semantic-vector-store.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
+import { getVerticalDomainBaseline, resolveCanonicalVerticalDomainId } from "../../../domains/domain-baseline-catalog.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import type { RetrieverKnowledgeResult } from "../../../domains/registry/plugin-spi.js";
 import type { TypedEventPublisher } from "../events/typed-event-publisher.js";
@@ -168,7 +169,7 @@ export class KnowledgePlaneService {
   public query(keyword: string, options: KnowledgeQueryOptions = {}): RetrievalHit[] {
     const startedAt = Date.now();
     try {
-      const hits = this.retrieval.query(keyword, options);
+      const hits = this.retrieval.query(keyword, this.withRerankOption(options));
       runtimeMetricsRegistry.recordKnowledgeQuery("sync", Date.now() - startedAt, "ok");
       return hits;
     } catch (error) {
@@ -187,7 +188,7 @@ export class KnowledgePlaneService {
         },
       }, async () => {
         await this.awaitSemanticSync();
-        const hits = await this.retrieval.queryAsync(keyword, options);
+        const hits = await this.retrieval.queryAsync(keyword, this.withRerankOption(options));
         runtimeMetricsRegistry.recordKnowledgeQuery("async", Date.now() - startedAt, "ok");
         return hits;
       });
@@ -199,6 +200,25 @@ export class KnowledgePlaneService {
 
   public listNamespaces() {
     return this.namespaces.list();
+  }
+
+  private withRerankOption(options: KnowledgeQueryOptions): KnowledgeQueryOptions {
+    if (options.rerankEnabled != null || options.domainId == null) {
+      return options;
+    }
+    const canonicalDomainId = resolveCanonicalVerticalDomainId(options.domainId);
+    if (canonicalDomainId == null) {
+      return options;
+    }
+    try {
+      const baseline = getVerticalDomainBaseline(canonicalDomainId);
+      return {
+        ...options,
+        rerankEnabled: baseline.knowledgeSchema.retrievalStrategy?.rerankEnabled === true,
+      };
+    } catch {
+      return options;
+    }
   }
 
   public inspectNamespace(namespace: string) {

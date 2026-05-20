@@ -57,11 +57,26 @@ export interface CapacityForecastActualComparison {
   readonly needsRecalibration: boolean;
 }
 
+export interface CapacityPlanningServiceOptions {
+  readonly confidenceBandStdDevMultiplier?: number;
+  readonly queueDepthToDelayMs?: number;
+  readonly providerQuotaLimits?: Readonly<Record<string, number>>;
+}
+
 export class CapacityPlanningService {
   private readonly signals = new Map<string, CapacitySignal[]>();
   private readonly forecaster = new CapacityForecasterService();
   private readonly simulator = new CapacityScenarioSimulatorService();
   private readonly analyzer = new CapacityTrendAnalyzerService();
+  private readonly confidenceBandStdDevMultiplier: number;
+  private readonly queueDepthToDelayMs: number;
+  private readonly providerQuotaLimits: Readonly<Record<string, number>>;
+
+  public constructor(options: CapacityPlanningServiceOptions = {}) {
+    this.confidenceBandStdDevMultiplier = options.confidenceBandStdDevMultiplier ?? 1.96;
+    this.queueDepthToDelayMs = options.queueDepthToDelayMs ?? 100;
+    this.providerQuotaLimits = options.providerQuotaLimits ?? {};
+  }
 
   public recordSignal(signal: CapacitySignal): CapacitySignal {
     const key = this.signalKey(signal.resourceType, signal.regionId);
@@ -95,7 +110,10 @@ export class CapacityPlanningService {
     if (latestProjection == null) {
       throw new Error(`capacity_planning.latest_projection_missing:${resourceType}`);
     }
-    const band = Math.max(1, Number((latestProjection * 0.1).toFixed(2)));
+    const usageValues = window.map((item) => item.usage);
+    const variance = usageValues.reduce((sum, usage) => sum + (usage - latestUsage) ** 2, 0) / Math.max(1, usageValues.length - 1);
+    const standardDeviation = Math.sqrt(Math.max(variance, 0));
+    const band = Math.max(1, Number((standardDeviation * this.confidenceBandStdDevMultiplier).toFixed(2)));
 
     return {
       resourceType,
@@ -119,7 +137,7 @@ export class CapacityPlanningService {
     return scenarios.map((scenario) => ({
       ...scenario,
       projectedUnits: this.simulator.simulate(scenario).projectedUnits,
-    })).sort((left, right) => left.projectedUnits - right.projectedUnits);
+    })).sort((left, right) => right.projectedUnits - left.projectedUnits);
   }
 
   public buildRecommendation(
@@ -153,6 +171,10 @@ export class CapacityPlanningService {
       : recommendedAction === "optimize"
         ? -10
         : 0;
+    const providerQuotaLimit = this.providerQuotaLimits[forecast.resourceType];
+    const providerQuotaPressure = providerQuotaLimit != null && providerQuotaLimit > 0
+      ? Number(Math.min(1, projectedPeak / providerQuotaLimit).toFixed(4))
+      : 0;
 
     return {
       resourceType: forecast.resourceType,
@@ -161,12 +183,12 @@ export class CapacityPlanningService {
       projectedPeak,
       estimatedCostDeltaPercent,
       sloRisk,
-      slaTier: sloRisk === "high" ? "gold" : sloRisk === "medium" ? "silver" : "bronze",
-      queueDelayRiskMs: options.latestQueueDepth ?? 0,
+      slaTier: sloRisk === "low" ? "gold" : sloRisk === "medium" ? "silver" : "bronze",
+      queueDelayRiskMs: Math.max(0, options.latestQueueDepth ?? 0) * this.queueDepthToDelayMs,
       budgetHeadroomPercent: Math.max(0, 100 - Math.max(0, estimatedCostDeltaPercent)),
       approvalCapacityNeeded: sloRisk === "high" ? 2 : 1,
-      providerQuotaPressure: forecast.confidenceInterval.high,
-      regionFailoverReservePercent: this.computeDynamicFailoverReserve(sloRisk === "high" ? "gold" : sloRisk === "medium" ? "silver" : "bronze"),
+      providerQuotaPressure,
+      regionFailoverReservePercent: this.computeDynamicFailoverReserve(sloRisk === "low" ? "gold" : sloRisk === "medium" ? "silver" : "bronze"),
     };
   }
 
@@ -174,8 +196,12 @@ export class CapacityPlanningService {
     readonly forecast: CapacityForecast;
     readonly actualUsage: number;
     readonly maxErrorRatio: number;
+    readonly actualPeriodIndex?: number;
   }): CapacityForecastActualComparison {
-    const forecastUsage = input.forecast.projectedUsage.at(-1);
+    const alignedIndex = input.actualPeriodIndex == null
+      ? input.forecast.projectedUsage.length - 1
+      : Math.min(Math.max(0, input.actualPeriodIndex), input.forecast.projectedUsage.length - 1);
+    const forecastUsage = input.forecast.projectedUsage[alignedIndex];
     if (forecastUsage == null || forecastUsage === 0) {
       throw new Error(`capacity_planning.forecast_usage_required:${input.forecast.resourceType}`);
     }
@@ -196,17 +222,17 @@ export class CapacityPlanningService {
 
   private estimateGrowthRate(signals: readonly CapacitySignal[]): number {
     if (signals.length < 2) {
-      return 5;
+      return 0;
     }
     const firstSignal = signals[0];
     const lastSignal = signals.at(-1);
     if (firstSignal == null || lastSignal == null) {
-      return 5;
+      return 0;
     }
     const first = firstSignal.usage;
     const last = lastSignal.usage;
     if (first === 0) {
-      return 5;
+      return 0;
     }
     return Number((((last - first) / first) * 100).toFixed(2));
   }

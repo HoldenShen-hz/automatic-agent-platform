@@ -8,6 +8,7 @@
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { alertSeverityToUnifiedSeverity } from "../../contracts/types/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
 import type {
   AlertChannelKind,
   AlertEvent,
@@ -142,11 +143,17 @@ export class AlertDispatcher {
     if (channel) {
       const configText = rule ? String(rule.channel_config ?? "{}") : "{}";
       const config = this.parseChannelConfig(configText, event);
-      const result = channel.deliver(event, config);
-      if (result.delivered) {
-        const deliveredAt = nowIso();
-        this.markDelivered(event.id, deliveredAt);
-        event.deliveredAt = deliveredAt;
+      try {
+        const result = channel.deliver(event, config);
+        if (result.delivered) {
+          const deliveredAt = nowIso();
+          this.markDelivered(event.id, deliveredAt);
+          event.deliveredAt = deliveredAt;
+        } else {
+          runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel: resolvedChannelKind }, 1);
+        }
+      } catch {
+        runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel: resolvedChannelKind }, 1);
       }
     }
 
@@ -205,11 +212,17 @@ export class AlertDispatcher {
     // Attempt delivery
     const channel = this.channels.get(channelKind);
     if (channel) {
-      const result = channel.deliver(event, {});
-      if (result.delivered) {
-        const deliveredAt = nowIso();
-        this.markDelivered(event.id, deliveredAt);
-        event.deliveredAt = deliveredAt;
+      try {
+        const result = channel.deliver(event, {});
+        if (result.delivered) {
+          const deliveredAt = nowIso();
+          this.markDelivered(event.id, deliveredAt);
+          event.deliveredAt = deliveredAt;
+        } else {
+          runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel: channelKind }, 1);
+        }
+      } catch {
+        runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel: channelKind }, 1);
       }
     }
 

@@ -21,13 +21,53 @@ export class AsyncEventRepository {
     event: EventRecordDraft,
   ): Promise<EventRecord> {
     const record = materializeEventRecord(event);
+    const consumerIds = getRequiredConsumers(record.eventType);
+
+    if (consumerIds.length === 0) {
+      await asyncExecute(
+        this.conn,
+        `INSERT INTO events (
+          id, task_id, session_id, execution_id, event_type, event_tier,
+          payload_json, trace_id, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        record.id,
+        record.taskId,
+        record.sessionId,
+        record.executionId,
+        record.eventType,
+        record.eventTier,
+        record.payloadJson,
+        record.traceId,
+        record.createdAt,
+      );
+      return record;
+    }
+
+    const ackRecords = consumerIds.map((consumerId) => ({
+      id: newId("eack"),
+      consumerId,
+    }));
+    const ackPlaceholders = ackRecords.map((_, index) =>
+      `($${10 + (index * 2)}, $${11 + (index * 2)})`
+    ).join(", ");
 
     await asyncExecute(
       this.conn,
-      `INSERT INTO events (
-        id, task_id, session_id, execution_id, event_type, event_tier,
-        payload_json, trace_id, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `WITH inserted_event AS (
+        INSERT INTO events (
+          id, task_id, session_id, execution_id, event_type, event_tier,
+          payload_json, trace_id, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+      )
+      INSERT INTO event_consumer_acks (
+        id, event_id, consumer_id, status, last_attempt_at, acked_at, error_code, attempt_count
+      )
+      SELECT ack.id, inserted_event.id, ack.consumer_id, 'pending', NULL, NULL, NULL, 0
+      FROM inserted_event
+      CROSS JOIN (
+        VALUES ${ackPlaceholders}
+      ) AS ack(id, consumer_id)`,
       record.id,
       record.taskId,
       record.sessionId,
@@ -37,20 +77,8 @@ export class AsyncEventRepository {
       record.payloadJson,
       record.traceId,
       record.createdAt,
+      ...ackRecords.flatMap((ack) => [ack.id, ack.consumerId]),
     );
-
-    for (const consumerId of getRequiredConsumers(record.eventType)) {
-      await this.insertEventConsumerAck({
-        id: newId("eack"),
-        eventId: record.id,
-        consumerId,
-        status: "pending",
-        lastAttemptAt: null,
-        ackedAt: null,
-        errorCode: null,
-        attemptCount: 0,
-      });
-    }
 
     return record;
   }

@@ -219,6 +219,56 @@ test("KnowledgeRetrievalService.query returns results sorted by score descending
   }
 });
 
+test("KnowledgeRetrievalService rerank boosts exact phrase matches and appends rerank reasoning", () => {
+  const { service, archive, index, namespaces } = createTestRetrievalService();
+  namespaces.set("test.namespace", createMinimalNamespace());
+
+  archive.upsert(createArchivedRecord({
+    document: createMinimalDocument({ documentId: "doc-rerank-a", namespace: "test.namespace" }),
+    chunks: [createMinimalChunk({
+      chunkId: "chunk-rerank-a",
+      namespace: "test.namespace",
+      content: "This document explains TypeScript build cache invalidation in depth.",
+      summary: "Exact phrase match",
+      keywords: ["typescript", "build"],
+    })],
+  }));
+  archive.upsert(createArchivedRecord({
+    source: createMinimalSource({ sourceId: "source_2", checksum: "checksum_2", contentHash: "hash_2", namespace: "test.namespace" }),
+    document: createMinimalDocument({ documentId: "doc-rerank-b", sourceId: "source_2", namespace: "test.namespace" }),
+    chunks: [createMinimalChunk({
+      chunkId: "chunk-rerank-b",
+      documentId: "doc-rerank-b",
+      namespace: "test.namespace",
+      content: "This document discusses TypeScript build tooling and compiler ergonomics only.",
+      summary: "Weaker partial match",
+      keywords: ["typescript", "build", "systems"],
+    })],
+  }));
+  index.upsert(createMinimalChunk({
+    chunkId: "chunk-rerank-a",
+    namespace: "test.namespace",
+    content: "This document explains TypeScript build cache invalidation in depth.",
+    summary: "Exact phrase match",
+    keywords: ["typescript", "build"],
+  }));
+  index.upsert(createMinimalChunk({
+    chunkId: "chunk-rerank-b",
+    documentId: "doc-rerank-b",
+    namespace: "test.namespace",
+    content: "This document discusses TypeScript build tooling and compiler ergonomics only.",
+    summary: "Weaker partial match",
+    keywords: ["typescript", "build", "systems"],
+  }));
+
+  const reranked = service.query("TypeScript build", { rerankEnabled: true });
+
+  assert.equal(reranked.length >= 2, true);
+  assert.equal(reranked[0]?.chunkId, "chunk-rerank-a");
+  assert.ok(reranked[0]?.rankingSignals?.reasoningPaths.some((path) => path.startsWith("rerank:")));
+  assert.match(reranked[0]?.reasoningSummary ?? "", /rerank:/);
+});
+
 // =============================================================================
 // queryAsync
 // =============================================================================

@@ -43,7 +43,12 @@ export interface ApprovalConflictInput {
 export interface ComplianceFrameworkDefinition {
   readonly frameworkId: string;
   readonly type: ComplianceFrameworkType;
-  readonly auditRequirements: readonly string[];
+  readonly auditRequirements: readonly {
+    readonly requirementId: string;
+    readonly evidenceType: string;
+    readonly frequency: "daily" | "weekly" | "monthly" | "quarterly" | "annually";
+    readonly retentionPeriodDays: number;
+  }[];
   readonly reportTemplate: string;
 }
 

@@ -117,6 +117,7 @@ export interface OidcServiceConfig {
   readonly refreshThresholdMs: number;
   readonly maxSessionAgeMs: number;
   readonly fetchTimeoutMs: number;
+  readonly stateTtlMs: number;
   /** §48: Disable mock fallback in production */
   readonly allowMockFallback: boolean;
 }
@@ -126,6 +127,7 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
   refreshThresholdMs: FIVE_MINUTES_MS,
   maxSessionAgeMs: MS_PER_DAY,
   fetchTimeoutMs: 10_000,
+  stateTtlMs: 10 * 60 * 1000,
   allowMockFallback: false, // §48: Disabled in production
 };
 
@@ -168,12 +170,15 @@ function validateProductionToken(token: string): void {
 export class InMemoryOidcStateStore implements OidcStateStore {
   private readonly store = new Map<string, { nonce: string; redirectUri: string; codeVerifier: string; expiresAt: number }>();
 
+  public constructor(private readonly ttlMs = DEFAULT_CONFIG.stateTtlMs) {
+  }
+
   public saveState(state: string, nonce: string, redirectUri: string, codeVerifier: string): void {
     this.store.set(state, {
       nonce,
       redirectUri,
       codeVerifier,
-      expiresAt: Date.now() + 600000, // 10 minutes
+      expiresAt: Date.now() + this.ttlMs,
     });
   }
 
@@ -224,7 +229,7 @@ export class OidcIdentityService {
     config?: Partial<OidcServiceConfig>,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.stateStore = stateStore ?? new InMemoryOidcStateStore();
+    this.stateStore = stateStore ?? new InMemoryOidcStateStore(this.config.stateTtlMs);
   }
 
   /**
@@ -335,7 +340,7 @@ export class OidcIdentityService {
 
     for (const session of this.sessions.values()) {
       if (session.accessToken === accessToken) {
-        if (Date.now() > new Date(session.expiresAt).getTime()) {
+        if (Date.now() > readIsoTimeMs(session.expiresAt)) {
           this.revokeSession(session.sessionId);
           return null;
         }
@@ -408,29 +413,37 @@ export class OidcIdentityService {
       }
     }
 
+    const previousRefreshToken = session.refreshToken;
+    const previousFamily = session.refreshTokenFamily;
     const newTokens = await this.exchangeTokens({
       grantType: "refresh_token",
-      refreshToken: session.refreshToken,
+      refreshToken: previousRefreshToken,
     }) ?? this.simulateRefreshResponse(session.refreshToken);
-
-    // §48 Token Rotation: invalidate old refresh token and register new one
-    if (newTokens.refreshToken) {
-      // Invalidate the old token
-      if (family) {
-        this.refreshTokenFamilies.delete(family);
-      }
-      // Register new refresh token in the family
-      const newFamily = family ?? newId("rt_family");
-      this.refreshTokenFamilies.set(newFamily, newTokens.refreshToken);
-      session.refreshTokenFamily = newFamily;
+    if (newTokens == null) {
+      return null;
     }
 
-    // Update session with new tokens
-    session.accessToken = newTokens.accessToken;
-    session.idToken = newTokens.idToken;
-    session.refreshToken = newTokens.refreshToken;
-    session.expiresAt = newTokens.expiresAt;
-    session.lastActivityAt = nowIso();
+    // §48 Token Rotation: invalidate old refresh token and register new one
+    let nextRefreshTokenFamily = previousFamily;
+    if (newTokens.refreshToken) {
+      nextRefreshTokenFamily = previousFamily ?? newId("rt_family");
+    }
+    const nextSession: SessionRecord = {
+      ...session,
+      accessToken: newTokens.accessToken,
+      idToken: newTokens.idToken,
+      refreshToken: newTokens.refreshToken,
+      expiresAt: newTokens.expiresAt,
+      lastActivityAt: nowIso(),
+      ...(nextRefreshTokenFamily !== undefined ? { refreshTokenFamily: nextRefreshTokenFamily } : {}),
+    };
+    this.sessions.set(sessionId, nextSession);
+    if (newTokens.refreshToken) {
+      if (previousFamily) {
+        this.refreshTokenFamilies.delete(previousFamily);
+      }
+      this.refreshTokenFamilies.set(nextRefreshTokenFamily!, newTokens.refreshToken);
+    }
 
     return newTokens;
   }
@@ -488,7 +501,7 @@ export class OidcIdentityService {
 
     for (const sessionId of sessionIds) {
       const session = this.sessions.get(sessionId);
-      if (session && Date.now() <= new Date(session.expiresAt).getTime()) {
+      if (session && Date.now() <= readIsoTimeMs(session.expiresAt)) {
         activeSessions.push(toOidcSession(session));
       }
     }
@@ -525,7 +538,7 @@ export class OidcIdentityService {
     const now = Date.now();
 
     for (const [sessionId, session] of this.sessions.entries()) {
-      if (now > new Date(session.expiresAt).getTime()) {
+      if (now > readIsoTimeMs(session.expiresAt)) {
         this.revokeSession(sessionId);
         cleaned++;
       }
@@ -671,6 +684,14 @@ export class OidcIdentityService {
       expiresAt: new Date(Date.now() + expiresIn * MS_PER_SECOND).toISOString(),
     };
   }
+}
+
+function readIsoTimeMs(value: string): number {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`oidc.invalid_timestamp:${value}`);
+  }
+  return parsed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

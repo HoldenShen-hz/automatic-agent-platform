@@ -317,7 +317,7 @@ export class HealthService {
       this.db.connection.exec("DELETE FROM __health_probe");
       return true;
     } catch (err) {
-      healthLogger.log({ level: "warn", message: "Database writability check failed", data: { error: err instanceof Error ? err.message : String(err) } });
+      healthLogger.log({ level: "warn", message: "Database writability check failed", data: { error: err } });
       return false;
     }
   }
@@ -327,7 +327,7 @@ export class HealthService {
       try {
         return await this.db.healthCheck();
       } catch (err) {
-        healthLogger.log({ level: "warn", message: "Async database health check failed", data: { error: err instanceof Error ? err.message : String(err) } });
+        healthLogger.log({ level: "warn", message: "Async database health check failed", data: { error: err } });
         return false;
       }
     }

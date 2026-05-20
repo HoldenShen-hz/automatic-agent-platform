@@ -29,6 +29,10 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export const WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION = "workflow_step_checkpoint.v1";
 export const NODE_RUN_CHECKPOINT_SCHEMA_VERSION = "node_run_checkpoint.v1";
+const LEGACY_WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSIONS = new Set([
+  "workflow_step_checkpoint.v0",
+  WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
+]);
 
 /**
  * Context about how the step decision was made.
@@ -388,6 +392,11 @@ export function summarizeWorkflowStepCheckpoint(
   checkpoint: WorkflowStepCheckpoint,
 ): WorkflowStepCheckpointSummary {
   const output = checkpoint.output as { summary?: unknown } | null;
+  const nextNodeRunId = checkpoint.resumeContext.nextStepId == null
+    ? null
+    : checkpoint.resumeContext.nextStepId.startsWith("node:")
+      ? checkpoint.resumeContext.nextStepId
+      : `node:${checkpoint.resumeContext.nextStepId}`;
   return {
     artifactId,
     nodeRunId: checkpoint.nodeRunId,
@@ -396,7 +405,7 @@ export function summarizeWorkflowStepCheckpoint(
     workflowId: checkpoint.workflowId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
-    nextNodeRunId: null,
+    nextNodeRunId,
     nextStepId: checkpoint.resumeContext.nextStepId,
     outputKeys: [...checkpoint.resumeContext.outputKeys],
     summary: typeof output?.summary === "string" ? output.summary : null,
@@ -474,7 +483,7 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
   const candidate = value as Record<string, unknown>;
   // R4-18 FIX: Check harnessRunId/nodeRunId/planGraphId instead of stepId
   if (
-    candidate.schemaVersion !== WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION
+    !LEGACY_WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSIONS.has(String(candidate.schemaVersion ?? ""))
     || typeof candidate.taskId !== "string"
     || (candidate.executionId !== null && typeof candidate.executionId !== "string")
     || typeof candidate.workflowId !== "string"
@@ -571,6 +580,7 @@ function normalizeWorkflowStepCheckpoint(value: unknown): WorkflowStepCheckpoint
   }
   const legacy = {
     ...candidate,
+    schemaVersion: WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
     executionId: candidate.executionId ?? null,
     harnessRunId: typeof candidate.harnessRunId === "string"
       ? candidate.harnessRunId

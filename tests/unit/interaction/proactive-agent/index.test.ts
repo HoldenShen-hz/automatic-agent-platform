@@ -131,7 +131,7 @@ test("ProactiveAgentService listSuggestions filters by domain", async () => {
   await service.registerTrigger(makeTrigger({ triggerId: "trigger_2", domainId: "domain_b", action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true } }));
 
   service.evaluate("trigger_1", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
-  service.evaluate("trigger_2", { kind: "schedule", now: "2026-04-19T02:00:00.000Z" });
+  service.evaluate("trigger_2", { kind: "schedule", now: "2026-04-20T01:00:00.000Z" });
 
   const all = service.listSuggestions();
   assert.equal(all.length, 2);
@@ -190,11 +190,11 @@ test("ProactiveAgentService evaluate enforces cooldown period", () => {
 
 test("ProactiveAgentService evaluate enforces rate limiting", () => {
   const service = new ProactiveAgentService();
-  service.registerTrigger(makeTrigger({ maxFireRate: "2/hour", cooldown: "1m" }));
+  service.registerTrigger(makeTrigger({ maxFireRate: "2/hour", cooldown: "0s" }));
 
   const first = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
-  const second = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:01:00.000Z" });
-  const third = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:02:00.000Z" });
+  const second = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
+  const third = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
 
   assert.equal(first.allowed, true);
   assert.equal(second.allowed, true);
@@ -206,7 +206,7 @@ test("ProactiveAgentService evaluate matches event triggers correctly", () => {
   const service = new ProactiveAgentService();
   const eventConfig: EventTriggerConfig = {
     eventSource: "task",
-    eventPattern: "failed",
+    eventPattern: "task_*",
     filter: { severity: "high" },
   };
   service.registerTrigger(makeTrigger({
@@ -303,7 +303,7 @@ test("ProactiveAgentService evaluate handles silent_record for dashboard updates
   assert.equal(decision.actionMode, "silent_record");
 });
 
-test("ProactiveAgentService evaluate handles silent_record for critical-risk without confirmation", () => {
+test("ProactiveAgentService evaluate suggests for critical-risk without confirmation", () => {
   const service = new ProactiveAgentService();
   service.registerTrigger(makeTrigger({
     riskLevel: "critical",
@@ -313,7 +313,7 @@ test("ProactiveAgentService evaluate handles silent_record for critical-risk wit
   const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.actionMode, "silent_record");
+  assert.equal(decision.actionMode, "suggest");
 });
 
 test("ProactiveAgentService recordExecutionOutcome does not open circuit before max threshold", () => {

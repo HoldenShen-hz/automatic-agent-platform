@@ -136,6 +136,9 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
     this.connection.exec("PRAGMA foreign_keys = ON;");
     // Enable WAL mode for better concurrency
     this.connection.exec("PRAGMA journal_mode = WAL;");
+    // Use NORMAL durability so WAL checkpoints remain crash-safe without the
+    // inconsistency of backend-specific default synchronous policies.
+    this.connection.exec("PRAGMA synchronous = NORMAL;");
     // Set busy timeout for write contention handling
     this.connection.exec(`PRAGMA busy_timeout = ${this.busyTimeoutMs};`);
   }
@@ -567,66 +570,6 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
           "ALTER TABLE worker_snapshots ADD COLUMN repo_cache_hit_rate REAL NULL;",
         );
         return true;
-      case 44:
-        this.connection.exec(migration.sql);
-        this.ensureColumn(
-          "harness_runs",
-          "org_id",
-          "ALTER TABLE harness_runs ADD COLUMN org_id TEXT NOT NULL DEFAULT '';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "trace_id",
-          "ALTER TABLE harness_runs ADD COLUMN trace_id TEXT NOT NULL DEFAULT '';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "goal",
-          "ALTER TABLE harness_runs ADD COLUMN goal TEXT NULL;",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "risk_level",
-          "ALTER TABLE harness_runs ADD COLUMN risk_level TEXT NOT NULL DEFAULT 'medium';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "domain_id",
-          "ALTER TABLE harness_runs ADD COLUMN domain_id TEXT NOT NULL DEFAULT 'unassigned';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "request_hash",
-          "ALTER TABLE harness_runs ADD COLUMN request_hash TEXT NOT NULL DEFAULT '';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "constraint_pack_ref",
-          "ALTER TABLE harness_runs ADD COLUMN constraint_pack_ref TEXT NOT NULL DEFAULT '';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "created_at",
-          "ALTER TABLE harness_runs ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';",
-        );
-        this.ensureColumn(
-          "harness_runs",
-          "fencing_token",
-          "ALTER TABLE harness_runs ADD COLUMN fencing_token TEXT NOT NULL DEFAULT '';",
-        );
-        this.ensureColumn(
-          "budget_reservations",
-          "created_at",
-          "ALTER TABLE budget_reservations ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';",
-        );
-        return true;
-      case 45:
-        this.ensureColumn(
-          "worker_snapshots",
-          "version",
-          "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 1;",
-        );
-        return true;
       case 11:
         this.ensureColumn(
           "worker_snapshots",
@@ -870,6 +813,66 @@ CREATE INDEX IF NOT EXISTS idx_data_namespaces_tenant_plane
 CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
   ON data_namespaces(workspace_id, plane, updated_at DESC);
 `);
+        return true;
+      case 44:
+        this.connection.exec(migration.sql);
+        this.ensureColumn(
+          "harness_runs",
+          "org_id",
+          "ALTER TABLE harness_runs ADD COLUMN org_id TEXT NOT NULL DEFAULT '';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "trace_id",
+          "ALTER TABLE harness_runs ADD COLUMN trace_id TEXT NOT NULL DEFAULT '';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "goal",
+          "ALTER TABLE harness_runs ADD COLUMN goal TEXT NULL;",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "risk_level",
+          "ALTER TABLE harness_runs ADD COLUMN risk_level TEXT NOT NULL DEFAULT 'medium';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "domain_id",
+          "ALTER TABLE harness_runs ADD COLUMN domain_id TEXT NOT NULL DEFAULT 'unassigned';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "request_hash",
+          "ALTER TABLE harness_runs ADD COLUMN request_hash TEXT NOT NULL DEFAULT '';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "constraint_pack_ref",
+          "ALTER TABLE harness_runs ADD COLUMN constraint_pack_ref TEXT NOT NULL DEFAULT '';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "created_at",
+          "ALTER TABLE harness_runs ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';",
+        );
+        this.ensureColumn(
+          "harness_runs",
+          "fencing_token",
+          "ALTER TABLE harness_runs ADD COLUMN fencing_token TEXT NOT NULL DEFAULT '';",
+        );
+        this.ensureColumn(
+          "budget_reservations",
+          "created_at",
+          "ALTER TABLE budget_reservations ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';",
+        );
+        return true;
+      case 45:
+        this.ensureColumn(
+          "worker_snapshots",
+          "version",
+          "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 1;",
+        );
         return true;
       default:
         return false;

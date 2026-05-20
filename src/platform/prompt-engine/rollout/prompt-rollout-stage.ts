@@ -14,7 +14,7 @@ export function isPromptRolloutStage(value: string): value is PromptRolloutStage
 }
 
 export function comparePromptRolloutStage(left: PromptRolloutStage, right: PromptRolloutStage): number {
-  return PROMPT_ROLLOUT_STAGES.indexOf(left) - PROMPT_ROLLOUT_STAGES.indexOf(right);
+  return promptRolloutStageRank(left) - promptRolloutStageRank(right);
 }
 
 export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRolloutStage | null {
@@ -52,4 +52,17 @@ export function passesQualityGate(stage: PromptRolloutStage, errorRate: number):
     return true;
   }
   return errorRate < threshold.maxErrorRate;
+}
+
+function promptRolloutStageRank(stage: PromptRolloutStage): number {
+  switch (stage) {
+    case "rolled_back":
+      return -1;
+    case "canary_5":
+      return 0;
+    case "canary_20":
+      return 1;
+    case "stable":
+      return 2;
+  }
 }

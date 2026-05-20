@@ -12,6 +12,9 @@ test("renderMetricsPayload returns exporter output for GET /metrics", () => {
   );
   assert.equal(payload.statusCode, 200);
   assert.match(payload.headers["content-type"] ?? "", /text\/plain/);
+  assert.equal(payload.headers["x-content-type-options"], "nosniff");
+  assert.equal(payload.headers["x-frame-options"], "DENY");
+  assert.equal(payload.headers["x-metrics-endpoint-origin"], "standalone");
   assert.match(payload.body, /aa_requests_total 1/);
 });
 
@@ -19,6 +22,7 @@ test("renderMetricsPayload rejects unsupported methods", () => {
   const payload = renderMetricsPayload(null, "POST", "/metrics");
   assert.equal(payload.statusCode, 405);
   assert.equal(payload.headers.allow, "GET");
+  assert.equal(payload.headers["cache-control"], "no-store, max-age=0");
 });
 
 test("renderMetricsPayload returns 404 outside metrics path", () => {

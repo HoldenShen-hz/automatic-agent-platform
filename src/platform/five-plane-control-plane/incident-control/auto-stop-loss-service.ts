@@ -662,10 +662,10 @@ export class AutoStopLossService {
    */
   private getHourKey(): string {
     const now = this.now();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    return `${now.getFullYear()}-${month}-${day}T${hours}`;
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(now.getUTCDate()).padStart(2, "0");
+    const hours = String(now.getUTCHours()).padStart(2, "0");
+    return `${now.getUTCFullYear()}-${month}-${day}T${hours}`;
   }
 
   // ── Human Approval ──────────────────────────────────────────────────

@@ -186,6 +186,9 @@ export async function unpackCheckpointEnvelope<T = unknown>(
   if (!isValidCheckpointEnvelope(envelope)) {
     throw new CheckpointEnvelopeInvalidError("Invalid checkpoint envelope structure");
   }
+  if (envelope.schema !== envelope.metadata.payloadSchemaVersion) {
+    throw new CheckpointEnvelopeInvalidError("Envelope schema does not match payloadSchemaVersion metadata");
+  }
 
   // Decode base64 payload
   let compressedBuffer: Buffer;

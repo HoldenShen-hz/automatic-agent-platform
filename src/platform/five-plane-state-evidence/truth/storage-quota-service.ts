@@ -145,6 +145,7 @@ export class StorageQuotaService {
   private enforceCategory(category: StorageQuotaCategoryConfig): StorageQuotaEnforcementCategoryResult {
     const initialRecords = this.collectFiles(category);
     let totalBytes = initialRecords.reduce((sum, record) => sum + record.sizeBytes, 0);
+    const remainingRecords = [...initialRecords];
     const removedFiles: Array<{ path: string; sizeBytes: number }> = [];
 
     // Clean up oldest unpinned files if over quota
@@ -156,8 +157,15 @@ export class StorageQuotaService {
           break;
         }
 
+        if (this.shouldSkipDeletion(record.path, category)) {
+          continue;
+        }
         rmSync(record.path, { force: true });
         totalBytes -= record.sizeBytes;
+        const index = remainingRecords.findIndex((item) => item.path === record.path);
+        if (index >= 0) {
+          remainingRecords.splice(index, 1);
+        }
         removedFiles.push({
           path: record.path,
           sizeBytes: record.sizeBytes,
@@ -165,8 +173,7 @@ export class StorageQuotaService {
       }
     }
 
-    const finalRecords = this.collectFiles(category);
-    const summary = summarizeCategory(category, finalRecords);
+    const summary = summarizeCategory(category, remainingRecords);
     return {
       ...summary,
       removedFiles,
@@ -265,6 +272,16 @@ export class StorageQuotaService {
       modifiedAtMs: stats.mtimeMs,
       pinned: pinnedPaths.some((pinnedPath) => path === pinnedPath || path.startsWith(`${pinnedPath}/`)),
     };
+  }
+
+  private shouldSkipDeletion(path: string, category: StorageQuotaCategoryConfig): boolean {
+    const resolvedPath = this.resolveDeclaredPath(path);
+    const latestPinnedPaths = (category.pinnedPaths ?? []).map((candidate) => this.resolveDeclaredPath(candidate));
+    if (latestPinnedPaths.includes(resolvedPath)) {
+      return true;
+    }
+    const check = checkSandboxPath(this.sandboxPolicy, resolvedPath);
+    return !check.allowed;
   }
 
   /**

@@ -79,8 +79,9 @@ function analyzeTrend(samples: readonly CapacitySample[]): CapacityTrend | null 
       const growthPerSample = (latest.load - earliest.load) / (sorted.length - 1);
       if (growthPerSample > 0) {
         const samplesToExhaustion = remainingCapacity / growthPerSample;
+        const averageSampleIntervalMs = computeAverageSampleIntervalMs(sorted);
         const exhaustionTimestamp = new Date(latest.timestamp);
-        exhaustionTimestamp.setMilliseconds(exhaustionTimestamp.getMilliseconds() + samplesToExhaustion * 1000);
+        exhaustionTimestamp.setMilliseconds(exhaustionTimestamp.getMilliseconds() + samplesToExhaustion * averageSampleIntervalMs);
         projectedCapacityExhaustionAt = exhaustionTimestamp.toISOString();
       }
     }
@@ -89,9 +90,21 @@ function analyzeTrend(samples: readonly CapacitySample[]): CapacityTrend | null 
   return {
     direction,
     growthRatePercent: Number(overallGrowthRate.toFixed(2)),
-    averageGrowthPercent: Number((averageGrowthRate / (sorted.length - 1)).toFixed(2)),
+    averageGrowthPercent: Number(averageGrowthRate.toFixed(2)),
     projectedCapacityExhaustionAt,
   };
+}
+
+function computeAverageSampleIntervalMs(samples: readonly CapacitySample[]): number {
+  if (samples.length < 2) {
+    return 1000;
+  }
+  let totalIntervalMs = 0;
+  for (let index = 1; index < samples.length; index++) {
+    totalIntervalMs += Math.max(0, Date.parse(samples[index]!.timestamp) - Date.parse(samples[index - 1]!.timestamp));
+  }
+  const averageIntervalMs = totalIntervalMs / (samples.length - 1);
+  return averageIntervalMs > 0 ? averageIntervalMs : 1000;
 }
 
 export function predictOpsCapacityRisk(

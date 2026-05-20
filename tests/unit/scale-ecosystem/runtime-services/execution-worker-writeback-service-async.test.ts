@@ -129,10 +129,59 @@ test("ExecutionWorkerWritebackServiceAsync batchingEnabled creates batch flush t
   assert.ok(true); // If no throw, timer was set up
 });
 
+test("ExecutionWorkerWritebackServiceAsync unrefs coalescing and batch timers", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
+    batchingEnabled: true,
+    batchFlushIntervalMs: 1000,
+    coalescingEnabled: true,
+    coalescingWindowMs: 100,
+  });
+  const internals = service as unknown as {
+    coalescingTimer: { hasRef?: () => boolean } | null;
+    batchFlushTimer: { hasRef?: () => boolean } | null;
+  };
+
+  assert.ok(internals.coalescingTimer);
+  assert.ok(internals.batchFlushTimer);
+  if (typeof internals.coalescingTimer?.hasRef === "function") {
+    assert.equal(internals.coalescingTimer.hasRef(), false);
+  }
+  if (typeof internals.batchFlushTimer?.hasRef === "function") {
+    assert.equal(internals.batchFlushTimer.hasRef(), false);
+  }
+  service.dispose();
+});
+
 test("ExecutionWorkerWritebackServiceAsync emits circuit_breaker_close on reset", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   let closeCount = 0;
   service.on("circuit_breaker_close" as never, () => closeCount++);
   service.resetCircuitBreaker();
   assert.equal(closeCount, 1);
+});
+
+test("ExecutionWorkerWritebackServiceAsync serializes overlapping batch flushes", async () => {
+  const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
+    batchingEnabled: true,
+    batchSize: 1,
+    batchFlushIntervalMs: 1000,
+  });
+
+  let runs = 0;
+  (service as any).batchQueue.push({
+    operation: async () => {
+      runs += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    },
+    resolve: () => {},
+    reject: () => {},
+  });
+
+  await Promise.all([
+    (service as any).flushBatch(),
+    (service as any).flushBatch(),
+  ]);
+
+  assert.equal(runs, 1);
+  service.dispose();
 });

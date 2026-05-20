@@ -18,7 +18,7 @@ function makeScheduleTrigger(overrides: Partial<TriggerDefinition> = {}): Trigge
     type: "schedule",
     config: {
       cron: "0 9 * * *",
-      timezone: "UTC",
+      timezone: "Asia/Shanghai",
       skipIfPreviousRunning: true,
     } as ScheduleTriggerConfig,
     action: {
@@ -59,7 +59,7 @@ test("integration: ProactiveAgentService with event watcher", async () => {
     type: "event",
     config: {
       eventSource: "task",
-      eventPattern: "failed",
+      eventPattern: "task_*",
       filter: { severity: "high" },
     } as EventTriggerConfig,
     action: {
@@ -74,7 +74,7 @@ test("integration: ProactiveAgentService with event watcher", async () => {
   });
 
   const event = { source: "task", name: "task_failed", payload: { severity: "high" } };
-  const shouldConsume = shouldConsumeProactiveEvent(event, "task", "failed");
+  const shouldConsume = shouldConsumeProactiveEvent(event, "task", "task_*");
   assert.equal(shouldConsume, true);
 
   const decision = service.evaluate("event_trigger", {

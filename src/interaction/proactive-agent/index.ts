@@ -1,10 +1,12 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { resolveTriggerActionMode } from "./trigger-engine/index.js";
+import { shouldConsumeProactiveEvent } from "./event-watcher/index.js";
 
 export interface ProactiveTrigger {
   readonly triggerId: string;
   readonly kind: "schedule" | "event" | "signal";
   readonly expression: string;
+  readonly timezone?: string;
 }
 
 export interface ProactiveAgentPort {
@@ -126,7 +128,7 @@ interface TriggerRuntimeState {
 function parseDurationMs(raw: string): number {
   const match = /^(\d+)(ms|s|m|h|d)$/.exec(raw.trim());
   if (!match) {
-    return 0;
+    return Number.NaN;
   }
   const value = Number(match[1]);
   switch (match[2]) {
@@ -141,19 +143,28 @@ function parseDurationMs(raw: string): number {
     case "d":
       return value * 86_400_000;
     default:
-      return 0;
+      return Number.NaN;
   }
 }
 
 function parseRateWindow(raw: string): { max: number; windowMs: number } {
   const match = /^(\d+)\/(hour|minute|day)$/.exec(raw.trim());
   if (!match) {
-    return { max: Number.POSITIVE_INFINITY, windowMs: 0 };
+    return { max: 0, windowMs: Number.NaN };
   }
   return {
     max: Number(match[1]),
     windowMs: match[2] === "minute" ? 60_000 : match[2] === "day" ? 86_400_000 : 3_600_000,
   };
+}
+
+function isValidTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toDefinition(trigger: ProactiveTrigger | TriggerDefinition): TriggerDefinition {
@@ -171,7 +182,7 @@ function toDefinition(trigger: ProactiveTrigger | TriggerDefinition): TriggerDef
     config: trigger.kind === "schedule"
       ? {
           cron: trigger.expression,
-          timezone: "UTC",
+          timezone: trigger.timezone ?? "UTC",
           skipIfPreviousRunning: true,
         }
       : trigger.kind === "event"
@@ -274,6 +285,15 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
     const definition = toDefinition(trigger);
+    if (definition.type === "schedule") {
+      const scheduleConfig = definition.config as ScheduleTriggerConfig;
+      if (!isValidTimezone(scheduleConfig.timezone)) {
+        throw new Error(`proactive_agent.invalid_timezone:${scheduleConfig.timezone}`);
+      }
+      if (!isValidCronExpression(scheduleConfig.cron)) {
+        throw new Error(`proactive_agent.invalid_cron:${scheduleConfig.cron}`);
+      }
+    }
     const declared = this.declaredTriggerIdsByDomain[definition.domainId];
     if (declared != null && !declared.includes(definition.triggerId)) {
       throw new Error(`proactive_agent.trigger_not_declared:${definition.domainId}:${definition.triggerId}`);
@@ -336,11 +356,17 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
 
     const cooldownMs = parseDurationMs(state.trigger.cooldown);
+    if (!Number.isFinite(cooldownMs)) {
+      reasons.push("proactive_agent.invalid_cooldown");
+    }
     if (state.lastFiredAt != null && cooldownMs > 0 && now - new Date(state.lastFiredAt).getTime() < cooldownMs) {
       reasons.push("proactive_agent.cooldown_active");
     }
 
     const { max, windowMs } = parseRateWindow(state.trigger.maxFireRate);
+    if (!Number.isFinite(windowMs) || max <= 0) {
+      reasons.push("proactive_agent.invalid_rate_limit");
+    }
     if (windowMs > 0) {
       state.fireTimestamps = state.fireTimestamps.filter(
         (timestamp) => now - new Date(timestamp).getTime() <= windowMs,
@@ -362,7 +388,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     const triggerConfig = state.trigger.config;
     if ("batchWindow" in triggerConfig && triggerConfig.batchWindow != null && input.event != null) {
       const batchWindowMs = parseDurationMs(triggerConfig.batchWindow);
-      if (batchWindowMs > 0) {
+      if (!Number.isFinite(batchWindowMs)) {
+        reasons.push("proactive_agent.invalid_batch_window");
+      } else if (batchWindowMs > 0) {
         // Add event to pending batch
         state.pendingEvents.push({ timestamp: now, event: input.event });
         // Filter out expired events from batch
@@ -443,10 +471,18 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       return false;
     }
 
+    if (normalizeTriggerType(trigger.type) === "schedule") {
+      const config = trigger.config as ScheduleTriggerConfig;
+      if (input.now == null) {
+        return true;
+      }
+      return matchesCronSchedule(input.now, config.cron, config.timezone);
+    }
+
     if (normalizeTriggerType(trigger.type) === "event" || normalizeTriggerType(trigger.type) === "webhook") {
       const config = trigger.config as EventTriggerConfig;
-      return input.event?.source === config.eventSource
-        && input.event.name.includes(config.eventPattern)
+      return input.event != null
+        && shouldConsumeProactiveEvent(input.event, config.eventSource, config.eventPattern)
         && Object.entries(config.filter).every(([key, value]) => String(input.event?.payload?.[key] ?? "") === value);
     }
 
@@ -606,4 +642,151 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       }
     }
   }
+}
+
+const WEEKDAY_INDEX: Readonly<Record<string, number>> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+function isValidCronExpression(expression: string): boolean {
+  const fields = parseCronFields(expression);
+  if (fields == null) {
+    return false;
+  }
+  return validateCronField(fields[0], 0, 59)
+    && validateCronField(fields[1], 0, 23)
+    && validateCronField(fields[2], 1, 31)
+    && validateCronField(fields[3], 1, 12)
+    && validateCronField(fields[4], 0, 7);
+}
+
+function matchesCronSchedule(nowIso: string, expression: string, timezone: string): boolean {
+  const fields = parseCronFields(expression);
+  if (fields == null) {
+    return false;
+  }
+  const date = new Date(nowIso);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+  const parts = getZonedDateParts(date, timezone);
+  return matchesCronField(fields[0], parts.minute, 0, 59)
+    && matchesCronField(fields[1], parts.hour, 0, 23)
+    && matchesCronField(fields[2], parts.dayOfMonth, 1, 31)
+    && matchesCronField(fields[3], parts.month, 1, 12)
+    && matchesCronField(fields[4], parts.dayOfWeek, 0, 7);
+}
+
+function parseCronFields(expression: string): readonly [string, string, string, string, string] | null {
+  const fields = expression.trim().split(/\s+/);
+  if (fields.length !== 5) {
+    return null;
+  }
+  return fields as [string, string, string, string, string];
+}
+
+function getZonedDateParts(date: Date, timezone: string): {
+  readonly minute: number;
+  readonly hour: number;
+  readonly dayOfMonth: number;
+  readonly month: number;
+  readonly dayOfWeek: number;
+} {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(date);
+  const weekday = parts.find((part) => part.type === "weekday")?.value ?? "Sun";
+  return {
+    minute: Number(parts.find((part) => part.type === "minute")?.value ?? "0"),
+    hour: Number(parts.find((part) => part.type === "hour")?.value ?? "0"),
+    dayOfMonth: Number(parts.find((part) => part.type === "day")?.value ?? "1"),
+    month: Number(parts.find((part) => part.type === "month")?.value ?? "1"),
+    dayOfWeek: WEEKDAY_INDEX[weekday] ?? 0,
+  };
+}
+
+function validateCronField(field: string, min: number, max: number): boolean {
+  return field.split(",").every((segment) => validateCronSegment(segment.trim(), min, max));
+}
+
+function validateCronSegment(segment: string, min: number, max: number): boolean {
+  if (segment.length === 0) {
+    return false;
+  }
+  const [base = "", stepRaw] = segment.split("/");
+  if (stepRaw != null) {
+    const step = Number(stepRaw);
+    if (!Number.isInteger(step) || step <= 0) {
+      return false;
+    }
+  }
+  if (base === "*") {
+    return true;
+  }
+  if (base.includes("-")) {
+    const [startRaw, endRaw] = base.split("-");
+    return isCronValueInRange(startRaw, min, max) && isCronValueInRange(endRaw, min, max) && Number(startRaw) <= Number(endRaw);
+  }
+  return isCronValueInRange(base, min, max);
+}
+
+function matchesCronField(field: string, value: number, min: number, max: number): boolean {
+  return field.split(",").some((segment) => matchesCronSegment(segment.trim(), value, min, max));
+}
+
+function matchesCronSegment(segment: string, value: number, min: number, max: number): boolean {
+  const [base = "", stepRaw] = segment.split("/");
+  const step = stepRaw == null ? 1 : Number(stepRaw);
+  if (!Number.isInteger(step) || step <= 0) {
+    return false;
+  }
+
+  if (base === "*") {
+    return (value - min) % step === 0;
+  }
+
+  if (base.includes("-")) {
+    const [startRaw, endRaw] = base.split("-");
+    const start = normalizeCronValue(Number(startRaw), min, max);
+    const end = normalizeCronValue(Number(endRaw), min, max);
+    return start != null
+      && end != null
+      && value >= start
+      && value <= end
+      && (value - start) % step === 0;
+  }
+
+  const exact = normalizeCronValue(Number(base), min, max);
+  return exact != null && exact === value;
+}
+
+function isCronValueInRange(raw: string | undefined, min: number, max: number): boolean {
+  if (raw == null || raw.length === 0) {
+    return false;
+  }
+  return normalizeCronValue(Number(raw), min, max) != null;
+}
+
+function normalizeCronValue(value: number, min: number, max: number): number | null {
+  if (!Number.isInteger(value)) {
+    return null;
+  }
+  if (min === 0 && max === 7 && value === 7) {
+    return 0;
+  }
+  return value >= min && value <= max ? value : null;
 }

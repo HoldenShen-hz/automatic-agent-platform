@@ -48,6 +48,9 @@ export interface BurnRateAlertResult {
   alertId: string | null;
 }
 
+const DEFAULT_RETRY_ATTEMPTS = 3;
+const DEFAULT_RETRY_DELAY_MS = 250;
+
 export class LogAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "log";
   private readonly deliveredEvents: AlertEvent[] = [];
@@ -62,7 +65,7 @@ export class LogAlertChannel implements AlertChannel {
   }
 }
 
-type FetchLike = typeof fetch;
+export type FetchLike = typeof fetch;
 
 export interface WebhookAlertChannelOptions {
   fetchImpl?: FetchLike;
@@ -108,14 +111,15 @@ export class WebhookAlertChannel implements AlertChannel {
       firedAt: event.firedAt,
     });
 
-    this.fetchImpl(url, {
-      method: "POST",
-      headers,
-      body,
-      signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch((err) => {
-      recordAlertDeliveryFailure("webhook", event.id, err);
-    });
+    void deliverWithRetry("webhook", event, this.fetchImpl, () => ({
+      url,
+      init: {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(this.timeoutMs),
+      },
+    }));
 
     return { channelKind: "webhook", delivered: true, error: null };
   }
@@ -163,14 +167,15 @@ export class SlackAlertChannel implements AlertChannel {
       ],
     };
 
-    this.fetchImpl(webhookUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch((err) => {
-      recordAlertDeliveryFailure("slack", event.id, err);
-    });
+    void deliverWithRetry("slack", event, this.fetchImpl, () => ({
+      url: webhookUrl,
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      },
+    }));
 
     return { channelKind: "slack", delivered: true, error: null };
   }
@@ -182,7 +187,7 @@ export interface PagerDutyAlertChannelOptions {
   endpoint?: string;
 }
 
-const PAGERDUTY_DEFAULT_ENDPOINT = "https://events.pagerduty.com/v2/enqueue";
+export const PAGERDUTY_DEFAULT_ENDPOINT = "https://events.pagerduty.com/v2/enqueue";
 
 export class PagerDutyAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "pagerduty";
@@ -222,14 +227,17 @@ export class PagerDutyAlertChannel implements AlertChannel {
       },
     };
 
-    this.fetchImpl(resolvePagerDutyEndpoint(this.pagerdutyEndpointOverride), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch((err) => {
-      recordAlertDeliveryFailure("pagerduty", event.id, err);
-    });
+    const endpoint = resolvePagerDutyEndpoint(this.pagerdutyEndpointOverride);
+
+    void deliverWithRetry("pagerduty", event, this.fetchImpl, () => ({
+      url: endpoint,
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      },
+    }));
 
     return { channelKind: "pagerduty", delivered: true, error: null };
   }
@@ -286,17 +294,18 @@ export class OpsGenieAlertChannel implements AlertChannel {
       },
     };
 
-    this.fetchImpl(this.endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `GenieKey ${apiKey}`,
+    void deliverWithRetry("opsgenie", event, this.fetchImpl, () => ({
+      url: this.endpoint,
+      init: {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `GenieKey ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(this.timeoutMs),
       },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch((err) => {
-      recordAlertDeliveryFailure("opsgenie", event.id, err);
-    });
+    }));
 
     return { channelKind: "opsgenie", delivered: true, error: null };
   }
@@ -314,4 +323,35 @@ export class EmailAlertChannel implements AlertChannel {
   getDelivered(): AlertEvent[] {
     return [...this.deliveredEvents];
   }
+}
+
+async function deliverWithRetry(
+  channel: AlertChannelKind,
+  event: AlertEvent,
+  fetchImpl: FetchLike,
+  requestFactory: () => { url: string; init: RequestInit },
+): Promise<void> {
+  for (let attempt = 1; attempt <= DEFAULT_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const request = requestFactory();
+      await fetchImpl(request.url, request.init);
+      if (attempt > 1) {
+        runtimeMetricsRegistry.incrementCounter("alert_delivery_retries_total", { channel }, attempt - 1);
+      }
+      return;
+    } catch (error) {
+      if (attempt === DEFAULT_RETRY_ATTEMPTS) {
+        recordAlertDeliveryFailure(channel, event.id, error);
+        return;
+      }
+      await delay(DEFAULT_RETRY_DELAY_MS * attempt);
+    }
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
 }

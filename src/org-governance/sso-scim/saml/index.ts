@@ -24,7 +24,10 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"] as const;
 export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
-const ASSERTION_REPLAY_TTL_MS = 5 * 60 * 1000;
+
+export interface SamlServiceOptions {
+  readonly assertionReplayTtlMs?: number;
+}
 
 interface SignedXmlValidationErrors {
   readonly validationErrors?: readonly string[];
@@ -83,7 +86,17 @@ export const SamlProviderConfigSchema = z.object({
   acsUrl: z.string().min(1).optional(),
   allowedAudiences: z.array(z.string().min(1)).optional(),
   allowUnsignedAssertions: z.boolean().default(false),
+  allowIdpInitiated: z.boolean().default(false),
+  unsafeAllowUnsignedAssertionsReason: z.string().min(8).optional(),
   attributeMapping: z.record(z.string()).optional(),
+}).superRefine((value, ctx) => {
+  if (value.allowUnsignedAssertions && (value.unsafeAllowUnsignedAssertionsReason?.trim().length ?? 0) === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "saml.unsafe_allow_unsigned_assertions_reason_required",
+      path: ["unsafeAllowUnsignedAssertionsReason"],
+    });
+  }
 });
 
 export type SamlProviderConfig = z.input<typeof SamlProviderConfigSchema>;
@@ -111,6 +124,7 @@ export interface SamlAssertionInput {
   readonly xmlSignature?: string;
   readonly rawXml?: string;
   readonly recipient?: string;
+  readonly inResponseTo?: string;
 }
 
 export interface SamlSession {
@@ -136,8 +150,49 @@ export function buildSamlAudience(config: SamlProviderConfig): string {
   return `${config.issuer}:${config.providerId}`;
 }
 
-function encodeSamlPayload(payload: Record<string, unknown>): string {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+function encodeSamlPayload(xml: string): string {
+  return Buffer.from(xml, "utf8").toString("base64");
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function buildAuthnRequestXml(payload: {
+  readonly requestId: string;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly acsUrl: string;
+  readonly issuedAt: string;
+}): string {
+  return [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${escapeXml(payload.requestId)}" Version="2.0" IssueInstant="${escapeXml(payload.issuedAt)}" AssertionConsumerServiceURL="${escapeXml(payload.acsUrl)}" Destination="${escapeXml(payload.issuer)}">`,
+    `<saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(payload.issuer)}</saml:Issuer>`,
+    `<samlp:NameIDPolicy AllowCreate="true" />`,
+    `<samlp:RequestedAuthnContext Comparison="exact"><saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(payload.audience)}</saml:AuthnContextClassRef></samlp:RequestedAuthnContext>`,
+    "</samlp:AuthnRequest>",
+  ].join("");
+}
+
+function buildLogoutRequestXml(payload: {
+  readonly requestId: string;
+  readonly sessionId: string;
+  readonly nameId: string;
+  readonly sessionIndex: string | null;
+}): string {
+  return [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    `<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${escapeXml(payload.requestId)}" Version="2.0" IssueInstant="${escapeXml(nowIso())}">`,
+    `<saml:NameID xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(payload.nameId)}</saml:NameID>`,
+    `<samlp:SessionIndex>${escapeXml(payload.sessionIndex ?? payload.sessionId)}</samlp:SessionIndex>`,
+    "</samlp:LogoutRequest>",
+  ].join("");
 }
 
 function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean {
@@ -153,9 +208,19 @@ function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean
 export class SamlService {
   private readonly providers = new Map<string, NormalizedSamlProviderConfig>();
   private readonly consumedAssertionIds = new Map<string, string>();
+  private readonly assertionReplayTtlMs: number;
+  private readonly pendingRequestIds = new Map<string, {
+    readonly providerId: string;
+    readonly audience: string;
+    readonly issuedAt: string;
+  }>();
+
+  public constructor(options: SamlServiceOptions = {}) {
+    this.assertionReplayTtlMs = options.assertionReplayTtlMs ?? 5 * 60 * 1000;
+  }
 
   private pruneConsumedAssertionIds(now: Date): void {
-    const cutoff = now.getTime() - ASSERTION_REPLAY_TTL_MS;
+    const cutoff = now.getTime() - this.assertionReplayTtlMs;
     for (const [replayKey, consumedAt] of this.consumedAssertionIds.entries()) {
       if (new Date(consumedAt).getTime() <= cutoff) {
         this.consumedAssertionIds.delete(replayKey);
@@ -182,16 +247,20 @@ export class SamlService {
     const issuedAt = nowIso();
     const requestId = options.requestId ?? newId("saml_req");
     const audience = buildSamlAudience(provider);
-    const payload = encodeSamlPayload({
-      requestId,
-      issuer: provider.entityId ?? provider.issuer,
+    this.pendingRequestIds.set(requestId, {
+      providerId,
       audience,
-      acsUrl: provider.acsUrl ?? `${provider.issuer}/saml/acs`,
       issuedAt,
     });
 
     const params = new URLSearchParams({
-      SAMLRequest: payload,
+      SAMLRequest: encodeSamlPayload(buildAuthnRequestXml({
+        requestId,
+        issuer: provider.entityId ?? provider.issuer,
+        audience,
+        acsUrl: provider.acsUrl ?? `${provider.issuer}/saml/acs`,
+        issuedAt,
+      })),
       ...(options.relayState ? { RelayState: options.relayState } : {}),
     });
 
@@ -235,6 +304,16 @@ export class SamlService {
         throw new Error(`saml.signature_required:${providerId}`);
       }
     }
+    if (!provider.allowIdpInitiated) {
+      if (!assertion.inResponseTo) {
+        throw new Error(`saml.in_response_to_required:${providerId}`);
+      }
+      const requestState = this.pendingRequestIds.get(assertion.inResponseTo);
+      if (requestState == null || requestState.providerId !== providerId || requestState.audience !== assertion.audience) {
+        throw new Error(`saml.invalid_in_response_to:${providerId}`);
+      }
+      this.pendingRequestIds.delete(assertion.inResponseTo);
+    }
     if (assertion.xmlSignature && assertion.rawXml) {
       // Production SAML: Always validate XML signatures when present.
       const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml);
@@ -271,14 +350,13 @@ export class SamlService {
   ): SamlLogoutRequest {
     const provider = this.requireProvider(providerId);
     const requestId = newId("saml_logout");
-    const payload = encodeSamlPayload({
-      requestId,
-      sessionId: session.sessionId,
-      nameId: session.subjectId,
-      sessionIndex: session.sessionIndex,
-    });
     const params = new URLSearchParams({
-      SAMLRequest: payload,
+      SAMLRequest: encodeSamlPayload(buildLogoutRequestXml({
+        requestId,
+        sessionId: session.sessionId,
+        nameId: session.subjectId,
+        sessionIndex: session.sessionIndex,
+      })),
       ...(relayState ? { RelayState: relayState } : {}),
     });
 

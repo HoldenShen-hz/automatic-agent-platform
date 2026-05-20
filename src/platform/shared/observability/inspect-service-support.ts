@@ -55,7 +55,7 @@ export function parseApprovalRequestSummary(requestJson: string): ApprovalReques
       riskLevel: typeof parsed.riskLevel === "string" ? parsed.riskLevel : null,
     };
   } catch (err) {
-    inspectLogger.log({ level: "debug", message: "Failed to parse approval request summary", data: { error: err instanceof Error ? err.message : String(err) } });
+    inspectLogger.log({ level: "debug", message: "Failed to parse approval request summary", data: { error: err } });
     return {
       sourceAgentId: null,
       riskLevel: null,

@@ -226,7 +226,7 @@ function extractDispatchTicketId(event: EventRecord): string | null {
     const parsed = JSON.parse(event.payloadJson) as Record<string, unknown>;
     return typeof parsed.ticketId === "string" ? parsed.ticketId : null;
   } catch (err) {
-    timelineLogger.log({ level: "debug", message: "Failed to extract dispatch ticket ID from event", data: { eventId: event.id, error: err instanceof Error ? err.message : String(err) } });
+    timelineLogger.log({ level: "debug", message: "Failed to extract dispatch ticket ID from event", data: { eventId: event.id, error: err } });
     return null;
   }
 }

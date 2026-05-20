@@ -302,6 +302,9 @@ export class SplitBrainProtectionService {
    * Used during failover when a region needs to acquire leadership.
    */
   public acquireLeadershipWithFencing(regionId: string, entityId: string | null = null): FencingToken | null {
+    if (entityId == null || entityId.trim().length === 0) {
+      throw new Error("split_brain_protection.entity_id_required");
+    }
     const fencingService = getFencingTokenService();
     return fencingService.acquireLeadership(regionId, entityId);
   }

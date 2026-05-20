@@ -172,6 +172,50 @@ test("BoundedCache get does not update LRU order", () => {
   assert.equal(cache.has("third"), true);
 });
 
+test("BoundedCache supports LRU eviction when configured", () => {
+  const cache = new BoundedCache<string, number>({
+    maxEntries: 3,
+    evictionPolicy: "lru",
+  });
+  cache.set("first", 1);
+  cache.set("second", 2);
+  cache.set("third", 3);
+  assert.equal(cache.get("first"), 1);
+  cache.set("fourth", 4);
+  assert.equal(cache.has("first"), true);
+  assert.equal(cache.has("second"), false);
+});
+
+test("BoundedCache expires entries by TTL", async () => {
+  const cache = new BoundedCache<string, number>({
+    maxEntries: 3,
+    ttlMs: 20,
+  });
+  cache.set("ephemeral", 1);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(cache.get("ephemeral"), undefined);
+  assert.equal(cache.size, 0);
+});
+
+test("BoundedCache tracks hits misses evictions and expirations", async () => {
+  const cache = new BoundedCache<string, number>({
+    maxEntries: 1,
+    ttlMs: 20,
+    evictionPolicy: "lru",
+  });
+  assert.equal(cache.get("missing"), undefined);
+  cache.set("a", 1);
+  assert.equal(cache.get("a"), 1);
+  cache.set("b", 2);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  cache.purgeExpired();
+  const stats = cache.getStats();
+  assert.equal(stats.hits, 1);
+  assert.equal(stats.misses, 1);
+  assert.equal(stats.evictions, 1);
+  assert.equal(stats.expirations, 1);
+});
+
 test("BoundedCache boundary: exactly at default capacity of 100 - no eviction", () => {
   // Tests boundary at DEFAULT_MAX_ENTRIES = 100
   const cache = new BoundedCache<string, number>(100);

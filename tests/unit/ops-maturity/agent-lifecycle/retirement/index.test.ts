@@ -94,3 +94,18 @@ test("isGracePeriodExpired returns true when grace period elapsed", () => {
 
   assert.equal(isGracePeriodExpired(record, "2026-05-02T00:00:00Z"), true);
 });
+
+test("isGracePeriodExpired uses UTC duration math instead of local calendar setters", () => {
+  const record = createRetirementRecord({
+    agentId: "agent-utc",
+    successorAgentId: null,
+    transferItems: [],
+    gracePeriodDays: 1,
+    notificationTargets: [],
+    revokeAt: "2026-03-31T23:30:00.000Z",
+    reason: "utc-check",
+  }, "2026-03-30T23:30:00.000Z");
+
+  assert.equal(isGracePeriodExpired(record, "2026-03-31T23:29:59.000Z"), false);
+  assert.equal(isGracePeriodExpired(record, "2026-03-31T23:30:00.000Z"), true);
+});

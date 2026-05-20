@@ -49,5 +49,5 @@ export function loadConversationTemplateConfig(
 export function getTemplatesFromConfig(
   config: ConversationTemplateConfig,
 ): readonly ConversationTemplate[] {
-  return config.templates as readonly ConversationTemplate[];
+  return [...config.templates];
 }

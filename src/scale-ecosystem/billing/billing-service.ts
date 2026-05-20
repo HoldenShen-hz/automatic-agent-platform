@@ -265,10 +265,11 @@ export class BillingService {
     const plan = this.getPlan(account.planId);
     const quota = plan.quotas[metricType];
     const window = monthWindow(capturedAt);
-    const existingCounter = this.store.billing.getQuotaCounter(account.accountId, metricType, window.start, window.end);
     const unitPriceUsd = quota?.unitPriceUsd ?? 0;
     const estimatedChargeUsd = roundCurrency(quantity * unitPriceUsd);
     let reservedBudget: { ledger: BudgetLedger; reservation: BudgetReservation } | null = null;
+    let existingCounter: QuotaCounterRecord | null = null;
+    let recordsPersisted = false;
 
     if (input.budgetControl != null && estimatedChargeUsd > 0) {
       const ledger = input.budgetControl.ledger ?? createBudgetLedger({
@@ -311,23 +312,7 @@ export class BillingService {
       capturedAt,
     };
 
-    // Update or create quota counter for the month
-    const quotaCounter: QuotaCounterRecord | null = quota == null
-      ? null
-      : {
-        counterId:
-          existingCounter?.counterId ??
-          newId("quota"),
-        accountId: account.accountId,
-        metricType,
-        windowStart: window.start,
-        windowEnd: window.end,
-        usedQuantity: roundCurrency((existingCounter?.usedQuantity ?? 0) + quantity),
-        limitQuantity: quota.limitValue,
-        limitType: quota.limitType,
-        resetPolicy: quota.resetPolicy,
-        updatedAt: capturedAt,
-      };
+    let quotaCounter: QuotaCounterRecord | null = null;
 
     // Create ledger entry for the charge
     const ledgerEntry: LedgerEntryRecord = {
@@ -352,11 +337,31 @@ export class BillingService {
     try {
       // Persist all records atomically
       this.db.transaction(() => {
+        existingCounter = quota == null
+          ? null
+          : this.store.billing.getQuotaCounter(account.accountId, metricType, window.start, window.end);
+        quotaCounter = quota == null
+          ? null
+          : {
+            counterId:
+              existingCounter?.counterId ??
+              newId("quota"),
+            accountId: account.accountId,
+            metricType,
+            windowStart: window.start,
+            windowEnd: window.end,
+            usedQuantity: roundCurrency((existingCounter?.usedQuantity ?? 0) + quantity),
+            limitQuantity: quota.limitValue,
+            limitType: quota.limitType,
+            resetPolicy: quota.resetPolicy,
+            updatedAt: capturedAt,
+          };
         this.store.billing.insertUsageEvent(usageEvent);
         if (quotaCounter != null) {
           this.store.billing.upsertQuotaCounter(quotaCounter);
         }
         this.store.billing.insertLedgerEntry(ledgerEntry);
+        recordsPersisted = true;
       });
 
       budgetSettlement = reservedBudget == null
@@ -381,6 +386,27 @@ export class BillingService {
           },
         });
     } catch (error) {
+      if (recordsPersisted) {
+        this.db.transaction(() => {
+          if (quotaCounter != null) {
+            this.store.billing.upsertQuotaCounter(existingCounter ?? {
+              ...quotaCounter,
+              usedQuantity: 0,
+            });
+          }
+          this.store.billing.insertLedgerEntry({
+            entryId: newId("ledger"),
+            accountId: account.accountId,
+            usageId: null,
+            periodId: window.periodId,
+            entryType: "adjustment",
+            amountUsd: roundCurrency(-ledgerEntry.amountUsd),
+            currency: "USD",
+            sourceRef: `rollback:${usageEvent.usageId}`,
+            recordedAt: nowIso(),
+          });
+        });
+      }
       if (reservedBudget != null) {
         this.budgetAllocator.release({
           ledger: reservedBudget.ledger,

@@ -228,6 +228,16 @@ test("ReplicationEventBuffer unrefs scheduled flush timer", () => {
   }
 });
 
+test("ReplicationEventBuffer dispose clears pending timer and buffered events", () => {
+  const buffer = new ReplicationEventBuffer(100, 1000);
+
+  buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
+  buffer.dispose();
+
+  assert.equal(buffer.size(), 0);
+  assert.equal((buffer as unknown as { timer: unknown }).timer, null);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Checksum Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -543,6 +553,35 @@ test("DataReplicatorService status pendingCheckpoint populated after flush", asy
 
   const status = replicator.getStatus();
   assert.ok(status.get("eu-west")?.pendingCheckpoint !== null);
+});
+
+test("DataReplicatorService requeues permanently failed events and exposes pending checkpoint count", async () => {
+  const replicator = createDataReplicator("us-east", ["eu-west"], {
+    sourceRegionId: "us-east",
+    targetRegionIds: ["eu-west"],
+    residencyMode: "same_jurisdiction",
+  }, {
+    retryAttempts: 2,
+  });
+  replicator.onEvent("eu-west", async () => {
+    throw new Error("replica unavailable");
+  });
+
+  replicator.recordEvent("eu-west", "task", "task-1", { id: "1" });
+  const failed = await replicator.flush("eu-west");
+
+  assert.equal(failed.success, false);
+  assert.equal(failed.eventsReplicated, 0);
+  assert.equal(replicator.getBuffer("eu-west")?.size(), 1);
+  assert.equal(replicator.getCheckpoint("eu-west")?.pendingCount, 1);
+
+  replicator.onEvent("eu-west", async () => {});
+  const retried = await replicator.flush("eu-west");
+
+  assert.equal(retried.success, true);
+  assert.equal(retried.eventsReplicated, 1);
+  assert.equal(replicator.getBuffer("eu-west")?.size(), 0);
+  assert.equal(replicator.getCheckpoint("eu-west")?.pendingCount, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

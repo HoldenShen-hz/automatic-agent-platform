@@ -15,6 +15,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface ApiKeyRecord {
   keyId: string;
+  tenantId: string;
   keyHash: string;
   keyPrefix: string;
   name: string;
@@ -32,6 +33,7 @@ export interface ApiKeyRecord {
 export interface CreateApiKeyInput {
   name: string;
   ownerId: string;
+  tenantId?: string;
   scopes?: readonly string[];
   expiresAt?: string | null;
   createdBy: string;
@@ -41,6 +43,7 @@ export interface ApiKeyValidationResult {
   valid: boolean;
   keyId: string | null;
   ownerId: string | null;
+  tenantId: string | null;
   scopes: readonly string[];
   reason?: string;
 }
@@ -57,20 +60,28 @@ export type ApiKeyRotationResult =
       readonly reason: "key_not_found" | "key_expired" | "key_revoked";
     };
 
-const KEY_PREFIX_LENGTH = 8;
+export interface ApiKeyServiceOptions {
+  readonly keyPrefixLength?: number;
+}
 
 export class ApiKeyService {
   private readonly keys = new Map<string, ApiKeyRecord>();
-  private readonly keyHashIndex = new Map<string, string>();
+  private readonly keyHashIndex = new Map<string, Set<string>>();
   private readonly auditLog: Array<{ action: "revoke"; keyId: string; actorId: string; occurredAt: string }> = [];
+  private readonly keyPrefixLength: number;
+
+  public constructor(options: ApiKeyServiceOptions = {}) {
+    this.keyPrefixLength = options.keyPrefixLength ?? 8;
+  }
 
   public generateApiKey(input: CreateApiKeyInput): { record: ApiKeyRecord; rawKey: string } {
     const rawKey = this.generateRawKey();
     const keyHash = this.hashKey(rawKey);
-    const keyPrefix = rawKey.substring(0, KEY_PREFIX_LENGTH);
+    const keyPrefix = rawKey.substring(0, this.keyPrefixLength);
 
     const record: ApiKeyRecord = {
       keyId: newId("apikey"),
+      tenantId: input.tenantId ?? "tenant:global",
       keyHash,
       keyPrefix,
       name: input.name,
@@ -86,36 +97,44 @@ export class ApiKeyService {
     };
 
     this.keys.set(record.keyId, record);
-    this.keyHashIndex.set(keyHash, record.keyId);
+    const existingKeyIds = this.keyHashIndex.get(keyHash) ?? new Set<string>();
+    existingKeyIds.add(record.keyId);
+    this.keyHashIndex.set(keyHash, existingKeyIds);
 
     return { record, rawKey };
   }
 
-  public validateApiKey(rawKey: string): ApiKeyValidationResult {
+  public validateApiKey(rawKey: string, tenantId?: string): ApiKeyValidationResult {
     const keyHash = this.hashKey(rawKey);
-    const keyId = this.keyHashIndex.get(keyHash);
-
-    if (!keyId) {
-      return { valid: false, keyId: null, ownerId: null, scopes: [], reason: "invalid_key" };
+    const keyIds = [...(this.keyHashIndex.get(keyHash) ?? [])];
+    if (keyIds.length === 0) {
+      return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "invalid_key" };
     }
 
-    const record = this.keys.get(keyId);
-    if (!record) {
-      return { valid: false, keyId: null, ownerId: null, scopes: [], reason: "key_not_found" };
+    const matchingRecords = keyIds
+      .map((keyId) => this.keys.get(keyId))
+      .filter((record): record is ApiKeyRecord => record != null)
+      .filter((record) => tenantId == null || record.tenantId === tenantId);
+    if (matchingRecords.length === 0) {
+      return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "key_not_found" };
     }
+    if (tenantId == null && matchingRecords.length > 1) {
+      return { valid: false, keyId: null, ownerId: null, tenantId: null, scopes: [], reason: "tenant_context_required" };
+    }
+    const record = matchingRecords[0]!;
 
     if (record.status !== "active") {
-      return { valid: false, keyId: record.keyId, ownerId: null, scopes: [], reason: `key_${record.status}` };
+      return { valid: false, keyId: record.keyId, ownerId: null, tenantId: record.tenantId, scopes: [], reason: `key_${record.status}` };
     }
 
     if (record.expiresAt && new Date(record.expiresAt) < new Date()) {
       record.status = "expired";
-      return { valid: false, keyId: record.keyId, ownerId: null, scopes: [], reason: "key_expired" };
+      return { valid: false, keyId: record.keyId, ownerId: null, tenantId: record.tenantId, scopes: [], reason: "key_expired" };
     }
 
     record.lastUsedAt = nowIso();
 
-    return { valid: true, keyId: record.keyId, ownerId: record.ownerId, scopes: record.scopes };
+    return { valid: true, keyId: record.keyId, ownerId: record.ownerId, tenantId: record.tenantId, scopes: record.scopes };
   }
 
   public revokeApiKey(keyId: string, revokedBy: string): boolean {
@@ -140,8 +159,8 @@ export class ApiKeyService {
     return [...this.auditLog];
   }
 
-  public listApiKeysForOwner(ownerId: string): ApiKeyRecord[] {
-    return [...this.keys.values()].filter((k) => k.ownerId === ownerId);
+  public listApiKeysForOwner(ownerId: string, tenantId?: string): ApiKeyRecord[] {
+    return [...this.keys.values()].filter((k) => k.ownerId === ownerId && (tenantId == null || k.tenantId === tenantId));
   }
 
   public getApiKey(keyId: string): ApiKeyRecord | null {

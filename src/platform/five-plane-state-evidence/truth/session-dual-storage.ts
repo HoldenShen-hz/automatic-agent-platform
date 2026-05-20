@@ -8,7 +8,17 @@
  * @see DB-45: Session dual storage
  */
 
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, fdatasyncSync } from "node:fs";
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  fdatasyncSync,
+  fstatSync,
+  ftruncateSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { MessageRecord, SessionRecord } from "../../contracts/types/domain.js";
@@ -110,41 +120,47 @@ export class SessionDualStorageService {
     const line = JSON.stringify(event) + "\n";
 
     const sessionFd = openSync(sessionPath, "a");
+    const sessionSizeBeforeWrite = fstatSync(sessionFd).size;
     try {
       appendFileSync(sessionFd, line, "utf8");
       fdatasyncSync(sessionFd);
+      let taskIndexFd: number | null = null;
+      try {
+        taskIndexFd = openSync(taskIndexPath, "a");
+        appendFileSync(taskIndexFd, line, "utf8");
+        fdatasyncSync(taskIndexFd);
+      } catch (err) {
+        try {
+          ftruncateSync(sessionFd, sessionSizeBeforeWrite);
+          fdatasyncSync(sessionFd);
+        } catch (rollbackError) {
+          logger.error("session_dual_storage.session_rollback_failed", {
+            sessionId: event.sessionId,
+            taskId: event.taskId,
+            eventType: event.eventType,
+            error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+            sessionPath,
+            taskIndexPath,
+          });
+        }
+        logger.error(taskIndexFd == null
+          ? "session_dual_storage.task_index_open_failed"
+          : "session_dual_storage.task_index_write_failed", {
+          sessionId: event.sessionId,
+          taskId: event.taskId,
+          eventType: event.eventType,
+          error: err instanceof Error ? err.message : String(err),
+          sessionPath,
+          taskIndexPath,
+        });
+        throw err;
+      } finally {
+        if (taskIndexFd != null) {
+          closeSync(taskIndexFd);
+        }
+      }
     } finally {
       closeSync(sessionFd);
-    }
-
-    let taskIndexFd: number;
-    try {
-      taskIndexFd = openSync(taskIndexPath, "a");
-    } catch (err) {
-      logger.error("session_dual_storage.task_index_open_failed", {
-        sessionId: event.sessionId,
-        taskId: event.taskId,
-        eventType: event.eventType,
-        error: err instanceof Error ? err.message : String(err),
-        sessionPath,
-        taskIndexPath,
-      });
-      return;
-    }
-    try {
-      appendFileSync(taskIndexFd, line, "utf8");
-      fdatasyncSync(taskIndexFd);
-    } catch (err) {
-      logger.error("session_dual_storage.task_index_write_failed", {
-        sessionId: event.sessionId,
-        taskId: event.taskId,
-        eventType: event.eventType,
-        error: err instanceof Error ? err.message : String(err),
-        sessionPath,
-        taskIndexPath,
-      });
-    } finally {
-      closeSync(taskIndexFd);
     }
   }
 
@@ -397,16 +413,32 @@ export class SessionDualStorageService {
         e.eventType === "session_cancelled",
       );
 
-    if (latestStatusEvent != null && latestStatusEvent.eventType === "session_updated") {
-      const payloadStatus = latestStatusEvent.payload.status as SessionRecord["status"] | undefined;
-      if (payloadStatus !== undefined && payloadStatus !== latestStatus) {
-        issues.push(`Status mismatch: JSONL=${payloadStatus}, SQLite=${latestStatus}`);
-      }
+    const expectedStatus = mapSessionStatusEventToStatus(latestStatusEvent);
+    if (expectedStatus != null && expectedStatus !== latestStatus) {
+      issues.push(`Status mismatch: JSONL=${expectedStatus}, SQLite=${latestStatus}`);
     }
 
     return {
       consistent: issues.length === 0,
       issues,
     };
+  }
+}
+
+function mapSessionStatusEventToStatus(event: SessionEvent | undefined): SessionRecord["status"] | null {
+  if (event == null) {
+    return null;
+  }
+  switch (event.eventType) {
+    case "session_updated":
+      return typeof event.payload.status === "string" ? event.payload.status as SessionRecord["status"] : null;
+    case "session_completed":
+      return "completed";
+    case "session_failed":
+      return "failed";
+    case "session_cancelled":
+      return "cancelled";
+    default:
+      return null;
   }
 }

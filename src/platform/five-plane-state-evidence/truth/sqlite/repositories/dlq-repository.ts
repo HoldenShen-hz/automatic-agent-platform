@@ -7,7 +7,7 @@
 
 import type { DeadLetterRecord, DeadLetterQueueRepository } from "../../../dlq/index.js";
 import type { SqliteConnection } from "../query-helper.js";
-import { queryAll, queryOne, execute } from "../query-helper.js";
+import { queryAll, queryOne } from "../query-helper.js";
 
 export class SqliteDeadLetterQueueRepository implements DeadLetterQueueRepository {
   public constructor(private readonly conn: SqliteConnection) {}
@@ -62,9 +62,14 @@ export class SqliteDeadLetterQueueRepository implements DeadLetterQueueRepositor
   }
 
   public update(record: DeadLetterRecord): void {
-    const result = this.conn
+    this.conn
       .prepare(
-        `UPDATE dlq_records SET
+        `INSERT INTO dlq_records (
+          dead_letter_id, source_event_id, consumer_id, error_code, payload_json,
+          status, retry_count, next_retry_at, created_at, updated_at,
+          original_timestamp, failure_category, retry_exhausted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(dead_letter_id) DO UPDATE SET
           source_event_id = ?,
           consumer_id = ?,
           error_code = ?,
@@ -76,9 +81,22 @@ export class SqliteDeadLetterQueueRepository implements DeadLetterQueueRepositor
           original_timestamp = ?,
           failure_category = ?,
           retry_exhausted_at = ?
-         WHERE dead_letter_id = ?`,
+        `,
       )
       .run(
+        record.deadLetterId,
+        record.sourceEventId,
+        record.consumerId,
+        record.errorCode,
+        record.payloadJson,
+        record.status,
+        record.retryCount,
+        record.nextRetryAt,
+        record.createdAt,
+        record.updatedAt,
+        record.originalTimestamp,
+        record.failureCategory,
+        record.retryExhaustedAt,
         record.sourceEventId,
         record.consumerId,
         record.errorCode,
@@ -90,13 +108,7 @@ export class SqliteDeadLetterQueueRepository implements DeadLetterQueueRepositor
         record.originalTimestamp,
         record.failureCategory,
         record.retryExhaustedAt,
-        record.deadLetterId,
       );
-
-    if (result.changes === 0) {
-      // Record doesn't exist, insert it
-      this.insert(record);
-    }
   }
 
   public listAll(): DeadLetterRecord[] {

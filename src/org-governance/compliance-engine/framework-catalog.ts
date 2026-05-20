@@ -8,6 +8,24 @@ export const AuditSpecSchema = z.object({
 
 export type AuditSpec = z.infer<typeof AuditSpecSchema>;
 
+export const AuditRequirementSchema = z.union([
+  z.string().min(1).transform((requirementId) => ({
+    requirementId,
+    evidenceType: requirementId,
+    frequency: "monthly" as const,
+    retentionPeriodDays: 365,
+  })),
+  z.object({
+    requirementId: z.string().min(1),
+    evidenceType: z.string().min(1),
+    frequency: z.enum(["daily", "weekly", "monthly", "quarterly", "annually"]).default("monthly"),
+    retentionPeriodDays: z.number().int().positive().default(365),
+  }),
+]);
+
+export type AuditRequirement = z.output<typeof AuditRequirementSchema>;
+type AuditRequirementInput = z.input<typeof AuditRequirementSchema>;
+
 export const ComplianceFrameworkTypeSchema = z.enum(["gdpr", "soc2", "pipl", "hipaa", "sox", "pci_dss"]);
 
 export const ComplianceFrameworkSchema = z.object({
@@ -15,7 +33,7 @@ export const ComplianceFrameworkSchema = z.object({
   type: ComplianceFrameworkTypeSchema,
   displayName: z.string().min(1),
   controlIds: z.array(z.string().min(1)).default([]),
-  auditRequirements: z.array(z.string().min(1)).default([]),
+  auditRequirements: z.array(AuditRequirementSchema).default([]),
   reportTemplate: z.string().min(1),
   minimumPolicies: z.record(z.unknown()).default({}),
 });
@@ -36,7 +54,7 @@ function createComplianceFramework(input: {
   type: ComplianceFramework["type"];
   displayName: string;
   controlIds: readonly string[];
-  auditRequirements: readonly string[];
+  auditRequirements: readonly AuditRequirementInput[];
   reportTemplate: string;
   minimumPolicies: Record<string, unknown>;
 }): ComplianceFramework {
@@ -45,7 +63,7 @@ function createComplianceFramework(input: {
     type: input.type,
     displayName: input.displayName,
     controlIds: [...input.controlIds],
-    auditRequirements: [...input.auditRequirements],
+    auditRequirements: input.auditRequirements.map((requirement) => AuditRequirementSchema.parse(requirement)),
     reportTemplate: input.reportTemplate,
     minimumPolicies: { ...input.minimumPolicies },
   };

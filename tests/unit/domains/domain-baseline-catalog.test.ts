@@ -12,6 +12,8 @@ import {
   validateVerticalDomainConfigs,
   type VerticalDomainPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
+import { DomainDescriptorOrchestrationService } from "../../../src/domains/domain-descriptor-orchestration-service.js";
+import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
 
 test("vertical domain baseline catalog exposes 31 canonical domains across 6 phases", () => {
   const baselines = listVerticalDomainBaselines();
@@ -75,4 +77,49 @@ test("vertical domain bootstrap activates all canonical domain definitions with 
     bootstrapped.reviews.every((review) => review.metaModelCompleteness === 100 && review.onboardingReadiness === "ready"),
     true,
   );
+});
+
+test("vertical domain bootstrap stages registry mutations and leaves caller registry unchanged on failure", () => {
+  const registry = new DomainRegistryService();
+  registry.register({
+    domainId: "existing-domain",
+    name: "Existing Domain",
+    description: "Existing registry entry",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [],
+  }, { skipSmokeTest: true });
+  const beforeIds = registry.list().map((item) => item.domainId);
+  const originalReview = DomainDescriptorOrchestrationService.prototype.review;
+  let reviewCalls = 0;
+  DomainDescriptorOrchestrationService.prototype.review = function reviewWithInjectedFailure(...args) {
+    reviewCalls += 1;
+    if (reviewCalls === 2) {
+      throw new Error("injected bootstrap failure");
+    }
+    return originalReview.apply(this, args);
+  };
+
+  try {
+    assert.throws(() => bootstrapVerticalDomainBaselines(registry), /injected bootstrap failure/);
+  } finally {
+    DomainDescriptorOrchestrationService.prototype.review = originalReview;
+  }
+
+  assert.deepEqual(registry.list().map((item) => item.domainId), beforeIds);
+  assert.equal(registry.get("coding"), null);
+  assert.equal(registry.get("existing-domain")?.status, "active");
 });

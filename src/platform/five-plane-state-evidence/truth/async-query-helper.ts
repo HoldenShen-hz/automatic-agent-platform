@@ -5,7 +5,7 @@
  * They work with AsyncSqlConnection and return properly typed results.
  */
 
-import type { AsyncSqlConnection } from "./async-sql-database.js";
+import type { AsyncSqlConnection, AsyncSqlDatabase } from "./async-sql-database.js";
 
 /**
  * Execute a query and return all rows as the target type.
@@ -53,4 +53,31 @@ export async function asyncExecute(
   ...params: unknown[]
 ): Promise<number> {
   return conn.execute(sql, ...params);
+}
+
+/**
+ * Execute a batch of statements sequentially on the same connection.
+ * Useful for repository code that needs a single helper entrypoint for
+ * multi-statement writes.
+ */
+export async function asyncExecuteBatch(
+  conn: AsyncSqlConnection,
+  statements: readonly { sql: string; params?: readonly unknown[] }[],
+): Promise<number[]> {
+  const changes: number[] = [];
+  for (const statement of statements) {
+    changes.push(await conn.execute(statement.sql, ...(statement.params ?? [])));
+  }
+  return changes;
+}
+
+/**
+ * Execute a unit of work inside a database transaction while exposing the
+ * transaction-scoped async connection to callers.
+ */
+export async function asyncWithinTransaction<T>(
+  db: AsyncSqlDatabase,
+  work: (conn: AsyncSqlConnection) => Promise<T>,
+): Promise<T> {
+  return db.transaction(work);
 }

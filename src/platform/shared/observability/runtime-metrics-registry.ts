@@ -42,6 +42,23 @@ function normalizeMetricDimension(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
 }
 
+function normalizeHttpPath(path: string): string {
+  const sanitized = path.split("?", 1)[0] ?? "/";
+  const normalized = sanitized
+    .split("/")
+    .map((segment) => {
+      if (segment.length === 0) {
+        return "";
+      }
+      if (/^\d+$/.test(segment) || /^[0-9a-f]{8,}$/i.test(segment) || /^[a-z]+_[A-Za-z0-9-]{6,}$/i.test(segment)) {
+        return ":id";
+      }
+      return segment;
+    })
+    .join("/");
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
 function assertValidHistogramBuckets(buckets: readonly number[]): void {
   let previous = Number.NEGATIVE_INFINITY;
   for (const bucket of buckets) {
@@ -124,32 +141,24 @@ export class RuntimeMetricsRegistry {
   }
 
   public recordHttpRequest(method: string, path: string, status: number, durationMs: number | null): void {
-    this.incrementCounter("http_requests_total", { method, path, status }, 1);
+    const normalizedPath = normalizeHttpPath(path);
+    this.incrementCounter("http_requests_total", { method, path: normalizedPath, status }, 1);
     if (durationMs != null && Number.isFinite(durationMs) && durationMs >= 0) {
-      this.observeHistogram("http_request_duration_ms", { method, path, status }, durationMs);
+      this.observeHistogram("http_request_duration_ms", { method, path: normalizedPath, status }, durationMs);
     }
   }
 
   public recordOapeflirStage(stage: string, result: string, durationMs: number): void {
-    const canonicalStage = normalizeMetricStage(stage);
-    this.observeHistogram("oapeflir_loop_duration_ms", { stage }, durationMs);
+    this.observeHistogram("oapeflir_stage_duration_ms", { stage }, durationMs);
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
-    this.observeHistogram(`oapeflir_${canonicalStage}_duration_ms`, {}, durationMs);
-    this.incrementCounter(`oapeflir_${canonicalStage}_outcome_total`, { result }, 1);
   }
 
   public recordOapeflirStageEntry(stage: string): void {
-    const canonicalStage = normalizeMetricStage(stage);
     this.incrementCounter("oapeflir_stage_entry_total", { stage }, 1);
-    this.incrementCounter(`oapeflir_${canonicalStage}_entry_total`, {}, 1);
   }
 
   public recordOapeflirStageExit(stage: string, result: string, durationSeconds: number): void {
-    const canonicalStage = normalizeMetricStage(stage);
-    this.observeHistogram("stage_duration_seconds", { stage }, durationSeconds);
-    this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
-    this.observeHistogram(`oapeflir_${canonicalStage}_duration_seconds`, {}, durationSeconds);
-    this.incrementCounter(`oapeflir_${canonicalStage}_outcome_total`, { result }, 1);
+    this.observeHistogram("oapeflir_stage_duration_ms", { stage, result }, durationSeconds * 1000);
   }
 
   public recordLlmLatency(
@@ -171,18 +180,18 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("harness_run_total", { status }, 1);
   }
 
-  public recordHarnessStepCount(runId: string, stepCount: number): void {
-    this.setGauge("harness_step_count", {}, stepCount);
+  public recordHarnessStepCount(stepCount: number): void {
+    this.setGauge("harness_steps", {}, stepCount);
   }
 
-  public recordHarnessBudgetConsumed(runId: string, budgetId: string, consumedUnits: number, totalUnits: number): void {
-    this.observeHistogram("harness_budget_consumed_units", {}, consumedUnits);
+  public recordHarnessBudgetConsumed(consumedUnits: number, totalUnits: number): void {
+    this.observeHistogram("harness_budget_consumed_total_units", {}, consumedUnits);
     this.setGauge("harness_budget_total_units", {}, totalUnits);
-    const utilizationPercent = totalUnits > 0 ? (consumedUnits / totalUnits) * 100 : 0;
-    this.setGauge("harness_budget_utilization_percent", {}, utilizationPercent);
+    const utilizationRatio = totalUnits > 0 ? consumedUnits / totalUnits : 0;
+    this.setGauge("harness_budget_utilization_ratio", {}, utilizationRatio);
   }
 
-  public recordHarnessExecutionLatency(runId: string, executionId: string, latencyMs: number): void {
+  public recordHarnessExecutionLatency(latencyMs: number): void {
     this.observeHistogram("harness_execution_latency_ms", {}, latencyMs);
   }
 
@@ -214,7 +223,7 @@ export class RuntimeMetricsRegistry {
 
   public getCounters(name: string): CounterSeries[] {
     return [...this.counters.entries()]
-      .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
@@ -224,7 +233,7 @@ export class RuntimeMetricsRegistry {
 
   public getGauges(name: string): GaugeSeries[] {
     return [...this.gauges.entries()]
-      .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
@@ -234,7 +243,7 @@ export class RuntimeMetricsRegistry {
 
   public getHistograms(name: string): HistogramSeries[] {
     return [...this.histograms.entries()]
-      .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
       .map(([, series]) => ({
         labels: { ...series.labels },
         buckets: [...series.buckets],
@@ -248,11 +257,34 @@ export class RuntimeMetricsRegistry {
     return [...new Set([...this.histograms.keys()].map((key) => key.split("|", 1)[0] ?? ""))].filter(Boolean).sort();
   }
 
-  public reset(): void {
-    this.counters.clear();
-    this.gauges.clear();
-    this.histograms.clear();
+  public reset(metricNames?: readonly string[]): void {
+    if (metricNames == null || metricNames.length === 0) {
+      this.counters.clear();
+      this.gauges.clear();
+      this.histograms.clear();
+      return;
+    }
+    const allowed = new Set(metricNames);
+    for (const key of [...this.counters.keys()]) {
+      if (allowed.has(key.split("|", 1)[0] ?? "")) {
+        this.counters.delete(key);
+      }
+    }
+    for (const key of [...this.gauges.keys()]) {
+      if (allowed.has(key.split("|", 1)[0] ?? "")) {
+        this.gauges.delete(key);
+      }
+    }
+    for (const key of [...this.histograms.keys()]) {
+      if (allowed.has(key.split("|", 1)[0] ?? "")) {
+        this.histograms.delete(key);
+      }
+    }
   }
 }
 
 export const runtimeMetricsRegistry = new RuntimeMetricsRegistry();
+
+function getMetricNameFromSeriesKey(seriesKey: string): string {
+  return seriesKey.split("|", 1)[0] ?? "";
+}

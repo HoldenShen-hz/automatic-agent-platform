@@ -141,3 +141,19 @@ test("DurableEventBusAsync batchingEnabled sets up batch flush timer", () => {
   assert.ok(bus != null);
   bus.dispose();
 });
+
+test("DurableEventBusAsync schedules at most one publish batch timeout", () => {
+  const bus = new DurableEventBusAsync({} as never, {} as never, {
+    batchingEnabled: true,
+    batchFlushIntervalMs: 50,
+  });
+
+  (bus as any).publishBatch.push({ input: { eventType: "test", payload: {} }, resolve: () => {}, reject: () => {}, abortController: new AbortController() });
+  (bus as any).schedulePublishBatchFlush();
+  const firstTimer = (bus as any).publishBatchFlushTimer;
+  (bus as any).schedulePublishBatchFlush();
+  const secondTimer = (bus as any).publishBatchFlushTimer;
+
+  assert.equal(firstTimer, secondTimer);
+  bus.dispose();
+});

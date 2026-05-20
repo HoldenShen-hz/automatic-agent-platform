@@ -57,8 +57,16 @@ export interface AsyncRepositoryRegistry {
   readonly workflow: AsyncWorkflowRepository;
 }
 
+function isAsyncSqlDatabase(target: AsyncSqlDatabase | AsyncSqlConnection): target is AsyncSqlDatabase {
+  const candidate = target as Partial<AsyncSqlDatabase>;
+  return typeof candidate.transaction === "function"
+    && typeof candidate.readTransaction === "function"
+    && typeof candidate.migrate === "function"
+    && candidate.asyncConnection != null;
+}
+
 function resolveConnection(target: AsyncSqlDatabase | AsyncSqlConnection): AsyncSqlConnection {
-  return "asyncConnection" in target ? target.asyncConnection : target;
+  return isAsyncSqlDatabase(target) ? target.asyncConnection : target;
 }
 
 export function createAsyncRepositoryRegistry(target: AsyncSqlDatabase | AsyncSqlConnection): AsyncRepositoryRegistry {

@@ -324,6 +324,7 @@ test("OutboxRepository.getStatus returns undefined when entry not found", () => 
 test("OutboxRepository.cleanupPublishedBefore calls DELETE with correct days", () => {
   let deletedSql = "";
   let deletedParams: unknown[] = [];
+  const before = Date.now();
 
   const conn = {
     prepare: (sql: string) => ({
@@ -340,16 +341,22 @@ test("OutboxRepository.cleanupPublishedBefore calls DELETE with correct days", (
   const repo = new OutboxRepository(conn);
 
   const deleted = repo.cleanupPublishedBefore(7);
+  const after = Date.now();
 
   assert.equal(deleted, 5);
   assert.ok(deletedSql.includes("DELETE FROM outbox"));
-  assert.ok(deletedSql.includes("datetime('now', '-'"));
-  assert.equal(deletedParams[0], 7);
+  const cutoff = String(deletedParams[0]);
+  const cutoffMs = Date.parse(cutoff);
+  assert.match(cutoff, /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(Number.isFinite(cutoffMs));
+  assert.ok(cutoffMs >= before - 7 * 24 * 60 * 60 * 1000 - 2_000);
+  assert.ok(cutoffMs <= after - 7 * 24 * 60 * 60 * 1000 + 2_000);
 });
 
 test("OutboxRepository.cleanupPublishedBefore with zero days", () => {
   let deletedSql = "";
   let deletedParams: unknown[] = [];
+  const before = Date.now();
   const conn = {
     prepare: (sql: string) => ({
       run: (...params: unknown[]) => {
@@ -364,10 +371,15 @@ test("OutboxRepository.cleanupPublishedBefore with zero days", () => {
   const repo = new OutboxRepository(conn);
 
   const deleted = repo.cleanupPublishedBefore(0);
+  const after = Date.now();
 
   assert.equal(deleted, 1);
   assert.ok(deletedSql.includes("DELETE FROM outbox"));
-  assert.equal(deletedParams[0], 0);
+  const cutoff = String(deletedParams[0]);
+  const cutoffMs = Date.parse(cutoff);
+  assert.ok(Number.isFinite(cutoffMs));
+  assert.ok(cutoffMs >= before - 2_000);
+  assert.ok(cutoffMs <= after + 2_000);
 });
 
 test("OutboxRepository.markFailed updates entry correctly", () => {

@@ -1,18 +1,26 @@
 export interface ExplanationCacheEntry {
   readonly cacheKey: string;
   readonly summary: string;
-  readonly ttlHours: 24 | 0;
+  readonly ttlHours: number;
+  readonly createdAt?: string;
+  readonly expiresAt?: string | null;
 }
 
 export function putExplanationCacheEntry(
   cache: Readonly<Record<string, ExplanationCacheEntry>>,
   entry: ExplanationCacheEntry,
 ): Record<string, ExplanationCacheEntry> {
-  if (entry.ttlHours === 0) {
+  if (!Number.isFinite(entry.ttlHours) || entry.ttlHours <= 0) {
     return { ...cache };
   }
+  const createdAt = entry.createdAt ?? new Date().toISOString();
+  const expiresAt = entry.expiresAt ?? new Date(Date.parse(createdAt) + entry.ttlHours * 60 * 60 * 1000).toISOString();
   return {
     ...cache,
-    [entry.cacheKey]: entry,
+    [entry.cacheKey]: {
+      ...entry,
+      createdAt,
+      expiresAt,
+    },
   };
 }

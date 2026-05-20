@@ -22,6 +22,7 @@ export interface KnowledgeQueryOptions {
   includeUnverified?: boolean;
   limit?: number;
   maxContextTokens?: number;
+  rerankEnabled?: boolean;
 }
 
 function countOccurrences(content: string, keyword: string): number {
@@ -169,7 +170,7 @@ export class KnowledgeRetrievalService {
       }
     }
 
-    return [...candidateKnowledgeRefs]
+    const rankedHits = [...candidateKnowledgeRefs]
       .map((knowledgeRef) => this.buildRankedHit(
         knowledgeRef,
         queryTerms,
@@ -188,8 +189,12 @@ export class KnowledgeRetrievalService {
           return left.matchType === "keyword" ? -1 : 1;
         }
         return left.knowledgeRef.localeCompare(right.knowledgeRef);
-      })
-      .slice(0, options.limit ?? 10);
+      });
+
+    const rerankedHits = options.rerankEnabled === true
+      ? this.rerankHits(keyword, rankedHits)
+      : rankedHits;
+    return rerankedHits.slice(0, options.limit ?? 10);
   }
 
   private buildRankedHit(
@@ -288,6 +293,54 @@ export class KnowledgeRetrievalService {
       ...hit,
       knowledgeRef: this.citations.build(hit),
     };
+  }
+
+  private rerankHits(keyword: string, hits: readonly RetrievalHit[]): RetrievalHit[] {
+    const normalizedQuery = keyword.normalize("NFKC").trim().toLowerCase();
+    const queryTerms = normalizeQueryTerms(keyword);
+    return hits
+      .map((hit) => {
+        const chunkRecord = this.archive.getChunk(hit.chunkId);
+        if (chunkRecord == null) {
+          return hit;
+        }
+        const content = chunkRecord.chunk.content.toLowerCase();
+        const exactPhraseBoost =
+          normalizedQuery.length >= 3 && content.includes(normalizedQuery)
+            ? 1.5
+            : 0;
+        const keywordPrefixBoost = chunkRecord.chunk.keywords.some((candidate) =>
+          normalizedQuery.length > 0 && candidate.toLowerCase().startsWith(normalizedQuery),
+        )
+          ? 0.6
+          : 0;
+        const coverageBoost = queryTerms.reduce((total, term) => {
+          return total + (content.includes(term) ? 0.25 : 0);
+        }, 0);
+        const rerankBoost = Number((exactPhraseBoost + keywordPrefixBoost + coverageBoost).toFixed(4));
+        return {
+          ...hit,
+          score: Number((hit.score + rerankBoost).toFixed(4)),
+          rankingSignals: hit.rankingSignals == null
+            ? undefined
+            : {
+              ...hit.rankingSignals,
+              reasoningPaths: [
+                ...hit.rankingSignals.reasoningPaths,
+                `rerank:${rerankBoost.toFixed(2)}`,
+              ],
+            },
+          reasoningSummary: hit.reasoningSummary == null
+            ? `rerank:${rerankBoost.toFixed(2)}`
+            : `${hit.reasoningSummary} | rerank:${rerankBoost.toFixed(2)}`,
+        } satisfies RetrievalHit;
+      })
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        return left.knowledgeRef.localeCompare(right.knowledgeRef);
+      });
   }
 
   private collectSemanticCandidates(

@@ -38,7 +38,7 @@ export interface SessionRevocationPlan {
   readonly planId: string;
   readonly subjectId: string;
   readonly revocationMode: "normal" | "security";
-  readonly targetSloSeconds: 300 | 60;
+  readonly targetSloSeconds: number;
   readonly oidcSessionIds: readonly string[];
   readonly samlSessionIds: readonly string[];
 }
@@ -47,7 +47,7 @@ export interface AgentFreezeDirective {
   readonly directiveId: string;
   readonly subjectId: string;
   readonly reason: "identity_deconfigured" | "security_revocation";
-  readonly targetSloSeconds: 300 | 60;
+  readonly targetSloSeconds: number;
   readonly agentIds: readonly string[];
 }
 
@@ -57,6 +57,10 @@ export interface IdentitySyncBootstrapOptions {
   readonly agentAssignmentsBySubject?: Readonly<Record<string, readonly string[]>>;
   readonly securityIncidentSubjectIds?: readonly string[];
   readonly deconfiguredSubjectIds?: readonly string[];
+  readonly targetSloSecondsByMode?: Readonly<{
+    readonly normal?: number;
+    readonly security?: number;
+  }>;
 }
 
 export interface IdentitySyncDlqProcessingResult {
@@ -140,11 +144,14 @@ export class IdentitySyncService {
 
     const sessionRevocationPlans = [...terminalSubjects].sort().map((subjectId) => {
       const securityMode = (options.securityIncidentSubjectIds ?? []).includes(subjectId);
+      const targetSloSeconds = securityMode
+        ? options.targetSloSecondsByMode?.security ?? 60
+        : options.targetSloSecondsByMode?.normal ?? 300;
       return {
         planId: newId("session_revocation"),
         subjectId,
         revocationMode: securityMode ? "security" : "normal",
-        targetSloSeconds: securityMode ? 60 : 300,
+        targetSloSeconds,
         oidcSessionIds: [...(options.oidcSessionsBySubject?.[subjectId] ?? [])],
         samlSessionIds: [...(options.samlSessionsBySubject?.[subjectId] ?? [])],
       } satisfies SessionRevocationPlan;
@@ -155,11 +162,14 @@ export class IdentitySyncService {
         return [];
       }
       const securityMode = (options.securityIncidentSubjectIds ?? []).includes(subjectId);
+      const targetSloSeconds = securityMode
+        ? options.targetSloSecondsByMode?.security ?? 60
+        : options.targetSloSecondsByMode?.normal ?? 300;
       return [{
         directiveId: newId("agent_freeze"),
         subjectId,
         reason: securityMode ? "security_revocation" : "identity_deconfigured",
-        targetSloSeconds: securityMode ? 60 : 300,
+        targetSloSeconds,
         agentIds,
       } satisfies AgentFreezeDirective];
     });

@@ -9,6 +9,8 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,6 +132,12 @@ export interface ScimProvisionEvent {
   readonly tenantId: string;
 }
 
+export interface ScimProvisionServiceOptions {
+  readonly eventStorePath?: string;
+  readonly maxBulkOperations?: number;
+  readonly requireTenantContext?: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SCIM Service
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,6 +149,16 @@ export class ScimProvisionService {
   private readonly userByEmail = new Map<string, string>();
   private readonly groupByName = new Map<string, string>();
   private readonly events: ScimProvisionEvent[] = [];
+  private readonly eventStorePath: string | null;
+  private readonly maxBulkOperations: number;
+  private readonly requireTenantContext: boolean;
+
+  public constructor(options: ScimProvisionServiceOptions = {}) {
+    this.eventStorePath = options.eventStorePath ?? null;
+    this.maxBulkOperations = options.maxBulkOperations ?? 100;
+    this.requireTenantContext = options.requireTenantContext ?? true;
+    this.loadPersistedEvents();
+  }
 
   /**
    * Creates a new SCIM user.
@@ -333,10 +351,15 @@ export class ScimProvisionService {
     startIndex?: number;
     count?: number;
   }): ScimListResponse<ScimUser> {
+    const tenantId = this.resolveListTenantContext(
+      options.tenantId,
+      Array.from(this.users.values()).map((user) => user.tenantId).filter((value): value is string => typeof value === "string"),
+      "list_users",
+    );
     const { startIndex = 1, count = 100 } = options;
 
     let users = Array.from(this.users.values())
-      .filter((user) => options.tenantId == null || user.tenantId === options.tenantId);
+      .filter((user) => user.tenantId === tenantId);
 
     // Apply filter if provided (simple filter parsing)
     if (options.filter) {
@@ -499,10 +522,15 @@ export class ScimProvisionService {
     startIndex?: number;
     count?: number;
   }): ScimListResponse<ScimGroup> {
+    const tenantId = this.resolveListTenantContext(
+      options.tenantId,
+      Array.from(this.groups.values()).map((group) => group.tenantId).filter((value): value is string => typeof value === "string"),
+      "list_groups",
+    );
     const { startIndex = 1, count = 100 } = options;
 
     let groups = Array.from(this.groups.values())
-      .filter((group) => options.tenantId == null || group.tenantId === options.tenantId);
+      .filter((group) => group.tenantId === tenantId);
 
     if (options.filter) {
       groups = this.applyFilter(groups, options.filter);
@@ -555,9 +583,8 @@ export class ScimProvisionService {
   public removeMemberFromGroup(groupId: string, userId: string, tenantId?: string): ScimGroup | null {
     const group = this.groups.get(groupId);
     if (!group) return null;
-    // Tenant isolation: only allow removing members from groups belonging to the calling tenant
     const effectiveTenantId = tenantId ?? this.resolveGroupTenantId(group);
-    if (tenantId != null && group.tenantId !== tenantId) return null;
+    if (group.tenantId !== effectiveTenantId) return null;
 
     const newMembers = group.members.filter((m) => m.value !== userId);
     return this.updateGroup(groupId, { members: newMembers }, effectiveTenantId);
@@ -641,6 +668,9 @@ export class ScimProvisionService {
    * `bulkId` references within the same request.
    */
   public processBulkRequest(request: ScimBulkRequest, tenantId: string): ScimBulkResponse {
+    if (request.Operations.length > this.maxBulkOperations) {
+      throw new Error(`scim.bulk_too_large:${request.Operations.length}:${this.maxBulkOperations}`);
+    }
     const bulkIdMap = new Map<string, string>();
     const responses: ScimBulkOperationResponse[] = [];
     const failOnErrors = request.failOnErrors ?? Number.POSITIVE_INFINITY;
@@ -795,13 +825,19 @@ export class ScimProvisionService {
             next = { ...next, emails: operation.value as ScimUser["emails"] };
           } else if (operation.path === "groups" && Array.isArray(operation.value)) {
             next = { ...next, groups: operation.value as ScimUser["groups"] };
+          } else {
+            throw new Error(`scim.patch.unsupported_path:${operation.path ?? "unknown"}`);
           }
           break;
         case "remove":
           if (operation.path === "groups") {
             next = { ...next, groups: [] };
+          } else {
+            throw new Error(`scim.patch.unsupported_path:${operation.path ?? "unknown"}`);
           }
           break;
+        default:
+          throw new Error(`scim.patch.unsupported_operation:${String((operation as { op?: unknown }).op ?? "unknown")}`);
       }
     }
 
@@ -850,6 +886,7 @@ export class ScimProvisionService {
       occurredAt: nowIso(),
       tenantId,
     });
+    this.persistEvents();
   }
 
   private resolveGroupTenantId(group: ScimGroup): string {
@@ -862,49 +899,97 @@ export class ScimProvisionService {
         return userTenantId;
       }
     }
-    return "tenant:unknown";
+    throw new Error(`scim.group_tenant_unresolved:${group.id}`);
   }
 
   private applyFilter<T extends ScimUser | ScimGroup>(items: T[], filter: string): T[] {
-    // Simple filter parsing: "userName eq \"john\""
-    const filterMatch = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
-    if (!filterMatch) return items;
+    const normalizedFilter = filter.trim();
+    const orParts = normalizedFilter.split(/\s+or\s+/i).map((part) => part.trim()).filter((part) => part.length > 0);
+    return items.filter((item) =>
+      orParts.some((orPart) => {
+        const andParts = orPart.split(/\s+and\s+/i).map((part) => part.trim()).filter((part) => part.length > 0);
+        return andParts.every((clause) => this.evaluateFilterClause(item, clause));
+      }),
+    );
+  }
 
-    const attr: string = filterMatch[1] ?? "";
-    const op: string = filterMatch[2] ?? "";
-    const rawVal: string = filterMatch[3] ?? "";
-    const filterValue = rawVal;
+  private evaluateFilterClause(item: ScimUser | ScimGroup, clause: string): boolean {
+    const filterMatch = clause.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/i);
+    if (!filterMatch) {
+      throw new Error(`scim.filter.unsupported:${clause}`);
+    }
+    const attr = filterMatch[1] ?? "";
+    const op = filterMatch[2]?.toLowerCase() ?? "";
+    const filterValue = filterMatch[3] ?? "";
+    const itemValue = resolveFilterValue(item, attr);
+    if (itemValue == null) {
+      return false;
+    }
+    switch (op) {
+      case "eq":
+        return itemValue.toLowerCase() === filterValue.toLowerCase();
+      case "ne":
+        return itemValue.toLowerCase() !== filterValue.toLowerCase();
+      case "co":
+        return itemValue.toLowerCase().includes(filterValue.toLowerCase());
+      case "sw":
+        return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
+      default:
+        throw new Error(`scim.filter.unsupported_operator:${op}`);
+    }
+  }
 
-    return items.filter((item) => {
-      // Inline attribute resolution to satisfy TypeScript's strict null checks
-      let itemValue: string | null;
-      if (attr === "userName") {
-        itemValue = "userName" in item ? item.userName : null;
-      } else if (attr === "displayName") {
-        itemValue = item.displayName;
-      } else if (attr === "id") {
-        itemValue = item.id;
-      } else {
-        itemValue = null;
+  private requireTenantContextValue(tenantId: string | undefined, action: string): string {
+    if (!this.requireTenantContext && tenantId == null) {
+      return "tenant:global";
+    }
+    if (tenantId == null || tenantId.trim().length === 0) {
+      throw new Error(`scim.tenant_required:${action}`);
+    }
+    return tenantId;
+  }
+
+  private resolveListTenantContext(tenantId: string | undefined, knownTenantIds: readonly string[], action: string): string {
+    if (tenantId != null && tenantId.trim().length > 0) {
+      return tenantId;
+    }
+    const uniqueTenantIds = [...new Set(knownTenantIds.filter((value) => value.trim().length > 0))];
+    if (uniqueTenantIds.length <= 1) {
+      return uniqueTenantIds[0] ?? "tenant:global";
+    }
+    return this.requireTenantContextValue(tenantId, action);
+  }
+
+  private loadPersistedEvents(): void {
+    if (this.eventStorePath == null || !existsSync(this.eventStorePath)) {
+      return;
+    }
+    const payload = JSON.parse(readFileSync(this.eventStorePath, "utf8")) as unknown;
+    if (!Array.isArray(payload)) {
+      throw new Error(`scim.event_store_invalid:${this.eventStorePath}`);
+    }
+    for (const entry of payload) {
+      if (
+        entry
+        && typeof entry === "object"
+        && typeof (entry as { eventId?: unknown }).eventId === "string"
+        && typeof (entry as { action?: unknown }).action === "string"
+        && typeof (entry as { subjectId?: unknown }).subjectId === "string"
+        && typeof (entry as { occurredAt?: unknown }).occurredAt === "string"
+        && typeof (entry as { tenantId?: unknown }).tenantId === "string"
+      ) {
+        this.events.push(entry as ScimProvisionEvent);
       }
+    }
+  }
 
-      if (itemValue === undefined || itemValue === null) {
-        return false;
-      }
-
-      switch (op) {
-        case "eq":
-          return itemValue.toLowerCase() === filterValue.toLowerCase();
-        case "ne":
-          return itemValue.toLowerCase() !== filterValue.toLowerCase();
-        case "co":
-          return itemValue.toLowerCase().includes(filterValue.toLowerCase());
-        case "sw":
-          return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
-        default:
-          return true;
-      }
-    });
+  private persistEvents(): void {
+    if (this.eventStorePath == null) {
+      return;
+    }
+    const tempPath = join(dirname(this.eventStorePath), `${newId("scim_events_tmp")}.json`);
+    writeFileSync(tempPath, JSON.stringify(this.events, null, 2), "utf8");
+    renameSync(tempPath, this.eventStorePath);
   }
 }
 
@@ -941,6 +1026,6 @@ function resolveFilterValue(item: ScimUser | ScimGroup, attribute: string): stri
 // Factory Function
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function createScimProvisionService(): ScimProvisionService {
-  return new ScimProvisionService();
+export function createScimProvisionService(options: ScimProvisionServiceOptions = {}): ScimProvisionService {
+  return new ScimProvisionService(options);
 }

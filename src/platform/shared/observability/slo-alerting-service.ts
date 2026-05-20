@@ -120,6 +120,7 @@ export class SloAlertingService {
   private readonly dispatcher: AlertDispatcher;
   private readonly alertRuleShadow = new Map<string, AlertRule>();
   private readonly alertEventShadow = new Map<string, AlertEvent>();
+  private readonly cooldownState = new Map<string, number>();
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -234,14 +235,13 @@ export class SloAlertingService {
     // Calculate window start time
     const windowStart = new Date(Date.now() - slo.windowMinutes * 60_000).toISOString();
     const samples = this.db.connection
-      .prepare(`SELECT value FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
+      .prepare(`SELECT value, collected_at AS collectedAt FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
       .all(sloId, windowStart) as RawRow[];
 
     if (samples.length === 0) return "unknown";
 
     // Calculate average value
-    const values = samples.map((r) => Number(r.value));
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const avg = this.computeWindowAverage(samples, Date.now());
 
     // Determine if target is met based on operator
     let met: boolean;
@@ -314,7 +314,14 @@ export class SloAlertingService {
    * Fires an alert for a rule, creating an alert event and attempting delivery.
    */
   fireAlert(ruleId: string, title: string, detail: string): AlertEvent {
+    const rule = this.resolveAlertRule(ruleId);
+    if (rule != null && this.isRuleCoolingDown(rule)) {
+      const suppressed = this.buildSuppressedAlert(ruleId, title, detail, rule.severity, rule.channelKind);
+      this.alertEventShadow.set(suppressed.id, suppressed);
+      return suppressed;
+    }
     const alert = this.dispatcher.dispatch(ruleId, title, detail);
+    this.markRuleFired(ruleId);
     this.alertEventShadow.set(alert.id, alert);
     return alert;
   }
@@ -632,14 +639,13 @@ export class SloAlertingService {
 
     const windowStart = new Date(Date.now() - windowMs).toISOString();
     const samples = this.db.connection
-      .prepare(`SELECT value FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
+      .prepare(`SELECT value, collected_at AS collectedAt FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
       .all(sloId, windowStart) as RawRow[];
 
     if (samples.length === 0) return 0;
 
     // Calculate average SLI value in the window
-    const values = samples.map((r) => Number(r.value));
-    const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+    const avgValue = this.computeWindowAverage(samples, Date.now());
 
     if (slo.operator === "gte") {
       const errorBudget = 100 - slo.targetValue;
@@ -687,13 +693,12 @@ export class SloAlertingService {
     // Calculate error budget burn percentage
     const windowStart = new Date(Date.now() - slo.windowMinutes * 60_000).toISOString();
     const samples = this.db.connection
-      .prepare(`SELECT value FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
+      .prepare(`SELECT value, collected_at AS collectedAt FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
       .all(sloId, windowStart) as RawRow[];
 
     let errorBudgetBurnPercent: number | null = null;
     if (samples.length > 0 && slo.operator === "gte") {
-      const values = samples.map((r) => Number(r.value));
-      const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+      const avgValue = this.computeWindowAverage(samples, Date.now());
       const errorBudget = 100 - slo.targetValue;
       if (errorBudget > 0) {
         const consumed = Math.max(0, 100 - avgValue);
@@ -811,13 +816,16 @@ export class SloAlertingService {
    * Fires an alert with explicit severity.
    */
   private fireAlertWithSeverity(title: string, detail: string, severity: AlertSeverity): AlertEvent {
-    return this.dispatcher.dispatchRaw(
-      "slo_error_budget_gradient",
-      title,
-      detail,
-      severity,
-      "log",
-    );
+    if (severity === "warning") {
+      return this.dispatcher.dispatchRaw(
+        "slo_error_budget_gradient",
+        title,
+        detail,
+        severity,
+        "log",
+      );
+    }
+    return this.fireAlertToPagerDuty(title, detail);
   }
 
   /**
@@ -955,5 +963,67 @@ export class SloAlertingService {
     const alertSeverity: AlertSeverity = severity === "SEV2" ? "critical" : "warning";
 
     return this.fireAlertWithSeverity(title, detail, alertSeverity);
+  }
+
+  private computeWindowAverage(samples: readonly RawRow[], nowMs: number): number {
+    if (samples.length === 0) {
+      return 0;
+    }
+    if (samples.length === 1) {
+      return Number(samples[0]?.value ?? 0);
+    }
+    let weightedTotal = 0;
+    let totalDurationMs = 0;
+    for (let index = 0; index < samples.length; index += 1) {
+      const current = samples[index]!;
+      const currentMs = Date.parse(String(current.collectedAt ?? ""));
+      const nextMs = index < samples.length - 1
+        ? Date.parse(String(samples[index + 1]?.collectedAt ?? ""))
+        : nowMs;
+      const durationMs = Math.max(1, nextMs - currentMs);
+      weightedTotal += Number(current.value ?? 0) * durationMs;
+      totalDurationMs += durationMs;
+    }
+    return totalDurationMs > 0 ? weightedTotal / totalDurationMs : 0;
+  }
+
+  private resolveAlertRule(ruleId: string): AlertRule | null {
+    return this.alertRuleShadow.get(ruleId) ?? this.listAlertRules().find((rule) => rule.id === ruleId) ?? null;
+  }
+
+  private isRuleCoolingDown(rule: AlertRule): boolean {
+    const cooldownUntil = this.cooldownState.get(rule.id) ?? 0;
+    return cooldownUntil > Date.now();
+  }
+
+  private markRuleFired(ruleId: string): void {
+    const rule = this.resolveAlertRule(ruleId);
+    if (rule == null || rule.cooldownMinutes <= 0) {
+      return;
+    }
+    this.cooldownState.set(rule.id, Date.now() + (rule.cooldownMinutes * 60_000));
+  }
+
+  private buildSuppressedAlert(
+    ruleId: string,
+    title: string,
+    detail: string,
+    severity: AlertSeverity,
+    channelKind: AlertChannelKind,
+  ): AlertEvent {
+    return {
+      id: newId("alert"),
+      ruleId,
+      severity,
+      unifiedSeverity: alertSeverityToUnifiedSeverity(severity),
+      status: "resolved",
+      title,
+      detail,
+      channelKind,
+      deliveredAt: null,
+      acknowledgedBy: null,
+      resolvedAt: nowIso(),
+      firedAt: nowIso(),
+    };
   }
 }

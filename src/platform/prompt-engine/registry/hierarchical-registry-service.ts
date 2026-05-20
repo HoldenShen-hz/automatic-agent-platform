@@ -287,7 +287,7 @@ export class HierarchicalPromptRegistryService {
     const versions = this.versionsByName.get(name);
     if (versions) {
       for (const [bundleId, bundle] of versions.entries()) {
-        if (this.normalizeVersionKey(bundle.version) === normalizedVersion) {
+        if (this.normalizeVersionKey(bundle.displayVersion ?? bundle.version) === normalizedVersion) {
           versions.delete(bundleId);
         }
       }
@@ -334,13 +334,12 @@ export class HierarchicalPromptRegistryService {
     // R34-12 fix: Normalize slot to [0, totalWeight) using proportional scaling
     // This ensures fair distribution even when weights don't sum to 100.
     // Former code: slot = hash % totalWeight (caused unfair wrapping when weights < 100)
-    const rawSlot = this.computeTrafficSlot(effectiveTrafficKey);
-    const slot = totalWeight > 0 ? Math.floor((rawSlot * totalWeight) / 100) : 0;
-    let normalizedCursor = 0;
+    const slot = this.computeTrafficSlot(effectiveTrafficKey, totalWeight);
+    let cursor = 0;
     for (const bundle of eligible) {
       const weight = Math.max(0, bundle.metadata.trafficAllocation.weight);
-      normalizedCursor += weight / totalWeight;
-      if (slot / totalWeight < normalizedCursor) {
+      cursor += weight;
+      if (slot < cursor) {
         return bundle;
       }
     }
@@ -414,7 +413,10 @@ export class HierarchicalPromptRegistryService {
     if (!this.versionsByScope.has(scopeKey)) {
       this.versionsByScope.set(scopeKey, new Map());
     }
-    this.requireMap(this.versionsByScope, scopeKey).set(this.normalizeVersionKey(bundle.version), bundle);
+    this.requireMap(this.versionsByScope, scopeKey).set(
+      this.normalizeVersionKey(bundle.displayVersion ?? bundle.version),
+      bundle,
+    );
   }
 
   private findBundle(
@@ -479,7 +481,7 @@ export class HierarchicalPromptRegistryService {
     );
     const scopeVersions = this.versionsByScope.get(scopeKey);
     if (scopeVersions) {
-      scopeVersions.set(this.normalizeVersionKey(bundle.version), bundle);
+      scopeVersions.set(this.normalizeVersionKey(bundle.displayVersion ?? bundle.version), bundle);
     }
 
     const currentBundle =
@@ -609,20 +611,20 @@ export class HierarchicalPromptRegistryService {
     const normalized = version.trim();
     const fullSemverMatch = normalized.match(/^v?(\d+)\.(\d+)(?:\.(\d+))?$/);
     if (fullSemverMatch) {
-      const major = parseInt(fullSemverMatch[1]!, 10);
-      const minor = parseInt(fullSemverMatch[2]!, 10);
-      const patch = fullSemverMatch[3] !== undefined ? parseInt(fullSemverMatch[3]!, 10) : 0;
-      return String(major * 100 + minor * 10 + patch);
+      const major = fullSemverMatch[1]!;
+      const minor = fullSemverMatch[2]!;
+      const patch = fullSemverMatch[3] ?? "0";
+      return `${major}.${minor}.${patch}`;
     }
 
     const plainIntegerMatch = normalized.match(/^(\d+)$/);
     if (plainIntegerMatch) {
-      return String(parseInt(plainIntegerMatch[1]!, 10));
+      return `${plainIntegerMatch[1]!}.0.0`;
     }
 
     const simpleMatch = normalized.match(/^v(\d+)$/);
     if (simpleMatch) {
-      return String(parseInt(simpleMatch[1]!, 10) * 10);
+      return `${simpleMatch[1]!}.0.0`;
     }
 
     return normalized;
@@ -647,12 +649,13 @@ export class HierarchicalPromptRegistryService {
     return removed;
   }
 
-  private computeTrafficSlot(key: string): number {
-    let hash = 0;
+  private computeTrafficSlot(key: string, totalWeight: number): number {
+    let hash = 2166136261;
     for (const char of key) {
-      hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 16777619) >>> 0;
     }
-    return hash % 100;
+    return totalWeight <= 0 ? 0 : hash % totalWeight;
   }
 
   private isBundleTrafficActive(bundle: PromptBundle, now: Date = new Date()): boolean {

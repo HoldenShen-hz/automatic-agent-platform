@@ -347,7 +347,7 @@ export function extractRemoteAuthorityViolations(events: TaskInspectView["recent
         violations.push(reasonCode);
       }
     } catch (err) {
-      diagnosticsLogger.log({ level: "debug", message: "Failed to parse event payload for remote authority violation extraction", data: { eventId: event.id, error: err instanceof Error ? err.message : String(err) } });
+      diagnosticsLogger.log({ level: "debug", message: "Failed to parse event payload for remote authority violation extraction", data: { eventId: event.id, error: err } });
       continue;
     }
   }

@@ -235,6 +235,50 @@ test("KnowledgePlaneService restores semantic vector records from snapshot store
   }
 });
 
+test("KnowledgePlaneService enables baseline rerank automatically for canonical domains", () => {
+  const plane = new KnowledgePlaneService();
+  plane.registerNamespace({
+    namespaceId: "ns_coding_default",
+    path: "coding/default",
+    description: "Coding domain knowledge",
+    ownerDomainId: "coding",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "team_reviewed",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+  plane.ingest({
+    title: "Build cache invalidation",
+    body: "This note explains TypeScript build cache invalidation and recovery steps.",
+    namespace: "coding/default",
+    sourceType: "text",
+    trustLevel: "team_reviewed",
+  });
+  plane.ingest({
+    title: "Compiler ergonomics",
+    body: "This note discusses TypeScript compiler internals.",
+    namespace: "coding/default",
+    sourceType: "text",
+    trustLevel: "team_reviewed",
+  });
+
+  const hits = plane.query("TypeScript build", {
+    domainId: "coding",
+    namespace: "coding/default",
+    limit: 5,
+  });
+
+  assert.equal(hits.length > 0, true);
+  assert.ok(hits[0]?.rankingSignals?.reasoningPaths.some((path) => path.startsWith("rerank:")));
+  assert.match(hits[0]?.reasoningSummary ?? "", /rerank:/);
+});
+
 test("KnowledgePlaneService initialize fails closed when semantic backend bootstrap fails", async () => {
   class FailingSemanticVectorStore implements SemanticVectorStore {
     public readonly backend = "pgvector" as const;

@@ -63,6 +63,7 @@ export interface TimeTravelDebugSession {
 
 export interface TimeTravelDebugVariableEnvelope {
   readonly value?: unknown;
+  readonly scope?: VariableState["scope"];
 }
 
 export interface TimeTravelDebugEvent {
@@ -112,7 +113,7 @@ function readVariables(event: TimeTravelDebugEvent): Readonly<Record<string, unk
 
 function readVariableValue(value: unknown): unknown {
   if (typeof value === "object" && value !== null && "value" in value) {
-    return (value as TimeTravelDebugVariableEnvelope).value ?? value;
+    return (value as TimeTravelDebugVariableEnvelope).value;
   }
   return value;
 }
@@ -121,7 +122,7 @@ function defaultReplayAccessContext(): ReplayAccessContext {
   return {
     actorId: "local_debugger",
     environment: "dev",
-    mfaVerified: true,
+    mfaVerified: false,
     sessionExpiresAt: null,
     permissions: ["time_travel:replay"],
   };
@@ -182,29 +183,42 @@ export class TimeTravelDebugService {
   public setBreakpoints(sessionId: string, stepIds: readonly string[]): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    session.breakpoints = [...stepIds];
+    this.sessions.set(sessionId, {
+      ...session,
+      breakpoints: [...stepIds],
+    });
   }
 
   public loadEventStore(executionId: string, events: readonly TimeTravelDebugEvent[]): void {
+    const previousEvents = this.eventStore.get(executionId) ?? [];
     const boundedEvents = events.length > this.maxEventsPerExecution
       ? events.slice(events.length - this.maxEventsPerExecution)
       : [...events];
     this.eventStore.set(executionId, boundedEvents);
+    const truncatedCount = Math.max(0, previousEvents.length - boundedEvents.length);
+    if (truncatedCount > 0) {
+      for (const [sessionId, session] of this.sessions.entries()) {
+        if (session.executionId !== executionId) {
+          continue;
+        }
+        this.sessions.set(sessionId, {
+          ...session,
+          currentEventIndex: Math.max(0, session.currentEventIndex - truncatedCount),
+        });
+      }
+    }
   }
 
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+    this.assertReplayAccess(session.accessContext);
 
     const events = this.eventStore.get(session.executionId) ?? [];
     const currentIndex = session.currentEventIndex;
 
-    // Handle edge case where toEventIndex == currentIndex (no advancement)
-    // Use events.length + 1 as toEventIndex so fromEventIndex < toEventIndex is preserved
     if (toEventIndex === currentIndex) {
-      const fromIdx = currentIndex;
-      const toIdx = events.length + 1;
-      return this.buildReplayState(session, fromIdx, toIdx, false);
+      return this.buildReplayState(session, currentIndex, currentIndex, false);
     }
 
     const prevIndex = currentIndex; // capture before loop to preserve correct fromEventIndex
@@ -227,14 +241,11 @@ export class TimeTravelDebugService {
   public replayStep(sessionId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+    this.assertReplayAccess(session.accessContext);
 
     const events = this.eventStore.get(session.executionId) ?? [];
     if (session.currentEventIndex >= events.length) {
-      // Boundary case: already past last event. Use events.length+1 as toEventIndex
-      // so that fromEventIndex < toEventIndex is preserved (e.g. from=2, to=3).
-      const fromIdx = session.currentEventIndex;
-      const toIdx = events.length + 1;
-      return this.buildReplayState(session, fromIdx, toIdx, false);
+      return this.buildReplayState(session, session.currentEventIndex, session.currentEventIndex, false);
     }
 
     const prevIndex = session.currentEventIndex;
@@ -254,6 +265,7 @@ export class TimeTravelDebugService {
   public jumpToStep(sessionId: string, stepId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+    this.assertReplayAccess(session.accessContext);
 
     const events = this.eventStore.get(session.executionId) ?? [];
     const targetIndex = events.findIndex((e) => readEventStepId(e) === stepId);
@@ -284,11 +296,14 @@ export class TimeTravelDebugService {
       if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
           const unwrapped = readVariableValue(value);
+          const perVariableScope = typeof value === "object" && value !== null && "scope" in value && isVariableScope((value as TimeTravelDebugVariableEnvelope).scope)
+            ? (value as TimeTravelDebugVariableEnvelope).scope!
+            : null;
           variableMap.set(name, {
             name,
             value: unwrapped,
-            type: String(typeof unwrapped),
-            scope: isVariableScope(event.scope) ? event.scope : "step",
+            type: describeVariableType(unwrapped),
+            scope: perVariableScope ?? (isVariableScope(event.scope) ? event.scope : "step"),
           });
         }
       }
@@ -300,7 +315,10 @@ export class TimeTravelDebugService {
   public endSession(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    session.endedAt = nowIso();
+    this.sessions.set(sessionId, {
+      ...session,
+      endedAt: nowIso(),
+    });
   }
 
   private captureSnapshot(session: TimeTravelDebugSession, event: TimeTravelDebugEvent, eventIndex: number): void {
@@ -335,7 +353,8 @@ export class TimeTravelDebugService {
     reachedBreakpoint: boolean,
   ): ReplayState {
     const events = this.eventStore.get(session.executionId) ?? [];
-    const variables = this.getVariableState(session.sessionId, toEventIndex);
+    const normalizedToEventIndex = toEventIndex <= fromEventIndex ? fromEventIndex + 1 : toEventIndex;
+    const variables = this.getVariableState(session.sessionId, normalizedToEventIndex);
 
     return {
       cursor: {
@@ -343,7 +362,7 @@ export class TimeTravelDebugService {
         executionId: session.executionId,
         harnessRunId: session.executionId,
         fromEventIndex,
-        toEventIndex,
+        toEventIndex: normalizedToEventIndex,
       },
       currentEventIndex: session.currentEventIndex,
       variables,
@@ -418,4 +437,14 @@ export class TimeTravelDebugService {
     }
     throw new Error(`time_travel_debug.replay_side_effect_blocked:${effectType}`);
   }
+}
+
+function describeVariableType(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  return typeof value;
 }

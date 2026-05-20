@@ -24,9 +24,10 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
+import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
-import { basename, dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
 import { getActiveTelemetryContext } from "./otel-tracer.js";
@@ -113,10 +114,10 @@ function safePath(userPath: string, baseDir: string): string {
   }
 
   // Normalize the path to resolve any ".." or "." sequences
-  const normalized = normalize(userPath);
+  const normalized = normalize(userPath.replace(/\\/g, "/"));
 
-  // Block any path that still contains traversal markers after normalization
-  if (normalized.includes("..")) {
+  const segments = normalized.split(/[\\/]+/).filter((segment) => segment.length > 0);
+  if (segments.includes("..")) {
     throw new Error("path_traversal.blocked_traversal_sequence");
   }
 
@@ -126,6 +127,10 @@ function safePath(userPath: string, baseDir: string): string {
   const resolvedBaseDir = resolve(baseDir);
 
   // Ensure the resolved path is still within the base directory
+  const relativePath = relative(resolvedBaseDir, resolvedFullPath);
+  if (relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath))) {
+    return resolvedFullPath;
+  }
   if (!resolvedFullPath.startsWith(resolvedBaseDir + sep)) {
     throw new Error("path_traversal.blocked_escape_from_base");
   }
@@ -143,6 +148,7 @@ export class StructuredLogger {
   private static globalFileSink: StructuredLoggerFileSink | null = null;
   private static transports: LogTransport[] = [];
   private static rotationStateByPath = new Map<string, { scheduled: boolean; pendingBytes: number }>();
+  private static sinkBaseDir = process.cwd();
 
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
@@ -169,7 +175,7 @@ export class StructuredLogger {
 
     // Use process.cwd() as the base directory for path validation
     // This ensures the log file path cannot escape to arbitrary locations
-    const baseDir = process.cwd();
+    const baseDir = StructuredLogger.sinkBaseDir;
     let safeFilePath: string;
     try {
       safeFilePath = safePath(options.filePath, baseDir);
@@ -193,6 +199,10 @@ export class StructuredLogger {
 
   public static getGlobalFileSinkPath(): string | null {
     return StructuredLogger.globalFileSink?.filePath ?? null;
+  }
+
+  public static setGlobalFileSinkBaseDir(baseDir: string): void {
+    StructuredLogger.sinkBaseDir = resolve(baseDir);
   }
 
   /**
@@ -438,7 +448,7 @@ export class StructuredLogger {
       return;
     }
     try {
-      const serialized = `${JSON.stringify(entry)}\n`;
+      const serialized = `${JSON.stringify(redactEntryForFileSink(entry))}\n`;
       const serializedBytes = Buffer.byteLength(serialized, "utf8");
       const state = this.getOrCreateRotationState(sink.filePath);
       state.pendingBytes += serializedBytes;
@@ -447,8 +457,8 @@ export class StructuredLogger {
       this.scheduleRotationIfNeeded(sink);
       // Use async appendFile to avoid blocking the event loop
       fsPromises.appendFile(sink.filePath, serialized, "utf8")
-        .catch(() => {
-          // File sink failures must not take down the caller path.
+        .catch((error) => {
+          process.stderr.write(`structured_logger.file_sink_error:${error instanceof Error ? error.message : String(error)}\n`);
         })
         .finally(() => {
           const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);
@@ -509,10 +519,9 @@ export class StructuredLogger {
 
     let currentBytes = 0;
     try {
-      if (existsSync(sink.filePath)) {
-        currentBytes = statSync(sink.filePath).size;
-      }
+      currentBytes = (await fsPromises.stat(sink.filePath)).size;
     } catch {
+      state.scheduled = false;
       return;
     }
 
@@ -522,7 +531,7 @@ export class StructuredLogger {
     }
 
     // Schedule async rotation
-    setImmediate(() => this.performRotation(sink));
+    setImmediate(() => void this.performRotation(sink));
   }
 
   private async performRotation(sink: StructuredLoggerFileSink): Promise<void> {
@@ -537,6 +546,9 @@ export class StructuredLogger {
         const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
         if (state != null) {
           state.scheduled = false;
+          if (sink.maxBytes != null && state.pendingBytes >= sink.maxBytes) {
+            this.scheduleRotationIfNeeded(sink);
+          }
         }
         return;
       }
@@ -552,14 +564,14 @@ export class StructuredLogger {
         const fromPath = `${sink.filePath}.${index}`;
         const toPath = `${sink.filePath}.${index + 1}`;
         try {
-          await fsPromises.rename(fromPath, toPath);
+          await renameWithCrossDeviceFallback(fromPath, toPath);
         } catch {
           // File may not exist
         }
       }
 
       try {
-        await fsPromises.rename(sink.filePath, `${sink.filePath}.1`);
+        await renameWithCrossDeviceFallback(sink.filePath, `${sink.filePath}.1`);
       } catch {
         // File may not exist
       }
@@ -569,6 +581,9 @@ export class StructuredLogger {
       const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
       if (state != null) {
         state.scheduled = false;
+        if (sink.maxBytes != null && state.pendingBytes >= sink.maxBytes) {
+          this.scheduleRotationIfNeeded(sink);
+        }
       }
     }
   }
@@ -736,9 +751,9 @@ function inferCallerSourcePath(): string {
     if (line.includes("structured-logger")) {
       continue;
     }
-    const match = line.match(/(?:file:\/\/)?(\/[^:\)\s]+(?:src|dist)\/[^:\)\s]+)/);
+    const match = line.match(/(?:file:\/\/)?((?:[A-Za-z]:[\\/]|\/)[^:\)\s]+(?:src|dist)[\\/][^:\)\s]+)/);
     if (match?.[1] != null) {
-      return match[1];
+      return match[1].replace(/\\/g, "/");
     }
   }
   return "";
@@ -751,4 +766,67 @@ function mapPathToStructuredPlane(sourcePath: string): StructuredPlane {
   if (sourcePath.includes("/platform/five-plane-execution/")) return "P4";
   if (sourcePath.includes("/platform/five-plane-state-evidence/")) return "P5";
   return "X1";
+}
+
+function redactEntryForFileSink(entry: StructuredLogEntry): StructuredLogEntry {
+  const redacted: StructuredLogEntry = { ...entry };
+  applyHashedIdentifier(redacted, "taskId", entry.taskId);
+  applyHashedIdentifier(redacted, "agentId", entry.agentId);
+  applyHashedIdentifier(redacted, "sessionId", entry.sessionId);
+  applyHashedIdentifier(redacted, "tenantId", entry.tenantId);
+  applyHashedIdentifier(redacted, "harnessRunId", entry.harnessRunId);
+  applyHashedIdentifier(redacted, "requestId", entry.requestId);
+  applyHashedIdentifier(redacted, "traceId", entry.traceId);
+  applyHashedIdentifier(redacted, "spanId", entry.spanId);
+  applyHashedIdentifier(redacted, "parentSpanId", entry.parentSpanId);
+  applyHashedIdentifier(redacted, "correlationId", entry.correlationId);
+  applyHashedIdentifier(redacted, "causationId", entry.causationId);
+  return redacted;
+}
+
+function hashIdentifier(value: string | undefined): string | undefined {
+  if (value == null || value.length === 0) {
+    return value;
+  }
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+function applyHashedIdentifier(
+  entry: StructuredLogEntry,
+  key: keyof Pick<
+    StructuredLogEntry,
+    | "taskId"
+    | "agentId"
+    | "sessionId"
+    | "tenantId"
+    | "harnessRunId"
+    | "requestId"
+    | "traceId"
+    | "spanId"
+    | "parentSpanId"
+    | "correlationId"
+    | "causationId"
+  >,
+  value: string | undefined,
+): void {
+  if (value == null) {
+    delete entry[key];
+    return;
+  }
+  const hashed = hashIdentifier(value);
+  if (hashed != null) {
+    entry[key] = hashed;
+  }
+}
+
+async function renameWithCrossDeviceFallback(fromPath: string, toPath: string): Promise<void> {
+  try {
+    await fsPromises.rename(fromPath, toPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") {
+      throw error;
+    }
+    await fsPromises.copyFile(fromPath, toPath);
+    await fsPromises.unlink(fromPath);
+  }
 }

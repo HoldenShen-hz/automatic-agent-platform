@@ -19,6 +19,7 @@ const OUTBOX_COLS = `id,
   retry_count AS retryCount,
   last_error AS lastError,
   last_attempt_at AS lastAttemptAt`;
+const SQLITE_MAX_BATCH_VARIABLES = 900;
 
 export class OutboxRepository {
   public constructor(private readonly conn: SqliteConnection) {}
@@ -174,15 +175,17 @@ export class OutboxRepository {
 
   public markPublishedBatch(ids: string[], publishedAt: string): void {
     if (ids.length === 0) return;
-    const placeholders = ids.map(() => "?").join(", ");
-    execute(
-      this.conn,
-      `UPDATE outbox
-       SET published_at = ?
-       WHERE id IN (${placeholders})`,
-      publishedAt,
-      ...ids,
-    );
+    for (const chunk of chunkValues(ids, SQLITE_MAX_BATCH_VARIABLES)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      execute(
+        this.conn,
+        `UPDATE outbox
+         SET published_at = ?
+         WHERE id IN (${placeholders})`,
+        publishedAt,
+        ...chunk,
+      );
+    }
   }
 
   public markFailed(id: string, error: string, newRetryCount: number, lastAttemptAt: string): void {
@@ -266,13 +269,22 @@ export class OutboxRepository {
   }
 
   public cleanupPublishedBefore(daysOld: number): number {
+    const cutoff = new Date(Date.now() - Math.max(0, daysOld) * 24 * 60 * 60 * 1000).toISOString();
     const result = this.conn
       .prepare(
         `DELETE FROM outbox
          WHERE published_at IS NOT NULL
-           AND created_at < datetime('now', '-' || ? || ' days')`,
+           AND created_at < ?`,
       )
-      .run(daysOld);
+      .run(cutoff);
     return Number(result.changes ?? 0);
   }
+}
+
+function chunkValues<T>(values: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
 }

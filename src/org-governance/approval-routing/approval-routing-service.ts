@@ -1,5 +1,5 @@
 import { buildGovernanceAuditRecord, type GovernanceAuditRecord } from "../compliance-engine/audit-enforcer/index.js";
-import { newId, randomUUID } from "../../platform/contracts/types/ids.js";
+import { newId, nowIso, randomUUID } from "../../platform/contracts/types/ids.js";
 import { type ApprovalDelegation, resolveDelegatedApprover } from "./delegation/index.js";
 import {
   evaluateApprovalEscalation,
@@ -51,6 +51,13 @@ export interface ApprovalRoutingServiceOptions {
   readonly delegations?: readonly ApprovalDelegation[];
   readonly escalationRules?: readonly ApprovalEscalationRule[];
   readonly amountThresholdRules?: readonly AmountThresholdRule[];
+  readonly routeSnapshotTtlMs?: number;
+  readonly fxRatesToCny?: Readonly<Record<string, {
+    readonly rate: number;
+    readonly asOf?: string;
+    readonly source?: string;
+  }>>;
+  readonly fallbackApproverIds?: readonly string[];
 }
 
 export class ApprovalRoutingService {
@@ -58,12 +65,31 @@ export class ApprovalRoutingService {
   private readonly delegations: readonly ApprovalDelegation[];
   private readonly escalationRules: readonly ApprovalEscalationRule[];
   private readonly amountThresholdRules: readonly AmountThresholdRule[];
+  private readonly routeSnapshotTtlMs: number;
+  private readonly fxRatesToCny: Readonly<Record<string, {
+    readonly rate: number;
+    readonly asOf?: string;
+    readonly source?: string;
+  }>>;
+  private readonly fallbackApproverIds: readonly string[];
 
   public constructor(options: ApprovalRoutingServiceOptions) {
     this.orgNodes = options.orgNodes;
     this.delegations = options.delegations ?? [];
     this.escalationRules = options.escalationRules ?? [];
     this.amountThresholdRules = options.amountThresholdRules ?? [];
+    this.routeSnapshotTtlMs = options.routeSnapshotTtlMs ?? 24 * 60 * 60 * 1000;
+    this.fxRatesToCny = options.fxRatesToCny ?? {
+      USD: {
+        rate: 7.2,
+        source: "approval-routing.default-usd-cny",
+      },
+      CNY: {
+        rate: 1,
+        source: "approval-routing.identity-cny",
+      },
+    };
+    this.fallbackApproverIds = options.fallbackApproverIds ?? [];
   }
 
   public route(
@@ -89,20 +115,15 @@ export class ApprovalRoutingService {
         routeSnapshot: {
           snapshotId: `approval_route_snapshot:${request.requesterId}:${matchedOrgNodeId}:empty`,
           createdAt: createdAtIso,
-          expiresAt: new Date(Date.parse(createdAtIso) + 24 * 60 * 60 * 1000).toISOString(),
+          expiresAt: new Date(Date.parse(createdAtIso) + this.routeSnapshotTtlMs).toISOString(),
           orgVersion: request.orgVersion ?? "org-chart/v2",
           policyVersion: request.policyVersion ?? "approval-routing/v2",
           requesterId: request.requesterId,
           matchedOrgNodeId,
           routingStrategy: this.amountThresholdRules.length > 0 ? "amount_based" : "org_chart",
-          approverIds: [],
+          approverIds: [...this.fallbackApproverIds],
           amount: {
-            originalValue: request.amount?.value ?? request.amountUsd ?? 0,
-            originalCurrency: request.amount?.currency?.toUpperCase() ?? "USD",
-            amountCny: request.amount?.currency?.toUpperCase() === "CNY"
-              ? request.amount.value
-              : (request.amountUsd ?? 0) * 7.2,
-            fxSnapshot: null,
+            ...this.buildAmountSnapshot(request),
           },
           evidenceRefs: request.evidenceRefs ?? [],
           sodSnapshot: {
@@ -124,6 +145,9 @@ export class ApprovalRoutingService {
     const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)
       ? [...base.approverChain, escalatedTo]
       : [...base.approverChain];
+    if (approverChain.length === 0) {
+      throw new Error(`approval_route.empty_approver_chain:${base.matchedOrgNodeId}`);
+    }
 
     return {
       matchedOrgNodeId: base.matchedOrgNodeId,
@@ -133,6 +157,8 @@ export class ApprovalRoutingService {
       routeSnapshot: {
         ...base.routeSnapshot,
         approverIds: approverChain,
+        expiresAt: new Date(Date.parse(createdAtIso) + this.routeSnapshotTtlMs).toISOString(),
+        amount: this.buildAmountSnapshot(request),
       },
       escalatedTo,
       escalationRuleId: escalation.escalationRuleId,
@@ -214,6 +240,28 @@ export class ApprovalRoutingService {
       acc[approverId] = resolveDelegatedApprover(this.delegations, approverId, orgNodeId, nowIso);
       return acc;
     }, {});
+  }
+
+  private buildAmountSnapshot(request: ApprovalRouteRequest): ApprovalRouteDecision["routeSnapshot"]["amount"] {
+    const originalCurrency = request.amount?.currency?.toUpperCase() ?? "USD";
+    const originalValue = request.amount?.value ?? request.amountUsd ?? 0;
+    const normalizedCurrency = originalCurrency.trim().toUpperCase();
+    const fxEntry = this.fxRatesToCny[normalizedCurrency];
+    if (fxEntry == null || !Number.isFinite(fxEntry.rate) || fxEntry.rate <= 0) {
+      throw new Error(`approval_route.fx_rate_missing:${normalizedCurrency}`);
+    }
+    return {
+      originalValue,
+      originalCurrency: normalizedCurrency,
+      amountCny: Number((originalValue * fxEntry.rate).toFixed(2)),
+      fxSnapshot: {
+        baseCurrency: normalizedCurrency,
+        quoteCurrency: "CNY",
+        rate: fxEntry.rate,
+        capturedAt: fxEntry.asOf ?? nowIso(),
+        source: fxEntry.source ?? "approval-routing.configured-fx",
+      },
+    };
   }
 
   private resolveEscalation(

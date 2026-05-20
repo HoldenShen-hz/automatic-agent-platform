@@ -4,14 +4,17 @@ import { resolve } from "node:path";
 import { format } from "node:util";
 
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type { RegisteredPlugin } from "./plugin-spi.js";
 import type { PluginRuntimeChildMessage, PluginRuntimeRequest } from "./plugin-runtime-protocol.js";
 import { parsePluginRuntimeChildMessage } from "./plugin-runtime-protocol.js";
 
 const require = createRequire(import.meta.url);
+const logger = new StructuredLogger({ retentionLimit: 100, service: "plugin-runtime-child" });
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
+let currentRequest: PluginRuntimeRequest | null = null;
 let stdinBuffer = "";
 
 installRuntimeGuards();
@@ -147,14 +150,30 @@ function installStdioProtocolConsoleRedirection(): void {
   if (process.send) {
     return;
   }
-  const writeToStderr = (...args: unknown[]): void => {
-    process.stderr.write(`${format(...args)}\n`);
+  const writeStructuredLine = (level: "debug" | "info" | "warn" | "error", ...args: unknown[]): void => {
+    const message = format(...args);
+    const requestId = currentRequest?.requestId;
+    const entry = logger.log({
+      level,
+      message,
+      ...(requestId == null ? {} : {
+        requestId,
+        traceId: requestId,
+        correlationId: requestId,
+      }),
+      data: {
+        pluginId: currentRequest?.pluginId ?? process.env.AA_PLUGIN_RUNTIME_PLUGIN_ID ?? currentPluginId,
+        action: currentRequest?.action ?? null,
+        domainId: currentRequest?.context?.domainId ?? null,
+      },
+    });
+    process.stderr.write(`${JSON.stringify(entry)}\n`);
   };
-  console.log = writeToStderr as typeof console.log;
-  console.info = writeToStderr as typeof console.info;
-  console.debug = writeToStderr as typeof console.debug;
-  console.warn = writeToStderr as typeof console.warn;
-  console.error = writeToStderr as typeof console.error;
+  console.log = ((...args: unknown[]) => writeStructuredLine("info", ...args)) as typeof console.log;
+  console.info = ((...args: unknown[]) => writeStructuredLine("info", ...args)) as typeof console.info;
+  console.debug = ((...args: unknown[]) => writeStructuredLine("debug", ...args)) as typeof console.debug;
+  console.warn = ((...args: unknown[]) => writeStructuredLine("warn", ...args)) as typeof console.warn;
+  console.error = ((...args: unknown[]) => writeStructuredLine("error", ...args)) as typeof console.error;
 }
 
 function sendRuntimeMessage(message: unknown): void {
@@ -182,6 +201,7 @@ function handleRuntimeMessage(message: unknown): void {
     return;
   }
   const request = payload as PluginRuntimeRequest;
+  currentRequest = request;
   void handleRequest(request)
     .then((result) => {
       sendRuntimeMessage({
@@ -203,6 +223,11 @@ function handleRuntimeMessage(message: unknown): void {
           message: error instanceof Error ? error.message : String(error),
         },
       });
+    })
+    .finally(() => {
+      if (currentRequest?.requestId === request.requestId) {
+        currentRequest = null;
+      }
     });
 }
 

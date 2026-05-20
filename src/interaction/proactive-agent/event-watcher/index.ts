@@ -9,5 +9,14 @@ export function shouldConsumeProactiveEvent(
   expectedSource: string,
   expectedPattern: string,
 ): boolean {
-  return event.source === expectedSource && event.name.includes(expectedPattern);
+  return event.source === expectedSource && compileEventPattern(expectedPattern).test(event.name);
+}
+
+function compileEventPattern(pattern: string): RegExp {
+  const trimmed = pattern.trim();
+  if (trimmed.startsWith("/") && trimmed.endsWith("/") && trimmed.length > 2) {
+    return new RegExp(trimmed.slice(1, -1));
+  }
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\*", ".*");
+  return new RegExp(`^${escaped}$`, "i");
 }

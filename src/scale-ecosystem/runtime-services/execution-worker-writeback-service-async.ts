@@ -172,6 +172,7 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
   // Batching
   private readonly batchQueue: BatchItem<unknown>[] = [];
   private batchFlushTimer: ReturnType<typeof setInterval> | null = null;
+  private batchFlushPromise: Promise<void> | null = null;
 
   // Circuit breaker
   private circuitBreaker: CircuitBreakerMetrics = {
@@ -728,10 +729,25 @@ export class ExecutionWorkerWritebackServiceAsync extends LocalTypedEventEmitter
    * Flushes the batch queue.
    */
   private async flushBatch(): Promise<void> {
+    if (this.batchFlushPromise != null) {
+      await this.batchFlushPromise;
+      return;
+    }
     if (this.batchQueue.length === 0 || this.disposed) {
       return;
     }
+    this.batchFlushPromise = this.runBatchFlush();
+    try {
+      await this.batchFlushPromise;
+    } finally {
+      this.batchFlushPromise = null;
+      if (this.batchQueue.length > 0 && !this.disposed) {
+        await this.flushBatch();
+      }
+    }
+  }
 
+  private async runBatchFlush(): Promise<void> {
     const batch = this.batchQueue.splice(0, this.options.batchSize);
     const startedAt = Date.now();
 

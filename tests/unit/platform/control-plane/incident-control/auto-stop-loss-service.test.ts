@@ -122,3 +122,40 @@ test("AutoStopLossService lists all registered playbooks", () => {
   assert.ok(listed.some((p) => p.id === "playbook-1"));
   assert.ok(listed.some((p) => p.id === "playbook-2"));
 });
+
+test("AutoStopLossService rate-limit hour key uses UTC boundaries", async () => {
+  const times = [
+    new Date("2026-03-31T23:30:00.000Z"),
+    new Date("2026-03-31T23:45:00.000Z"),
+    new Date("2026-04-01T00:05:00.000Z"),
+  ];
+  let index = 0;
+  const service = new AutoStopLossService({
+    playbooks: [],
+    now: () => times[Math.min(index, times.length - 1)]!,
+  });
+
+  const playbook: StopLossPlaybook = {
+    id: "utc-hour",
+    name: "UTC Hour",
+    description: "UTC hour bucket",
+    enabled: true,
+    triggerCondition: { type: "anomaly_severity", severityThreshold: "critical" },
+    actions: ["circuit_break"],
+    cooldownMs: 0,
+    maxExecutionsPerHour: 1,
+    requireHumanApproval: false,
+  };
+
+  service.registerPlaybook(playbook);
+  const allowedFirst = service.evaluateAnomaly("critical", "error_rate");
+  await service.executePlaybook(playbook, "first UTC hour");
+  index = 1;
+  const blockedSameUtcHour = service.evaluateAnomaly("critical", "error_rate");
+  index = 2;
+  const allowedNextUtcHour = service.evaluateAnomaly("critical", "error_rate");
+
+  assert.equal(allowedFirst.matchingPlaybooks.length, 1);
+  assert.equal(blockedSameUtcHour.matchingPlaybooks.length, 0);
+  assert.equal(allowedNextUtcHour.matchingPlaybooks.length, 1);
+});

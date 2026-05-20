@@ -10,11 +10,12 @@
  * R23-10 Fix: CheckpointGC implementation
  */
 
-import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import type { CheckpointManifest } from "./checkpoint-manifest.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -165,6 +166,7 @@ export class CheckpointGCService {
 
     for (const candidate of candidates) {
       try {
+        this.removeCandidateFromManifests(candidate);
         if (existsSync(candidate.storagePath)) {
           rmSync(candidate.storagePath, { force: true });
           deletedCount++;
@@ -422,5 +424,50 @@ export class CheckpointGCService {
       isOrphaned: false,
       reason: `expired: age ${ageMs}ms exceeds max ${maxAge}ms`,
     };
+  }
+
+  private removeCandidateFromManifests(candidate: CheckpointGCCandidate): void {
+    const executionId = candidate.executionId;
+    if (executionId == null) {
+      return;
+    }
+    const executionPath = join(this.rootDir, executionId);
+    if (!existsSync(executionPath)) {
+      return;
+    }
+    for (const file of readdirSync(executionPath)) {
+      if (!file.endsWith(".manifest.json")) {
+        continue;
+      }
+      const manifestPath = join(executionPath, file);
+      try {
+        const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as CheckpointManifest;
+        if (!Array.isArray(parsed.checkpoints)) {
+          continue;
+        }
+        const nextCheckpoints = parsed.checkpoints.filter((checkpoint) =>
+          checkpoint.checkpointId !== candidate.checkpointRef.checkpointId
+            && checkpoint.storageUri !== candidate.checkpointRef.storageUri
+        );
+        if (nextCheckpoints.length === parsed.checkpoints.length) {
+          continue;
+        }
+        writeFileSync(
+          manifestPath,
+          JSON.stringify({ ...parsed, checkpoints: nextCheckpoints }, null, 2),
+          "utf8",
+        );
+      } catch (error) {
+        logger.log({
+          level: "warn",
+          message: "checkpoint_gc.manifest_update_failed",
+          data: {
+            manifestPath,
+            checkpointId: candidate.checkpointRef.checkpointId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+    }
   }
 }

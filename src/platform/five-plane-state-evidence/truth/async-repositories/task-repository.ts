@@ -66,17 +66,17 @@ export class AsyncTaskRepository {
           created_at AS "createdAt", updated_at AS "updatedAt", completed_at AS "completedAt"
          FROM tasks`;
     const params: unknown[] = [];
+    const whereClauses: string[] = [];
     if (scopedTenantId !== undefined) {
-      sql += ` WHERE tenant_id = $${params.length + 1}`;
+      whereClauses.push(`tenant_id = $${params.length + 1}`);
       params.push(scopedTenantId);
     }
     if (cursor !== undefined && cursor !== null) {
-      if (scopedTenantId !== undefined) {
-        sql += ` AND updated_at < $${params.length + 1}`;
-      } else {
-        sql += ` WHERE updated_at < $${params.length + 1}`;
-      }
+      whereClauses.push(`updated_at < $${params.length + 1}`);
       params.push(cursor);
+    }
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ${whereClauses.join(" AND ")}`;
     }
     sql += ` ORDER BY updated_at DESC, id DESC`;
     if (typeof limit === "number") {

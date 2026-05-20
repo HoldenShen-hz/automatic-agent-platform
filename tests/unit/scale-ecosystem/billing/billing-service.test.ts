@@ -129,6 +129,24 @@ function createMockDb() {
   };
 }
 
+function createTrackedMockDb() {
+  let inTransaction = false;
+  return {
+    db: {
+      transaction: (fn) => {
+        inTransaction = true;
+        try {
+          return fn();
+        } finally {
+          inTransaction = false;
+        }
+      },
+      filePath: "/tmp/test.db",
+    },
+    isInTransaction: () => inTransaction,
+  };
+}
+
 function createMockArtifactStore() {
   return {
     writeJsonArtifact: (input) => ({
@@ -383,6 +401,86 @@ test("BillingService recordUsage increments existing quota counter", async () =>
   });
 
   assert.equal(result.quotaCounter?.usedQuantity, 30);
+});
+
+test("BillingService recordUsage compensates persisted charge when budget settlement fails", async () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
+  service.createAccount({ accountId: "acct_comp", ownerId: "owner_comp", planId: "plan_basic" });
+
+  await service.recordUsage({
+    accountId: "acct_comp",
+    metricType: "task_execution",
+    quantity: 10,
+    source: "api",
+  });
+
+  let releaseCalls = 0;
+  (service as unknown as {
+    budgetAllocator: {
+      reserve: (input: unknown) => { ledger: { version: number }; reservation: { budgetReservationId: string } };
+      settle: (input: unknown) => Promise<never>;
+      release: (input: unknown) => void;
+    };
+  }).budgetAllocator = {
+    reserve: () => ({
+      ledger: { version: 1 },
+      reservation: { budgetReservationId: "reservation_1" },
+    }),
+    settle: async () => {
+      throw new Error("settlement failed");
+    },
+    release: () => {
+      releaseCalls += 1;
+    },
+  };
+
+  await assert.rejects(
+    () => service.recordUsage({
+      accountId: "acct_comp",
+      metricType: "task_execution",
+      quantity: 5,
+      source: "api",
+      budgetControl: {
+        tenantId: "tenant_comp",
+        harnessRunId: "run_comp",
+        traceId: "trace_comp",
+        emittedBy: "billing-test",
+      },
+    }),
+    /settlement failed/,
+  );
+
+  const quotaCounters = store.billing.listQuotaCounters("acct_comp");
+  assert.equal(quotaCounters.length, 1);
+  assert.equal(quotaCounters[0].usedQuantity, 10);
+  const adjustments = store.billing.listLedgerEntriesForAccount("acct_comp").filter((entry) => entry.entryType === "adjustment");
+  assert.equal(adjustments.length, 1);
+  assert.equal(adjustments[0].amountUsd, -0.05);
+  assert.equal(releaseCalls, 1);
+});
+
+test("BillingService reads existing quota counter inside transaction during recordUsage", async () => {
+  const trackedDb = createTrackedMockDb();
+  const store = createMockStore();
+  let observedTransactionState = false;
+  const originalGetQuotaCounter = store.billing.getQuotaCounter;
+  store.billing.getQuotaCounter = (...args) => {
+    observedTransactionState = observedTransactionState || trackedDb.isInTransaction();
+    return originalGetQuotaCounter(...args);
+  };
+  const service = new BillingService(trackedDb.db, store, { planCatalog: mockPlanCatalog });
+  service.createAccount({ accountId: "acct_txn", ownerId: "owner_txn", planId: "plan_basic" });
+
+  await service.recordUsage({
+    accountId: "acct_txn",
+    metricType: "task_execution",
+    quantity: 5,
+    source: "api",
+  });
+
+  assert.equal(observedTransactionState, true);
 });
 
 test("BillingService buildAccountSummary returns correct plan", () => {

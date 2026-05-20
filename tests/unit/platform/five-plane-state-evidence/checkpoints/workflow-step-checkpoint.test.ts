@@ -257,7 +257,7 @@ test("summarizeWorkflowStepCheckpoint creates summary from checkpoint", () => {
   assert.equal(summary.planGraphId, checkpoint.planGraphId);
   assert.equal(summary.status, checkpoint.status);
   assert.equal(summary.producedAt, checkpoint.producedAt);
-  assert.equal(summary.nextNodeRunId, null);
+  assert.equal(summary.nextNodeRunId, "node:step-2");
   assert.deepEqual(summary.outputKeys, checkpoint.resumeContext.outputKeys);
   assert.equal(summary.source, checkpoint.decisionContext.source);
 });

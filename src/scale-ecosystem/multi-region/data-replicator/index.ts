@@ -135,12 +135,28 @@ export class ReplicationEventBuffer {
     return events;
   }
 
+  public requeue(events: readonly ReplicationEvent[]): void {
+    if (events.length === 0) {
+      return;
+    }
+    this.buffer = [...events, ...this.buffer];
+    this.scheduleFlush();
+  }
+
   public size(): number {
     return this.buffer.length;
   }
 
   public shouldFlush(): boolean {
     return this.buffer.length > 0 && (Date.now() - this.lastFlushAt) >= this.flushIntervalMs;
+  }
+
+  public dispose(): void {
+    if (this.timer != null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.buffer = [];
   }
 
   private scheduleFlush(): void {
@@ -200,6 +216,13 @@ export class DataReplicatorService {
    */
   public getCheckpoint(targetRegionId: string): ReplicationCheckpoint | null {
     return this.checkpoints.get(`${this.config.sourceRegionId}:${targetRegionId}`) ?? null;
+  }
+
+  public dispose(): void {
+    for (const buffer of this.buffers.values()) {
+      buffer.dispose();
+    }
+    this.buffers.clear();
   }
 
   /**
@@ -310,6 +333,7 @@ export class DataReplicatorService {
 
     const errors: string[] = [];
     let lastSequence = 0;
+    const failedEvents: ReplicationEvent[] = [];
 
     for (const event of events) {
       try {
@@ -317,24 +341,33 @@ export class DataReplicatorService {
         lastSequence++;
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
+        let replicated = false;
         // Retry logic
         for (let attempt = 1; attempt < this.config.retryAttempts; attempt++) {
           try {
             await this.sendToTarget(targetRegionId, event);
             lastSequence++;
             errors.pop(); // Remove the error we just resolved
+            replicated = true;
             break;
           } catch {
             // Continue to next retry
           }
         }
+        if (!replicated) {
+          failedEvents.push(event);
+        }
       }
+    }
+
+    if (failedEvents.length > 0) {
+      buffer.requeue(failedEvents);
     }
 
     // Update checkpoint with actual pending count (flushed events not yet acknowledged)
     // pendingCount = total flushed - successfully sent = events still in-flight
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
-    const pendingCount = events.length - lastSequence;
+    const pendingCount = buffer.size();
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
@@ -346,7 +379,7 @@ export class DataReplicatorService {
 
     return {
       success: errors.length === 0,
-      eventsReplicated: events.length - errors.length,
+      eventsReplicated: lastSequence,
       lastSequence,
       errors,
     };

@@ -35,20 +35,24 @@ function resolveWindowPreset(preset: FingerprintWindowPreset | null | undefined)
 
 function resolveWindowRange(
   preset: FingerprintWindowPreset | null | undefined,
+  now = new Date(),
 ): { readonly preset: FingerprintWindowPreset; readonly start: string; readonly end: string } | null {
   if (preset == null) {
     return null;
   }
-  const now = new Date();
   const past = new Date(now);
-  switch (preset) {
-    case "1h": past.setHours(past.getHours() - 1); break;
-    case "6h": past.setHours(past.getHours() - 6); break;
-    case "24h": past.setDate(past.getDate() - 1); break;
-    case "7d": past.setDate(past.getDate() - 7); break;
-    case "30d": past.setDate(past.getDate() - 30); break;
-    case "90d": past.setDate(past.getDate() - 90); break;
-  }
+  const durationMs = preset === "1h"
+    ? 60 * 60 * 1000
+    : preset === "6h"
+      ? 6 * 60 * 60 * 1000
+      : preset === "24h"
+        ? 24 * 60 * 60 * 1000
+        : preset === "7d"
+          ? 7 * 24 * 60 * 60 * 1000
+          : preset === "30d"
+            ? 30 * 24 * 60 * 60 * 1000
+            : 90 * 24 * 60 * 60 * 1000;
+  past.setTime(now.getTime() - durationMs);
   return {
     preset,
     start: past.toISOString(),
@@ -68,10 +72,13 @@ export interface BehaviorFingerprint {
 }
 
 export class BehaviorFingerprintBuilder {
+  public constructor(private readonly nowProvider: () => Date = () => new Date()) {
+  }
+
   public build(input: BehaviorFingerprintInput): BehaviorFingerprint {
     const subjectType = input.subjectType ?? "agent";
     const baselineRef = input.baselineRef ?? null;
-    const windowRange = resolveWindowRange(input.windowPreset);
+    const windowRange = resolveWindowRange(input.windowPreset, this.nowProvider());
     const normalizedFeatures = [
       `subject_type:${subjectType}`,
       `baseline_ref:${baselineRef ?? "none"}`,
@@ -82,15 +89,15 @@ export class BehaviorFingerprintBuilder {
       `cost_bucket:${bucketCost(input.averageCostUsd)}`,
       `avg_step_count:${input.avgStepCount ?? 0}`,
       `step_count_bucket:${bucketStepCount(input.avgStepCount ?? 0)}`,
-      `window:${resolveWindowPreset(input.windowPreset)}`,
-      `tool_usage:${JSON.stringify(input.toolUsageDistribution ?? {})}`,
+      `window:${windowRange == null ? "none" : `${windowRange.start}:${windowRange.end}:${windowRange.preset}`}`,
+      `tool_usage:${stableJsonStringify(input.toolUsageDistribution ?? {})}`,
       `success_rate:${input.successRate ?? 0}`,
-      `risk_distribution:${JSON.stringify(input.riskDistribution ?? {})}`,
+      `risk_distribution:${stableJsonStringify(input.riskDistribution ?? {})}`,
       `drift_score:${input.driftScore ?? 0}`,
     ];
     const hash = createHash("sha256").update(normalizedFeatures.join("|")).digest("hex");
     return {
-      fingerprintId: `fingerprint:${input.agentId}`,
+      fingerprintId: `fingerprint:${subjectType}:${input.agentId}:${baselineRef ?? "none"}:${input.windowPreset ?? "none"}`,
       subjectType,
       baselineRef,
       window: windowRange?.preset ?? null,
@@ -100,6 +107,13 @@ export class BehaviorFingerprintBuilder {
       hash,
     };
   }
+}
+
+function stableJsonStringify(value: Record<string, number>): string {
+  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, number>>((acc, key) => {
+    acc[key] = value[key]!;
+    return acc;
+  }, {}));
 }
 
 function bucketLatency(latencyMs: number): string {

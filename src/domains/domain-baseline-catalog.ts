@@ -606,20 +606,21 @@ export function validateVerticalDomainConfigs(): readonly string[] {
 }
 
 export function bootstrapVerticalDomainBaselines(domainRegistry: DomainRegistryService = new DomainRegistryService()): VerticalDomainBootstrapResult {
+  const stagedRegistry = cloneDomainRegistry(domainRegistry);
   const descriptorService = new DomainDescriptorOrchestrationService();
   const activatedDomainIds: string[] = [];
   const reviews: DomainDescriptorReview[] = [];
   const onboardingChecklists: DomainOnboardingChecklist[] = [];
 
   for (const baseline of VERTICAL_DOMAIN_BASELINES) {
-    if (domainRegistry.get(baseline.domainId) == null) {
-      domainRegistry.register(baseline.definition);
+    if (stagedRegistry.get(baseline.domainId) == null) {
+      stagedRegistry.register(baseline.definition);
     }
     for (const namespace of baseline.knowledgeSchema.namespaceIds) {
-      domainRegistry.registerKnowledgeNamespace(namespace, baseline.domainId);
+      stagedRegistry.registerKnowledgeNamespace(namespace, baseline.domainId);
     }
-    if (domainRegistry.get(baseline.domainId)?.status !== "active") {
-      domainRegistry.activate(baseline.domainId);
+    if (stagedRegistry.get(baseline.domainId)?.status !== "active") {
+      stagedRegistry.activate(baseline.domainId);
     }
     activatedDomainIds.push(baseline.domainId);
     reviews.push(descriptorService.review({
@@ -644,11 +645,22 @@ export function bootstrapVerticalDomainBaselines(domainRegistry: DomainRegistryS
   }
 
   return {
-    domainRegistry,
+    domainRegistry: stagedRegistry,
     baselines: VERTICAL_DOMAIN_BASELINES,
     reviews,
     onboardingChecklists,
     governancePolicies: VERTICAL_DOMAIN_BASELINES.map((item) => item.governancePolicy),
     activatedDomainIds,
   };
+}
+
+function cloneDomainRegistry(source: DomainRegistryService): DomainRegistryService {
+  const cloned = new DomainRegistryService();
+  for (const definition of source.list()) {
+    cloned.register(definition);
+    for (const namespace of source.buildCapabilityEntry(definition.domainId).knowledgeNamespaces) {
+      cloned.registerKnowledgeNamespace(namespace, definition.domainId);
+    }
+  }
+  return cloned;
 }

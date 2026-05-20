@@ -444,3 +444,17 @@ test("StructuredLogger.closeTransports calls close on closeable transports", asy
 
   assert.equal(closeCalled, true);
 });
+
+test("StructuredLogger redacts inline bearer and token-like values from string payloads", () => {
+  const logger = new StructuredLogger();
+
+  logger.info("inline-secret", {
+    detail: "Authorization: Bearer sk_live_secret_token_12345678 and token=eyJheader.payload.signature",
+  });
+
+  const entry = logger.recent(1)[0];
+  assert.equal(typeof entry?.data?.detail, "string");
+  assert.equal(String(entry?.data?.detail).includes("Bearer"), false);
+  assert.equal(String(entry?.data?.detail).includes("sk_live_secret_token_12345678"), false);
+  assert.equal(String(entry?.data?.detail).includes("[REDACTED]"), true);
+});

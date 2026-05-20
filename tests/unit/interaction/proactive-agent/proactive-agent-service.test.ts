@@ -30,7 +30,7 @@ function makeTriggerDefinition(triggerId: string, type: TriggerType, domainId = 
       type === "schedule"
         ? { cron: "0 * * * *", timezone: "UTC", skipIfPreviousRunning: true }
         : type === "event"
-          ? { eventSource: "task", eventPattern: "failed", filter: {} }
+          ? { eventSource: "task", eventPattern: "task_*", filter: {} }
           : { metricSource: "queue", metricName: "depth", condition: "gt", threshold: 10, evaluationWindow: "5m", consecutiveBreaches: 1 },
     action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true },
     enabled: true,
@@ -126,7 +126,7 @@ test("ProactiveAgentService.evaluate allows fire when all conditions met", () =>
 
   service.registerTrigger(makeTriggerDefinition("trigger-ok", "schedule"));
 
-  const decision = service.evaluate("trigger-ok", { kind: "schedule", now: new Date().toISOString() });
+  const decision = service.evaluate("trigger-ok", { kind: "schedule", now: "2026-04-20T01:00:00.000Z" });
 
   assert.equal(decision.allowed, true);
   assert.ok(decision.reasonCodes.includes("proactive_agent.fire_allowed"));
@@ -218,7 +218,7 @@ test("ProactiveAgentService.acknowledgeSuggestion removes suggestion", () => {
   assert.equal(service.listSuggestions().length, 0);
 });
 
-test("ProactiveAgentService.evaluate returns silent_record for critical risk triggers", () => {
+test("ProactiveAgentService.evaluate returns suggest for critical risk triggers", () => {
   const service = new ProactiveAgentService();
   const trigger: TriggerDefinition = {
     ...makeTriggerDefinition("trigger-critical", "schedule"),
@@ -230,7 +230,7 @@ test("ProactiveAgentService.evaluate returns silent_record for critical risk tri
   const decision = service.evaluate("trigger-critical", { kind: "schedule" });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.actionMode, "silent_record");
+  assert.equal(decision.actionMode, "suggest");
 });
 
 test("ProactiveAgentService.evaluate returns suggest when requireConfirmation is true", () => {

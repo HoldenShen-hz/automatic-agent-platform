@@ -563,16 +563,16 @@ export class PgDatabase implements AsyncSqlDatabase {
 
       if (!existing) {
         // Migration not yet applied - apply it
-        const statements = splitPostgresStatements(migration.ddl);
-        for (const stmt of statements) {
-          await sql.unsafe(stmt);
-        }
-
-        // Record the applied migration
-        await sql`
-          INSERT INTO schema_migrations (version, name, checksum, applied_at)
-          VALUES (${migration.version}, ${migration.name}, ${migration.checksum}, NOW())
-        `;
+        await sql.begin(async (migrationSql) => {
+          const statements = splitPostgresStatements(migration.ddl);
+          for (const stmt of statements) {
+            await migrationSql.unsafe(stmt);
+          }
+          await migrationSql`
+            INSERT INTO schema_migrations (version, name, checksum, applied_at)
+            VALUES (${migration.version}, ${migration.name}, ${migration.checksum}, NOW())
+          `;
+        });
       } else if (existing.checksum !== migration.checksum) {
         // Checksum mismatch - this is a problem
         throw new StorageError(

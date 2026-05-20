@@ -80,7 +80,11 @@ export function createRetirementRecord(
  * Checks if retirement grace period has expired.
  */
 export function isGracePeriodExpired(record: AgentRetirementRecord, nowIso: string): boolean {
-  const graceEndDate = new Date(record.initiatedAt);
-  graceEndDate.setDate(graceEndDate.getDate() + record.gracePeriodDays);
-  return nowIso >= graceEndDate.toISOString();
+  const initiatedAtMs = new Date(record.initiatedAt).getTime();
+  const nowMs = new Date(nowIso).getTime();
+  if (!Number.isFinite(initiatedAtMs) || !Number.isFinite(nowMs)) {
+    return false;
+  }
+  const graceEndMs = initiatedAtMs + record.gracePeriodDays * 24 * 60 * 60 * 1000;
+  return nowMs >= graceEndMs;
 }
