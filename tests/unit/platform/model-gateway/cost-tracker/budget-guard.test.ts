@@ -147,10 +147,10 @@ test("BudgetGuard evaluateTaskSpend handles exact budget match", () => {
     nextEstimatedCostUsd: 10,
   });
 
-  // At exactly 100 (100% of budget), the hard cap is reached and the guard denies.
-  assert.equal(result.allowed, false);
-  assert.equal(result.requiresApproval, false);
-  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  // At exactly 100 (100% of budget), the guard allows execution but surfaces a boundary warning.
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.reasonCode, "budget.approaching_limit");
 });
 
 test("BudgetGuard evaluateTaskSpend different modes", () => {

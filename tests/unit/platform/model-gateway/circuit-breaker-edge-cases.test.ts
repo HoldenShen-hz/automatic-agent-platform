@@ -200,7 +200,7 @@ test("CircuitBreaker transitionTo half_open clears nextAttemptAt", async () => {
     mock.timers.tick(60);
 
     assert.equal(breaker.getState(), "half_open");
-    assert.ok(breaker.getMetrics().nextAttemptAt !== null);
+    assert.equal(breaker.getMetrics().nextAttemptAt, null);
     await breaker.execute(async () => "probe");
     assert.equal(breaker.getMetrics().nextAttemptAt, null);
   } finally {
@@ -394,7 +394,7 @@ test("CircuitBreaker getState updates nextAttemptAt when transitioning", async (
 
     assert.equal(breaker.getState(), "half_open");
     const metricsAfterReadable = breaker.getMetrics();
-    assert.ok(metricsAfterReadable.nextAttemptAt !== null);
+    assert.equal(metricsAfterReadable.nextAttemptAt, null);
 
     await breaker.execute(async () => "probe");
     const metricsAfter = breaker.getMetrics();

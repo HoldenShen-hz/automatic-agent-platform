@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import type { InjectResponse } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
@@ -14,11 +15,6 @@ function readJson<T>(response: InjectResponse): Envelope<T> {
   return response.json<Envelope<T>>();
 }
 
-// TODO: fix - Test assertion at line 216 fails: pluginsPayload.data.plugins does not contain
-// "plugin.coding.retriever" OR runtimeSandboxRoot is not present in the first plugin item.
-// This could be due to incomplete seeded data or endpoint returning different plugin set.
-// Need to verify the seeded API context creates the expected plugins and the /v1/plugins
-// endpoint returns them correctly.
 test("http api server serves mission control snapshot, task inspect, approval queue, and decision writeback", async () => {
   const workspace = createTempWorkspace("aa-http-api-");
   const context = createSeededApiContext(workspace);
@@ -96,19 +92,27 @@ test("http api server serves mission control snapshot, task inspect, approval qu
       invoiceId: invoice.invoiceId,
       createdAt: "2026-04-10T00:05:00.000Z",
     });
+    const webhookBody = JSON.stringify({
+      gatewayKind: checkout.gatewayKind,
+      gatewaySessionRef: checkout.gatewaySessionRef,
+      status: "paid",
+      occurredAt: "2026-04-10T00:10:00.000Z",
+    });
+    const webhookTimestamp = String(Math.floor(Date.now() / 1000));
+    const webhookSignature = createHmac("sha256", "test-webhook-secret")
+      .update(webhookTimestamp)
+      .update(".")
+      .update(webhookBody)
+      .digest("hex");
     const billingWebhook = await server.inject({
       url: "/v1/billing/webhooks/reconcile",
       method: "POST",
       headers: {
-        authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "x-webhook-timestamp": webhookTimestamp,
+        "x-webhook-signature": `sha256=${webhookSignature}`,
       },
-      body: JSON.stringify({
-        gatewayKind: checkout.gatewayKind,
-        gatewaySessionRef: checkout.gatewaySessionRef,
-        status: "paid",
-        occurredAt: "2026-04-10T00:10:00.000Z",
-      }),
+      body: webhookBody,
     });
     assert.equal(billingWebhook.statusCode, 200);
     const billingWebhookPayload = readJson<{

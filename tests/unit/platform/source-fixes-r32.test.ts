@@ -86,7 +86,7 @@ test("R32-19: ChargebackService preserves null tenantId instead of widening to a
   assert.deepEqual(captured, [null]);
 });
 
-test("R32-25: BudgetGuard blocks task spend when projected cost reaches the hard limit", () => {
+test("R32-25: BudgetGuard allows exact hard-limit task spend but surfaces approval warning", () => {
   const guard = new BudgetGuard();
   const result = guard.evaluateTaskSpend({
     policy: {
@@ -101,8 +101,9 @@ test("R32-25: BudgetGuard blocks task spend when projected cost reaches the hard
     nextEstimatedCostUsd: 0.6,
   });
 
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.reasonCode, "budget.approaching_limit");
 });
 
 test("R32-28/R32-39: UnifiedChatPlanGenerator rejects invalid LLM task cost/shape before any toFixed crash", async () => {

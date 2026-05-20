@@ -240,7 +240,22 @@ test("Integration: POST /v1/tasks reports unavailable without task store", async
 });
 
 test("Integration: OPTIONS preflight request", async () => {
-  const { server } = createTestServer();
+  const authService = new ApiAuthService({
+    apiKeys: [
+      { apiKey: "test-operator-key", actorId: "operator_1", roles: ["viewer", "operator"] },
+    ],
+    jwtSecret: "test-jwt-secret",
+    tokenTtlMs: 60 * 60 * 1000,
+  });
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService,
+    cors: {
+      allowedOrigins: ["https://example.com"],
+    },
+  });
   await server.start({ port: 0 });
   try {
     const response = await server.inject({

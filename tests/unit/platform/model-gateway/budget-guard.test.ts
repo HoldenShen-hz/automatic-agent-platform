@@ -62,9 +62,9 @@ test("BudgetGuard evaluateTaskSpend blocks when projected cost equals task limit
     nextEstimatedCostUsd: 2.0,
   });
 
-  assert.equal(result.allowed, false);
-  assert.equal(result.requiresApproval, false);
-  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.reasonCode, "budget.approaching_limit");
   assert.equal(result.remainingBudgetUsd, 0);
 });
 

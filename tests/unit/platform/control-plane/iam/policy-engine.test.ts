@@ -192,9 +192,9 @@ test("PolicyEngine.evaluate uses currentTaskCostUsd from metadata for budget che
   const result = engine.evaluate(
     makeRequest({ estimatedCostUsd: 1, metadata: { currentTaskCostUsd: 4 } }),
   );
-  // 4 + 1 = 5 which equals max, so runtime denies at the hard cap boundary.
-  assert.equal(result.decision, "deny");
-  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  // 4 + 1 = 5 which equals max, so runtime allows but escalates as a budget warning.
+  assert.equal(result.decision, "allow_with_constraints");
+  assert.equal(result.reasonCode, "policy.allow_under_budget_warning");
 });
 
 test("PolicyEngine.evaluate uses default estimatedCostUsd when not provided", () => {

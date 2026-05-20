@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const distPath = resolve(process.cwd(), "dist");
+const tsBuildInfoPath = resolve(process.cwd(), ".cache", "tsconfig.tsbuildinfo");
 const explicitPreserveDist = process.env.AA_PRESERVE_DIST;
 const preserveDist =
   explicitPreserveDist === "1"
@@ -73,6 +74,7 @@ if (!preserveDist && existsSync(distPath)) {
       throw err;
     }
   }
+  rmSync(tsBuildInfoPath, { force: true });
 } else if (shouldPruneStaleDistTests) {
   pruneStaleDistTests();
 }
