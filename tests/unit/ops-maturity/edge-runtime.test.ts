@@ -34,6 +34,8 @@ test("edge: execute offline with valid low risk profile", () => {
     edgeNodeId: "node-001",
     taskId: "task-offline-001",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, models, request);
@@ -68,6 +70,8 @@ test("edge: execute offline selects model by modality and priority", () => {
     edgeNodeId: "node-002",
     taskId: "task-offline-002",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, models, request);
@@ -97,6 +101,8 @@ test("edge: execute offline returns null model when no match", () => {
     edgeNodeId: "node-003",
     taskId: "task-offline-003",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, models, request);
@@ -123,6 +129,8 @@ test("edge: execute offline throws for high risk", () => {
     edgeNodeId: "node-high-risk",
     taskId: "task-high-risk",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   assert.throws(() => service.executeOffline(profile, [], request), /edge_runtime.risk_level_not_allowed/);
@@ -146,6 +154,8 @@ test("edge: execute offline throws when missing required profile fields", () => 
     edgeNodeId: "node-incomplete",
     taskId: "task-incomplete",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   assert.throws(() => service.executeOffline(profile, [], request), /edge_runtime.missing_required_profile_fields/);

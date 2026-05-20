@@ -27,7 +27,7 @@ function logError(message: string, data?: Record<string, unknown>): void {
 }
 
 /** Category of process owner for accounting */
-export type ProcessOwner = 'bash-tool' | 'mcp-transport' | 'lsp-client' | 'redis-cli' | 'pg-cli' | 'docker' | 'exec-file' | 'unknown';
+export type ProcessOwner = 'bash-tool' | 'mcp-transport' | 'lsp-client' | 'redis-cli' | 'pg-cli' | 'docker' | 'exec-file' | 'plugin-runtime' | 'unknown';
 
 /** State of a tracked process */
 export type TrackedProcessState = 'running' | 'terminating' | 'killed' | 'exited';
@@ -151,6 +151,7 @@ export class ProcessTracker {
       'pg-cli': 0,
       'docker': 0,
       'exec-file': 0,
+      'plugin-runtime': 0,
       'unknown': 0,
     };
     for (const p of this.getActive()) {

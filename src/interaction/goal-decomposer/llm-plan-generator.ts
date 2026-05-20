@@ -403,8 +403,11 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   }
 
   private isIgnorableAllocatorLifecycleError(error: unknown): boolean {
-    return error instanceof Error
-      && ("code" in error ? (error as Error & { code?: string }).code === "runtime_state_machine.persistence_required" : false
-        || error.message.includes("RuntimeStateMachine requires an event persistence callback"));
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    const code = "code" in error ? (error as Error & { code?: string }).code : undefined;
+    return code === "runtime_state_machine.persistence_required"
+      || error.message.includes("RuntimeStateMachine requires an event persistence callback");
   }
 }

@@ -223,6 +223,31 @@ test("OutboxPollerService poll with mixed success and failure counts correctly",
   assert.equal(result.failed, 1); // 2 failed
 });
 
+test("OutboxPollerService skips overlapping poll while one is in flight", async () => {
+  const deferred = createDeferred<boolean>();
+  let publishCalls = 0;
+  const mockService = createMockOutboxService({
+    getPendingEntries: () => [createPendingEntry()],
+    getPendingCount: () => 1,
+    publishEntry: async () => {
+      publishCalls++;
+      return deferred.promise;
+    },
+  });
+
+  const poller = new OutboxPollerService(mockService);
+  const firstPoll = poller.poll();
+  await Promise.resolve();
+  const secondPoll = await poller.poll();
+
+  assert.deepEqual(secondPoll, { published: 0, failed: 0 });
+  assert.equal(publishCalls, 1);
+
+  deferred.resolve(true);
+  assert.deepEqual(await firstPoll, { published: 1, failed: 0 });
+  assert.equal(poller.getMetrics().totalPublished, 1);
+});
+
 test("OutboxPollerService stop waits for poll to complete", async () => {
   mock.timers.enable({ apis: ["setTimeout", "setInterval", "Date"] });
   const publishDeferred = createDeferred<void>();

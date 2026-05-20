@@ -22,7 +22,7 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
  * - R7-46: Implement X.509 trust-chain validation per §11.3
  */
 
-export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", "http://www.w3.org/2000/09/xmldsig#rsa-sha1"] as const;
+export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"] as const;
 export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
 const ASSERTION_REPLAY_TTL_MS = 5 * 60 * 1000;
 

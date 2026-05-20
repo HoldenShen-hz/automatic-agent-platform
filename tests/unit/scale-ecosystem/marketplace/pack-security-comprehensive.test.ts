@@ -209,6 +209,30 @@ test("PackSecurityService.detectDependencyConflicts detects version mismatch wit
   assert.equal(result.conflicts[0]!.conflictType, "capability_overlap");
 });
 
+test("PackSecurityService.detectDependencyConflicts detects duplicate same-version dependency", () => {
+  const service = new PackSecurityService();
+  const dependencies: DependencyInfo[] = [
+    { packId: "shared-auth", version: "1.0.0", capabilities: ["auth.read"] },
+    { packId: "shared-auth", version: "1.0.0", capabilities: ["auth.write"] },
+  ];
+
+  const result = service.detectDependencyConflicts("test-pack", "1.0.0", dependencies, []);
+
+  assert.equal(result.resolved, false);
+  assert.equal(result.conflicts[0]?.conflictType, "duplicate_dependency");
+});
+
+test("PackSecurityService.detectDependencyConflicts detects same-version installed capability overlap", () => {
+  const service = new PackSecurityService();
+  const dependencies: DependencyInfo[] = [{ packId: "shared-auth", version: "1.0.0", capabilities: ["auth.write"] }];
+  const existingPacks: DependencyInfo[] = [{ packId: "shared-auth", version: "1.0.0", capabilities: ["auth.write"] }];
+
+  const result = service.detectDependencyConflicts("test-pack", "1.0.0", dependencies, existingPacks);
+
+  assert.equal(result.resolved, false);
+  assert.equal(result.conflicts[0]?.conflictType, "capability_overlap");
+});
+
 test("PackSecurityService.detectDependencyConflicts provides resolution suggestions", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [

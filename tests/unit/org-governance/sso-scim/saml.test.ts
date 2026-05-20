@@ -25,14 +25,13 @@ function createProvider(overrides: Partial<SamlProviderConfig> = {}): SamlProvid
 }
 
 test("SAML_SIGNATURE_ALGORITHMS has correct type and values", () => {
-  assert.equal(SAML_SIGNATURE_ALGORITHMS.length, 2);
+  assert.equal(SAML_SIGNATURE_ALGORITHMS.length, 1);
   assert.equal(typeof SAML_SIGNATURE_ALGORITHMS[0], "string");
-  assert.equal(typeof SAML_SIGNATURE_ALGORITHMS[1], "string");
 });
 
-test("SAML_SIGNATURE_ALGORITHMS includes rsa-sha256 and rsa-sha1", () => {
+test("SAML_SIGNATURE_ALGORITHMS includes rsa-sha256 and rejects rsa-sha1", () => {
   assert.ok(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"));
-  assert.ok(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2000/09/xmldsig#rsa-sha1"));
+  assert.equal(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2000/09/xmldsig#rsa-sha1" as never), false);
 });
 
 test("validateXmlSignature handles exception during loadSignature", () => {

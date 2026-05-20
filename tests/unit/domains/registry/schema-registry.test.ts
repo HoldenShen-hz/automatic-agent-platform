@@ -323,6 +323,49 @@ test("SchemaRegistry.checkCompatibility detects removed required fields", () => 
   assert.ok(result.breakingChanges.some((c) => c.includes("requiredField")));
 });
 
+test("SchemaRegistry.checkCompatibility honors JSON Schema top-level required array", () => {
+  const registry = new SchemaRegistry();
+
+  const fromEntry: SchemaVersionEntry = {
+    domainId: "test-domain",
+    schemaType: "input",
+    schemaId: "task",
+    version: "1.0.0",
+    schema: {
+      type: "object",
+      required: ["requiredField"],
+      properties: {
+        requiredField: { type: "string" },
+        optionalField: { type: "number" },
+      },
+    },
+    createdAt: "2024-01-01T00:00:00.000Z",
+    deprecatedAt: null,
+    isActive: true,
+  };
+
+  const toEntry: SchemaVersionEntry = {
+    domainId: "test-domain",
+    schemaType: "input",
+    schemaId: "task",
+    version: "2.0.0",
+    schema: {
+      type: "object",
+      required: [],
+      properties: {
+        optionalField: { type: "number" },
+      },
+    },
+    createdAt: "2024-06-01T00:00:00.000Z",
+    deprecatedAt: null,
+    isActive: true,
+  };
+
+  const result = registry.checkCompatibility(fromEntry, toEntry);
+  assert.equal(result.compatible, false);
+  assert.ok(result.breakingChanges.some((change) => change.includes("requiredField")));
+});
+
 test("SchemaRegistry.checkCompatibility detects changed field types", () => {
   const registry = new SchemaRegistry();
 

@@ -152,17 +152,37 @@ export class SchemaRegistry {
       return { compatible: true, breakingChanges: [], warnings: [], migrationHints: [] };
     }
 
-    const fromSchema = fromVersion.schema as { properties?: Record<string, unknown> };
-    const toSchema = toVersion.schema as { properties?: Record<string, unknown> };
+    const fromSchema = fromVersion.schema as { properties?: Record<string, unknown>; required?: unknown };
+    const toSchema = toVersion.schema as { properties?: Record<string, unknown>; required?: unknown };
 
     const fromProps = fromSchema.properties ?? {};
     const toProps = toSchema.properties ?? {};
+    const fromRequired = Array.isArray(fromSchema.required)
+      ? new Set(fromSchema.required.filter((value): value is string => typeof value === "string"))
+      : new Set<string>();
+    const toRequired = Array.isArray(toSchema.required)
+      ? new Set(toSchema.required.filter((value): value is string => typeof value === "string"))
+      : new Set<string>();
+    for (const [propName, propDef] of Object.entries(fromProps)) {
+      if ((propDef as { required?: boolean }).required === true) {
+        fromRequired.add(propName);
+      }
+    }
+    for (const [propName, propDef] of Object.entries(toProps)) {
+      if ((propDef as { required?: boolean }).required === true) {
+        toRequired.add(propName);
+      }
+    }
 
     // Check for removed required fields (breaking)
-    for (const [propName, propDef] of Object.entries(fromProps)) {
-      const fromProp = propDef as { required?: boolean };
-      if (fromProp.required && !(propName in toProps)) {
+    for (const propName of fromRequired) {
+      if (!(propName in toProps)) {
         breakingChanges.push(`Required property '${propName}' was removed`);
+      }
+    }
+    for (const propName of fromRequired) {
+      if (!toRequired.has(propName)) {
+        breakingChanges.push(`Required property '${propName}' is no longer required`);
       }
     }
 

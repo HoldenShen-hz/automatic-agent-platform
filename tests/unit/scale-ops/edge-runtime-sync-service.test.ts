@@ -39,6 +39,8 @@ test("EdgeRuntimeSyncService executeOffline creates execution record", async () 
     edgeNodeId: "edge-001",
     taskId: "task-001",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, [], request);
@@ -56,6 +58,8 @@ test("EdgeRuntimeSyncService executeOffline rejects high risk profile", async ()
     edgeNodeId: "edge-001",
     taskId: "task-001",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   assert.throws(
@@ -71,6 +75,8 @@ test("EdgeRuntimeSyncService executeOffline allows medium risk profile", async (
     edgeNodeId: "edge-001",
     taskId: "task-001",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   const receipt = service.executeOffline(profile, [], request);
@@ -85,6 +91,8 @@ test("EdgeRuntimeSyncService executeOffline rejects profile missing required fie
     edgeNodeId: "edge-001",
     taskId: "task-001",
     modality: "text",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   assert.throws(
@@ -101,6 +109,8 @@ test("EdgeRuntimeSyncService executeOffline rejects stale offline execution wind
     taskId: "task-001",
     modality: "text",
     createdAt: "2020-01-01T00:00:00.000Z",
+    riskScore: 0.2,
+    taskType: "summarize",
   };
 
   assert.throws(

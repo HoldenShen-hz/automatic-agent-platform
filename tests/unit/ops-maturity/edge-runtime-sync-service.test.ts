@@ -34,6 +34,8 @@ test("EdgeRuntimeSyncService executes offline with an allowed local model and ex
       taskId: "task_vision_1",
       modality: "image",
       createdAt,
+      riskScore: 0.2,
+      taskType: "analyze",
     },
   );
 

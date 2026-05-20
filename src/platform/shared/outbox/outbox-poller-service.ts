@@ -67,6 +67,7 @@ export class OutboxPollerService {
   private totalPublished = 0;
   private totalFailed = 0;
   private consecutiveEmptyPolls = 0;
+  private inFlightPoll: Promise<{ published: number; failed: number }> | null = null;
 
   public constructor(
     private readonly outboxService: OutboxService,
@@ -116,11 +117,8 @@ export class OutboxPollerService {
 
     // Give in-flight operations time to complete
     const startWait = Date.now();
-    while (Date.now() - startWait < timeoutMs) {
-      if (this.lastPollDurationMs === 0) {
-        break;
-      }
-      await sleep(10);
+    while (this.inFlightPoll !== null && Date.now() - startWait < timeoutMs) {
+      await Promise.race([this.inFlightPoll.catch(() => undefined), sleep(10)]);
     }
 
     logger.log({
@@ -151,7 +149,22 @@ export class OutboxPollerService {
     if (this.disposed || this.stopped) {
       return { published: 0, failed: 0 };
     }
+    if (this.inFlightPoll !== null) {
+      return { published: 0, failed: 0 };
+    }
 
+    const pollPromise = this.runPoll();
+    this.inFlightPoll = pollPromise;
+    try {
+      return await pollPromise;
+    } finally {
+      if (this.inFlightPoll === pollPromise) {
+        this.inFlightPoll = null;
+      }
+    }
+  }
+
+  private async runPoll(): Promise<{ published: number; failed: number }> {
     const startTime = Date.now();
     const pendingCount = this.outboxService.getPendingCount();
 

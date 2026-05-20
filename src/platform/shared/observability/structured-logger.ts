@@ -284,9 +284,11 @@ export class StructuredLogger {
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = sanitizeLogData(rawData);
+    const message = sanitizeLogText(entry.message);
 
     const record: StructuredLogEntry = {
       ...entry,
+      message,
       service: entry.service ?? this.service,
       plane: entry.plane ?? this.plane,
       ...(crosscuttingFabric !== undefined ? { crosscuttingFabric } : {}),
@@ -603,40 +605,122 @@ function readStringField(record: Record<string, unknown> | undefined, key: strin
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-const SENSITIVE_LOG_KEY_PATTERN = /(?:authorization|token|secret|password|api[_-]?key|cookie|set-cookie|email)/i;
+const SENSITIVE_LOG_VALUE_PATTERN = /\b(?:Bearer\s+[A-Za-z0-9._~+/=-]+|(?:sk|pk|rk|pat|ghp|gho|github_pat)_[A-Za-z0-9_=-]{8,}|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,})?)\b/g;
 const REDACTED_LOG_VALUE = "[REDACTED]";
 
-function sanitizeLogData(value: unknown, depth = 0): Record<string, unknown> | undefined {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) {
-    return value === undefined ? undefined : { value: sanitizeLogValue(value, depth) };
-  }
-  return sanitizeLogObject(value as Record<string, unknown>, depth);
+const SENSITIVE_KEY_TOKENS = new Set([
+  "authorization",
+  "token",
+  "tokens",
+  "secret",
+  "password",
+  "cookie",
+  "cookies",
+  "email",
+  "emails",
+  "credential",
+  "credentials",
+  "bearer",
+  "jwt",
+  "signature",
+  "mfa",
+  "otp",
+  "phone",
+  "mobile",
+  "ssn",
+  "passport",
+  "address",
+  "dob",
+]);
+
+const SENSITIVE_KEY_TOKEN_PAIRS = new Set([
+  "api:key",
+  "set:cookie",
+  "private:key",
+  "refresh:token",
+  "id:card",
+  "tax:id",
+  "full:name",
+]);
+
+function tokenizeStructuredLogKey(key: string): string[] {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9]+/)
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token.length > 0);
 }
 
-function sanitizeLogObject(record: Record<string, unknown>, depth: number): Record<string, unknown> {
+function isSensitiveLogKey(key: string): boolean {
+  const tokens = tokenizeStructuredLogKey(key);
+  if (tokens.some((token) => SENSITIVE_KEY_TOKENS.has(token))) {
+    return true;
+  }
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (SENSITIVE_KEY_TOKEN_PAIRS.has(`${tokens[index]}:${tokens[index + 1]}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function sanitizeLogText(value: string): string {
+  return value.replace(SENSITIVE_LOG_VALUE_PATTERN, REDACTED_LOG_VALUE);
+}
+
+function sanitizeLogData(value: unknown, depth = 0, seen: WeakSet<object> = new WeakSet()): Record<string, unknown> | undefined {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return value === undefined ? undefined : { value: sanitizeLogValue(value, depth, seen) };
+  }
+  return sanitizeLogObject(value as Record<string, unknown>, depth, seen);
+}
+
+function sanitizeLogObject(record: Record<string, unknown>, depth: number, seen: WeakSet<object>): Record<string, unknown> {
   if (depth > 6) {
     return { truncated: true };
   }
+  if (seen.has(record)) {
+    return { circular: true };
+  }
+  seen.add(record);
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(record)) {
-    if (SENSITIVE_LOG_KEY_PATTERN.test(key)) {
+    if (isSensitiveLogKey(key)) {
       sanitized[key] = REDACTED_LOG_VALUE;
       continue;
     }
-    sanitized[key] = sanitizeLogValue(value, depth + 1);
+    sanitized[key] = sanitizeLogValue(value, depth + 1, seen);
   }
+  seen.delete(record);
   return sanitized;
 }
 
-function sanitizeLogValue(value: unknown, depth: number): unknown {
-  if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+function sanitizeLogValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
+  if (typeof value === "string") {
+    return sanitizeLogText(value);
+  }
+  if (value == null || typeof value === "number" || typeof value === "boolean") {
     return value;
   }
   if (Array.isArray(value)) {
-    return value.map((item) => sanitizeLogValue(item, depth + 1));
+    if (seen.has(value)) {
+      return { circular: true };
+    }
+    seen.add(value);
+    const sanitized = value.map((item) => sanitizeLogValue(item, depth + 1, seen));
+    seen.delete(value);
+    return sanitized;
   }
   if (typeof value === "object") {
-    return sanitizeLogObject(value as Record<string, unknown>, depth + 1);
+    if (value instanceof Error) {
+      return sanitizeLogObject({
+        name: value.name,
+        message: sanitizeLogText(value.message),
+        stack: value.stack != null ? sanitizeLogText(value.stack) : undefined,
+        cause: value.cause,
+      }, depth + 1, seen);
+    }
+    return sanitizeLogObject(value as Record<string, unknown>, depth + 1, seen);
   }
   return String(value);
 }

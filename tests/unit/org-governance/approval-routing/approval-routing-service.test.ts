@@ -260,6 +260,32 @@ test("ApprovalRoutingService escalates when time threshold exceeded for high ris
   assert.ok(result.auditRecord.reasonCodes.includes("approval.escalated"));
 });
 
+test("ApprovalRoutingService picks the most specific eligible escalation rule", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const escalationRules = [
+    createEscalationRule({
+      ruleId: "late",
+      triggerAfterMinutes: 60,
+      escalateToApproverId: "cto",
+      appliesToRiskLevels: ["high", "critical"],
+    }),
+    createEscalationRule({
+      ruleId: "early",
+      triggerAfterMinutes: 30,
+      escalateToApproverId: "vp-ops",
+      appliesToRiskLevels: ["high", "critical"],
+    }),
+  ];
+  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const result = service.route(
+    { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
+    "2026-04-20T00:00:00.000Z",
+    "2026-04-20T01:15:00.000Z",
+  );
+
+  assert.equal(result.escalatedTo, "cto");
+});
+
 test("ApprovalRoutingService does not escalate when time threshold not exceeded", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high", "critical"] })];

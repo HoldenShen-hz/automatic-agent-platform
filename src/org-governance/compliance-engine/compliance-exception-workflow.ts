@@ -154,7 +154,7 @@ export class ComplianceExceptionWorkflowEngine {
     const updatedWorkflow: ComplianceExceptionWorkflow = {
       ...workflow,
       updatedAt: nowIso(),
-      remediationTaskIds: [...workflow.remediationTaskIds, taskId],
+      remediationTaskIds: Array.from(new Set([...workflow.remediationTaskIds, taskId])),
     };
 
     this.workflows.set(workflowId, updatedWorkflow);

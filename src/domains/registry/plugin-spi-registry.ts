@@ -48,7 +48,7 @@ function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
   return PluginManifestSchema.parse({
     pluginId: plugin.pluginId,
     name: plugin.pluginId,
-    version: "0.0.0",
+    version: plugin.manifest?.version ?? "0.0.0",
     owner: "system",
     domainIds: "domainId" in plugin ? [plugin.domainId] : [],
     capabilityIds: [...(plugin.capabilityIds ?? [])],
@@ -100,6 +100,13 @@ export class PluginSpiRegistry {
   }
 
   public register<TPlugin extends RegisteredPlugin>(plugin: TPlugin, manifest?: PluginManifest): RegisteredPluginRecord<TPlugin> {
+    if (this.registry.has(plugin.pluginId)) {
+      throw new ValidationError("plugin_spi.duplicate_plugin_id", `plugin_spi.duplicate_plugin_id: Plugin ${plugin.pluginId} is already registered.`, {
+        category: "validation",
+        source: "internal",
+        details: { pluginId: plugin.pluginId },
+      });
+    }
     const defaultManifest = defaultManifestFor(plugin);
     const builtinManifest = getBuiltinPluginManifest(plugin.pluginId) ?? undefined;
     const declaredSpiTypes = manifest?.spiTypes ?? plugin.manifest?.spiTypes;
@@ -576,7 +583,7 @@ export class PluginSpiRegistry {
     runner: () => Promise<T> | T,
   ): Promise<T> {
     return this.withInvocationPermit(record, phase, context, async () => {
-      const timeoutMs = record.manifest.sandbox.timeoutMs;
+      const timeoutMs = this.normalizeTimeoutMs(record.manifest.sandbox.timeoutMs, record.manifest.pluginId, phase);
       const promise = Promise.resolve().then(runner);
       const timeoutPromise = new Promise<never>((_, reject) => {
         const timer = setTimeout(() => {
@@ -684,8 +691,15 @@ export class PluginSpiRegistry {
   }
 
   private assertNamespaceAllowed(policy: PluginSandboxPolicy, namespace: string | null, pluginId: string): void {
-    if (namespace == null || policy.allowedKnowledgeNamespaces.length === 0) {
+    if (namespace == null) {
       return;
+    }
+    if (policy.allowedKnowledgeNamespaces.length === 0) {
+      throw new ValidationError("plugin_spi.namespace_denied", `plugin_spi.namespace_denied: Plugin ${pluginId} cannot access namespace ${namespace} because no namespaces are allowlisted.`, {
+        category: "validation",
+        source: "internal",
+        details: { pluginId, namespace, allowedKnowledgeNamespaces: [] },
+      });
     }
     if (!policy.allowedKnowledgeNamespaces.includes(namespace)) {
       throw new ValidationError("plugin_spi.namespace_denied", `plugin_spi.namespace_denied: Plugin ${pluginId} cannot access namespace ${namespace}.`, {
@@ -697,14 +711,25 @@ export class PluginSpiRegistry {
   }
 
   private assertNetworkAllowed(policy: PluginSandboxPolicy, pluginId: string, phase: string): void {
-    if (policy.allowNetworkEgress) {
+    if (policy.allowNetworkEgress && policy.allowedExternalDomains.length > 0) {
       return;
     }
     throw new ValidationError("plugin_spi.network_denied", `plugin_spi.network_denied: Plugin ${pluginId} cannot use network egress during ${phase}.`, {
       category: "validation",
       source: "internal",
-      details: { pluginId, phase },
+      details: { pluginId, phase, allowedExternalDomains: policy.allowedExternalDomains },
     });
+  }
+
+  private normalizeTimeoutMs(timeoutMs: number, pluginId: string, phase: string): number {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
+      throw new ValidationError("plugin_spi.invalid_timeout", `plugin_spi.invalid_timeout: Plugin ${pluginId} timeout must be at least 1ms during ${phase}.`, {
+        category: "validation",
+        source: "internal",
+        details: { pluginId, phase, timeoutMs },
+      });
+    }
+    return timeoutMs;
   }
 
   private clearCooldownIfExpired(record: RegisteredPluginRecord): void {
@@ -849,13 +874,42 @@ export class PluginSpiRegistry {
     }
 
     record.queuedInvocationCount += 1;
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       const waiters = this.invocationWaiters.get(record.manifest.pluginId) ?? [];
-      waiters.push(() => {
+      const cleanup = (): void => {
+        const current = this.invocationWaiters.get(record.manifest.pluginId);
+        if (!current) {
+          return;
+        }
+        const index = current.indexOf(waiter);
+        if (index >= 0) {
+          current.splice(index, 1);
+        }
+        if (current.length === 0) {
+          this.invocationWaiters.delete(record.manifest.pluginId);
+        }
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        record.queuedInvocationCount = Math.max(0, record.queuedInvocationCount - 1);
+        reject(new ValidationError("plugin_spi.queue_wait_timeout", `Plugin ${record.manifest.pluginId} timed out waiting for an invocation slot during ${phase}.`, {
+          category: "validation",
+          source: "internal",
+          details: {
+            pluginId: record.manifest.pluginId,
+            phase,
+            domainId: context.domainId,
+            bindingId: context.bindingId,
+          },
+        }));
+      }, this.normalizeTimeoutMs(record.manifest.sandbox.timeoutMs, record.manifest.pluginId, phase));
+      const waiter = () => {
+        clearTimeout(timer);
         record.queuedInvocationCount = Math.max(0, record.queuedInvocationCount - 1);
         record.activeInvocationCount += 1;
         resolve();
-      });
+      };
+      waiters.push(waiter);
       this.invocationWaiters.set(record.manifest.pluginId, waiters);
     });
   }
@@ -896,7 +950,7 @@ export class PluginSpiRegistry {
         occurredAt: nowIso(),
         reasonCode: error instanceof ValidationError ? error.code : phase,
         errorMessage: error instanceof Error ? error.message : String(error),
-        phase: "loaded",
+        phase,
       },
     });
   }

@@ -80,6 +80,8 @@ describe("EdgeRuntimeSyncService", () => {
         edgeNodeId: "node-001",
         taskId: "task-001",
         modality: "text",
+        riskScore: 0.2,
+        taskType: "summarize",
       };
 
       const receipt = service.executeOffline(defaultProfile, defaultModels, request);
@@ -95,6 +97,8 @@ describe("EdgeRuntimeSyncService", () => {
         edgeNodeId: "node-001",
         taskId: "task-002",
         modality: "code",
+        riskScore: 0.2,
+        taskType: "summarize",
       };
 
       const receipt = service.executeOffline(defaultProfile, defaultModels, request);
@@ -108,6 +112,8 @@ describe("EdgeRuntimeSyncService", () => {
         edgeNodeId: "node-001",
         taskId: "task-003",
         modality: "audio",
+        riskScore: 0.2,
+        taskType: "summarize",
       };
 
       const receipt = service.executeOffline(defaultProfile, defaultModels, request);
@@ -125,6 +131,8 @@ describe("EdgeRuntimeSyncService", () => {
         edgeNodeId: "node-001",
         taskId: "task-004",
         modality: "text",
+        riskScore: 0.2,
+        taskType: "summarize",
       };
 
       const receipt = service.executeOffline(restrictedProfile, defaultModels, request);
@@ -140,6 +148,8 @@ describe("EdgeRuntimeSyncService", () => {
         taskId: "task-005",
         modality: "text",
         createdAt,
+        riskScore: 0.2,
+        taskType: "summarize",
       };
 
       const receipt = service.executeOffline(defaultProfile, defaultModels, request);

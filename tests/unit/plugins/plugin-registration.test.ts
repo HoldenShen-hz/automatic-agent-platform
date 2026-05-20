@@ -425,13 +425,13 @@ test("PluginSpiRegistry.listByDomain with spiType returns empty for no matches",
   assert.deepEqual(plugins, []);
 });
 
-test("PluginSpiRegistry allows registering same pluginId twice (overwrites)", () => {
+test("PluginSpiRegistry rejects duplicate pluginId registration", () => {
   const registry = new PluginSpiRegistry();
   const adapter1 = createGithubAdapterPlugin();
   const adapter2 = createGithubAdapterPlugin();
 
   registry.register(adapter1);
-  registry.register(adapter2); // Same pluginId
+  assert.throws(() => registry.register(adapter2), /duplicate_plugin_id/);
 
   const plugins = registry.list();
   assert.equal(plugins.length, 1);

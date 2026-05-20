@@ -153,8 +153,8 @@ test("E2E Distributed Lock: same owner can re-acquire and extend", () => {
     const result2 = h.adapter.acquire({ lockKey: "reentrant-lock", owner: "worker-1" });
 
     assert.equal(result2.acquired, true, "Should re-acquire successfully");
-    // Re-acquire by same owner returns same fencing token
-    assert.equal(result2.lock!.fencingToken, token1, "Same owner should get same token");
+    // Same-owner re-acquire extends the lease with a fresh fencing token.
+    assert.ok(result2.lock!.fencingToken > token1, "Same owner re-acquire should advance fencing token");
   } finally {
     h.cleanup();
   }

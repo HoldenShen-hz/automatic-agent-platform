@@ -77,6 +77,46 @@ test("StructuredLogger minLogLevel debug includes all levels", () => {
   assert.equal(entries.length, 5);
 });
 
+test("StructuredLogger redacts sensitive keys, inline bearer tokens, and string payloads", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.warn("failed with Bearer abc.def.ghi", {
+    refreshToken: "refresh-secret",
+    phone: "+1-555-123-4567",
+    nested: {
+      note: "using sk_test_secret12345678",
+    },
+    value: "Bearer xyz.abc.def",
+  });
+
+  assert.equal(entry.message, "failed with [REDACTED]");
+  assert.equal(entry.data?.refreshToken, "[REDACTED]");
+  assert.equal(entry.data?.phone, "[REDACTED]");
+  assert.equal((entry.data?.nested as Record<string, unknown>).note, "using [REDACTED]");
+  assert.equal(entry.data?.value, "[REDACTED]");
+});
+
+test("StructuredLogger redaction handles circular data without crashing", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const circular: Record<string, unknown> = { safe: "ok" };
+  circular.self = circular;
+
+  const entry = logger.info("circular", circular);
+
+  assert.equal(entry.data?.safe, "ok");
+  assert.deepEqual(entry.data?.self, { circular: true });
+});
+
+test("StructuredLogger serializes Error objects with redacted message", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.error("error", {
+    error: new Error("request failed for Bearer abc.def.ghi"),
+  });
+
+  assert.equal(((entry.data?.error as Record<string, unknown>).message), "request failed for [REDACTED]");
+});
+
 test("StructuredLogger plane inference from control-plane path", () => {
   const logger = new StructuredLogger({
     retentionLimit: 10,

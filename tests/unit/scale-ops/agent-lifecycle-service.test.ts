@@ -166,7 +166,7 @@ test("AgentLifecycleService bindTask creates binding", async () => {
 
   assert.equal(binding.agentId, "test-agent");
   assert.equal(binding.taskId, "task-001");
-  assert.ok(binding.bindingId.startsWith("agent_binding:"));
+  assert.ok(binding.bindingId.startsWith("agent_binding_"));
 });
 
 test("AgentLifecycleService bindTask rejects deprecated agent", async () => {

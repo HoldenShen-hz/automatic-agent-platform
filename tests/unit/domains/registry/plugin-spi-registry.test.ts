@@ -425,6 +425,7 @@ test("PluginSpiRegistry enforces adapter network policy and isolated adapter exe
     sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
       allowNetworkEgress: true,
+      allowedExternalDomains: ["api.github.com"],
       allowedKnowledgeNamespaces: [],
     }),
   });

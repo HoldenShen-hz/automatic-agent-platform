@@ -465,6 +465,50 @@ test("PluginSpiRegistry allows null namespace when no restriction", async () => 
   assert.ok(Array.isArray(result));
 });
 
+test("PluginSpiRegistry denies explicit namespace when allowlist is empty", async () => {
+  const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+
+  registry.register({
+    pluginId: "plugin.empty_namespace_allowlist",
+    domainId: "coding",
+    spiType: "retriever",
+    async retrieve() {
+      return [];
+    },
+  }, {
+    pluginId: "plugin.empty_namespace_allowlist",
+    name: "empty allowlist plugin",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: [],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "test",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      allowedKnowledgeNamespaces: [],
+      timeoutMs: 1000,
+    }),
+  });
+
+  await registry.ensureActive("plugin.empty_namespace_allowlist");
+
+  await assert.rejects(
+    () => registry.invokeRetriever("plugin.empty_namespace_allowlist", {
+      namespace: "tenant/private",
+      query: {
+        taskId: "task_denied_empty",
+        intent: "test",
+        context: {},
+        tokenBudget: 1000,
+      },
+    }),
+    /namespace_denied/,
+  );
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Network assertion
 // ─────────────────────────────────────────────────────────────────────────────
@@ -539,6 +583,7 @@ test("PluginSpiRegistry allows network when allowNetworkEgress is true", async (
     settingsSchema: {},
     sandbox: makeSandboxPolicy({
       allowNetworkEgress: true,
+      allowedExternalDomains: ["github.com"],
       timeoutMs: 1000,
     }),
   });

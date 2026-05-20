@@ -135,12 +135,14 @@ export class MultimodalGatewayService {
 
     const estimatedCostUsd = Number(routeDecisions.reduce((sum, item) => sum + item.estimatedCostUsd, 0).toFixed(4));
     if (estimatedCostUsd > request.costBudget.maxUsd) {
-      safetyFindings.push({
-        partId: request.requestId,
-        severity: "high",
-        reasonCode: "multimodal_gateway.cost_budget_exceeded",
-        blocked: true,
-      });
+      for (const part of request.inputParts) {
+        safetyFindings.push({
+          partId: part.partId,
+          severity: "high",
+          reasonCode: "multimodal_gateway.cost_budget_exceeded",
+          blocked: true,
+        });
+      }
     }
 
     return {
@@ -230,12 +232,14 @@ export class MultimodalGatewayService {
       });
     }
     if (modality === "video" && processedVideo != null && processedVideo.qualityAssessment.reasonCodes.length > 0) {
-      findings.push({
-        partId: part.partId,
-        severity: processedVideo.qualityAssessment.readiness === "ready" ? "low" : "medium",
-        reasonCode: processedVideo.qualityAssessment.reasonCodes[0]!,
-        blocked: processedVideo.qualityAssessment.readiness === "blocked",
-      });
+      for (const reasonCode of processedVideo.qualityAssessment.reasonCodes) {
+        findings.push({
+          partId: part.partId,
+          severity: processedVideo.qualityAssessment.readiness === "ready" ? "low" : "medium",
+          reasonCode,
+          blocked: processedVideo.qualityAssessment.readiness === "blocked",
+        });
+      }
     }
     if ((part.mimeType ?? "").trim().length === 0) {
       findings.push({

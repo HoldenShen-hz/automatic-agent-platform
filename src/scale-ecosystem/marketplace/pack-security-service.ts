@@ -52,7 +52,7 @@ export interface DependencyInfo {
 export interface DependencyConflict {
   conflictingPackId: string;
   conflictingVersion: string;
-  conflictType: "capability_overlap" | "permission_conflict" | "api_contract_incompatible";
+  conflictType: "capability_overlap" | "permission_conflict" | "api_contract_incompatible" | "duplicate_dependency";
   details: string;
   resolution?: string;
 }
@@ -213,10 +213,24 @@ export class PackSecurityService {
   ): DependencyResolutionResult {
     const conflicts: DependencyConflict[] = [];
     const suggestions: string[] = [];
+    const seenDependencyKeys = new Set<string>();
 
     for (const dep of dependencies) {
+      const dependencyKey = `${dep.packId}@${dep.version}`;
+      if (seenDependencyKeys.has(dependencyKey)) {
+        conflicts.push({
+          conflictingPackId: dep.packId,
+          conflictingVersion: dep.version,
+          conflictType: "duplicate_dependency",
+          details: `Pack ${dep.packId} v${dep.version} is declared more than once`,
+          resolution: `Declare ${dep.packId} v${dep.version} only once and merge capabilities explicitly`,
+        });
+        suggestions.push(`Remove duplicate dependency ${dependencyKey}`);
+        continue;
+      }
+      seenDependencyKeys.add(dependencyKey);
       const conflictWith = existingPacks.find((existing) =>
-        existing.packId === dep.packId && existing.version !== dep.version
+        existing.packId === dep.packId
       );
 
       if (conflictWith) {

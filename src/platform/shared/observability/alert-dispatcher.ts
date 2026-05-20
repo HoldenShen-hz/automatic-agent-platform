@@ -141,7 +141,7 @@ export class AlertDispatcher {
     const channel = this.channels.get(resolvedChannelKind);
     if (channel) {
       const configText = rule ? String(rule.channel_config ?? "{}") : "{}";
-      const config = configText ? JSON.parse(configText) : {};
+      const config = this.parseChannelConfig(configText, event);
       const result = channel.deliver(event, config);
       if (result.delivered) {
         const deliveredAt = nowIso();
@@ -151,6 +151,25 @@ export class AlertDispatcher {
     }
 
     return event;
+  }
+
+  private parseChannelConfig(configText: string, event: AlertEvent): Record<string, unknown> {
+    if (!configText.trim()) {
+      return {};
+    }
+    try {
+      const parsed: unknown = JSON.parse(configText);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Invalid channel config must not make alert persistence/delivery fail closed.
+    }
+    return {
+      invalidChannelConfig: true,
+      alertId: event.id,
+      ruleId: event.ruleId,
+    };
   }
 
   /**

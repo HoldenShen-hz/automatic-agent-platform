@@ -29,6 +29,34 @@ test("InMemoryEvidenceStore append and getById", async () => {
   assert.strictEqual(retrieved?.success, true);
 });
 
+test("InMemoryEvidenceStore snapshots records on append and read", async () => {
+  const store = new InMemoryEvidenceStore();
+  const record: EvidenceRecord = {
+    id: "ev_snapshot",
+    taskType: "code_review",
+    sessionId: "session_1",
+    traceId: "trace_1",
+    success: true,
+    costUsd: 0.5,
+    latencyMs: 1500,
+    toolCalls: 10,
+    repairRounds: 0,
+    rollback: false,
+    createdAt: "2026-04-20T00:00:00.000Z",
+  };
+
+  await store.append(record);
+  record.success = false;
+  const firstRead = await store.getById("ev_snapshot");
+  assert.equal(firstRead?.success, true);
+
+  if (firstRead) {
+    firstRead.success = false;
+  }
+  const secondRead = await store.getById("ev_snapshot");
+  assert.equal(secondRead?.success, true);
+});
+
 test("InMemoryEvidenceStore getById returns null for unknown", async () => {
   const store = new InMemoryEvidenceStore();
   const result = await store.getById("unknown");

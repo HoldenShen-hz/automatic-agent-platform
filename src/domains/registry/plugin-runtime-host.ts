@@ -153,7 +153,7 @@ abstract class BasePluginRuntimeHost {
   ): void {
     this.child = child;
     this.trackedChildPid = child.pid ?? null;
-    getProcessTracker().register(child, "unknown", command, [...args]);
+    getProcessTracker().register(child, "plugin-runtime", command, [this.pluginId, ...args]);
     child.once("error", (error) => {
       this.handleExit(error instanceof Error ? error.message : String(error));
     });
@@ -628,11 +628,20 @@ function sanitizePluginRuntimeExecArgs(execArgs: readonly string[]): string[] {
     if (arg === "--test" || arg.startsWith("--test-")) {
       continue;
     }
-    if (!arg.startsWith("--inspect")) {
+    if (!isDangerousRuntimeDebugArg(arg)) {
       sanitized.push(arg);
     }
   }
   return sanitized;
+}
+
+function isDangerousRuntimeDebugArg(arg: string): boolean {
+  return (
+    arg.startsWith("--inspect")
+    || arg.startsWith("--debug")
+    || arg === "--prof"
+    || arg.startsWith("--prof-")
+  );
 }
 
 function matchesInlineTsxLoaderArg(arg: string): boolean {
@@ -670,7 +679,6 @@ function deriveReadablePathFromExecArg(arg: string): string | null {
 
 function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOptions): NodeJS.ProcessEnv {
   const forwardedKeys = [
-    "PATH",
     "HOME",
     "TMPDIR",
     "TEMP",

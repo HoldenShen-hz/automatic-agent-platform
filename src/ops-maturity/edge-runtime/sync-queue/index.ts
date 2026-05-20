@@ -25,7 +25,17 @@ export function orderEdgeSyncQueue(items: readonly EdgeSyncEnvelope[]): EdgeSync
 export function dedupeEdgeSyncQueue(items: readonly EdgeSyncEnvelope[]): EdgeSyncEnvelope[] {
   const latest = new Map<string, EdgeSyncEnvelope>();
   for (const item of items) {
-    latest.set(item.envelopeId, item);
+    const existing = latest.get(item.envelopeId);
+    if (
+      !existing
+      || (item.sequence_no ?? Number.MIN_SAFE_INTEGER) > (existing.sequence_no ?? Number.MIN_SAFE_INTEGER)
+      || (
+        (item.sequence_no ?? Number.MIN_SAFE_INTEGER) === (existing.sequence_no ?? Number.MIN_SAFE_INTEGER)
+        && String(item.createdAt ?? "") >= String(existing.createdAt ?? "")
+      )
+    ) {
+      latest.set(item.envelopeId, item);
+    }
   }
   return orderEdgeSyncQueue([...latest.values()]);
 }
@@ -52,6 +62,13 @@ export function validateSyncQueueChain(items: readonly EdgeSyncEnvelope[]): Sync
     indegree.set(item.envelopeId, 0);
     if (index === 0 && item.prev_hash != null) {
       errors.push(`first_item_must_have_null_prev_hash:${item.envelopeId}`);
+    }
+    if (index > 0) {
+      const previous = ordered[index - 1]!;
+      const expectedPrevHash = `${previous.envelopeId}:${previous.sequence_no ?? ""}:${previous.createdAt ?? ""}`;
+      if (item.prev_hash !== expectedPrevHash) {
+        errors.push(`prev_hash_mismatch:${item.envelopeId}:expected_${expectedPrevHash}`);
+      }
     }
   }
 

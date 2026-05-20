@@ -67,11 +67,13 @@ test("E2E Recovery: execution moves to dead letter queue after max retries", asy
     const taskId = newId("task");
     const executionId1 = newId("exec1");
     const executionId2 = newId("exec2");
+    const executionId3 = newId("exec3");
     const traceId = newId("trace");
     const ts = new TransitionService(harness.db, harness.store);
     const now = new Date(Date.now() - 60_000).toISOString();
 
-    // Setup task with two failed executions (max retries exhausted)
+    // Setup task with three failed executions to reach the configured
+    // dead-letter threshold (attempt >= retryNewTicketMaxAttempts).
     harness.db.transaction(() => {
       harness.store.insertTask({
         id: taskId,
@@ -123,7 +125,7 @@ test("E2E Recovery: execution moves to dead letter queue after max retries", asy
         updatedAt: now,
       });
 
-      // Second execution also failed - retries exhausted
+      // Second execution also failed - enters retry_new_ticket window
 // @ts-ignore
       harness.store.insertExecution({
         id: executionId2,
@@ -152,6 +154,36 @@ test("E2E Recovery: execution moves to dead letter queue after max retries", asy
         createdAt: now,
         updatedAt: now,
       });
+
+      // Third execution also failed - crosses configured dead-letter threshold
+// @ts-ignore
+      harness.store.insertExecution({
+        id: executionId3,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId2,
+        agentId: "agent-1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId,
+        attempt: 3,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 3,
+        retryBackoff: "exponential",
+        lastErrorCode: "transient_error",
+        lastErrorMessage: "third retry still failing",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
 
     // Recovery service should identify this as a DLQ candidate
@@ -162,7 +194,7 @@ test("E2E Recovery: execution moves to dead letter queue after max retries", asy
     });
 
     assert.ok(candidates.length >= 1, "Should find recovery candidates");
-    const candidate = candidates.find(c => c.executionId === executionId2);
+    const candidate = candidates.find(c => c.executionId === executionId3);
     assert.ok(candidate, "Should find the latest failed execution");
     assert.equal(candidate!.suggestedAction, "move_dead_letter", "Should suggest DLQ movement after max retries");
   } finally {

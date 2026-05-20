@@ -45,7 +45,21 @@ export class EdgeRiskGate {
    * @returns EdgeRiskGateResult with allowed flag, reason (if disallowed), and risk score
    */
   public check(request: EdgeExecutionRequest): EdgeRiskGateResult {
-    const riskScore = request.riskScore ?? 0;
+    if (request.riskScore == null || !Number.isFinite(request.riskScore)) {
+      return {
+        allowed: false,
+        reason: "edge_runtime.risk_score_required:offline_execution_requires_explicit_riskScore",
+        riskScore: Number.NaN,
+      };
+    }
+    if (request.taskType == null || request.taskType.trim().length === 0) {
+      return {
+        allowed: false,
+        reason: "edge_runtime.task_type_required:offline_execution_requires_explicit_taskType",
+        riskScore: request.riskScore,
+      };
+    }
+    const riskScore = request.riskScore;
 
     // Check risk score threshold
     if (riskScore > RISK_SCORE_THRESHOLD) {
@@ -57,7 +71,7 @@ export class EdgeRiskGate {
     }
 
     // Check high-risk taskType
-    if (request.taskType != null && HIGH_RISK_TASK_TYPES.has(request.taskType)) {
+    if (HIGH_RISK_TASK_TYPES.has(request.taskType)) {
       return {
         allowed: false,
         reason: `edge_runtime.high_risk_task_type_blocked:offline_execution_denied_for_${request.taskType}`,

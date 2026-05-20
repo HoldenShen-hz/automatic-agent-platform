@@ -222,56 +222,69 @@ export class InMemoryTelemetryExporter implements TelemetryExporter {
 }
 
 export class OtlpHttpTelemetryExporter implements TelemetryExporter {
+  private readonly timeoutMs: number;
+
   public constructor(
     private readonly endpoint: string,
     private readonly fetchImplementation: typeof fetch = globalThis.fetch.bind(globalThis),
     private readonly headers: Readonly<Record<string, string>> = {},
+    options: { readonly timeoutMs?: number } = {},
   ) {
     if ((this.headers.authorization ?? "").length === 0) {
       throw new Error("telemetry.authorization_required:OTLP exports requires authorization header or VITE_OTLP_AUTH_TOKEN");
     }
+    this.timeoutMs = options.timeoutMs ?? 5_000;
   }
 
   public async export(events: readonly TelemetryEvent[]): Promise<void> {
     if (events.length === 0) {
       return;
     }
-    await this.fetchImplementation(this.endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...this.headers,
-      },
-      body: JSON.stringify({
-        "service.name": "automatic-agent-platform-ui",
-        body: events.map((event) => event.name).join(","),
-        resourceLogs: [
-          {
-            resource: {
-              attributes: [
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    if (typeof timeout === "object" && "unref" in timeout && typeof timeout.unref === "function") {
+      timeout.unref();
+    }
+    try {
+      await this.fetchImplementation(this.endpoint, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "content-type": "application/json",
+          ...this.headers,
+        },
+        body: JSON.stringify({
+          "service.name": "automatic-agent-platform-ui",
+          resourceLogs: [
+            {
+              resource: {
+                attributes: [
+                  {
+                    key: "service.name",
+                    value: { stringValue: "automatic-agent-platform-ui" },
+                  },
+                ],
+              },
+              scopeLogs: [
                 {
-                  key: "service.name",
-                  value: { stringValue: "automatic-agent-platform-ui" },
+                  scope: { name: "ui-telemetry" },
+                  logRecords: events.map((event) => ({
+                    body: { stringValue: event.name },
+                    timeUnixNano: String(Date.parse(event.recordedAt) * 1_000_000),
+                    attributes: Object.entries(event.attributes).map(([key, value]) => ({
+                      key,
+                      value: serializeAttributeValue(value),
+                    })),
+                  })),
                 },
               ],
             },
-            scopeLogs: [
-              {
-                scope: { name: "ui-telemetry" },
-                logRecords: events.map((event) => ({
-                  body: { stringValue: event.name },
-                  timeUnixNano: String(Date.parse(event.recordedAt) * 1_000_000),
-                  attributes: Object.entries(event.attributes).map(([key, value]) => ({
-                    key,
-                    value: serializeAttributeValue(value),
-                  })),
-                })),
-              },
-            ],
-          },
-        ],
-      }),
-    });
+          ],
+        }),
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 

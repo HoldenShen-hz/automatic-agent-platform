@@ -167,6 +167,31 @@ test("validateSyncQueueChain validates correct chain", () => {
   assert.strictEqual(result.topologicalOrder.length, 2);
 });
 
+test("validateSyncQueueChain detects prev_hash mismatch after first item", () => {
+  const items: EdgeSyncEnvelope[] = [
+    {
+      envelopeId: "env_1",
+      sequence_no: 1,
+      priority: 1,
+      createdAt: "2026-04-20T00:00:00.000Z",
+      prev_hash: null,
+      signature: "sig_1",
+    },
+    {
+      envelopeId: "env_2",
+      sequence_no: 2,
+      priority: 1,
+      createdAt: "2026-04-20T00:00:01.000Z",
+      prev_hash: "wrong_hash",
+      signature: "sig_2",
+    },
+  ];
+
+  const result = validateSyncQueueChain(items);
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some((error) => error.includes("prev_hash_mismatch:env_2")));
+});
+
 test("dedupeEdgeSyncQueue keeps latest envelope by id", () => {
   const items: EdgeSyncEnvelope[] = [
     {
@@ -196,4 +221,15 @@ test("dedupeEdgeSyncQueue keeps latest envelope by id", () => {
   const deduped = dedupeEdgeSyncQueue(items);
   assert.strictEqual(deduped.length, 1);
   assert.strictEqual(deduped[0]?.signature, "sig_1_new");
+});
+
+test("dedupeEdgeSyncQueue keeps highest sequence for duplicate envelope id", () => {
+  const items: EdgeSyncEnvelope[] = [
+    { envelopeId: "env_1", sequence_no: 3, priority: 1, createdAt: "2026-04-20T00:00:03.000Z", signature: "sig_new" },
+    { envelopeId: "env_1", sequence_no: 2, priority: 10, createdAt: "2026-04-20T00:00:02.000Z", signature: "sig_old" },
+  ];
+
+  const deduped = dedupeEdgeSyncQueue(items);
+  assert.strictEqual(deduped.length, 1);
+  assert.strictEqual(deduped[0]?.signature, "sig_new");
 });

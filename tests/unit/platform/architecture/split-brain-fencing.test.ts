@@ -301,6 +301,7 @@ test("R21-15 and R21-16 edge runtime enforces risk gate and performs actual merg
         modality: "text",
         createdAt: new Date().toISOString(),
         riskScore: 0.9,
+        taskType: "summarize",
       },
     ),
     /edge_runtime\.risk_score_exceeds_limit/,

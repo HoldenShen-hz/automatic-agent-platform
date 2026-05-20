@@ -99,11 +99,12 @@ export function predictOpsCapacityRisk(
   projectedLoad: number,
   thresholds: CapacityThreshold = DEFAULT_THRESHOLDS,
 ): "low" | "medium" | "high" {
-  // Ratio of projected load to current load - measures load multiplier
   const ratio = currentLoad === 0 ? projectedLoad : projectedLoad / currentLoad;
+  const mediumRatio = Math.max(1.01, 1.2 * (thresholds.warningPercent / DEFAULT_THRESHOLDS.warningPercent));
+  const highRatio = Math.max(1.01, 2 * (thresholds.criticalPercent / DEFAULT_THRESHOLDS.criticalPercent));
 
-  if (ratio >= 2) return "high";
-  if (ratio >= 1.2) return "medium";
+  if (ratio >= highRatio) return "high";
+  if (ratio >= mediumRatio) return "medium";
   return "low";
 }
 

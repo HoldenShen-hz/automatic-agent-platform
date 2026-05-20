@@ -46,33 +46,34 @@ export class InMemoryEvidenceStore implements EvidenceStore {
   private records: EvidenceRecord[] = [];
 
   async append(record: EvidenceRecord): Promise<void> {
-    this.records.push(record);
+    this.records.push(cloneEvidenceRecord(record));
   }
 
   async getById(id: string): Promise<EvidenceRecord | null> {
-    return this.records.find((r) => r.id === id) ?? null;
+    const record = this.records.find((r) => r.id === id);
+    return record ? cloneEvidenceRecord(record) : null;
   }
 
   async listByTaskType(taskType: string, limit = 100): Promise<EvidenceRecord[]> {
-    return this.records.filter((r) => r.taskType === taskType).slice(-limit);
+    return this.records.filter((r) => r.taskType === taskType).slice(-limit).map(cloneEvidenceRecord);
   }
 
   async listFailures(taskType?: string, limit = 100): Promise<EvidenceRecord[]> {
     const filtered = taskType
       ? this.records.filter((r) => !r.success && r.taskType === taskType)
       : this.records.filter((r) => !r.success);
-    return filtered.slice(-limit);
+    return filtered.slice(-limit).map(cloneEvidenceRecord);
   }
 
   async listSuccesses(taskType?: string, limit = 100): Promise<EvidenceRecord[]> {
     const filtered = taskType
       ? this.records.filter((r) => r.success && r.taskType === taskType)
       : this.records.filter((r) => r.success);
-    return filtered.slice(-limit);
+    return filtered.slice(-limit).map(cloneEvidenceRecord);
   }
 
   async getRecent(limit = 100): Promise<EvidenceRecord[]> {
-    return this.records.slice(-limit);
+    return this.records.slice(-limit).map(cloneEvidenceRecord);
   }
 
   async getStatistics(): Promise<EvidenceStatistics> {
@@ -114,4 +115,8 @@ export class InMemoryEvidenceStore implements EvidenceStore {
       byTaskType,
     };
   }
+}
+
+function cloneEvidenceRecord(record: EvidenceRecord): EvidenceRecord {
+  return JSON.parse(JSON.stringify(record)) as EvidenceRecord;
 }

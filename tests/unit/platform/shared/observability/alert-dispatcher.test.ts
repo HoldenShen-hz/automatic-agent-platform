@@ -301,6 +301,38 @@ test("dispatch sets deliveredAt when channel delivery succeeds", () => {
   assert.ok(event.deliveredAt, "deliveredAt should be set when channel delivery succeeds");
 });
 
+test("dispatch falls back safely when rule channel_config is invalid JSON", () => {
+  const db = createMockDb({
+    connection: {
+      exec: () => {},
+      prepare: (sql: string): StatementMock => ({
+        run: () => {},
+        get: () => (
+          sql.includes("SELECT * FROM alert_rules")
+            ? {
+                id: "rule_invalid_config",
+                severity: "warning",
+                channel_kind: "webhook",
+                channel_config: "{not-json",
+              }
+            : undefined
+        ),
+        all: () => [],
+      }),
+    },
+  });
+  const webhook = new RecordingAlertChannel("webhook");
+  const dispatcher = new AlertDispatcher(db, {
+    channels: { webhook },
+  });
+
+  const event = dispatcher.dispatch("rule_invalid_config", "Invalid config", "Should still deliver");
+
+  assert.ok(event.deliveredAt, "invalid channel config should not prevent delivery");
+  assert.equal(webhook.deliveries[0]?.config.invalidChannelConfig, true);
+  assert.equal(webhook.deliveries[0]?.config.ruleId, "rule_invalid_config");
+});
+
 test("dispatchRaw sets deliveredAt when channel delivery succeeds", () => {
   const db = createMockDb();
   const logChannel = new RecordingAlertChannel("log");

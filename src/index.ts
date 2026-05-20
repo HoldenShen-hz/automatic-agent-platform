@@ -89,6 +89,13 @@ function writeJsonToStderr(payload: unknown): void {
   process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`);
 }
 
+function redactStartupErrorMessage(message: string): string {
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [REDACTED]")
+    .replace(/([A-Za-z0-9_-]*token[A-Za-z0-9_-]*=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/([A-Za-z0-9_-]*(?:password|secret|api[_-]?key)[A-Za-z0-9_-]*=)[^&\s]+/gi, "$1[REDACTED]");
+}
+
 export type { PlatformRootDemoSummary, PlatformRootSummary } from "./platform-root-types.js";
 
 function resolveDbPath(): string {
@@ -342,7 +349,9 @@ export async function main(): Promise<void> {
 
 if (isDirectExecution()) {
   void main().catch((error: unknown) => {
-    const normalized = error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : { message: String(error) };
+    const normalized = error instanceof Error
+      ? { name: error.name, message: redactStartupErrorMessage(error.message) }
+      : { message: redactStartupErrorMessage(String(error)) };
     writeJsonToStderr({ mode: resolveRootEntryMode(), error: normalized });
     process.exitCode = 1;
   });

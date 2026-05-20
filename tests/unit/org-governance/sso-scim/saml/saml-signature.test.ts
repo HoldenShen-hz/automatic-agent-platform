@@ -19,8 +19,8 @@ import {
  */
 test("SAML_SIGNATURE_ALGORITHMS contains expected algorithms", () => {
   assert.ok(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"));
-  assert.ok(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2000/09/xmldsig#rsa-sha1"));
-  assert.equal(SAML_SIGNATURE_ALGORITHMS.length, 2);
+  assert.equal(SAML_SIGNATURE_ALGORITHMS.includes("http://www.w3.org/2000/09/xmldsig#rsa-sha1" as never), false);
+  assert.equal(SAML_SIGNATURE_ALGORITHMS.length, 1);
 });
 
 test("validateXmlSignature returns valid for empty signature with no verification", () => {
