@@ -68,11 +68,18 @@ test("autoProgressRollouts progresses CANARY_5 after 30 minutes", () => {
   rollout.startedAt = thirtyOneMinutesAgo;
   rollout.updatedAt = thirtyOneMinutesAgo;
 
-  const progressed = service.autoProgressRollouts();
+  const progressed = service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.01,
+      latencyRegression: 0.05,
+      incidentRate: 0,
+    },
+  });
+  const current = service.getActiveRollout("runtime.timeout", "platform", null);
 
   assert.strictEqual(progressed, 1);
-  assert.strictEqual(rollout.stage.phase, RolloutPhase.CANARY_25);
-  assert.strictEqual(rollout.currentPercentage, 25);
+  assert.strictEqual(current?.stage.phase, RolloutPhase.CANARY_25);
+  assert.strictEqual(current?.currentPercentage, 25);
 });
 
 test("autoProgressRollouts progresses through all stages correctly", () => {
@@ -84,18 +91,38 @@ test("autoProgressRollouts progresses through all stages correctly", () => {
   rollout.startedAt = thirtyOneMinutesAgo;
   rollout.updatedAt = thirtyOneMinutesAgo;
 
-  service.autoProgressRollouts();
-  assert.strictEqual(rollout.stage.phase, RolloutPhase.CANARY_25);
+  service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.01,
+      latencyRegression: 0.05,
+      incidentRate: 0,
+    },
+  });
+  assert.strictEqual(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.CANARY_25);
 
   // CANARY_25 -> HALF (after 5 min, total 35 min)
-  rollout.updatedAt = new Date(Date.now() - 35 * 60 * 1000).toISOString();
-  service.autoProgressRollouts();
-  assert.strictEqual(rollout.stage.phase, RolloutPhase.HALF);
+  const canary25 = service.getActiveRollout("runtime.timeout", "platform", null)!;
+  canary25.updatedAt = new Date(Date.now() - 35 * 60 * 1000).toISOString();
+  service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.01,
+      latencyRegression: 0.05,
+      incidentRate: 0,
+    },
+  });
+  assert.strictEqual(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.HALF);
 
   // HALF -> FULL (after 10 min, total 45 min)
-  rollout.updatedAt = new Date(Date.now() - 45 * 60 * 1000).toISOString();
-  service.autoProgressRollouts();
-  assert.strictEqual(rollout.stage.phase, RolloutPhase.FULL);
+  const half = service.getActiveRollout("runtime.timeout", "platform", null)!;
+  half.updatedAt = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+  service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.01,
+      latencyRegression: 0.05,
+      incidentRate: 0,
+    },
+  });
+  assert.strictEqual(service.getActiveRollout("runtime.timeout", "platform", null)?.stage.phase, RolloutPhase.FULL);
 });
 
 test("All rollout stages have expected minDurationMs values", () => {

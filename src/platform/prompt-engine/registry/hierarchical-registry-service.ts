@@ -685,7 +685,7 @@ export class HierarchicalPromptRegistryService {
     variables: Record<string, string | number | boolean>,
   ): string {
     return content.replace(/\{\{(\w+)(?::([^}]*))?\}\}/g, (match, varName, defaultValue) => {
-      if (varName in variables) {
+      if (Object.hasOwn(variables, varName)) {
         const value = variables[varName];
         return value !== undefined && value !== null ? String(value) : match;
       }

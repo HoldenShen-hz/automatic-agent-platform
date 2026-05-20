@@ -138,6 +138,8 @@ test("PrometheusMetricsExporter - histogram buckets are cumulative", () => {
 
   const output = exporter.export();
 
+  assert.match(output, /http_request_duration_ms_bucket\{le="10",method="GET",path="\/test",status="200"\} 1/);
+  assert.match(output, /http_request_duration_ms_bucket\{le="50",method="GET",path="\/test",status="200"\} 2/);
   // +Inf bucket should equal total count
   const infMatch = output.match(/http_request_duration_ms_bucket\{le="\+Inf",method="GET",path="\/test",status="200"\} (\d+)/);
   assert.ok(infMatch, "Should have +Inf bucket");

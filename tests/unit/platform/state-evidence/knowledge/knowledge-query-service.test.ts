@@ -229,6 +229,64 @@ test("hits are actually truncated when snippet exceeds max chars", () => {
   assert.equal(hits[0]!.snippet.length, 41, "Should be 40 chars + 1 ellipsis");
 });
 
+test("maxContextTokens overrides service-level truncation budget", () => {
+  const longSnippet = "A".repeat(100);
+  const mockRetrievalService = {
+    query() {
+      return [{
+        chunkId: "chunk_long",
+        documentId: "doc_long",
+        score: 0.9,
+        matchType: "keyword" as const,
+        snippet: longSnippet,
+        namespace: "shared",
+        knowledgeRef: "knowledge:doc_long:chunk_long",
+        reasoningSummary: "long_match",
+      }];
+    },
+    queryAsync() {
+      return Promise.resolve([]);
+    },
+  };
+  const service = new KnowledgeQueryService(mockRetrievalService as unknown as KnowledgeRetrievalService, {
+    standardMaxTokens: 100,
+  });
+
+  const hits = service.query("long_test", { namespace: "shared", maxContextTokens: 5 });
+
+  assert.equal(hits[0]!.snippet.length, 21);
+  assert.ok(hits[0]!.snippet.endsWith("…"));
+});
+
+test("L1 cache key includes principal and domain scope", () => {
+  const service = new KnowledgeQueryService(createMockRetrievalService(), {
+    quickConfidenceThreshold: 0.1,
+  });
+  service.query("scoped", {
+    namespace: "scope-a",
+    domainId: "domain-a",
+    accessPrincipal: {
+      principalId: "principal-a",
+      domainId: "domain-a",
+      roles: ["reader"],
+      permittedNamespaces: ["scope-a"],
+    },
+  });
+
+  const hits = service.queryAdaptive("scoped", {
+    namespace: "scope-a",
+    domainId: "domain-a",
+    accessPrincipal: {
+      principalId: "principal-b",
+      domainId: "domain-a",
+      roles: ["reader"],
+      permittedNamespaces: ["scope-a"],
+    },
+  });
+
+  assert.equal(hits.length, 0);
+});
+
 // =============================================================================
 // confidence computation
 // =============================================================================

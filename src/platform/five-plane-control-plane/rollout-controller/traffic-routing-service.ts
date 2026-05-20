@@ -129,6 +129,8 @@ export const DEFAULT_CANARY_CONFIG: CanaryConfig = {
   autoPromoteOnSuccess: true,
 };
 
+const LOCAL_TENANT_ID = "tenant:local";
+
 // ── DDL ────────────────────────────────────────────────────────────────
 
 export const TRAFFIC_ROUTING_DDL = `
@@ -418,10 +420,10 @@ export class TrafficRoutingService {
     this.directiveSink.emitOperationalDirective(
       createOperationalDirective({
         type: "mode_switch",
-        scope: { harnessRunId: shift.id },
+        scope: { tenantId: LOCAL_TENANT_ID, harnessRunId: shift.id },
         issuedBy: {
           principalId: initiatedBy,
-          tenantId: "tenant:local",
+          tenantId: LOCAL_TENANT_ID,
           roles: ["traffic_routing_service"],
         },
         reason: `canary_shift_started:${fromSlot}->${toSlot}`,
@@ -524,10 +526,10 @@ export class TrafficRoutingService {
     this.directiveSink.emitOperationalDirective(
       createOperationalDirective({
         type: "rollback",
-        scope: { harnessRunId: shiftId },
+        scope: { tenantId: LOCAL_TENANT_ID, harnessRunId: shiftId },
         issuedBy: {
           principalId: "traffic_routing_service",
-          tenantId: "tenant:local",
+          tenantId: LOCAL_TENANT_ID,
           roles: ["traffic_routing_service"],
         },
         reason: `traffic_shift_rollback:${trigger}`,

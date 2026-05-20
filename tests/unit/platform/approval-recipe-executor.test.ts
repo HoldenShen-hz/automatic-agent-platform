@@ -99,9 +99,12 @@ test("R30-38: RecipeExecutor fails closed when no workflow registry is supplied"
     recipeId: "recipe-without-registry",
     domainId: "coding",
     name: "Recipe without registry",
+    riskProfileRef: "risk-profile/default",
     triggerPhrases: [],
     defaultWorkflowId: "wf_unregistered",
     defaultToolBundleIds: [],
+    defaultPromptBundleRef: "prompt-bundle/default",
+    acceptanceChecklistRef: "acceptance-checklist/default",
   });
 
   const result = await executor.execute(recipe, {

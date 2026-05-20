@@ -432,7 +432,7 @@ test("createDelegationManager getDelegationChain tracks depth across chain", asy
     }));
     const chain1 = service.getDelegationChain("parent-agent");
     const chain2 = service.getDelegationChain(handle1.childAgentId);
-    assert.equal(chain1.maxDepthReached, 1);
+    assert.equal(chain1.maxDepthReached, 2);
     assert.equal(chain2.maxDepthReached, 2);
 });
 test("createDelegationManager getActiveDelegations includes both parent and child roles", async () => {

@@ -467,8 +467,10 @@ test("CostAlertService respects custom warning threshold", () => {
 
   assert.equal(result1.alertLevel, "ok");
 
-  // At 55% - should trigger warning
-  const result2 = service.evaluateCost({
+  // Re-evaluate on a fresh service so the warning-threshold check is isolated
+  // from pending budget reservations made by the first allowed evaluation.
+  const service2 = new CostAlertService(createTestDb(), createMockTaskStore(), config);
+  const result2 = service2.evaluateCost({
     scope: "tenant",
     scopeId: "tenant_1",
     projectedCostUsd: 55,

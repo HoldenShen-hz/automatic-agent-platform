@@ -76,6 +76,44 @@ test("recordLlmLatency records ttfb and total latency", () => {
   assert.equal(anthropicTotal.sum, 3.5);
 });
 
+test("harness metrics avoid runId, budgetId, executionId and pluginId labels", () => {
+  const registry = new RuntimeMetricsRegistry();
+
+  registry.recordHarnessRunDuration("run-1", 120, "completed");
+  registry.recordHarnessStepCount("run-1", 4);
+  registry.recordHarnessBudgetConsumed("run-1", "budget-1", 5, 10);
+  registry.recordHarnessExecutionLatency("run-1", "exec-1", 42);
+  registry.recordHarnessTaskStarted("run-1", "task-1");
+  registry.recordHarnessTaskCompleted("run-1", "task-1", "completed");
+  registry.recordHarnessPluginInvoked("run-1", "plugin-tenant-specific", true);
+  registry.recordHarnessPolicyDecision("run-1", "Risk Policy", "allow");
+  registry.recordEventBackpressure("consumer:instance-123", 7, true);
+
+  const allLabels = [
+    ...registry.getCounters("harness_run_total").map((series) => series.labels),
+    ...registry.getCounters("harness_task_started_total").map((series) => series.labels),
+    ...registry.getCounters("harness_task_completed_total").map((series) => series.labels),
+    ...registry.getCounters("harness_plugin_invoked_total").map((series) => series.labels),
+    ...registry.getCounters("harness_policy_decision_total").map((series) => series.labels),
+    ...registry.getGauges("harness_step_count").map((series) => series.labels),
+    ...registry.getGauges("harness_budget_total_units").map((series) => series.labels),
+    ...registry.getGauges("harness_budget_utilization_percent").map((series) => series.labels),
+    ...registry.getGauges("event_bus_backpressure_pending").map((series) => series.labels),
+    ...registry.getHistograms("harness_run_duration_ms").map((series) => series.labels),
+    ...registry.getHistograms("harness_budget_consumed_units").map((series) => series.labels),
+    ...registry.getHistograms("harness_execution_latency_ms").map((series) => series.labels),
+  ];
+
+  for (const labels of allLabels) {
+    assert.equal("runId" in labels, false);
+    assert.equal("budgetId" in labels, false);
+    assert.equal("executionId" in labels, false);
+    assert.equal("pluginId" in labels, false);
+  }
+  assert.deepEqual(registry.getCounters("harness_plugin_invoked_total")[0]?.labels, { result: "success" });
+  assert.deepEqual(registry.getGauges("event_bus_backpressure_pending")[0]?.labels, { consumer: "consumer" });
+});
+
 test("stage_duration_seconds uses correct bucket boundaries", () => {
   const registry = new RuntimeMetricsRegistry();
 
@@ -93,4 +131,12 @@ test("stage_duration_seconds uses correct bucket boundaries", () => {
 
   assert.equal(h.bucketCounts[0], 4);
   assert.equal(h.count, 4);
+});
+
+test("observeHistogram rejects unsorted buckets and bucket drift", () => {
+  const registry = new RuntimeMetricsRegistry();
+
+  assert.throws(() => registry.observeHistogram("custom_latency_ms", {}, 1, [10, 5]));
+  registry.observeHistogram("custom_latency_ms", { route: "stable" }, 1, [10, 20]);
+  assert.throws(() => registry.observeHistogram("custom_latency_ms", { route: "stable" }, 2, [10, 30]));
 });

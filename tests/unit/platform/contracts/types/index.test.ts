@@ -109,13 +109,13 @@ test("TASK_STATUSES is readonly tuple", () => {
 
 // WORKFLOW_STATUSES tests
 test("WORKFLOW_STATUSES contains all expected states", () => {
-  const expected = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+  const expected = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
   assert.deepEqual(WORKFLOW_STATUSES, expected);
 });
 
 test("WORKFLOW_STATUSES is readonly tuple", () => {
   assert.ok(Array.isArray(WORKFLOW_STATUSES));
-  assert.equal(WORKFLOW_STATUSES.length, 7);
+  assert.equal(WORKFLOW_STATUSES.length, 8);
 });
 
 // SESSION_STATUSES tests

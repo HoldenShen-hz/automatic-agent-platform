@@ -73,10 +73,17 @@ test("TopologyValidator.validateDepth throws when depth exceeds max depth", () =
   );
 });
 
-test("TopologyValidator.validateDepth does not throw at or below max depth", () => {
+test("TopologyValidator.validateDepth does not throw below max depth", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
   validator.validateDepth(2); // Should not throw
-  validator.validateDepth(3); // Max depth is allowed; only greater depths are rejected.
+});
+
+test("TopologyValidator.validateDepth throws when at max depth", () => {
+  const validator = createTopologyValidator({ maxDepth: 3 });
+  assert.throws(
+    () => validator.validateDepth(3),
+    DelegationDepthExceededError,
+  );
 });
 
 test("TopologyValidator.validateFanout throws when at max fanout", () => {

@@ -289,7 +289,7 @@ export class SessionDualStorageService {
     const content = readFileSync(sessionPath, "utf8");
     const lines = content.split("\n").filter((line) => line.trim().length > 0);
 
-    return lines.map((line) => JSON.parse(line) as SessionEvent);
+    return this.parseReplayLines(lines, { source: "session", id: sessionId });
   }
 
   /**
@@ -308,7 +308,24 @@ export class SessionDualStorageService {
     const content = readFileSync(taskIndexPath, "utf8");
     const lines = content.split("\n").filter((line) => line.trim().length > 0);
 
-    return lines.map((line) => JSON.parse(line) as SessionEvent);
+    return this.parseReplayLines(lines, { source: "task", id: taskId });
+  }
+
+  private parseReplayLines(lines: readonly string[], context: { source: "session" | "task"; id: string }): SessionEvent[] {
+    const events: SessionEvent[] = [];
+    for (const [index, line] of lines.entries()) {
+      try {
+        events.push(JSON.parse(line) as SessionEvent);
+      } catch (error) {
+        logger.warn("session_dual_storage.replay_corrupt_line_skipped", {
+          source: context.source,
+          id: context.id,
+          lineNumber: index + 1,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return events;
   }
 
   /**

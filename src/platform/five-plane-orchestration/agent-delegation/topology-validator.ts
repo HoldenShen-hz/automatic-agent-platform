@@ -93,11 +93,11 @@ export class TopologyValidator {
   /**
    * Validates depth constraint.
    *
-   * @param currentDepth - Current delegation depth
-   * @throws DelegationDepthExceededError if depth exceeds maximum
+   * @param currentDepth - Current delegation depth before adding a child delegation
+   * @throws DelegationDepthExceededError if depth is already at or beyond the maximum
    */
   public validateDepth(currentDepth: number): void {
-    if (currentDepth > this.maxDepth) {
+    if (currentDepth >= this.maxDepth) {
       throw new DelegationDepthExceededError(currentDepth, this.maxDepth);
     }
   }

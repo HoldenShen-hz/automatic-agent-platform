@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, rmSync } from "node:fs";
+import { appendFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -227,6 +227,28 @@ test("SessionDualStorageService replaySessionEvents returns empty array for non-
   try {
     const events = storage.replaySessionEvents("non-existent");
     assert.equal(events.length, 0);
+  } finally {
+    cleanup(rootDir);
+  }
+});
+
+test("SessionDualStorageService replaySessionEvents skips corrupt JSONL lines", () => {
+  const { storage, rootDir } = createTestStorage();
+  try {
+    const event: SessionEvent = {
+      eventType: "session_created",
+      sessionId: "session-corrupt",
+      taskId: "task-corrupt",
+      timestamp: "2026-05-20T00:00:00.000Z",
+      payload: {},
+    };
+    storage.appendSessionEvent(event);
+    appendFileSync(join(rootDir, "session-session-corrupt.jsonl"), "{bad-json}\n");
+
+    const events = storage.replaySessionEvents("session-corrupt");
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0]!.sessionId, "session-corrupt");
   } finally {
     cleanup(rootDir);
   }

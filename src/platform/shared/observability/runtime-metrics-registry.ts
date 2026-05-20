@@ -38,6 +38,24 @@ function normalizeMetricStage(stage: string): string {
   return stage.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
 }
 
+function normalizeMetricDimension(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
+}
+
+function assertValidHistogramBuckets(buckets: readonly number[]): void {
+  let previous = Number.NEGATIVE_INFINITY;
+  for (const bucket of buckets) {
+    if (!Number.isFinite(bucket) || bucket <= previous) {
+      throw new Error("runtime_metrics.histogram_buckets_invalid");
+    }
+    previous = bucket;
+  }
+}
+
+function areHistogramBucketsEqual(left: readonly number[], right: readonly number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 export class RuntimeMetricsRegistry {
   private readonly counters = new Map<string, CounterSeries>();
   private readonly gauges = new Map<string, GaugeSeries>();
@@ -80,6 +98,7 @@ export class RuntimeMetricsRegistry {
     value: number,
     buckets: readonly number[] = DEFAULT_HISTOGRAM_BUCKETS,
   ): void {
+    assertValidHistogramBuckets(buckets);
     const normalizedLabels = toLabelRecord(labels);
     const key = buildSeriesKey(name, normalizedLabels);
     let series = this.histograms.get(key);
@@ -92,6 +111,8 @@ export class RuntimeMetricsRegistry {
         sum: 0,
       };
       this.histograms.set(key, series);
+    } else if (!areHistogramBucketsEqual(series.buckets, buckets)) {
+      throw new Error(`runtime_metrics.histogram_bucket_mismatch:${name}`);
     }
     series.count += 1;
     series.sum += value;
@@ -146,39 +167,39 @@ export class RuntimeMetricsRegistry {
   // §12.4 harness.* metrics - wire up missing canonical metrics
 
   public recordHarnessRunDuration(runId: string, durationMs: number, status: string): void {
-    this.observeHistogram("harness_run_duration_ms", { runId, status }, durationMs);
-    this.incrementCounter("harness_run_total", { runId, status }, 1);
+    this.observeHistogram("harness_run_duration_ms", { status }, durationMs);
+    this.incrementCounter("harness_run_total", { status }, 1);
   }
 
   public recordHarnessStepCount(runId: string, stepCount: number): void {
-    this.setGauge("harness_step_count", { runId }, stepCount);
+    this.setGauge("harness_step_count", {}, stepCount);
   }
 
   public recordHarnessBudgetConsumed(runId: string, budgetId: string, consumedUnits: number, totalUnits: number): void {
-    this.observeHistogram("harness_budget_consumed_units", { runId, budgetId }, consumedUnits);
-    this.setGauge("harness_budget_total_units", { runId, budgetId }, totalUnits);
+    this.observeHistogram("harness_budget_consumed_units", {}, consumedUnits);
+    this.setGauge("harness_budget_total_units", {}, totalUnits);
     const utilizationPercent = totalUnits > 0 ? (consumedUnits / totalUnits) * 100 : 0;
-    this.setGauge("harness_budget_utilization_percent", { runId, budgetId }, utilizationPercent);
+    this.setGauge("harness_budget_utilization_percent", {}, utilizationPercent);
   }
 
   public recordHarnessExecutionLatency(runId: string, executionId: string, latencyMs: number): void {
-    this.observeHistogram("harness_execution_latency_ms", { runId }, latencyMs);
+    this.observeHistogram("harness_execution_latency_ms", {}, latencyMs);
   }
 
   public recordHarnessTaskStarted(runId: string, taskId: string): void {
-    this.incrementCounter("harness_task_started_total", { runId }, 1);
+    this.incrementCounter("harness_task_started_total", {}, 1);
   }
 
   public recordHarnessTaskCompleted(runId: string, taskId: string, status: string): void {
-    this.incrementCounter("harness_task_completed_total", { runId, status }, 1);
+    this.incrementCounter("harness_task_completed_total", { status }, 1);
   }
 
   public recordHarnessPluginInvoked(runId: string, pluginId: string, success: boolean): void {
-    this.incrementCounter("harness_plugin_invoked_total", { runId, pluginId, success: String(success) }, 1);
+    this.incrementCounter("harness_plugin_invoked_total", { result: success ? "success" : "failure" }, 1);
   }
 
   public recordHarnessPolicyDecision(runId: string, policyType: string, outcome: string): void {
-    this.incrementCounter("harness_policy_decision_total", { runId, policyType, outcome }, 1);
+    this.incrementCounter("harness_policy_decision_total", { policyType: normalizeMetricDimension(policyType), outcome }, 1);
   }
 
   public recordKnowledgeQuery(operation: string, durationMs: number, result: string): void {
@@ -187,8 +208,8 @@ export class RuntimeMetricsRegistry {
   }
 
   public recordEventBackpressure(consumerId: string, pendingCount: number, isHighWaterMark: boolean): void {
-    this.setGauge("event_bus_backpressure_pending", { consumerId }, pendingCount);
-    this.setGauge("event_bus_backpressure_high_water", { consumerId }, isHighWaterMark ? 1 : 0);
+    this.setGauge("event_bus_backpressure_pending", { consumer: normalizeMetricDimension(consumerId.split(":", 1)[0] ?? "unknown") }, pendingCount);
+    this.setGauge("event_bus_backpressure_high_water", { consumer: normalizeMetricDimension(consumerId.split(":", 1)[0] ?? "unknown") }, isHighWaterMark ? 1 : 0);
   }
 
   public getCounters(name: string): CounterSeries[] {

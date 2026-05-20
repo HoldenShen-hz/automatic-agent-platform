@@ -68,11 +68,7 @@ test("CostAlertService calculatePeriodEnd handles monthly period", () => {
   const calculatePeriodEnd = service["calculatePeriodEnd"];
   const startDate = "2024-01-15T10:00:00.000Z";
   const endDate = calculatePeriodEnd(startDate, "monthly");
-
-  const expected = new Date(startDate);
-  expected.setMonth(expected.getMonth() + 1);
-
-  assert.equal(endDate, expected.toISOString());
+  assert.equal(endDate, "2024-02-15T00:00:00.000Z");
 });
 
 test("CostAlertService calculatePeriodEnd handles weekly period", () => {
@@ -96,11 +92,7 @@ test("CostAlertService calculatePeriodEnd handles weekly period", () => {
   const calculatePeriodEnd = service["calculatePeriodEnd"];
   const startDate = "2024-01-15T10:00:00.000Z";
   const endDate = calculatePeriodEnd(startDate, "weekly");
-
-  const expected = new Date(startDate);
-  expected.setDate(expected.getDate() + 7);
-
-  assert.equal(endDate, expected.toISOString());
+  assert.equal(endDate, "2024-01-22T00:00:00.000Z");
 });
 
 test("CostAlertService calculatePeriodEnd handles per_run period", () => {
@@ -124,11 +116,7 @@ test("CostAlertService calculatePeriodEnd handles per_run period", () => {
   const calculatePeriodEnd = service["calculatePeriodEnd"];
   const startDate = "2024-01-15T10:00:00.000Z";
   const endDate = calculatePeriodEnd(startDate, "per_run");
-
-  const expected = new Date(startDate);
-  expected.setDate(expected.getDate() + 1);
-
-  assert.equal(endDate, expected.toISOString());
+  assert.equal(endDate, "2024-01-16T00:00:00.000Z");
 });
 
 test("CostAlertService getEventTier returns correct tier for exceeded alert", () => {
@@ -375,12 +363,11 @@ test("CostAlertService evaluateCost with only token limit sets cost limit to inf
     tenantId: "tenant-1",
   });
 
-  // limitTokens only, no limitCostUsd - thresholdRatio is 0, remainingBudgetUsd is Infinity
+  // limitTokens only, no limitCostUsd - thresholdRatio is 0, remainingBudgetUsd is null (unlimited)
   assert.equal(result.allowed, true);
   assert.equal(result.alertLevel, "ok");
   assert.equal(result.thresholdRatio, 0);
-  // When no cost limit, remainingBudgetUsd is Infinity (Math.max(0, Infinity - projectedCost))
-  assert.equal(result.remainingBudgetUsd, Infinity);
+  assert.equal(result.remainingBudgetUsd, null);
 });
 
 test("CostAlertService evaluateCost disabled returns ok", () => {
@@ -891,11 +878,10 @@ test("CostAlertService evaluateCost with null limitCostUsd uses infinity", () =>
     projectedCostUsd: 10000,
     tenantId: "tenant-1",
   });
-  // No limitCostUsd set - remainingBudgetUsd is Infinity
+  // No limitCostUsd set - remainingBudgetUsd is null (unlimited)
   assert.equal(result.allowed, true);
   assert.equal(result.alertLevel, "ok");
-  // When no cost limit, remainingBudgetUsd is Infinity (Math.max(0, Infinity - projectedCost))
-  assert.equal(result.remainingBudgetUsd, Infinity);
+  assert.equal(result.remainingBudgetUsd, null);
 });
 
 test("CostAlertService threshold ratio with zero limit", () => {

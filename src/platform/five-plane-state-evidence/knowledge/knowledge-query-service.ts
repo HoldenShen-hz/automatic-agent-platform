@@ -308,13 +308,23 @@ export class KnowledgeQueryService {
   }
 
   private cacheContext(options: KnowledgeQueryOptions): L1CacheContext {
-    return {
-      namespace: options.namespace,
-      domainId: options.domainId,
-      limit: options.limit,
-      maxContextTokens: options.maxContextTokens,
-      principalId: options.accessPrincipal?.principalId,
-    };
+    const context: L1CacheContext = {};
+    if (options.namespace !== undefined) {
+      context.namespace = options.namespace;
+    }
+    if (options.domainId !== undefined) {
+      context.domainId = options.domainId;
+    }
+    if (options.limit !== undefined) {
+      context.limit = options.limit;
+    }
+    if (options.maxContextTokens !== undefined) {
+      context.maxContextTokens = options.maxContextTokens;
+    }
+    if (options.accessPrincipal?.principalId !== undefined) {
+      context.principalId = options.accessPrincipal.principalId;
+    }
+    return context;
   }
 
   private hitDedupKey(hit: RetrievalHit): string {

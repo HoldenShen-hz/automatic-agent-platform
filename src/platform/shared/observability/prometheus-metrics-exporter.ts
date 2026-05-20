@@ -369,10 +369,8 @@ export class PrometheusMetricsExporter {
   private renderHistogramSeries(name: string): string[] {
     const lines: string[] = [];
     for (const series of runtimeMetricsRegistry.getHistograms(name)) {
-      let cumulative = 0;
       for (let index = 0; index < series.buckets.length; index += 1) {
-        cumulative += series.bucketCounts[index] ?? 0;
-        lines.push(`${this.metricName(name)}_bucket${formatPrometheusLabels({ ...series.labels, le: String(series.buckets[index]) })} ${cumulative}`);
+        lines.push(`${this.metricName(name)}_bucket${formatPrometheusLabels({ ...series.labels, le: String(series.buckets[index]) })} ${series.bucketCounts[index] ?? 0}`);
       }
       lines.push(`${this.metricName(name)}_bucket${formatPrometheusLabels({ ...series.labels, le: "+Inf" })} ${series.count}`);
       lines.push(`${this.metricName(name)}_sum${formatPrometheusLabels(series.labels)} ${series.sum}`);

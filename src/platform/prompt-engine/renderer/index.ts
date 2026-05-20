@@ -45,7 +45,7 @@ export class PromptRendererService {
     }
 
     const variableSuffix = input.template.variableSuffixTemplate.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, key) => {
-      return resolvedVariables.get(key) ?? "";
+      return resolvedVariables.get(key) ?? _match;
     }).trim();
 
     const fixedPrefix = input.includeFixedPrefix === false ? "" : input.template.fixedPrefix.trim();
