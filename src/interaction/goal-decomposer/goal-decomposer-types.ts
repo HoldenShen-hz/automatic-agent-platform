@@ -160,6 +160,7 @@ export interface GoalDecompositionServiceOptions {
   readonly currentDepth?: number;
   readonly maxDelegationDepth?: number;
   readonly callDepth?: number;
+  readonly globalCallDepth?: number;
   readonly budgetControl?: {
     readonly policy: BudgetPolicy;
     readonly currentTaskCostUsd?: number;

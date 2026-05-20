@@ -15,6 +15,7 @@ export interface SlotClarificationState {
   readonly questions: readonly string[];
   readonly attempt: number;
   readonly isComplete: boolean;
+  readonly escalationRequired: boolean;
   readonly nextExpectedSlot: string | null;
 }
 
@@ -81,6 +82,7 @@ export function buildSlotClarificationState(
     questions,
     attempt: 1,
     isComplete: missing.length === 0,
+    escalationRequired: false,
     nextExpectedSlot: missing[0] ?? null,
   };
 }
@@ -95,13 +97,8 @@ export function refineSlotResolution(
   options: SlotResolutionOptions = {},
 ): SlotClarificationState {
   const maxRounds = options.maxRounds ?? 3;
-
-  if (currentState.attempt >= maxRounds) {
-    return {
-      ...currentState,
-      isComplete: true,
-      nextExpectedSlot: null,
-    };
+  if (currentState.isComplete) {
+    return currentState;
   }
 
   // Merge new entities with previously resolved
@@ -118,12 +115,37 @@ export function refineSlotResolution(
     ...new Set(currentState.missing.filter((slot) => !Object.prototype.hasOwnProperty.call(resolved, slot))),
   ];
 
+  if (missing.length === 0) {
+    return {
+      missing,
+      resolved,
+      questions: [],
+      attempt: Math.min(currentState.attempt + 1, maxRounds),
+      isComplete: true,
+      escalationRequired: false,
+      nextExpectedSlot: null,
+    };
+  }
+
+  if (currentState.attempt >= maxRounds) {
+    return {
+      missing,
+      resolved,
+      questions: [buildEscalationPrompt(missing)],
+      attempt: currentState.attempt,
+      isComplete: false,
+      escalationRequired: true,
+      nextExpectedSlot: null,
+    };
+  }
+
   return {
     missing,
     resolved,
     questions: missing.map((slot) => options.promptBySlot?.[slot] ?? defaultQuestionForSlot(slot)),
     attempt: currentState.attempt + 1,
-    isComplete: missing.length === 0,
+    isComplete: false,
+    escalationRequired: false,
     nextExpectedSlot: missing[0] ?? null,
   };
 }
@@ -136,4 +158,11 @@ function defaultQuestionForSlot(slot: string): string {
     money: "请提供预算或金额范围。",
   };
   return prompts[slot] ?? `请补充 ${slot} 相关信息。`;
+}
+
+function buildEscalationPrompt(missingSlots: readonly string[]): string {
+  if (missingSlots.length === 0) {
+    return "已达到最大澄清轮次，需要人工复核。";
+  }
+  return `已达到最大澄清轮次，仍缺少 ${missingSlots.join("、")}，请转人工确认。`;
 }

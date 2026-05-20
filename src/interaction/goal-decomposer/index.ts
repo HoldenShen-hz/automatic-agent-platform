@@ -256,7 +256,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     }
 
     // R5-18: Global call depth cap (=8)
-    const globalCallDepth = (this.options as { _globalCallDepth?: number })._globalCallDepth ?? 0;
+    const globalCallDepth = this.options.globalCallDepth ?? 0;
     if (globalCallDepth >= DEFAULT_GLOBAL_CALL_DEPTH_CAP) {
       throw new Error(`goal_decomposer.global_call_depth_exceeded:${globalCallDepth}`);
     }
@@ -408,7 +408,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     };
 
     // R23-04 fix: §40.2 requires rejecting with error when cycle is detected, not just warning
-    if (graphAnalysis.hasCycle && decompositionStrategy !== "llm_plan") {
+    if (graphAnalysis.hasCycle) {
       throw new Error(`goal_decomposer.cycle_detected:${goal.goalId}`);
     }
 
@@ -528,18 +528,20 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const totalBaseCost = baseCosts.reduce((sum, cost) => sum + cost, 0);
 
     // R5-19: Proportional budget allocation - distribute parent budget proportionally based on estimated costs
-    const budgetPerTask = totalBaseCost > 0 && proportionalBudget != null
-      ? proportionalBudget / initialTasks.length
-      : null;
+    const inheritedRiskTolerance = parentRisk == null ? null : this.propagateRisk(parentRisk);
 
-    void parentRisk;
-
-    return initialTasks.map((task) => {
+    return initialTasks.map((task, index) => {
       const domainPermissions = DEFAULT_DOMAIN_PERMISSIONS[task.domainId] ?? [];
+      const budgetLimitUsd = proportionalBudget == null
+        ? null
+        : totalBaseCost > 0
+          ? Number(((baseCosts[index] ?? 0) / totalBaseCost * proportionalBudget).toFixed(4))
+          : Number((proportionalBudget / Math.max(1, initialTasks.length)).toFixed(4));
       const updatedConstraintEnvelope = task.constraintEnvelope
         ? {
             ...task.constraintEnvelope,
-            ...(budgetPerTask != null ? { budgetLimitUsd: budgetPerTask } : {}),
+            ...(budgetLimitUsd != null ? { budgetLimitUsd } : {}),
+            ...(inheritedRiskTolerance != null ? { riskTolerance: inheritedRiskTolerance } : {}),
             requiredPermissions: (task.constraintEnvelope.requiredPermissions ?? []).filter((permission) =>
               domainPermissions.includes(permission),
             ),

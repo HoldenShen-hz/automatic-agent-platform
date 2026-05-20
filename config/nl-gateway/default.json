@@ -23,5 +23,9 @@
   "entityExtraction": {
     "requiredEntityCount": 1,
     "minMessageLength": 6
+  },
+  "guardrails": {
+    "additionalPromptInjectionPatterns": [],
+    "additionalGenericAmbiguousPatterns": []
   }
 }

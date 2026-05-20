@@ -31,6 +31,9 @@ export interface UnifiedChatPlanGeneratorOptions {
   };
 }
 
+const MAX_LLM_PLAN_RESPONSE_BYTES = 64 * 1024;
+const MAX_LLM_PLAN_JSON_DEPTH = 12;
+
 interface SerializableTask {
   readonly domainId: string;
   readonly description: string;
@@ -110,6 +113,27 @@ interface GoalBudgetEnvelope {
   readonly totalBudgetUsd: number | null;
   readonly requiresApproval: boolean;
   readonly riskTolerance: "low" | "medium" | "high";
+}
+
+function assertJsonDepthWithinLimit(
+  value: unknown,
+  maxDepth: number,
+  currentDepth = 1,
+): void {
+  if (currentDepth > maxDepth) {
+    throw new Error("goal_decomposer.llm_plan_json_too_deep");
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      assertJsonDepthWithinLimit(item, maxDepth, currentDepth + 1);
+    }
+    return;
+  }
+  if (value != null && typeof value === "object") {
+    for (const item of Object.values(value)) {
+      assertJsonDepthWithinLimit(item, maxDepth, currentDepth + 1);
+    }
+  }
 }
 
 function parseGoalBudgetEnvelope(goal: Goal): GoalBudgetEnvelope {
@@ -343,7 +367,11 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     const normalized = trimmed.startsWith("```")
       ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
       : trimmed;
+    if (Buffer.byteLength(normalized, "utf8") > MAX_LLM_PLAN_RESPONSE_BYTES) {
+      throw new Error("goal_decomposer.llm_plan_response_too_large");
+    }
     const parsed = JSON.parse(normalized) as SerializablePlan;
+    assertJsonDepthWithinLimit(parsed, MAX_LLM_PLAN_JSON_DEPTH);
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
       throw new Error("goal_decomposer.invalid_llm_plan_shape");
     }

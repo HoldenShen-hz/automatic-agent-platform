@@ -80,6 +80,10 @@ interface ConnectionState {
   heartbeatTimer: ReturnType<typeof setInterval> | null;
 }
 
+type ProjectionPollingSource = { consumePendingDeltas(): readonly DashboardDelta[] };
+
+const REPLAY_EVENT_ID_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/u;
+
 function isChannelSubscriptionArray(
   value: readonly string[] | readonly DashboardChannelSubscription[],
 ): value is readonly DashboardChannelSubscription[] {
@@ -98,9 +102,14 @@ export class DashboardWebSocketServer {
   private readonly config: WebSocketServerConfig;
   private readonly connections = new Map<string, ConnectionState>();
   private readonly replayBuffer: DashboardDelta[] = [];
+  private readonly outboundMessages = new Map<string, DashboardPushMessage[]>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deltaHandler: ((delta: DashboardDelta, clientIds: readonly string[]) => void) | null = null;
-  private projectionPollingTimer: ReturnType<typeof setInterval> | null = null;
+  private messageHandler: ((message: DashboardPushMessage, clientId: string) => void) | null = null;
+  private projectionPollingTimer: ReturnType<typeof setTimeout> | null = null;
+  private projectionPollingInFlight = false;
+  private projectionPollingSource: ProjectionPollingSource | null = null;
+  private projectionPollingBaseIntervalMs = 100;
 
   public constructor(config?: Partial<WebSocketServerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -129,7 +138,9 @@ export class DashboardWebSocketServer {
     }
 
     this.connections.clear();
+    this.outboundMessages.clear();
     this.replayBuffer.length = 0;
+    this.stopProjectionIntegration();
   }
 
   public registerClient(
@@ -178,6 +189,7 @@ export class DashboardWebSocketServer {
       heartbeatTimer: null,
     };
     this.connections.set(clientId, connection);
+    this.outboundMessages.set(clientId, []);
 
     const replay = this.replayFrom(lastEventId, connection);
     const ack = this.createMessage("connection_ack", clientId, {
@@ -212,6 +224,7 @@ export class DashboardWebSocketServer {
       clearInterval(connection.heartbeatTimer);
     }
     this.connections.delete(clientId);
+    this.outboundMessages.delete(clientId);
   }
 
   public updateSubscriptions(
@@ -246,29 +259,26 @@ export class DashboardWebSocketServer {
     this.bufferDelta(delta);
     const affectedClients = this.findAffectedClientIds(delta);
     for (const clientId of affectedClients) {
-      const connection = this.connections.get(clientId);
-      if (connection != null) {
-        connection.lastActivityAt = nowIso();
-      }
+      this.deliverMessage(clientId, this.createMessage("dashboard_delta", clientId, delta));
     }
     return affectedClients.length;
   }
 
-  public pushSnapshotToClient(clientId: string, _snapshot: unknown): boolean {
+  public pushSnapshotToClient(clientId: string, snapshot: unknown): boolean {
     const connection = this.connections.get(clientId);
     if (connection == null || !connection.isConnected) {
       return false;
     }
-    connection.lastActivityAt = nowIso();
+    this.deliverMessage(clientId, this.createMessage("dashboard_snapshot", clientId, snapshot));
     return true;
   }
 
-  public broadcast(_message: DashboardPushMessage): number {
+  public broadcast(message: DashboardPushMessage): number {
     let sentCount = 0;
     for (const connection of this.connections.values()) {
       if (connection.isConnected) {
         sentCount += 1;
-        connection.lastActivityAt = nowIso();
+        this.deliverMessage(connection.clientId, message);
       }
     }
     return sentCount;
@@ -299,17 +309,24 @@ export class DashboardWebSocketServer {
     this.deltaHandler = handler;
   }
 
+  public setMessageHandler(handler: ((message: DashboardPushMessage, clientId: string) => void) | null): void {
+    this.messageHandler = handler;
+  }
+
+  public drainOutboundMessages(clientId: string): DashboardPushMessage[] {
+    const queue = this.outboundMessages.get(clientId) ?? [];
+    this.outboundMessages.set(clientId, []);
+    return [...queue];
+  }
+
   public handleProjectionDelta(delta: DashboardDelta): number {
+    this.bufferDelta(delta);
     const clientIds = this.findAffectedClientIds(delta);
     if (this.deltaHandler != null) {
       this.deltaHandler(delta, clientIds);
     }
-    this.bufferDelta(delta);
     for (const clientId of clientIds) {
-      const connection = this.connections.get(clientId);
-      if (connection != null) {
-        connection.lastActivityAt = nowIso();
-      }
+      this.deliverMessage(clientId, this.createMessage("dashboard_delta", clientId, delta));
     }
     return clientIds.length;
   }
@@ -323,20 +340,13 @@ export class DashboardWebSocketServer {
    * service's delta generation with the WebSocket server's push mechanism.
    */
   public integrateWithProjectionService(
-    projectionService: { consumePendingDeltas(): readonly DashboardDelta[] },
+    projectionService: ProjectionPollingSource,
     pollingIntervalMs: number = 100,
   ): void {
-    // Stop any existing polling timer
-    if (this.projectionPollingTimer !== null) {
-      clearInterval(this.projectionPollingTimer);
-    }
-
-    this.projectionPollingTimer = setInterval(() => {
-      const deltas = projectionService.consumePendingDeltas();
-      for (const delta of deltas) {
-        this.handleProjectionDelta(delta);
-      }
-    }, pollingIntervalMs);
+    this.stopProjectionIntegration();
+    this.projectionPollingSource = projectionService;
+    this.projectionPollingBaseIntervalMs = Math.max(10, pollingIntervalMs);
+    this.scheduleProjectionPoll(this.projectionPollingBaseIntervalMs);
   }
 
   /**
@@ -344,9 +354,11 @@ export class DashboardWebSocketServer {
    */
   public stopProjectionIntegration(): void {
     if (this.projectionPollingTimer !== null) {
-      clearInterval(this.projectionPollingTimer);
+      clearTimeout(this.projectionPollingTimer);
       this.projectionPollingTimer = null;
     }
+    this.projectionPollingInFlight = false;
+    this.projectionPollingSource = null;
   }
 
   private assertRequiredIdentity(principal?: string, tenantId?: string): void {
@@ -431,14 +443,22 @@ export class DashboardWebSocketServer {
     if (matchedIndex === -1) {
       const oldestVisible = visible[0];
       const newestVisible = visible.at(-1);
+      const existsOutsideScope = this.replayBuffer.some((delta) => delta.deltaId === lastEventId);
+      const reasonCode = !REPLAY_EVENT_ID_PATTERN.test(lastEventId)
+        ? "stream.invalid_last_event_id"
+        : existsOutsideScope
+          ? "stream.last_event_id_outside_scope"
+          : "stream.last_event_id_not_replayable";
       return {
         missedEvents: [],
         gapMessage: this.createMessage("stream_gap", connection.clientId, {
           lastEventId,
           expectedOldestEventId: oldestVisible?.deltaId ?? null,
           latestEventId: newestVisible?.deltaId ?? null,
-          reasonCode: "stream.last_event_id_not_replayable",
-          recoveryAction: "resync_from_snapshot",
+          reasonCode,
+          recoveryAction: reasonCode === "stream.invalid_last_event_id"
+            ? "retry_with_valid_event_id"
+            : "resync_from_snapshot",
         }),
       };
     }
@@ -514,6 +534,63 @@ export class DashboardWebSocketServer {
     return [...this.connections.values()]
       .filter((connection) => this.connectionMatchesDelta(connection, delta))
       .map((connection) => connection.clientId);
+  }
+
+  private deliverMessage(clientId: string, message: DashboardPushMessage): void {
+    const connection = this.connections.get(clientId);
+    if (connection == null || !connection.isConnected) {
+      return;
+    }
+    const outboundMessage = message.clientId === clientId
+      ? message
+      : {
+          ...message,
+          clientId,
+        };
+    const queue = this.outboundMessages.get(clientId) ?? [];
+    queue.push(outboundMessage);
+    this.outboundMessages.set(clientId, queue);
+    connection.lastActivityAt = nowIso();
+    this.messageHandler?.(outboundMessage, clientId);
+  }
+
+  private scheduleProjectionPoll(delayMs: number): void {
+    if (this.projectionPollingSource == null) {
+      return;
+    }
+    this.projectionPollingTimer = setTimeout(() => {
+      void this.runProjectionPoll();
+    }, delayMs);
+    this.projectionPollingTimer.unref?.();
+  }
+
+  private async runProjectionPoll(): Promise<void> {
+    if (this.projectionPollingSource == null) {
+      return;
+    }
+    if (this.projectionPollingInFlight) {
+      this.scheduleProjectionPoll(this.projectionPollingBaseIntervalMs);
+      return;
+    }
+
+    this.projectionPollingInFlight = true;
+    let nextDelayMs = this.projectionPollingBaseIntervalMs;
+    try {
+      const deltas = this.projectionPollingSource.consumePendingDeltas();
+      for (const delta of deltas) {
+        this.handleProjectionDelta(delta);
+      }
+      if (deltas.length === 0) {
+        nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
+      }
+    } catch {
+      nextDelayMs = Math.max(this.projectionPollingBaseIntervalMs * 4, 1000);
+    } finally {
+      this.projectionPollingInFlight = false;
+      if (this.projectionPollingSource != null) {
+        this.scheduleProjectionPoll(nextDelayMs);
+      }
+    }
   }
 
   private createMessage(

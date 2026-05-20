@@ -394,28 +394,39 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
 
   if (command.aggregateType === "NodeRun") {
     const nodeRun = command.aggregate as NodeRun;
-    const executionStatuses: readonly string[] = [
+    const activeExecutionStatuses: readonly string[] = [
       "leased",
       "running",
       "retry_wait",
       "awaiting_hitl",
       "reconciling",
+    ];
+    const executionStatuses: readonly string[] = [
       "succeeded",
       "failed",
     ];
-    if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
+    const terminalExecutionStatuses: readonly string[] = ["cancelled", "aborted"];
+    const terminalExecutionTransition =
+      terminalExecutionStatuses.includes(command.toStatus as string)
+      && (
+        activeExecutionStatuses.includes(nodeRun.status)
+        || nodeRun.leaseId != null
+      );
+    const requiresExecutionProtection =
+      executionStatuses.includes(command.toStatus as string) || terminalExecutionTransition;
+    if (requiresExecutionProtection && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(
         "runtime_state_machine.lease_and_fencing_required",
         "NodeRun execution transitions require an active lease and fencing token.",
         { details: { nodeRunId: nodeRun.nodeRunId } },
       );
     }
-    if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
+    if (requiresExecutionProtection && nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
       throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "NodeRun transition requires the active lease.", {
         details: { nodeRunId: nodeRun.nodeRunId },
       });
     }
-    if (nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
+    if (requiresExecutionProtection && nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
       throw new WorkflowStateError(
         "runtime_state_machine.fencing_token_mismatch",
         "NodeRun transition requires the active fencing token.",

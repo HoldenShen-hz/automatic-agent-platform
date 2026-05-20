@@ -109,7 +109,9 @@ import {
   buildConfirmationScope,
   buildConversationMemoryScope,
   buildDryRunPreview,
+  buildGenericAmbiguousPatterns,
   buildMissingSlotQuestions,
+  buildPromptInjectionPatterns,
   buildRiskPreview,
   buildRiskPreviewWithDryRun,
   buildStableIdempotencyKey,
@@ -207,6 +209,8 @@ export class NlEntryService implements NlEntryPort {
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
   private readonly clarificationRounds = new Map<string, number>();
+  private readonly promptInjectionPatterns: readonly RegExp[];
+  private readonly genericAmbiguousPatterns: readonly RegExp[];
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
@@ -219,6 +223,12 @@ export class NlEntryService implements NlEntryPort {
     this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
+    this.promptInjectionPatterns = buildPromptInjectionPatterns(
+      this.nlConfig.guardrails?.additionalPromptInjectionPatterns,
+    );
+    this.genericAmbiguousPatterns = buildGenericAmbiguousPatterns(
+      this.nlConfig.guardrails?.additionalGenericAmbiguousPatterns,
+    );
     this.intentParser = options.intentParser ?? null;
     this.memoryService = options.memoryService ?? null;
     this.dryRunExecutor = options.dryRunExecutor ?? null;
@@ -264,7 +274,7 @@ export class NlEntryService implements NlEntryPort {
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
     const locale = this.resolveLocale(request);
     const priorConversationContext = this.getPriorConversationContext(request);
-    const securityFindings = detectPromptInjection(request.message);
+    const securityFindings = detectPromptInjection(request.message, this.promptInjectionPatterns);
     const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const route = await Promise.resolve(this.intakeRouter.route({
       title: deriveTitle(request.message),
@@ -320,10 +330,11 @@ export class NlEntryService implements NlEntryPort {
     };
     const clarificationQuestions = [...new Set([
       ...buildClarificationQuestions(
-      request.message,
-      resolvedConfidence,
-      route.divisionId,
-      entities,
+        request.message,
+        resolvedConfidence,
+        route.divisionId,
+        entities,
+        this.genericAmbiguousPatterns,
       ),
       ...slotResolution.questions,
     ])];

@@ -45,6 +45,15 @@ export interface EntityExtractionConfig {
 }
 
 /**
+ * Optional guardrail pattern extensions.
+ * These entries extend the built-in defaults instead of replacing them.
+ */
+export interface GuardrailConfig {
+  readonly additionalPromptInjectionPatterns: readonly string[];
+  readonly additionalGenericAmbiguousPatterns: readonly string[];
+}
+
+/**
  * NL Gateway configuration
  */
 export interface NlGatewayConfig {
@@ -52,6 +61,7 @@ export interface NlGatewayConfig {
   readonly disambiguation: DisambiguationConfig;
   readonly intent: IntentConfig;
   readonly entityExtraction: EntityExtractionConfig;
+  readonly guardrails?: GuardrailConfig;
 }
 
 const DEFAULT_NL_CONFIG_PATH = "config/nl-gateway/default.json";
@@ -76,6 +86,10 @@ const FullNlGatewayConfigSchema = z.object({
     requiredEntityCount: z.number().int().nonnegative(),
     minMessageLength: z.number().int().nonnegative(),
   }),
+  guardrails: z.object({
+    additionalPromptInjectionPatterns: z.array(z.string().min(1)),
+    additionalGenericAmbiguousPatterns: z.array(z.string().min(1)),
+  }).optional(),
 });
 
 const PartialNlGatewayConfigSchema = z.object({
@@ -97,6 +111,10 @@ const PartialNlGatewayConfigSchema = z.object({
   entityExtraction: z.object({
     requiredEntityCount: z.number().int().nonnegative().optional(),
     minMessageLength: z.number().int().nonnegative().optional(),
+  }).optional(),
+  guardrails: z.object({
+    additionalPromptInjectionPatterns: z.array(z.string().min(1)).optional(),
+    additionalGenericAmbiguousPatterns: z.array(z.string().min(1)).optional(),
   }).optional(),
 });
 
@@ -127,6 +145,10 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
   entityExtraction: {
     requiredEntityCount: 1,
     minMessageLength: 6,
+  },
+  guardrails: {
+    additionalPromptInjectionPatterns: [],
+    additionalGenericAmbiguousPatterns: [],
   },
 };
 
@@ -164,29 +186,54 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
     }
     const parsed = parsedResult.data;
 
-    const merged = {
+    const merged: NlGatewayConfig = {
       conversationWindow: {
-        ...DEFAULT_NL_GATEWAY_CONFIG.conversationWindow,
-        ...parsed.conversationWindow,
+        defaultSize: parsed.conversationWindow?.defaultSize ?? DEFAULT_NL_GATEWAY_CONFIG.conversationWindow.defaultSize,
+        maxSize: parsed.conversationWindow?.maxSize ?? DEFAULT_NL_GATEWAY_CONFIG.conversationWindow.maxSize,
         byTaskType: {
           ...DEFAULT_NL_GATEWAY_CONFIG.conversationWindow.byTaskType,
           ...parsed.conversationWindow?.byTaskType,
         },
       },
       disambiguation: {
-        ...DEFAULT_NL_GATEWAY_CONFIG.disambiguation,
-        ...parsed.disambiguation,
+        threshold: parsed.disambiguation?.threshold ?? DEFAULT_NL_GATEWAY_CONFIG.disambiguation.threshold,
+        lowConfidenceThreshold:
+          parsed.disambiguation?.lowConfidenceThreshold ?? DEFAULT_NL_GATEWAY_CONFIG.disambiguation.lowConfidenceThreshold,
+        maxClarificationQuestions:
+          parsed.disambiguation?.maxClarificationQuestions ?? DEFAULT_NL_GATEWAY_CONFIG.disambiguation.maxClarificationQuestions,
+        enableProactiveClarification:
+          parsed.disambiguation?.enableProactiveClarification ?? DEFAULT_NL_GATEWAY_CONFIG.disambiguation.enableProactiveClarification,
       },
       intent: {
-        ...DEFAULT_NL_GATEWAY_CONFIG.intent,
-        ...parsed.intent,
+        minConfidenceForAutoConfirm:
+          parsed.intent?.minConfidenceForAutoConfirm ?? DEFAULT_NL_GATEWAY_CONFIG.intent.minConfidenceForAutoConfirm,
+        fallbackIntent: parsed.intent?.fallbackIntent ?? DEFAULT_NL_GATEWAY_CONFIG.intent.fallbackIntent,
       },
       entityExtraction: {
-        ...DEFAULT_NL_GATEWAY_CONFIG.entityExtraction,
-        ...parsed.entityExtraction,
+        requiredEntityCount:
+          parsed.entityExtraction?.requiredEntityCount ?? DEFAULT_NL_GATEWAY_CONFIG.entityExtraction.requiredEntityCount,
+        minMessageLength:
+          parsed.entityExtraction?.minMessageLength ?? DEFAULT_NL_GATEWAY_CONFIG.entityExtraction.minMessageLength,
+      },
+      guardrails: {
+        additionalPromptInjectionPatterns:
+          parsed.guardrails?.additionalPromptInjectionPatterns
+          ?? DEFAULT_NL_GATEWAY_CONFIG.guardrails?.additionalPromptInjectionPatterns
+          ?? [],
+        additionalGenericAmbiguousPatterns:
+          parsed.guardrails?.additionalGenericAmbiguousPatterns
+          ?? DEFAULT_NL_GATEWAY_CONFIG.guardrails?.additionalGenericAmbiguousPatterns
+          ?? [],
       },
     };
-    return FullNlGatewayConfigSchema.parse(merged);
+    const normalized = FullNlGatewayConfigSchema.parse(merged);
+    return {
+      conversationWindow: normalized.conversationWindow,
+      disambiguation: normalized.disambiguation,
+      intent: normalized.intent,
+      entityExtraction: normalized.entityExtraction,
+      ...(normalized.guardrails == null ? {} : { guardrails: normalized.guardrails }),
+    };
   } catch (error) {
     if (error instanceof ValidationError || error instanceof z.ZodError) {
       throw error;

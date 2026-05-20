@@ -42,7 +42,7 @@ test("goal-decomposer exposes canonical task graph and planner handoff identifie
   assert.ok(result.taskGraphDraft.tasks.length > 0);
 });
 
-test("goal-decomposer blocks planner handoff when dependency graph contains a cycle", async () => {
+test("goal-decomposer rejects LLM plans when dependency graph contains a cycle", async () => {
   const goal: Goal = {
     goalId: "goal-review-cycle",
     description: "这是一个没有模板命中的超长复杂目标描述，用来强制走 llm 规划分支并注入循环依赖图进行回归验证，确保规划移交流程不会继续接收非法 DAG。",
@@ -86,10 +86,8 @@ test("goal-decomposer blocks planner handoff when dependency graph contains a cy
     },
   });
 
-  const result = await service.decompose(goal);
-
-  assert.equal(result.taskGraphDraft.normalized, false);
-  assert.ok(result.taskGraphDraft.validationMessages.includes("goal_decomposer.cycle_detected"));
-  assert.equal(result.plannerHandoff.state, "blocked_invalid_graph");
-  assert.equal(result.requiresHumanReview, true);
+  await assert.rejects(
+    async () => service.decompose(goal),
+    /goal_decomposer\.cycle_detected:goal-review-cycle/,
+  );
 });

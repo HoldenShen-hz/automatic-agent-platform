@@ -21,7 +21,7 @@ export const SLOT_CONFIDENCE_THRESHOLD = 0.85;
 // R5-30: Default maximum clarification rounds
 export const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 export const DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS = 1000;
-export const PROMPT_INJECTION_PATTERNS = [
+const DEFAULT_PROMPT_INJECTION_PATTERNS = [
   /ignore (all|any|previous|prior) instructions/i,
   /reveal (the )?(system|developer) prompt/i,
   /show me (the )?(hidden|internal) instructions/i,
@@ -30,6 +30,7 @@ export const PROMPT_INJECTION_PATTERNS = [
   /泄露(系统|开发者)?提示词/,
   /绕过(安全|策略|护栏)/,
 ] as const;
+export const PROMPT_INJECTION_PATTERNS = [...DEFAULT_PROMPT_INJECTION_PATTERNS];
 
 export const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
   supportedLocales: ["zh-CN", "en-US", "ja-JP", "de-DE"],
@@ -37,18 +38,19 @@ export const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
   localeResolutionOrder: ["user_profile", "accept_language", "input_detect", "default"],
 };
 
-export const GENERIC_AMBIGUOUS_PATTERNS = [
-  "做一份报表",
-  "处理一下",
-  "看一下",
-  "帮我处理",
-  "帮我做",
-  "做一个",
-  "optimize this",
-  "handle it",
-  "fix this",
-  "do the report",
+const DEFAULT_GENERIC_AMBIGUOUS_PATTERNS = [
+  /^\s*做一份报表[。.!?？]?\s*$/iu,
+  /^\s*处理一下[。.!?？]?\s*$/iu,
+  /^\s*看一下[。.!?？]?\s*$/iu,
+  /^\s*帮我处理[。.!?？]?\s*$/iu,
+  /^\s*帮我做[。.!?？]?\s*$/iu,
+  /^\s*做一个[。.!?？]?\s*$/iu,
+  /^\s*optimize this[.?!]?\s*$/iu,
+  /^\s*handle it[.?!]?\s*$/iu,
+  /^\s*fix this[.?!]?\s*$/iu,
+  /^\s*do the report[.?!]?\s*$/iu,
 ] as const;
+export const GENERIC_AMBIGUOUS_PATTERNS = [...DEFAULT_GENERIC_AMBIGUOUS_PATTERNS];
 
 export const HIGH_RISK_KEYWORDS = [
   "delete",
@@ -98,6 +100,88 @@ export const PERCENT_PATTERN = /\b\d+(?:\.\d+)?%\b/g;
 export const CURRENCY_PATTERN = /(?:¥|\$|￥)\s?\d+(?:\.\d+)?/g;
 export const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test)\b|线上|生产环境|测试环境/gi;
 export const CHANNEL_PATTERN = /\b(slack|telegram|webhook|email|api)\b/gi;
+
+function escapeRegexLiteral(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function tryParseRegexLiteral(source: string): RegExp | null {
+  const trimmed = source.trim();
+  if (!trimmed.startsWith("/") || trimmed.length < 2) {
+    return null;
+  }
+  const lastSlash = trimmed.lastIndexOf("/");
+  if (lastSlash <= 0) {
+    return null;
+  }
+  const patternSource = trimmed.slice(1, lastSlash);
+  const flags = trimmed.slice(lastSlash + 1);
+  if (!/^[dgimsuvy]*$/u.test(flags)) {
+    return null;
+  }
+  return new RegExp(patternSource, flags);
+}
+
+function normalizePatternFlags(pattern: RegExp, requiredFlags: string): RegExp {
+  const flagSet = new Set(`${pattern.flags}${requiredFlags}`.split(""));
+  return new RegExp(pattern.source, [...flagSet].join(""));
+}
+
+function compilePatternSource(
+  source: string,
+  mode: "prompt_injection" | "generic_ambiguity",
+): RegExp {
+  const parsed = tryParseRegexLiteral(source);
+  if (parsed != null) {
+    return normalizePatternFlags(parsed, mode === "prompt_injection" ? "g" : "");
+  }
+
+  const escaped = escapeRegexLiteral(source.trim()).replace(/\s+/g, "\\s+");
+  if (mode === "generic_ambiguity") {
+    return new RegExp(`^\\s*(?:${escaped})[。.!?？]?\\s*$`, "iu");
+  }
+  return new RegExp(escaped, "giu");
+}
+
+function dedupePatterns(patterns: readonly RegExp[]): RegExp[] {
+  const seen = new Set<string>();
+  const deduped: RegExp[] = [];
+  for (const pattern of patterns) {
+    const key = `${pattern.source}/${pattern.flags}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(pattern);
+  }
+  return deduped;
+}
+
+function normalizeMessageForPatternMatch(message: string): string {
+  return message.replace(/\s+/g, " ").trim();
+}
+
+export function buildPromptInjectionPatterns(additionalPatterns: readonly string[] = []): readonly RegExp[] {
+  return dedupePatterns([
+    ...DEFAULT_PROMPT_INJECTION_PATTERNS.map((pattern) => normalizePatternFlags(pattern, "g")),
+    ...additionalPatterns.map((pattern) => compilePatternSource(pattern, "prompt_injection")),
+  ]);
+}
+
+export function buildGenericAmbiguousPatterns(additionalPatterns: readonly string[] = []): readonly RegExp[] {
+  return dedupePatterns([
+    ...DEFAULT_GENERIC_AMBIGUOUS_PATTERNS,
+    ...additionalPatterns.map((pattern) => compilePatternSource(pattern, "generic_ambiguity")),
+  ]);
+}
+
+export function hasGenericAmbiguityPattern(
+  message: string,
+  patterns: readonly RegExp[] = GENERIC_AMBIGUOUS_PATTERNS,
+): boolean {
+  const normalized = normalizeMessageForPatternMatch(message);
+  return patterns.some((pattern) => new RegExp(pattern.source, pattern.flags).test(normalized));
+}
 
 export function detectInputLocale(message: string): string | null {
   if (/[\u4e00-\u9fff]/.test(message)) {
@@ -297,13 +381,18 @@ export function collectResolvedSlotsFromTurns(turns: readonly ConversationTurn[]
   return resolved;
 }
 
-export function buildClarificationQuestions(message: string, confidence: number, divisionId: string, entities: readonly ExtractedEntity[]): string[] {
+export function buildClarificationQuestions(
+  message: string,
+  confidence: number,
+  divisionId: string,
+  entities: readonly ExtractedEntity[],
+  ambiguousPatterns: readonly RegExp[] = GENERIC_AMBIGUOUS_PATTERNS,
+): string[] {
   const questions: string[] = [];
-  const normalized = message.toLowerCase();
   if (confidence < INTENT_CONFIDENCE_THRESHOLD) {
     questions.push("你希望我先查询现状、创建新任务，还是修改已有内容？");
   }
-  if (GENERIC_AMBIGUOUS_PATTERNS.some((pattern) => normalized.includes(pattern))) {
+  if (hasGenericAmbiguityPattern(message, ambiguousPatterns)) {
     questions.push("请补充更具体的范围，例如业务域、时间区间或目标对象。");
   }
   if (divisionId === "general_ops" && /(报表|report|campaign|广告|合同|招聘|deploy|release|代码|bug)/i.test(message)) {
@@ -330,11 +419,14 @@ export function buildMissingSlotQuestions(missingSlots: readonly string[]): stri
   });
 }
 
-export function detectPromptInjection(message: string): PromptInjectionFinding[] {
+export function detectPromptInjection(
+  message: string,
+  patterns: readonly RegExp[] = PROMPT_INJECTION_PATTERNS,
+): PromptInjectionFinding[] {
   const findings: PromptInjectionFinding[] = [];
   const seen = new Set<string>();
 
-  for (const pattern of PROMPT_INJECTION_PATTERNS) {
+  for (const pattern of patterns) {
     const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
     const regex = new RegExp(pattern.source, flags);
     for (const matched of message.matchAll(regex)) {
