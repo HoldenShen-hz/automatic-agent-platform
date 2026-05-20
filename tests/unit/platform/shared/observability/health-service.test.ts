@@ -133,3 +133,75 @@ test("getReportAsync returns unhealthy when postgres health check fails", async 
   assert.equal(report.status, "unhealthy");
   assert.equal(report.dbWritable, false);
 });
+
+test("weak remote reconnect signal requires consecutive reports before degrading health", () => {
+  const workerSnapshot = {
+    workerId: "worker-1",
+    status: "idle",
+    placement: "remote",
+    remoteSessionStatus: "reconnecting",
+    sessionConsistencyCheckStatus: "ok",
+    workspaceSyncStatus: "ok",
+    lastAcknowledgedStreamOffset: "42",
+    queueAffinity: "default",
+    maxConcurrency: 1,
+    runningExecutionsJson: "[]",
+    activeLeaseCount: 0,
+    toolBacklogCount: 0,
+    saturation: null,
+    cpuPct: null,
+  };
+  const mockStore = createMockStore({
+    worker: {
+      listExecutionTicketsByStatuses: () => [],
+      listWorkerSnapshots: () => [workerSnapshot],
+      listStaleWorkerSnapshots: () => [],
+    },
+  });
+  const service = new HealthService(createMockDb(), mockStore);
+
+  const first = service.getReport();
+  const second = service.getReport();
+
+  assert.equal(first.findings.includes("remote_session_reconnecting"), true);
+  assert.equal(first.status, "ok");
+  assert.equal(second.status, "degraded");
+});
+
+test("degraded health requires consecutive clean reports before recovering to ok", () => {
+  let includeWeakSignal = true;
+  const workerSnapshot = {
+    workerId: "worker-1",
+    status: "idle",
+    placement: "remote",
+    remoteSessionStatus: "reconnecting",
+    sessionConsistencyCheckStatus: "ok",
+    workspaceSyncStatus: "ok",
+    lastAcknowledgedStreamOffset: "42",
+    queueAffinity: "default",
+    maxConcurrency: 1,
+    runningExecutionsJson: "[]",
+    activeLeaseCount: 0,
+    toolBacklogCount: 0,
+    saturation: null,
+    cpuPct: null,
+  };
+  const mockStore = createMockStore({
+    worker: {
+      listExecutionTicketsByStatuses: () => [],
+      listWorkerSnapshots: () => includeWeakSignal ? [workerSnapshot] : [],
+      listStaleWorkerSnapshots: () => [],
+    },
+  });
+  const service = new HealthService(createMockDb(), mockStore);
+
+  service.getReport();
+  const degraded = service.getReport();
+  includeWeakSignal = false;
+  const firstRecovery = service.getReport();
+  const secondRecovery = service.getReport();
+
+  assert.equal(degraded.status, "degraded");
+  assert.equal(firstRecovery.status, "degraded");
+  assert.equal(secondRecovery.status, "ok");
+});

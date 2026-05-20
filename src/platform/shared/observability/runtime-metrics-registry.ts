@@ -1,4 +1,7 @@
 const DEFAULT_HISTOGRAM_BUCKETS = [10, 50, 100, 250, 500, 1_000, 5_000];
+const METRIC_NAME_ALIASES = new Map<string, string>([
+  ["oapeflir_loop_duration_ms", "oapeflir_stage_duration_ms"],
+]);
 
 interface HistogramSeries {
   labels: Record<string, string>;
@@ -59,6 +62,10 @@ function normalizeHttpPath(path: string): string {
   return normalized.startsWith("/") ? normalized : `/${normalized}`;
 }
 
+function resolveMetricName(name: string): string {
+  return METRIC_NAME_ALIASES.get(name) ?? name;
+}
+
 function assertValidHistogramBuckets(buckets: readonly number[]): void {
   let previous = Number.NEGATIVE_INFINITY;
   for (const bucket of buckets) {
@@ -83,8 +90,9 @@ export class RuntimeMetricsRegistry {
     labels: Record<string, string | number | boolean | null | undefined>,
     delta: number = 1,
   ): void {
+    const resolvedName = resolveMetricName(name);
     const normalizedLabels = toLabelRecord(labels);
-    const key = buildSeriesKey(name, normalizedLabels);
+    const key = buildSeriesKey(resolvedName, normalizedLabels);
     const series = this.counters.get(key);
     if (series) {
       series.value += delta;
@@ -101,8 +109,9 @@ export class RuntimeMetricsRegistry {
     labels: Record<string, string | number | boolean | null | undefined>,
     value: number,
   ): void {
+    const resolvedName = resolveMetricName(name);
     const normalizedLabels = toLabelRecord(labels);
-    const key = buildSeriesKey(name, normalizedLabels);
+    const key = buildSeriesKey(resolvedName, normalizedLabels);
     this.gauges.set(key, {
       labels: normalizedLabels,
       value,
@@ -115,9 +124,10 @@ export class RuntimeMetricsRegistry {
     value: number,
     buckets: readonly number[] = DEFAULT_HISTOGRAM_BUCKETS,
   ): void {
+    const resolvedName = resolveMetricName(name);
     assertValidHistogramBuckets(buckets);
     const normalizedLabels = toLabelRecord(labels);
-    const key = buildSeriesKey(name, normalizedLabels);
+    const key = buildSeriesKey(resolvedName, normalizedLabels);
     let series = this.histograms.get(key);
     if (!series) {
       series = {
@@ -129,7 +139,7 @@ export class RuntimeMetricsRegistry {
       };
       this.histograms.set(key, series);
     } else if (!areHistogramBucketsEqual(series.buckets, buckets)) {
-      throw new Error(`runtime_metrics.histogram_bucket_mismatch:${name}`);
+      throw new Error(`runtime_metrics.histogram_bucket_mismatch:${resolvedName}`);
     }
     series.count += 1;
     series.sum += value;
@@ -222,8 +232,9 @@ export class RuntimeMetricsRegistry {
   }
 
   public getCounters(name: string): CounterSeries[] {
+    const resolvedName = resolveMetricName(name);
     return [...this.counters.entries()]
-      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === resolvedName)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
@@ -232,8 +243,9 @@ export class RuntimeMetricsRegistry {
   }
 
   public getGauges(name: string): GaugeSeries[] {
+    const resolvedName = resolveMetricName(name);
     return [...this.gauges.entries()]
-      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === resolvedName)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
@@ -242,8 +254,9 @@ export class RuntimeMetricsRegistry {
   }
 
   public getHistograms(name: string): HistogramSeries[] {
+    const resolvedName = resolveMetricName(name);
     return [...this.histograms.entries()]
-      .filter(([key]) => getMetricNameFromSeriesKey(key) === name)
+      .filter(([key]) => getMetricNameFromSeriesKey(key) === resolvedName)
       .map(([, series]) => ({
         labels: { ...series.labels },
         buckets: [...series.buckets],
@@ -264,7 +277,7 @@ export class RuntimeMetricsRegistry {
       this.histograms.clear();
       return;
     }
-    const allowed = new Set(metricNames);
+    const allowed = new Set(metricNames.map((name) => resolveMetricName(name)));
     for (const key of [...this.counters.keys()]) {
       if (allowed.has(key.split("|", 1)[0] ?? "")) {
         this.counters.delete(key);
@@ -283,7 +296,105 @@ export class RuntimeMetricsRegistry {
   }
 }
 
-export const runtimeMetricsRegistry = new RuntimeMetricsRegistry();
+let globalRuntimeMetricsRegistry: RuntimeMetricsRegistry | null = null;
+
+export function getRuntimeMetricsRegistry(): RuntimeMetricsRegistry {
+  globalRuntimeMetricsRegistry ??= new RuntimeMetricsRegistry();
+  return globalRuntimeMetricsRegistry;
+}
+
+export function isRuntimeMetricsRegistryInitialized(): boolean {
+  return globalRuntimeMetricsRegistry != null;
+}
+
+export function resetGlobalRuntimeMetricsRegistry(): void {
+  globalRuntimeMetricsRegistry = null;
+}
+
+export const runtimeMetricsRegistry: RuntimeMetricsRegistry = Object.assign(
+  Object.create(RuntimeMetricsRegistry.prototype) as RuntimeMetricsRegistry,
+  {
+  incrementCounter(name: string, labels: Record<string, string | number | boolean | null | undefined>, delta?: number): void {
+    getRuntimeMetricsRegistry().incrementCounter(name, labels, delta);
+  },
+  setGauge(name: string, labels: Record<string, string | number | boolean | null | undefined>, value: number): void {
+    getRuntimeMetricsRegistry().setGauge(name, labels, value);
+  },
+  observeHistogram(
+    name: string,
+    labels: Record<string, string | number | boolean | null | undefined>,
+    value: number,
+    buckets?: readonly number[],
+  ): void {
+    getRuntimeMetricsRegistry().observeHistogram(name, labels, value, buckets);
+  },
+  recordHttpRequest(method: string, path: string, status: number, durationMs: number | null): void {
+    getRuntimeMetricsRegistry().recordHttpRequest(method, path, status, durationMs);
+  },
+  recordOapeflirStage(stage: string, result: string, durationMs: number): void {
+    getRuntimeMetricsRegistry().recordOapeflirStage(stage, result, durationMs);
+  },
+  recordOapeflirStageEntry(stage: string): void {
+    getRuntimeMetricsRegistry().recordOapeflirStageEntry(stage);
+  },
+  recordOapeflirStageExit(stage: string, result: string, durationSeconds: number): void {
+    getRuntimeMetricsRegistry().recordOapeflirStageExit(stage, result, durationSeconds);
+  },
+  recordLlmLatency(ttfbSeconds: number | null | undefined, totalSeconds: number, model: string, provider: string): void {
+    getRuntimeMetricsRegistry().recordLlmLatency(ttfbSeconds, totalSeconds, model, provider);
+  },
+  recordHarnessRunDuration(runId: string, durationMs: number, status: string): void {
+    getRuntimeMetricsRegistry().recordHarnessRunDuration(runId, durationMs, status);
+  },
+  recordHarnessStepCount(stepCount: number): void {
+    getRuntimeMetricsRegistry().recordHarnessStepCount(stepCount);
+  },
+  recordHarnessBudgetConsumed(consumedUnits: number, totalUnits: number): void {
+    getRuntimeMetricsRegistry().recordHarnessBudgetConsumed(consumedUnits, totalUnits);
+  },
+  recordHarnessExecutionLatency(latencyMs: number): void {
+    getRuntimeMetricsRegistry().recordHarnessExecutionLatency(latencyMs);
+  },
+  recordHarnessTaskStarted(runId: string, taskId: string): void {
+    getRuntimeMetricsRegistry().recordHarnessTaskStarted(runId, taskId);
+  },
+  recordHarnessTaskCompleted(runId: string, taskId: string, status: string): void {
+    getRuntimeMetricsRegistry().recordHarnessTaskCompleted(runId, taskId, status);
+  },
+  recordHarnessPluginInvoked(runId: string, pluginId: string, success: boolean): void {
+    getRuntimeMetricsRegistry().recordHarnessPluginInvoked(runId, pluginId, success);
+  },
+  recordHarnessPolicyDecision(runId: string, policyType: string, outcome: string): void {
+    getRuntimeMetricsRegistry().recordHarnessPolicyDecision(runId, policyType, outcome);
+  },
+  recordKnowledgeQuery(operation: string, durationMs: number, result: string): void {
+    getRuntimeMetricsRegistry().recordKnowledgeQuery(operation, durationMs, result);
+  },
+  recordEventBackpressure(consumerId: string, pendingCount: number, isHighWaterMark: boolean): void {
+    getRuntimeMetricsRegistry().recordEventBackpressure(consumerId, pendingCount, isHighWaterMark);
+  },
+  getCounters(name: string): CounterSeries[] {
+    return getRuntimeMetricsRegistry().getCounters(name);
+  },
+  listCounterNames(): string[] {
+    return getRuntimeMetricsRegistry().listCounterNames();
+  },
+  getGauges(name: string): GaugeSeries[] {
+    return getRuntimeMetricsRegistry().getGauges(name);
+  },
+  listGaugeNames(): string[] {
+    return getRuntimeMetricsRegistry().listGaugeNames();
+  },
+  getHistograms(name: string): HistogramSeries[] {
+    return getRuntimeMetricsRegistry().getHistograms(name);
+  },
+  listHistogramNames(): string[] {
+    return getRuntimeMetricsRegistry().listHistogramNames();
+  },
+  reset(metricNames?: readonly string[]): void {
+    getRuntimeMetricsRegistry().reset(metricNames);
+  },
+});
 
 function getMetricNameFromSeriesKey(seriesKey: string): string {
   return seriesKey.split("|", 1)[0] ?? "";

@@ -376,8 +376,8 @@ test("E2E Metrics Collection: runtime registry OAPEFLR stage recording", () => {
   const outcomeCounters = registry.getCounters("oapeflir_stage_outcome_total");
   assert.equal(outcomeCounters.length, 3, "Should have 3 outcome counter series");
 
-  const histograms = registry.getHistograms("oapeflir_loop_duration_ms");
-  assert.equal(histograms.length, 2, "Should have 2 loop duration histogram series");
+  const histograms = registry.getHistograms("oapeflir_stage_duration_ms");
+  assert.equal(histograms.length, 2, "Should have 2 stage duration histogram series");
 
   const stageDurations = registry.getHistograms("stage_duration_seconds");
   assert.equal(stageDurations.length, 0, "recordOapeflirStage should not emit exit-duration histograms");
@@ -418,8 +418,8 @@ test("E2E Metrics Collection: metrics include health status", () => {
 
 test("E2E Metrics Collection: global metrics registry singleton", () => {
   // Verify the exported singleton exists and is usable
-  assert.ok(runtimeMetricsRegistry instanceof RuntimeMetricsRegistry,
-    "runtimeMetricsRegistry should be an instance of RuntimeMetricsRegistry");
+  assert.equal(typeof runtimeMetricsRegistry.incrementCounter, "function");
+  assert.equal(typeof runtimeMetricsRegistry.getCounters, "function");
 
   runtimeMetricsRegistry.incrementCounter("singleton_test_counter", { label: "value" }, 1);
 

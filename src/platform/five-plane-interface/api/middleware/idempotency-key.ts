@@ -10,6 +10,11 @@
 
 import { AppError } from "../../../contracts/errors.js";
 import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+  resetGlobalSingleton,
+} from "../../../shared/lifecycle/global-singleton.js";
+import {
   type IdempotencyStorage,
   type IdempotencyEntry,
   InMemoryIdempotencyStorage,
@@ -348,23 +353,24 @@ export function createIdempotencyKeyMiddleware(
 /**
  * Global idempotency key middleware instance.
  */
-let globalIdempotencyKeyMiddleware: IdempotencyKeyMiddleware | null = null;
+const globalIdempotencyKeyMiddleware = createGlobalSingletonSlot<IdempotencyKeyMiddleware>();
 
 /**
  * Get or create the global idempotency key middleware.
  */
 export function getGlobalIdempotencyKeyMiddleware(): IdempotencyKeyMiddleware {
-  if (!globalIdempotencyKeyMiddleware) {
-    globalIdempotencyKeyMiddleware = createIdempotencyKeyMiddleware();
-  }
-  return globalIdempotencyKeyMiddleware;
+  return getOrCreateGlobalSingleton(
+    globalIdempotencyKeyMiddleware,
+    () => createIdempotencyKeyMiddleware(),
+    { name: "idempotency-key-middleware" },
+  );
 }
 
 /**
  * Reset the global idempotency key middleware.
  */
 export function resetGlobalIdempotencyKeyMiddleware(): void {
-  globalIdempotencyKeyMiddleware = null;
+  resetGlobalSingleton(globalIdempotencyKeyMiddleware);
 }
 
 /**

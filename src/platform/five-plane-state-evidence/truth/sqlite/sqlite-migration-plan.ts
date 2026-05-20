@@ -68,6 +68,7 @@ export interface SqliteMigrationDefinition {
   name: string;
   sql: string;
   checksum: string;
+  appliedChecksum: string;
   downSql?: string;
   compatibleChecksums?: readonly string[];
 }
@@ -79,6 +80,15 @@ export interface SqliteMigrationDefinition {
  */
 function normalizeSql(sql: string): string {
   return `${sql.trim()}\n`;
+}
+
+function normalizeSqlForCompatibility(sql: string): string {
+  return `${sql
+    .trim()
+    .split("\n")
+    .map((line) => line.trim().replace(/[ \t]+/g, " "))
+    .filter((line) => line.length > 0)
+    .join("\n")}\n`;
 }
 
 /**
@@ -103,19 +113,25 @@ function defineMigration(
   name: string,
   sql: string,
   options: {
+    appliedSql?: string;
     compatibleSql?: readonly string[];
     downSql?: string;
   } = {},
 ): SqliteMigrationDefinition {
   const normalizedSql = normalizeSql(sql);
   const checksum = checksumSql(normalizedSql);
+  const appliedChecksum = checksumSql(options.appliedSql ?? normalizedSql);
   const downSql = normalizeSql(
     options.downSql
       ?? `-- down migration placeholder for ${name}\nSELECT 'manual rollback required for ${name}' AS rollback_notice;`,
   );
   const compatibleChecksums = Array.from(
     new Set(
-      (options.compatibleSql ?? [])
+      [
+        normalizeSqlForCompatibility(sql),
+        ...(options.appliedSql == null ? [] : [normalizeSqlForCompatibility(options.appliedSql)]),
+        ...(options.compatibleSql ?? []),
+      ]
         .map((candidate) => checksumSql(candidate))
         .filter((candidateChecksum) => candidateChecksum !== checksum),
     ),
@@ -125,6 +141,7 @@ function defineMigration(
     name,
     sql: normalizedSql,
     checksum,
+    appliedChecksum,
     downSql,
     compatibleChecksums,
   };
@@ -149,6 +166,187 @@ const PHASE_1A_RUNTIME_PRAGMAS_SQL = `
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 PRAGMA busy_timeout = 5000;
+`;
+
+const MIGRATION_0005_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN placement TEXT NOT NULL DEFAULT 'local';
+ALTER TABLE execution_tickets ADD COLUMN dispatch_target TEXT NOT NULL DEFAULT 'any';
+`;
+
+const MIGRATION_0006_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN isolation_level TEXT NOT NULL DEFAULT 'standard';
+ALTER TABLE execution_tickets ADD COLUMN required_isolation_level TEXT NOT NULL DEFAULT 'standard';
+`;
+
+const MIGRATION_0007_APPLIED_SQL = `
+ALTER TABLE messages ADD COLUMN parts_json TEXT NULL;
+`;
+
+const MIGRATION_0008_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN repo_version TEXT NULL;
+ALTER TABLE execution_tickets ADD COLUMN required_repo_version TEXT NULL;
+`;
+
+const MIGRATION_0009_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN remote_session_status TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN last_acknowledged_stream_offset TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN stream_resume_success_rate REAL NULL;
+ALTER TABLE worker_snapshots ADD COLUMN credential_refresh_success_rate REAL NULL;
+ALTER TABLE worker_snapshots ADD COLUMN session_consistency_check_status TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN session_consistency_checked_at TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN saturation REAL NULL;
+ALTER TABLE worker_snapshots ADD COLUMN active_lease_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE worker_snapshots ADD COLUMN mean_startup_latency_ms INTEGER NULL;
+ALTER TABLE worker_snapshots ADD COLUMN sandbox_success_rate REAL NULL;
+ALTER TABLE worker_snapshots ADD COLUMN repo_cache_hit_rate REAL NULL;
+`;
+
+const MIGRATION_0011_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN registration_verified_at TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN registration_challenge_id TEXT NULL;
+CREATE TABLE IF NOT EXISTS worker_registration_challenges (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL,
+  challenge_token_hash TEXT NOT NULL,
+  allowed_capabilities_json TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_worker_registration_challenges_worker_created_at
+  ON worker_registration_challenges(worker_id, created_at DESC);
+`;
+
+const MIGRATION_0012_APPLIED_SQL = `
+ALTER TABLE events ADD COLUMN session_id TEXT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
+`;
+
+const MIGRATION_0013_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN workspace_sync_status TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN workspace_sync_checked_at TEXT NULL;
+`;
+
+const MIGRATION_0015_APPLIED_SQL = `
+ALTER TABLE memories ADD COLUMN session_id TEXT NULL;
+ALTER TABLE memories ADD COLUMN agent_id TEXT NULL;
+ALTER TABLE memories ADD COLUMN execution_id TEXT NULL;
+ALTER TABLE memories ADD COLUMN memory_layer TEXT NOT NULL DEFAULT 'layer_3';
+ALTER TABLE memories ADD COLUMN source_trust_level TEXT NOT NULL DEFAULT 'trusted';
+ALTER TABLE memories ADD COLUMN quality_score REAL NULL;
+ALTER TABLE memories ADD COLUMN hit_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NULL;
+ALTER TABLE memories ADD COLUMN expires_at TEXT NULL;
+ALTER TABLE memories ADD COLUMN revoked_at TEXT NULL;
+ALTER TABLE memories ADD COLUMN revocation_reason TEXT NULL;
+CREATE INDEX IF NOT EXISTS idx_memories_scope_created_at
+  ON memories(scope, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_task_created_at
+  ON memories(task_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_session_created_at
+  ON memories(session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_execution_created_at
+  ON memories(execution_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_layer_scope_created_at
+  ON memories(memory_layer, scope, created_at DESC);
+`;
+
+const MIGRATION_0024_APPLIED_SQL = `
+CREATE TABLE IF NOT EXISTS organizations (
+  organization_id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  billing_account_id TEXT NULL,
+  default_tenant_id TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(billing_account_id) REFERENCES billing_accounts(account_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_organizations_billing_account_updated_at
+  ON organizations(billing_account_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  workspace_id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  plan_id TEXT NOT NULL,
+  default_policy_set TEXT NOT NULL,
+  organization_id TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workspaces_owner_updated_at
+  ON workspaces(owner_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workspaces_organization_updated_at
+  ON workspaces(organization_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspace_memberships (
+  workspace_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, user_id),
+  FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_memberships_user_workspace
+  ON workspace_memberships(user_id, workspace_id);
+
+CREATE TABLE IF NOT EXISTS organization_memberships (
+  organization_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (organization_id, user_id),
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_organization_memberships_user_organization
+  ON organization_memberships(user_id, organization_id);
+
+ALTER TABLE tenants ADD COLUMN organization_id TEXT NULL;
+ALTER TABLE tenants ADD COLUMN storage_scope TEXT NOT NULL DEFAULT 'tenant';
+ALTER TABLE tenants ADD COLUMN identity_scope TEXT NOT NULL DEFAULT 'tenant';
+ALTER TABLE tenants ADD COLUMN policy_scope TEXT NOT NULL DEFAULT 'tenant';
+ALTER TABLE tenants ADD COLUMN artifact_scope TEXT NOT NULL DEFAULT 'tenant';
+ALTER TABLE tenants ADD COLUMN isolation_mode TEXT NOT NULL DEFAULT 'shared';
+ALTER TABLE tenants ADD COLUMN deployment_mode TEXT NOT NULL DEFAULT 'single_region';
+CREATE INDEX IF NOT EXISTS idx_tenants_organization_updated_at
+  ON tenants(organization_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS deployment_bindings (
+  binding_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  environment_id TEXT NOT NULL,
+  deployment_mode TEXT NOT NULL,
+  region TEXT NOT NULL,
+  network_boundary TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_deployment_bindings_tenant_environment
+  ON deployment_bindings(tenant_id, environment_id);
+
+CREATE TABLE IF NOT EXISTS data_namespaces (
+  namespace_id TEXT PRIMARY KEY,
+  plane TEXT NOT NULL,
+  tenant_id TEXT NULL,
+  organization_id TEXT NULL,
+  workspace_id TEXT NULL,
+  retention_policy TEXT NOT NULL,
+  encryption_policy TEXT NOT NULL,
+  residency_policy TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE SET NULL,
+  FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_plane_updated_at
+  ON data_namespaces(plane, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_tenant_plane
+  ON data_namespaces(tenant_id, plane, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
+  ON data_namespaces(workspace_id, plane, updated_at DESC);
 `;
 
 /**
@@ -318,6 +516,24 @@ CREATE TABLE IF NOT EXISTS harness_runs (
  */
 export const RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL = RUNTIME_PHYSICAL_SCHEMA_SQL;
 
+const MIGRATION_0044_APPLIED_SQL = `
+${RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL.trim()}
+ALTER TABLE harness_runs ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE harness_runs ADD COLUMN trace_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE harness_runs ADD COLUMN goal TEXT NULL;
+ALTER TABLE harness_runs ADD COLUMN risk_level TEXT NOT NULL DEFAULT 'medium';
+ALTER TABLE harness_runs ADD COLUMN domain_id TEXT NOT NULL DEFAULT 'unassigned';
+ALTER TABLE harness_runs ADD COLUMN request_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE harness_runs ADD COLUMN constraint_pack_ref TEXT NOT NULL DEFAULT '';
+ALTER TABLE harness_runs ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';
+ALTER TABLE harness_runs ADD COLUMN fencing_token TEXT NOT NULL DEFAULT '';
+ALTER TABLE budget_reservations ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';
+`;
+
+const MIGRATION_0045_APPLIED_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+`;
+
 /**
  * Registry of all SQLite migrations in order.
  * Each migration is self-contained and can be applied independently.
@@ -329,17 +545,17 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(2, "0002_worker_telemetry_heartbeat", WORKER_TELEMETRY_HEARTBEAT_SQL),
   defineMigration(3, "0003_worker_restart_semantics", WORKER_RESTART_SEMANTICS_SQL),
   defineMigration(4, "0004_agent_execution_records", AGENT_EXECUTION_RECORD_SQL),
-  defineMigration(5, "0005_remote_fallback_routing", REMOTE_FALLBACK_ROUTING_SQL),
-  defineMigration(6, "0006_worker_isolation_routing", WORKER_ISOLATION_ROUTING_SQL),
-  defineMigration(7, "0007_message_parts", MESSAGE_PARTS_SQL),
-  defineMigration(8, "0008_remote_repo_version_routing", REMOTE_REPO_VERSION_ROUTING_SQL),
-  defineMigration(9, "0009_remote_session_telemetry", REMOTE_SESSION_TELEMETRY_SQL),
+  defineMigration(5, "0005_remote_fallback_routing", REMOTE_FALLBACK_ROUTING_SQL, { appliedSql: MIGRATION_0005_APPLIED_SQL }),
+  defineMigration(6, "0006_worker_isolation_routing", WORKER_ISOLATION_ROUTING_SQL, { appliedSql: MIGRATION_0006_APPLIED_SQL }),
+  defineMigration(7, "0007_message_parts", MESSAGE_PARTS_SQL, { appliedSql: MIGRATION_0007_APPLIED_SQL }),
+  defineMigration(8, "0008_remote_repo_version_routing", REMOTE_REPO_VERSION_ROUTING_SQL, { appliedSql: MIGRATION_0008_APPLIED_SQL }),
+  defineMigration(9, "0009_remote_session_telemetry", REMOTE_SESSION_TELEMETRY_SQL, { appliedSql: MIGRATION_0009_APPLIED_SQL }),
   defineMigration(10, "0010_remote_log_aggregation", REMOTE_LOG_AGGREGATION_SQL),
-  defineMigration(11, "0011_trusted_remote_worker_registration", TRUSTED_REMOTE_WORKER_REGISTRATION_SQL),
-  defineMigration(12, "0012_event_session_id", EVENT_SESSION_ID_SQL),
-  defineMigration(13, "0013_remote_workspace_sync_telemetry", REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL),
+  defineMigration(11, "0011_trusted_remote_worker_registration", TRUSTED_REMOTE_WORKER_REGISTRATION_SQL, { appliedSql: MIGRATION_0011_APPLIED_SQL }),
+  defineMigration(12, "0012_event_session_id", EVENT_SESSION_ID_SQL, { appliedSql: MIGRATION_0012_APPLIED_SQL }),
+  defineMigration(13, "0013_remote_workspace_sync_telemetry", REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL, { appliedSql: MIGRATION_0013_APPLIED_SQL }),
   defineMigration(14, "0014_tier1_audit_event_integrity", TIER1_AUDIT_EVENT_INTEGRITY_SQL),
-  defineMigration(15, "0015_memory_scope_and_quality", MEMORY_SCOPE_AND_QUALITY_SQL),
+  defineMigration(15, "0015_memory_scope_and_quality", MEMORY_SCOPE_AND_QUALITY_SQL, { appliedSql: MIGRATION_0015_APPLIED_SQL }),
   defineMigration(16, "0016_evolution_mvp", EVOLUTION_MVP_SQL),
   defineMigration(17, "0017_experience_cache", EXPERIENCE_CACHE_SQL),
   defineMigration(18, "0018_pmf_validation_reports", PMF_VALIDATION_REPORTS_SQL),
@@ -348,7 +564,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(21, "0021_gateway_target_directory", GATEWAY_TARGET_DIRECTORY_SQL),
   defineMigration(22, "0022_enterprise_foundation", ENTERPRISE_FOUNDATION_SQL),
   defineMigration(23, "0023_marketplace_governance", MARKETPLACE_GOVERNANCE_SQL),
-  defineMigration(24, "0024_tenant_data_namespace_foundation", TENANT_DATA_NAMESPACE_FOUNDATION_SQL),
+  defineMigration(24, "0024_tenant_data_namespace_foundation", TENANT_DATA_NAMESPACE_FOUNDATION_SQL, { appliedSql: MIGRATION_0024_APPLIED_SQL }),
   defineMigration(25, "0025_data_plane_flow_foundation", DATA_PLANE_FLOW_FOUNDATION_SQL),
   defineMigration(26, "0026_secret_management_foundation", SECRET_MANAGEMENT_FOUNDATION_SQL),
   defineMigration(27, "0027_release_deployment_ledger", RELEASE_DEPLOYMENT_LEDGER_SQL),
@@ -368,8 +584,8 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
   defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
   defineMigration(43, "0043_harness_runs", HARNESS_RUNS_SQL),
-  defineMigration(44, "0044_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL),
-  defineMigration(45, "0045_worker_snapshot_version", WORKER_SNAPSHOT_VERSION_SQL),
+  defineMigration(44, "0044_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL, { appliedSql: MIGRATION_0044_APPLIED_SQL }),
+  defineMigration(45, "0045_worker_snapshot_version", WORKER_SNAPSHOT_VERSION_SQL, { appliedSql: MIGRATION_0045_APPLIED_SQL }),
   defineMigration(46, "0046_config_rollout_persistence", CONFIG_ROLLOUT_PERSISTENCE_SQL),
 ] as const;
 

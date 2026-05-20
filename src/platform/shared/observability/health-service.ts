@@ -42,7 +42,12 @@ import {
 import { ProviderHealthTracker } from "./provider-health-tracker.js";
 import { StructuredLogger } from "./structured-logger.js";
 
-const healthLogger = new StructuredLogger({ retentionLimit: 50 });
+let healthLogger: StructuredLogger | null = null;
+
+function getHealthLogger(): StructuredLogger {
+  healthLogger ??= new StructuredLogger({ retentionLimit: 50 });
+  return healthLogger;
+}
 
 /**
  * Configuration options for the HealthService including provider tracking,
@@ -75,6 +80,12 @@ export interface HealthServiceOptions {
   staleWorkerThresholdMs?: number;
   /** Optional deterministic clock override used for queue and worker freshness calculations */
   nowMsSupplier?: () => number;
+  /** Minimum weighted degraded score required for an immediate degraded transition */
+  degradedScoreThreshold?: number;
+  /** Consecutive reports with only weak signals before escalating from ok to degraded */
+  weakSignalEscalationWindow?: number;
+  /** Consecutive clean reports required before clearing a degraded status */
+  recoveryWindowReports?: number;
 }
 
 export interface QueueGovernanceHealthSummary {
@@ -151,6 +162,9 @@ export interface HealthStatusReport {
 export class HealthService {
   private readonly startedAt = Date.now();
   private readonly options: Required<HealthServiceOptions>;
+  private previousWeakSignalDetected = false;
+  private previousStatus: HealthStatusReport["status"] = "ok";
+  private cleanRecoveryStreak = 0;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -171,6 +185,9 @@ export class HealthService {
       queueStarvationThresholdSeconds: options.queueStarvationThresholdSeconds ?? 5 * 60,
       staleWorkerThresholdMs: options.staleWorkerThresholdMs ?? 5 * 60_000,
       nowMsSupplier: options.nowMsSupplier ?? Date.now,
+      degradedScoreThreshold: options.degradedScoreThreshold ?? 2,
+      weakSignalEscalationWindow: options.weakSignalEscalationWindow ?? 2,
+      recoveryWindowReports: options.recoveryWindowReports ?? 2,
     };
   }
 
@@ -317,7 +334,7 @@ export class HealthService {
       this.db.connection.exec("DELETE FROM __health_probe");
       return true;
     } catch (err) {
-      healthLogger.log({ level: "warn", message: "Database writability check failed", data: { error: err } });
+      getHealthLogger().log({ level: "warn", message: "Database writability check failed", data: { error: err } });
       return false;
     }
   }
@@ -327,7 +344,7 @@ export class HealthService {
       try {
         return await this.db.healthCheck();
       } catch (err) {
-        healthLogger.log({ level: "warn", message: "Async database health check failed", data: { error: err } });
+        getHealthLogger().log({ level: "warn", message: "Async database health check failed", data: { error: err } });
         return false;
       }
     }
@@ -422,6 +439,27 @@ export class HealthService {
     }
 
     let status: HealthStatusReport["status"] = "ok";
+    const degradedScore = calculateDegradedScore({
+      providerStatus: providerSummary.status,
+      queuedTasks,
+      queuedTaskDegradedThreshold: this.options.queuedTaskDegradedThreshold,
+      tier1AckBacklog,
+      tier1AckDegradedThreshold: this.options.tier1AckDegradedThreshold,
+      queueBacklogSize: queueGovernance.backlogSize,
+      staleBusyWorkers: workerHealth.staleBusyWorkers,
+      remoteReconnectingWorkers: workerHealth.remoteReconnectingWorkers,
+      remoteDegradedSessions: workerHealth.remoteDegradedSessions,
+      remoteViewerOnlyWorkers: workerHealth.remoteViewerOnlyWorkers,
+      remoteConsistencyMismatchWorkers: workerHealth.remoteConsistencyMismatchWorkers,
+      remoteWorkspaceSyncConflictWorkers: workerHealth.remoteWorkspaceSyncConflictWorkers,
+      remoteOffsetMissingWorkers: workerHealth.remoteOffsetMissingWorkers,
+      loadSkewDetected: workerHealth.loadSkewDetected,
+      memoryRssMb,
+      memoryHighWatermarkMb: this.options.memoryHighWatermarkMb,
+      eventLoopLagMs,
+      eventLoopLagThresholdMs: this.options.eventLoopLagThresholdMs,
+    });
+    const weakSignalDetected = degradedScore > 0 && degradedScore < this.options.degradedScoreThreshold;
     if (!dbWritable) {
       status = "unhealthy";
     } else if (
@@ -437,23 +475,28 @@ export class HealthService {
     ) {
       status = "overloaded";
     } else if (
-      queuedTasks > this.options.queuedTaskDegradedThreshold ||
-      tier1AckBacklog > this.options.tier1AckDegradedThreshold ||
-      queueGovernance.backlogSize > this.options.queuedTaskDegradedThreshold ||
-      workerHealth.staleBusyWorkers > 0 ||
-      workerHealth.remoteReconnectingWorkers > 0 ||
-      workerHealth.remoteDegradedSessions > 0 ||
-      workerHealth.remoteViewerOnlyWorkers > 0 ||
-      workerHealth.remoteConsistencyMismatchWorkers > 0 ||
-      workerHealth.remoteWorkspaceSyncConflictWorkers > 0 ||
-      workerHealth.remoteOffsetMissingWorkers > 0 ||
-      workerHealth.loadSkewDetected ||
-      providerSummary.status === "degraded" ||
-      memoryRssMb > this.options.memoryHighWatermarkMb ||
-      eventLoopLagMs > this.options.eventLoopLagThresholdMs
+      degradedScore >= this.options.degradedScoreThreshold
+      || (
+        weakSignalDetected
+        && this.options.weakSignalEscalationWindow <= 2
+        && this.previousWeakSignalDetected
+      )
     ) {
       status = "degraded";
     }
+
+    if (status === "ok") {
+      if (this.previousStatus === "degraded" && degradedScore === 0 && this.cleanRecoveryStreak + 1 < this.options.recoveryWindowReports) {
+        status = "degraded";
+        this.cleanRecoveryStreak += 1;
+      } else if (degradedScore === 0) {
+        this.cleanRecoveryStreak = 0;
+      }
+    } else {
+      this.cleanRecoveryStreak = 0;
+    }
+    this.previousWeakSignalDetected = weakSignalDetected;
+    this.previousStatus = status;
 
     const queuePressureDetected =
       queueGovernance.starvationDetected ||
@@ -517,6 +560,72 @@ export class HealthService {
   }
 }
 
+function calculateDegradedScore(input: {
+  providerStatus: "healthy" | "degraded" | "failed";
+  queuedTasks: number;
+  queuedTaskDegradedThreshold: number;
+  tier1AckBacklog: number;
+  tier1AckDegradedThreshold: number;
+  queueBacklogSize: number;
+  staleBusyWorkers: number;
+  remoteReconnectingWorkers: number;
+  remoteDegradedSessions: number;
+  remoteViewerOnlyWorkers: number;
+  remoteConsistencyMismatchWorkers: number;
+  remoteWorkspaceSyncConflictWorkers: number;
+  remoteOffsetMissingWorkers: number;
+  loadSkewDetected: boolean;
+  memoryRssMb: number;
+  memoryHighWatermarkMb: number;
+  eventLoopLagMs: number;
+  eventLoopLagThresholdMs: number;
+}): number {
+  let score = 0;
+  if (input.providerStatus === "degraded") {
+    score += 2;
+  }
+  if (input.queuedTasks > input.queuedTaskDegradedThreshold) {
+    score += 2;
+  }
+  if (input.tier1AckBacklog > input.tier1AckDegradedThreshold) {
+    score += 2;
+  }
+  if (input.queueBacklogSize > input.queuedTaskDegradedThreshold) {
+    score += 2;
+  }
+  if (input.staleBusyWorkers > 0) {
+    score += 3;
+  }
+  if (input.remoteReconnectingWorkers > 0) {
+    score += 1;
+  }
+  if (input.remoteDegradedSessions > 0) {
+    score += 1;
+  }
+  if (input.remoteViewerOnlyWorkers > 0) {
+    score += 1;
+  }
+  if (input.remoteConsistencyMismatchWorkers > 0) {
+    score += 2;
+  }
+  if (input.remoteWorkspaceSyncConflictWorkers > 0) {
+    score += 2;
+  }
+  if (input.remoteOffsetMissingWorkers > 0) {
+    score += 1;
+  }
+  if (input.loadSkewDetected) {
+    score += 1;
+  }
+  if (input.memoryRssMb > input.memoryHighWatermarkMb) {
+    score += 2;
+  }
+  if (input.eventLoopLagMs > input.eventLoopLagThresholdMs) {
+    score += 2;
+  }
+  return score;
+}
+
 export function toUnifiedRuntimeMode(mode: HealthStatusReport["degradationMode"]): UnifiedRuntimeMode {
   return mapHealthDegradationModeToUnifiedRuntimeMode(mode);
 }
@@ -543,7 +652,7 @@ function parseRunningExecutionCount(runningExecutionsJson: string): number {
     const parsed = JSON.parse(runningExecutionsJson) as unknown;
     return Array.isArray(parsed) ? parsed.length : 0;
   } catch (err) {
-    healthLogger.log({ level: "debug", message: "Failed to parse running execution count", data: { error: err instanceof Error ? err.message : String(err) } });
+    getHealthLogger().log({ level: "debug", message: "Failed to parse running execution count", data: { error: err instanceof Error ? err.message : String(err) } });
     return 0;
   }
 }

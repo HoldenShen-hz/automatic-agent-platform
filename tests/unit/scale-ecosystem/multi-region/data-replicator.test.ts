@@ -584,6 +584,72 @@ test("DataReplicatorService requeues permanently failed events and exposes pendi
   assert.equal(replicator.getCheckpoint("eu-west")?.pendingCount, 0);
 });
 
+test("DataReplicatorService records exhausted deliveries in the outbox and replays them before new buffered events", async () => {
+  const replicator = createDataReplicator("us-east", ["eu-west"], {
+    sourceRegionId: "us-east",
+    targetRegionIds: ["eu-west"],
+    residencyMode: "same_jurisdiction",
+  }, {
+    retryAttempts: 2,
+  });
+  let failCurrentFlush = true;
+  const deliveredAggregateIds: string[] = [];
+  replicator.onEvent("eu-west", async (event) => {
+    if (failCurrentFlush) {
+      throw new Error("replica unavailable");
+    }
+    deliveredAggregateIds.push(event.aggregateId);
+  });
+
+  replicator.recordEvent("eu-west", "task", "task-1", { id: "1" });
+  const failed = await replicator.flush("eu-west");
+
+  assert.equal(failed.success, false);
+  assert.equal(replicator.getPendingOutboxEntries("eu-west").length, 1);
+  assert.equal(replicator.getCheckpoint("eu-west")?.pendingCount, 1);
+
+  failCurrentFlush = false;
+  replicator.recordEvent("eu-west", "task", "task-2", { id: "2" });
+  const replayed = await replicator.flush("eu-west");
+
+  assert.equal(replayed.success, true);
+  assert.deepEqual(deliveredAggregateIds, ["task-1", "task-2"]);
+  assert.equal(replicator.getPendingOutboxEntries("eu-west").length, 0);
+});
+
+test("DataReplicatorService invokes failure compensation after retries are exhausted", async () => {
+  const compensationRequests: Array<{ targetRegionId: string; aggregateId: string; error: string; attemptCount: number }> = [];
+  const replicator = createDataReplicator("us-east", ["eu-west"], {
+    sourceRegionId: "us-east",
+    targetRegionIds: ["eu-west"],
+    residencyMode: "same_jurisdiction",
+  }, {
+    retryAttempts: 2,
+    compensateReplicationFailure: async (request) => {
+      compensationRequests.push({
+        targetRegionId: request.targetRegionId,
+        aggregateId: request.event.aggregateId,
+        error: request.error,
+        attemptCount: request.attemptCount,
+      });
+    },
+  });
+  replicator.onEvent("eu-west", async () => {
+    throw new Error("still failing");
+  });
+
+  replicator.recordEvent("eu-west", "task", "task-1", { id: "1" });
+  const result = await replicator.flush("eu-west");
+
+  assert.equal(result.success, false);
+  assert.deepEqual(compensationRequests, [{
+    targetRegionId: "eu-west",
+    aggregateId: "task-1",
+    error: "still failing",
+    attemptCount: 2,
+  }]);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DataReplicatorService Flush All Tests
 // ─────────────────────────────────────────────────────────────────────────────

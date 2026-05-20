@@ -80,6 +80,38 @@ export interface DependencyResolutionResult {
   suggestions: string[];
 }
 
+export interface DependencyVulnerabilitySource {
+  lookupVulnerabilities(dependency: DependencyInfo): Promise<readonly CveVulnerability[]>;
+}
+
+export interface PackSecurityServiceOptions {
+  vulnerabilitySource?: DependencyVulnerabilitySource;
+  vulnerabilityApiUrl?: string;
+  vulnerabilityEcosystem?: string;
+  fetchImpl?: typeof fetch;
+}
+
+interface OsvQueryResponse {
+  vulns?: Array<{
+    id?: string;
+    aliases?: string[];
+    summary?: string;
+    details?: string;
+    severity?: Array<{ score?: string }>;
+    database_specific?: { severity?: string };
+    affected?: Array<{
+      ranges?: Array<{
+        events?: Array<{
+          introduced?: string;
+          fixed?: string;
+          last_affected?: string;
+        }>;
+      }>;
+      versions?: string[];
+    }>;
+  }>;
+}
+
 const CRITICAL_VULNERABILITY_PATTERNS = [
   { pattern: /exec\s*\(\s*user/i, code: "SAND001", message: "User-controlled exec detected" },
   { pattern: /eval\s*\(\s*user/i, code: "SAND002", message: "User-controlled eval detected" },
@@ -99,26 +131,38 @@ const HIGH_RISK_PERMISSIONS = [
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/i;
 const INLINE_SOURCE_PREFIX = "inline:";
 
-/**
- * Mock CVE database for supply chain security scanning.
- * In production, this would be replaced with OSV, NVD, or similar CVE database integration.
- */
-const MOCK_CVE_DATABASE = new Map<string, readonly CveVulnerability[]>([
-  ["lodash", [
-    { cveId: "CVE-2021-23337", severity: "high", description: "Command Injection in lodash template function", affectedVersionRange: ">=4.0.0 <4.17.22", fixedVersion: "4.17.22" },
-    { cveId: "CVE-2020-8203", severity: "high", description: "Prototype Pollution in lodash", affectedVersionRange: "<4.17.21", fixedVersion: "4.17.21" },
-  ]],
-  ["axios", [
-    { cveId: "CVE-2021-3749", severity: "critical", description: "Server-Side Request Forgery in axios", affectedVersionRange: "<0.21.2", fixedVersion: "0.21.2" },
-    { cveId: "CVE-2020-28168", severity: "high", description: "DNS rebinding vulnerability in axios", affectedVersionRange: "<0.22.0", fixedVersion: "0.22.0" },
-  ]],
-  ["jsonwebtoken", [
-    { cveId: "CVE-2022-23529", severity: "critical", description: "Unrestricted key algorithm type in jsonwebtoken", affectedVersionRange: "<9.0.0", fixedVersion: "9.0.0" },
-  ]],
-  ["express", [
-    { cveId: "CVE-2022-24999", severity: "critical", description: "Open redirect vulnerability in express", affectedVersionRange: "<4.17.21", fixedVersion: "4.17.21" },
-  ]],
-]);
+class OsvDependencyVulnerabilitySource implements DependencyVulnerabilitySource {
+  private readonly apiUrl: string;
+  private readonly ecosystem: string;
+  private readonly fetchImpl: typeof fetch;
+
+  public constructor(options: Required<Pick<PackSecurityServiceOptions, "vulnerabilityApiUrl" | "vulnerabilityEcosystem" | "fetchImpl">>) {
+    this.apiUrl = options.vulnerabilityApiUrl;
+    this.ecosystem = options.vulnerabilityEcosystem;
+    this.fetchImpl = options.fetchImpl;
+  }
+
+  public async lookupVulnerabilities(dependency: DependencyInfo): Promise<readonly CveVulnerability[]> {
+    const response = await this.fetchImpl(this.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        package: {
+          ecosystem: this.ecosystem,
+          name: dependency.packId,
+        },
+        version: dependency.version,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`pack_security_service.osv_lookup_failed:${response.status}`);
+    }
+    const payload = await response.json() as OsvQueryResponse;
+    return (payload.vulns ?? []).map((vulnerability) => mapOsvVulnerability(vulnerability));
+  }
+}
 
 /**
  * Parse a semver string into major.minor.patch components.
@@ -173,7 +217,99 @@ function matchesComparator(version: string, comparator: string): boolean {
   return compareSemver(version, trimmed) === 0;
 }
 
+function buildDependencyCacheKey(dependency: DependencyInfo): string {
+  return `${dependency.packId}@${dependency.version}`;
+}
+
+function normalizeOsvSeverity(value: string | undefined): CveVulnerability["severity"] {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "critical" || normalized === "high" || normalized === "medium" || normalized === "low") {
+    return normalized;
+  }
+  return "medium";
+}
+
+function extractOsvSeverity(vulnerability: NonNullable<OsvQueryResponse["vulns"]>[number]): CveVulnerability["severity"] {
+  const databaseSeverity = vulnerability.database_specific?.severity;
+  if (databaseSeverity != null) {
+    return normalizeOsvSeverity(databaseSeverity);
+  }
+  const score = vulnerability.severity?.[0]?.score?.toUpperCase();
+  if (score?.includes("CRITICAL")) {
+    return "critical";
+  }
+  if (score?.includes("HIGH")) {
+    return "high";
+  }
+  if (score?.includes("LOW")) {
+    return "low";
+  }
+  return "medium";
+}
+
+function extractAffectedRange(vulnerability: NonNullable<OsvQueryResponse["vulns"]>[number]): string {
+  const ranges = vulnerability.affected?.flatMap((affected) =>
+    (affected.ranges ?? []).flatMap((range) =>
+      (range.events ?? []).map((event) => {
+        const parts: string[] = [];
+        if (event.introduced != null) {
+          parts.push(`>=${event.introduced}`);
+        }
+        if (event.fixed != null) {
+          parts.push(`<${event.fixed}`);
+        } else if (event.last_affected != null) {
+          parts.push(`<=${event.last_affected}`);
+        }
+        return parts.join(" ");
+      }),
+    ),
+  ).filter((range) => range.length > 0) ?? [];
+  if (ranges.length > 0) {
+    return ranges.join(" || ");
+  }
+  const versions = vulnerability.affected?.flatMap((affected) => affected.versions ?? []) ?? [];
+  return versions.join(", ");
+}
+
+function extractFixedVersion(vulnerability: NonNullable<OsvQueryResponse["vulns"]>[number]): string | undefined {
+  for (const affected of vulnerability.affected ?? []) {
+    for (const range of affected.ranges ?? []) {
+      for (const event of range.events ?? []) {
+        if (event.fixed != null && event.fixed.length > 0) {
+          return event.fixed;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+function mapOsvVulnerability(vulnerability: NonNullable<OsvQueryResponse["vulns"]>[number]): CveVulnerability {
+  const cveId = vulnerability.aliases?.find((alias) => alias.startsWith("CVE-"))
+    ?? vulnerability.id
+    ?? "OSV-UNKNOWN";
+  const fixedVersion = extractFixedVersion(vulnerability);
+  return {
+    cveId,
+    severity: extractOsvSeverity(vulnerability),
+    description: vulnerability.summary ?? vulnerability.details ?? "No advisory description provided",
+    affectedVersionRange: extractAffectedRange(vulnerability),
+    ...(fixedVersion != null ? { fixedVersion } : {}),
+  };
+}
+
 export class PackSecurityService {
+  private readonly vulnerabilitySource: DependencyVulnerabilitySource;
+  private readonly vulnerabilityCache = new Map<string, DependencyVulnerabilityResult>();
+
+  public constructor(options: PackSecurityServiceOptions = {}) {
+    this.vulnerabilitySource = options.vulnerabilitySource ?? new OsvDependencyVulnerabilitySource({
+      vulnerabilityApiUrl: options.vulnerabilityApiUrl ?? "https://api.osv.dev/v1/query",
+      vulnerabilityEcosystem: options.vulnerabilityEcosystem ?? "npm",
+      fetchImpl: options.fetchImpl ?? fetch,
+    });
+  }
+
   public async runSecurityScan(input: SecurityScanInput): Promise<SecurityScanResult> {
     const scanId = newId("scan");
     const startTime = Date.now();
@@ -258,35 +394,37 @@ export class PackSecurityService {
   }
 
   /**
-   * Scan dependencies for known CVE vulnerabilities.
-   * In production, this would integrate with a real CVE database (e.g., OSV, NVD).
+   * Legacy sync accessor for the most recently loaded dependency vulnerability results.
+   * Call scanDependencyVulnerabilitiesAsync() to refresh from the configured CVE/OSV source.
    */
   public scanDependencyVulnerabilities(
     dependencies: readonly DependencyInfo[],
   ): DependencyVulnerabilityResult[] {
-    const results: DependencyVulnerabilityResult[] = [];
-    const now = nowIso();
-
-    for (const dep of dependencies) {
-      const vulnerabilities: CveVulnerability[] = [];
-      // Mock CVE database - in production, query OSV/NVD API
-      const knownVulnerabilities = MOCK_CVE_DATABASE.get(dep.packId);
-      if (knownVulnerabilities) {
-        for (const vuln of knownVulnerabilities) {
-          // Check if the dependency version is affected
-          if (this.versionMatchesCveRange(dep.version, vuln.affectedVersionRange)) {
-            vulnerabilities.push(vuln);
-          }
-        }
-      }
-      results.push({
-        packId: dep.packId,
-        version: dep.version,
-        vulnerabilities,
-        scanCompletedAt: now,
+    return dependencies.map((dependency) =>
+      this.vulnerabilityCache.get(buildDependencyCacheKey(dependency)) ?? {
+        packId: dependency.packId,
+        version: dependency.version,
+        vulnerabilities: [],
+        scanCompletedAt: nowIso(),
       });
-    }
+  }
 
+  public async scanDependencyVulnerabilitiesAsync(
+    dependencies: readonly DependencyInfo[],
+  ): Promise<DependencyVulnerabilityResult[]> {
+    const results = await Promise.all(
+      dependencies.map(async (dependency) => {
+        const vulnerabilities = [...await this.vulnerabilitySource.lookupVulnerabilities(dependency)];
+        const result: DependencyVulnerabilityResult = {
+          packId: dependency.packId,
+          version: dependency.version,
+          vulnerabilities,
+          scanCompletedAt: nowIso(),
+        };
+        this.vulnerabilityCache.set(buildDependencyCacheKey(dependency), result);
+        return result;
+      }),
+    );
     return results;
   }
 

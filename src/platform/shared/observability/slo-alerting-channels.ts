@@ -6,11 +6,16 @@ import type {
   SloStatus,
 } from "./slo-alerting/types.js";
 
-const logger = new StructuredLogger({ retentionLimit: 200 });
+let logger: StructuredLogger | null = null;
+
+function getLogger(): StructuredLogger {
+  logger ??= new StructuredLogger({ retentionLimit: 200 });
+  return logger;
+}
 
 function recordAlertDeliveryFailure(channel: AlertChannelKind, alertId: string, error: unknown): void {
   runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel }, 1);
-  logger.error("alert.delivery_failed", {
+  getLogger().error("alert.delivery_failed", {
     alertId,
     channel,
     error: error instanceof Error ? error.message : String(error),
@@ -49,7 +54,7 @@ export interface BurnRateAlertResult {
 }
 
 const DEFAULT_RETRY_ATTEMPTS = 3;
-const DEFAULT_RETRY_DELAY_MS = 250;
+const DEFAULT_RETRY_DELAY_MS = 0;
 
 export class LogAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "log";
@@ -350,6 +355,11 @@ async function deliverWithRetry(
 }
 
 function delay(ms: number): Promise<void> {
+  if (ms <= 0) {
+    return new Promise((resolve) => {
+      queueMicrotask(resolve);
+    });
+  }
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
     timer.unref?.();

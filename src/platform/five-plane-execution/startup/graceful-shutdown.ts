@@ -11,6 +11,10 @@
  */
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+} from "../../shared/lifecycle/global-singleton.js";
 
 interface SignalCapable {
   on(event: "SIGTERM" | "SIGINT", listener: () => void): unknown;
@@ -295,15 +299,19 @@ export class GracefulShutdown {
 }
 
 // Singleton instance for process-level shutdown
-let globalShutdownInstance: GracefulShutdown | null = null;
+const globalShutdownInstance = createGlobalSingletonSlot<GracefulShutdown>();
 
 export function getGlobalGracefulShutdown(): GracefulShutdown {
-  if (!globalShutdownInstance) {
-    globalShutdownInstance = new GracefulShutdown({
+  return getOrCreateGlobalSingleton(
+    globalShutdownInstance,
+    () => new GracefulShutdown({
       registerSignalHandlers: true,
-    });
-  }
-  return globalShutdownInstance;
+    }),
+    {
+      name: "graceful-shutdown",
+      configurationFingerprint: JSON.stringify({ registerSignalHandlers: true }),
+    },
+  );
 }
 
 export function createGracefulShutdown(options?: GracefulShutdownOptions): GracefulShutdown {

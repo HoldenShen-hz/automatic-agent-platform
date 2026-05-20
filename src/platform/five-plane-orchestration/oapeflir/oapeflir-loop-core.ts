@@ -615,8 +615,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         if (validatedLearningObjects.length === 0) {
           runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
           runtimeMetricsRegistry.recordOapeflirStageEntry("release");
-          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
           timeline.record("improve", "skipped", null, "improvement.validation_failed", "Skipped improvement because no validated learning objects remained after boundary checks.");
           timeline.record("release", "skipped", null, "release.improve_skipped", "Release was skipped because no improvement candidate was produced.");
           // R5-3: Record improve and release as skipped in FSM
@@ -771,8 +771,8 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         } else {
           runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
           runtimeMetricsRegistry.recordOapeflirStageEntry("release");
-          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
           timeline.record("improve", "skipped", null, boundary.reasonCode, "Autonomy boundary blocked promotion of the candidate into improve.");
           timeline.record("release", "skipped", null, "release.improve_blocked", "Release was blocked because the improvement candidate did not clear the autonomy boundary.");
           // R5-3: Record improve and release as skipped in FSM

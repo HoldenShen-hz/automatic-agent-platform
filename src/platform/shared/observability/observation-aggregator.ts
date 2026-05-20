@@ -124,7 +124,12 @@ export const MemorySituationSchema = z.object({
   averageQualityScore: z.number().min(0).max(1),
 });
 
-const logger = new StructuredLogger({ retentionLimit: 200 });
+let logger: StructuredLogger | null = null;
+
+function getLogger(): StructuredLogger {
+  logger ??= new StructuredLogger({ retentionLimit: 200 });
+  return logger;
+}
 
 /**
  * UnifiedObservation — the single output surface of the Observe stage.
@@ -324,7 +329,7 @@ export class ObservationAggregator {
 
     for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (OBSERVE_OUTPUT_BLACKLIST.has(key)) {
-        logger.warn(`[Observe:R2:blacklist] stripped blacklisted field "${key}" from Observe output`);
+        getLogger().warn(`[Observe:R2:blacklist] stripped blacklisted field "${key}" from Observe output`);
         continue; // drop the field
       }
 

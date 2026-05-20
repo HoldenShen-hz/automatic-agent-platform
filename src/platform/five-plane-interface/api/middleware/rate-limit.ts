@@ -5,6 +5,12 @@
  * Uses token bucket algorithm for fair request throttling.
  */
 
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+  resetGlobalSingleton,
+} from "../../../shared/lifecycle/global-singleton.js";
+
 /**
  * Rate limiting configuration.
  */
@@ -209,24 +215,26 @@ export function createRateLimiter(config: Partial<RateLimitConfig> = {}): RateLi
 /**
  * Global rate limiter instance.
  */
-let globalRateLimiter: RateLimiter | null = null;
+const globalRateLimiter = createGlobalSingletonSlot<RateLimiter>();
 
 /**
  * Get or create the global rate limiter.
  */
 export function getGlobalRateLimiter(): RateLimiter {
-  if (!globalRateLimiter) {
-    globalRateLimiter = createRateLimiter();
-  }
-  return globalRateLimiter;
+  return getOrCreateGlobalSingleton(
+    globalRateLimiter,
+    () => createRateLimiter(),
+    { name: "api-rate-limiter" },
+  );
 }
 
 /**
  * Reset the global rate limiter.
  */
 export function resetGlobalRateLimiter(): void {
-  globalRateLimiter?.resetAll();
-  globalRateLimiter = null;
+  resetGlobalSingleton(globalRateLimiter, {
+    beforeReset: (instance) => instance.resetAll(),
+  });
 }
 
 /**

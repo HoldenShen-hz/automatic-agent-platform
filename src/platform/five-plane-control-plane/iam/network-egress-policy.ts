@@ -38,6 +38,11 @@ import {
   parseUrlForAudit,
   type EgressDestinationType,
 } from "./network-egress-audit.js";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+  resetGlobalSingleton,
+} from "../../shared/lifecycle/global-singleton.js";
 import { PolicyDeniedError } from "../../contracts/errors.js";
 
 /**
@@ -393,7 +398,7 @@ export class NetworkEgressPolicyService {
 /**
  * Global singleton policy service instance.
  */
-let globalPolicyService: NetworkEgressPolicyService | null = null;
+const globalPolicyService = createGlobalSingletonSlot<NetworkEgressPolicyService>();
 
 /**
  * Gets or creates the global network egress policy service.
@@ -402,10 +407,15 @@ let globalPolicyService: NetworkEgressPolicyService | null = null;
  * @returns The global policy service
  */
 export function getGlobalNetworkEgressPolicyService(): NetworkEgressPolicyService {
-  if (globalPolicyService == null) {
-    globalPolicyService = new NetworkEgressPolicyService(loadNetworkEgressPolicyConfigFromEnv());
-  }
-  return globalPolicyService;
+  const config = loadNetworkEgressPolicyConfigFromEnv();
+  return getOrCreateGlobalSingleton(
+    globalPolicyService,
+    () => new NetworkEgressPolicyService(config),
+    {
+      name: "network-egress-policy-service",
+      configurationFingerprint: JSON.stringify(config),
+    },
+  );
 }
 
 /**
@@ -413,7 +423,7 @@ export function getGlobalNetworkEgressPolicyService(): NetworkEgressPolicyServic
  * Primarily used for testing.
  */
 export function resetGlobalNetworkEgressPolicyService(): void {
-  globalPolicyService = null;
+  resetGlobalSingleton(globalPolicyService);
 }
 
 /**

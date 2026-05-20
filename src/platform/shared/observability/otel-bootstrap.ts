@@ -26,7 +26,12 @@ interface OTelModuleSet {
   serviceVersionKey: string;
 }
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+let logger: StructuredLogger | null = null;
+
+function getLogger(): StructuredLogger {
+  logger ??= new StructuredLogger({ retentionLimit: 100 });
+  return logger;
+}
 
 class OtelBootstrapManager {
   private sdk: OTelSdkLike | null = null;
@@ -38,13 +43,13 @@ class OtelBootstrapManager {
     }
     if (config.endpoint == null || config.endpoint.trim().length === 0) {
       runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 0);
-      logger.warn("otel bootstrap skipped: missing endpoint");
+      getLogger().warn("otel bootstrap skipped: missing endpoint");
       return false;
     }
     const modules = loadOtelModules();
     if (modules == null) {
       runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 0);
-      logger.warn("otel bootstrap skipped: OpenTelemetry packages are not installed");
+      getLogger().warn("otel bootstrap skipped: OpenTelemetry packages are not installed");
       return false;
     }
     if (this.sdk != null) {
@@ -65,7 +70,7 @@ class OtelBootstrapManager {
     });
     await Promise.resolve(this.sdk.start());
     runtimeMetricsRegistry.setGauge("otel_runtime_available", {}, 1);
-    logger.info("otel bootstrap initialized", {
+    getLogger().info("otel bootstrap initialized", {
       endpoint: redactOtelEndpoint(config.endpoint),
       serviceName: config.serviceName,
     });

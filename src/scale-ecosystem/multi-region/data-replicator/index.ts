@@ -54,6 +54,35 @@ export interface ReplicationResult {
   errors: readonly string[];
 }
 
+export interface ReplicationOutboxEntry {
+  readonly targetRegionId: string;
+  readonly event: ReplicationEvent;
+  readonly attemptCount: number;
+  readonly firstQueuedAt: string;
+  readonly lastQueuedAt: string;
+  readonly lastError: string;
+}
+
+export interface ReplicationOutboxStore {
+  listPending(targetRegionId: string): readonly ReplicationOutboxEntry[];
+  recordFailure(targetRegionId: string, event: ReplicationEvent, attemptCount: number, error: string): void;
+  acknowledge(targetRegionId: string, eventId: string): void;
+  size(targetRegionId: string): number;
+}
+
+export interface ReplicationFailureCompensationRequest {
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly event: ReplicationEvent;
+  readonly error: string;
+  readonly attemptCount: number;
+  readonly exhaustedAt: string;
+}
+
+export type ReplicationFailureCompensator = (
+  request: ReplicationFailureCompensationRequest,
+) => void | Promise<void>;
+
 /**
  * Replication lag measurement for RPO tracking
  */
@@ -91,6 +120,8 @@ export interface DataReplicatorConfig {
   retryAttempts: number;
   checksumAlgorithm: "sha256" | "md5";
   emit?: (targetRegionId: string, event: ReplicationEvent) => void;
+  replicationOutboxStore?: ReplicationOutboxStore;
+  compensateReplicationFailure?: ReplicationFailureCompensator;
   /** RPO target in milliseconds for lag measurement */
   rpoMs?: number;
   /** Lag measurement configuration */
@@ -147,6 +178,10 @@ export class ReplicationEventBuffer {
     return this.buffer.length;
   }
 
+  public snapshot(): readonly ReplicationEvent[] {
+    return [...this.buffer];
+  }
+
   public shouldFlush(): boolean {
     return this.buffer.length > 0 && (Date.now() - this.lastFlushAt) >= this.flushIntervalMs;
   }
@@ -169,6 +204,35 @@ export class ReplicationEventBuffer {
   }
 }
 
+class InMemoryReplicationOutboxStore implements ReplicationOutboxStore {
+  private readonly entries = new Map<string, ReplicationOutboxEntry>();
+
+  public listPending(targetRegionId: string): readonly ReplicationOutboxEntry[] {
+    return [...this.entries.values()].filter((entry) => entry.targetRegionId === targetRegionId);
+  }
+
+  public recordFailure(targetRegionId: string, event: ReplicationEvent, attemptCount: number, error: string): void {
+    const key = `${targetRegionId}:${event.eventId}`;
+    const existing = this.entries.get(key);
+    this.entries.set(key, {
+      targetRegionId,
+      event,
+      attemptCount: (existing?.attemptCount ?? 0) + attemptCount,
+      firstQueuedAt: existing?.firstQueuedAt ?? nowIso(),
+      lastQueuedAt: nowIso(),
+      lastError: error,
+    });
+  }
+
+  public acknowledge(targetRegionId: string, eventId: string): void {
+    this.entries.delete(`${targetRegionId}:${eventId}`);
+  }
+
+  public size(targetRegionId: string): number {
+    return this.listPending(targetRegionId).length;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Checksum Utility
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,12 +252,16 @@ export class DataReplicatorService {
   private checkpoints = new Map<string, ReplicationCheckpoint>();
   private readonly eventHandlers = new Map<string, (event: ReplicationEvent) => Promise<void>>();
   private readonly emit: (targetRegionId: string, event: ReplicationEvent) => void;
+  private readonly replicationOutboxStore: ReplicationOutboxStore;
+  private readonly compensateReplicationFailure: ReplicationFailureCompensator | undefined;
   private readonly lagMeasurements = new Map<string, ReplicationLagMeasurement>();
   private readonly sourceSequences = new Map<string, number>();
 
   public constructor(config: DataReplicatorConfig) {
     this.config = { ...config };
     this.emit = config.emit ?? (() => {});
+    this.replicationOutboxStore = config.replicationOutboxStore ?? new InMemoryReplicationOutboxStore();
+    this.compensateReplicationFailure = config.compensateReplicationFailure;
     for (const regionId of config.targetRegionIds) {
       this.buffers.set(
         regionId,
@@ -216,6 +284,10 @@ export class DataReplicatorService {
    */
   public getCheckpoint(targetRegionId: string): ReplicationCheckpoint | null {
     return this.checkpoints.get(`${this.config.sourceRegionId}:${targetRegionId}`) ?? null;
+  }
+
+  public getPendingOutboxEntries(targetRegionId: string): readonly ReplicationOutboxEntry[] {
+    return this.replicationOutboxStore.listPending(targetRegionId);
   }
 
   public dispose(): void {
@@ -322,7 +394,9 @@ export class DataReplicatorService {
     }
 
     const events = buffer.flush();
-    if (events.length === 0) {
+    const outboxEvents = this.replicationOutboxStore.listPending(targetRegionId).map((entry) => entry.event);
+    const pendingEvents = dedupeReplicationEvents([...outboxEvents, ...events]);
+    if (pendingEvents.length === 0) {
       return {
         success: true,
         eventsReplicated: 0,
@@ -335,29 +409,24 @@ export class DataReplicatorService {
     let lastSequence = 0;
     const failedEvents: ReplicationEvent[] = [];
 
-    for (const event of events) {
-      try {
-        await this.sendToTarget(targetRegionId, event);
+    for (const event of pendingEvents) {
+      const delivery = await this.deliverEventWithRetries(targetRegionId, event);
+      if (delivery.success) {
+        this.replicationOutboxStore.acknowledge(targetRegionId, event.eventId);
         lastSequence++;
-      } catch (err) {
-        errors.push(err instanceof Error ? err.message : String(err));
-        let replicated = false;
-        // Retry logic
-        for (let attempt = 1; attempt < this.config.retryAttempts; attempt++) {
-          try {
-            await this.sendToTarget(targetRegionId, event);
-            lastSequence++;
-            errors.pop(); // Remove the error we just resolved
-            replicated = true;
-            break;
-          } catch {
-            // Continue to next retry
-          }
-        }
-        if (!replicated) {
-          failedEvents.push(event);
-        }
+        continue;
       }
+      errors.push(delivery.error);
+      failedEvents.push(event);
+      this.replicationOutboxStore.recordFailure(targetRegionId, event, delivery.attemptCount, delivery.error);
+      await this.compensateReplicationFailure?.({
+        sourceRegionId: this.config.sourceRegionId,
+        targetRegionId,
+        event,
+        error: delivery.error,
+        attemptCount: delivery.attemptCount,
+        exhaustedAt: nowIso(),
+      });
     }
 
     if (failedEvents.length > 0) {
@@ -367,7 +436,7 @@ export class DataReplicatorService {
     // Update checkpoint with actual pending count (flushed events not yet acknowledged)
     // pendingCount = total flushed - successfully sent = events still in-flight
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
-    const pendingCount = buffer.size();
+    const pendingCount = countDistinctPendingEvents(buffer.snapshot(), this.replicationOutboxStore.listPending(targetRegionId));
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
@@ -512,6 +581,26 @@ export class DataReplicatorService {
     }
     this.emit(targetRegionId, event);
   }
+
+  private async deliverEventWithRetries(
+    targetRegionId: string,
+    event: ReplicationEvent,
+  ): Promise<{ success: true; attemptCount: number } | { success: false; attemptCount: number; error: string }> {
+    let lastError = "replication_failed";
+    for (let attempt = 1; attempt <= this.config.retryAttempts; attempt++) {
+      try {
+        await this.sendToTarget(targetRegionId, event);
+        return { success: true, attemptCount: attempt };
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    return {
+      success: false,
+      attemptCount: Math.max(this.config.retryAttempts, 1),
+      error: lastError,
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -538,9 +627,42 @@ export function createDataReplicator(
   if (options?.transferComplianceService != null) {
     config.transferComplianceService = options.transferComplianceService;
   }
+  if (options?.emit != null) {
+    config.emit = options.emit;
+  }
+  if (options?.replicationOutboxStore != null) {
+    config.replicationOutboxStore = options.replicationOutboxStore;
+  }
+  if (options?.compensateReplicationFailure != null) {
+    config.compensateReplicationFailure = options.compensateReplicationFailure;
+  }
+  if (options?.rpoMs != null) {
+    config.rpoMs = options.rpoMs;
+  }
+  if (options?.lagMeasurementConfig != null) {
+    config.lagMeasurementConfig = options.lagMeasurementConfig;
+  }
   return new DataReplicatorService(config);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function dedupeReplicationEvents(events: readonly ReplicationEvent[]): ReplicationEvent[] {
+  const unique = new Map<string, ReplicationEvent>();
+  for (const event of events) {
+    unique.set(event.eventId, event);
+  }
+  return [...unique.values()];
+}
+
+function countDistinctPendingEvents(
+  bufferedEvents: readonly ReplicationEvent[],
+  outboxEntries: readonly ReplicationOutboxEntry[],
+): number {
+  return dedupeReplicationEvents([
+    ...bufferedEvents,
+    ...outboxEntries.map((entry) => entry.event),
+  ]).length;
 }

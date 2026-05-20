@@ -8,6 +8,10 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+} from "../../shared/lifecycle/global-singleton.js";
 
 export type ContinuationReason =
   | "max_tokens_exceeded"
@@ -289,11 +293,12 @@ export class OutputContinuationService {
   }
 }
 
-let globalContinuationService: OutputContinuationService | null = null;
+const globalContinuationService = createGlobalSingletonSlot<OutputContinuationService>();
 
 export function getGlobalContinuationService(): OutputContinuationService {
-  if (!globalContinuationService) {
-    globalContinuationService = new OutputContinuationService();
-  }
-  return globalContinuationService;
+  return getOrCreateGlobalSingleton(
+    globalContinuationService,
+    () => new OutputContinuationService(),
+    { name: "output-continuation-service" },
+  );
 }

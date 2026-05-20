@@ -321,7 +321,7 @@ export abstract class OapeflirLoopSupport {
       throw error;
     } finally {
       const durationSeconds = (Date.now() - startedAt) / 1000;
-      runtimeMetricsRegistry.recordOapeflirStageExit(canonicalStage, outcome, durationSeconds);
+      runtimeMetricsRegistry.recordOapeflirStage(canonicalStage, outcome, durationSeconds * 1000);
     }
   }
 

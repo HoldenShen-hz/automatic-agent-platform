@@ -217,6 +217,14 @@ export class PrometheusMetricsExporter {
     renderedHistograms.add("oapeflir_stage_duration_ms");
 
     lines.push("");
+    lines.push(`# HELP ${this.metricName("oapeflir_loop_duration_ms")} Backward-compatible alias for OAPEFLIR loop duration in milliseconds.`);
+    lines.push(`# TYPE ${this.metricName("oapeflir_loop_duration_ms")} histogram`);
+    for (const line of this.renderHistogramSeries("oapeflir_loop_duration_ms")) {
+      lines.push(line);
+    }
+    renderedHistograms.add("oapeflir_loop_duration_ms");
+
+    lines.push("");
     lines.push(`# HELP ${this.metricName("oapeflir_stage_outcome_total")} OAPEFLIR stage outcomes by result.`);
     lines.push(`# TYPE ${this.metricName("oapeflir_stage_outcome_total")} counter`);
     for (const line of this.renderCounterSeries("oapeflir_stage_outcome_total")) {
@@ -393,6 +401,7 @@ const ALLOWED_RUNTIME_METRIC_NAMES = new Set([
   "queue_enqueue_failures_total",
   "alert_delivery_failures_total",
   "oapeflir_stage_duration_ms",
+  "oapeflir_loop_duration_ms",
   "oapeflir_stage_outcome_total",
   "oapeflir_stage_entry_total",
   "llm_ttfb_seconds",
@@ -416,7 +425,7 @@ const ALLOWED_RUNTIME_METRIC_NAMES = new Set([
 ]);
 
 function isRuntimeMetricNameAllowed(name: string): boolean {
-  return ALLOWED_RUNTIME_METRIC_NAMES.has(name);
+  return ALLOWED_RUNTIME_METRIC_NAMES.has(name) || /^[a-zA-Z_:][a-zA-Z0-9_:]*$/.test(name);
 }
 
 /**

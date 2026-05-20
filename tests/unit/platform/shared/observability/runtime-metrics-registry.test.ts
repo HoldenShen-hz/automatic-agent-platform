@@ -4,7 +4,13 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RuntimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
+import {
+  RuntimeMetricsRegistry,
+  getRuntimeMetricsRegistry,
+  isRuntimeMetricsRegistryInitialized,
+  resetGlobalRuntimeMetricsRegistry,
+  runtimeMetricsRegistry,
+} from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 test("recordOapeflirStageEntry increments stage entry counter", () => {
   const registry = new RuntimeMetricsRegistry();
@@ -135,6 +141,18 @@ test("oapeflir_stage_duration_ms uses correct bucket boundaries", () => {
   assert.equal(h.count, 4);
 });
 
+test("legacy oapeflir_loop_duration_ms lookups resolve to the canonical stage histogram", () => {
+  const registry = new RuntimeMetricsRegistry();
+
+  registry.recordOapeflirStage("execute", "completed", 120);
+
+  const canonical = registry.getHistograms("oapeflir_stage_duration_ms");
+  const legacy = registry.getHistograms("oapeflir_loop_duration_ms");
+
+  assert.equal(canonical.length, 1);
+  assert.deepEqual(legacy, canonical);
+});
+
 test("observeHistogram rejects unsorted buckets and bucket drift", () => {
   const registry = new RuntimeMetricsRegistry();
 
@@ -152,4 +170,17 @@ test("metric lookups require exact metric names instead of prefix matches", () =
   assert.equal(registry.getCounters("requests").length, 1);
   assert.equal(registry.getCounters("requests")[0]?.value, 1);
   assert.equal(registry.getCounters("requests_total")[0]?.value, 2);
+});
+
+test("runtimeMetricsRegistry facade initializes lazily and reuses the singleton instance", () => {
+  resetGlobalRuntimeMetricsRegistry();
+  assert.equal(isRuntimeMetricsRegistryInitialized(), false);
+
+  const first = getRuntimeMetricsRegistry();
+  const second = getRuntimeMetricsRegistry();
+  runtimeMetricsRegistry.incrementCounter("singleton_runtime_metric", {}, 1);
+
+  assert.equal(isRuntimeMetricsRegistryInitialized(), true);
+  assert.strictEqual(first, second);
+  assert.equal(runtimeMetricsRegistry.getCounters("singleton_runtime_metric")[0]?.value, 1);
 });

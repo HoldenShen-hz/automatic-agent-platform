@@ -455,12 +455,12 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
   private applyMigration(migration: SqliteMigrationDefinition): void {
     this.transaction(() => {
       if (this.applyCompatibleColumnMigrationIfKnown(migration)) {
-        this.recordAppliedMigration(migration);
+        this.recordAppliedMigration(migration, migration.appliedChecksum);
         return;
       }
 
       this.connection.exec(migration.sql);
-      this.recordAppliedMigration(migration);
+      this.recordAppliedMigration(migration, migration.checksum);
     });
   }
 
@@ -922,19 +922,21 @@ CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
   /**
    * Records an applied migration in the schema_migrations table.
    */
-  private recordAppliedMigration(migration: SqliteMigrationDefinition): void {
+  private recordAppliedMigration(migration: SqliteMigrationDefinition, checksum: string): void {
     this.connection
       .prepare(
         `INSERT INTO schema_migrations (version, name, checksum, applied_at)
          VALUES (?, ?, ?, ?)`,
       )
-      .run(migration.version, migration.name, migration.checksum, new Date().toISOString());
+      .run(migration.version, migration.name, checksum, new Date().toISOString());
   }
 
   /**
    * Checks if an existing migration checksum is compatible with the expected one.
    */
   private isMigrationChecksumCompatible(existingChecksum: string, migration: SqliteMigrationDefinition): boolean {
-    return existingChecksum === migration.checksum || (migration.compatibleChecksums ?? []).includes(existingChecksum);
+    return existingChecksum === migration.checksum
+      || existingChecksum === migration.appliedChecksum
+      || (migration.compatibleChecksums ?? []).includes(existingChecksum);
   }
 }

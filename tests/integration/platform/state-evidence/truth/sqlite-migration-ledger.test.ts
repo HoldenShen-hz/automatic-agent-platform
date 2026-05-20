@@ -98,6 +98,11 @@ test("sqlite database records migration ledger entries and stays idempotent acro
     assert.equal(applied[36]?.version, 37);
     assert.equal(applied[36]?.name, "0037_product_governance_tenant_scope");
     assert.ok(SQLITE_MIGRATIONS.every((migration) => typeof migration.downSql === "string" && migration.downSql.length > 0));
+    assert.ok(SQLITE_MIGRATIONS.every((migration) => migration.appliedChecksum.length === 64));
+    for (const version of [1, 19, 24, 44]) {
+      const migration = SQLITE_MIGRATIONS.find((candidate) => candidate.version === version);
+      assert.ok((migration?.compatibleChecksums?.length ?? 0) > 0, `Migration ${version} should expose compatibility checksums`);
+    }
     assert.equal(schemaStatus.currentVersion, SQLITE_MIGRATIONS.at(-1)?.version ?? 0);
     assert.equal(schemaStatus.expectedVersion, SQLITE_MIGRATIONS.at(-1)?.version ?? 0);
     assert.equal(schemaStatus.upToDate, true);
@@ -201,6 +206,56 @@ ${PHASE_1A_SCHEMA_SQL}`.trim() + "\n",
   }
 });
 
+test("sqlite database records fast-path migrations with the actual applied DDL checksum", () => {
+  const workspace = createTempWorkspace("aa-sqlite-migrations-");
+  const dbPath = join(workspace, "migration-applied-checksum.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+
+    const appliedByVersion = new Map(db.listAppliedMigrations().map((record) => [record.version, record]));
+    db.close();
+
+    for (const version of [5, 6, 7, 8, 9, 11, 12, 13, 15, 24, 44, 45]) {
+      const migration = SQLITE_MIGRATIONS.find((candidate) => candidate.version === version);
+      const applied = appliedByVersion.get(version);
+      assert.ok(migration != null, `Migration ${version} should exist in the plan`);
+      assert.ok(applied != null, `Migration ${version} should exist in the ledger`);
+      assert.equal(applied?.checksum, migration?.appliedChecksum);
+    }
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("sqlite database accepts compatibility-normalized checksums beyond migration v1", () => {
+  const workspace = createTempWorkspace("aa-sqlite-migrations-");
+  const dbPath = join(workspace, "migration-normalized-checksum.db");
+
+  try {
+    const targetMigration = SQLITE_MIGRATIONS.find((migration) => migration.version === 19);
+    assert.ok(targetMigration?.compatibleChecksums?.[0], "Migration 19 should expose a compatibility checksum");
+
+    const legacyPlan = SQLITE_MIGRATIONS.map((migration) =>
+      migration.version === 19
+        ? { ...migration, checksum: targetMigration!.compatibleChecksums![0]! }
+        : migration,
+    );
+
+    const legacyDb = new SqliteDatabase(dbPath, { migrationPlan: legacyPlan });
+    legacyDb.migrate();
+    legacyDb.close();
+
+    const currentDb = new SqliteDatabase(dbPath);
+    currentDb.migrate();
+    assert.equal(currentDb.getSchemaStatus().upToDate, true);
+    currentDb.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("sqlite database automatically upgrades a legacy schema to the latest migration plan", () => {
   const workspace = createTempWorkspace("aa-sqlite-migrations-");
   const dbPath = join(workspace, "migration-auto-upgrade.db");
@@ -245,6 +300,7 @@ CREATE TABLE runtime_state (
 );
 `,
         checksum: "test-checksum-1",
+        appliedChecksum: "test-checksum-1",
       },
       {
         version: 2,
@@ -254,6 +310,7 @@ ALTER TABLE runtime_state ADD COLUMN started_at TEXT NULL;
 ALTER TABLE missing_runtime_state ADD COLUMN impossible TEXT NULL;
 `,
         checksum: "test-checksum-2-bad",
+        appliedChecksum: "test-checksum-2-bad",
       },
     ];
     const repairedMigrationPlan: readonly SqliteMigrationDefinition[] = [
@@ -265,6 +322,7 @@ ALTER TABLE missing_runtime_state ADD COLUMN impossible TEXT NULL;
 ALTER TABLE runtime_state ADD COLUMN started_at TEXT NULL;
 `,
         checksum: "test-checksum-2-good",
+        appliedChecksum: "test-checksum-2-good",
       },
     ];
 

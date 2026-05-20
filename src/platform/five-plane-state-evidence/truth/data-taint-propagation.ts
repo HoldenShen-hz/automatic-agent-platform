@@ -12,6 +12,10 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { DataClassificationLevel } from "../../contracts/types/data-classification.js";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+} from "../../shared/lifecycle/global-singleton.js";
 
 // Re-export the classification level type for convenience
 export type { DataClassificationLevel };
@@ -444,14 +448,15 @@ export class DataTaintPropagationService {
 }
 
 // Singleton instance for platform-wide use
-let globalServiceInstance: DataTaintPropagationService | null = null;
+const globalServiceInstance = createGlobalSingletonSlot<DataTaintPropagationService>();
 
 /**
  * Get the global DataTaintPropagationService instance.
  */
 export function getDataTaintPropagationService(): DataTaintPropagationService {
-  if (!globalServiceInstance) {
-    globalServiceInstance = new DataTaintPropagationService();
-  }
-  return globalServiceInstance;
+  return getOrCreateGlobalSingleton(
+    globalServiceInstance,
+    () => new DataTaintPropagationService(),
+    { name: "data-taint-propagation-service" },
+  );
 }

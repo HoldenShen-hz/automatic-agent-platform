@@ -6,6 +6,11 @@
  */
 
 import { createHash } from "node:crypto";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+  resetGlobalSingleton,
+} from "../../../shared/lifecycle/global-singleton.js";
 
 /**
  * Request fingerprint for deduplication.
@@ -245,21 +250,22 @@ export function createDeduplicationMiddleware(config: Partial<DeduplicationConfi
 /**
  * Global deduplication middleware instance.
  */
-let globalDeduplicationMiddleware: DeduplicationMiddleware | null = null;
+const globalDeduplicationMiddleware = createGlobalSingletonSlot<DeduplicationMiddleware>();
 
 /**
  * Get or create the global deduplication middleware.
  */
 export function getGlobalDeduplicationMiddleware(): DeduplicationMiddleware {
-  if (!globalDeduplicationMiddleware) {
-    globalDeduplicationMiddleware = createDeduplicationMiddleware();
-  }
-  return globalDeduplicationMiddleware;
+  return getOrCreateGlobalSingleton(
+    globalDeduplicationMiddleware,
+    () => createDeduplicationMiddleware(),
+    { name: "request-deduplication-middleware" },
+  );
 }
 
 /**
  * Reset the global deduplication middleware.
  */
 export function resetGlobalDeduplicationMiddleware(): void {
-  globalDeduplicationMiddleware = null;
+  resetGlobalSingleton(globalDeduplicationMiddleware);
 }

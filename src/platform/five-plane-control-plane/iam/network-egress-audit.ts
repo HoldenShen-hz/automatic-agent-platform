@@ -28,6 +28,10 @@
 import { randomUUID } from "node:crypto";
 import { nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import {
+  createGlobalSingletonSlot,
+  getOrCreateGlobalSingleton,
+} from "../../shared/lifecycle/global-singleton.js";
 
 /**
  * Type of network destination for an egress event.
@@ -383,11 +387,14 @@ export class NetworkEgressAuditService {
  * Global singleton instance of the audit service.
  * Provides a convenient way to record egress from anywhere.
  */
-let globalAuditService: NetworkEgressAuditService | null = null;
+const globalAuditService = createGlobalSingletonSlot<NetworkEgressAuditService>();
 
 export function setGlobalEgressAuditService(service: NetworkEgressAuditService): NetworkEgressAuditService {
-  globalAuditService = service;
-  return service;
+  return getOrCreateGlobalSingleton(
+    globalAuditService,
+    () => service,
+    { name: "network-egress-audit-service" },
+  );
 }
 
 /**
@@ -396,10 +403,11 @@ export function setGlobalEgressAuditService(service: NetworkEgressAuditService):
  * @returns The global audit service
  */
 export function getGlobalEgressAuditService(): NetworkEgressAuditService {
-  if (!globalAuditService) {
-    globalAuditService = new NetworkEgressAuditService();
-  }
-  return globalAuditService;
+  return getOrCreateGlobalSingleton(
+    globalAuditService,
+    () => new NetworkEgressAuditService(),
+    { name: "network-egress-audit-service" },
+  );
 }
 
 /**

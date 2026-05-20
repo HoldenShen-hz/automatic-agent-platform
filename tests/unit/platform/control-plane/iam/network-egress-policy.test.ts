@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   createPolicyAwareFetch,
+  getGlobalNetworkEgressPolicyService,
   loadNetworkEgressPolicyConfigFromEnv,
   NetworkEgressPolicyService,
+  resetGlobalNetworkEgressPolicyService,
   type NetworkEgressPolicyConfig,
 } from "../../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
@@ -256,6 +258,37 @@ test("createPolicyAwareFetch throws egress.blocked for internal hosts in enforce
       error.code === "egress.blocked" &&
       error.message.includes("egress.blocked:EGRESS_INTERNAL_BLOCKED"),
   );
+});
+
+test("getGlobalNetworkEgressPolicyService rejects silent configuration drift across callers", () => {
+  const originalMode = process.env.AA_EGRESS_POLICY_MODE;
+  const originalAllowedDomains = process.env.AA_EGRESS_ALLOWED_DOMAINS;
+  try {
+    resetGlobalNetworkEgressPolicyService();
+    process.env.AA_EGRESS_POLICY_MODE = "enforce";
+    process.env.AA_EGRESS_ALLOWED_DOMAINS = "example.com";
+    const first = getGlobalNetworkEgressPolicyService();
+    assert.equal(first.getMode(), "enforce");
+
+    process.env.AA_EGRESS_POLICY_MODE = "audit_only";
+    process.env.AA_EGRESS_ALLOWED_DOMAINS = "different.example.com";
+    assert.throws(
+      () => getGlobalNetworkEgressPolicyService(),
+      /global_singleton\.configuration_drift:network-egress-policy-service/,
+    );
+  } finally {
+    resetGlobalNetworkEgressPolicyService();
+    if (originalMode == null) {
+      delete process.env.AA_EGRESS_POLICY_MODE;
+    } else {
+      process.env.AA_EGRESS_POLICY_MODE = originalMode;
+    }
+    if (originalAllowedDomains == null) {
+      delete process.env.AA_EGRESS_ALLOWED_DOMAINS;
+    } else {
+      process.env.AA_EGRESS_ALLOWED_DOMAINS = originalAllowedDomains;
+    }
+  }
 });
 
 test("createPolicyAwareFetch allows requests that pass policy evaluation", async () => {

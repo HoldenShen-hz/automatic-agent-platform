@@ -43,7 +43,12 @@
 import { StructuredLogger } from "../observability/structured-logger.js";
 import { InternalAppError } from "../../contracts/errors.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+let logger: StructuredLogger | null = null;
+
+function getLogger(): StructuredLogger {
+  logger ??= new StructuredLogger({ retentionLimit: 100 });
+  return logger;
+}
 
 type ServiceInitFn<T> = () => T;
 type ServiceTeardownFn<T> = (instance: T) => void | Promise<void>;
@@ -132,11 +137,11 @@ export class ServiceRegistry {
           const result = registration.teardown(instance);
           if (result instanceof Promise) {
             pending.push(result.catch((err: unknown) => {
-              logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+              getLogger().log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
             }));
           }
         } catch (err) {
-          logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+          getLogger().log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
         }
       }
     }
@@ -161,7 +166,7 @@ export class ServiceRegistry {
       );
     }
     if (this.services.has(name)) {
-      logger.log({
+      getLogger().log({
         level: "warn",
         message: "service_registry.registration_overridden",
         data: { serviceName: name },
@@ -280,7 +285,7 @@ export class ServiceRegistry {
               await result;
             }
           } catch (err) {
-            logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+            getLogger().log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
           }
         }
       }

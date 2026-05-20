@@ -36,7 +36,12 @@ import {
   type RemoteTimelineReport,
 } from "./diagnostics-support.js";
 
-const diagnosticsLogger = new StructuredLogger({ retentionLimit: 50 });
+let diagnosticsLogger: StructuredLogger | null = null;
+
+function getDiagnosticsLogger(): StructuredLogger {
+  diagnosticsLogger ??= new StructuredLogger({ retentionLimit: 50 });
+  return diagnosticsLogger;
+}
 
 
 export class DiagnosticsService {
@@ -342,7 +347,7 @@ export class DiagnosticsService {
     try {
       return this.configGovernance.loadBundle("dev");
     } catch (err) {
-      diagnosticsLogger.log({ level: "warn", message: "Failed to load config bundle", data: { error: err instanceof Error ? err.message : String(err) } });
+      getDiagnosticsLogger().log({ level: "warn", message: "Failed to load config bundle", data: { error: err instanceof Error ? err.message : String(err) } });
       return null;
     }
   }
