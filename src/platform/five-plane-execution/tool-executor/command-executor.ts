@@ -17,7 +17,8 @@
  */
 
 import { type ChildProcess } from "node:child_process";
-import { join, resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -106,22 +107,26 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
       process.kill(-pid, killSignal);
 
       // Schedule SIGKILL as fallback after grace period
-      setTimeout(() => {
+      const escalationTimer = setTimeout(() => {
         try {
           process.kill(-pid, "SIGKILL");
         } catch {
           // Process may have already exited
         }
-      }, forceKillAfterDelayMs).unref();
+      }, forceKillAfterDelayMs);
+      escalationTimer.unref();
+      child.once("close", () => clearTimeout(escalationTimer));
     } else {
       child.kill(killSignal);
-      setTimeout(() => {
+      const escalationTimer = setTimeout(() => {
         try {
           child.kill("SIGKILL");
         } catch {
           // Process may have already exited
         }
-      }, forceKillAfterDelayMs).unref();
+      }, forceKillAfterDelayMs);
+      escalationTimer.unref();
+      child.once("close", () => clearTimeout(escalationTimer));
     }
   } catch (err) {
     commandExecutorLogger.warn("command_executor: process kill failed, forcing SIGKILL", { error: err instanceof Error ? err.message : String(err) });
@@ -136,6 +141,12 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
       // Process may have already exited
     }
   }
+}
+
+function writeFallbackArtifactFile(path: string, content: string): string {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, content, "utf8");
+  return `file://${path}`;
 }
 
 /**
@@ -344,6 +355,7 @@ export class CommandExecutor {
     const child = spawnTracked(this.processTracker, normalizedRequest.command, [...normalizedRequest.args], {
       cwd: cwdCheck.normalizedPath,
       detached: process.platform !== "win32",
+      unref: false,
     }, "bash-tool");
 
     // Abort handler for cancellation support
@@ -373,10 +385,28 @@ export class CommandExecutor {
     let capturedOutputBytes = 0;
     let outputLimitExceeded = false;
     let exitCode: number | null = null;
+    let exitSignal: NodeJS.Signals | null = null;
 
     const effect = EffectBuilder.create("callback_invoke", `spawn:${normalizedRequest.command}`)
       .withExecute(async () => {
         return new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const finish = (error?: unknown): void => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            child.stdout?.removeAllListeners("data");
+            child.stderr?.removeAllListeners("data");
+            child.removeAllListeners("error");
+            child.removeAllListeners("exit");
+            child.removeAllListeners("close");
+            if (error == null) {
+              resolve();
+            } else {
+              reject(error);
+            }
+          };
           child.stdout?.on("data", (chunk: Buffer) => {
             capturedOutputBytes += chunk.byteLength;
             if (capturedOutputBytes > this.maxCapturedOutputBytes) {
@@ -395,11 +425,12 @@ export class CommandExecutor {
             }
             stderr += chunk.toString("utf8");
           });
-          child.on("error", reject);
-          child.on("close", (code: number | null) => {
+          child.once("error", (error) => finish(error));
+          child.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
             exitCode = code;
-            resolve();
+            exitSignal = signal;
           });
+          child.once("close", () => finish());
         });
       })
       .withCompensate(async () => {
@@ -453,13 +484,30 @@ export class CommandExecutor {
               : [...output.warnings, "output_externalized"],
           };
         } catch (err) {
-          commandExecutorLogger.warn("command_executor: failed to externalize output", { error: err instanceof Error ? err.message : String(err), callId: normalizedRequest.callId });
-          output = {
-            ...output,
-            warnings: output.warnings.includes("output_externalize_failed")
-              ? output.warnings
-              : [...output.warnings, "output_externalize_failed"],
-          };
+          const fallbackPath = join(resolve(normalizedRequest.cwd), this.artifactRootDirName, `${normalizedRequest.callId}-${normalizedRequest.command}.log`);
+          try {
+            const fallbackRef = writeFallbackArtifactFile(fallbackPath, fullOutput.sanitizedText);
+            artifacts = [fallbackRef];
+            output = {
+              ...output,
+              rawRef: fallbackRef,
+              warnings: output.warnings.includes("output_externalized")
+                ? output.warnings
+                : [...output.warnings, "output_externalized"],
+            };
+          } catch (fallbackError) {
+            commandExecutorLogger.warn("command_executor: failed to externalize output", {
+              error: err instanceof Error ? err.message : String(err),
+              fallbackError: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+              callId: normalizedRequest.callId,
+            });
+            output = {
+              ...fullOutput,
+              warnings: fullOutput.warnings.includes("output_externalize_failed")
+                ? fullOutput.warnings
+                : [...fullOutput.warnings, "output_externalize_failed"],
+            };
+          }
         }
       }
       const durationMs = Date.now() - startedAt;
@@ -495,7 +543,9 @@ export class CommandExecutor {
       if (exitCode !== 0) {
         return this.buildResult(normalizedRequest, "failed", output, artifacts, durationMs, {
           code: "tool.command_failed",
-          message: `Command exited with code ${exitCode}`,
+          message: exitSignal == null
+            ? `Command exited with code ${exitCode}`
+            : `Command exited with signal ${exitSignal}`,
           retryable: false,
           source: "tool",
         }, `exit:${normalizedRequest.callId}:${exitCode}`, coercedRequestResult.traces);

@@ -49,6 +49,7 @@ type RateLimitKey = string;
  * Tokens refill at a steady rate up to maxRequests per window.
  */
 export class RateLimiter {
+  private static readonly MAX_BUCKETS = 10_000;
   private readonly maxRequests: number;
   private readonly windowMs: number;
   private readonly perTenant: boolean;
@@ -72,8 +73,10 @@ export class RateLimiter {
     if (this.perTenant && options.tenantId) {
       return `tenant:${options.tenantId}`;
     }
-    if (options.clientIp) {
-      return `ip:${options.clientIp}`;
+    if (this.perPrincipal || this.perTenant) {
+      if (options.clientIp) {
+        return `ip:${options.clientIp}`;
+      }
     }
     return "global";
   }
@@ -95,6 +98,7 @@ export class RateLimiter {
         lastRefillAt: now,
       };
       this.buckets.set(key, bucket);
+      this.evictIfNeeded();
       return {
         allowed: true,
         remaining: this.maxRequests - 1,
@@ -120,8 +124,10 @@ export class RateLimiter {
     // Calculate tokens to add based on elapsed time
     const tokensPerMs = this.maxRequests / this.windowMs;
     const tokensToAdd = Math.floor(elapsed * tokensPerMs);
-    bucket.tokens = Math.min(this.maxRequests, bucket.tokens + tokensToAdd);
-    bucket.lastRefillAt = now;
+    if (tokensToAdd > 0) {
+      bucket.tokens = Math.min(this.maxRequests, bucket.tokens + tokensToAdd);
+      bucket.lastRefillAt += Math.floor(tokensToAdd / tokensPerMs);
+    }
 
     // Check if we have tokens available
     if (bucket.tokens <= 0) {
@@ -171,6 +177,16 @@ export class RateLimiter {
       resetAt: bucket.lastRefillAt + this.windowMs,
     };
   }
+
+  private evictIfNeeded(): void {
+    while (this.buckets.size > RateLimiter.MAX_BUCKETS) {
+      const oldestKey = this.buckets.keys().next().value;
+      if (typeof oldestKey !== "string") {
+        break;
+      }
+      this.buckets.delete(oldestKey);
+    }
+  }
 }
 
 /**
@@ -209,6 +225,7 @@ export function getGlobalRateLimiter(): RateLimiter {
  * Reset the global rate limiter.
  */
 export function resetGlobalRateLimiter(): void {
+  globalRateLimiter?.resetAll();
   globalRateLimiter = null;
 }
 

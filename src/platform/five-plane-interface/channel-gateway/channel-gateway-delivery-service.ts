@@ -22,7 +22,8 @@ function safeJsonParsePayload(jsonString: string, errorContext: string): Record<
     const parsed = JSON.parse(jsonString);
     return DeliveryPayloadSchema.parse(parsed);
   } catch (err) {
-    logger.warn(`${errorContext}: payload validation failed`, {
+    logger.warn("channel_gateway.payload_validation_failed", {
+      errorContext,
       error: err instanceof Error ? err.message : String(err),
     });
     // Return empty object on validation failure to allow processing to continue

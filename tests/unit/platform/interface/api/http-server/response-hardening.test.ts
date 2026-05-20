@@ -242,3 +242,19 @@ test("decorateResponseHeaders appends Origin to existing vary", () => {
   const result = decorateResponseHeaders(payload, "https://example.com", config);
   assert.equal(result.headers["vary"], "Accept-Encoding, Origin");
 });
+
+test("decorateResponseHeaders applies default no-store cache headers", () => {
+  const result = decorateResponseHeaders(
+    {
+      statusCode: 200,
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: "{\"ok\":true}",
+    },
+    undefined,
+    DEFAULT_CORS_CONFIG,
+  );
+
+  assert.equal(result.headers["cache-control"], "private, no-store, max-age=0");
+  assert.equal(result.headers["pragma"], "no-cache");
+  assert.equal(result.headers["vary"], "Accept-Encoding");
+});

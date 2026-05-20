@@ -70,13 +70,11 @@ test("calculateQuorumStatus tracks voting window expiration", () => {
     const status = calculateQuorumStatus(votes, config, startTime, expiredTime);
     assert.equal(status.isVotingWindowExpired, true);
 });
-test("mergeVotes updates existing vote", () => {
+test("mergeVotes rejects duplicate immutable vote", () => {
     const existing = [
         { approverId: "user_1", voteType: VoteType.APPROVE, votedAt: "2026-04-14T00:00:00.000Z" },
     ];
-    const updated = mergeVotes(existing, { approverId: "user_1", voteType: VoteType.REJECT, votedAt: "2026-04-14T00:01:00.000Z" });
-    assert.equal(updated.length, 1);
-    assert.equal(updated[0].voteType, VoteType.REJECT);
+    assert.throws(() => mergeVotes(existing, { approverId: "user_1", voteType: VoteType.REJECT, votedAt: "2026-04-14T00:01:00.000Z" }), /immutable vote/);
 });
 test("mergeVotes adds new vote", () => {
     const existing = [

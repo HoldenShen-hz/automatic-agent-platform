@@ -118,6 +118,27 @@ export class ContextIsolator {
       if (!allAllowed) return false;
     }
 
+    const parentDenied = new Set(parent.constraints.deniedDomains ?? []);
+    if ((requested.constraints.allowedDomains ?? []).some((domain) => parentDenied.has(domain))) {
+      return false;
+    }
+
+    if (
+      parent.constraints.maxDurationMs != null
+      && requested.constraints.maxDurationMs != null
+      && requested.constraints.maxDurationMs > parent.constraints.maxDurationMs
+    ) {
+      return false;
+    }
+
+    if (
+      parent.constraints.maxTokens != null
+      && requested.constraints.maxTokens != null
+      && requested.constraints.maxTokens > parent.constraints.maxTokens
+    ) {
+      return false;
+    }
+
     return true;
   }
 
@@ -180,13 +201,28 @@ export class ContextIsolator {
     // R26-01 fix: Guard against division by zero when parent has no actions
     const parentActionCount = parent.permissions.actions.length;
     const requiredActionCount = spec.requiredPermissions.actions.length;
+    const parentResourceCount = parent.permissions.resources.length;
+    const requiredResourceCount = spec.requiredPermissions.resources.length;
 
-    if (parentActionCount === 0) {
-      // No actions to delegate - cannot delegate anything
-      return requiredActionCount === 0 ? IsolationLevel.FULL : IsolationLevel.MINIMAL;
+    if (parentActionCount === 0 && parentResourceCount === 0) {
+      return requiredActionCount === 0 && requiredResourceCount === 0 ? IsolationLevel.FULL : IsolationLevel.MINIMAL;
     }
 
-    const permissionRatio = requiredActionCount / parentActionCount;
+    const actionRatio = parentActionCount === 0 ? 0 : requiredActionCount / parentActionCount;
+    const resourceRatio = parentResourceCount === 0 ? 0 : requiredResourceCount / parentResourceCount;
+    const durationRatio = this.computeConstraintRatio(
+      parent.permissions.constraints.maxDurationMs,
+      spec.requiredPermissions.constraints.maxDurationMs,
+    );
+    const tokenRatio = this.computeConstraintRatio(
+      parent.permissions.constraints.maxTokens,
+      spec.requiredPermissions.constraints.maxTokens,
+    );
+    const domainRatio = this.computeDomainRatio(
+      parent.permissions.constraints.allowedDomains,
+      spec.requiredPermissions.constraints.allowedDomains,
+    );
+    const permissionRatio = Math.max(actionRatio, resourceRatio, durationRatio, tokenRatio, domainRatio);
 
     if (permissionRatio >= 0.9) {
       return IsolationLevel.FULL;
@@ -199,11 +235,28 @@ export class ContextIsolator {
 
   private determineSandboxTier(
     parent: AgentContext,
-    _spec: DelegationSpec,
+    spec: DelegationSpec,
   ): AgentContext["sandboxTier"] {
-    // Child sandbox tier is determined by parent's sandbox tier
-    // Child cannot have more privilege than parent
-    return normalizeSandboxMode(parent.sandboxTier);
+    const parentSandboxTier = normalizeSandboxMode(parent.sandboxTier);
+    if (parentSandboxTier === "read_only") {
+      return parentSandboxTier;
+    }
+    const requestedActions = new Set(spec.requiredPermissions.actions.map((action) => action.toLowerCase()));
+    const requestsWriteAccess = [...requestedActions].some((action) =>
+      action.includes("write") || action.includes("edit") || action.includes("delete") || action.includes("create")
+    );
+    const requestsExecution = [...requestedActions].some((action) =>
+      action.includes("exec") || action.includes("bash") || action.includes("shell") || action.includes("run")
+    );
+    const requestsExternalAccess = (spec.requiredPermissions.constraints.allowedDomains?.length ?? 0) > 0;
+
+    if (!requestsWriteAccess && !requestsExecution && !requestsExternalAccess) {
+      return "read_only";
+    }
+    if (parentSandboxTier === "scoped_external_access" && !requestsExternalAccess) {
+      return requestsWriteAccess || requestsExecution ? "workspace_write" : "read_only";
+    }
+    return parentSandboxTier;
   }
 
   private narrowPermissionsInternal(
@@ -249,6 +302,7 @@ export class ContextIsolator {
             ...this.mergeConstraints(parentPermissions.constraints, requiredPermissions.constraints),
             // Additional restrictions for sandboxed execution
             maxDurationMs: Math.min(
+              parentPermissions.constraints.maxDurationMs ?? Infinity,
               requiredPermissions.constraints.maxDurationMs ?? Infinity,
               60000, // Max 60 seconds for sandboxed
             ),
@@ -259,13 +313,6 @@ export class ContextIsolator {
 
   private intersectLists(parent: readonly string[], child: readonly string[]): string[] {
     return parent.filter((item) => child.includes(item));
-  }
-
-  private mergeActions(parent: readonly string[], child: readonly string[]): string[] {
-    if (child.length === 0) {
-      return [...parent];
-    }
-    return parent.filter((action) => child.includes(action));
   }
 
   private mergeConstraints(
@@ -316,6 +363,29 @@ export class ContextIsolator {
     // This ensures denied domains are never discarded - any domain denied by either is denied
     const combined = [...parent, ...child];
     return [...new Set(combined)];
+  }
+
+  private computeConstraintRatio(parentValue: number | undefined, childValue: number | undefined): number {
+    if (parentValue == null || parentValue <= 0) {
+      return childValue == null ? 0 : 1;
+    }
+    if (childValue == null) {
+      return 0;
+    }
+    return Math.min(1, childValue / parentValue);
+  }
+
+  private computeDomainRatio(
+    parentDomains: readonly string[] | undefined,
+    childDomains: readonly string[] | undefined,
+  ): number {
+    if (parentDomains == null || parentDomains.length === 0) {
+      return childDomains == null || childDomains.length === 0 ? 0 : 1;
+    }
+    if (childDomains == null || childDomains.length === 0) {
+      return 0;
+    }
+    return Math.min(1, childDomains.length / parentDomains.length);
   }
 }
 

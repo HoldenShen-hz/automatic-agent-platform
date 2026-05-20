@@ -125,6 +125,8 @@ export interface StreamingIncrementResult {
   readonly incrementalAmount: number;
   readonly totalReserved: number;
   readonly expiresAt: string;
+  readonly ledger: BudgetLedger;
+  readonly reservation: BudgetReservation;
 }
 
 export interface BudgetSettlementPersistence {

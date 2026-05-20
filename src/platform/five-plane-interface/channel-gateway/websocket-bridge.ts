@@ -2,7 +2,8 @@
  * @fileoverview WebSocket Bridge - Real-time task status updates over WebSocket
  *
  * Uses WebSocket subprotocol auth instead of query-string JWTs and attaches
- * sequence numbers plus client acknowledgements for at-least-once delivery.
+ * sequence numbers plus client acknowledgements for replayable best-effort
+ * delivery. Droppable progress updates may be elided under backpressure.
  */
 
 import type { IncomingMessage, Server } from "node:http";
@@ -12,16 +13,19 @@ import { z } from "zod";
 
 import type { ApiAuthService } from "../api/api-auth-service.js";
 import {
+  WEBSOCKET_CLOSE_CODE_CONNECTION_LIMIT,
+  WEBSOCKET_CLOSE_CODE_CONNECTION_TIMEOUT,
   WEBSOCKET_CLOSE_CODE_INVALID_TOKEN,
   WEBSOCKET_CLOSE_CODE_MISSING_TOKEN,
+  WEBSOCKET_CLOSE_CODE_SERVER_SHUTDOWN,
 } from "../../contracts/constants/network.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-scope-filter.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-const WS_PATH = "/ws/v1/stream";
-const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
-const CLOSE_TIMEOUT_MS = 100;
+export const WS_PATH = "/ws/v1/stream";
+const DEFAULT_CLOSE_TIMEOUT_MS = 100;
+const DEFAULT_TASK_HISTORY_RETENTION_MS = 60_000;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
 const DEFAULT_MAX_CONNECTIONS = 1_000;
 const DEFAULT_MAX_TOTAL_SUBSCRIPTIONS = 10_000;
@@ -98,6 +102,8 @@ export interface WebSocketBridgeOptions {
   maxTotalSubscriptions?: number;
   maxTaskEventHistoryTasks?: number;
   maxTaskEventHistoryPerTask?: number;
+  closeTimeoutMs?: number;
+  taskHistoryRetentionMs?: number;
 }
 
 export interface WebSocketBridgeMetrics {
@@ -122,6 +128,9 @@ export class WebSocketBridge {
   private readonly maxTotalSubscriptions: number;
   private readonly maxTaskEventHistoryTasks: number;
   private readonly maxTaskEventHistoryPerTask: number;
+  private readonly closeTimeoutMs: number;
+  private readonly taskHistoryRetentionMs: number;
+  private readonly historyCleanupTimers = new Map<string, NodeJS.Timeout>();
 
   public constructor(
     server: Server,
@@ -136,10 +145,13 @@ export class WebSocketBridge {
     this.maxTotalSubscriptions = options.maxTotalSubscriptions ?? DEFAULT_MAX_TOTAL_SUBSCRIPTIONS;
     this.maxTaskEventHistoryTasks = options.maxTaskEventHistoryTasks ?? DEFAULT_MAX_TASK_EVENT_HISTORY_TASKS;
     this.maxTaskEventHistoryPerTask = options.maxTaskEventHistoryPerTask ?? MAX_TASK_EVENT_HISTORY;
+    this.closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
+    this.taskHistoryRetentionMs = options.taskHistoryRetentionMs ?? DEFAULT_TASK_HISTORY_RETENTION_MS;
     this.wss = new WebSocketServer({
       server,
       path: WS_PATH,
       maxPayload: options.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
+      handleProtocols: (protocols) => this.selectProtocol(protocols),
     });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
     this.heartbeatTimer = setInterval(
@@ -152,8 +164,9 @@ export class WebSocketBridge {
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
     if (this.clients.size >= this.maxConnections) {
-      ws.close(1013, "Connection limit exceeded");
-      logger.warn("WebSocket connection rejected: connection limit exceeded", {
+      this.closeClient(ws, WEBSOCKET_CLOSE_CODE_CONNECTION_LIMIT, "Connection limit exceeded");
+      logger.warn("websocket.connection_rejected", {
+        reasonCode: "connection_limit_exceeded",
         maxConnections: this.maxConnections,
       });
       return;
@@ -162,8 +175,10 @@ export class WebSocketBridge {
     const params = this.extractConnectionParams(req);
 
     if (!params.token) {
-      ws.close(WEBSOCKET_CLOSE_CODE_MISSING_TOKEN, "Missing token");
-      logger.warn("WebSocket connection rejected: missing subprotocol token");
+      this.closeClient(ws, WEBSOCKET_CLOSE_CODE_MISSING_TOKEN, "Missing token");
+      logger.warn("websocket.connection_rejected", {
+        reasonCode: "missing_subprotocol_token",
+      });
       return;
     }
 
@@ -172,8 +187,9 @@ export class WebSocketBridge {
       const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${params.token}` });
       principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
     } catch (error) {
-      ws.close(WEBSOCKET_CLOSE_CODE_INVALID_TOKEN, "Invalid token");
-      logger.warn("WebSocket connection rejected: invalid subprotocol token", {
+      this.closeClient(ws, WEBSOCKET_CLOSE_CODE_INVALID_TOKEN, "Invalid token");
+      logger.warn("websocket.connection_rejected", {
+        reasonCode: "invalid_subprotocol_token",
         error: error instanceof Error ? error.message : String(error),
       });
       return;
@@ -303,6 +319,7 @@ export class WebSocketBridge {
     if (!client.subscribedTasks.has(taskId) && this.getTotalSubscriptionCount() >= this.maxTotalSubscriptions) {
       return "subscription_limit_exceeded";
     }
+    this.cancelTaskHistoryCleanup(taskId);
     client.subscribedTasks.add(taskId);
     if (!this.taskSubscribers.has(taskId)) {
       this.taskSubscribers.set(taskId, new Set());
@@ -321,6 +338,7 @@ export class WebSocketBridge {
     this.taskSubscribers.get(taskId)?.delete(ws);
     if (this.taskSubscribers.get(taskId)?.size === 0) {
       this.taskSubscribers.delete(taskId);
+      this.scheduleTaskHistoryCleanup(taskId);
     }
   }
 
@@ -333,6 +351,7 @@ export class WebSocketBridge {
       this.taskSubscribers.get(taskId)?.delete(ws);
       if (this.taskSubscribers.get(taskId)?.size === 0) {
         this.taskSubscribers.delete(taskId);
+        this.scheduleTaskHistoryCleanup(taskId);
       }
     }
     client.pendingAcks.clear();
@@ -345,6 +364,7 @@ export class WebSocketBridge {
 
   public broadcastToTask(taskId: string, event: TaskWebSocketEvent, eventId: string = `evt-${Date.now()}`): void {
     const subscribers = this.taskSubscribers.get(taskId);
+    this.cancelTaskHistoryCleanup(taskId);
     this.recordTaskEvent(taskId, eventId, event);
     if (subscribers == null || subscribers.size === 0) {
       return;
@@ -400,7 +420,7 @@ export class WebSocketBridge {
   public async close(): Promise<void> {
     clearInterval(this.heartbeatTimer);
     for (const [ws] of this.clients) {
-      ws.close(1001, "Server shutting down");
+      ws.close(WEBSOCKET_CLOSE_CODE_SERVER_SHUTDOWN, "Server shutting down");
     }
     await new Promise<void>((resolve) => {
       let settled = false;
@@ -410,7 +430,7 @@ export class WebSocketBridge {
           resolve();
         }
       };
-      const closeTimeout = setTimeout(() => finish(), CLOSE_TIMEOUT_MS);
+      const closeTimeout = setTimeout(() => finish(), this.closeTimeoutMs);
       closeTimeout.unref?.();
       this.wss.close(() => {
         clearTimeout(closeTimeout);
@@ -426,26 +446,22 @@ export class WebSocketBridge {
         continue;
       }
       if (!client.isAlive) {
-        logger.warn("WebSocket heartbeat timeout", {
+        logger.warn("websocket.connection_closed", {
+          reasonCode: "heartbeat_timeout",
           actorId: client.principal.actorId,
           tenantId: client.principal.tenantId,
         });
-        this.handleDisconnection(ws);
-        if (typeof (ws as { terminate?: () => void }).terminate === "function") {
-          (ws as { terminate: () => void }).terminate();
-        } else {
-          ws.close(4000, "Heartbeat timeout");
-        }
+        this.closeClient(ws, WEBSOCKET_CLOSE_CODE_CONNECTION_TIMEOUT, "Heartbeat timeout", { terminate: true });
         continue;
       }
       if (Date.now() - client.lastActivityAt > this.idleTimeoutMs) {
-        logger.warn("WebSocket idle timeout", {
+        logger.warn("websocket.connection_closed", {
+          reasonCode: "idle_timeout",
           actorId: client.principal.actorId,
           tenantId: client.principal.tenantId,
           idleTimeoutMs: this.idleTimeoutMs,
         });
-        this.handleDisconnection(ws);
-        ws.close(4000, "Idle timeout");
+        this.closeClient(ws, WEBSOCKET_CLOSE_CODE_CONNECTION_TIMEOUT, "Idle timeout");
         continue;
       }
       client.isAlive = false;
@@ -476,8 +492,10 @@ export class WebSocketBridge {
       if (key === "lastEventId") result.lastEventId = value;
     }
 
-    // Resume parameters remain supported in the URL query string for client reconnects,
-    // but auth token must still come from Sec-WebSocket-Protocol rather than the URL.
+    // Resume parameters are intentionally accepted in two places:
+    // 1. `Sec-WebSocket-Protocol`: `<token>,taskId=<task>,lastEventId=<event>`
+    // 2. URL query string: `?taskId=...&lastEventId=...` for reconnect flows.
+    // Authentication always comes from the selected subprotocol, never the URL.
     if (req.url != null) {
       const url = new URL(req.url, "http://127.0.0.1");
       result.taskId ??= url.searchParams.get("taskId");
@@ -560,31 +578,6 @@ export class WebSocketBridge {
     if (isUnderBackPressure && droppableEventTypes.has(event.eventType)) {
       this.slowConsumers.add(ws);
       client.bufferedEventCount = client.pendingAcks.size;
-      // Only send backpressure warning periodically (every 10 events or when threshold significantly exceeded)
-      if (client.bufferedEventCount % 10 === 0 || bufferedAmount > backPressureThreshold * 2) {
-        ws.send(JSON.stringify({
-          type: "backpressure_warning",
-          taskId,
-          bufferedCount: client.bufferedEventCount,
-          bufferedBytes: bufferedAmount,
-          reason: "slow_consumer",
-        } satisfies WebSocketMessageType));
-      }
-      return;
-    }
-
-    // For critical events (completed, failed, approval_requested), always send but track backpressure
-    const criticalEventTypes = new Set(["completed", "failed", "approval_requested"]);
-    if (isUnderBackPressure && !criticalEventTypes.has(event.eventType)) {
-      this.slowConsumers.add(ws);
-      client.bufferedEventCount = client.pendingAcks.size;
-      ws.send(JSON.stringify({
-        type: "backpressure_warning",
-        taskId,
-        bufferedCount: client.bufferedEventCount,
-        bufferedBytes: bufferedAmount,
-        reason: "slow_consumer",
-      } satisfies WebSocketMessageType));
       return;
     }
 
@@ -606,7 +599,6 @@ export class WebSocketBridge {
     });
     client.bufferedEventCount = client.pendingAcks.size;
 
-    // R12-07: Check buffered amount after send and warn if still under pressure
     ws.send(JSON.stringify({
       type: "task_update",
       taskId,
@@ -618,22 +610,21 @@ export class WebSocketBridge {
     const newBufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
     if (newBufferedAmount > backPressureThreshold) {
       this.slowConsumers.add(ws);
-      // Send backpressure warning after send if still over threshold
-      ws.send(JSON.stringify({
-        type: "backpressure_warning",
-        taskId,
-        bufferedCount: client.bufferedEventCount,
-        bufferedBytes: newBufferedAmount,
-        reason: "slow_consumer",
-      } satisfies WebSocketMessageType));
     } else {
       this.slowConsumers.delete(ws);
     }
   }
 
   private getBackPressureThreshold(): number {
-    // Allow threshold override via environment variable or use default
-    return parseInt(process.env.WS_BACK_PRESSURE_THRESHOLD ?? "", 10) || DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
+    const raw = process.env.WS_BACK_PRESSURE_THRESHOLD;
+    if (raw == null || raw.trim().length === 0) {
+      return DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
+    }
+    return parsed;
   }
 
   private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {
@@ -649,7 +640,58 @@ export class WebSocketBridge {
         break;
       }
       this.taskEventHistory.delete(oldestTaskId);
+      this.cancelTaskHistoryCleanup(oldestTaskId);
     }
+  }
+
+  private selectProtocol(protocols: Set<string> | string[]): string | false {
+    const values = Array.isArray(protocols) ? protocols : [...protocols];
+    for (const protocol of values) {
+      if (protocol.trim().length > 0) {
+        return protocol;
+      }
+    }
+    return false;
+  }
+
+  private closeClient(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    options: { terminate?: boolean } = {},
+  ): void {
+    if (options.terminate && typeof (ws as { terminate?: () => void }).terminate === "function") {
+      (ws as { terminate: () => void }).terminate();
+      return;
+    }
+    if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) {
+      ws.close(code, reason);
+      return;
+    }
+    this.handleDisconnection(ws);
+  }
+
+  private scheduleTaskHistoryCleanup(taskId: string): void {
+    if (this.taskHistoryRetentionMs <= 0 || this.historyCleanupTimers.has(taskId)) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      this.historyCleanupTimers.delete(taskId);
+      if ((this.taskSubscribers.get(taskId)?.size ?? 0) === 0) {
+        this.taskEventHistory.delete(taskId);
+      }
+    }, this.taskHistoryRetentionMs);
+    timer.unref?.();
+    this.historyCleanupTimers.set(taskId, timer);
+  }
+
+  private cancelTaskHistoryCleanup(taskId: string): void {
+    const timer = this.historyCleanupTimers.get(taskId);
+    if (timer == null) {
+      return;
+    }
+    clearTimeout(timer);
+    this.historyCleanupTimers.delete(taskId);
   }
 
   private getTotalSubscriptionCount(): number {

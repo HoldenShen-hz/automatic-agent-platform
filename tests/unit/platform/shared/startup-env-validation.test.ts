@@ -200,7 +200,7 @@ test("[SYS-SEC-4.1] validateStartupEnv requires sandbox root when plugin egress 
 
   try {
     process.env.AA_DB_PATH = "/tmp/plugin.db";
-    process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = "false";
+    process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = "true";
     delete process.env.AA_PLUGIN_SANDBOX_ROOT;
 
     const result = validateStartupEnv();

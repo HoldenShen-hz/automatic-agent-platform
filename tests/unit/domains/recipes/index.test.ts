@@ -3,8 +3,25 @@ import test from "node:test";
 
 import { DomainRecipeSchema, matchDomainRecipe } from "../../../../src/domains/recipes/index.js";
 
+function makeRecipe(overrides: Record<string, unknown>) {
+  return {
+    recipeId: "recipe_default",
+    domainId: "coding",
+    archetype: "crud_heavy",
+    riskProfileRef: "coding.risk",
+    guardrailOverlay: {},
+    triggerPhrases: [],
+    defaultWorkflowId: "workflow_default",
+    recommendedWorkflowIds: [],
+    defaultToolBundleIds: [],
+    defaultPromptBundleRef: "coding.default-prompt",
+    acceptanceChecklistRef: "coding.acceptance",
+    ...overrides,
+  };
+}
+
 test("DomainRecipeSchema parses valid recipe", () => {
-  const recipe = {
+  const recipe = makeRecipe({
     recipeId: "recipe_coding",
     domainId: "coding",
     name: "Coding Recipe",
@@ -12,48 +29,44 @@ test("DomainRecipeSchema parses valid recipe", () => {
     triggerPhrases: ["write code", "implement", "develop"],
     defaultWorkflowId: "coding_workflow",
     defaultToolBundleIds: ["repo_tools", "build_tools"],
-  };
+  });
   const result = DomainRecipeSchema.safeParse(recipe);
   assert.equal(result.success, true);
 });
 
 test("DomainRecipeSchema applies default values", () => {
-  const recipe = {
+  const recipe = makeRecipe({
     recipeId: "recipe_minimal",
     domainId: "coding",
     defaultWorkflowId: "workflow_1",
-  };
+  });
   const result = DomainRecipeSchema.parse(recipe);
   assert.deepEqual(result.triggerPhrases, []);
   assert.deepEqual(result.defaultToolBundleIds, []);
 });
 
 test("DomainRecipeSchema requires recipeId to be non-empty", () => {
-  const recipe = {
+  const recipe = makeRecipe({
     recipeId: "",
-    domainId: "coding",
-    defaultWorkflowId: "workflow_1",
-  };
+  });
   const result = DomainRecipeSchema.safeParse(recipe);
   assert.equal(result.success, false);
 });
 
 test("DomainRecipeSchema requires domainId to be non-empty", () => {
-  const recipe = {
+  const recipe = makeRecipe({
     recipeId: "recipe_1",
     domainId: "",
-    defaultWorkflowId: "workflow_1",
-  };
+  });
   const result = DomainRecipeSchema.safeParse(recipe);
   assert.equal(result.success, false);
 });
 
 test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
-  const recipe = {
+  const recipe = makeRecipe({
     recipeId: "recipe_1",
-    domainId: "coding",
     defaultWorkflowId: "",
-  };
+  });
   const result = DomainRecipeSchema.safeParse(recipe);
   assert.equal(result.success, false);
 });

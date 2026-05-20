@@ -59,9 +59,8 @@ test("R12-02: different consumer groups have independent delivery state", async 
     }, new Set(), "low-priority");
 
     const event = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-group",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-group", ticketId: "ticket-group", status: "created" },
     });
 
     await flushScheduledEventBusDelivery();
@@ -108,9 +107,8 @@ test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async
     const events = [];
     for (let i = 0; i < 5; i++) {
       events.push(bus.publish({
-        eventType: "task:status_changed",
-        taskId: "task-concurrency",
-        payload: { fromStatus: "queued", toStatus: "in_progress" },
+        eventType: "dispatch:ticket_created",
+        payload: { taskId: "task-concurrency", ticketId: `ticket-${i}`, status: "created" },
       }));
     }
 
@@ -154,9 +152,8 @@ test("R12-02: each consumer maintains independent offset via own ack state", asy
     const events = [];
     for (let i = 0; i < 3; i++) {
       events.push(bus.publish({
-        eventType: "task:status_changed",
-        taskId: "task-offset",
-        payload: { fromStatus: "queued", toStatus: "in_progress" },
+        eventType: "dispatch:ticket_created",
+        payload: { taskId: "task-offset", ticketId: `ticket-${i}`, status: "created" },
       }));
     }
 
@@ -202,9 +199,8 @@ test("R12-02: group-level circuit breaker state is maintained independently", as
     // Publish some events
     for (let i = 0; i < 3; i++) {
       bus.publish({
-        eventType: "task:status_changed",
-        taskId: "task-circuit",
-        payload: { fromStatus: "queued", toStatus: "in_progress" },
+        eventType: "dispatch:ticket_created",
+        payload: { taskId: "task-circuit", ticketId: `ticket-${i}`, status: "created" },
       });
     }
 
@@ -242,9 +238,8 @@ test("R12-02: consumer group back-pressure is tracked per group", async () => {
     // Publish events until back-pressure would trigger
     for (let i = 0; i < 5; i++) {
       bus.publish({
-        eventType: "task:status_changed",
-        taskId: "task-bp",
-        payload: { fromStatus: "queued", toStatus: "in_progress" },
+        eventType: "dispatch:ticket_created",
+        payload: { taskId: "task-bp", ticketId: `ticket-${i}`, status: "created" },
       });
     }
 
@@ -282,9 +277,8 @@ test("R12-02: consumer without group defaults to 'default' group", async () => {
     });
 
     const event = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-default",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-default", ticketId: "ticket-default", status: "created" },
     });
 
     await flushScheduledEventBusDelivery();

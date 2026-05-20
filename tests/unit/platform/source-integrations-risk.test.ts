@@ -81,7 +81,7 @@ test("R31-54/R31-55/R31-57/R31-60/R31-62/R32-01/R32-02/R32-03/R32-04/R32-05/R32-
   assert.match(toolPathScopeSource, /denying path/);
   assert.match(toolExecutionAccessSource, /allowedTools: \[\]/);
   assert.match(mcpToolGuardSource, /BUILTIN_TOOL_NAMES\.has\(toolName\)/);
-  assert.match(harnessLoopSource, /Math\.max\(1, rawIterations\)/);
+  assert.match(harnessLoopSource, /const rawIterations = Math\.max\(1, Math\.floor\(budget\.maxSteps \/ 3\)\);/);
   assert.match(guardrailSource, /const cooldown = nextCount > this\.maxRepeatedActions/);
   assert.match(webSearchSource, /hostname = new URL\(url\)\.hostname/);
   assert.match(webSearchSource, /catch \{\s+continue;\s+\}/);

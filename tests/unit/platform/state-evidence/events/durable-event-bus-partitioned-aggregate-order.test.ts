@@ -34,30 +34,27 @@ test("R12-01: events with same aggregateId are delivered in FIFO sequence order"
 
     // Publish 3 events for the same aggregate with explicit sequences
     const evt1 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-partition",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       runId: "run-1",
       sequence: 1,
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-partition", ticketId: "ticket-1", status: "created" },
     });
 
     const evt2 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-partition",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       runId: "run-1",
       sequence: 2,
-      payload: { fromStatus: "in_progress", toStatus: "completed" },
+      payload: { taskId: "task-partition", ticketId: "ticket-2", status: "created" },
     });
 
     const evt3 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-partition",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       runId: "run-1",
       sequence: 3,
-      payload: { fromStatus: "completed", toStatus: "done" },
+      payload: { taskId: "task-partition", ticketId: "ticket-3", status: "created" },
     });
 
     // Wait for async fan-out delivery
@@ -94,35 +91,31 @@ test("R12-01: events with different aggregateIds can be delivered out of order b
 
     // Publish events for 2 different aggregates interleaved
     const evtA1 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-cross",
+      eventType: "dispatch:ticket_created",
       aggregateId: "agg-A",
       sequence: 1,
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-cross", ticketId: "ticket-a1", status: "created" },
     });
 
     const evtB1 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-cross",
+      eventType: "dispatch:ticket_created",
       aggregateId: "agg-B",
       sequence: 1,
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-cross", ticketId: "ticket-b1", status: "created" },
     });
 
     const evtA2 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-cross",
+      eventType: "dispatch:ticket_created",
       aggregateId: "agg-A",
       sequence: 2,
-      payload: { fromStatus: "in_progress", toStatus: "completed" },
+      payload: { taskId: "task-cross", ticketId: "ticket-a2", status: "created" },
     });
 
     const evtB2 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-cross",
+      eventType: "dispatch:ticket_created",
       aggregateId: "agg-B",
       sequence: 2,
-      payload: { fromStatus: "in_progress", toStatus: "completed" },
+      payload: { taskId: "task-cross", ticketId: "ticket-b2", status: "created" },
     });
 
     // Wait for async fan-out delivery
@@ -169,21 +162,18 @@ test("R12-01: events without aggregateId are partitioned by event id only", asyn
 
     // Publish events without aggregateId
     const evt1 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-noagg",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-noagg", ticketId: "ticket-1", status: "created" },
     });
 
     const evt2 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-noagg",
-      payload: { fromStatus: "in_progress", toStatus: "completed" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-noagg", ticketId: "ticket-2", status: "created" },
     });
 
     const evt3 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-noagg",
-      payload: { fromStatus: "completed", toStatus: "done" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-noagg", ticketId: "ticket-3", status: "created" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -220,27 +210,24 @@ test("R12-01: out-of-sequence events are skipped for same aggregate", async () =
     // Publish sequence numbers out of order
     // evt3 arrives first (seq 3) - should be delivered first since it's the first seen
     const evt3 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-outofseq",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       sequence: 3,
-      payload: { fromStatus: "completed", toStatus: "done" },
+      payload: { taskId: "task-outofseq", ticketId: "ticket-3", status: "created" },
     });
 
     const evt1 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-outofseq",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       sequence: 1,
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      payload: { taskId: "task-outofseq", ticketId: "ticket-1", status: "created" },
     });
 
     const evt2 = bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-outofseq",
+      eventType: "dispatch:ticket_created",
       aggregateId,
       sequence: 2,
-      payload: { fromStatus: "in_progress", toStatus: "completed" },
+      payload: { taskId: "task-outofseq", ticketId: "ticket-2", status: "created" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));

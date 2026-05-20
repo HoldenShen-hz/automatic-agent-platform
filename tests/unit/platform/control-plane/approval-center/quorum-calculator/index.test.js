@@ -131,14 +131,12 @@ test("mergeVotes adds new vote when not exists", () => {
     assert.equal(merged.length, 2);
     assert.equal(merged[1].approverId, "user2");
 });
-test("mergeVotes updates existing vote", () => {
+test("mergeVotes rejects duplicate immutable vote", () => {
     const existing = [
         { approverId: "user1", voteType: VoteType.APPROVE, votedAt: "2026-04-26T00:00:00.000Z" },
     ];
     const newVote = { approverId: "user1", voteType: VoteType.REJECT, votedAt: "2026-04-26T00:01:00.000Z" };
-    const merged = mergeVotes(existing, newVote);
-    assert.equal(merged.length, 1);
-    assert.equal(merged[0].voteType, VoteType.REJECT);
+    assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
 });
 test("createVote creates approve vote", () => {
     const vote = createVote("user1", VoteType.APPROVE);

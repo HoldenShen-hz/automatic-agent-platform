@@ -530,7 +530,7 @@ export class ApprovalFlowEngine {
           nowIso(),
         );
 
-        if (!quorumStatus.isQuorumMet && !quorumStatus.isDenied) {
+        if (!quorumStatus.isQuorumMet) {
           return {
             approvalId: flow.request.approvalId,
             taskId: flow.request.taskId,

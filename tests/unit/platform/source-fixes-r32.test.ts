@@ -101,8 +101,8 @@ test("R32-25: BudgetGuard blocks task spend when projected cost reaches the hard
     nextEstimatedCostUsd: 0.6,
   });
 
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, "budget.approaching_limit");
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
 });
 
 test("R32-28/R32-39: UnifiedChatPlanGenerator rejects invalid LLM task cost/shape before any toFixed crash", async () => {

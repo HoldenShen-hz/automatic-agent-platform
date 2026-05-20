@@ -6,9 +6,9 @@ export interface DistributedLockAdapter {
   readonly backendKind: string;
   acquire(input: { lockKey: string; owner: string; ttlMs?: number }): AcquireLockResult;
   release(lockKey: string, owner: string): boolean;
-  extend(lockKey: string, owner: string, additionalMs: number): { lockKey: string; owner: string; fencingToken: number; status: string } | null;
-  forceSteal(lockKey: string, newOwner: string, reason: string): { lockKey: string; owner: string; fencingToken: number; status: string };
-  inspect(lockKey: string): { lockKey: string; owner: string; fencingToken: number; status: string; ttlMs: number; metadata: string | null } | null;
+  extend(lockKey: string, owner: string, additionalMs: number): { lockKey: string; owner: string; fencingToken: number; status: LockStatus } | null;
+  forceSteal(lockKey: string, newOwner: string, reason: string): { lockKey: string; owner: string; fencingToken: number; status: LockStatus };
+  inspect(lockKey: string): { lockKey: string; owner: string; fencingToken: number; status: LockStatus; ttlMs: number; metadata: string | null } | null;
 }
 
 export interface PostgresSqlDriver {
@@ -20,12 +20,13 @@ export interface PostgresSqlDriver {
 
 export type PostgresFactory = (dsn: string, options: Record<string, unknown>) => PostgresSqlDriver;
 export type LockBackendKind = "sqlite" | "pg_advisory" | "redis";
+export type LockStatus = "pending" | "held" | "extended" | "released" | "expired" | "reclaimed" | "stolen";
 
 export interface LockRecord {
   lockKey: string;
   owner: string;
   fencingToken: number;
-  status: string;
+  status: LockStatus;
   acquiredAt: string;
   ttlMs: number;
   metadata: string | null;
@@ -98,8 +99,6 @@ export interface LockData {
   acquiredAt: string;
   metadata: string | null;
 }
-
-export type LockStatus = "pending" | "held" | "extended" | "released" | "expired" | "reclaimed" | "stolen";
 
 export type LockType = "execution_lease" | "approval_lock" | "file_lock" | "advisory_lock";
 

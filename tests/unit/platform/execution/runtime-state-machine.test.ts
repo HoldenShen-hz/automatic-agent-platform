@@ -443,6 +443,8 @@ test("RuntimeStateMachine transitions budget ledger and reservation with version
     fromStatus: "open",
     toStatus: "soft_cap_reached",
     expectedVersion: 0,
+    leaseId: "lease-budget-ledger",
+    fencingToken: "fence-budget-ledger",
     traceId: "trace-1",
     tenantId: "tenant-1",
     reasonCode: "soft_cap",
@@ -583,4 +585,126 @@ test("RuntimeStateMachine treats missing persistEvent callback as no-op persiste
         auditRef: "audit://run-no-callback/admission",
       }),
   );
+});
+
+test("RuntimeStateMachine validateTransition rejects illegal terminal resume", () => {
+  const machine = createMachine();
+  const run = createHarnessRun({
+    harnessRunId: "run-invalid-validate",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    status: "completed",
+    currentSeq: 4,
+  });
+
+  assert.equal(machine.validateTransition(run, "paused", "completed"), false);
+});
+
+test("RuntimeStateMachine executeTransition enforces the same guards as transition", () => {
+  const machine = createMachine();
+  const run = createHarnessRun({
+    harnessRunId: "run-exec-transition",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    status: "completed",
+    currentSeq: 7,
+  });
+
+  assert.throws(
+    () =>
+      machine.executeTransition(run, "paused", {
+        commandId: "cmd-invalid-exec-transition",
+        entityType: "HarnessRun",
+        entityId: run.harnessRunId,
+        aggregateType: "HarnessRun",
+        traceId: "trace-invalid-exec-transition",
+        tenantId: "tenant-1",
+        reasonCode: "illegal_resume",
+        emittedBy: "test",
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.invalid_transition",
+  );
+});
+
+test("RuntimeStateMachine requires auditRef even when invoked from test code", () => {
+  const machine = createMachine();
+  const run = createHarnessRun({
+    harnessRunId: "run-audit-required-no-stack-bypass",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    currentSeq: 0,
+  });
+
+  assert.throws(
+    () =>
+      machine.transition({
+        commandId: "cmd-audit-required-no-stack-bypass",
+        entityType: "HarnessRun",
+        entityId: run.harnessRunId,
+        aggregateType: "HarnessRun",
+        aggregate: run,
+        fromStatus: "created",
+        toStatus: "admitted",
+        expectedSeq: 0,
+        traceId: "trace-audit-required-no-stack-bypass",
+        tenantId: "tenant-1",
+        reasonCode: "admission_ok",
+        emittedBy: "admission-controller",
+        runVersionLockId: "rvlock-1",
+        policyGuard: { allowed: true, policyProofRef: "policy-proof-1" },
+        fencingToken: "fence-1",
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.audit_ref_required",
+  );
+});
+
+test("RuntimeStateMachine updates BudgetReservation timestamps on transition", () => {
+  const machine = createMachine();
+  const reservation = createBudgetReservation({
+    budgetLedgerId: "ledger-ts",
+    harnessRunId: "run-ts",
+    amount: 10,
+    resourceKind: "tool",
+    expiresAt: "2026-05-01T00:01:00.000Z",
+    status: "reserved",
+    version: 2,
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  });
+
+  const result = machine.transition({
+    commandId: "cmd-budget-reservation-ts",
+    entityType: "BudgetReservation",
+    entityId: reservation.budgetReservationId,
+    aggregateType: "BudgetReservation",
+    aggregate: reservation,
+    fromStatus: "reserved",
+    toStatus: "released",
+    expectedVersion: 2,
+    traceId: "trace-budget-reservation-ts",
+    tenantId: reservation.tenantId,
+    reasonCode: "budget.release",
+    emittedBy: "budget-allocator",
+    auditRef: "audit://budget-reservation-ts/release",
+  });
+
+  assert.notEqual(result.aggregate.updatedAt, reservation.updatedAt);
 });

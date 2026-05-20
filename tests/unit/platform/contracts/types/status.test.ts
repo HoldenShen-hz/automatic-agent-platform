@@ -25,9 +25,9 @@ test("TASK_STATUSES contains all valid task statuses", () => {
 });
 
 test("WORKFLOW_STATUSES contains all valid workflow statuses", () => {
-  const expected = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+  const expected = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
   assert.deepEqual(Array.from(WORKFLOW_STATUSES), expected);
-  assert.equal(WORKFLOW_STATUSES.length, 7);
+  assert.equal(WORKFLOW_STATUSES.length, 8);
 });
 
 test("SESSION_STATUSES contains all valid session statuses", () => {
@@ -70,8 +70,8 @@ test("TaskStatus type accepts all task statuses", () => {
 });
 
 test("WorkflowStatus type accepts all workflow statuses", () => {
-  const statuses: WorkflowStatus[] = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
-  assert.equal(statuses.length, 7);
+  const statuses: WorkflowStatus[] = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+  assert.equal(statuses.length, 8);
 });
 
 test("SessionStatus type accepts all session statuses", () => {

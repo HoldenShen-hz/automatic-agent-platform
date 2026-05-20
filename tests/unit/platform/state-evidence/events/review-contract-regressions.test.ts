@@ -153,14 +153,13 @@ test("DurableEventBus does not enqueue phantom volatile events when transaction 
     const db = new SqliteDatabase(join(workspace, "events.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
+    seedTaskAndExecution(db, store, { taskId: "task-review-rollback", executionId: "exec-review-rollback", traceId: "trace-review-rollback" });
     const originalTransaction = db.transaction.bind(db);
     db.transaction = ((callback: () => unknown) => originalTransaction(() => {
       callback();
       throw new Error("force rollback");
     })) as typeof db.transaction;
     const bus = new DurableEventBus(db, store);
-
-    seedTaskAndExecution(db, store, { taskId: "task-review-rollback", executionId: "exec-review-rollback", traceId: "trace-review-rollback" });
 
     bus.subscribe("task_projection", async () => undefined);
 

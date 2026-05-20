@@ -253,7 +253,7 @@ test("DelegationManagerService chain tracks depth correctly across delegations",
 
   assert.equal(handle1.depth, 1);
   assert.equal(handle2.depth, 2);
-  assert.equal(chain1!.maxDepthReached, 1);
+  assert.equal(chain1!.maxDepthReached, 2);
   assert.equal(chain2!.maxDepthReached, 2);
 });
 

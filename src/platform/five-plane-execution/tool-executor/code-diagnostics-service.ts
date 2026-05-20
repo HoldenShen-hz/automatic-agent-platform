@@ -116,6 +116,8 @@ const PYTHON_EXTENSIONS = new Set([".py"]);
  * Default maximum number of diagnostics to return.
  */
 const DEFAULT_MAX_DIAGNOSTICS = 20;
+const PYTHON_DIAGNOSTICS_TIMEOUT_MS = 10_000;
+const PYTHON_DIAGNOSTICS_MAX_OUTPUT_BYTES = 64 * 1024;
 
 /**
  * Canonicalizes a file path, resolving symlinks.
@@ -299,20 +301,119 @@ async function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunReque
   const diagnostics: CodeDiagnosticEntry[] = [];
 
   for (const filePath of request.filePaths) {
-    // Run python3 -m py_compile to check syntax
-    const child = spawn("python3", ["-m", "py_compile", filePath], {
-      cwd: request.workspaceRoot,
-      stdio: ["ignore", "pipe", "pipe"] as const,
+    const execution = await new Promise<{
+      exitCode: number | null;
+      stdout: string;
+      stderr: string;
+      timedOut: boolean;
+      outputTruncated: boolean;
+      spawnError: NodeJS.ErrnoException | null;
+    }>((resolve) => {
+      const child = spawn("python3", ["-m", "py_compile", filePath], {
+        cwd: request.workspaceRoot,
+        stdio: ["ignore", "pipe", "pipe"] as const,
+      });
+      let stdout = "";
+      let stderr = "";
+      let stdoutBytes = 0;
+      let stderrBytes = 0;
+      let timedOut = false;
+      let outputTruncated = false;
+      let spawnError: NodeJS.ErrnoException | null = null;
+      let settled = false;
+      const finish = (exitCode: number | null): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        resolve({
+          exitCode,
+          stdout,
+          stderr,
+          timedOut,
+          outputTruncated,
+          spawnError,
+        });
+      };
+      const capture = (
+        stream: NodeJS.ReadableStream | null | undefined,
+        assign: (value: string) => void,
+        getBytes: () => number,
+        setBytes: (value: number) => void,
+      ): void => {
+        stream?.on("data", (chunk: Buffer | string) => {
+          if (outputTruncated) {
+            return;
+          }
+          const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+          const nextBytes = getBytes() + Buffer.byteLength(text, "utf8");
+          if (nextBytes > PYTHON_DIAGNOSTICS_MAX_OUTPUT_BYTES) {
+            outputTruncated = true;
+            setBytes(PYTHON_DIAGNOSTICS_MAX_OUTPUT_BYTES);
+            assign(text.slice(0, Math.max(0, PYTHON_DIAGNOSTICS_MAX_OUTPUT_BYTES - getBytes())));
+            try {
+              child.kill("SIGKILL");
+            } catch {
+              // Child may already be gone.
+            }
+            return;
+          }
+          setBytes(nextBytes);
+          assign(text);
+        });
+      };
+      capture(child.stdout, (value) => { stdout += value; }, () => stdoutBytes, (value) => { stdoutBytes = value; });
+      capture(child.stderr, (value) => { stderr += value; }, () => stderrBytes, (value) => { stderrBytes = value; });
+      child.once("error", (error: NodeJS.ErrnoException) => {
+        spawnError = error;
+        finish(null);
+      });
+      child.once("close", (code) => finish(code ?? 1));
+      const timer = setTimeout(() => {
+        timedOut = true;
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          // Child may already be gone.
+        }
+      }, PYTHON_DIAGNOSTICS_TIMEOUT_MS);
+      timer.unref();
     });
 
-    let stdout = "";
-    let stderr = "";
-    child.stdout?.on("data", (chunk) => { stdout += chunk; });
-    child.stderr?.on("data", (chunk) => { stderr += chunk; });
+    if (execution.spawnError?.code === "ENOENT") {
+      diagnostics.push({
+        language: "python",
+        severity: "warning",
+        filePath,
+        message: "python diagnostics unavailable: python3 not found or py_compile module unavailable",
+        code: "python.runner_unavailable",
+        source: "py_compile",
+        line: null,
+        column: null,
+      });
+      continue;
+    }
 
-    const exitCode = await new Promise<number>((resolve) => {
-      child.on("close", (code) => resolve(code ?? 1));
-    });
+    if (execution.timedOut) {
+      diagnostics.push({
+        language: "python",
+        severity: "warning",
+        filePath,
+        message: `python diagnostics timed out after ${PYTHON_DIAGNOSTICS_TIMEOUT_MS}ms`,
+        code: "python.runner_timeout",
+        source: "py_compile",
+        line: null,
+        column: null,
+      });
+      continue;
+    }
+
+    const exitCode = execution.exitCode ?? 1;
+    const stdout = execution.stdout;
+    const stderr = execution.stderr;
 
     // Handle tool unavailability or errors
     if (exitCode === 127 || stderr.includes("python3: command not found") || stderr.includes("no module named py_compile")) {
@@ -336,12 +437,17 @@ async function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunReque
 
     // Parse error output for line number
     const errorOutput = stderr.trim().length > 0 ? stderr.trim() : stdout.trim();
+    const message = execution.outputTruncated
+      ? `${errorOutput.length > 0 ? errorOutput : "python compile failed"} (diagnostic output truncated)`
+      : errorOutput.length > 0
+        ? errorOutput
+        : "python compile failed";
     const lineMatch = errorOutput.match(/line (\d+)/);
     diagnostics.push({
       language: "python",
       severity: "error",
       filePath,
-      message: errorOutput.length > 0 ? errorOutput : "python compile failed",
+      message,
       code: "python.compile_failed",
       source: "py_compile",
       line: lineMatch == null ? null : parseInt(lineMatch[1] ?? "0", 10),

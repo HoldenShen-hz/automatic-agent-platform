@@ -11,6 +11,7 @@
 // Canonical Contracts (executable-contracts) - USE THESE FIRST
 // -----------------------------------------------------------------------------
 export * as executableContracts from "./executable-contracts/index.js";
+export * as requestEnvelopeContract from "./request-envelope/index.js";
 
 // -----------------------------------------------------------------------------
 // Platform-Level Supporting Contracts

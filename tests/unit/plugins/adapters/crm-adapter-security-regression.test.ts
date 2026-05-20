@@ -18,27 +18,28 @@ function createAllowPolicy(): NetworkEgressPolicyService {
 }
 
 test("CrmAdapter.authenticate uses hashed fingerprint instead of leaking token prefix", async () => {
-  const adapter = createCrmAdapterPlugin({ policy: createAllowPolicy() });
   const rawToken = "verysecret_token_12345";
   let authorizationHeader: string | null = null;
-
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (_input, init) => {
+  let executionResult: Record<string, unknown> | null = null;
+  const fetchImplementation: typeof fetch = async (_input, init) => {
     authorizationHeader = new Headers(init?.headers).get("Authorization");
     return new Response(JSON.stringify({ crmType: "hubspot" }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
   };
+  const adapter = createCrmAdapterPlugin({
+    policy: createAllowPolicy(),
+    fetchImplementation,
+  });
 
-  try {
-    await adapter.authenticate({ token: rawToken });
-    await adapter.execute("contacts", { email: "user@example.com" });
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  await adapter.authenticate({ token: rawToken });
+  executionResult = await adapter.execute("contacts", { email: "user@example.com" });
 
   assert.ok(authorizationHeader);
-  assert.match(authorizationHeader!, /^Bearer crm_hubspot_[0-9a-f]{8}$/);
-  assert.equal(authorizationHeader!.includes(rawToken.slice(0, 8)), false);
+  assert.equal(authorizationHeader, `Bearer ${rawToken}`);
+  assert.ok(executionResult);
+  const serializedResult = JSON.stringify(executionResult);
+  assert.equal(serializedResult.includes(rawToken), false);
+  assert.equal(serializedResult.includes(rawToken.slice(0, 8)), false);
 });

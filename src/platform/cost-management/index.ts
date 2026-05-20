@@ -23,6 +23,7 @@ import type {
   CostEstimationConfig as CostEstimationConfigContract,
   CostEstimationServicePort as CostEstimationServicePortContract,
 } from "../contracts/types/cost.js";
+export { CostEstimationService } from "../../scale-ecosystem/billing/cost-estimation-service.js";
 
 // Re-export cost estimation contract types (authoritative per platform architecture).
 // The runtime symbols below make the namespace discoverable in architectural

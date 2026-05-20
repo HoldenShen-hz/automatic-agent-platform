@@ -1,4 +1,10 @@
 import { SECONDS_PER_HOUR } from "../../../contracts/constants/time.js";
+import {
+  buildPreflightHeaders,
+  isOriginAllowed as isOriginAllowedForResponseHardening,
+  normalizeCorsConfig,
+  type CorsConfig as ResponseHardeningCorsConfig,
+} from "../http-server/response-hardening.js";
 
 /**
  * CORS Middleware
@@ -30,7 +36,7 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedOrigins: [], // Must be explicitly configured - no wildcards
   allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Trace-Id", "X-Idempotency-Key", "X-Tenant-Id"],
-  allowCredentials: true,
+  allowCredentials: false,
   maxAgeSeconds: SECONDS_PER_HOUR,
   exposeTraceId: true,
 };
@@ -41,10 +47,19 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
  */
 export class CorsMiddleware {
   private readonly config: CorsConfig;
+  private readonly normalizedConfig: ResponseHardeningCorsConfig;
 
   public constructor(config: Partial<CorsConfig> = {}) {
     this.config = { ...DEFAULT_CORS_CONFIG, ...config };
     this.validateConfig();
+    this.normalizedConfig = normalizeCorsConfig({
+      allowedOrigins: [...this.config.allowedOrigins],
+      allowedMethods: [...this.config.allowedMethods],
+      allowedHeaders: this.config.allowedHeaders.map((header) => header.toLowerCase()),
+      exposedHeaders: this.config.exposeTraceId ? ["x-trace-id"] : [],
+      maxAgeSeconds: this.config.maxAgeSeconds,
+      credentials: this.config.allowCredentials,
+    });
   }
 
   /**
@@ -57,62 +72,52 @@ export class CorsMiddleware {
     if (hasWildcard && this.config.allowCredentials) {
       throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.");
     }
+    for (const origin of this.config.allowedOrigins) {
+      if (origin === "*" || origin === "*.*") {
+        continue;
+      }
+      if (origin === "null" || origin.startsWith("*.")) {
+        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(origin);
+      } catch {
+        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      }
+      if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.origin !== origin) {
+        throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      }
+    }
   }
 
   /**
    * Check if origin is allowed.
    */
   public isOriginAllowed(origin: string): boolean {
-    return this.config.allowedOrigins.some(
-      (allowed) => allowed === "*" || allowed === origin || this.matchSubdomain(origin, allowed),
-    );
-  }
-
-  /**
-   * Match subdomain pattern (e.g., *.example.com matches app.example.com).
-   */
-  private matchSubdomain(origin: string, pattern: string): boolean {
-    if (!pattern.startsWith("*.")) {
-      return false;
-    }
-    const domain = pattern.slice(2);
-    if (origin === domain || !origin.endsWith(domain)) {
-      return false;
-    }
-    // Verify there's a dot separator before the domain (not just a string ending with domain)
-    const separatorIndex = origin.length - domain.length - 1;
-    if (separatorIndex < 0 || origin[separatorIndex] !== ".") {
-      return false;
-    }
-    // Verify the prefix (before the dot) has no dots - so "app.example.com" matches *.example.com
-    // but "deep.app.example.com" does not
-    const prefix = origin.slice(0, separatorIndex);
-    return prefix.indexOf(".") === -1;
+    return isOriginAllowedForResponseHardening(origin, this.normalizedConfig);
   }
 
   /**
    * Generate CORS headers for request.
    */
   public getHeaders(origin: string | null): Record<string, string> {
+    const preflight = buildPreflightHeaders(origin ?? undefined, this.normalizedConfig);
     const headers: Record<string, string> = {
-      "Access-Control-Allow-Methods": this.config.allowedMethods.join(", "),
-      "Access-Control-Allow-Headers": this.config.allowedHeaders.join(", "),
-      "Access-Control-Max-Age": String(this.config.maxAgeSeconds),
+      "Access-Control-Allow-Methods": preflight["access-control-allow-methods"] ?? this.config.allowedMethods.join(", "),
+      "Access-Control-Allow-Headers": preflight["access-control-allow-headers"] ?? this.config.allowedHeaders.join(", "),
+      "Access-Control-Max-Age": preflight["access-control-max-age"] ?? String(this.config.maxAgeSeconds),
+      Vary: preflight.vary ?? "Origin",
     };
-
-    if (this.config.allowCredentials) {
-      headers["Access-Control-Allow-Credentials"] = "true";
+    if (preflight["access-control-allow-credentials"] != null) {
+      headers["Access-Control-Allow-Credentials"] = preflight["access-control-allow-credentials"];
     }
-
     if (this.config.exposeTraceId) {
       headers["Access-Control-Expose-Headers"] = "X-Trace-Id";
     }
-
-    // Only set allowed origin if it matches (not wildcard)
-    if (origin != null && this.isOriginAllowed(origin)) {
-      headers["Access-Control-Allow-Origin"] = origin;
+    if (preflight["access-control-allow-origin"] != null) {
+      headers["Access-Control-Allow-Origin"] = preflight["access-control-allow-origin"];
     }
-
     return headers;
   }
 

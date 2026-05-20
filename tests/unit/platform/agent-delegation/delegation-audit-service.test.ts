@@ -109,6 +109,7 @@ test("DelegationAuditService.recordDelegationCompleted records delegation.comple
     parentAgentId: "parent-1",
     childAgentId: "child-1",
     durationMs: 5000,
+    depth: 1,
     actorId: "actor-1",
     actorType: "agent",
   });
@@ -125,6 +126,7 @@ test("DelegationAuditService.recordDelegationFailed records delegation.failed ev
     parentAgentId: "parent-1",
     childAgentId: "child-1",
     error: "Something went wrong",
+    depth: 1,
     actorId: "actor-1",
     actorType: "agent",
   });
@@ -140,6 +142,7 @@ test("DelegationAuditService.recordPermissionNarrowed records delegation.permiss
     delegationId: "dlg-1",
     parentAgentId: "parent-1",
     childAgentId: "child-1",
+    depth: 1,
     originalPermissions: { actions: ["read", "write"] },
     narrowedPermissions: { actions: ["read"] },
     actorId: "actor-1",
@@ -168,6 +171,7 @@ test("DelegationAuditService.getByDelegation returns events for specific delegat
     parentAgentId: "parent-1",
     childAgentId: "child-1",
     durationMs: 1000,
+    depth: 1,
     actorId: "actor-1",
     actorType: "agent",
   });
@@ -288,6 +292,7 @@ test("DelegationAuditService.getSummary returns correct counts", () => {
     parentAgentId: "parent-1",
     childAgentId: "child-1",
     durationMs: 1000,
+    depth: 1,
     actorId: "actor-1",
     actorType: "agent",
   });
@@ -297,6 +302,7 @@ test("DelegationAuditService.getSummary returns correct counts", () => {
     parentAgentId: "parent-1",
     childAgentId: "child-2",
     error: "error",
+    depth: 1,
     actorId: "actor-1",
     actorType: "agent",
   });

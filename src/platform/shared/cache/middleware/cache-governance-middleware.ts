@@ -59,7 +59,7 @@ export function createCacheGovernanceMiddleware(options: CacheGovernanceMiddlewa
       const tags = tagBuilder.toolContext(toolName, normalizedArgs, ctx.taskId);
       const namespace = `tool.${toolName}`;
       let toolResult: T | undefined;
-      let toolState: "not_started" | "resolved" | "rejected" = "not_started";
+      let toolState = "not_started";
 
       try {
         const result = await cache.getOrCompute<T>(

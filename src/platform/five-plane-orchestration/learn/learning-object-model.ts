@@ -66,6 +66,11 @@ const LearningObjectContentSchema = z.object({
   recommendation: z.string().min(1),
 });
 
+const LearningObjectCreatedAtSchema = z.union([
+  z.string().min(1),
+  z.number().finite().transform((value) => new Date(value).toISOString()),
+]);
+
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1).optional(),
   objectId: z.string().min(1).optional(),
@@ -81,7 +86,7 @@ export const LearningObjectSchema = z.object({
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
   promotionStatus: LearningObjectPromotionStatusSchema.default("quarantine"),
   status: z.enum(["created", "validating", "validated", "rejected", "promoted"]).optional(),
-  createdAt: z.string().min(1),
+  createdAt: LearningObjectCreatedAtSchema,
   validatedAt: z.string().min(1).optional(),
   promotedAt: z.string().min(1).optional(),
 }).superRefine((value, context) => {

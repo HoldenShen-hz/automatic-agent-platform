@@ -20,8 +20,13 @@ function createRecipe(
     description: overrides.description ?? "Test recipe",
     triggerPhrases: overrides.triggerPhrases ?? [`trigger ${overrides.recipeId}`],
     archetype: overrides.archetype ?? "crud_heavy",
+    riskProfileRef: overrides.riskProfileRef ?? `${overrides.domainId}.risk`,
+    guardrailOverlay: overrides.guardrailOverlay ?? {},
     defaultWorkflowId: overrides.defaultWorkflowId,
+    recommendedWorkflowIds: overrides.recommendedWorkflowIds ?? [],
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
+    defaultPromptBundleRef: overrides.defaultPromptBundleRef ?? `${overrides.domainId}.default-prompt`,
+    acceptanceChecklistRef: overrides.acceptanceChecklistRef ?? `${overrides.domainId}.acceptance`,
   });
 }
 

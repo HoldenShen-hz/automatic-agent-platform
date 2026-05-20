@@ -196,14 +196,21 @@ function parseApprovalRequest(requestJson: string): ApprovalRequest {
 }
 
 function readCascadeSessionId(request: ApprovalRequest): string | null {
+  const context = request.context ?? {};
   const sessionId =
-    request.context.sessionId ??
-    request.context.approvalSessionId ??
-    request.context.permissionSessionId;
+    context.sessionId ??
+    context.approvalSessionId ??
+    context.permissionSessionId;
   return typeof sessionId === "string" && sessionId.trim().length > 0 ? sessionId : null;
 }
 
-function readStringContextField(context: Record<string, unknown>, ...keys: readonly string[]): string | null {
+function readStringContextField(
+  context: Record<string, unknown> | null | undefined,
+  ...keys: readonly string[]
+): string | null {
+  if (context == null) {
+    return null;
+  }
   for (const key of keys) {
     const value = context[key];
     if (typeof value === "string" && value.trim().length > 0) {
@@ -548,13 +555,22 @@ export class ApprovalService {
       this.applyExecutionEffect(existing.executionId, nextStatus, decision.respondedAt);
 
       // Emit DecisionDirective to P3/P4 per R4-14 (P2→P3/P4 governance gate)
+      const directiveTenantId =
+        readStringContextField(existingRequest.context, "tenantId", "tenant_id")
+        ?? existing.taskId;
+      const directiveRole = decision.respondedBy === "system" || decision.respondedBy.startsWith("system:")
+        ? "system"
+        : "approver";
       const decisionDirective: DecisionDirective = createDecisionDirective({
         type: decision.decisionType === "rejected" || decision.decisionType === "expired" ? "deny" : "approve",
+        scope: {
+          tenantId: directiveTenantId,
+        },
         targetRef: decision.approvalId,
         issuedBy: {
           principalId: decision.respondedBy,
-          tenantId: existing.taskId, // task-scoped; real impl would resolve from principal
-          roles: [],
+          tenantId: directiveTenantId,
+          roles: [directiveRole],
         },
         payload: decision,
         reason: `approval.${nextStatus}`,

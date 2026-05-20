@@ -44,13 +44,23 @@ test("PgAdvisoryLockAdapter inspect() returns null", () => {
   assert.equal(result, null);
 });
 
-test("PgAdvisoryLockAdapter extend() delegates to inspect", () => {
+test("PgAdvisoryLockAdapter extend() refreshes held lock metadata for the owner", () => {
   const adapter = new PgAdvisoryLockAdapter();
+  (adapter as any).heldLocks.set("test-key", {
+    lockKey: "test-key",
+    owner: "test-owner",
+    fencingToken: 7,
+    status: "held",
+    acquiredAt: "2026-05-19T00:00:00.000Z",
+    ttlMs: 30000,
+    metadata: null,
+  });
 
   const result = adapter.extend("test-key", "test-owner", 5000);
 
-  // extend returns the result of inspect, which is null
-  assert.equal(result, null);
+  assert.ok(result);
+  assert.equal(result!.ttlMs, 35000);
+  assert.equal(result!.owner, "test-owner");
 });
 
 test("PgAdvisoryLockAdapter backendKind is pg_advisory", () => {
@@ -91,7 +101,7 @@ function createAdapterWithMockDriver(mockDriver: MockPostgresDriver): PgAdvisory
 
 test("PgAdvisoryLockAdapter acquireAsync returns lock when successful", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{ acquired: true }],
+    queryFn: async () => [{ acquired: true, fencing_token: 42 }],
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
@@ -102,6 +112,7 @@ test("PgAdvisoryLockAdapter acquireAsync returns lock when successful", async ()
   assert.equal(result.lock!.lockKey, "test-key");
   assert.equal(result.lock!.owner, "test-owner");
   assert.equal(result.lock!.status, "held");
+  assert.equal(result.lock!.fencingToken, 42);
 });
 
 test("PgAdvisoryLockAdapter acquireAsync returns false when lock not acquired", async () => {
@@ -149,13 +160,42 @@ test("PgAdvisoryLockAdapter acquireAsync returns false on connection error", asy
 
 test("PgAdvisoryLockAdapter releaseAsync returns true when successful", async () => {
   const mockDriver = createMockDriver({
-    queryFn: async () => [{}],
+    queryFn: async () => [{ released: true }],
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
+  (adapter as any).heldLocks.set("test-key", {
+    lockKey: "test-key",
+    owner: "test-owner",
+    fencingToken: 42,
+    status: "held",
+    acquiredAt: "2026-05-19T00:00:00.000Z",
+    ttlMs: 30000,
+    metadata: null,
+  });
 
   const result = await adapter.releaseAsync("test-key", "test-owner");
 
   assert.equal(result, true);
+});
+
+test("PgAdvisoryLockAdapter releaseAsync returns false for owner mismatch", async () => {
+  const mockDriver = createMockDriver({
+    queryFn: async () => [{ released: true }],
+  });
+  const adapter = createAdapterWithMockDriver(mockDriver);
+  (adapter as any).heldLocks.set("test-key", {
+    lockKey: "test-key",
+    owner: "expected-owner",
+    fencingToken: 42,
+    status: "held",
+    acquiredAt: "2026-05-19T00:00:00.000Z",
+    ttlMs: 30000,
+    metadata: null,
+  });
+
+  const result = await adapter.releaseAsync("test-key", "wrong-owner");
+
+  assert.equal(result, false);
 });
 
 test("PgAdvisoryLockAdapter releaseAsync throws when pg module not found", async () => {
@@ -165,6 +205,15 @@ test("PgAdvisoryLockAdapter releaseAsync throws when pg module not found", async
     postgresFactory: () => {
       throw new ReferenceError("Cannot find module 'postgres'");
     },
+  });
+  (adapter as any).heldLocks.set("test-key", {
+    lockKey: "test-key",
+    owner: "test-owner",
+    fencingToken: 42,
+    status: "held",
+    acquiredAt: "2026-05-19T00:00:00.000Z",
+    ttlMs: 30000,
+    metadata: null,
   });
 
   await assert.rejects(

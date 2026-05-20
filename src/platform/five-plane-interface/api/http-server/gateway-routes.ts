@@ -155,7 +155,9 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         try {
           webhookPayload = readValidatedJsonBody(payloadText, parseGatewayWebhookPayload);
         } catch (err) {
-          logger.warn("parseWebhookPayload failed", { error: err });
+          logger.warn("gateway.parse_webhook_payload_failed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
           if (err instanceof AppError && err.code === "api.invalid_json") {
             throw new ApiError(400, "gateway.invalid_payload", "Webhook payload must be valid JSON");
           }

@@ -181,6 +181,33 @@ const recoveryPayloadSchema = z.object({
   }
 });
 
+const harnessRunStatusChangedPayloadSchema = z.object({
+  aggregateType: z.string(),
+  fromStatus: optionalNullableStringSchema,
+  toStatus: z.string(),
+  reasonCode: optionalStringSchema,
+  emittedBy: optionalStringSchema,
+  occurredAt: optionalStringSchema,
+  traceContext: traceContextSchema.optional(),
+}).passthrough();
+
+const oapeflirRunLifecyclePayloadSchema = z.object({
+  stage: z.string(),
+  runId: z.string(),
+  taskId: optionalStringSchema,
+  occurredAt: optionalStringSchema,
+  traceContext: traceContextSchema.optional(),
+}).passthrough();
+
+const oapeflirPhaseTransitionPayloadSchema = z.object({
+  runId: z.string(),
+  fromPhase: z.string(),
+  toPhase: z.string(),
+  taskId: optionalStringSchema,
+  occurredAt: optionalStringSchema,
+  traceContext: traceContextSchema.optional(),
+}).passthrough();
+
 export const genericEventPayloadSchema = z.record(z.unknown());
 
 export const EVENT_PAYLOAD_VALIDATORS: Partial<Record<string, z.ZodType<Record<string, unknown>>>> = {
@@ -212,6 +239,9 @@ export const EVENT_PAYLOAD_VALIDATORS: Partial<Record<string, z.ZodType<Record<s
   "recovery:decision_recorded": recoveryPayloadSchema,
   "recovery:dead_lettered": recoveryPayloadSchema,
   "recovery:cancelled": recoveryPayloadSchema,
+  "platform.harness_run.status_changed": harnessRunStatusChangedPayloadSchema,
+  "oapeflir.view.run_lifecycle": oapeflirRunLifecyclePayloadSchema,
+  "oapeflir.phase.transition": oapeflirPhaseTransitionPayloadSchema,
 };
 
 export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> = {

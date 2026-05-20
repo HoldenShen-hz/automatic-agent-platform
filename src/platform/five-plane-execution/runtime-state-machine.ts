@@ -186,8 +186,15 @@ export class RuntimeStateMachine {
     toStatus: string,
     fromStatus: string,
   ): boolean {
-    void aggregate;
-    return fromStatus !== toStatus;
+    try {
+      assertTransitionAllowed(inferAggregateType(aggregate), fromStatus, toStatus);
+      return true;
+    } catch (error) {
+      if (error instanceof WorkflowStateError) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -198,32 +205,12 @@ export class RuntimeStateMachine {
     toStatus: string,
     command: Omit<RuntimeTransitionCommand<TAggregate>, "aggregate" | "fromStatus" | "toStatus">,
   ): RuntimeTransitionResult<TAggregate> {
-    const occurredAt = nowIso();
-    const nextAggregate = {
-      ...aggregate,
-      status: toStatus,
-      ...("currentSeq" in aggregate ? { currentSeq: aggregate.currentSeq + 1 } : {}),
-      ...("version" in aggregate ? { version: aggregate.version + 1 } : {}),
-      updatedAt: occurredAt,
-    } as TAggregate;
-    const event = createPlatformFactEvent({
-      eventType: `platform.${toEventNamespace(command.aggregateType)}.status_changed`,
-      aggregateType: command.aggregateType,
-      aggregateId: getAggregateId(command.aggregateType, nextAggregate),
-      aggregateSeq: getAggregateSeq(nextAggregate),
-      tenantId: command.tenantId,
-      runId: getRunId(command.aggregateType, nextAggregate),
-      traceId: command.traceId,
-      payload: toJsonObject({
-        aggregateType: command.aggregateType,
-        fromStatus: aggregate.status,
-        toStatus,
-        reasonCode: command.reasonCode,
-        emittedBy: command.emittedBy,
-      }),
-      occurredAt,
+    return this.transition({
+      ...command,
+      aggregate,
+      fromStatus: aggregate.status as RuntimeStatus<TAggregate>,
+      toStatus: toStatus as RuntimeStatus<TAggregate>,
     });
-    return { aggregate: nextAggregate, event };
   }
 }
 
@@ -266,13 +253,6 @@ function assertTransitionAllowed(
       `No-op ${aggregateType} transition is not allowed: ${fromStatus} -> ${toStatus}`,
       { details: { aggregateType, fromStatus, toStatus } },
     );
-  }
-  if (
-    aggregateType === "HarnessRun"
-    && toStatus === "paused"
-    && (fromStatus === "completed" || fromStatus === "aborted")
-  ) {
-    return;
   }
   const allowed = getTransitionTable(aggregateType)[fromStatus] ?? [];
   if (!allowed.includes(toStatus)) {
@@ -381,15 +361,7 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
     command.aggregateType === "HarnessRun" ||
     command.toStatus === "succeeded" ||
     command.toStatus === "failed";
-  const stack = new Error().stack ?? "";
-  const isPerfTest = stack.includes("/tests/performance/");
-  if (
-    requiresAudit &&
-    "commandId" in command &&
-    command.auditRef == null &&
-    !isPerfTest &&
-    !stack.includes("runtime-state-machine-audit-ref-regression.test.ts")
-  ) {
+  if (requiresAudit && "commandId" in command && command.auditRef == null) {
     throw new WorkflowStateError("runtime_state_machine.audit_ref_required", "Audit ref is required for audited transitions.", {
       details: { aggregateType: command.aggregateType },
     });
@@ -454,13 +426,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
 
   if (command.aggregateType === "HarnessRun") {
     const harnessRun = command.aggregate as HarnessRun;
-    // R4-30: HarnessRun planning/running transitions require fencing token
     const criticalStatuses: readonly string[] = ["planning", "ready", "running", "pausing", "paused", "resuming", "replanning"];
-    const commandMeta = command as { commandId?: string; auditRef?: string };
-    if (
-      criticalStatuses.includes(command.toStatus as string) &&
-      (commandMeta.commandId != null || commandMeta.auditRef?.startsWith("audit://"))
-    ) {
+    if (criticalStatuses.includes(command.toStatus as string)) {
       if (command.fencingToken == null) {
         throw new WorkflowStateError(
           "runtime_state_machine.harness_fencing_required",
@@ -480,8 +447,7 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
 
   if (command.aggregateType === "BudgetLedger") {
     const budgetLedger = command.aggregate as BudgetLedger;
-    const commandMeta = command as { commandId?: string };
-    const requiresFencing = commandMeta.commandId != null && ["soft_cap_reached", "hard_cap_reached", "closed"].includes(command.toStatus as string);
+    const requiresFencing = ["soft_cap_reached", "hard_cap_reached", "closed"].includes(command.toStatus as string);
     if (requiresFencing && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(
         "runtime_state_machine.budget_ledger_fencing_required",
@@ -552,13 +518,15 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
         ...(command.aggregate as BudgetLedger),
         status: command.toStatus as BudgetLedger["status"],
         version: (command.aggregate as BudgetLedger).version + 1,
-      } as TAggregate;
+        updatedAt: occurredAt,
+      } as unknown as TAggregate;
     case "BudgetReservation":
       return {
         ...(command.aggregate as BudgetReservation),
         status: command.toStatus as BudgetReservation["status"],
         version: (command.aggregate as BudgetReservation).version + 1,
-      } as TAggregate;
+        updatedAt: occurredAt,
+      } as unknown as TAggregate;
     default:
       throw new ValidationError("runtime_state_machine.unknown_aggregate", "Unknown runtime aggregate type.");
   }
@@ -695,4 +663,20 @@ function isNodeRunStatus(value: string): value is NodeRunStatus {
     "policy_blocked",
     "aborted",
   ].includes(value);
+}
+
+function inferAggregateType(aggregate: RuntimeStateAggregate): RuntimeStateAggregateType {
+  if ("confirmedTaskSpecId" in aggregate) {
+    return "HarnessRun";
+  }
+  if ("nodeRunId" in aggregate) {
+    return "NodeRun";
+  }
+  if ("sideEffectId" in aggregate) {
+    return "SideEffectRecord";
+  }
+  if ("budgetLedgerId" in aggregate) {
+    return "BudgetLedger";
+  }
+  return "BudgetReservation";
 }

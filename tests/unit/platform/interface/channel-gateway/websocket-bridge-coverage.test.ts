@@ -540,6 +540,7 @@ networkPathTest("WebSocketBridge closes idle clients during heartbeat sweep", as
     readyState: 1,
     close(code: number) {
       closeCode = code;
+      (bridge as any).handleDisconnection(this);
     },
     removeAllListeners: (() => {}) as WebSocket["removeAllListeners"],
   } as unknown as WebSocket;
@@ -749,6 +750,36 @@ networkPathTest("WebSocketMessageType - backpressure_warning message type", () =
   assert.equal(msg.taskId, "task-123");
   assert.equal(msg.bufferedCount, 100);
   assert.equal(msg.reason, "slow_consumer");
+});
+
+test("WebSocketBridge selects the first offered subprotocol for handshake echo", () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+  try {
+    const selected = (bridge as any).selectProtocol(new Set(["token-one", "taskId=task-1"]));
+    assert.equal(selected, "token-one");
+  } finally {
+    void bridge.close();
+    server.close();
+  }
+});
+
+test("WebSocketBridge honors zero backpressure threshold overrides", () => {
+  const server = createMockServer();
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+  const previous = process.env.WS_BACK_PRESSURE_THRESHOLD;
+  try {
+    process.env.WS_BACK_PRESSURE_THRESHOLD = "0";
+    assert.equal((bridge as any).getBackPressureThreshold(), 0);
+  } finally {
+    if (previous == null) {
+      delete process.env.WS_BACK_PRESSURE_THRESHOLD;
+    } else {
+      process.env.WS_BACK_PRESSURE_THRESHOLD = previous;
+    }
+    void bridge.close();
+    server.close();
+  }
 });
 
 networkPathTest("WebSocketMessageType - ack message type", () => {

@@ -42,6 +42,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Readonly<Record<DelegationStatus, reado
   expired: [],
   timed_out: [],
 };
+const HYDRATED_NO_EXPIRY_FALLBACK = "9999-12-31T23:59:59.999Z";
 
 export function evictExpiredDelegationEntries(input: {
   readonly useRepositoryAsPrimaryStore: boolean;
@@ -82,10 +83,7 @@ export function evictExpiredDelegationEntries(input: {
     const toRemove = input.delegationStore.size - input.maxEntries;
     for (let i = 0; i < toRemove; i++) {
       const key = sortedEntries[i]![0];
-      const delegation = input.delegationStore.get(key);
-      if (delegation && isTerminalDelegationStatus(delegation.status)) {
-        input.delegationStore.delete(key);
-      }
+      input.delegationStore.delete(key);
     }
   }
   return input.nowMs;
@@ -101,9 +99,10 @@ export async function hydrateDelegationStoresFromRepository(input: {
     return;
   }
 
+  const delegationRepository = input.delegationRepository;
   const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
-  for (const status of activeStatuses) {
-    const delegations = await input.delegationRepository.findByStatus(status);
+  const delegationGroups = await Promise.all(activeStatuses.map(async (status) => await delegationRepository.findByStatus(status)));
+  for (const delegations of delegationGroups) {
     for (const record of delegations) {
       const delegationResult: DelegationResult = {
         delegationId: record.delegationId,
@@ -112,7 +111,7 @@ export async function hydrateDelegationStoresFromRepository(input: {
         depth: record.depth,
         status: record.status,
         createdAt: record.createdAt,
-        expiresAt: record.expiresAt ?? nowIso(),
+        expiresAt: record.expiresAt ?? HYDRATED_NO_EXPIRY_FALLBACK,
         permissions: { resources: [], actions: [], constraints: {} },
         grantedPermissions: { resources: [], actions: [], constraints: {} },
         correlationId: record.delegationId,
@@ -157,6 +156,7 @@ export async function hydrateDelegationStoresFromRepository(input: {
 
 export async function createDelegationResultRecord(input: {
   readonly parent: AgentContext;
+  readonly parentRootAgentId: string;
   readonly childContext: AgentContext;
   readonly spec: DelegationSpec;
   readonly permissions: PermissionSet;
@@ -184,14 +184,17 @@ export async function createDelegationResultRecord(input: {
     status: input.spec.requiresApproval ? "pending_approval" : "pending",
     summary: `Delegated ${input.childContext.agentType} work from ${input.parent.agentId} to ${input.childContext.agentId}`,
     artifact_refs: [],
-    trust_level: Math.max(0, Number((1 - Math.min(input.parent.delegationDepth + 1, DEFAULT_MAX_DEPTH) / (DEFAULT_MAX_DEPTH + 1)).toFixed(2))),
+    trust_level: Math.max(
+      0,
+      Math.round((1 - Math.min(input.parent.delegationDepth + 1, DEFAULT_MAX_DEPTH) / (DEFAULT_MAX_DEPTH + 1)) * 100) / 100,
+    ),
     taint_labels: input.permissions.constraints.allowedDomains ?? [],
     evidence_refs: [],
     policy_outcome: "delegation.permissions_narrowed",
     data_class: input.spec.dataClass ?? "delegation",
   };
 
-  let delegationChain: readonly string[] = [delegation.parentAgentId, delegation.childAgentId];
+  let delegationChain: readonly string[] = [input.parentRootAgentId, delegation.parentAgentId, delegation.childAgentId];
   if (input.delegationRepository && input.parent.activeDelegations.length > 0) {
     const parentDelegationId = input.parent.activeDelegations.at(-1);
     if (parentDelegationId) {
@@ -201,6 +204,7 @@ export async function createDelegationResultRecord(input: {
       }
     }
   }
+  delegationChain = delegationChain.filter((agentId, index, chain) => agentId.length > 0 && (index === 0 || agentId !== chain[index - 1]));
 
   if (input.delegationRepository) {
     await input.delegationRepository.create({

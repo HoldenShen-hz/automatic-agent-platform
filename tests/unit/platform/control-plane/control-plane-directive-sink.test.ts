@@ -37,6 +37,7 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitOperationa
   const sink = new NoOpControlPlaneDirectiveSink();
   sink.emitOperationalDirective(createOperationalDirective({
     type: "pause",
+    scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["operator"] },
     reason: "freeze rollout",
     params: { action: "freeze" },
@@ -48,6 +49,7 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitDecisionDi
   const sink = new NoOpControlPlaneDirectiveSink();
   sink.emitDecisionDirective(createDecisionDirective({
     type: "approve",
+    scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["approver"] },
     targetRef: "task://task-1",
     payload: { taskId: "task-1" },
@@ -65,6 +67,7 @@ test("control-plane-directive-sink: TestControlPlaneDirectiveSink records operat
   const sink = new TestControlPlaneDirectiveSink();
   const directive: OperationalDirective = createOperationalDirective({
     type: "kill",
+    scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-2", tenantId: "tenant-1", roles: ["operator"] },
     reason: "escalate",
     params: { severity: "high" },
@@ -79,6 +82,7 @@ test("control-plane-directive-sink: TestControlPlaneDirectiveSink records decisi
   const sink = new TestControlPlaneDirectiveSink();
   const directive: DecisionDirective = createDecisionDirective({
     type: "deny",
+    scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-2", tenantId: "tenant-1", roles: ["approver"] },
     targetRef: "task://task-2",
     payload: { taskId: "task-2", reason: "budget_exceeded" },
@@ -99,11 +103,13 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink can be used in
   for (const sink of sinks) {
     sink.emitOperationalDirective(createOperationalDirective({
       type: "resume",
+      scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["operator"] },
       reason: "loop safety",
     }));
     sink.emitDecisionDirective(createDecisionDirective({
       type: "approve",
+      scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["approver"] },
       targetRef: "task://loop",
       payload: {},
@@ -119,6 +125,7 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink multiple calls
   for (let i = 0; i < 100; i++) {
     sink.emitOperationalDirective(createOperationalDirective({
       type: "quota_adjust",
+      scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-stress", tenantId: "tenant-1", roles: ["operator"] },
       reason: "stress test",
       params: { iteration: i },

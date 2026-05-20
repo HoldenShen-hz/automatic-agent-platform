@@ -152,5 +152,39 @@ test("validateCorsConfig throws for wildcard with credentials", () => {
 
 test("DEFAULT_CORS_CONFIG has secure defaults", () => {
   assert.equal(DEFAULT_CORS_CONFIG.allowedOrigins.length, 0);
-  assert.equal(DEFAULT_CORS_CONFIG.allowCredentials, true);
+  assert.equal(DEFAULT_CORS_CONFIG.allowCredentials, false);
+});
+
+test("CorsMiddleware rejects explicit subdomain wildcards", () => {
+  assert.throws(
+    () =>
+      new CorsMiddleware({
+        allowedOrigins: ["*.example.com"],
+      }),
+    /Invalid origin/,
+  );
+});
+
+test("CorsMiddleware rejects null and non-http origins", () => {
+  assert.throws(
+    () =>
+      new CorsMiddleware({
+        allowedOrigins: ["null"],
+      }),
+    /Invalid origin/,
+  );
+  assert.throws(
+    () =>
+      new CorsMiddleware({
+        allowedOrigins: ["app.example.com"],
+      }),
+    /Invalid origin/,
+  );
+  assert.throws(
+    () =>
+      new CorsMiddleware({
+        allowedOrigins: ["chrome-extension://example"],
+      }),
+    /Invalid origin/,
+  );
 });

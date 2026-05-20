@@ -8,6 +8,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { StorageError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const editSnapshotLogger = new StructuredLogger({ retentionLimit: 100 });
@@ -78,19 +79,21 @@ export class EditSnapshotService {
    * Takes a snapshot of a file at the current point in time
    */
   public takeFileSnapshot(filePath: string): FileSnapshot {
-    let content: string;
     try {
-      content = readFileSync(filePath, "utf8");
+      return {
+        filePath,
+        content: readFileSync(filePath, "utf8"),
+        timestamp: Date.now(),
+      };
     } catch (err) {
       editSnapshotLogger.warn("edit_snapshot: failed to read file for snapshot", { error: err instanceof Error ? err.message : String(err), filePath });
-      content = "";
+      throw new StorageError("edit_snapshot.snapshot_read_failed", "edit_snapshot.snapshot_read_failed", {
+        details: {
+          filePath,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
     }
-
-    return {
-      filePath,
-      content,
-      timestamp: Date.now(),
-    };
   }
 
   /**

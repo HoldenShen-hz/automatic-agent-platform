@@ -56,8 +56,14 @@ test("RateLimiter.generateKey uses tenant when perTenant enabled", () => {
   assert.equal(key, "tenant:tenant-abc");
 });
 
-test("RateLimiter.generateKey falls back to client IP", () => {
+test("RateLimiter.generateKey returns global when tenant/principal partitioning is disabled", () => {
   const limiter = new RateLimiter({ maxRequests: 100, windowMs: 60_000 });
+  const key = limiter.generateKey({ clientIp: "192.168.1.1" });
+  assert.equal(key, "global");
+});
+
+test("RateLimiter.generateKey falls back to client IP when scoped partitioning is enabled", () => {
+  const limiter = new RateLimiter({ maxRequests: 100, windowMs: 60_000, perTenant: true });
   const key = limiter.generateKey({ clientIp: "192.168.1.1" });
   assert.equal(key, "ip:192.168.1.1");
 });

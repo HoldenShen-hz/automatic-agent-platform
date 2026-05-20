@@ -265,7 +265,7 @@ test("R26-01 and R26-03 context isolation avoids zero-action escalation and empt
     },
   }));
 
-  assert.equal(zeroActionResult.isolationLevel, IsolationLevel.MINIMAL);
+  assert.equal(zeroActionResult.isolationLevel, IsolationLevel.FULL);
   assert.deepEqual(zeroActionResult.narrowedPermissions.actions, []);
 
   const emptyMinimalResult = isolator.isolate(

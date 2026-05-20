@@ -47,6 +47,8 @@ test("SqliteLockAdapter.acquire returns existing lock for same owner", () => {
   // Same owner can re-acquire (renew)
   const result2 = adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 60000 });
   assert.equal(result2.acquired, true);
+  assert.ok(result2.lock!.fencingToken > result1.lock!.fencingToken);
+  assert.equal(result2.lock!.ttlMs, 60000);
 
   db.close();
 });
@@ -98,6 +100,21 @@ test("SqliteLockAdapter.extend extends lock TTL", () => {
   const extended = adapter.extend("test-lock", "owner-1", 60000);
   assert.ok(extended !== null);
   assert.equal(extended!.lockKey, "test-lock");
+  assert.equal(extended!.ttlMs, 90000);
+
+  db.close();
+});
+
+test("SqliteLockAdapter.extend caps TTL growth and rotates fencing token", () => {
+  const db = createTestDb();
+  const adapter = new SqliteLockAdapter(db);
+
+  const acquired = adapter.acquire({ lockKey: "cap-lock", owner: "owner-1", ttlMs: 590000 });
+  const extended = adapter.extend("cap-lock", "owner-1", 50_000);
+
+  assert.ok(extended);
+  assert.equal(extended!.ttlMs, 600000);
+  assert.ok(extended!.fencingToken > acquired.lock!.fencingToken);
 
   db.close();
 });

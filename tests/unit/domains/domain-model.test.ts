@@ -129,7 +129,7 @@ test("DomainDefinitionSchema provides default execution profile and status", () 
 
   assert.equal(definition.status, "draft");
   assert.equal(definition.executionProfile.executionMode.planningMode, "llm_assisted");
-  assert.equal(definition.executionProfile.latencyTier, "interactive");
+  assert.equal(definition.executionProfile.latencyTier, "near_realtime");
 });
 
 test("DomainDefinitionSchema accepts current domain definition shape", () => {

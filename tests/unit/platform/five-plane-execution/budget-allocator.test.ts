@@ -868,3 +868,109 @@ test("release routes through state machine for proper event emission", () => {
   assert.ok(releaseResult.reservation);
   assert.equal(releaseResult.reservation.aggregate.status, "released");
 });
+
+test("streamingIncrement updates ledger reservation state without extending expiry", () => {
+  const truth = new RuntimeTruthRepository();
+  const allocator = new BudgetAllocator({ authoritativeStore: truth });
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ hardCap: 1000, version: 0 }),
+    amount: 100,
+    resourceKind: "token",
+    expiresAt: "2026-05-19T10:00:00.000Z",
+    expectedVersion: 0,
+    context: createTestContext({ tierLimit: 500 }),
+  });
+
+  const incremented = allocator.streamingIncrement({
+    ledger: reserveResult.ledger,
+    reservation: reserveResult.reservation,
+    additionalAmount: 40,
+    context: createTestContext({ tierLimit: 500 }),
+  });
+
+  assert.equal(incremented.totalReserved, 140);
+  assert.equal(incremented.expiresAt, reserveResult.reservation.expiresAt);
+  assert.equal(incremented.ledger.reservedAmount, 140);
+  assert.equal(incremented.reservation.amount, 140);
+  assert.equal(truth.getBudgetLedger(TEST_LEDGER_ID)?.reservedAmount, 140);
+});
+
+test("sweepExpiredReservations releases only expired orphaned reserved entries", () => {
+  const truth = new RuntimeTruthRepository();
+  const allocator = new BudgetAllocator({ authoritativeStore: truth });
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ hardCap: 1000, version: 0 }),
+    amount: 100,
+    resourceKind: "token",
+    expiresAt: "2026-05-19T10:00:00.000Z",
+    expectedVersion: 0,
+    context: createTestContext(),
+  });
+
+  const sweep = allocator.sweepExpiredReservations({
+    activeRunIds: new Set<string>(),
+    dbTime: "2026-05-19T10:00:06.000Z",
+  });
+
+  assert.deepEqual(sweep.releasedReservationIds, [reserveResult.reservation.budgetReservationId]);
+  assert.deepEqual(sweep.expiredReservationIds, [reserveResult.reservation.budgetReservationId]);
+  assert.equal(sweep.orphanedCount, 1);
+  assert.equal(truth.getBudgetLedger(TEST_LEDGER_ID)?.reservedAmount, 0);
+  assert.equal(truth.getBudgetLedger(TEST_LEDGER_ID)?.releasedAmount, 100);
+  assert.equal(allocator.getActiveReservations().length, 0);
+});
+
+test("settleAtomically does not re-run authoritative CAS after repository success", async () => {
+  let upsertCalls = 0;
+  const allocator = new BudgetAllocator({
+    authoritativeStore: {
+      upsertWithCas: () => {
+        upsertCalls += 1;
+        return { success: true, actualVersion: undefined };
+      },
+    },
+    deps: {
+      atomicRepository: {
+        async settleAtomically(ledger, reservation, actualAmount, expectedVersion, settlement) {
+          void reservation;
+          void expectedVersion;
+          void settlement;
+          return {
+            success: true,
+            ledger: {
+              ...ledger,
+              reservedAmount: Math.max(0, ledger.reservedAmount - 100),
+              settledAmount: ledger.settledAmount + actualAmount,
+              version: ledger.version + 1,
+            },
+            rowsAffected: 1,
+          };
+        },
+        async releaseAtomically() {
+          return { success: false, rowsAffected: 0 };
+        },
+      },
+    },
+  });
+
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ hardCap: 1000, version: 0 }),
+    amount: 100,
+    resourceKind: "token",
+    expiresAt: "2026-05-19T10:00:00.000Z",
+    expectedVersion: 0,
+    context: createTestContext(),
+  });
+
+  upsertCalls = 0;
+  const settled = await allocator.settle({
+    ledger: reserveResult.ledger,
+    reservation: reserveResult.reservation,
+    actualAmount: 80,
+    expectedVersion: reserveResult.ledger.version,
+    context: createTestContext(),
+  });
+
+  assert.equal(settled.ledger.settledAmount, 80);
+  assert.equal(upsertCalls, 0);
+});

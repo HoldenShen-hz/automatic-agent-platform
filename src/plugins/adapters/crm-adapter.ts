@@ -36,7 +36,6 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     mode: "enforce",
     allowedDomains: ["api.hubspot.com", "api.salesforce.com"],
   });
-  const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
   let credentialFingerprint: string | null = null;
   let credentialToken: string | null = null;
 
@@ -54,6 +53,10 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     };
     if (body !== undefined) {
       requestInit.body = JSON.stringify(body);
+    }
+    const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
+    if (typeof fetchImplementation !== "function") {
+      throw new Error("crm_adapter.fetch_unavailable");
     }
     const response = await fetchImplementation(url, requestInit);
     if (!response.ok) {

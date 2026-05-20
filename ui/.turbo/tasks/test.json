@@ -3,17 +3,8 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/apps/electron-win/main.test.ts",
-    "tests/shared/api-client.test.ts",
-    "tests/shared/api-client-runtime-regressions.test.ts",
-    "tests/tools/tooling.test.ts",
-    "tests/unit/ui/tools/mock-server-routing.test.ts",
-    "tests/unit/ui/tools/mock-codegen-sync-regressions.test.ts",
-    "tests/unit/ui/packages/features/takeover/hooks.test.tsx",
-    "tests/unit/ui/packages/features/conversation/hooks.test.tsx",
-    "tests/shared/ws-runtime-connect-regression.test.tsx",
-    "tests/unit/ui/shared/auth-service.test.ts"
+    "tests/shared/ui-core-chart-regressions.test.tsx"
   ],
-  "startedAt": "2026-05-19T09:44:58.154Z",
-  "completedAt": "2026-05-19T09:45:02.058Z"
+  "startedAt": "2026-05-19T17:51:45.750Z",
+  "completedAt": "2026-05-19T17:51:46.607Z"
 }

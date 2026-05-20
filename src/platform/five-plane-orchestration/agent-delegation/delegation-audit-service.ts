@@ -9,7 +9,7 @@
  * Architecture: §51 Delegation Governance
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
@@ -19,10 +19,10 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const delegationAuditLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /** Default directory for delegation audit events */
-const DEFAULT_AUDIT_DIR = join(process.cwd(), ".audit", "delegation");
+const DEFAULT_AUDIT_DIR = process.env.AA_DELEGATION_AUDIT_DIR?.trim() || join(process.cwd(), ".audit", "delegation");
 
 function isNodeTestRunner(): boolean {
-  return process.argv.includes("--test") || process.env.NODE_TEST_CONTEXT === "child-v8";
+  return process.env.NODE_TEST_CONTEXT === "child-v8";
 }
 
 /** Writes a value as formatted JSON to a file */
@@ -49,6 +49,36 @@ function safeReadJson<T>(path: string): T | null {
     });
     throw new ValidationError("delegation_audit.invalid_json", `delegation_audit.invalid_json: ${path}`);
   }
+}
+
+function readPersistedEvents(path: string): DelegationAuditEvent[] {
+  if (!existsSync(path)) {
+    return [];
+  }
+  const raw = readFileSync(path, "utf8").trim();
+  if (raw.length === 0) {
+    return [];
+  }
+  if (raw.startsWith("[")) {
+    return safeReadJson<DelegationAuditEvent[]>(path) ?? [];
+  }
+  const events: DelegationAuditEvent[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    try {
+      events.push(JSON.parse(trimmed) as DelegationAuditEvent);
+    } catch (error) {
+      delegationAuditLogger.error("delegation_audit.invalid_json", {
+        path,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ValidationError("delegation_audit.invalid_json", `delegation_audit.invalid_json: ${path}`);
+    }
+  }
+  return events;
 }
 
 export type DelegationAuditEventType =
@@ -100,18 +130,24 @@ export class DelegationAuditService {
 
   /** Loads events from persistent storage */
   private loadEvents(): void {
-    const loaded = safeReadJson<DelegationAuditEvent[]>(this.eventFilePath);
-    if (loaded && Array.isArray(loaded)) {
-      this.events.push(...loaded);
+    const loaded = readPersistedEvents(this.eventFilePath);
+    const seen = new Set<string>();
+    for (const event of loaded) {
+      if (seen.has(event.id)) {
+        continue;
+      }
+      seen.add(event.id);
+      this.events.push(event);
     }
   }
 
-  /** Persists all events to disk */
-  private persistEvents(): void {
+  /** Persists a single event to disk */
+  private persistEvent(event: DelegationAuditEvent): void {
     if (!this.persistent) {
       return;
     }
-    writeJson(this.eventFilePath, this.events);
+    mkdirSync(dirname(this.eventFilePath), { recursive: true });
+    appendFileSync(this.eventFilePath, `${JSON.stringify(event)}\n`, "utf8");
   }
 
   public record(event: Omit<DelegationAuditEvent, "id" | "createdAt">): DelegationAuditEvent {
@@ -121,7 +157,7 @@ export class DelegationAuditService {
       createdAt: nowIso(),
     };
     this.events.push(record);
-    this.persistEvents();
+    this.persistEvent(record);
     return record;
   }
 
@@ -180,7 +216,7 @@ export class DelegationAuditService {
     parentAgentId: string;
     childAgentId: string;
     durationMs: number;
-    depth?: number; // R26-07 fix: track depth instead of hardcoding 0
+    depth: number;
     actorId: string;
     actorType: "user" | "agent" | "system";
   }): DelegationAuditEvent {
@@ -189,7 +225,7 @@ export class DelegationAuditService {
       delegationId: params.delegationId,
       parentAgentId: params.parentAgentId,
       childAgentId: params.childAgentId,
-      depth: params.depth ?? 0,
+      depth: params.depth,
       reasonCode: "delegation.completed",
       metadata: { durationMs: params.durationMs },
       actorId: params.actorId,
@@ -202,7 +238,7 @@ export class DelegationAuditService {
     parentAgentId: string;
     childAgentId: string;
     error: string;
-    depth?: number; // R26-07 fix: track depth instead of hardcoding 0
+    depth: number;
     actorId: string;
     actorType: "user" | "agent" | "system";
   }): DelegationAuditEvent {
@@ -211,7 +247,7 @@ export class DelegationAuditService {
       delegationId: params.delegationId,
       parentAgentId: params.parentAgentId,
       childAgentId: params.childAgentId,
-      depth: params.depth ?? 0,
+      depth: params.depth,
       reasonCode: "delegation.failed",
       metadata: { error: params.error },
       actorId: params.actorId,
@@ -223,6 +259,7 @@ export class DelegationAuditService {
     delegationId: string;
     parentAgentId: string;
     childAgentId: string;
+    depth: number;
     originalPermissions: Record<string, unknown>;
     narrowedPermissions: Record<string, unknown>;
     actorId: string;
@@ -233,7 +270,7 @@ export class DelegationAuditService {
       delegationId: params.delegationId,
       parentAgentId: params.parentAgentId,
       childAgentId: params.childAgentId,
-      depth: 0,
+      depth: params.depth,
       reasonCode: "delegation.permission_narrowed",
       metadata: {
         originalPermissions: params.originalPermissions,

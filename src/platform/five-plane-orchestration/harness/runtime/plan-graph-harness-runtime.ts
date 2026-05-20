@@ -132,11 +132,6 @@ export class PlanGraphAnalyzer {
   }
 }
 
-export interface PlanGraphSchedulerInput {
-  readonly planGraphBundle: PlanGraphBundle;
-  readonly completedNodeIds?: readonly string[];
-}
-
 /**
  * @deprecated PlanGraphScheduler is deprecated per §14.9.
  * Use ReadyNodeSchedulingPolicy with "critical_path_rank" field instead.
@@ -195,11 +190,13 @@ export class PlanGraphScheduler {
       if (completed.has(node.nodeId)) {
         return false;
       }
-      const incomingHardEdges = graph.edges.filter((edge) => edge.toNodeId === node.nodeId && edge.dependencyType === "hard");
-      if (incomingHardEdges.length === 0) {
+      const incomingBlockingEdges = graph.edges.filter((edge) =>
+        edge.toNodeId === node.nodeId && (edge.dependencyType === "hard" || edge.dependencyType === "compensation")
+      );
+      if (incomingBlockingEdges.length === 0) {
         return graph.entryNodeIds.includes(node.nodeId);
       }
-      return incomingHardEdges.every((edge) => completed.has(edge.fromNodeId));
+      return incomingBlockingEdges.every((edge) => completed.has(edge.fromNodeId));
     });
   }
 }
@@ -239,8 +236,7 @@ function computeCriticalPathRanksFromGraph(graph: PlanGraph): ReadonlyMap<string
       return ranks.get(nodeId)!;
     }
     if (processing.has(nodeId)) {
-      // Cycle detected, use 0 as fallback
-      return 0;
+      throw new ValidationError("plan_graph_harness_runtime.cycle_detected", "Plan graph contains a cycle.");
     }
     processing.add(nodeId);
 
@@ -284,6 +280,9 @@ export class PlanGraphHarnessRuntime {
     readonly completedNodeIds?: readonly string[];
     readonly context: PlanGraphHarnessRuntimeContext;
     readonly receiptStatus?: NodeAttemptReceipt["status"];
+    readonly attemptNo?: number;
+    readonly startedAtMs?: number;
+    readonly completedAtMs?: number;
   }): PlanGraphHarnessRuntimeStepResult {
     const [node] = this.scheduler.readyNodes({
       planGraphBundle: input.planGraphBundle,
@@ -293,7 +292,9 @@ export class PlanGraphHarnessRuntime {
       throw new ValidationError("plan_graph_harness_runtime.no_ready_node", "No ready node is available for execution.");
     }
 
-    const fencingToken = `${node.nodeId}-fence`;
+    const startedAtMs = input.startedAtMs ?? Date.now();
+    const completedAtMs = input.completedAtMs ?? startedAtMs;
+    const fencingToken = newId(`fence-${node.nodeId}`);
     let nodeRun = createNodeRun({
       harnessRunId: input.harnessRun.harnessRunId,
       planGraphBundleId: input.planGraphBundle.planGraphBundleId,
@@ -310,7 +311,7 @@ export class PlanGraphHarnessRuntime {
       traceId: input.context.traceId,
       emittedBy: input.context.emittedBy,
     }));
-    const leaseId = `${node.nodeId}-lease`;
+    const leaseId = newId(`lease-${node.nodeId}`);
     const transitions: readonly NodeRun["status"][] = ["ready", "leased", "running"];
     for (const toStatus of transitions) {
       const result = this.stateMachine.transition({
@@ -329,6 +330,7 @@ export class PlanGraphHarnessRuntime {
         emittedBy: input.context.emittedBy,
         leaseId,
         fencingToken,
+        auditRef: `audit://plan-graph/${input.harnessRun.harnessRunId}/${node.nodeId}/${toStatus}`,
       });
       nodeRun = result.aggregate;
       events.push(result.event);
@@ -336,8 +338,8 @@ export class PlanGraphHarnessRuntime {
 
     const nodeAttempt = createNodeAttempt({
       nodeRunId: nodeRun.nodeRunId,
-      attemptNo: 1,
-      attemptKind: "initial",
+      attemptNo: Math.max(1, Math.trunc(input.attemptNo ?? 1)),
+      attemptKind: (input.attemptNo ?? 1) > 1 ? "retry" : "initial",
       executorRef: input.context.executorRef,
       inputSnapshotRef: {
         artifactId: `${node.nodeId}-input`,
@@ -363,7 +365,7 @@ export class PlanGraphHarnessRuntime {
                   ? "router"
                   : "tool",
       status: input.receiptStatus ?? "succeeded",
-      duration: 0,
+      duration: Math.max(0, completedAtMs - startedAtMs),
       evidenceRefs: [
         {
           artifactId: `${node.nodeId}-receipt-evidence`,

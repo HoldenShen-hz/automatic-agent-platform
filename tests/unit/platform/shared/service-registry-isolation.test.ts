@@ -104,7 +104,7 @@ test("ServiceRegistry dependsOn works with multiple dependencies", () => {
   assert.ok(initOrder.indexOf("b") < initOrder.indexOf("a"));
 });
 
-test("ServiceRegistry topologicalSort returns acyclic portion for circular dependency", () => {
+test("ServiceRegistry topologicalSort throws for circular dependency", () => {
   const registry = new ServiceRegistry();
 
   registry.register("circular-a", {
@@ -116,7 +116,10 @@ test("ServiceRegistry topologicalSort returns acyclic portion for circular depen
     dependsOn: ["circular-a"],
   });
 
-  assert.deepEqual(registry.topologicalSort(), []);
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry.circular_dependency/,
+  );
 });
 
 test("ServiceRegistry reset clears instances and registrations", () => {

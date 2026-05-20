@@ -369,23 +369,45 @@ export function normalizeWorkingDirectory(workingDirectory: string | null | unde
  * Runs `git rev-parse HEAD` in the working directory.
  */
 export async function defaultGitHeadResolver(workingDirectory: string): Promise<string | null> {
-  const child = spawn("git", ["rev-parse", "HEAD"], {
-    cwd: workingDirectory,
-    stdio: ["ignore", "pipe", "ignore"] as const,
+  return await new Promise<string | null>((resolve) => {
+    const child = spawn("git", ["rev-parse", "HEAD"], {
+      cwd: workingDirectory,
+      stdio: ["ignore", "pipe", "ignore"] as const,
+    });
+    let settled = false;
+    let stdout = "";
+    const finish = (value: string | null): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      child.stdout?.removeAllListeners();
+      resolve(value);
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        // Child may have already exited.
+      }
+      finish(null);
+    }, 5_000);
+    timer.unref();
+
+    child.stdout?.on("data", (chunk: Buffer | string) => {
+      stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    });
+    child.once("error", () => finish(null));
+    child.once("close", (code) => {
+      if (code !== 0) {
+        finish(null);
+        return;
+      }
+      const gitHead = stdout.trim();
+      finish(gitHead.length > 0 ? gitHead : null);
+    });
   });
-  const stdout = await new Promise<string>((resolve) => {
-    let data = "";
-    child.stdout?.on("data", (chunk) => { data += chunk; });
-    child.stdout?.on("end", () => resolve(data));
-  });
-  const exitCode = await new Promise<number>((resolve) => {
-    child.on("close", (code) => resolve(code ?? 1));
-  });
-  if (exitCode !== 0) {
-    return null;
-  }
-  const gitHead = stdout.trim();
-  return gitHead.length === 0 ? null : gitHead;
 }
 
 /**

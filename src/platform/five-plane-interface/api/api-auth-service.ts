@@ -374,7 +374,7 @@ export class ApiAuthService {
         allowedAudiences: this.allowedAudiences,
         clockSkewMs: this.clockSkewMs,
         requireJwtId: this.options.requireJwtId ?? false,
-        isJwtRevoked: this.options.isJwtRevoked,
+        ...(this.options.isJwtRevoked == null ? {} : { isJwtRevoked: this.options.isJwtRevoked }),
       };
       const claims = verifyJwt(authorization.slice("Bearer ".length), this.options.jwtSecret, verifyOptions);
       return {

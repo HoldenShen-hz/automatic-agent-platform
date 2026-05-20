@@ -98,8 +98,11 @@ export class ScopedExternalAccessSandbox {
         if (hostname === allowedDomain) {
           return true;
         }
-        const isApexDomain = allowedDomain.split(".").length === 2;
-        return isApexDomain && hostname.endsWith(`.${allowedDomain}`);
+        if (!allowedDomain.startsWith("*.")) {
+          return false;
+        }
+        const suffix = allowedDomain.slice(2);
+        return hostname.length > suffix.length && hostname.endsWith(`.${suffix}`);
       });
 
       if (!allowed) {
@@ -184,7 +187,8 @@ export class ScopedExternalAccessSandbox {
   public validateResponseSize(body: unknown): boolean {
     if (body == null) return true;
 
-    const size = typeof body === "string" ? body.length : JSON.stringify(body).length;
+    const serialized = typeof body === "string" ? body : JSON.stringify(body);
+    const size = Buffer.byteLength(serialized, "utf8");
     return size <= this.config.maxResponseSizeBytes;
   }
 
@@ -301,13 +305,25 @@ export class ScopedExternalAccessSandbox {
       clearTimeout(timeout);
     }
 
+    const bodyBuffer = Buffer.from(await response.arrayBuffer());
+    if (bodyBuffer.byteLength > this.config.maxResponseSizeBytes) {
+      return {
+        status: 413,
+        headers: {},
+        body: { error: "Response too large" },
+        blocked: true,
+        blockedReason: "response_size_exceeded",
+      };
+    }
+
     let body: unknown;
     const contentType = response.headers.get("content-type") ?? "";
+    const bodyText = bodyBuffer.toString("utf8");
 
     if (contentType.includes("application/json")) {
-      body = await response.json();
+      body = JSON.parse(bodyText);
     } else {
-      body = await response.text();
+      body = bodyText;
     }
 
     const respHeaders: Record<string, string> = {};

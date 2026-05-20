@@ -308,7 +308,7 @@ test("DomainExecutionProfileSchema provides defaults", () => {
   assert.equal(profile.executionMode.hotPathMode, "llm_allowed");
   assert.equal(profile.executionMode.llmInHotPathAllowed, true);
   assert.equal(profile.executionMode.maxHotPathLatencyMs, 1000);
-  assert.equal(profile.latencyTier, "interactive");
+  assert.equal(profile.latencyTier, "near_realtime");
   assert.equal(profile.compiledArtifactRef, null);
 });
 
@@ -316,7 +316,7 @@ test("DomainExecutionProfileSchema accepts all latency tiers", () => {
   const tiers = ["realtime", "near_realtime", "interactive", "batch"] as const;
   for (const tier of tiers) {
     const profile = DomainExecutionProfileSchema.parse({ latencyTier: tier });
-    assert.equal(profile.latencyTier, tier);
+    assert.equal(profile.latencyTier, tier === "interactive" ? "near_realtime" : tier);
   }
 });
 

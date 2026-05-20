@@ -99,17 +99,21 @@ test("StageTransitionFSM.recordStageCompletion updates index correctly", () => {
   fsm.recordStageCompletion("improve");
   assert.equal(fsm.getCurrentStage(), "release");
 
-  // Issue #2023: After completing release, should not go out of bounds
+  // Completing release advances to the final knowledge promotion stage.
   fsm.recordStageCompletion("release");
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
+  assert.equal(fsm.isComplete(), false, "should not be complete before knowledge promotion");
+
+  fsm.recordStageCompletion("knowledge_promotion");
   assert.ok(fsm.getCurrentStage() !== undefined, "should have valid stage after release");
-  assert.equal(fsm.isComplete(), true, "should be complete after release");
+  assert.equal(fsm.isComplete(), true, "should be complete after knowledge promotion");
 });
 
 test("StageTransitionFSM.recordStageCompletion release stays in bounds - Issue #2023", () => {
   const fsm = new StageTransitionFSM();
 
   // Progress all the way to release
-  for (let i = 0; i < OAPEFLIR_STAGES.length - 1; i++) {
+  for (let i = 0; i < OAPEFLIR_STAGES.length - 2; i++) {
     const stage = OAPEFLIR_STAGES[i]!;
     fsm.recordStageEntry(stage);
     fsm.recordStageCompletion(stage);
@@ -118,14 +122,14 @@ test("StageTransitionFSM.recordStageCompletion release stays in bounds - Issue #
   // Now at release
   assert.equal(fsm.getCurrentStage(), "release");
 
-  // Complete release
+  // Complete release and advance to knowledge promotion without going out of bounds.
   fsm.recordStageCompletion("release");
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
 
-  // Issue #2023: Should not go out of bounds (index 8 with only 8 stages 0-7)
+  fsm.recordStageCompletion("knowledge_promotion");
+
   assert.ok(fsm.getCurrentStage() !== undefined, "stage should be defined");
   assert.ok(OAPEFLIR_STAGES.includes(fsm.getCurrentStage()), "stage should be valid");
-
-  // isComplete should be true
   assert.equal(fsm.isComplete(), true);
 });
 

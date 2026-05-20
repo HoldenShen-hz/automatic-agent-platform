@@ -224,7 +224,7 @@ test("DelegationManagerService validates collaboration messages and takeover not
   };
 
   assert.equal(service.validateCollaborationMessage(message, context).accepted, true);
-  assert.equal(service.recordTakeoverNotice(message, context).accepted, true);
+  assert.equal(service.recordTakeoverNotice({ ...message, messageId: "msg-2" }, context).accepted, true);
 });
 
 test("DelegationManagerService tracks delegation chain", async () => {

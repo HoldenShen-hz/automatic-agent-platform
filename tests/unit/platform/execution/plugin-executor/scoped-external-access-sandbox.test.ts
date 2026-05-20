@@ -354,6 +354,34 @@ test("ScopedExternalAccessSandbox handles extremely large response size limit", 
   assert.equal(sandbox.validateResponseSize(hugeString), true);
 });
 
+test("ScopedExternalAccessSandbox blocks oversized fetched bodies before JSON parsing", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () => ({
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      arrayBuffer: async () => new TextEncoder().encode("{\"data\":\"" + "x".repeat(256) + "\"}").buffer,
+    })) as typeof fetch;
+
+    const sandbox = new ScopedExternalAccessSandbox({
+      allowedDomains: ["api.example.com"],
+      maxResponseSizeBytes: 32,
+      rateLimitPerMinute: 60,
+    });
+
+    const response = await sandbox.executeScopedRequest({
+      url: "https://api.example.com/data",
+      method: "GET",
+    });
+
+    assert.equal(response.blocked, true);
+    assert.equal(response.blockedReason, "response_size_exceeded");
+    assert.equal(response.status, 413);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sensitive Header Filtering Security
 // ─────────────────────────────────────────────────────────────────────────────

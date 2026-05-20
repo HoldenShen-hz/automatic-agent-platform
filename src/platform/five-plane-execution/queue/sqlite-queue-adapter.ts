@@ -135,7 +135,7 @@ export class SqliteQueueAdapter implements QueueAdapter {
   retryJob(jobId: string): QueueJobRecord | null {
     const now = nowIso();
     const result = this.db.connection
-      .prepare(`UPDATE queue_jobs SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = ? WHERE id = ? AND status IN ('failed', 'dead_letter')`)
+      .prepare(`UPDATE queue_jobs SET status = 'waiting', last_error = NULL, updated_at = ? WHERE id = ? AND status IN ('failed', 'dead_letter')`)
       .run(now, jobId);
     if (Number(result.changes ?? 0) === 0) {
       return this.getJob(jobId);

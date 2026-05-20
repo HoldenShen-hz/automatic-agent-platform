@@ -115,6 +115,8 @@ export function decorateResponseHeaders(
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": payload.headers["x-api-version"] ?? "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
+    "cache-control": payload.headers["cache-control"] ?? "private, no-store, max-age=0",
+    pragma: payload.headers.pragma ?? "no-cache",
     ...(traceId != null ? { "x-trace-id": traceId } : {}),
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);
@@ -128,6 +130,9 @@ export function decorateResponseHeaders(
     }
     headers.vary = headers.vary != null && headers.vary.length > 0 ? `${headers.vary}, Origin` : "Origin";
   }
+  headers.vary = headers.vary != null && headers.vary.length > 0
+    ? headers.vary
+    : "Accept-Encoding";
   if (
     headers["content-length"] == null
     && headers["content-encoding"] == null

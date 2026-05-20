@@ -19,6 +19,7 @@ import { buildHtmlResponse, requirePrincipal, assertGlobalTenantScopeSupported, 
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { GatewayTargetDirectoryService } from "../../channel-gateway/gateway-target-directory-service.js";
+import { WS_PATH } from "../../channel-gateway/websocket-bridge.js";
 import { AppError } from "../../../contracts/errors.js";
 
 class ApiError extends AppError {
@@ -195,6 +196,7 @@ function buildMissionControlHtml(snapshot: ReturnType<MissionControlService["get
     <section>
       <h2>Task Cockpit</h2>
       <ul>${taskItems || "<li>No active tasks</li>"}</ul>
+      <p>Realtime Stream: <code>${escapeHtml(WS_PATH)}</code> using <code>Sec-WebSocket-Protocol: &lt;token&gt;,taskId=&lt;taskId&gt;,lastEventId=&lt;eventId&gt;</code></p>
     </section>
     <section>
       <h2>Workflow Cockpit</h2>

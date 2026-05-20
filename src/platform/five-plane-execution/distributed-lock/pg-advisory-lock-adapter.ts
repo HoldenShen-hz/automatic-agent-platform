@@ -5,6 +5,7 @@ import type { AcquireLockInput, AcquireLockResult, DistributedLockAdapter, LockB
 
 export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   readonly backendKind: LockBackendKind = "pg_advisory";
+  private readonly heldLocks = new Map<string, LockRecord>();
   private sql: PostgresSqlDriver | null = null;
   private connected = false;
   private connectionError: Error | null = null;
@@ -15,7 +16,6 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   private readonly connectTimeoutSeconds: number;
   private readonly ssl: false | { rejectUnauthorized: true };
   private readonly postgresFactory: PostgresFactory;
-  private fencingCounter = 0;
 
   constructor(config?: PgAdvisoryLockConfig) {
     const envConfig = loadPostgresPoolEnv(config?.env);
@@ -68,26 +68,40 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   release(_lockKey: string, _owner: string): boolean {
     throw new LockingError("lock.pg_async_required", "lock.pg_async_required: PostgreSQL advisory lock release() requires async releaseAsync() method");
   }
-  extend(lockKey: string, _owner: string, _additionalMs: number): LockRecord | null { return this.inspect(lockKey); }
+  extend(lockKey: string, owner: string, additionalMs: number): LockRecord | null {
+    const current = this.heldLocks.get(lockKey);
+    if (current == null || current.owner !== owner) {
+      return null;
+    }
+    const next: LockRecord = {
+      ...current,
+      ttlMs: current.ttlMs + additionalMs,
+      acquiredAt: new Date().toISOString(),
+    };
+    this.heldLocks.set(lockKey, next);
+    return next;
+  }
   forceSteal(_lockKey: string, _newOwner: string, _reason: string): LockRecord {
     throw new LockingError("lock.advisory_cannot_force_steal", "PostgreSQL advisory locks must be released by the owning session; forceSteal is not supported");
   }
-  inspect(_lockKey: string): LockRecord | null { return null; }
+  inspect(lockKey: string): LockRecord | null { return this.heldLocks.get(lockKey) ?? null; }
 
   async acquireAsync(input: AcquireLockInput): Promise<AcquireLockResult> {
     const { lockKey, owner } = input;
     const now = new Date().toISOString();
     const ttlMs = input.ttlMs ?? 30000;
-    const fencingToken = ++this.fencingCounter;
     try {
       this.ensureConnected();
       const driver = this.sql!;
       const advisoryKey = this.lockKeyToAdvisoryKey(lockKey);
-      interface AcquireRow extends Record<string, unknown> { acquired: boolean }
-      const rows = await driver<AcquireRow>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired`;
+      interface AcquireRow extends Record<string, unknown> { acquired: boolean; fencing_token?: number }
+      const rows = await driver<AcquireRow>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired, txid_current()::bigint as fencing_token`;
       const result = rows[0];
       if (result?.acquired) {
-        return { acquired: true, lock: { lockKey, owner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata: null } };
+        const fencingToken = Number(result.fencing_token);
+        const lock = { lockKey, owner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata: null } satisfies LockRecord;
+        this.heldLocks.set(lockKey, lock);
+        return { acquired: true, lock };
       }
       return { acquired: false };
     } catch (error) {
@@ -103,9 +117,17 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
 
   async releaseAsync(lockKey: string, _owner: string): Promise<boolean> {
     try {
+      const held = this.heldLocks.get(lockKey);
+      if (held == null || held.owner !== _owner) {
+        return false;
+      }
       this.ensureConnected();
-      await this.sql!`SELECT pg_advisory_unlock(${this.lockKeyToAdvisoryKey(lockKey)})`;
-      return true;
+      const rows = await this.sql!<{ released?: boolean }>`SELECT pg_advisory_unlock(${this.lockKeyToAdvisoryKey(lockKey)}) as released`;
+      const released = rows[0]?.released === true;
+      if (released) {
+        this.heldLocks.delete(lockKey);
+      }
+      return released;
     } catch (error) {
       if (error instanceof ReferenceError || (error instanceof Error && (error.message.includes("postgres") || error.message.includes("Cannot find module")))) {
         throw new LockingError("lock.pg_advisory_not_implemented", "lock.pg_advisory_not_implemented: PostgreSQL advisory lock backend requires pg driver");
@@ -118,6 +140,7 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
     if (this.sql) {
       await this.sql.end();
       this.connected = false;
+      this.heldLocks.clear();
     }
   }
 }

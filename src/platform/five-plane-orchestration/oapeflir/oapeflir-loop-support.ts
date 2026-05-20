@@ -75,6 +75,10 @@ type OapeflirPlanBuilder = Pick<PlanBuilder, "build"> & Partial<{
   buildGraphBundle: (input: PlanBuilderInput, options?: BuildPlanOptions) => PlanGraphBundle;
 }>;
 
+function normalizeOapeflirStageName(stage: string): string {
+  return stage.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
+}
+
 export abstract class OapeflirLoopSupport {
   protected abstract readonly observationAggregator: ObservationAggregator;
   protected abstract readonly planBuilder: OapeflirPlanBuilder;
@@ -301,22 +305,23 @@ export abstract class OapeflirLoopSupport {
     attributes: Record<string, unknown>,
   ): Promise<T> {
     const startedAt = Date.now();
-    runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
+    const canonicalStage = normalizeOapeflirStageName(stage);
+    runtimeMetricsRegistry.recordOapeflirStageEntry(canonicalStage);
+    let outcome: "completed" | "error" = "completed";
     try {
-      const result = await startActiveSpan(`oapeflir.${stage}`, {
+      return await startActiveSpan(`oapeflir.${canonicalStage}`, {
         tracerName: "automatic-agent-platform.oapeflir",
         attributes: {
-          "aa.oapeflir.stage": stage,
+          "aa.oapeflir.stage": canonicalStage,
           ...attributes,
         },
       }, async () => await operation());
-      const durationSeconds = (Date.now() - startedAt) / 1000;
-      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "completed", durationSeconds);
-      return result;
     } catch (error) {
-      const durationSeconds = (Date.now() - startedAt) / 1000;
-      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationSeconds);
+      outcome = "error";
       throw error;
+    } finally {
+      const durationSeconds = (Date.now() - startedAt) / 1000;
+      runtimeMetricsRegistry.recordOapeflirStageExit(canonicalStage, outcome, durationSeconds);
     }
   }
 

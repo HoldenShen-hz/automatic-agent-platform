@@ -16,7 +16,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -107,6 +107,8 @@ const TRUSTED_GIT_BINARY_PREFIXES = [
   "/opt/homebrew/bin/",
   "/bin/",
 ];
+const GIT_COMMAND_TIMEOUT_MS = 15_000;
+const GIT_COMMAND_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 
 /**
  * Returns current time as ISO string.
@@ -149,6 +151,45 @@ function sanitizePathForReason(path: string): string {
 function isWithin(candidate: string, root: string): boolean {
   const normalizedRoot = root.endsWith(sep) ? root : `${root}${sep}`;
   return candidate === root || candidate.startsWith(normalizedRoot);
+}
+
+function ensureExistingPathChainIsNotSymlink(targetPath: string): void {
+  const normalized = resolve(targetPath);
+  let nearestExistingAncestor = normalized;
+  while (!existsSync(nearestExistingAncestor)) {
+    const parent = dirname(nearestExistingAncestor);
+    if (parent === nearestExistingAncestor) {
+      break;
+    }
+    nearestExistingAncestor = parent;
+  }
+  const relativePath = normalized === nearestExistingAncestor
+    ? ""
+    : normalized.slice(nearestExistingAncestor.length).replace(/^[/\\]+/, "");
+  const segments = relativePath.length === 0 ? [] : relativePath.split(/[\\/]+/);
+  let current = nearestExistingAncestor;
+  if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
+    throw new PolicyDeniedError("shadow_snapshot.shadow_root_symlink_denied", "shadow_snapshot.shadow_root_symlink_denied", {
+      details: { shadowRoot: normalized, symlinkPath: current },
+    });
+  }
+  for (const segment of segments) {
+    current = join(current, segment);
+    if (!existsSync(current)) {
+      continue;
+    }
+    if (lstatSync(current).isSymbolicLink()) {
+      throw new PolicyDeniedError("shadow_snapshot.shadow_root_symlink_denied", "shadow_snapshot.shadow_root_symlink_denied", {
+        details: { shadowRoot: normalized, symlinkPath: current },
+      });
+    }
+  }
+}
+
+function writeJsonAtomically(path: string, value: unknown): void {
+  const tempPath = `${path}.${randomUUID()}.tmp`;
+  writeFileSync(tempPath, JSON.stringify(value, null, 2), "utf8");
+  renameSync(tempPath, path);
 }
 
 /**
@@ -328,20 +369,7 @@ export class ShadowSnapshotService {
       );
     }
 
-    // Shadow root cannot be a symlink (could escape workspace boundary)
-    if (existsSync(resolvedShadowRoot) && lstatSync(resolvedShadowRoot).isSymbolicLink()) {
-      throw new PolicyDeniedError("shadow_snapshot.shadow_root_symlink_denied", "shadow_snapshot.shadow_root_symlink_denied", {
-        details: { shadowRoot: resolvedShadowRoot },
-      });
-    }
-
-    // Parent directory also cannot be a symlink
-    const parentPath = dirname(resolvedShadowRoot);
-    if (existsSync(parentPath) && lstatSync(parentPath).isSymbolicLink()) {
-      throw new PolicyDeniedError("shadow_snapshot.shadow_root_symlink_denied", "shadow_snapshot.shadow_root_symlink_denied", {
-        details: { shadowRoot: resolvedShadowRoot, parentPath },
-      });
-    }
+    ensureExistingPathChainIsNotSymlink(resolvedShadowRoot);
 
     mkdirSync(resolvedShadowRoot, { recursive: true });
     return resolvedShadowRoot;
@@ -390,8 +418,19 @@ export class ShadowSnapshotService {
 
     // Write exclude patterns for large directories
     const excludesPath = join(shadowRoot, "shadow-excludes");
-    writeFileSync(excludesPath, `${this.excludedPaths.join("\n")}\n`, "utf8");
-    this.git(["config", "core.excludesFile", excludesPath], workspaceRoot, shadowRoot);
+    const expectedContents = `${this.excludedPaths.join("\n")}\n`;
+    if (!existsSync(excludesPath) || readFileSync(excludesPath, "utf8") !== expectedContents) {
+      writeFileSync(excludesPath, expectedContents, "utf8");
+    }
+    let configuredExcludes = "";
+    try {
+      configuredExcludes = this.git(["config", "--get", "core.excludesFile"], workspaceRoot, shadowRoot);
+    } catch {
+      configuredExcludes = "";
+    }
+    if (configuredExcludes !== excludesPath) {
+      this.git(["config", "core.excludesFile", excludesPath], workspaceRoot, shadowRoot);
+    }
   }
 
   /**
@@ -407,7 +446,7 @@ export class ShadowSnapshotService {
   private persistRecord(record: ShadowSnapshotRecord, shadowRoot: string): void {
     const directory = this.snapshotMetadataDir(shadowRoot);
     mkdirSync(directory, { recursive: true });
-    writeFileSync(join(directory, `${record.snapshotId}.json`), JSON.stringify(record, null, 2), "utf8");
+    writeJsonAtomically(join(directory, `${record.snapshotId}.json`), record);
   }
 
   /**
@@ -437,6 +476,8 @@ export class ShadowSnapshotService {
     return execFileSync(this.gitBinary, [`--git-dir=${shadowRoot}`, `--work-tree=${workspaceRoot}`, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      timeout: GIT_COMMAND_TIMEOUT_MS,
+      maxBuffer: GIT_COMMAND_MAX_BUFFER_BYTES,
     }).trim();
   }
 

@@ -77,6 +77,26 @@ test("SqliteQueueAdapter retryJob returns null for unknown ids and purge returns
   }
 });
 
+test("SqliteQueueAdapter retryJob preserves historical attempts for dead-letter jobs", () => {
+  const harness = createHarness("aa-sqlite-queue-retry-attempts-");
+  try {
+    const { adapter } = harness;
+    const job = adapter.enqueue({ queueName: "tasks", payload: { id: "poison" }, maxAttempts: 1 });
+
+    const dequeued = adapter.dequeue("tasks");
+    assert.ok(dequeued);
+    dequeued.nack("boom");
+
+    const retried = adapter.retryJob(job.id);
+    assert.equal(retried?.status, "waiting");
+    assert.equal(retried?.attempts, 1);
+    assert.equal(retried?.lastError, null);
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
 test("SqliteQueueAdapter stats returns correct counts for each status", () => {
   const harness = createHarness("aa-sqlite-queue-stats-");
   try {

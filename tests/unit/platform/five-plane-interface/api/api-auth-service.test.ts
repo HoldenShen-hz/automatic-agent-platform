@@ -20,6 +20,12 @@ describe("ApiAuthService", () => {
       tokenTtlMs: options.tokenTtlMs ?? 3600000, // 1 hour default
       maxTokenAgeMs: options.maxTokenAgeMs ?? 86400000, // 24 hours default
       allowedAlgorithms: options.allowedAlgorithms ?? ["HS256"],
+      ...(options.jwtVerificationSecrets == null ? {} : { jwtVerificationSecrets: options.jwtVerificationSecrets }),
+      ...(options.jwtIssuer == null ? {} : { jwtIssuer: options.jwtIssuer }),
+      ...(options.jwtAudience == null ? {} : { jwtAudience: options.jwtAudience }),
+      ...(options.clockSkewMs == null ? {} : { clockSkewMs: options.clockSkewMs }),
+      ...(options.requireJwtId == null ? {} : { requireJwtId: options.requireJwtId }),
+      ...(options.isJwtRevoked == null ? {} : { isJwtRevoked: options.isJwtRevoked }),
     });
   }
 

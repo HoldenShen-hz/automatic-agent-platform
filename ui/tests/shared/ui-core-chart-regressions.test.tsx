@@ -146,6 +146,65 @@ describe("ui-core chart regressions", () => {
     });
   });
 
+  it("re-renders the chart when theme colors change across rerenders", () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
+    const originalUserAgent = window.navigator.userAgent;
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "vitest-browser",
+    });
+
+    const { rerender } = render(
+      <EChartSurfaceRuntime
+        title="Latency"
+        values={[1, 2]}
+        theme={{
+          ...designTokens,
+          color: {
+            ...designTokens.color,
+            accent: "#123456",
+            border: "#345678",
+            surfaceElevated: "#abcdef",
+          },
+        }}
+      />,
+    );
+
+    rerender(
+      <EChartSurfaceRuntime
+        title="Latency"
+        values={[1, 2]}
+        theme={{
+          ...designTokens,
+          color: {
+            ...designTokens.color,
+            accent: "#654321",
+            border: "#876543",
+            surfaceElevated: "#fedcba",
+          },
+        }}
+      />,
+    );
+
+    expect(chartApi.setOption).toHaveBeenCalledTimes(2);
+    const latestOption = chartApi.setOption.mock.calls.at(-1)?.[0] as {
+      series: readonly [{ lineStyle: { color: string } }];
+      yAxis: { axisLine: { lineStyle: { color: string } } };
+      dataZoom: readonly [unknown, { backgroundColor: string }];
+    };
+    expect(latestOption.series[0]?.lineStyle.color).toBe("#654321");
+    expect(latestOption.yAxis.axisLine.lineStyle.color).toBe("#876543");
+    expect(latestOption.dataZoom[1]?.backgroundColor).toBe("rgba(254, 220, 186, 0.9)");
+
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: originalUserAgent,
+    });
+  });
+
   it("recomputes aria metadata when the title changes across rerenders", () => {
     const observe = vi.fn();
     const disconnect = vi.fn();

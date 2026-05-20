@@ -92,14 +92,15 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   }
 
   private async nextFencingToken(): Promise<number> {
-    if (typeof this.redis.incr === "function") {
-      const token = await this.redis.incr(RedisLockAdapter.FENCING_COUNTER_KEY);
-      this.fencingCounter = token;
-      return token;
+    if (typeof this.redis.incr !== "function") {
+      throw new LockingError(
+        "lock.fencing_counter_unavailable",
+        "lock.fencing_counter_unavailable: Redis backend requires atomic INCR support for fencing tokens",
+      );
     }
-
-    this.fencingCounter += 1;
-    return this.fencingCounter;
+    const token = await this.redis.incr(RedisLockAdapter.FENCING_COUNTER_KEY);
+    this.fencingCounter = token;
+    return token;
   }
 
   private toLockRecord(lockKey: string, data: LockData): LockRecord {
@@ -138,7 +139,6 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     await this.ensureConnected();
     const now = new Date().toISOString();
     const ttlMs = input.ttlMs ?? 30_000;
-    const ttlSec = Math.ceil(ttlMs / 1000);
     const lockKey = `lock:${input.lockKey}`;
     const fencingToken = await this.nextFencingToken();
     const lockData: LockData = {
@@ -149,7 +149,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
       acquiredAt: now,
       metadata: null,
     };
-    const result = await this.redis.set(lockKey, JSON.stringify(lockData), "EX", ttlSec, "NX");
+    const result = await this.redis.set(lockKey, JSON.stringify(lockData), "PX", ttlMs, "NX");
     if (result !== "OK") {
       return { acquired: false };
     }
@@ -168,18 +168,21 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
+    const fencingToken = await this.nextFencingToken();
+    const now = new Date().toISOString();
     const extendLua = `
 local current = redis.call('get', KEYS[1])
 if not current then return -1 end
 local data = cjson.decode(current)
 if data.owner ~= ARGV[1] then return 0 end
-local newTtl = math.min(tonumber(ARGV[2]), 600000)
+local newTtl = math.min((tonumber(data.ttlMs) or 0) + tonumber(ARGV[2]), 600000)
 data.ttlMs = newTtl
+data.fencingToken = tonumber(ARGV[3])
+data.acquiredAt = ARGV[4]
 local updated = cjson.encode(data)
 redis.call('set', KEYS[1], updated, 'PX', newTtl)
 return updated`;
-    const newTtlMs = Math.min(additionalMs, 600_000);
-    const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
+    const result = await this.redis.eval(extendLua, 1, key, owner, String(additionalMs), String(fencingToken), now);
     if (result !== 1 && typeof result !== "string") {
       return null;
     }
@@ -205,8 +208,14 @@ return updated`;
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", ttlMs);
-    if (result !== "OK") {
+    const result = await this.redis.eval(
+      "local current=redis.call('GET',KEYS[1]) if not current then return -1 end redis.call('SET',KEYS[1],ARGV[1],'PX',ARGV[2]) return 1",
+      1,
+      key,
+      JSON.stringify(lockData),
+      String(ttlMs),
+    );
+    if (Number(result) !== 1) {
       throw new LockingError(
         "lock.forceSteal_lock_not_found",
         `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`,

@@ -615,6 +615,7 @@ export interface BudgetLedger {
   readonly settledAmount: number;
   readonly releasedAmount: number;
   readonly status: "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing";
+  readonly updatedAt?: string;
   readonly version: number;
 }
 
@@ -628,6 +629,7 @@ export interface BudgetReservation {
   readonly status: "reserved" | "settled" | "released" | "expired" | "rejected";
   readonly expiresAt: string;
   readonly createdAt: string;
+  readonly updatedAt?: string;
   readonly version: number;
 }
 

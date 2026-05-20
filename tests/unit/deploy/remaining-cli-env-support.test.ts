@@ -173,8 +173,11 @@ test("parseBoolean returns undefined when missing", () => {
   assert.equal(result, undefined);
 });
 
-test("parseBoolean throws on invalid string", () => {
-  assert.throws(() => parseBoolean({ TEST_VAR: "yes" }, "TEST_VAR"), /invalid_env:TEST_VAR/);
+test("parseBoolean accepts yes/no style truthy strings", () => {
+  assert.equal(parseBoolean({ TEST_VAR: "yes" }, "TEST_VAR"), true);
+  assert.equal(parseBoolean({ TEST_VAR: "on" }, "TEST_VAR"), true);
+  assert.equal(parseBoolean({ TEST_VAR: "no" }, "TEST_VAR"), false);
+  assert.equal(parseBoolean({ TEST_VAR: "off" }, "TEST_VAR"), false);
 });
 
 test("parseInteger parses valid integer string", () => {

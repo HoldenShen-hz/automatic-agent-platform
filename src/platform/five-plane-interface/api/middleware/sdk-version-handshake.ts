@@ -22,9 +22,10 @@ export class SdkVersionHandshakeService {
   public constructor(private readonly policy: SdkVersionHandshakePolicy) {}
 
   public evaluate(request: SdkVersionHandshakeRequest): SdkVersionHandshakeDecision {
-    const sdkVersion = this.header(request.headers, "x-sdk-version");
-    const contractVersion = this.header(request.headers, "x-contract-version");
-    const platformMinVersion = this.header(request.headers, "x-platform-min-version");
+    const headers = this.normalizeHeaders(request.headers);
+    const sdkVersion = headers["x-sdk-version"] ?? null;
+    const contractVersion = headers["x-contract-version"] ?? null;
+    const platformMinVersion = headers["x-platform-min-version"] ?? null;
     const warnings: string[] = [];
 
     if (contractVersion != null && contractVersion !== this.policy.contractVersion) {
@@ -102,13 +103,13 @@ export class SdkVersionHandshakeService {
     };
   }
 
-  private header(headers: Readonly<Record<string, string | string[] | undefined>>, name: string): string | null {
-    const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
-    if (found == null) {
-      return null;
+  private normalizeHeaders(headers: Readonly<Record<string, string | string[] | undefined>>): Record<string, string> {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      const normalizedKey = key.toLowerCase();
+      normalized[normalizedKey] = Array.isArray(value) ? (value[0] ?? "") : value ?? "";
     }
-    const value = found[1];
-    return Array.isArray(value) ? (value[0] ?? null) : value ?? null;
+    return normalized;
   }
 
   private compareSemver(left: string, right: string): number {

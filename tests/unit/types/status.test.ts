@@ -34,7 +34,7 @@ test("TASK_STATUSES contains expected values", () => {
 });
 
 test("WORKFLOW_STATUSES contains expected values", () => {
-  const expected = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+  const expected = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
   assert.deepStrictEqual(WORKFLOW_STATUSES, expected);
 });
 

@@ -275,7 +275,7 @@ test("ApprovalFlowEngine submitVote prevents duplicate same-type votes", () => {
   assert.ok(result2.error?.includes("already cast"));
 });
 
-test("ApprovalFlowEngine submitVote allows changing vote", () => {
+test("ApprovalFlowEngine submitVote rejects changing an immutable vote", () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
@@ -298,10 +298,10 @@ test("ApprovalFlowEngine submitVote allows changing vote", () => {
   // First vote APPROVE
   engine.submitVote(flow.flowId, "user1", VoteType.APPROVE);
 
-  // Change to REJECT
+  // Change to REJECT should be denied because votes are immutable
   const result = engine.submitVote(flow.flowId, "user1", VoteType.REJECT);
-  assert.strictEqual(result.success, true);
-  assert.strictEqual(result.quorumStatus.rejectionsReceived, 1);
+  assert.strictEqual(result.success, false);
+  assert.ok(result.error?.includes("immutable vote"));
 });
 
 test("ApprovalFlowEngine submitVote handles delegation source", async () => {

@@ -74,6 +74,12 @@ const DEFAULT_SWEEPER_CONFIG: ReservationSweeperConfig = {
   maxExpiryAgeMs: 300000,           // 5 minutes
 };
 
+interface TrackedReservationEntry {
+  readonly reservation: BudgetReservation;
+  readonly ledger: BudgetLedger;
+  readonly context: BudgetAllocatorContext;
+}
+
 export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly watermarkConfig: WatermarkAlertConfig;
@@ -84,7 +90,7 @@ export class BudgetAllocator {
   private readonly atomicRepository: BudgetAtomicRepository | undefined;
   private readonly events: BudgetAllocatorEvents | undefined;
   private readonly authoritativeStore: BudgetTruthStore | undefined;
-  private activeReservations = new Map<string, BudgetReservation>();
+  private activeReservations = new Map<string, TrackedReservationEntry>();
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
@@ -234,7 +240,7 @@ export class BudgetAllocator {
     });
 
     // R11-07: Track reservation for expiry sweeper
-    this.trackActiveReservation(result.reservation);
+    this.trackActiveReservation(result.reservation, result.ledger, context);
     this.persistLedger(input.ledger, result.ledger, input.expectedVersion);
     this.emitReserveSideEffects(result.ledger, input.amount, context);
 
@@ -257,22 +263,37 @@ export class BudgetAllocator {
     if (input.additionalAmount <= 0) {
       throw new Error("streaming_increment.invalid_amount: Additional amount must be positive");
     }
+    const tierLimit = input.context.tierLimit ?? input.ledger.hardCap;
+    const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
+    if (activeCommittedAmount + input.additionalAmount > tierLimit) {
+      throw new ValidationError(
+        "budget_reservation.hard_cap_exceeded",
+        "budget_reservation.hard_cap_exceeded: Budget reservation exceeds tier limit.",
+      );
+    }
 
-    const newExpiresAt = new Date(Date.now() + 60000).toISOString(); // Extend by 1 minute
-
-    // R11-07: Update tracked reservation
     const updatedReservation: BudgetReservation = {
       ...input.reservation,
       amount: input.reservation.amount + input.additionalAmount,
-      expiresAt: newExpiresAt,
+      version: input.reservation.version + 1,
+      updatedAt: new Date(Date.now()).toISOString(),
     };
-    this.trackActiveReservation(updatedReservation);
+    const updatedLedger: BudgetLedger = {
+      ...input.ledger,
+      reservedAmount: input.ledger.reservedAmount + input.additionalAmount,
+      version: input.ledger.version + 1,
+    };
+    this.persistLedger(input.ledger, updatedLedger, input.ledger.version);
+    this.trackActiveReservation(updatedReservation, updatedLedger, input.context);
+    this.emitReserveSideEffects(updatedLedger, input.additionalAmount, input.context);
 
     return {
       reservationId: input.reservation.budgetReservationId,
       incrementalAmount: input.additionalAmount,
       totalReserved: updatedReservation.amount,
-      expiresAt: newExpiresAt,
+      expiresAt: updatedReservation.expiresAt,
+      ledger: updatedLedger,
+      reservation: updatedReservation,
     };
   }
 
@@ -290,35 +311,34 @@ export class BudgetAllocator {
     const dbNow = Date.parse(params.dbTime);
     const releasedIds: string[] = [];
     const expiredIds: string[] = [];
+    let orphanedCount = 0;
 
-    for (const [reservationId, reservation] of this.snapshotActiveReservations()) {
-      if (this.activeReservations.get(reservationId) !== reservation) {
+    for (const [reservationId, entry] of this.snapshotActiveReservations()) {
+      if (this.activeReservations.get(reservationId) !== entry) {
         continue;
       }
-      const reservationExpiry = Date.parse(reservation.expiresAt);
-
-      // Check if expired (past expiry time with safety margin)
-      if (reservationExpiry + this.sweeperConfig.clockSkewSafetyMarginMs <= dbNow) {
-        expiredIds.push(reservationId);
-        releasedIds.push(reservationId);
+      const { reservation } = entry;
+      if (reservation.status !== "reserved") {
         this.untrackActiveReservation(reservationId);
         continue;
       }
-
-      // R11-07: Check if orphaned (reservation run is no longer active)
-      if (reservation.status === "reserved" && !params.activeRunIds.has(reservation.harnessRunId)) {
-        const reservationAge = dbNow - Date.parse(reservation.createdAt);
-        if (reservationAge > this.sweeperConfig.maxExpiryAgeMs) {
-          releasedIds.push(reservationId);
-          this.untrackActiveReservation(reservationId);
-        }
+      if (params.activeRunIds.has(reservation.harnessRunId)) {
+        continue;
       }
+      const reservationExpiry = Date.parse(reservation.expiresAt);
+      if (Number.isFinite(reservationExpiry) && reservationExpiry + this.sweeperConfig.clockSkewSafetyMarginMs > dbNow) {
+        continue;
+      }
+      expiredIds.push(reservationId);
+      releasedIds.push(reservationId);
+      orphanedCount += 1;
+      this.releaseTrackedReservation(entry, "budget.released_orphaned_reservation", params.dbTime);
     }
 
     return {
       releasedReservationIds: releasedIds,
       expiredReservationIds: expiredIds,
-      orphanedCount: releasedIds.length,
+      orphanedCount,
     };
   }
 
@@ -326,7 +346,7 @@ export class BudgetAllocator {
    * R11-07: Get all tracked active reservations
    */
   public getActiveReservations(): readonly BudgetReservation[] {
-    return this.snapshotActiveReservations().map(([, reservation]) => reservation);
+    return this.snapshotActiveReservations().map(([, entry]) => entry.reservation);
   }
 
   /**
@@ -581,7 +601,6 @@ export class BudgetAllocator {
     };
     const reservation = this.stateMachine.transition(command);
     const ledger = result.ledger!;
-    this.persistLedger(input.ledger, ledger, expectedVersion);
     this.emitLedgerFact({ before: input.ledger, after: ledger, reasonCode: "budget.settled", context });
     return { reservation, settlement, ledger };
   }
@@ -627,7 +646,6 @@ export class BudgetAllocator {
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
     });
     const ledger = result.ledger!;
-    this.persistLedger(input.ledger, ledger, expectedVersion);
     this.emitLedgerFact({
       before: input.ledger,
       after: ledger,
@@ -647,10 +665,14 @@ export class BudgetAllocator {
     return this.atomicRepository;
   }
 
-  private trackActiveReservation(reservation: BudgetReservation): void {
+  private trackActiveReservation(
+    reservation: BudgetReservation,
+    ledger: BudgetLedger,
+    context: BudgetAllocatorContext,
+  ): void {
     this.activeReservations = new Map(this.activeReservations).set(
       reservation.budgetReservationId,
-      reservation,
+      { reservation, ledger, context },
     );
   }
 
@@ -663,8 +685,49 @@ export class BudgetAllocator {
     this.activeReservations = nextReservations;
   }
 
-  private snapshotActiveReservations(): readonly (readonly [string, BudgetReservation])[] {
+  private snapshotActiveReservations(): readonly (readonly [string, TrackedReservationEntry])[] {
     return [...this.activeReservations.entries()];
+  }
+
+  private releaseTrackedReservation(
+    entry: TrackedReservationEntry,
+    reasonCode: string,
+    occurredAt: string,
+  ): void {
+    const context = normalizeContext(entry.context);
+    const settlement = createBudgetSettlement({
+      budgetReservationId: entry.reservation.budgetReservationId,
+      actualAmount: 0,
+      settlementKind: "release_unused",
+    });
+    if (this.releasePersistence) {
+      this.releasePersistence.persistRelease(settlement);
+    }
+    this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: entry.reservation.budgetReservationId,
+      aggregateType: "BudgetReservation",
+      aggregate: entry.reservation,
+      fromStatus: entry.reservation.status,
+      toStatus: "released",
+      principal: context.principal,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode,
+      emittedBy: context.emittedBy,
+      auditRef: `audit://budget-reservations/${entry.reservation.budgetReservationId}/release`,
+      occurredAt,
+    });
+    const ledger = releaseLedger(entry.ledger, entry.reservation);
+    this.persistLedger(entry.ledger, ledger, entry.ledger.version);
+    this.untrackActiveReservation(entry.reservation.budgetReservationId);
+    this.emitLedgerFact({
+      before: entry.ledger,
+      after: ledger,
+      reasonCode,
+      context,
+    });
   }
 
   private emitReserveSideEffects(ledger: BudgetLedger, amount: number, context: BudgetAllocatorContext): void {

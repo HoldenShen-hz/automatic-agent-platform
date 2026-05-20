@@ -21,8 +21,14 @@ describe("RateLimiter", () => {
   });
 
   describe("generateKey", () => {
-    it("should generate ip key by default", () => {
+    it("should generate global key by default", () => {
       const limiter = new RateLimiter({ maxRequests: 100, windowMs: 60_000 });
+      const key = limiter.generateKey({ clientIp: "192.168.1.1" });
+      strictEqual(key, "global");
+    });
+
+    it("should fall back to ip key when scoped partitioning is enabled", () => {
+      const limiter = new RateLimiter({ maxRequests: 100, windowMs: 60_000, perTenant: true });
       const key = limiter.generateKey({ clientIp: "192.168.1.1" });
       strictEqual(key, "ip:192.168.1.1");
     });

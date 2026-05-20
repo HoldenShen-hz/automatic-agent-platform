@@ -155,6 +155,46 @@ test("RuntimeRecoveryService suggests move_dead_letter when attempt exceeds retr
   assert.equal(view.candidates[0]!.suggestedAction, "move_dead_letter");
 });
 
+test("RuntimeRecoveryService suggests retry_new_ticket for execution errors before dead-letter threshold", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    status: "executing",
+    attempt: 2,
+    latestErrorCode: "E1",
+  });
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: null, status: "in_progress" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const view = service.buildRuntimeRecoveryView("task-1");
+
+  assert.equal(view.candidates[0]!.suggestedAction, "retry_new_ticket");
+});
+
+test("RuntimeRecoveryService normalizes zero-attempt records to the first retry boundary", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    status: "executing",
+    attempt: 0,
+    latestErrorCode: "EC1",
+  });
+  const store = createMockStore({
+    operations: {
+      listRecoverableExecutingRuns: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const results = service.listRecoverableExecutingRuns();
+
+  assert.equal(results[0]!.attempt, 1);
+  assert.equal(results[0]!.suggestedAction, "resume_same_worker");
+});
+
 test("RuntimeRecoveryService suggests escalate_takeover for approval_pending regardless of attempt", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",

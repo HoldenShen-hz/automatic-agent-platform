@@ -624,13 +624,14 @@ function inferReason(record: RuntimeRecoveryRecord): string {
  * @returns Typed recovery candidate interface
  */
 function toCandidate(record: RuntimeRecoveryRecord, reason: string, config: ExceptionRecoveryConfig): RuntimeRecoveryCandidate {
+  const normalizedAttempt = normalizeRecoveryAttempt(record.attempt);
   return {
     executionId: record.executionId,
     taskId: record.taskId,
     divisionId: record.divisionId,
     taskStatus: record.taskStatus,
     status: record.status,
-    attempt: record.attempt,
+    attempt: normalizedAttempt,
     traceId: record.traceId,
     workflowId: record.workflowId,
     latestErrorCode: record.latestErrorCode,
@@ -684,6 +685,13 @@ function classifyLegacyError(errorCode: string | null): LegacyRecoveryCandidate[
   return "unknown";
 }
 
+function normalizeRecoveryAttempt(attempt: number): number {
+  if (!Number.isFinite(attempt)) {
+    return 1;
+  }
+  return Math.max(1, Math.trunc(attempt));
+}
+
 function inferLegacySuggestedAction(
   candidate: RuntimeRecoveryCandidate,
   errorClassification: LegacyRecoveryCandidate["errorClassification"],
@@ -719,6 +727,7 @@ function inferSuggestedAction(
   config: ExceptionRecoveryConfig,
 ): RecoverySuggestedAction {
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
+  const attempt = normalizeRecoveryAttempt(record.attempt);
 
   // Approval blocked or inconsistent blocked state requires escalation
   if (reason === "approval_pending" || reason === "blocked_without_approval") {
@@ -739,17 +748,17 @@ function inferSuggestedAction(
     const strategy = config.recoveryStrategyTable.byExceptionType[exceptionType];
 
     // Check attempt thresholds for action determination
-    if (record.attempt >= thresholds.moveToDeadLetterMinAttempts) {
+    if (attempt >= thresholds.retryNewTicketMaxAttempts) {
       return "move_dead_letter";
     }
-    if (record.attempt >= thresholds.retryNewTicketMaxAttempts) {
-      return "move_dead_letter";
+    if (attempt >= thresholds.moveToDeadLetterMinAttempts) {
+      return "retry_new_ticket";
     }
     return strategy.action;
   }
   // Active statuses can potentially be resumed
   if (record.status === "executing" || record.status === "prechecking" || record.status === "created") {
-    if (record.attempt >= thresholds.resumeSameWorkerMaxAttempts) {
+    if (attempt >= thresholds.resumeSameWorkerMaxAttempts) {
       return "retry_new_ticket";
     }
     return "resume_same_worker";

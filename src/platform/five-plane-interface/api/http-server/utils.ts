@@ -11,13 +11,14 @@ import type { ApiRequestLike, ApiResponsePayload } from "./types.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService, ApiPrincipal, ApiRole } from "../api-auth-service.js";
 import { ApiAuthError } from "../api-auth-service.js";
+import { inferApiErrorCategory, inferApiErrorSource } from "./api-error.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
     super(code, message, {
       statusCode,
-      category: statusCode >= 500 ? "internal" : statusCode >= 400 ? "validation" : "external",
-      source: "runtime",
+      category: inferApiErrorCategory(statusCode, code),
+      source: inferApiErrorSource(code),
       retryable: statusCode >= 500 || statusCode === 429,
     });
     this.name = "ApiError";

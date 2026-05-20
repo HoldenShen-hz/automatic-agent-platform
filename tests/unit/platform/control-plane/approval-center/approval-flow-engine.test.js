@@ -51,7 +51,7 @@ test("calculateQuorumStatus with voting window expired", () => {
     const status = calculateQuorumStatus(votes, config, votingStart, currentTime);
     assert.strictEqual(status.isVotingWindowExpired, true);
 });
-test("mergeVotes updates existing vote", () => {
+test("mergeVotes rejects duplicate immutable vote", () => {
     const existing = [
         { approverId: "user1", voteType: VoteType.APPROVE, votedAt: "2026-04-21T00:00:00.000Z" },
     ];
@@ -60,9 +60,7 @@ test("mergeVotes updates existing vote", () => {
         voteType: VoteType.REJECT,
         votedAt: "2026-04-21T00:00:01.000Z",
     };
-    const merged = mergeVotes(existing, newVote);
-    assert.strictEqual(merged.length, 1);
-    assert.strictEqual(merged[0].voteType, VoteType.REJECT);
+    assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
 });
 test("mergeVotes adds new vote", () => {
     const existing = [

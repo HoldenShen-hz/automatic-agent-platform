@@ -12,6 +12,9 @@ test("DurableEventBus retries exactly three delivery attempts before marking fai
         markEventAck: (input: Record<string, unknown>) => {
           ackUpdates.push(input);
         },
+        markEventDeadLettered: (input: Record<string, unknown>) => {
+          ackUpdates.push({ status: "dead_lettered", ...input });
+        },
         insertEventDeadLetter: () => undefined,
       },
     } as never,
@@ -39,6 +42,6 @@ test("DurableEventBus retries exactly three delivery attempts before marking fai
   assert.equal(attempts, 3);
   assert.deepEqual(result, { delivered: false, deadLettered: true });
   assert.equal(ackUpdates.length, 1);
-  assert.equal(ackUpdates[0]?.status, "failed");
+  assert.equal(ackUpdates[0]?.status, "dead_lettered");
   bus.dispose();
 });

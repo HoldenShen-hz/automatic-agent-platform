@@ -54,8 +54,8 @@ test("R24-30/R24-34/R31-01..R31-25: source fixes stay wired", () => {
   assert.match(mappingSource, /if \(role === "hitl_operator"\)/);
   assert.match(mappingSource, /return "observe"/);
 
-  assert.doesNotMatch(fsmSource, /"knowledge_promotion"/);
-  assert.doesNotMatch(timelineSource, /"knowledge_promotion"/);
+  assert.match(fsmSource, /"knowledge_promotion"/);
+  assert.match(timelineSource, /"knowledge_promotion"/);
   assert.match(fsmSource, /public getCurrentStage\(\): OapeflirStage \{\s+if \(this\.currentStageIndex >= STAGE_ORDER\.length\) \{\s+return STAGE_ORDER\[STAGE_ORDER\.length - 1\]!;/s);
   assert.match(fsmSource, /private readonly skippedReasonCodes = new Map<OapeflirStage, string>\(\)/);
   assert.match(fsmSource, /this\.skippedReasonCodes\.set\(stage, reasonCode\)/);
@@ -98,7 +98,7 @@ test("R31-07/R31-11: stage transition FSM preserves skip reasons and never retur
   }
 
   assert.equal(fsm.isComplete(), true);
-  assert.equal(fsm.getCurrentStage(), "release");
+  assert.equal(fsm.getCurrentStage(), "knowledge_promotion");
 
   const skipped = new StageTransitionFSM();
   skipped.recordStageSkipped("release", "release.approval_required");

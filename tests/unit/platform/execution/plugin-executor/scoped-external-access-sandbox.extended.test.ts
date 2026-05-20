@@ -111,9 +111,27 @@ test("ScopedExternalAccessSandbox handles subdomain perspective", () => {
     allowedDomains: ["example.com"],
   });
 
-  // If only example.com is allowed, sub.example.com is blocked
+  // Exact domains are allowed; subdomains require an explicit *.example.com entry.
   assert.equal(sandbox.validateOutboundRequest("https://example.com"), true);
-  assert.equal(sandbox.validateOutboundRequest("https://sub.example.com"), true); // Wait - in URL parsing, hostname is sub.example.com
+  assert.equal(sandbox.validateOutboundRequest("https://sub.example.com"), false);
+});
+
+test("ScopedExternalAccessSandbox allows explicitly wildcarded subdomains", () => {
+  const sandbox = new ScopedExternalAccessSandbox({
+    allowedDomains: ["*.example.com"],
+  });
+
+  assert.equal(sandbox.validateOutboundRequest("https://api.example.com"), true);
+  assert.equal(sandbox.validateOutboundRequest("https://deep.api.example.com"), true);
+  assert.equal(sandbox.validateOutboundRequest("https://example.com"), false);
+});
+
+test("ScopedExternalAccessSandbox rejects public-suffix style implicit wildcard matches", () => {
+  const sandbox = new ScopedExternalAccessSandbox({
+    allowedDomains: ["co.uk"],
+  });
+
+  assert.equal(sandbox.validateOutboundRequest("https://evil.co.uk"), false);
 });
 
 test("ScopedExternalAccessSandbox handles port in hostname correctly", () => {
@@ -141,6 +159,16 @@ test("ScopedExternalAccessSandbox validates case-sensitive domain matching", () 
 
   // URL hostname parsing is case-insensitive for the hostname part
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com"), true);
+});
+
+test("ScopedExternalAccessSandbox validates UTF-8 response sizes by bytes", () => {
+  const sandbox = new ScopedExternalAccessSandbox({
+    allowedDomains: ["api.example.com"],
+    maxResponseSizeBytes: 3,
+  });
+
+  assert.equal(sandbox.validateResponseSize("你"), true);
+  assert.equal(sandbox.validateResponseSize("你好"), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

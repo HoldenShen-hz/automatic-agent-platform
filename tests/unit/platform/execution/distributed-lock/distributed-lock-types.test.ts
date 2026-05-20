@@ -6,6 +6,7 @@ import type {
   AcquireLockInput,
   AcquireLockResult,
   LockBackendKind,
+  LockStatus,
   PgAdvisoryLockConfig,
   RedisLockConfig,
   LockData,
@@ -14,6 +15,11 @@ import type {
 test("LockBackendKind type accepts valid values", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
+});
+
+test("LockStatus type accepts the supported lifecycle values", () => {
+  const statuses: LockStatus[] = ["pending", "held", "extended", "released", "expired", "reclaimed", "stolen"];
+  assert.deepEqual(statuses, ["pending", "held", "extended", "released", "expired", "reclaimed", "stolen"]);
 });
 
 test("LockRecord structure is correct", () => {

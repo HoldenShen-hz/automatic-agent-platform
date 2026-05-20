@@ -7,9 +7,9 @@ test("TASK_STATUSES contains all valid task statuses", () => {
     assert.equal(TASK_STATUSES.length, 7);
 });
 test("WORKFLOW_STATUSES contains all valid workflow statuses", () => {
-    const expected = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+    const expected = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
     assert.deepEqual(Array.from(WORKFLOW_STATUSES), expected);
-    assert.equal(WORKFLOW_STATUSES.length, 7);
+    assert.equal(WORKFLOW_STATUSES.length, 8);
 });
 test("SESSION_STATUSES contains all valid session statuses", () => {
     const expected = ["open", "streaming", "awaiting_user", "paused", "completed", "failed", "cancelled"];
@@ -17,9 +17,9 @@ test("SESSION_STATUSES contains all valid session statuses", () => {
     assert.equal(SESSION_STATUSES.length, 7);
 });
 test("EXECUTION_STATUSES contains all valid execution statuses", () => {
-    const expected = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+    const expected = ["created", "prechecking", "ready", "queued", "dispatching", "executing", "blocked", "paused", "resuming", "recovering", "timed_out", "succeeded", "failed", "cancelled", "superseded"];
     assert.deepEqual(Array.from(EXECUTION_STATUSES), expected);
-    assert.equal(EXECUTION_STATUSES.length, 8);
+    assert.equal(EXECUTION_STATUSES.length, 15);
 });
 test("APPROVAL_STATUSES contains all valid approval statuses", () => {
     const expected = ["requested", "approved", "rejected", "expired", "cancelled"];
@@ -31,16 +31,16 @@ test("TaskStatus type accepts all task statuses", () => {
     assert.equal(statuses.length, 7);
 });
 test("WorkflowStatus type accepts all workflow statuses", () => {
-    const statuses = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
-    assert.equal(statuses.length, 7);
+    const statuses = ["created", "running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
+    assert.equal(statuses.length, 8);
 });
 test("SessionStatus type accepts all session statuses", () => {
     const statuses = ["open", "streaming", "awaiting_user", "paused", "completed", "failed", "cancelled"];
     assert.equal(statuses.length, 7);
 });
 test("ExecutionStatus type accepts all execution statuses", () => {
-    const statuses = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
-    assert.equal(statuses.length, 8);
+    const statuses = ["created", "prechecking", "ready", "queued", "dispatching", "executing", "blocked", "paused", "resuming", "recovering", "timed_out", "succeeded", "failed", "cancelled", "superseded"];
+    assert.equal(statuses.length, 15);
 });
 test("TaskTerminalStatus type only accepts terminal statuses", () => {
     const terminalStatuses = ["done", "failed", "cancelled"];

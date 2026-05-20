@@ -89,6 +89,7 @@ export class DelegationManagerService {
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000;
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000;
+
   public constructor(options: DelegationManagerOptions = {}, delegationRepository?: DelegationRepository, eventRepository?: DelegationEventRepository) {
     const config: TopologyValidatorConfig = {
       maxDepth: options.maxDepth ?? options.maxDelegationDepth ?? DEFAULT_MAX_DEPTH,
@@ -355,6 +356,7 @@ export class DelegationManagerService {
       delegationId,
       parentAgentId: delegation.parentAgentId,
       childAgentId: delegation.childAgentId,
+      depth: delegation.depth,
       error,
       actorId: delegation.parentAgentId,
       actorType: "agent",
@@ -424,8 +426,7 @@ export class DelegationManagerService {
       const allRecords: DelegationRecord[] = [];
 
       // Query by each active status and filter for chains containing this agent
-      for (const status of activeStatuses) {
-        const records = await this.delegationRepository.findByStatus(status);
+      for (const records of await this.findRepositoryRecordsByStatuses(activeStatuses)) {
         for (const record of records) {
           if (record.delegationChain.includes(agentId)) {
             allRecords.push(record);
@@ -452,7 +453,7 @@ export class DelegationManagerService {
             parentDelegationId: null,
             status: "active",
           };
-          chain.nodes = [...chain.nodes, node];
+          (chain.nodes as DelegationChainNode[]).push(node);
           chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
           chain.totalDelegations++;
         }
@@ -603,8 +604,7 @@ export class DelegationManagerService {
       const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active"];
 
       // Query by each active status
-      for (const status of activeStatuses) {
-        const records = await this.delegationRepository.findByStatus(status);
+      for (const records of await this.findRepositoryRecordsByStatuses(activeStatuses)) {
         for (const record of records) {
           scanned++;
           if (record.expiresAt && record.expiresAt < now) {
@@ -659,8 +659,7 @@ export class DelegationManagerService {
       const results: DelegationResult[] = [];
 
       // Query by each active status
-      for (const status of activeStatuses) {
-        const records = await this.delegationRepository.findByStatus(status);
+      for (const records of await this.findRepositoryRecordsByStatuses(activeStatuses)) {
         for (const record of records) {
           if (record.expiresAt && record.expiresAt < now) {
             // Try in-memory first
@@ -807,8 +806,7 @@ export class DelegationManagerService {
     }
     const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
     const recordsById = new Map<string, DelegationRecord>();
-    for (const status of activeStatuses) {
-      const records = await this.delegationRepository.findByStatus(status);
+    for (const records of await this.findRepositoryRecordsByStatuses(activeStatuses)) {
       for (const record of records) {
         if (record.delegationChain.includes(rootAgentId)) {
           recordsById.set(record.delegationId, record);
@@ -825,6 +823,13 @@ export class DelegationManagerService {
     return intersection.length > 0 ? intersection : ["delegation"];
   }
 
+  private async findRepositoryRecordsByStatuses(statuses: readonly DelegationStatus[]): Promise<readonly DelegationRecord[][]> {
+    if (!this.delegationRepository) {
+      return [];
+    }
+    return await Promise.all(statuses.map(async (status) => await this.delegationRepository!.findByStatus(status)));
+  }
+
   private async createDelegationRecord(
     parent: AgentContext,
     childContext: AgentContext,
@@ -834,6 +839,7 @@ export class DelegationManagerService {
     this.evictExpired();
     return await createDelegationResultRecord({
       parent,
+      parentRootAgentId: this.resolveRootAgentId(parent),
       childContext,
       spec,
       permissions,
@@ -921,7 +927,15 @@ export class DelegationManagerService {
 
   private resolveRootAgentId(parent: AgentContext): string {
     const parentDelegationId = parent.activeDelegations.at(-1);
-    return parentDelegationId ? this.delegationRootStore.get(parentDelegationId) ?? parent.agentId : parent.agentId;
+    if (parentDelegationId) {
+      return this.delegationRootStore.get(parentDelegationId) ?? parent.agentId;
+    }
+    for (const [rootAgentId, chain] of this.chainStore.entries()) {
+      if (chain.nodes.some((node) => node.agentId === parent.agentId)) {
+        return rootAgentId;
+      }
+    }
+    return parent.agentId;
   }
 
   private resolveParentBudgetRemaining(permissions: PermissionSet): number {

@@ -134,7 +134,13 @@ export class DurableEventBus {
     if (!existing) {
       this.registerActiveConsumer(consumerId);
     }
-    this.registerConsumerGroup({ groupId: effectiveGroupId, maxConcurrency: 10, backPressureThresholdBytes: 1_000_000 });
+    if (!this.consumerGroups.has(effectiveGroupId)) {
+      this.registerConsumerGroup({
+        groupId: effectiveGroupId,
+        maxConcurrency: 10,
+        backPressureThresholdBytes: 1_000_000,
+      });
+    }
     // Initialize delivery chain state with group
     if (!this.deliveryChainStates.has(consumerId)) {
       this.deliveryChainStates.set(consumerId, {
@@ -852,6 +858,12 @@ export class DurableEventBus {
 
       const partitionChainKey = `${consumerId}:${partitionKey}`;
       if (this.deliveryChains.has(partitionChainKey)) {
+        continue;
+      }
+
+      const consumerGroup = this.consumerGroups.get(subscriber.groupId);
+      const inFlightForGroup = this.groupDeliveryCounts.get(subscriber.groupId) ?? 0;
+      if (consumerGroup && inFlightForGroup >= consumerGroup.maxConcurrency) {
         continue;
       }
 

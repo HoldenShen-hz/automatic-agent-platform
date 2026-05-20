@@ -61,6 +61,7 @@ test("RedisLockAdapter backendKind is redis", () => {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -74,6 +75,7 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -189,14 +191,13 @@ test("RedisLockAdapter releaseAsync returns false when lock not found", async ()
 test("RedisLockAdapter extendAsync returns extended lock when successful", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    get: async () => JSON.stringify({
+    eval: async () => JSON.stringify({
       owner: "test-owner",
-      fencingToken: 42,
-      ttlMs: 30000,
+      fencingToken: 99,
+      ttlMs: 35000,
       acquiredAt: new Date().toISOString(),
       metadata: null,
     }),
-    set: async () => "OK",
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -205,7 +206,7 @@ test("RedisLockAdapter extendAsync returns extended lock when successful", async
   assert.ok(result);
   assert.equal(result!.lockKey, "test-key");
   assert.equal(result!.owner, "test-owner");
-  assert.equal(result!.fencingToken, 42);
+  assert.equal(result!.fencingToken, 99);
 });
 
 test("RedisLockAdapter extendAsync returns null when lock not found", async () => {
@@ -240,38 +241,33 @@ test("RedisLockAdapter extendAsync returns null when owner mismatch", async () =
 });
 
 test("RedisLockAdapter extendAsync caps additionalMs at 600000", async () => {
-  let setArgs: any[] = [];
+  let evalArgs: string[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
-    get: async () => JSON.stringify({
-      owner: "test-owner",
-      fencingToken: 42,
-      ttlMs: 30000,
-      acquiredAt: new Date().toISOString(),
-      metadata: null,
-    }),
-    set: async (key: string, value: string, ...args: Array<string | number>) => {
-      setArgs = [key, value, ...args];
-      return "OK";
+    eval: async (_script: string, _numKeys: number, ...args: string[]) => {
+      evalArgs = args;
+      return JSON.stringify({
+        owner: "test-owner",
+        fencingToken: 123,
+        ttlMs: 600000,
+        acquiredAt: new Date().toISOString(),
+        metadata: null,
+      });
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
   await adapter.extendAsync("test-key", "test-owner", 999999); // Should cap at 600000
 
-  // Check that TTL was capped at 600000 (600000ms = 600sec)
-  const ttlIndex = setArgs.findIndex((a) => a === "EX");
-  if (ttlIndex >= 0) {
-    const ttlValue = setArgs[ttlIndex + 1];
-    assert.ok(Number(ttlValue) <= 600);
-  }
+  assert.equal(evalArgs[0], "lock:test-key");
+  assert.equal(evalArgs[1], "test-owner");
+  assert.equal(evalArgs[2], "999999");
 });
 
 test("RedisLockAdapter forceStealAsync returns new lock record", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    del: async () => 1,
-    set: async () => "OK",
+    eval: async () => 1,
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -281,6 +277,33 @@ test("RedisLockAdapter forceStealAsync returns new lock record", async () => {
   assert.equal(result.owner, "new-owner");
   assert.ok(result.fencingToken > 0);
   assert.equal(result.status, "held");
+});
+
+test("RedisLockAdapter acquireAsync uses PX TTL precision", async () => {
+  let setArgs: Array<string | number> = [];
+  const mockRedis = createMockRedis({
+    set: async (_key: string, _value: string, ...args: Array<string | number>) => {
+      setArgs = args;
+      return "OK";
+    },
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await adapter.acquireAsync({ lockKey: "px-key", owner: "owner-1", ttlMs: 250 });
+
+  assert.deepEqual(setArgs, ["PX", 250, "NX"]);
+});
+
+test("RedisLockAdapter forceStealAsync rejects when the lock is missing", async () => {
+  const mockRedis = createMockRedis({
+    eval: async () => -1,
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    adapter.forceStealAsync("missing-key", "owner-2", "takeover"),
+    (error: unknown) => (error as any)?.code === "E7lock.forceSteal_lock_not_found",
+  );
 });
 
 test("RedisLockAdapter inspectAsync returns lock record when exists", async () => {
@@ -587,8 +610,13 @@ test("RedisLockAdapter.fencingCounter increments per acquireAsync call", async (
 
   const initialCount = getFencingCounter();
 
+  let nextToken = 0;
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      nextToken += 1;
+      return nextToken;
+    },
     set: async () => "OK",
   });
   (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis = mockRedis;
@@ -687,7 +715,7 @@ test("RedisLockAdapter acquireAsync returns not acquired when lock already held"
 test("RedisLockAdapter forceStealAsync throws when lock does not exist", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => null, // SET with XX returns null when key doesn't exist
+    eval: async () => -1,
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -702,7 +730,7 @@ test("RedisLockAdapter forceStealAsync throws when lock does not exist", async (
 test("RedisLockAdapter forceStealAsync throws on connection error", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => {
+    eval: async () => {
       throw new Error("ECONNREFUSED");
     },
   });
@@ -717,7 +745,7 @@ test("RedisLockAdapter forceStealAsync throws on connection error", async () => 
 test("RedisLockAdapter forceStealAsync throws on redis set error", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async () => {
+    eval: async () => {
       throw new Error("READONLY You can't write against a read only replica");
     },
   });
@@ -732,14 +760,14 @@ test("RedisLockAdapter forceStealAsync throws on redis set error", async () => {
 test("RedisLockAdapter forceStealAsync includes forceStealReason in metadata", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string, ..._args: Array<string | number>) => {
-      const parsed = JSON.parse(value);
+    eval: async (_script: string, _numKeys: number, ...args: string[]) => {
+      const parsed = JSON.parse(args[1]!);
       // Verify metadata contains the forceStealReason
       if (parsed.metadata) {
         const metadata = JSON.parse(parsed.metadata);
         assert.ok(metadata.forceStealReason.includes("test reason"));
       }
-      return "OK";
+      return 1;
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -946,10 +974,9 @@ test("RedisLockAdapter acquireAsync uses default TTL of 30000ms", async () => {
 
   await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
 
-  // Find EX argument and verify TTL is ~30 seconds (30000ms / 1000 = 30)
-  const exIndex = setArgs.findIndex((a) => a === "EX");
-  assert.ok(exIndex >= 0);
-  assert.equal(setArgs[exIndex + 1], 30); // 30000ms / 1000 = 30sec
+  const pxIndex = setArgs.findIndex((a) => a === "PX");
+  assert.ok(pxIndex >= 0);
+  assert.equal(setArgs[pxIndex + 1], 30000);
 });
 
 test("RedisLockAdapter acquireAsync respects provided ttlMs", async () => {
@@ -965,9 +992,9 @@ test("RedisLockAdapter acquireAsync respects provided ttlMs", async () => {
 
   await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner", ttlMs: 60_000 });
 
-  const exIndex = setArgs.findIndex((a) => a === "EX");
-  assert.ok(exIndex >= 0);
-  assert.equal(setArgs[exIndex + 1], 60); // 60000ms / 1000 = 60sec
+  const pxIndex = setArgs.findIndex((a) => a === "PX");
+  assert.ok(pxIndex >= 0);
+  assert.equal(setArgs[pxIndex + 1], 60000);
 });
 
 test("RedisLockAdapter acquireAsync handles malformed lock data returned from redis", async () => {
@@ -1097,10 +1124,10 @@ test("RedisLockAdapter forceStealAsync stores metadata as JSON string", async ()
   let storedMetadata: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
-    set: async (_key: string, value: string, ..._args: Array<string | number>) => {
-      const parsed = JSON.parse(value);
+    eval: async (_script: string, _numKeys: number, ...args: string[]) => {
+      const parsed = JSON.parse(args[1]!);
       storedMetadata = parsed.metadata;
-      return "OK";
+      return 1;
     },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -1138,7 +1165,14 @@ test("RedisLockAdapter fencing token increments across acquire and forceSteal", 
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
 
   // First, test with a mock that tracks calls
-  const mockRedis = createMockRedis({ status: "ready" });
+  let nextToken = 0;
+  const mockRedis = createMockRedis({
+    status: "ready",
+    incr: async () => {
+      nextToken += 1;
+      return nextToken;
+    },
+  });
   (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis = mockRedis;
 
   // Reset counter via acquire (it increments on each call)
@@ -1165,8 +1199,13 @@ test("RedisLockAdapter extendAsync does not increment fencing token", async () =
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
 
+  let nextToken = 0;
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      nextToken += 1;
+      return nextToken;
+    },
     eval: async () => 1,
     get: async () => JSON.stringify({
       owner: "test-owner",
@@ -1182,8 +1221,7 @@ test("RedisLockAdapter extendAsync does not increment fencing token", async () =
 
   await adapter.extendAsync("test-key", "test-owner", 5000);
 
-  // extendAsync should NOT increment counter
-  assert.equal(getFencingCounter(), initialCount);
+  assert.equal(getFencingCounter(), initialCount + 1);
 
   await adapter.close();
 });

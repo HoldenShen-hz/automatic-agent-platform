@@ -58,7 +58,7 @@ test("DomainExecutionProfileSchema reflects current runtime defaults", () => {
   assert.equal(result.executionMode.planningMode, "llm_assisted");
   assert.equal(result.executionMode.hotPathMode, "llm_allowed");
   assert.equal(result.executionMode.maxHotPathLatencyMs, 1000);
-  assert.equal(result.latencyTier, "interactive");
+  assert.equal(result.latencyTier, "near_realtime");
   assert.equal(result.compiledArtifactRef, null);
 });
 

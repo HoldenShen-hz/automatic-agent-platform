@@ -89,6 +89,7 @@ test("DelegationAuditService records delegation completion", () => {
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
     durationMs: 5000,
+    depth: 1,
     actorId: "agent_2",
     actorType: "agent",
   });
@@ -104,6 +105,7 @@ test("DelegationAuditService records delegation failure", () => {
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
     error: "timeout",
+    depth: 1,
     actorId: "agent_2",
     actorType: "agent",
   });
@@ -118,6 +120,7 @@ test("DelegationAuditService records permission narrowing", () => {
     delegationId: "dlg_123",
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
+    depth: 1,
     originalPermissions: { resources: ["r1", "r2"], actions: ["read", "write"], constraints: {} },
     narrowedPermissions: { resources: ["r1"], actions: ["read"], constraints: {} },
     actorId: "agent_1",
@@ -144,6 +147,7 @@ test("DelegationAuditService.getByDelegation returns events for delegation", () 
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
     durationMs: 1000,
+    depth: 1,
     actorId: "agent_2",
     actorType: "agent",
   });
@@ -176,6 +180,7 @@ test("DelegationAuditService.getByAgent returns events for agent", () => {
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
     durationMs: 1000,
+    depth: 1,
     actorId: "agent_2",
     actorType: "agent",
   });
@@ -286,17 +291,17 @@ test("R26-07: recordDelegationFailed tracks actual depth instead of hardcoding 0
   assert.equal(event.depth, 5, "Should track actual delegation depth");
 });
 
-test("R26-07: depth defaults to 0 when not provided (backward compatibility)", () => {
+test("R26-07: recordDelegationCompleted requires explicit depth", () => {
   const service = new DelegationAuditService();
   const event = service.recordDelegationCompleted({
     delegationId: "dlg_1",
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
     durationMs: 5000,
-    // No depth provided - should default to 0
+    depth: 2,
     actorId: "agent_2",
     actorType: "agent",
   });
 
-  assert.equal(event.depth, 0, "Should default to depth 0 when not provided");
+  assert.equal(event.depth, 2, "Should preserve the supplied depth");
 });

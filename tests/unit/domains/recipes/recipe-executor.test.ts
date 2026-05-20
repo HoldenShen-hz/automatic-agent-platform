@@ -23,11 +23,17 @@ function makeRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domai
   return DomainRecipeSchema.parse({
     recipeId: overrides.recipeId,
     domainId: overrides.domainId,
+    archetype: overrides.archetype ?? "crud_heavy",
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description,
+    riskProfileRef: overrides.riskProfileRef ?? `${overrides.domainId}.risk`,
+    guardrailOverlay: overrides.guardrailOverlay ?? {},
     triggerPhrases: overrides.triggerPhrases ?? [],
     defaultWorkflowId: overrides.defaultWorkflowId,
+    recommendedWorkflowIds: overrides.recommendedWorkflowIds ?? [],
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
+    defaultPromptBundleRef: overrides.defaultPromptBundleRef ?? `${overrides.domainId}.default-prompt`,
+    acceptanceChecklistRef: overrides.acceptanceChecklistRef ?? `${overrides.domainId}.acceptance`,
   });
 }
 

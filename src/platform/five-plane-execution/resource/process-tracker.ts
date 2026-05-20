@@ -344,6 +344,7 @@ export function spawnTracked(
     cwd?: string;
     detached?: boolean;
     env?: Record<string, string>;
+    unref?: boolean;
   },
   owner: ProcessOwner = "unknown",
 ): ChildProcess {
@@ -355,6 +356,9 @@ export function spawnTracked(
   };
 
   const child = spawn(command, args ?? [], spawnOpts);
+  if (spawnOpts.detached && options?.unref !== false && process.platform !== "win32") {
+    child.unref();
+  }
 
   tracker.register(child, owner, command, args ? [...args] : []);
 

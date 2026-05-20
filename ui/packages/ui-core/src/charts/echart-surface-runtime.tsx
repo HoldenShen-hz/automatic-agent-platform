@@ -116,7 +116,12 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
   const previousValuesRef = useRef<readonly number[]>([]);
   const initializedRef = useRef(false);
   const chartTheme = theme.color;
+  const chartColorDeps = [values, chartTheme.accent, chartTheme.border] as const;
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
+  const chartOption = useMemo(
+    () => buildChartOption(title, values, theme),
+    [title, ...chartColorDeps, chartTheme.surfaceElevated],
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -158,7 +163,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       && values.length > previousValues.length
       && previousValues.every((value, index) => values[index] === value);
 
-    chart.setOption(buildChartOption(title, values, theme));
+    chart.setOption(chartOption);
     if (isAppendOnly) {
       chart.appendData({
         seriesIndex: 0,
@@ -166,7 +171,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       });
     }
     previousValuesRef.current = [...values];
-  }, [title, values, theme]);
+  }, [chartOption, values]);
 
   return (
     <div>

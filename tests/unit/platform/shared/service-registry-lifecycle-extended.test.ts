@@ -142,7 +142,7 @@ test("ServiceRegistry get handles transitive dependencies", async () => {
   assert.equal(initOrder[2], "level-3");
 });
 
-test("ServiceRegistry get allows already registered service to be re-registered", async () => {
+test("ServiceRegistry re-register drops the stale initialized instance", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
@@ -153,15 +153,14 @@ test("ServiceRegistry get allows already registered service to be re-registered"
   const first = registry.get<{ value: number }>("re-register");
   assert.equal(first.value, 1);
 
-  // Re-register with new init - but first instance is still returned (not re-initialized)
+  // Re-register with new init; the stale initialized instance should be discarded.
   registry.register("re-register", {
     init: () => ({ value: 2 }),
   });
 
   const second = registry.get<{ value: number }>("re-register");
-  // Second get returns the same cached instance with value 1
-  assert.equal(second.value, 1);
-  assert.ok(first === second);
+  assert.equal(second.value, 2);
+  assert.notStrictEqual(first, second);
 });
 
 test("ServiceRegistry topologicalSort handles multiple independent services", async () => {

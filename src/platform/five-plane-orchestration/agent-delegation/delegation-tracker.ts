@@ -65,6 +65,39 @@ export class DelegationTracker {
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
+  private isTerminalStatus(status: DelegationChainNode["status"] | undefined): boolean {
+    return status === "completed" || status === "failed" || status === "cancelled" || status === "expired" || status === "timed_out";
+  }
+
+  private resolveChainLastActivityMs(chain: DelegationChain): number {
+    let lastActivityMs = 0;
+    for (const node of chain.nodes) {
+      lastActivityMs = Math.max(lastActivityMs, Date.parse(node.createdAt) || 0);
+      const events = this.delegationEvents.get(node.delegationId) ?? [];
+      for (const event of events) {
+        const eventTime = Date.parse(event.timestamp);
+        if (Number.isFinite(eventTime)) {
+          lastActivityMs = Math.max(lastActivityMs, eventTime);
+        }
+      }
+    }
+    return lastActivityMs;
+  }
+
+  private deleteChain(rootAgentId: string): void {
+    const chain = this.rootToChain.get(rootAgentId);
+    if (chain) {
+      for (const node of chain.nodes) {
+        this.delegationToRoot.delete(node.delegationId);
+        this.delegationToParentDelegation.delete(node.delegationId);
+        this.delegationNodeIndex.delete(node.delegationId);
+        this.delegationDurations.delete(node.delegationId);
+        this.delegationEvents.delete(node.delegationId);
+      }
+    }
+    this.rootToChain.delete(rootAgentId);
+  }
+
   /**
    * C-11: Evict expired delegation entries to prevent memory leaks.
    */
@@ -80,39 +113,27 @@ export class DelegationTracker {
 
     // Find expired rootToChain entries
     for (const [key, chain] of this.rootToChain) {
-      if (chain.nodes.length > 0) {
-        const lastNode = chain.nodes[chain.nodes.length - 1];
-        if (lastNode == null) {
-          continue;
-        }
-        const lastNodeTime = new Date(lastNode.createdAt).getTime();
-        if (lastNodeTime < expiryThreshold) {
+      if (chain.nodes.length === 0) {
+        entriesToDelete.push(key);
+        continue;
+      }
+      if (chain.nodes.every((node) => this.isTerminalStatus(node.status))) {
+        const lastActivityMs = this.resolveChainLastActivityMs(chain);
+        if (lastActivityMs < expiryThreshold) {
           entriesToDelete.push(key);
         }
       }
     }
 
     for (const key of entriesToDelete) {
-      const chain = this.rootToChain.get(key);
-      if (chain) {
-        for (const node of chain.nodes) {
-          this.delegationToRoot.delete(node.delegationId);
-          this.delegationToParentDelegation.delete(node.delegationId);
-          this.delegationNodeIndex.delete(node.delegationId);
-          this.delegationDurations.delete(node.delegationId);
-          this.delegationEvents.delete(node.delegationId);
-        }
-      }
-      this.rootToChain.delete(key);
+      this.deleteChain(key);
     }
 
     // If still over capacity, remove oldest entries
     if (this.rootToChain.size > this.MAX_ENTRIES) {
       const sortedEntries = [...this.rootToChain.entries()].sort((a, b) => {
-        const aLastNode = a[1].nodes[a[1].nodes.length - 1];
-        const bLastNode = b[1].nodes[b[1].nodes.length - 1];
-        const aTime = aLastNode ? new Date(aLastNode.createdAt).getTime() : 0;
-        const bTime = bLastNode ? new Date(bLastNode.createdAt).getTime() : 0;
+        const aTime = this.resolveChainLastActivityMs(a[1]);
+        const bTime = this.resolveChainLastActivityMs(b[1]);
         return aTime - bTime;
       });
 
@@ -122,18 +143,7 @@ export class DelegationTracker {
         if (entry == null) {
           continue;
         }
-        const key = entry[0];
-        const chain = this.rootToChain.get(key);
-        if (chain) {
-          for (const node of chain.nodes) {
-            this.delegationToRoot.delete(node.delegationId);
-            this.delegationToParentDelegation.delete(node.delegationId);
-            this.delegationNodeIndex.delete(node.delegationId);
-            this.delegationDurations.delete(node.delegationId);
-            this.delegationEvents.delete(node.delegationId);
-          }
-        }
-        this.rootToChain.delete(key);
+        this.deleteChain(entry[0]);
       }
     }
   }
@@ -173,17 +183,19 @@ export class DelegationTracker {
       agentType: options.agentType ?? "agent",
       depth: delegation.depth,
       createdAt: delegation.createdAt,
-      parentDelegationId: options.parentDelegationId ?? this.findParentDelegationId(rootAgentId, delegation.depth),
+      parentDelegationId: options.parentDelegationId ?? this.findParentDelegationId(rootAgentId, parentAgentId, delegation.depth),
       ...(options.status !== undefined && { status: options.status }),
     };
 
     const existingIndex = chain.nodes.findIndex((existingNode) => existingNode.delegationId === delegation.delegationId);
     if (existingIndex >= 0) {
-      chain.nodes = chain.nodes.map((existingNode) =>
-        existingNode.delegationId === delegation.delegationId ? node : existingNode
-      );
+      const nextNodes = [...chain.nodes];
+      nextNodes[existingIndex] = node;
+      chain.nodes = nextNodes;
     } else {
-      chain.nodes = [...chain.nodes, node];
+      const nextNodes = chain.nodes as DelegationChainNode[];
+      nextNodes.push(node);
+      chain.nodes = nextNodes;
       chain.totalDelegations++;
     }
     chain.maxDepthReached = Math.max(chain.maxDepthReached, delegation.depth);
@@ -205,7 +217,8 @@ export class DelegationTracker {
     this.evictExpired();
 
     const events = this.delegationEvents.get(delegationId) ?? [];
-    this.delegationEvents.set(delegationId, [...events, event]);
+    events.push(event);
+    this.delegationEvents.set(delegationId, events);
 
     if (event.eventType === "delegation.completed") {
       this.delegationDurations.set(delegationId, event.durationMs);
@@ -225,6 +238,7 @@ export class DelegationTracker {
    * @returns Delegation chain or null
    */
   public getChain(rootAgentId: string): DelegationChain | null {
+    this.evictExpired();
     return this.rootToChain.get(rootAgentId) ?? null;
   }
 
@@ -235,6 +249,7 @@ export class DelegationTracker {
    * @returns Tree structure or null
    */
   public getTree(rootAgentId: string): DelegationTreeNode | null {
+    this.evictExpired();
     const chain = this.rootToChain.get(rootAgentId);
     if (!chain) return null;
 
@@ -279,6 +294,7 @@ export class DelegationTracker {
    * @returns List of events
    */
   public getEvents(delegationId: string): DelegationEvent[] {
+    this.evictExpired();
     return this.delegationEvents.get(delegationId) ?? [];
   }
 
@@ -289,6 +305,7 @@ export class DelegationTracker {
    * @returns Parent delegation ID or null
    */
   public getParentDelegationId(delegationId: string): string | null {
+    this.evictExpired();
     return this.delegationToParentDelegation.get(delegationId) ?? null;
   }
 
@@ -299,6 +316,7 @@ export class DelegationTracker {
    * @returns Delegation metrics
    */
   public getMetrics(rootAgentId: string): DelegationMetrics {
+    this.evictExpired();
     const chain = this.rootToChain.get(rootAgentId);
     if (!chain) {
       return {
@@ -347,9 +365,16 @@ export class DelegationTracker {
   /**
    * Finds the parent delegation ID based on depth.
    */
-  private findParentDelegationId(rootAgentId: string, childDepth: number): string | null {
+  private findParentDelegationId(rootAgentId: string, parentAgentId: string, childDepth: number): string | null {
     const chain = this.rootToChain.get(rootAgentId);
     if (!chain || childDepth <= 1) return null;
+
+    for (let i = chain.nodes.length - 1; i >= 0; i -= 1) {
+      const node = chain.nodes[i];
+      if (node && node.depth === childDepth - 1 && node.agentId === parentAgentId) {
+        return node.delegationId;
+      }
+    }
 
     for (let i = chain.nodes.length - 1; i >= 0; i -= 1) {
       const node = chain.nodes[i];

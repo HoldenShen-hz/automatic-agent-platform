@@ -201,14 +201,12 @@ test("mergeVotes adds new vote when approver not voted", () => {
     const merged = mergeVotes(existing, newVote);
     assert.equal(merged.length, 2);
 });
-test("mergeVotes updates existing vote when approver already voted", () => {
+test("mergeVotes rejects duplicate immutable vote when approver already voted", () => {
     const existing = [
         makeVote("approver-1", VoteType.APPROVE),
     ];
     const newVote = makeVote("approver-1", VoteType.REJECT);
-    const merged = mergeVotes(existing, newVote);
-    assert.equal(merged.length, 1);
-    assert.equal(merged[0].voteType, VoteType.REJECT);
+    assert.throws(() => mergeVotes(existing, newVote), /immutable vote/);
 });
 test("createVote creates vote with correct fields", () => {
     const vote = createVote("approver-1", VoteType.APPROVE);

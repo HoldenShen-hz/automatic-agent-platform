@@ -165,8 +165,8 @@ test("durable event bus continues delivering later pending events after an earli
 
     assert.deepEqual(delivered, [second.id]);
     const remaining = bus.pendingForConsumer("task_projection");
-    assert.equal(remaining.length, 1);
-    assert.equal(remaining[0]?.event.id, first.id);
+    assert.equal(remaining.length, 0);
+    assert.equal(store.event.getEventConsumerAck(first.id, "task_projection")?.status, "dead_lettered");
 
     db.close();
   } finally {
@@ -254,11 +254,13 @@ test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-
     // That's MAX_DELIVERY_RETRIES + 1 = 4 total attempts
     assert.ok(attemptCount >= 3, `Expected at least 3 handler attempts, got ${attemptCount}`);
 
-    // After dead-lettering, the event should still be in pending list but with status='failed'
+    // After dead-lettering, the ack should be marked dead_lettered and removed from the pending queue.
     const remaining = bus.pendingForConsumer("task_projection");
-    assert.equal(remaining.length, 1);
-    assert.equal(remaining[0]?.ack.status, "failed");
-    assert.ok(remaining[0]?.ack.errorCode?.includes("failed_after_3_retries"), `Expected error code with retry info, got: ${remaining[0]?.ack.errorCode}`);
+    assert.equal(remaining.length, 0);
+    const storedEvent = store.listEventsForTask("task-retry-exhaust")[0];
+    const finalAck = storedEvent == null ? undefined : store.event.getEventConsumerAck(storedEvent.id, "task_projection");
+    assert.equal(finalAck?.status, "dead_lettered");
+    assert.ok(finalAck?.errorCode?.includes("failed_after_3_retries"), `Expected error code with retry info, got: ${finalAck?.errorCode}`);
 
     db.close();
   } finally {
@@ -735,11 +737,8 @@ test("durable event bus multiple subscribers each receive events", async () => {
     });
 
     bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-multi-sub",
-      executionId: "exec-multi-sub",
-      traceId: "trace-multi-sub",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
+      eventType: "dispatch:ticket_created",
+      payload: { taskId: "task-multi-sub", ticketId: "ticket-multi-sub", status: "created" },
     });
 
     await flushScheduledEventBusDelivery();

@@ -119,6 +119,8 @@ test("GET /console returns HTML dashboard", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.headers["content-type"]?.includes("html"));
+  assert.match(response.body, /\/ws\/v1\/stream/);
+  assert.match(response.body, /Sec-WebSocket-Protocol/);
 });
 
 test("GET /console throws when auth not configured", async () => {
