@@ -241,12 +241,10 @@ test("durable event bus integration: event dead-lettered after 3 failed attempts
     // Verify exactly 3 attempts were made
     assert.equal(attemptCount, 3, "Should have exactly 3 attempts before dead-letter");
 
-    // Failed deliveries remain queryable with failed ack state for operator recovery.
-    const pending = bus.pendingForConsumer("inspect_projection");
-    const eventStillPending = pending.find((p) => p.event.id === event.id);
-    assert.notEqual(eventStillPending, undefined, "Failed delivery should remain inspectable");
-    assert.equal(eventStillPending?.ack.status, "failed");
-    assert.match(eventStillPending?.ack.errorCode ?? "", /failed_after_3_retries/i);
+    const ack = store.event.getEventConsumerAck(event.id, "inspect_projection");
+    assert.ok(ack, "Dead-lettered delivery should retain its ack row");
+    assert.equal(ack!.status, "dead_lettered");
+    assert.match(ack!.errorCode ?? "", /failed_after_3_retries/i);
 
     bus.dispose();
   } finally {

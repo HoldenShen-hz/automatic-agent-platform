@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 
 import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
 import { createBuiltinPlugin } from "../../../src/plugins/builtin-plugin-registry.js";
+import { createOperationsRetrieverPluginWithOptions } from "../../../src/plugins/retrievers/operations-retriever.js";
 
 test("PluginHarness: invokeRetriever calls plugin retrieve method", async () => {
   const registry = new PluginSpiRegistry();
@@ -253,7 +254,7 @@ test("PluginHarness: unload removes plugin from active state", async () => {
 test("PluginHarness: operations retriever can be invoked", async () => {
   const registry = new PluginSpiRegistry();
 
-  const retriever = createBuiltinPlugin("plugin.operations.retriever")!;
+  const retriever = createOperationsRetrieverPluginWithOptions({ healthCheck: () => true });
   registry.register(retriever);
 
   const results = await registry.invokeRetriever("plugin.operations.retriever", {

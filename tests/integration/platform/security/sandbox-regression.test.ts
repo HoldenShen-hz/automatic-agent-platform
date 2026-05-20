@@ -14,6 +14,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
@@ -28,7 +29,7 @@ test("workspace-write sandbox explicitly denies sensitive system roots", async (
 
   try {
     const policy = createWorkspaceWritePolicy(workspace);
-    assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
+    assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys", `${homedir()}/.ssh`]);
 
     for (const deniedPath of ["/etc/hosts", "/proc/self/status", "/sys/kernel"]) {
       const check = checkSandboxPath(policy, deniedPath);

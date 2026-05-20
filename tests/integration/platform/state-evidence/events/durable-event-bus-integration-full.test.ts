@@ -183,7 +183,7 @@ test("durable event bus: subscribe receives published events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("test_consumer");
 
     assert.equal(receivedEvents.length, 1, "Consumer should receive exactly one event");
     assert.equal(receivedEvents[0], publishedEvent.id, "Consumer should receive the published event");
@@ -225,7 +225,7 @@ test("durable event bus: subscribe filters by event type", async () => {
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("type_filter_consumer");
 
     // Consumer receives all events it can handle (no filter at bus level)
     assert.equal(receivedTypes.length, 3, "Consumer should receive all 3 events");
@@ -269,7 +269,8 @@ test("durable event bus: multiple consumers receive same events independently", 
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("consumer_1");
+    await bus.deliverPending("consumer_2");
 
     assert.equal(consumer1Events.length, 2, "Consumer 1 should receive 2 events");
     assert.equal(consumer2Events.length, 2, "Consumer 2 should receive 2 events");
@@ -310,11 +311,10 @@ test("durable event bus: deliverPending delivers tier-1 events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await flushScheduledEventBusDelivery();
-
-    // After polling delivery, pending should be empty
-    const pendingBefore = bus.pendingForConsumer("pending_consumer");
-    assert.equal(pendingBefore.length, 0, "No pending events after polling delivery");
+    const delivered = await bus.deliverPending("pending_consumer");
+    const pendingAfter = bus.pendingForConsumer("pending_consumer");
+    assert.equal(delivered, 1, "deliverPending should report one delivered event");
+    assert.equal(pendingAfter.length, 0, "No pending events after explicit delivery");
 
     // Verify the event was received
     assert.equal(receivedEvents.length, 1, "Should receive 1 event via polling");
@@ -423,7 +423,7 @@ test("durable event bus: tier-2 events dispatched immediately without ack", asyn
       payload: { ticketId: "ticket-123", queueId: "default" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("unsub_test_consumer");
 
     assert.ok(volatileHandlerCalled, "Tier-2 event should be dispatched immediately");
 
@@ -487,7 +487,7 @@ test("durable event bus: unsubscribe stops event delivery", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("unsub_test_consumer");
 
     assert.equal(receivedBeforeUnsub.length, 1, "Should receive 1 event before unsubscribe");
 
@@ -500,7 +500,7 @@ test("durable event bus: unsubscribe stops event delivery", async () => {
       payload: { fromStatus: "in_progress", toStatus: "completed" },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("multi_type_consumer");
 
     assert.equal(receivedBeforeUnsub.length, 1, "Should not receive new events after unsubscribe");
 
@@ -579,7 +579,7 @@ test("typed event bus: subscribe to multiple event types", async () => {
       payload: { divisionId: "div-1", workflowId: "wf-1", occurredAt: new Date().toISOString() },
     });
 
-    await flushScheduledEventBusDelivery();
+    await bus.deliverPending("multi_type_consumer");
 
     assert.equal(receivedTypes.length, 2, "Should only receive subscribed event types");
     assert.ok(receivedTypes.includes("task:status_changed"));

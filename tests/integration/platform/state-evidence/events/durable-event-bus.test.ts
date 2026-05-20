@@ -170,10 +170,10 @@ test("integration: durable event bus handles delivery failure and records error"
       /dead-lettered|handler always fails/,
     );
 
-    // Verify event is marked as failed in store
+    // Verify event is marked as dead-lettered in store
     const ack = store.event.getEventConsumerAck(event.id, "failing_consumer");
     assert.ok(ack, "Ack record should exist");
-    assert.equal(ack!.status, "failed", "Status should be failed");
+    assert.equal(ack!.status, "dead_lettered", "Status should be dead_lettered");
     assert.ok(ack!.errorCode, "Error code should be recorded");
 
     bus.dispose();
@@ -248,8 +248,8 @@ test("integration: durable event bus delivers to multiple consumers independentl
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Wait for fan-out
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await bus.deliverPending("consumer-a");
+    await bus.deliverPending("consumer-b");
 
     assert.equal(consumerA.length, 1, "Consumer A should receive event");
     assert.equal(consumerB.length, 1, "Consumer B should receive event");

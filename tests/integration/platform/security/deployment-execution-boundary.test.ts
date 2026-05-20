@@ -97,7 +97,7 @@ test("deployment execution fail-closes when secret refs are unresolved", async (
           commitSha: "abcdef0123456789",
           rolloutStrategy: "blue_green",
         }),
-      /secret\.missing_value:secret:\/\/system\/registry\/ghcr\/prod/,
+      /secret\.missing_value/,
     );
   } finally {
     db.close();

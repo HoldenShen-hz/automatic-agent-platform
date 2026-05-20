@@ -92,11 +92,10 @@ test("ServiceRegistry integration: circular dependency detection", async () => {
     dependsOn: ["svc-a"],
   });
 
-  // Topological sort should detect cycle
-  const sorted = registry.topologicalSort();
-
-  // Services should still be sorted but may not include all due to cycle
-  assert.ok(sorted.length <= 2);
+  assert.throws(
+    () => registry.topologicalSort(),
+    /service_registry\.circular_dependency/,
+  );
 });
 
 test("ServiceRegistry integration: reset clears singleton state", async () => {

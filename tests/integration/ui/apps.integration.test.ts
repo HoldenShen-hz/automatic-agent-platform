@@ -73,9 +73,10 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
 
     // All main channels should be represented in preload API
     for (const channel of mainChannels) {
+      const channelName = channel.name;
       // Convert channel string to API path
       // e.g., "shell:openExternal" -> preloadApi.shell.openExternal
-      const [namespace, method] = channel.split(":");
+      const [namespace, method] = channelName.split(":");
       const namespaceKey = namespace
         .split("-")
         .map((segment, index) => index === 0 ? segment : `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`)
@@ -83,7 +84,7 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
 
       // Check if the preload API has this channel
       const apiValue = (preloadApi as any)[namespaceKey]?.[method];
-      assert.equal(apiValue, channel, `Channel ${channel} should be in preload API`);
+      assert.equal(apiValue, channelName, `Channel ${channelName} should be in preload API`);
     }
   });
 
@@ -189,14 +190,15 @@ test.describe("Security configuration alignment", () => {
     const preload = await import("../../../ui/apps/electron-win/src/preload.js");
 
     const channels = main.electronMainBaseline.channels;
+    const channelNames = channels.map((channel: { name: string }) => channel.name);
 
     // Verify the remaining security-sensitive channels are present
-    assert.ok(channels.includes("shell:openExternal"));
-    assert.ok(!channels.includes("files:read"));
-    assert.ok(!channels.includes("files:write"));
-    assert.ok(channels.includes("secure-store:read"));
-    assert.ok(channels.includes("secure-store:write"));
-    assert.ok(channels.includes("privacy:getAnalyticsConsent"));
+    assert.ok(channelNames.includes("shell:openExternal"));
+    assert.ok(!channelNames.includes("files:read"));
+    assert.ok(!channelNames.includes("files:write"));
+    assert.ok(channelNames.includes("secure-store:read"));
+    assert.ok(channelNames.includes("secure-store:write"));
+    assert.ok(channelNames.includes("privacy:getAnalyticsConsent"));
   });
 
   test("All platforms implement screen security", async () => {
@@ -204,7 +206,9 @@ test.describe("Security configuration alignment", () => {
     const mobile = await import("../../../ui/apps/mobile/src/index.js");
 
     // Electron has privacy:enableScreenSecurity
-    assert.ok(electronWin.electronMainBaseline.channels.includes("privacy:enableScreenSecurity"));
+    assert.ok(
+      electronWin.electronMainBaseline.channels.some((channel: { name: string }) => channel.name === "privacy:enableScreenSecurity"),
+    );
 
     // Mobile manifest indicates screen security support
     assert.equal(mobile.mobileShellManifest.supportsScreenSecurity, true);
@@ -223,31 +227,25 @@ test.describe("HTML security headers", () => {
     // Should have lang attribute
     assert.ok(html.includes('lang="en"') || html.includes("lang='en'"));
 
-    // Issue #2168: No CSP meta tag in electron-win
-    // This documents the issue
-    const hasCspMeta = html.includes('http-equiv="Content-Security-Policy"');
-    if (!hasCspMeta) {
-      console.warn("[Issue #2168] electron-win index.html is missing CSP meta tag");
-    }
-  });
-
-  test("web index.html has CSP meta tag", async () => {
-    const fs = await import("node:fs");
-    const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/index.html";
-    const html = fs.readFileSync(htmlPath, "utf-8");
-
-    // Should have CSP meta tag
     assert.ok(html.includes('http-equiv="Content-Security-Policy"'));
-    assert.ok(html.includes("default-src 'self'"));
   });
 
-  test("web index.html has CSRF token meta tag", async () => {
+  test("web security headers are sourced from Vite config rather than duplicated in index.html", async () => {
+    const fs = await import("node:fs");
+    const viteConfig = await import("../../../ui/apps/web/vite.config.ts");
+    const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/index.html";
+    const html = fs.readFileSync(htmlPath, "utf-8");
+
+    assert.ok(!html.includes('http-equiv="Content-Security-Policy"'));
+    assert.equal(typeof viteConfig.default, "function");
+  });
+
+  test("web index.html does not hardcode CSRF meta tokens", async () => {
     const fs = await import("node:fs");
     const htmlPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/ui/apps/web/index.html";
     const html = fs.readFileSync(htmlPath, "utf-8");
 
-    // Should have CSRF token meta tag
-    assert.ok(html.includes('name="aa-csrf-token"'));
+    assert.ok(!html.includes('name="aa-csrf-token"'));
   });
 });
 

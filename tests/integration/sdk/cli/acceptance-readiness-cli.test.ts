@@ -210,7 +210,7 @@ test("acceptance-readiness CLI summarizes and exports the current remaining main
     ) as { jsonArtifact: { uri: string }; report: { registryPublish: { status: string } } };
 
     assert.match(exported.jsonArtifact.uri, /acceptance_readiness|acceptance-readiness/);
-    assert.equal(exported.report.registryPublish.status, "blocked_on_external_infra");
+    assert.equal(exported.report.registryPublish.status, "blocked");
   } finally {
     db.close();
     cleanupPath(workspace);

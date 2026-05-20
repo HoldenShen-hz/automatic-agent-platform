@@ -267,10 +267,10 @@ test("integration: SandboxPathCheckResult structure validation", () => {
 // ============================================================================
 
 test("integration: config_read policy enforces strict boundaries", () => {
-  const configPolicy = createConfigReadPolicy("/etc/app-config");
+  const configPolicy = createConfigReadPolicy("/workspace/app-config");
 
   // Paths within config root allowed
-  const configFile = checkSandboxPath(configPolicy, "/etc/app-config/settings.json");
+  const configFile = checkSandboxPath(configPolicy, "/workspace/app-config/settings.json");
   assert.equal(configFile.allowed, true);
   assert.equal(configPolicy.mode, "read_only");
   assert.equal(configPolicy.processRuleMode, "deny");

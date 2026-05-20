@@ -162,11 +162,15 @@ test.describe("DurableEventBus integration tests", () => {
       if (attempts > maxRetries) break;
     }
 
-    // Verify ack status is failed after max retries
-    const pending = bus.pendingForConsumer("consumer-dl");
-    const dlEvent = pending.find(p => p.event.taskId === "task-dl");
-    assert.ok(dlEvent !== undefined);
-    assert.equal(dlEvent.ack.status, "failed");
+    const event = ctx.store.event.listEventsByType("task:status_changed").find((entry) => entry.taskId === "task-dl");
+    assert.ok(event !== undefined);
+
+    const ack = ctx.store.event.getEventConsumerAck(event!.id, "consumer-dl");
+    assert.ok(ack !== undefined);
+    assert.equal(ack!.status, "dead_lettered");
+
+    const deadLetters = ctx.store.event.listEventDeadLetters(10);
+    assert.ok(deadLetters.some((entry) => entry.originalEventId === event!.id && entry.consumerId === "consumer-dl"));
   });
 
   test("multiple consumers receive independent ack tracking", () => {

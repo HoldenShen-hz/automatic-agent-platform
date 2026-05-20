@@ -67,5 +67,5 @@ test("E2E Compensation: high-impact compensation requires human approval", () =>
   const manager = new CompensationManager();
 
   assert.equal(manager.requiresHumanApproval("high"), true);
-  assert.equal(manager.requiresHumanApproval("medium"), false);
+  assert.equal(manager.requiresHumanApproval("medium"), true);
 });

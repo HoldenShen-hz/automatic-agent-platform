@@ -3,5 +3,5 @@
   "hotPathMode": "llm_allowed",
   "llmInHotPathAllowed": true,
   "maxHotPathLatencyMs": 500,
-  "latencyTier": "interactive"
+  "latencyTier": "near_realtime"
 }

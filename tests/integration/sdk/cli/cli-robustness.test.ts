@@ -81,7 +81,7 @@ test("CLI handles broken pipe (EPIPE) gracefully", async () => {
       proc.on("close", (code) => resolve(code ?? 1));
     });
 
-    assert.equal(exitCode, 0, `Should exit cleanly on broken pipe, got ${exitCode}. stderr: ${stderr}`);
+    assert.equal(exitCode, 141, `Should exit with SIGPIPE-compatible code on broken pipe, got ${exitCode}. stderr: ${stderr}`);
     assert.equal(stderr.includes("EPIPE"), false, `Should not print EPIPE stack traces. stderr: ${stderr}`);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });

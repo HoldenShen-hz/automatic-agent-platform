@@ -6,6 +6,7 @@
  */
 
 import assert from "node:assert/strict";
+import { homedir } from "node:os";
 import test from "node:test";
 
 import {
@@ -127,7 +128,7 @@ test("security: createWorkspaceWritePolicy creates valid policy", () => {
   assert.strictEqual(policy.policyId, "workspace_write");
   assert.strictEqual(policy.mode, "workspace_write");
   assert.deepStrictEqual(policy.allowedRoots, ["/workspace/project"]);
-  assert.deepStrictEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
+  assert.deepStrictEqual(policy.deniedRoots, ["/etc", "/proc", "/sys", `${homedir()}/.ssh`]);
   assert.strictEqual(policy.realpathEnforced, true);
   assert.strictEqual(policy.symlinkPolicy, "deny");
 });

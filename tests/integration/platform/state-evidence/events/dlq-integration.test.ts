@@ -186,7 +186,7 @@ test("integration: DLQ service markRetryExhausted updates status and records tim
     // Now mark as retry exhausted
     const exhausted = dlq.markRetryExhausted(current.deadLetterId, "operator-exhausted");
 
-    assert.equal(exhausted.status, "pending", "Status should return to pending");
+    assert.equal(exhausted.status, "discarded", "Status should transition to discarded");
     assert.ok(exhausted.retryExhaustedAt !== null, "Retry exhausted timestamp should be set");
     assert.equal(exhausted.retryCount, 5, "Retry count should be preserved at 5");
     assert.equal(exhausted.nextRetryAt, null, "Next retry should be null");

@@ -45,7 +45,7 @@ test("E2E Workflow: CompensationManager requires human approval for high impact 
   const manager = new CompensationManager();
   assert.equal(manager.requiresHumanApproval("high"), true, "High impact should require approval");
   assert.equal(manager.requiresHumanApproval("low"), false, "Low impact should not require approval");
-  assert.equal(manager.requiresHumanApproval("medium"), false, "Medium impact should not require approval");
+  assert.equal(manager.requiresHumanApproval("medium"), true, "Medium impact should require approval");
 });
 
 test("E2E Workflow: CompensationManager state transitions follow correct FSM", async () => {

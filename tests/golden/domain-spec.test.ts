@@ -77,7 +77,7 @@ test("golden: DomainExecutionProfile schema produces correct structure", () => {
       llmInHotPathAllowed: true,
       maxHotPathLatencyMs: 500,
     },
-    latencyTier: "interactive",
+    latencyTier: "near_realtime",
     compiledArtifactRef: "artifact://compiled/domain-profile",
   };
 
@@ -87,7 +87,7 @@ test("golden: DomainExecutionProfile schema produces correct structure", () => {
   assert.equal(parsed.executionMode.hotPathMode, "llm_allowed");
   assert.equal(parsed.executionMode.llmInHotPathAllowed, true);
   assert.equal(parsed.executionMode.maxHotPathLatencyMs, 500);
-  assert.equal(parsed.latencyTier, "interactive");
+  assert.equal(parsed.latencyTier, "near_realtime");
   assert.equal(parsed.compiledArtifactRef, "artifact://compiled/domain-profile");
 
   assertGolden("domain-execution-profile-v1", {
@@ -108,7 +108,7 @@ test("golden: DomainExecutionProfile defaults are applied", () => {
   assert.equal(parsed.executionMode.hotPathMode, "llm_allowed");
   assert.equal(parsed.executionMode.llmInHotPathAllowed, true);
   assert.equal(parsed.executionMode.maxHotPathLatencyMs, 1000);
-  assert.equal(parsed.latencyTier, "interactive");
+  assert.equal(parsed.latencyTier, "near_realtime");
   assert.equal(parsed.compiledArtifactRef, null);
 
   assertGolden("domain-execution-profile-defaults-v1", {

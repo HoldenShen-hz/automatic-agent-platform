@@ -191,7 +191,7 @@ test("E2E CompensationManager: low impact does not require human approval", () =
   const manager = new CompensationManager();
 
   assert.equal(manager.requiresHumanApproval("low"), false);
-  assert.equal(manager.requiresHumanApproval("medium"), false);
+  assert.equal(manager.requiresHumanApproval("medium"), true);
 });
 
 // ============================================================================

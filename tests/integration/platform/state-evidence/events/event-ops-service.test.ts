@@ -86,7 +86,8 @@ test("event ops service replays failed consumer acknowledgements into a clean ac
     const second = await ops.replayConsumer("task_projection");
 
     assert.equal(first.outcome, "failed");
-    assert.ok(first.failedAfter >= 1);
+    assert.equal(first.failedAfter, 0);
+    assert.match(first.errorCode ?? "", /dead_lettered/i);
     assert.equal(second.outcome, "delivered");
     assert.equal(second.failedAfter, 0);
     assert.equal(second.pendingAfter, 0);

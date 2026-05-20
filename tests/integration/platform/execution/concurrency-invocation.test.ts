@@ -630,8 +630,8 @@ test("[CONCURRENCY-3] lock acquisition with TTL timeout works correctly", async 
   try {
     const adapter = new SqliteLockAdapter(db);
 
-    // Acquire lock with short TTL
-    const result1 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-1", ttlMs: 50 });
+    // Keep TTL above EXPIRY_SKEW_MS so the lock is still considered live immediately after acquisition.
+    const result1 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-1", ttlMs: 1500 });
     assert.equal(result1.acquired, true, "First acquire should succeed");
 
     // Try to acquire same lock immediately (should fail - not expired)
@@ -639,7 +639,7 @@ test("[CONCURRENCY-3] lock acquisition with TTL timeout works correctly", async 
     assert.equal(result2.acquired, false, "Second acquire should fail - lock not expired");
 
     // Wait for TTL to expire
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    await new Promise((resolve) => setTimeout(resolve, 1600));
 
     // Now should be able to acquire
     const result3 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });

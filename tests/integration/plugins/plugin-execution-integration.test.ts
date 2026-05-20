@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 
 import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
 import { createBuiltinPlugin } from "../../../src/plugins/builtin-plugin-registry.js";
+import { createOperationsRetrieverPluginWithOptions } from "../../../src/plugins/retrievers/operations-retriever.js";
 
 test("plugin execution integration: coding retriever retrieves knowledge", async () => {
   const registry = new PluginSpiRegistry();
@@ -220,7 +221,7 @@ test("plugin execution integration: basic planner suggests workflow", async () =
 test("plugin execution integration: operations retriever returns results", async () => {
   const registry = new PluginSpiRegistry();
 
-  const retriever = createBuiltinPlugin("plugin.operations.retriever");
+  const retriever = createOperationsRetrieverPluginWithOptions({ healthCheck: () => true });
   assert.ok(retriever);
   registry.register(retriever);
 

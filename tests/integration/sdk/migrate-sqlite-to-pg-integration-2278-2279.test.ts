@@ -77,17 +77,13 @@ test("2278: planSqliteToPgMigration uses parameterized queries for table access"
 
     const plan = planSqliteToPgMigration(db);
 
-    // Verify that all tables in TABLES constant are in the plan
-    const tableNames = [
-      "tasks", "sessions", "executions", "leases", "events",
-      "approvals", "artifacts", "billing_records", "dispatches",
-      "divisions", "evolutions", "intelligence_records", "locks",
-      "marketplace_listings", "memory_entries", "operations",
-      "organizations", "releases", "secret_registry", "secret_usage_audits",
-      "secret_rotation_events", "secret_leases", "workers", "workflows",
-    ];
-
-    assert.equal(plan.length, tableNames.length);
+    assert.ok(plan.length > 100, "Plan should enumerate the current authoritative schema surface");
+    const tableNames = new Set(plan.map((entry) => entry.table));
+    assert.ok(tableNames.has("tasks"));
+    assert.ok(tableNames.has("events"));
+    assert.ok(tableNames.has("event_consumer_acks"));
+    assert.ok(tableNames.has("secret_registry"));
+    assert.ok(tableNames.has("release_execution_reports"));
 
     // Verify task count is correctly reported
     const taskPlan = plan.find((entry) => entry.table === "tasks");
@@ -100,25 +96,18 @@ test("2278: planSqliteToPgMigration uses parameterized queries for table access"
   }
 });
 
-test("2278: planSqliteToPgMigration handles missing tables gracefully", () => {
+test("2278: planSqliteToPgMigration fails closed when a canonical source table is missing", () => {
   const workspace = createTempWorkspace("aa-migrate-missing-table-");
   try {
     const db = new SqliteDatabase(join(workspace, "incomplete.db"));
     db.migrate();
 
-    // Create only a subset of tables by using raw SQL to drop some
-    // This test verifies the plan doesn't crash on missing tables
-    const plan = planSqliteToPgMigration(db);
+    db.connection.exec("DROP TABLE events");
 
-    // All TABLES should be in the plan
-    assert.ok(plan.length > 0);
-
-    // Tables that exist should return rowCount >= 0
-    // Tables that don't exist should return rowCount = 0 (not throw)
-    for (const entry of plan) {
-      assert.ok(typeof entry.rowCount === "number");
-      assert.ok(entry.rowCount >= 0);
-    }
+    assert.throws(
+      () => planSqliteToPgMigration(db),
+      /migrate_sqlite_to_pg\.missing_source_table:events/,
+    );
 
     db.close();
   } finally {
