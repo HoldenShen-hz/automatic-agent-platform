@@ -7,7 +7,7 @@ import {
   STABLE_ACCEPTANCE_P95_BUDGET_MS,
   type StableAcceptanceLineOptions,
   type StableAcceptanceCriterionId,
-} from "../../../../src/ops-maturity/stable-acceptance-line.js";
+} from "../../../../src/platform/stability/stable-acceptance-line.js";
 
 function createMockValidationReport(failedRuns = 0, integrityFailures = 0, backupFailures = 0) {
   return {

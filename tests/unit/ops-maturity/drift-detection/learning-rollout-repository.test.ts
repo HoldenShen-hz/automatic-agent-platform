@@ -10,7 +10,7 @@ import type { RolloutRecord } from "../../../../src/ops-maturity/drift-detection
 /**
  * In-memory implementation for testing
  */
-export class InMemoryRolloutRepository {
+class InMemoryRolloutRepository {
   private records: Map<string, RolloutRecord> = new Map();
 
   insert(record: RolloutRecord): void {
