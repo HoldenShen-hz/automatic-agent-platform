@@ -93,7 +93,7 @@ This round has corrected old path references in the following outdated entry doc
 - `MIGRATION_BASELINE.md`
 - `src/README.md`
 
-These entry documents now uniformly point to the current seven-layer structure instead of old `src/core/` / `src/cli/` / `src/gateway/`形态.
+These entry documents now uniformly point to the current seven-layer structure instead of old `src/core/` / `src/cli/` / `src/gateway/` forms.
 
 ## 6. Follow-up Recommendations
 

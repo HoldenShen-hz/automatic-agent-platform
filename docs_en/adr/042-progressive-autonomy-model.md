@@ -13,17 +13,17 @@ Agents at different maturity levels need different autonomy permissions. Newly o
 
 | Level | Name | Permissions |
 |------|------|-------------|
-| 0 | supervised | Full human supervision |
-| 1 | assisted | Assisted suggestions |
-| 2 | partial_auto | Partial automation |
-| 3 | high_auto | High automation |
-| 4 | full_auto | Full automation |
-| 5 | autonomous | Autonomous decision-making (only available in high-maturity domains) |
+| L1 | suggestion | Only generates suggestions, does not auto-execute |
+| L2 | supervised | Allows controlled execution but requires human confirmation or strong oversight |
+| L3 | semi_auto | Allows low-risk auto-execution, high-risk still requires escalation |
+| L4 | full_auto | Allows auto-execution within explicit boundaries |
+
+The interaction autonomy enum must preserve `suggestion` and `frozen` at both ends: `suggestion` means only giving suggestions without auto-execution; `frozen` means interaction progress is frozen due to risk, panic, or governance policy. This enum only describes interaction autonomy and is not equivalent to `UnifiedRuntimeMode`.
 
 Rules:
 
 - `full_auto` does not mean unlimited automation.
-- High-risk domains default to cannot enter `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
+- High-risk domains default to not entering `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
 - If a domain is marked as `advisory_only`, `human_accountable`, or `deterministic_hot_path_only`, the maximum autonomy level must be below `full_auto`.
 
 ### Promotion Rules

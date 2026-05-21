@@ -81,6 +81,13 @@ function emitCompiledTestsForCoverage() {
 }
 
 function mirrorCoverageRuntimeSupport() {
+  const configSource = path.join(process.cwd(), "config");
+  const configTarget = path.join(process.cwd(), "dist", "config");
+  if (existsSync(configSource)) {
+    rmSync(configTarget, { recursive: true, force: true });
+    cpSync(configSource, configTarget, { recursive: true });
+  }
+
   const helperSource = path.join(process.cwd(), "helpers");
   const helperTarget = path.join(process.cwd(), "dist", "helpers");
   if (existsSync(helperSource)) {

@@ -20,21 +20,24 @@ This contract defines platform event bus, event reliability tiers, persistence r
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | `string` | Unique event ID |
+| `id` | `string` | Event unique ID |
 | `type` | `string` | Event type |
 | `tier` | `tier1 \| tier2 \| tier3` | Reliability tier |
-| `task_id` | `string?` | Associated task |
+| `harness_run_id` | `string?` | Associated harness run truth |
+| `node_run_id` | `string?` | Associated node run truth |
+| `attempt_id` | `string?` | Associated node attempt truth |
 | `session_id` | `string?` | Associated session |
 | `loop_iteration` | `integer?` | OAPEFLIR iteration number |
 | `stage` | `string?` | Associated OAPEFLIR stage |
 | `trace_id` | `string?` | Trace ID |
+| `derived_from_event_id` | `string?` | Derived from event |
 | `payload` | `json` | Event payload |
 | `created_at` | `timestamp` | Creation timestamp |
 
 Rules:
 
-- `EventEnvelope` describes only the event itself and does not carry consumption state for any consumer.
-- Multi-consumer acknowledgment must be expressed through independent ack records; a single `consumed_at` field must not be reused.
+- `EventEnvelope` only describes the event itself and does not carry consumption state for any consumer.
+- Multi-consumer acknowledgment must be expressed through independent ack records, and must not reuse a single `consumed_at` field.
 
 ## 4. `EventConsumerAck` Minimum Fields
 
@@ -72,10 +75,17 @@ Current conventions:
 
 Stable event types retained after Ring 1 at minimum:
 
-- `platform.task.status_changed`
-- `platform.node.completed`
+- `platform.harness_run.created`
+- `platform.harness_run.status_changed`
+- `platform.harness_run.completed`
+- `platform.harness_run.failed`
+- `platform.node_run.created`
+- `platform.node_run.completed`
 - `approval.requested`
 - `approval.resolved`
+- `execution:status_changed`
+- `cost:limit_reached`
+- `oapeflir.view.run_lifecycle`
 - `feedback.signal_received`
 - `learn.object_created`
 - `learn.object_promoted`
@@ -84,19 +94,40 @@ Stable event types retained after Ring 1 at minimum:
 - `release.rollout_started`
 - `release.rollout_completed`
 - `release.rollback_triggered`
-- `loop.iteration_completed`
-- `platform.gateway.message_received`
-- `platform.stream.chunk_emitted`
+- `stream.chunk_emitted`
 - `dispatch:ticket_created`
 - `dispatch:ticket_claimed`
 - `dispatch:decision_recorded`
+- `dispatch:ticket_reconciled`
+- `dispatch:ticket_requeued`
 - `worker:claim_accepted`
+- `worker:claim_rejected`
+- `worker:heartbeat_recorded`
 - `worker:writeback_recorded`
-- `takeover:initiated`
+- `worker:writeback_rejected`
+- `worker:lease_released_after_writeback`
+- `takeover:session_opened`
+- `takeover:action_applied`
+- `takeover:acknowledged`
 - `takeover:completed`
-- `recovery:started`
-- `recovery:completed`
+- `takeover:timeout`
+- `takeover:escalated`
+- `takeover:cancelled`
+- `takeover:request_enqueued`
+- `takeover:request_processed`
+- `takeover:ack_expired`
+- `recovery:repair_applied`
+- `recovery:decision_recorded`
+- `recovery:dead_lettered`
+- `recovery:cancelled`
 - `skill:execution_started`
+- `skill:cache_miss`
+- `skill:cache_hit`
+- `skill:cache_stored`
+- `skill:step_started`
+- `skill:retry_scheduled`
+- `skill:step_succeeded`
+- `skill:step_failed`
 - `skill:execution_completed`
 
 See `event_registry_and_ops_threshold_contract.md` for the full registry.
