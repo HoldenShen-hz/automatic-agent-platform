@@ -1,0 +1,29 @@
+{
+  "version": "2026-05-21",
+  "cases": [
+    {
+      "caseId": "reasoning-rl-paper-review",
+      "paperRef": "paper://reasoning-rl-baseline",
+      "claimEvidenceRefs": [
+        "evidence://reasoning-rl/claim-1",
+        "evidence://reasoning-rl/claim-2"
+      ],
+      "expertLabels": [
+        "claim-faithfulness",
+        "method-understanding",
+        "risk-awareness"
+      ],
+      "benchmarkVersion": "research-golden-v1"
+    },
+    {
+      "caseId": "agent-tool-use-survey",
+      "paperRef": "paper://agent-tool-use-survey",
+      "claimEvidenceRefs": [
+        "evidence://agent-tool-use/tool-receipt",
+        "evidence://agent-tool-use/limitation"
+      ],
+      "expertLabels": ["evidence-precision", "contradiction-handling"],
+      "benchmarkVersion": "research-golden-v1"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ import {
   toTenantStatus,
   fromTenantStatus,
   VALID_LIFECYCLE_TRANSITIONS,
-} from "../../../../src/scale-ecosystem/tenant-platform/index.js";
+} from "../../../../src/scale-ecosystem/tenant-platform/tenant-platform-types.js";
 import type {
   CreateWorkspaceInput,
   AddWorkspaceMembershipInput,
@@ -26,7 +26,7 @@ import type {
   DedicatedPoolIsolationRecord,
   TenantLifecycleStage,
   TenantLifecycleInput,
-} from "../../../../src/scale-ecosystem/tenant-platform/index.js";
+} from "../../../../src/scale-ecosystem/tenant-platform/tenant-platform-types.js";
 
 // ---------------------------------------------------------------------------
 // assertIdentifier tests
@@ -56,36 +56,36 @@ test("assertIdentifier accepts maximum length (128 chars)", () => {
 test("assertIdentifier rejects identifiers shorter than 2 characters", () => {
   assert.throws(
     () => assertIdentifier("a", "ERR_TOO_SHORT"),
-    (err: any) => err.code === "ERR_TOO_SHORT" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_TOO_SHORT" && err.category === "tenant"
   );
 });
 
 test("assertIdentifier rejects identifiers longer than 128 characters", () => {
   assert.throws(
     () => assertIdentifier("a".repeat(129), "ERR_TOO_LONG"),
-    (err: any) => err.code === "ERR_TOO_LONG" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_TOO_LONG" && err.category === "tenant"
   );
 });
 
 test("assertIdentifier rejects identifiers with invalid characters", () => {
   assert.throws(
     () => assertIdentifier("workspace@001", "ERR_INVALID"),
-    (err: any) => err.code === "ERR_INVALID" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_INVALID" && err.category === "tenant"
   );
   assert.throws(
     () => assertIdentifier("workspace 001", "ERR_SPACE"),
-    (err: any) => err.code === "ERR_SPACE" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_SPACE" && err.category === "tenant"
   );
   assert.throws(
     () => assertIdentifier("workspace!001", "ERR_BANG"),
-    (err: any) => err.code === "ERR_BANG" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_BANG" && err.category === "tenant"
   );
 });
 
 test("assertIdentifier rejects empty string", () => {
   assert.throws(
     () => assertIdentifier("", "ERR_EMPTY"),
-    (err: any) => err.code === "ERR_EMPTY" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_EMPTY" && err.category === "tenant"
   );
 });
 
@@ -115,28 +115,28 @@ test("assertNonEmpty trims whitespace", () => {
 test("assertNonEmpty rejects empty string", () => {
   assert.throws(
     () => assertNonEmpty("", "ERR_EMPTY"),
-    (err: any) => err.code === "ERR_EMPTY" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_EMPTY" && err.category === "tenant"
   );
 });
 
 test("assertNonEmpty rejects whitespace-only string", () => {
   assert.throws(
     () => assertNonEmpty("   ", "ERR_WHITESPACE"),
-    (err: any) => err.code === "ERR_WHITESPACE" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_WHITESPACE" && err.category === "tenant"
   );
 });
 
 test("assertNonEmpty rejects tab-only string", () => {
   assert.throws(
     () => assertNonEmpty("\t", "ERR_TAB"),
-    (err: any) => err.code === "ERR_TAB" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_TAB" && err.category === "tenant"
   );
 });
 
 test("assertNonEmpty rejects newline-only string", () => {
   assert.throws(
     () => assertNonEmpty("\n", "ERR_NEWLINE"),
-    (err: any) => err.code === "ERR_NEWLINE" && err.details?.category === "tenant"
+    (err: any) => err.code === "ERR_NEWLINE" && err.category === "tenant"
   );
 });
 

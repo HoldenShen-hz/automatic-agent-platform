@@ -244,10 +244,23 @@ test("OrgRoutingService.routeRequest denies when budget exceeded", () => {
 });
 
 test("OrgRoutingService.crossesTenantBoundary returns false for same tenant", () => {
-  const service = new OrgRoutingService([companyNode, divisionNode]);
-  // company and division are in the same tenant since neither has a legalEntityBoundary
-  // So crossing from company to division is NOT crossing tenant boundary
-  const result = service.crossesTenantBoundary("company", "division");
+  // Both subsidiary and its child have the same legalEntityBoundary, so they are in the same tenant
+  const subsidiaryChild = makeOrgNode({
+    orgNodeId: "subsidiary-child",
+    nodeType: "division",
+    displayName: "Subsidiary Division",
+    parentOrgNodeId: "subsidiary",
+    legalEntityBoundary: {
+      boundaryId: "LE-001",
+      legalEntityId: "LE-001",
+      jurisdictionCountry: "US",
+      dataResidencyRegion: "US",
+      crossBorderTransferPolicy: "allow",
+    },
+  });
+
+  const service = new OrgRoutingService([nodeWithLegalEntity, subsidiaryChild]);
+  const result = service.crossesTenantBoundary("subsidiary", "subsidiary-child");
 
   assert.equal(result, false);
 });
@@ -313,15 +326,15 @@ test("OrgRoutingService.routeRequest includes cost center context when allocated
   assert.equal(result.costCenterContext?.currency, "USD");
 });
 
-test("OrgRoutingService.routeRequest uses hierarchy_based strategy when target is ancestor", () => {
+test("OrgRoutingService.routeRequest uses hierarchy_based strategy when target is direct parent", () => {
   const service = new OrgRoutingService([companyNode, divisionNode, departmentNode, teamNode]);
-  // team -> department (parent is ancestor of team in its hierarchy path)
+  // dept -> division (division is direct parent of dept)
   const result = service.routeRequest({
-    requesterOrgNodeId: "team",
-    targetOrgNodeId: "department",
+    requesterOrgNodeId: "dept",
+    targetOrgNodeId: "division",
   });
 
-  // department is parent of team, so this is hierarchy-based routing
+  // division is direct parent of dept, so this is hierarchy-based routing
   assert.equal(result.allowed, true);
   assert.equal(result.routingStrategy, "hierarchy_based");
 });
