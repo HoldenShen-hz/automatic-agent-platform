@@ -16,10 +16,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newId, nowIso } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";
-import { createIntegrationContext } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/helpers/integration-context.js";
-import { ExecutionDispatchService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
-import type { AdmissionBackpressureSnapshot } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import type { AdmissionBackpressureSnapshot } from "../../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
 
 /**
  * Creates a spy backpressure snapshot that tracks call count.

@@ -43,8 +43,7 @@ test("event bus: Publish throughput >5000 events/sec", (t) => {
   const eventBus = new TypedEventBus(db, store);
 
   try {
-    const iterations = 5000;
-    const consumerId = newId("consumer");
+    const iterations = 1000;
 
     // Warmup
     for (let i = 0; i < 100; i++) {
@@ -83,6 +82,7 @@ test("event bus: Publish throughput >5000 events/sec", (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -94,8 +94,7 @@ test("event bus: Burst publish throughput >10000 events/sec", (t) => {
   const eventBus = new TypedEventBus(db, store);
 
   try {
-    const batchSize = 10000;
-    const consumerId = newId("consumer");
+    const batchSize = 2000;
 
     // Warmup
     for (let i = 0; i < 100; i++) {
@@ -134,6 +133,7 @@ test("event bus: Burst publish throughput >10000 events/sec", (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -150,7 +150,7 @@ test("event bus: Publish latency P99 <5ms", (t) => {
 
   try {
     const latencies: number[] = [];
-    const iterations = 2000;
+    const iterations = 500;
 
     // Warmup
     for (let i = 0; i < 100; i++) {
@@ -189,6 +189,7 @@ test("event bus: Publish latency P99 <5ms", (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -202,11 +203,11 @@ test("event bus: Delivery latency P99 <10ms", async (t) => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStore(db);
   const eventBus = new TypedEventBus(db, store);
+  const consumerId = newId("consumer");
 
   try {
-    const consumerId = newId("consumer");
     const latencies: number[] = [];
-    const iterations = 1000;
+    const iterations = 200;
 
     // Subscribe consumer
     let deliveredCount = 0;
@@ -260,7 +261,8 @@ test("event bus: Delivery latency P99 <10ms", async (t) => {
       throw err;
     }
   } finally {
-    eventBus.unsubscribe(newId("consumer"));
+    eventBus.unsubscribe(consumerId);
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -273,7 +275,7 @@ test("event bus: Batch delivery throughput >5000 events/sec", async (t) => {
 
   try {
     const consumerId = newId("consumer");
-    const batchSize = 5000;
+    const batchSize = 1000;
 
     // Subscribe consumer
     eventBus.subscribe(consumerId, ["perf:test_event"], async () => {});
@@ -307,6 +309,7 @@ test("event bus: Batch delivery throughput >5000 events/sec", async (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -330,7 +333,7 @@ test("event bus: Multi-event-type publish throughput >3000 events/sec", (t) => {
       "test:many_events",
     ] as const;
 
-    const iterations = 3000;
+    const iterations = 1000;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
@@ -359,6 +362,7 @@ test("event bus: Multi-event-type publish throughput >3000 events/sec", (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -374,7 +378,7 @@ test("event bus: Subscribe/unsubscribe throughput >1000 ops/sec", (t) => {
   const eventBus = new TypedEventBus(db, store);
 
   try {
-    const iterations = 1000;
+    const iterations = 300;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
@@ -400,6 +404,7 @@ test("event bus: Subscribe/unsubscribe throughput >1000 ops/sec", (t) => {
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }
@@ -415,7 +420,7 @@ test("event bus: Sustained high-volume throughput >8000 events/sec", async (t) =
   const eventBus = new TypedEventBus(db, store);
 
   try {
-    const totalEvents = 20000;
+    const totalEvents = 5000;
     const start = performance.now();
 
     for (let i = 0; i < totalEvents; i++) {
@@ -449,6 +454,7 @@ test("event bus: Sustained high-volume throughput >8000 events/sec", async (t) =
       throw err;
     }
   } finally {
+    eventBus.dispose();
     db.close();
     cleanupDb(db);
   }

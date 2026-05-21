@@ -49,7 +49,11 @@ test("check-coverage-baseline fails when coverage is below baseline", async () =
 
     const result = spawnSync("node", [SCRIPT_PATH], {
       cwd: workspace,
-      env: { ...process.env },
+      env: {
+        ...process.env,
+        AA_COVERAGE_DIR: join(workspace, "coverage"),
+        AA_COVERAGE_BASELINE_PATH: join(workspace, ".coverage-baseline.json"),
+      },
       stdio: "pipe",
     });
 
@@ -77,7 +81,11 @@ test("check-coverage-baseline fails when baseline is missing", async () => {
 
     const result = spawnSync("node", [SCRIPT_PATH], {
       cwd: workspace,
-      env: { ...process.env },
+      env: {
+        ...process.env,
+        AA_COVERAGE_DIR: join(workspace, "coverage"),
+        AA_COVERAGE_BASELINE_PATH: join(workspace, ".coverage-baseline.json"),
+      },
       stdio: "pipe",
     });
 

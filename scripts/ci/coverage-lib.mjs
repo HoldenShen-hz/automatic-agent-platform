@@ -4,12 +4,19 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const REPO_ROOT = path.resolve(__dirname, "..", "..");
-const COVERAGE_DIR = path.join(REPO_ROOT, "coverage");
+const DEFAULT_REPO_ROOT = path.resolve(__dirname, "..", "..");
+const REPO_ROOT = process.env.AA_COVERAGE_REPO_ROOT != null
+  ? path.resolve(process.env.AA_COVERAGE_REPO_ROOT)
+  : DEFAULT_REPO_ROOT;
+const COVERAGE_DIR = process.env.AA_COVERAGE_DIR != null
+  ? path.resolve(process.env.AA_COVERAGE_DIR)
+  : path.join(REPO_ROOT, "coverage");
 const COVERAGE_SUMMARY_PATH = path.join(COVERAGE_DIR, "coverage-summary.json");
 const COVERAGE_DIRECTORY_SUMMARY_JSON_PATH = path.join(COVERAGE_DIR, "coverage-directory-summary.json");
 const COVERAGE_DIRECTORY_SUMMARY_MD_PATH = path.join(COVERAGE_DIR, "coverage-directory-summary.md");
-export const BASELINE_PATH = path.join(REPO_ROOT, ".coverage-baseline.json");
+export const BASELINE_PATH = process.env.AA_COVERAGE_BASELINE_PATH != null
+  ? path.resolve(process.env.AA_COVERAGE_BASELINE_PATH)
+  : path.join(REPO_ROOT, ".coverage-baseline.json");
 
 const METRIC_KEYS = ["lines", "statements", "functions", "branches"];
 const ROUNDING_PRECISION = 10;

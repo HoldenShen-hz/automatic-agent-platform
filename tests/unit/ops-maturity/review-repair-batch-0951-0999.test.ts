@@ -8,6 +8,10 @@ import { TimeTravelDebugService } from "../../../src/ops-maturity/workflow-debug
 import { putExplanationCacheEntry } from "../../../src/ops-maturity/explainability/explanation-cache/index.js";
 import { OpsCapacityPredictorService } from "../../../src/ops-maturity/platform-ops-agent/capacity-predictor/index.js";
 
+function isoOffsetFromNow(offsetMs: number): string {
+  return new Date(Date.now() + offsetMs).toISOString();
+}
+
 test("fingerprint builder produces deterministic ids, UTC windows, and stable hashes", () => {
   const builder = new BehaviorFingerprintBuilder(() => new Date("2026-05-20T12:00:00.000Z"));
   const first = builder.build({
@@ -153,7 +157,7 @@ test("time travel debugger rechecks access, adjusts cursors after truncation, an
     actorId: "dev-1",
     environment: "dev",
     mfaVerified: false,
-    sessionExpiresAt: "2026-05-21T00:00:00.000Z",
+    sessionExpiresAt: isoOffsetFromNow(24 * 60 * 60 * 1000),
     permissions: ["time_travel:replay"],
   });
   service.replayStep(session.sessionId);
@@ -174,7 +178,7 @@ test("time travel debugger rechecks access, adjusts cursors after truncation, an
     actorId: "prod-user",
     environment: "prod",
     mfaVerified: true,
-    sessionExpiresAt: "2026-05-19T00:00:00.000Z",
+    sessionExpiresAt: isoOffsetFromNow(-24 * 60 * 60 * 1000),
     permissions: ["time_travel:replay", "time_travel:replay:prod"],
   }), /time_travel_debug\.session_expired/);
 });

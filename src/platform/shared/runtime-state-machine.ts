@@ -455,7 +455,7 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
     const currentVersion = typeof aggregate.version === "number" ? aggregate.version : 0;
     Object.assign(aggregate, { version: currentVersion + 1 });
   }
-  if (isTerminalStatus(command.toStatus)) {
+  if (isTerminalStatus(command.aggregateType, command.toStatus)) {
     Object.assign(aggregate, {
       terminalAt: occurredAt,
       ...(command.reasonCode.length > 0 ? { terminalReason: command.reasonCode } : {}),
@@ -550,6 +550,17 @@ function getTransitionTable(aggregateType: RuntimeStateAggregateType) {
   }
 }
 
-function isTerminalStatus(status: string): boolean {
-  return ["completed", "failed", "cancelled", "aborted", "rejected", "expired", "released", "settled"].includes(status);
+function isTerminalStatus(aggregateType: RuntimeStateAggregateType, status: string): boolean {
+  switch (aggregateType) {
+    case "HarnessRun":
+      return HARNESS_RUN_TRANSITIONS[status as keyof typeof HARNESS_RUN_TRANSITIONS]?.length === 0;
+    case "NodeRun":
+      return NODE_RUN_TRANSITIONS[status as keyof typeof NODE_RUN_TRANSITIONS]?.length === 0;
+    case "SideEffectRecord":
+      return SIDE_EFFECT_TRANSITIONS[status as keyof typeof SIDE_EFFECT_TRANSITIONS]?.length === 0;
+    case "BudgetLedger":
+      return BUDGET_LEDGER_TRANSITIONS[status as keyof typeof BUDGET_LEDGER_TRANSITIONS]?.length === 0;
+    case "BudgetReservation":
+      return BUDGET_RESERVATION_TRANSITIONS[status as keyof typeof BUDGET_RESERVATION_TRANSITIONS]?.length === 0;
+  }
 }

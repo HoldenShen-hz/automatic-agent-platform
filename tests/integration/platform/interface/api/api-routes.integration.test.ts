@@ -11,6 +11,7 @@
  */
 
 import assert from "node:assert/strict";
+import { createServer as createNetServer } from "node:net";
 import test from "node:test";
 
 import { createSeededApiContext } from "../../../../helpers/api.js";
@@ -35,6 +36,28 @@ function readJson<T>(response: { body: string }): Envelope<T> {
 
 function readError(response: { body: string }): ErrorEnvelope {
   return JSON.parse(response.body) as ErrorEnvelope;
+}
+
+async function canBindLocalSockets(): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const probe = createNetServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(0, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
+    });
+  });
+}
+
+const canBindSockets = await canBindLocalSockets();
+
+function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
+  test(name, async (t) => {
+    if (!canBindSockets) {
+      t.diagnostic("Skipping local socket bind websocket path: local sockets are unavailable in this environment.");
+      return;
+    }
+    await body(t);
+  });
 }
 
 // ─── R5-35: /api/v1/harness-runs endpoint tests ────────────────────────────────
@@ -229,7 +252,7 @@ test("WebSocket bridge is initialized with correct path /ws/v1/stream", async ()
   }
 });
 
-test("WebSocket server rejects connection without token", async () => {
+networkPathTest("WebSocket server rejects connection without token", async () => {
   const workspace = createTempWorkspace("aa-ws-no-token-");
   const context = createSeededApiContext(workspace);
   const server = context.createServer();
@@ -267,7 +290,7 @@ test("WebSocket server rejects connection without token", async () => {
   }
 });
 
-test("WebSocket server rejects connection with invalid token", async () => {
+networkPathTest("WebSocket server rejects connection with invalid token", async () => {
   const workspace = createTempWorkspace("aa-ws-bad-token-");
   const context = createSeededApiContext(workspace);
   const server = context.createServer();

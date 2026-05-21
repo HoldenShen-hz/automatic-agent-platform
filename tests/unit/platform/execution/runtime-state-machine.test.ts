@@ -142,3 +142,35 @@ test("RuntimeStateMachine keeps terminalReason on terminal NodeRun transitions w
 
   assert.equal(result.aggregate.terminalReason, "node.failed");
 });
+
+test("RuntimeStateMachine marks successful NodeRun transitions as terminal", () => {
+  const machine = new RuntimeStateMachine({ persistEvent: () => {} });
+  const nodeRun = createNodeRun({
+    harnessRunId: "run-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+    status: "running",
+    currentSeq: 2,
+    leaseId: "lease-1",
+    fencingToken: "node-1-fence",
+  });
+
+  const result = machine.transition({
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "running",
+    toStatus: "succeeded",
+    expectedSeq: 2,
+    traceId: "trace-terminal-success",
+    tenantId: "tenant-1",
+    reasonCode: "node.succeeded",
+    emittedBy: "test",
+    leaseId: "lease-1",
+    fencingToken: "node-1-fence",
+    auditRef: "audit://runtime/node-succeeded",
+  });
+
+  assert.equal(result.aggregate.terminalReason, "node.succeeded");
+  assert.ok(result.aggregate.terminalAt);
+});

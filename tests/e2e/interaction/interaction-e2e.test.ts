@@ -200,6 +200,7 @@ test("e2e: Autonomy level progression with trigger evaluation", async () => {
 });
 
 test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
+  const currentTime = "2026-05-21T12:00:00.000Z";
   const tasks: TaskBoardItem[] = [
     {
       taskId: "task_e2e_1",
@@ -210,8 +211,8 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
       divisionId: "engineering_ops",
       currentStepIndex: 0,
       sessionStatus: "open",
-      latestEventAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      latestEventAt: "2026-05-21T11:55:00.000Z",
+      updatedAt: "2026-05-21T11:55:00.000Z",
     },
     {
       taskId: "task_e2e_2",
@@ -222,8 +223,8 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
       divisionId: "engineering_ops",
       currentStepIndex: 0,
       sessionStatus: "open",
-      latestEventAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      latestEventAt: "2026-05-21T11:50:00.000Z",
+      updatedAt: "2026-05-21T11:50:00.000Z",
     },
   ];
 
@@ -240,11 +241,12 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
         eventBusBacklog: { tier1PendingAcks: 1 },
         findings: ["queue backlog elevated"],
 // @ts-ignore
-        observedAt: new Date().toISOString(),
+        observedAt: currentTime,
       }),
     },
     costBurnUsd: 150,
     forecastCostUsd: 100,
+    currentTime: () => currentTime,
   });
 
   // Build operator dashboard
@@ -254,11 +256,27 @@ test("e2e: Dashboard aggregation with operator dashboard flow", async () => {
   assert.ok(operatorDashboard.dailySummary.tasksFailed >= 1);
   assert.ok(operatorDashboard.agentHealthCards.length > 0);
 
-  // Check that attention items are sorted by createdAt (issue #2050)
+  const priorityRank: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    normal: 2,
+    low: 3,
+  };
+
+  // Attention queue contract: priority first, then newest item first within the same priority.
   for (let i = 1; i < operatorDashboard.attentionQueue.length; i++) {
-    const prev = new Date(operatorDashboard.attentionQueue[i - 1]!.createdAt).getTime();
-    const curr = new Date(operatorDashboard.attentionQueue[i]!.createdAt).getTime();
-    assert.ok(prev <= curr, "Attention queue should be sorted by createdAt");
+    const previous = operatorDashboard.attentionQueue[i - 1]!;
+    const current = operatorDashboard.attentionQueue[i]!;
+    const previousPriority = priorityRank[previous.priority];
+    const currentPriority = priorityRank[current.priority];
+
+    assert.ok(previousPriority <= currentPriority, "Attention queue should be sorted by priority");
+
+    if (previousPriority === currentPriority) {
+      const previousCreatedAt = new Date(previous.createdAt).getTime();
+      const currentCreatedAt = new Date(current.createdAt).getTime();
+      assert.ok(previousCreatedAt >= currentCreatedAt, "Attention queue should keep newer items first within the same priority");
+    }
   }
 });
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildUsageText, parseArguments } from "../../../../src/sdk/cli/dlq-manager.ts";
+import { buildUsageText, parseArguments } from "../../../../src/sdk/cli/dlq-manager.js";
 
 test("2282: parseArguments validates retry limit and confirmation", () => {
   const parsed = parseArguments({

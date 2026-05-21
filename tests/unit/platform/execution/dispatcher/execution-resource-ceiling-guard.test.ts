@@ -155,6 +155,7 @@ test("ExecutionResourceCeilingGuard firstFinding returns first finding or null",
 
 test("ExecutionResourceCeilingGuard constructor applies defaults for invalid values", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: -1, maxMemoryMb: 0, maxElapsedMs: NaN } as ExecutionResourceCeilingOptions);
+  const now = "2026-05-21T12:00:00.000Z";
   const sampleAtLimit: ExecutionResourceUsageSample = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -162,8 +163,8 @@ test("ExecutionResourceCeilingGuard constructor applies defaults for invalid val
     status: "running",
     toolCallCount: 64,
     memoryMb: 2048,
-    startedAt: new Date(Date.now() - 900000).toISOString(),
-    now: new Date().toISOString(),
+    startedAt: "2026-05-21T11:45:00.000Z",
+    now,
   };
   // Default maxToolCalls=64, maxMemoryMb=2048, maxElapsedMs=900000 (15min)
   const findings = guard.evaluate(sampleAtLimit);

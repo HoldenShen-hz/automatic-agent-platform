@@ -14,7 +14,11 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
+import {
+  RuntimeStateMachine,
+  type RuntimeStateAggregate,
+  type RuntimeTransitionCommand,
+} from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { HarnessRun, NodeRun, BudgetLedger, BudgetReservation } from "../../src/platform/contracts/executable-contracts/index.js";
 
@@ -24,6 +28,16 @@ const PERF_FENCING_TOKEN = "perf-fence";
 
 function createStateMachine(): RuntimeStateMachine {
   return new RuntimeStateMachine({ persistEvent: () => {} });
+}
+
+function transitionWithAudit<TAggregate extends RuntimeStateAggregate>(
+  stateMachine: RuntimeStateMachine,
+  command: RuntimeTransitionCommand<TAggregate>,
+) {
+  return stateMachine.transition({
+    ...command,
+    auditRef: command.auditRef ?? `audit://perf/state-machine/${command.aggregateType}/${command.entityId}/${command.commandId}`,
+  });
 }
 
 // ============================================================================
@@ -39,7 +53,7 @@ test("state machine: Single transition throughput >10000 ops/sec", (t) => {
     // Warmup
     for (let i = 0; i < 100; i++) {
       const harnessRun = createHarnessRun(newId("hrun"), "created");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: harnessRun.harnessRunId,
@@ -63,7 +77,7 @@ test("state machine: Single transition throughput >10000 ops/sec", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       const harnessRun = createHarnessRun(newId("hrun"), "created");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: harnessRun.harnessRunId,
@@ -113,7 +127,7 @@ test("state machine: Transition latency P99 <1ms", (t) => {
     // Warmup
     for (let i = 0; i < 100; i++) {
       const harnessRun = createHarnessRun(newId("hrun"), "created");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: harnessRun.harnessRunId,
@@ -136,7 +150,7 @@ test("state machine: Transition latency P99 <1ms", (t) => {
     for (let i = 0; i < iterations; i++) {
       const harnessRun = createHarnessRun(newId("hrun"), "created");
       const start = performance.now();
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: harnessRun.harnessRunId,
@@ -190,7 +204,7 @@ test("state machine: Parallel transitions throughput >5000 ops/sec with 10 worke
   const stateMachine = createStateMachine();
   for (let i = 0; i < 100; i++) {
     const harnessRun = createHarnessRun(newId("hrun"), "created");
-    stateMachine.transition({
+    transitionWithAudit(stateMachine, {
       commandId: newId("cmd"),
       entityType: "HarnessRun",
       entityId: harnessRun.harnessRunId,
@@ -216,7 +230,7 @@ test("state machine: Parallel transitions throughput >5000 ops/sec with 10 worke
     Array.from({ length: numWorkers }, async (_, workerId) => {
       for (let i = 0; i < transitionsPerWorker; i++) {
         const harnessRun = createHarnessRun(newId("hrun"), "created");
-        createStateMachine().transition({
+        transitionWithAudit(createStateMachine(), {
           commandId: newId("cmd"),
           entityType: "HarnessRun",
           entityId: harnessRun.harnessRunId,
@@ -269,7 +283,7 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
     // Warmup
     for (let i = 0; i < 10; i++) {
       let run = createHarnessRun(newId("hrun"), "created");
-      run = stateMachine.transition({
+      run = transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: run.harnessRunId,
@@ -295,7 +309,7 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
       let run = createHarnessRun(newId("hrun"), "created");
       let result;
 
-      result = stateMachine.transition({
+      result = transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: run.harnessRunId,
@@ -314,7 +328,7 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
       });
       run = result.aggregate;
 
-      result = stateMachine.transition({
+      result = transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: run.harnessRunId,
@@ -332,7 +346,7 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
       });
       run = result.aggregate;
 
-      result = stateMachine.transition({
+      result = transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: run.harnessRunId,
@@ -350,7 +364,7 @@ test("state machine: Complete harness run lifecycle >2000 cycles/sec", (t) => {
       });
       run = result.aggregate;
 
-      result = stateMachine.transition({
+      result = transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "HarnessRun",
         entityId: run.harnessRunId,
@@ -404,7 +418,7 @@ test("state machine: NodeRun transition throughput >8000 ops/sec", (t) => {
     // Warmup
     for (let i = 0; i < 50; i++) {
       const nodeRun = createNodeRun(newId("noderun"), "created");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "NodeRun",
         entityId: nodeRun.nodeRunId,
@@ -427,7 +441,7 @@ test("state machine: NodeRun transition throughput >8000 ops/sec", (t) => {
 
     for (let i = 0; i < iterations; i++) {
       const nodeRun = createNodeRun(newId("noderun"), "created");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "NodeRun",
         entityId: nodeRun.nodeRunId,
@@ -479,7 +493,7 @@ test("state machine: BudgetLedger transition throughput >10000 ops/sec", (t) => 
     // Warmup
     for (let i = 0; i < 100; i++) {
       const ledger = createBudgetLedger(newId("bledger"), "open");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "BudgetLedger",
         entityId: ledger.budgetLedgerId,
@@ -502,7 +516,7 @@ test("state machine: BudgetLedger transition throughput >10000 ops/sec", (t) => 
 
     for (let i = 0; i < iterations; i++) {
       const ledger = createBudgetLedger(newId("bledger"), "open");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "BudgetLedger",
         entityId: ledger.budgetLedgerId,
@@ -554,7 +568,7 @@ test("state machine: BudgetReservation transition throughput >10000 ops/sec", (t
     // Warmup
     for (let i = 0; i < 100; i++) {
       const reservation = createBudgetReservation(newId("res"), "reserved");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "BudgetReservation",
         entityId: reservation.budgetReservationId,
@@ -575,7 +589,7 @@ test("state machine: BudgetReservation transition throughput >10000 ops/sec", (t
 
     for (let i = 0; i < iterations; i++) {
       const reservation = createBudgetReservation(newId("res"), "reserved");
-      stateMachine.transition({
+      transitionWithAudit(stateMachine, {
         commandId: newId("cmd"),
         entityType: "BudgetReservation",
         entityId: reservation.budgetReservationId,
@@ -628,7 +642,7 @@ test("state machine: High-concurrency stress test >20000 total ops/sec", async (
     Array.from({ length: numWorkers }, async (_, workerId) => {
       for (let i = 0; i < transitionsPerWorker; i++) {
         const harnessRun = createHarnessRun(newId("hrun"), "created");
-        createStateMachine().transition({
+        transitionWithAudit(createStateMachine(), {
           commandId: newId("cmd"),
           entityType: "HarnessRun",
           entityId: harnessRun.harnessRunId,

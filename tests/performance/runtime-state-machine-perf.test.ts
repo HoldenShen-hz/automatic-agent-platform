@@ -13,48 +13,8 @@ import test from "node:test";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import {
-  RuntimeStateMachine,
-  type RuntimeStateAggregate,
-  type RuntimeTransitionCommand,
-  type HarnessRun,
-  type NodeRun,
-  type HarnessRunStatus,
-} from "../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
-
-function createHarnessRun(runId: string): HarnessRun {
-  return {
-    harnessRunId: runId,
-    tenantId: "test-tenant",
-    taskId: newId("task"),
-    workflowId: newId("workflow"),
-    status: "pending" as HarnessRunStatus,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    startedAt: null,
-    finishedAt: null,
-    metadata: {},
-  };
-}
-
-function createNodeRun(runId: string, harnessRunId: string): NodeRun {
-  return {
-    nodeRunId: runId,
-    harnessRunId,
-    stepId: `step_${Math.floor(Math.random() * 10)}`,
-    agentId: "agent-1",
-    roleId: "builder",
-    status: "pending",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    startedAt: null,
-    finishedAt: null,
-    inputRef: null,
-    outputRef: null,
-    errorCode: null,
-  };
-}
 
 // ============================================================================
 // Aggregate Creation Benchmarks
@@ -121,19 +81,18 @@ test("performance: RuntimeStateMachine buildTransitionCommand() >3000 ops/sec", 
   const start = performance.now();
 
   for (let i = 0; i < iterations; i++) {
-    machine.buildTransitionCommand(harness, "running", "pending", {
+    machine.buildTransitionCommand(harness, "admitted", "created", {
       commandId: newId("cmd"),
       principal: "test-principal",
       entityType: "HarnessRun",
       entityId: harness.harnessRunId,
       aggregateType: "HarnessRun",
-      aggregate: harness,
-      fromStatus: "pending",
-      toStatus: "running",
       traceId: newId("trace"),
       tenantId: "test-tenant",
       reasonCode: "test",
       emittedBy: "test-emitter",
+      runVersionLockId: harness.versionLockId,
+      auditRef: `audit://perf/runtime-state-machine/build/${i}`,
     });
   }
 
@@ -163,7 +122,7 @@ test("performance: RuntimeStateMachine validateTransition() >4000 ops/sec", (t) 
   const start = performance.now();
 
   for (let i = 0; i < iterations; i++) {
-    machine.validateTransition(harness, "running", "pending");
+    machine.validateTransition(harness, "admitted", "created");
   }
 
   const elapsed = performance.now() - start;
@@ -186,27 +145,24 @@ test("performance: RuntimeStateMachine validateTransition() >4000 ops/sec", (t) 
 
 test("performance: RuntimeStateMachine executeTransition() P99 <2ms", (t) => {
   const machine = new RuntimeStateMachine();
-  const harness = machine.createHarnessRunAggregate(newId("harness"));
-
   const latencies: number[] = [];
   const iterations = 1000;
 
   for (let i = 0; i < iterations; i++) {
     const aggregate = machine.createHarnessRunAggregate(newId("harness"));
     const start = performance.now();
-    machine.executeTransition(aggregate, "running", {
+    machine.executeTransition(aggregate, "admitted", {
       commandId: newId("cmd"),
       principal: "test-principal",
       entityType: "HarnessRun",
       entityId: aggregate.harnessRunId,
       aggregateType: "HarnessRun",
-      aggregate,
-      fromStatus: "pending",
-      toStatus: "running",
       traceId: newId("trace"),
       tenantId: "test-tenant",
       reasonCode: "test",
       emittedBy: "test-emitter",
+      runVersionLockId: aggregate.versionLockId,
+      auditRef: `audit://perf/runtime-state-machine/execute/${i}`,
     });
     latencies.push(performance.now() - start);
   }
@@ -240,19 +196,18 @@ test("performance: RuntimeStateMachine concurrent transitions (10 parallel) >300
     const promises = Array.from({ length: parallelCount }, (_, idx) =>
       (async () => {
         const aggregate = machine.createHarnessRunAggregate(newId("harness"));
-        machine.executeTransition(aggregate, "running", {
+        machine.executeTransition(aggregate, "admitted", {
           commandId: newId("cmd"),
           principal: "test-principal",
           entityType: "HarnessRun",
           entityId: aggregate.harnessRunId,
           aggregateType: "HarnessRun",
-          aggregate,
-          fromStatus: "pending",
-          toStatus: "running",
           traceId: newId("trace"),
           tenantId: "test-tenant",
           reasonCode: "test",
           emittedBy: "test-emitter",
+          runVersionLockId: aggregate.versionLockId,
+          auditRef: `audit://perf/runtime-state-machine/concurrent/${i}-${idx}`,
         });
       })()
     );

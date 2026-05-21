@@ -1883,7 +1883,7 @@ test("HTTP prometheus metrics use templated paths instead of raw resource IDs", 
   }
 });
 
-test("GET /metrics is not exposed by HttpApiServer to avoid standalone metrics endpoint duplication", async () => {
+test("GET /metrics remains available as an unversioned compatibility alias", async () => {
   const { server } = createTestServer();
 
   try {
@@ -1892,7 +1892,7 @@ test("GET /metrics is not exposed by HttpApiServer to avoid standalone metrics e
       url: "/metrics",
     });
 
-    assert.equal(response.statusCode, 404);
+    assert.equal(response.statusCode, 200);
   } finally {
     await server.stop();
   }

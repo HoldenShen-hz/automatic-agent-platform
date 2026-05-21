@@ -10,9 +10,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newId, nowIso } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";
-import { createIntegrationContext } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/helpers/integration-context.js";
-import { ExecutionDispatchReconciliationService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.js";
+import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { ExecutionDispatchReconciliationService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.js";
 
 test("reconciliation detects orphan queue claim for ticket with missing active lease", () => {
   const ctx = createIntegrationContext("aa-reconcile-orphan-");

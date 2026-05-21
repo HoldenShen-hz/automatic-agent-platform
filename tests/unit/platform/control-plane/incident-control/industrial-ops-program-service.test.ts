@@ -34,7 +34,7 @@ const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Industrial ops program task",

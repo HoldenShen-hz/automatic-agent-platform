@@ -20,9 +20,9 @@ function createMockContext(): RouteContext {
   };
 }
 
-test("createMetricsRoutes returns versioned metrics and prometheus endpoints", () => {
+test("createMetricsRoutes returns compatibility, versioned, and prometheus endpoints", () => {
   const routes = createMetricsRoutes({ prometheusMetricsExporter: createMockMetricsExporter() });
-  assert.deepEqual(routes.map((route) => route.pathname), ["/v1/metrics", "/prometheus"]);
+  assert.deepEqual(routes.map((route) => route.pathname), ["/metrics", "/v1/metrics", "/prometheus"]);
 });
 
 test("GET /prometheus returns metrics when exporter is configured", async () => {

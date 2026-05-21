@@ -491,6 +491,7 @@ test("performance: NodeRun state transition throughput >3000 ops/sec", (t) => {
       emittedBy: "test-emitter",
       leaseId: newId("lease"),
       fencingToken: newId("fence"),
+      auditRef: "audit://performance/node-run/warmup",
     });
   }
 
@@ -522,6 +523,7 @@ test("performance: NodeRun state transition throughput >3000 ops/sec", (t) => {
       emittedBy: "test-emitter",
       leaseId: newId("lease"),
       fencingToken: newId("fence"),
+      auditRef: "audit://performance/node-run/measure",
     });
   }
 

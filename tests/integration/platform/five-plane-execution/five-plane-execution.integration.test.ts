@@ -5,24 +5,24 @@ import {
   listExecutionCapabilityBaselines,
   resolveExecutionCapabilityBaseline,
   EXECUTION_CAPABILITY_BASELINES,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/execution-plane-baseline.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 
 import {
   buildExecutionPlaneBootstrap,
   registerExecutionPlaneBootstrap,
   EXECUTION_PLANE_CATALOG_SERVICE_ID,
   EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/execution-plane-bootstrap.js";
+} from "../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js";
 
 test("execution-plane-baseline module can be imported", async () => {
-  const module = await import("/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/execution-plane-baseline.js");
+  const module = await import("../../../../src/platform/five-plane-execution/execution-plane-baseline.js");
   assert.ok(typeof module.listExecutionCapabilityBaselines === "function");
   assert.ok(typeof module.resolveExecutionCapabilityBaseline === "function");
   assert.ok(Array.isArray(module.EXECUTION_CAPABILITY_BASELINES));
 });
 
 test("execution-plane-bootstrap module can be imported", async () => {
-  const module = await import("/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/execution-plane-bootstrap.js");
+  const module = await import("../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js");
   assert.ok(typeof module.buildExecutionPlaneBootstrap === "function");
   assert.ok(typeof module.registerExecutionPlaneBootstrap === "function");
   assert.equal(module.EXECUTION_PLANE_CATALOG_SERVICE_ID, "plane.execution.catalog");

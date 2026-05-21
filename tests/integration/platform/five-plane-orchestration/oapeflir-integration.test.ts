@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
-import { createStageTransitionFSM } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
-import { MockExecuteBridge } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import type { ConstraintPack } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/harness/index.js";
-import type { PlannedWorkflow } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { createStageTransitionFSM } from "../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
+import { MockExecuteBridge } from "../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import type { ConstraintPack } from "../../../../src/platform/five-plane-orchestration/harness/index.js";
+import type { PlannedWorkflow } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
 
 function makeConstraintPack(): ConstraintPack {
   return {

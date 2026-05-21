@@ -4,7 +4,7 @@
 
 import { test, mock } from "node:test";
 import assert from "node:assert/strict";
-import { CircuitBreaker, CircuitBreakerOpenError } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/model-gateway/provider-registry/circuit-breaker.js";
+import { CircuitBreaker, CircuitBreakerOpenError } from "../../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
 
 function enableCircuitBreakerTimers(): void {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });

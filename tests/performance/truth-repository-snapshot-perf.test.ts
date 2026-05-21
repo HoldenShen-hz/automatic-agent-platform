@@ -321,6 +321,10 @@ test("performance: RuntimeTruthRepository snapshot with 1000 events <150ms", (t)
   const repo = new RuntimeTruthRepository();
   const stateMachine = new RuntimeStateMachine({ persistEvent: () => undefined });
   let harnessRun = stateMachine.createHarnessRunAggregate(newId("harness"));
+  harnessRun = {
+    ...harnessRun,
+    leaseId: harnessRun.ownership.ownerId,
+  };
   repo.seed("HarnessRun", harnessRun);
 
   const steadyStateTransitions = ["paused", "resuming", "running"] as const;

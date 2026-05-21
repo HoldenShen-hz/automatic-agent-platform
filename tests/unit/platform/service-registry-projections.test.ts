@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   DEFAULT_LAYER_TTL_CONFIGS,
@@ -13,7 +14,7 @@ import { riskActionProjectionHandler } from "../../../src/platform/five-plane-st
 import type { ProjectionInputEvent } from "../../../src/platform/five-plane-state-evidence/projections/projection-rebuild-service.js";
 
 function readSource(relativePath: string): string {
-  return readFileSync(new URL(relativePath, import.meta.url), "utf8");
+  return readFileSync(resolve(process.cwd(), "tests", "unit", "platform", relativePath), "utf8");
 }
 
 function makeEvent(eventId: string, eventType: string): ProjectionInputEvent {

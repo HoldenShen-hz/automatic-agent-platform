@@ -8,7 +8,7 @@ import {
   loadOAuthPkceConfig,
   resolveOAuthLoginStatePath,
   startOAuthLogin,
-} from "../../../../src/sdk/cli/login.ts";
+} from "../../../../src/sdk/cli/login.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("2286: loadOAuthPkceConfig requires canonical OAuth PKCE env", () => {
